@@ -27,8 +27,17 @@ Een volledig Nederlandstalig business dashboard voor Autronis (AI Automation & W
 - **Wachtwoorden:** bcrypt
 - **Iconen:** Lucide React
 - **Thema:** next-themes
-- **PWA:** next-pwa
+- **PWA:** @serwist/next (maintained fork van next-pwa)
 - **Taal:** TypeScript
+
+### Conventies
+
+- **Timestamps:** Alle tijden opgeslagen als UTC in ISO 8601 formaat: `YYYY-MM-DDTHH:mm:ssZ`
+- **Geldbedragen:** Opgeslagen als REAL, altijd afronden op 2 decimalen vóór opslag
+- **Berekende velden:** `werkelijke_uren` (projecten) en `huidige_waarde` (doelen) worden berekend via queries, niet opgeslagen — de kolommen dienen als cache en worden herberekend bij elke read
+- **Soft-delete:** Business entiteiten (klanten, projecten, facturen, leads) krijgen een `is_actief` vlag. Verwijderen = `is_actief = 0`, niet hard delete. Dit behoudt audit trail integriteit
+- **Foreign keys ON DELETE:** RESTRICT als standaard (voorkom verwijderen van records met afhankelijkheden), CASCADE alleen voor factuur_regels → facturen
+- **Database scope:** Alle tabellen worden aangemaakt in Fase 1 zodat de database "future-ready" is. Migraties via Drizzle voor schema-wijzigingen in latere fasen
 
 ---
 
@@ -94,15 +103,6 @@ C:\Users\semmi\autronis-dashboard\
 | aangemaakt_op | TEXT | ISO timestamp |
 | bijgewerkt_op | TEXT | ISO timestamp |
 
-### sessies
-| Kolom | Type | Beschrijving |
-|-------|------|-------------|
-| id | TEXT PK | UUID |
-| gebruiker_id | INTEGER FK | → gebruikers.id |
-| token | TEXT NOT NULL | Sessie token |
-| verloopt_op | TEXT NOT NULL | Verloopdatum |
-| aangemaakt_op | TEXT | ISO timestamp |
-
 ### klanten
 | Kolom | Type | Beschrijving |
 |-------|------|-------------|
@@ -114,6 +114,7 @@ C:\Users\semmi\autronis-dashboard\
 | adres | TEXT | Volledig adres |
 | uurtarief | REAL | Klant-specifiek uurtarief |
 | notities | TEXT | Vrije notities |
+| is_actief | INTEGER DEFAULT 1 | Soft-delete vlag |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
 | bijgewerkt_op | TEXT | ISO timestamp |
@@ -129,7 +130,8 @@ C:\Users\semmi\autronis-dashboard\
 | voortgang_percentage | INTEGER DEFAULT 0 | 0-100 |
 | deadline | TEXT | Deadline datum |
 | geschatte_uren | REAL | Geschatte uren |
-| werkelijke_uren | REAL DEFAULT 0 | Gewerkte uren (berekend) |
+| werkelijke_uren | REAL DEFAULT 0 | Cache — herberekend via query op tijdregistraties |
+| is_actief | INTEGER DEFAULT 1 | Soft-delete vlag |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
 | bijgewerkt_op | TEXT | ISO timestamp |
@@ -166,8 +168,12 @@ C:\Users\semmi\autronis-dashboard\
 | is_terugkerend | INTEGER DEFAULT 0 | Boolean |
 | terugkeer_interval | TEXT | wekelijks / maandelijks |
 | notities | TEXT | Opmerkingen |
+| is_actief | INTEGER DEFAULT 1 | Soft-delete vlag |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
+| bijgewerkt_op | TEXT | ISO timestamp |
+
+> **Noot:** `bedrag_excl_btw`, `btw_bedrag` en `bedrag_incl_btw` worden altijd herberekend vanuit `factuur_regels`. Het `btw_percentage` op factuurniveau is een standaard voor nieuwe regels.
 
 ### factuur_regels
 | Kolom | Type | Beschrijving |
@@ -192,6 +198,7 @@ C:\Users\semmi\autronis-dashboard\
 | categorie | TEXT | Categorie |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
+| bijgewerkt_op | TEXT | ISO timestamp |
 
 ### uitgaven
 | Kolom | Type | Beschrijving |
@@ -203,6 +210,7 @@ C:\Users\semmi\autronis-dashboard\
 | categorie | TEXT DEFAULT 'overig' | software / hardware / kantoor / reis / overig |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
+| bijgewerkt_op | TEXT | ISO timestamp |
 
 ### doelen
 | Kolom | Type | Beschrijving |
@@ -213,8 +221,11 @@ C:\Users\semmi\autronis-dashboard\
 | maand | INTEGER NOT NULL | 1-12 |
 | jaar | INTEGER NOT NULL | Bijv. 2026 |
 | doelwaarde | REAL NOT NULL | Target |
-| huidige_waarde | REAL DEFAULT 0 | Voortgang |
+| huidige_waarde | REAL DEFAULT 0 | Cache — herberekend via query |
 | aangemaakt_op | TEXT | ISO timestamp |
+| bijgewerkt_op | TEXT | ISO timestamp |
+
+> **Noot:** UNIQUE constraint op `(gebruiker_id, type, maand, jaar)` om duplicaten te voorkomen.
 
 ### leads
 | Kolom | Type | Beschrijving |
@@ -230,6 +241,7 @@ C:\Users\semmi\autronis-dashboard\
 | notities | TEXT | Vrije notities |
 | volgende_actie | TEXT | Wat moet er gebeuren |
 | volgende_actie_datum | TEXT | Wanneer |
+| is_actief | INTEGER DEFAULT 1 | Soft-delete vlag |
 | aangemaakt_door | INTEGER FK | → gebruikers.id |
 | aangemaakt_op | TEXT | ISO timestamp |
 | bijgewerkt_op | TEXT | ISO timestamp |
@@ -261,6 +273,7 @@ C:\Users\semmi\autronis-dashboard\
 | deadline | TEXT | Deadline |
 | prioriteit | TEXT DEFAULT 'normaal' | laag / normaal / hoog |
 | aangemaakt_op | TEXT | ISO timestamp |
+| bijgewerkt_op | TEXT | ISO timestamp |
 
 ### notities
 | Kolom | Type | Beschrijving |
@@ -333,6 +346,7 @@ C:\Users\semmi\autronis-dashboard\
 - 2FA kolom voorbereid, activeerbaar in latere fase
 - Sessies verlopen na 7 dagen inactiviteit
 - Wachtwoord wijzigen via instellingen
+- Login attempts gelimiteerd tot 5 per minuut per IP (in-memory counter)
 
 ---
 
@@ -407,9 +421,17 @@ C:\Users\semmi\autronis-dashboard\
 
 ## Database Backup
 
-- Dagelijks bij eerste login: SQLite bestand kopiëren naar `backups/`
+- Dagelijks bij eerste login: backup via SQLite `.backup()` API (veilig bij concurrent writes)
 - Bestandsnaam: `autronis_backup_YYYY-MM-DD.db`
 - Laatste 30 backups bewaren, oudere automatisch verwijderen
+- Bij fout: loggen naar console, geen blokkering van de gebruiker
+
+## Bestandsopslag
+
+- Uploads opgeslagen in `uploads/` directory (lokaal)
+- Max bestandsgrootte: 10MB
+- Toegestane types: PDF, DOCX, PNG, JPG, XLSX
+- Naamgeving: `Autronis_[Type]_[KlantNaam]_[Datum].[ext]`
 
 ---
 

@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function LoginPagina() {
   const router = useRouter();
@@ -44,8 +45,16 @@ export default function LoginPagina() {
         {/* Card */}
         <div className="bg-autronis-card rounded-xl border border-autronis-border shadow-lg px-8 py-10">
           {/* Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-autronis-accent tracking-tight">
+          <div className="mb-8 text-center flex flex-col items-center">
+            <Image
+              src="/logo.png"
+              alt="Autronis"
+              width={180}
+              height={46}
+              className="h-12 w-auto mb-3"
+              priority
+            />
+            <h1 className="text-3xl font-bold text-white tracking-tight">
               Autronis
             </h1>
             <p className="mt-2 text-sm text-autronis-text-secondary">

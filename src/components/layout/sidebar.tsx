@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -14,6 +16,8 @@ import {
   Settings,
   ChevronLeft,
   X,
+  Command,
+  ChevronDown,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -34,6 +38,7 @@ const bottomNavItem = { label: "Instellingen", icon: Settings, href: "/instellin
 export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
+  const [recentOpen, setRecentOpen] = useState(false);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -53,7 +58,7 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-full z-30 flex flex-col bg-autronis-card border-r border-autronis-border transition-all duration-300",
+          "fixed top-0 left-0 h-full z-30 flex flex-col glass border-r border-autronis-border transition-all duration-300",
           isCollapsed ? "w-16" : "w-64",
           // Mobile: hidden unless isOpen
           "max-lg:translate-x-full max-lg:w-64",
@@ -62,10 +67,24 @@ export function Sidebar() {
       >
         {/* Logo */}
         <div className="flex items-center justify-between px-4 h-16 border-b border-autronis-border flex-shrink-0">
-          {!isCollapsed && (
-            <span className="text-xl font-bold text-autronis-accent tracking-tight">
-              Autronis
-            </span>
+          {!isCollapsed ? (
+            <Image
+              src="/logo.png"
+              alt="Autronis"
+              width={140}
+              height={36}
+              className="h-9 w-auto"
+              priority
+            />
+          ) : (
+            <Image
+              src="/logo.png"
+              alt="Autronis"
+              width={32}
+              height={32}
+              className="h-8 w-8 object-contain"
+              priority
+            />
           )}
           {/* Close button on mobile */}
           <button
@@ -113,8 +132,46 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom nav */}
-        <div className="border-t border-autronis-border p-2">
+        {/* Bottom section */}
+        <div className="border-t border-autronis-border p-2 space-y-1">
+          {/* Shortcuts hint */}
+          {!isCollapsed && (
+            <div className="px-3 py-2 mb-1">
+              <button
+                onClick={() => setRecentOpen(!recentOpen)}
+                className="flex items-center gap-2 text-xs text-autronis-text-secondary hover:text-autronis-text-primary transition-colors w-full"
+              >
+                <ChevronDown className={cn("w-3 h-3 transition-transform", recentOpen && "rotate-180")} />
+                Sneltoetsen
+              </button>
+              {recentOpen && (
+                <div className="mt-2 space-y-1.5 text-xs text-autronis-text-secondary">
+                  <div className="flex items-center justify-between">
+                    <span>Zoeken</span>
+                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Nieuw item</span>
+                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">N</kbd>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Shortcuts</span>
+                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">?</kbd>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Keyboard search hint */}
+          {!isCollapsed && (
+            <div className="px-3 py-2 mb-1 flex items-center gap-2 text-xs text-autronis-text-secondary">
+              <Command className="w-3.5 h-3.5" />
+              <span>Ctrl+K om te zoeken</span>
+            </div>
+          )}
+
+          {/* Settings */}
           {(() => {
             const Icon = bottomNavItem.icon;
             const active = isActive(bottomNavItem.href);

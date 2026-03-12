@@ -10,6 +10,10 @@ const PUBLIC_PATHS = [
   "/icons",
   "/manifest.json",
   "/favicon.ico",
+  "/logo.png",
+  "/foto-sem.jpg",
+  "/foto-syb.jpg",
+  "/waves.webm",
 ];
 
 function isPublicPath(pathname: string): boolean {

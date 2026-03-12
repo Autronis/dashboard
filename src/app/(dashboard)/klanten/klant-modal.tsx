@@ -1,0 +1,230 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Modal } from "@/components/ui/modal";
+import { FormField } from "@/components/ui/form-field";
+import { useToast } from "@/hooks/use-toast";
+
+interface KlantModalProps {
+  open: boolean;
+  onClose: () => void;
+  klant: {
+    id: number;
+    bedrijfsnaam: string;
+    contactpersoon: string | null;
+    email: string | null;
+    telefoon: string | null;
+    adres: string | null;
+    uurtarief: number | null;
+    notities: string | null;
+  } | null;
+  onOpgeslagen: () => void;
+}
+
+interface FormFouten {
+  bedrijfsnaam?: string;
+  email?: string;
+  uurtarief?: string;
+}
+
+const leegFormulier = {
+  bedrijfsnaam: "",
+  contactpersoon: "",
+  email: "",
+  telefoon: "",
+  adres: "",
+  uurtarief: "",
+  notities: "",
+};
+
+export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalProps) {
+  const [formulier, setFormulier] = useState(leegFormulier);
+  const [fouten, setFouten] = useState<FormFouten>({});
+  const [bezig, setBezig] = useState(false);
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    if (open) {
+      if (klant) {
+        setFormulier({
+          bedrijfsnaam: klant.bedrijfsnaam,
+          contactpersoon: klant.contactpersoon ?? "",
+          email: klant.email ?? "",
+          telefoon: klant.telefoon ?? "",
+          adres: klant.adres ?? "",
+          uurtarief: klant.uurtarief != null ? String(klant.uurtarief) : "",
+          notities: klant.notities ?? "",
+        });
+      } else {
+        setFormulier(leegFormulier);
+      }
+      setFouten({});
+    }
+  }, [open, klant]);
+
+  function valideer(): boolean {
+    const nieuweFouten: FormFouten = {};
+
+    if (!formulier.bedrijfsnaam.trim()) {
+      nieuweFouten.bedrijfsnaam = "Bedrijfsnaam is verplicht";
+    }
+
+    if (formulier.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formulier.email.trim())) {
+      nieuweFouten.email = "Ongeldig e-mailadres";
+    }
+
+    if (formulier.uurtarief.trim() && (isNaN(Number(formulier.uurtarief)) || Number(formulier.uurtarief) <= 0)) {
+      nieuweFouten.uurtarief = "Uurtarief moet een positief getal zijn";
+    }
+
+    setFouten(nieuweFouten);
+    return Object.keys(nieuweFouten).length === 0;
+  }
+
+  async function handleOpslaan() {
+    if (!valideer()) return;
+
+    setBezig(true);
+    try {
+      const body = {
+        bedrijfsnaam: formulier.bedrijfsnaam.trim(),
+        contactpersoon: formulier.contactpersoon.trim() || null,
+        email: formulier.email.trim() || null,
+        telefoon: formulier.telefoon.trim() || null,
+        adres: formulier.adres.trim() || null,
+        uurtarief: formulier.uurtarief.trim() ? Number(formulier.uurtarief) : null,
+        notities: formulier.notities.trim() || null,
+      };
+
+      const url = klant ? `/api/klanten/${klant.id}` : "/api/klanten";
+      const method = klant ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        throw new Error("Opslaan mislukt");
+      }
+
+      addToast(klant ? "Klant bijgewerkt" : "Klant aangemaakt");
+      onOpgeslagen();
+      onClose();
+    } catch {
+      addToast("Er ging iets mis bij het opslaan", "fout");
+    } finally {
+      setBezig(false);
+    }
+  }
+
+  function updateVeld(veld: string, waarde: string) {
+    setFormulier((prev) => ({ ...prev, [veld]: waarde }));
+    if (fouten[veld as keyof FormFouten]) {
+      setFouten((prev) => ({ ...prev, [veld]: undefined }));
+    }
+  }
+
+  const textareaClasses =
+    "w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none";
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      titel={klant ? "Klant bewerken" : "Nieuwe klant"}
+      footer={
+        <>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+          >
+            Annuleren
+          </button>
+          <button
+            onClick={handleOpslaan}
+            disabled={bezig}
+            className="px-4 py-2 text-sm font-medium bg-autronis-accent hover:bg-autronis-accent/90 text-white rounded-lg transition-colors disabled:opacity-50"
+          >
+            {bezig ? "Opslaan..." : "Opslaan"}
+          </button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <FormField
+          label="Bedrijfsnaam"
+          verplicht
+          type="text"
+          value={formulier.bedrijfsnaam}
+          onChange={(e) => updateVeld("bedrijfsnaam", e.target.value)}
+          placeholder="Naam van het bedrijf"
+          fout={fouten.bedrijfsnaam}
+        />
+
+        <FormField
+          label="Contactpersoon"
+          type="text"
+          value={formulier.contactpersoon}
+          onChange={(e) => updateVeld("contactpersoon", e.target.value)}
+          placeholder="Naam contactpersoon"
+        />
+
+        <FormField
+          label="Email"
+          type="email"
+          value={formulier.email}
+          onChange={(e) => updateVeld("email", e.target.value)}
+          placeholder="email@voorbeeld.nl"
+          fout={fouten.email}
+        />
+
+        <FormField
+          label="Telefoon"
+          type="text"
+          value={formulier.telefoon}
+          onChange={(e) => updateVeld("telefoon", e.target.value)}
+          placeholder="Telefoonnummer"
+        />
+
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-autronis-text-secondary">
+            Adres
+          </label>
+          <textarea
+            className={textareaClasses}
+            rows={3}
+            value={formulier.adres}
+            onChange={(e) => updateVeld("adres", e.target.value)}
+            placeholder="Adresgegevens"
+          />
+        </div>
+
+        <FormField
+          label="Uurtarief"
+          type="number"
+          value={formulier.uurtarief}
+          onChange={(e) => updateVeld("uurtarief", e.target.value)}
+          placeholder="0.00"
+          min={0}
+          step="0.01"
+          fout={fouten.uurtarief}
+        />
+
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-autronis-text-secondary">
+            Notities
+          </label>
+          <textarea
+            className={textareaClasses}
+            rows={3}
+            value={formulier.notities}
+            onChange={(e) => updateVeld("notities", e.target.value)}
+            placeholder="Eventuele notities"
+          />
+        </div>
+      </div>
+    </Modal>
+  );
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Monitor,
   Clock,
@@ -21,6 +21,11 @@ import {
   LayoutGrid,
   Loader2,
   CheckCheck,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  Pause,
+  Hash,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,13 +35,15 @@ import {
   useScreenTimeSuggesties,
   useScreenTimeSuggestieMutatie,
   useCategoriseer,
+  useSessies,
+  useSamenvatting,
+  useGenereerSamenvatting,
 } from "@/hooks/queries/use-screen-time";
 import { useGebruikers } from "@/hooks/queries/use-doelen";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
-  ScreenTimeEntry,
   ScreenTimeRegel,
   ScreenTimeSuggestie,
   ScreenTimeCategorie,
@@ -51,6 +58,7 @@ const CATEGORIE_KLEUREN: Record<string, string> = {
   administratie: "#F59E0B",
   afleiding: "#EF4444",
   overig: "#6B7280",
+  inactief: "#4B5563",
 };
 
 const CATEGORIE_LABELS: Record<string, string> = {
@@ -60,6 +68,7 @@ const CATEGORIE_LABELS: Record<string, string> = {
   administratie: "Administratie",
   afleiding: "Afleiding",
   overig: "Overig",
+  inactief: "Inactief",
 };
 
 const PRODUCTIEF_CATEGORIEEN: ScreenTimeCategorie[] = [
@@ -154,175 +163,387 @@ function TypeIcon({ type }: { type: ScreenTimeRegel["type"] }) {
   return <Icon className="w-4 h-4 text-autronis-text-secondary" />;
 }
 
+// ============ HELPERS: SESSIES ============
+
+function parseBestandenUitTitels(titels: string[]): string[] {
+  return [...new Set(titels.map((t) => t.split(" \u2014 ")[0]?.trim()).filter(Boolean))];
+}
+
+function formatTijdRange(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function gisterenDatum(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
+}
+
 // ============ TAB: OVERZICHT ============
 
-function TabOverzicht({
-  entries,
-  isLoading,
-}: {
-  entries: ScreenTimeEntry[];
-  isLoading: boolean;
-}) {
-  const stats = useMemo(() => {
-    if (!entries.length) return null;
-    const totaal = entries.reduce((s, e) => s + e.duurSeconden, 0);
-    const perCategorie: Record<string, number> = {};
+function TabOverzicht({ datum }: { datum: string }) {
+  const { data: sessiesData, isLoading: sessiesLoading } = useSessies(datum);
+  const { data: samenvatting, isLoading: samenvattingLoading } = useSamenvatting(datum);
+  const genereer = useGenereerSamenvatting();
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  // Lazy auto-generation for yesterday's summary
+  useEffect(() => {
+    const lastCheck = sessionStorage.getItem("lastSummaryCheck");
+    const vandaag = new Date().toISOString().split("T")[0];
+    if (lastCheck === vandaag) return;
+    sessionStorage.setItem("lastSummaryCheck", vandaag);
+
+    const gisteren = gisterenDatum();
+    fetch(`/api/screen-time/samenvatting?datum=${gisteren}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.samenvatting) {
+          genereer.mutate(gisteren);
+        }
+      })
+      .catch(() => {
+        // Negeer fouten bij auto-generatie
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const sessies = sessiesData?.sessies ?? [];
+  const stats = sessiesData?.stats;
+
+  // Top apps computed from sessions
+  const topApps = useMemo(() => {
     const perApp: Record<string, number> = {};
-    for (const e of entries) {
-      perCategorie[e.categorie] = (perCategorie[e.categorie] ?? 0) + e.duurSeconden;
-      perApp[e.app] = (perApp[e.app] ?? 0) + e.duurSeconden;
+    for (const s of sessies) {
+      if (s.isIdle) continue;
+      perApp[s.app] = (perApp[s.app] ?? 0) + s.duurSeconden;
     }
-    const categorieen = Object.entries(perCategorie)
-      .sort(([, a], [, b]) => b - a)
-      .map(([cat, sec]) => ({ categorie: cat, seconden: sec }));
-    const productiefSec = PRODUCTIEF_CATEGORIEEN.reduce(
-      (s, c) => s + (perCategorie[c] ?? 0),
-      0
-    );
-    const topCategorie = categorieen[0]?.categorie ?? "overig";
-    const apps = Object.entries(perApp)
+    return Object.entries(perApp)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([app, sec]) => ({ app, seconden: sec }));
-    return {
-      totaal,
-      productiefPct: totaal > 0 ? Math.round((productiefSec / totaal) * 100) : 0,
-      topCategorie,
-      categorieen,
-      apps,
-    };
-  }, [entries]);
+  }, [sessies]);
 
-  if (isLoading) {
+  // Timeline calculations
+  const tijdlijn = useMemo(() => {
+    if (!sessies.length) return null;
+    const eerste = new Date(sessies[0].startTijd).getTime();
+    const laatste = new Date(sessies[sessies.length - 1].eindTijd).getTime();
+    const totaalSpan = laatste - eerste;
+    if (totaalSpan <= 0) return null;
+    return { eerste, laatste, totaalSpan };
+  }, [sessies]);
+
+  if (sessiesLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-3 gap-5">
+        <Skeleton className="h-24 rounded-2xl" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+          <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-28 rounded-2xl" />
         </div>
         <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-16 rounded-2xl" />
         <Skeleton className="h-64 rounded-2xl" />
       </div>
     );
   }
 
-  if (!stats) {
-    return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
-        <Monitor className="w-12 h-12 text-autronis-text-secondary mx-auto mb-4 opacity-40" />
-        <p className="text-autronis-text-secondary text-lg">Geen schermtijd data voor deze periode</p>
-        <p className="text-autronis-text-secondary text-sm mt-1 opacity-60">
-          De screen time agent stuurt automatisch data als deze actief is.
-        </p>
-      </div>
-    );
-  }
-
-  const maxCat = Math.max(...stats.categorieen.map((c) => c.seconden), 1);
-  const maxApp = Math.max(...stats.apps.map((a) => a.seconden), 1);
+  const maxApp = Math.max(...topApps.map((a) => a.seconden), 1);
 
   return (
     <div className="space-y-6">
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-          <div className="p-2.5 bg-autronis-accent/10 rounded-xl w-fit mb-3">
-            <Clock className="w-5 h-5 text-autronis-accent" />
+      {/* 1. Dagsamenvatting */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
+              <h2 className="text-base font-semibold text-autronis-text-primary">
+                Dagsamenvatting
+              </h2>
+            </div>
+            {samenvattingLoading ? (
+              <Skeleton className="h-5 w-3/4 rounded" />
+            ) : samenvatting?.samenvattingKort ? (
+              <p className="text-sm text-autronis-text-secondary leading-relaxed">
+                {samenvatting.samenvattingKort}
+              </p>
+            ) : (
+              <p className="text-sm text-autronis-text-secondary opacity-60">
+                Nog geen samenvatting voor deze dag.
+              </p>
+            )}
           </div>
-          <p className="text-2xl font-bold text-autronis-accent tabular-nums">
-            {formatTijd(stats.totaal)}
-          </p>
-          <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-            Totale schermtijd
-          </p>
-        </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-          <div className="p-2.5 bg-green-500/10 rounded-xl w-fit mb-3">
-            <TrendingUp className="w-5 h-5 text-green-400" />
+          <div className="flex items-center gap-2 shrink-0">
+            {samenvatting?.samenvattingDetail && (
+              <button
+                onClick={() => setDetailOpen(!detailOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-bg rounded-lg transition-colors"
+              >
+                {detailOpen ? "Minder" : "Meer details"}
+                {detailOpen ? (
+                  <ChevronUp className="w-3.5 h-3.5" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+            <button
+              onClick={() => genereer.mutate(datum)}
+              disabled={genereer.isPending}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50"
+            >
+              {genereer.isPending ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3.5 h-3.5" />
+              )}
+              {samenvatting ? "Opnieuw" : "Genereren"}
+            </button>
           </div>
-          <p className="text-2xl font-bold text-green-400 tabular-nums">
-            {stats.productiefPct}%
-          </p>
-          <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-            Productief
-          </p>
         </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-          <div
-            className="p-2.5 rounded-xl w-fit mb-3"
-            style={{ backgroundColor: `${CATEGORIE_KLEUREN[stats.topCategorie]}15` }}
-          >
-            <Monitor
-              className="w-5 h-5"
-              style={{ color: CATEGORIE_KLEUREN[stats.topCategorie] }}
-            />
+        {detailOpen && samenvatting?.samenvattingDetail && (
+          <div className="mt-4 pt-4 border-t border-autronis-border">
+            <div className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+              {samenvatting.samenvattingDetail}
+            </div>
           </div>
-          <p
-            className="text-2xl font-bold tabular-nums"
-            style={{ color: CATEGORIE_KLEUREN[stats.topCategorie] }}
-          >
-            {CATEGORIE_LABELS[stats.topCategorie]}
-          </p>
-          <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-            Top categorie
-          </p>
-        </div>
+        )}
       </div>
 
-      {/* Category breakdown */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-        <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
-          Verdeling per categorie
-        </h2>
-        <div className="space-y-3">
-          {stats.categorieen.map((c) => (
-            <div key={c.categorie} className="flex items-center gap-4">
-              <span className="text-sm text-autronis-text-primary w-28 shrink-0">
-                {CATEGORIE_LABELS[c.categorie] ?? c.categorie}
-              </span>
-              <div className="flex-1 h-6 bg-autronis-bg rounded-full overflow-hidden">
+      {/* 2. KPI cards */}
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            <div className="p-2.5 bg-autronis-accent/10 rounded-xl w-fit mb-3">
+              <Clock className="w-5 h-5 text-autronis-accent" />
+            </div>
+            <p className="text-2xl font-bold text-autronis-accent tabular-nums">
+              {formatTijd(stats.totaalActief)}
+            </p>
+            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
+              Actieve tijd
+            </p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            <div className="p-2.5 bg-gray-500/10 rounded-xl w-fit mb-3">
+              <Pause className="w-5 h-5 text-gray-400" />
+            </div>
+            <p className="text-2xl font-bold text-gray-400 tabular-nums">
+              {formatTijd(stats.totaalIdle)}
+            </p>
+            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
+              Idle tijd
+            </p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            <div className="p-2.5 bg-green-500/10 rounded-xl w-fit mb-3">
+              <TrendingUp className="w-5 h-5 text-green-400" />
+            </div>
+            <p className="text-2xl font-bold text-green-400 tabular-nums">
+              {stats.productiefPercentage}%
+            </p>
+            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
+              Productief
+            </p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            <div className="p-2.5 bg-blue-500/10 rounded-xl w-fit mb-3">
+              <Hash className="w-5 h-5 text-blue-400" />
+            </div>
+            <p className="text-2xl font-bold text-blue-400 tabular-nums">
+              {stats.aantalSessies}
+            </p>
+            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
+              Sessies
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Sessie-kaarten */}
+      {sessies.length === 0 ? (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
+          <Monitor className="w-12 h-12 text-autronis-text-secondary mx-auto mb-4 opacity-40" />
+          <p className="text-autronis-text-secondary text-lg">
+            Geen schermtijd data voor deze dag
+          </p>
+          <p className="text-autronis-text-secondary text-sm mt-1 opacity-60">
+            De screen time agent stuurt automatisch data als deze actief is.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sessies.map((sessie, idx) => {
+            if (sessie.isIdle) {
+              return (
                 <div
-                  className="h-full rounded-full transition-all duration-500"
+                  key={idx}
+                  className="bg-autronis-card/50 border border-autronis-border/50 rounded-xl px-4 py-2.5 flex items-center gap-3"
+                >
+                  <div
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: CATEGORIE_KLEUREN.inactief }}
+                  />
+                  <span className="text-sm text-autronis-text-secondary">
+                    Inactief
+                  </span>
+                  <span className="text-xs text-autronis-text-secondary/60 tabular-nums">
+                    {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
+                  </span>
+                  <span className="text-xs text-autronis-text-secondary tabular-nums ml-auto">
+                    {formatTijd(sessie.duurSeconden)}
+                  </span>
+                </div>
+              );
+            }
+
+            const bestanden = parseBestandenUitTitels(sessie.venstertitels);
+            const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
+
+            return (
+              <div
+                key={idx}
+                className="bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/20 transition-colors"
+                style={{ borderLeftColor: kleur, borderLeftWidth: 3 }}
+              >
+                {/* Row 1: Time range, category badge, duration */}
+                <div className="flex items-center gap-3 mb-1.5">
+                  <span className="text-sm text-autronis-text-primary tabular-nums font-medium">
+                    {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
+                  </span>
+                  <CategorieBadge categorie={sessie.categorie} />
+                  <span className="text-sm text-autronis-text-secondary tabular-nums ml-auto">
+                    {formatTijd(sessie.duurSeconden)}
+                  </span>
+                </div>
+                {/* Row 2: App + project */}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-autronis-text-primary">{sessie.app}</span>
+                  {sessie.projectNaam && (
+                    <>
+                      <span className="text-autronis-text-secondary">&mdash;</span>
+                      <span className="text-autronis-accent">{sessie.projectNaam}</span>
+                    </>
+                  )}
+                  {sessie.klantNaam && !sessie.projectNaam && (
+                    <>
+                      <span className="text-autronis-text-secondary">&mdash;</span>
+                      <span className="text-autronis-text-secondary">{sessie.klantNaam}</span>
+                    </>
+                  )}
+                </div>
+                {/* Row 3: Files/pages */}
+                {bestanden.length > 0 && (
+                  <p className="text-xs text-autronis-text-secondary/70 mt-1 truncate">
+                    {bestanden.slice(0, 5).join(", ")}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 4. Tijdlijn */}
+      {tijdlijn && sessies.length > 0 && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
+          <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Tijdlijn</h2>
+          <div className="flex items-center gap-1 text-xs text-autronis-text-secondary mb-2">
+            <span className="tabular-nums">
+              {formatTijdRange(sessies[0].startTijd)}
+            </span>
+            <span className="flex-1" />
+            <span className="tabular-nums">
+              {formatTijdRange(sessies[sessies.length - 1].eindTijd)}
+            </span>
+          </div>
+          <div className="flex w-full h-8 rounded-lg overflow-hidden bg-autronis-bg">
+            {sessies.map((sessie, idx) => {
+              const start = new Date(sessie.startTijd).getTime();
+              const eind = new Date(sessie.eindTijd).getTime();
+              const duur = eind - start;
+              const breedte = (duur / tijdlijn.totaalSpan) * 100;
+              const offset = ((start - tijdlijn.eerste) / tijdlijn.totaalSpan) * 100;
+              const kleur = sessie.isIdle
+                ? CATEGORIE_KLEUREN.inactief
+                : (CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280");
+
+              return (
+                <div
+                  key={idx}
+                  className="h-full relative group"
                   style={{
-                    width: `${(c.seconden / maxCat) * 100}%`,
-                    backgroundColor: CATEGORIE_KLEUREN[c.categorie] ?? "#6B7280",
+                    width: `${Math.max(breedte, 0.3)}%`,
+                    marginLeft: idx === 0 ? `${offset}%` : undefined,
+                    backgroundColor: kleur,
+                    opacity: sessie.isIdle ? 0.5 : 0.85,
                   }}
-                />
-              </div>
-              <span className="text-sm text-autronis-text-secondary tabular-nums w-20 text-right shrink-0">
-                {formatTijd(c.seconden)}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Top Apps */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-        <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Top apps</h2>
-        <div className="space-y-3">
-          {stats.apps.map((a, i) => (
-            <div key={a.app} className="flex items-center gap-4">
-              <span className="text-xs text-autronis-text-secondary w-5 text-right tabular-nums shrink-0">
-                {i + 1}
-              </span>
-              <span className="text-sm text-autronis-text-primary w-40 truncate shrink-0">
-                {a.app}
-              </span>
-              <div className="flex-1 h-4 bg-autronis-bg rounded-full overflow-hidden">
+                >
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                    <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
+                      <p className="text-autronis-text-primary font-medium">{sessie.app}</p>
+                      {sessie.projectNaam && (
+                        <p className="text-autronis-accent">{sessie.projectNaam}</p>
+                      )}
+                      <p className="text-autronis-text-secondary tabular-nums">
+                        {formatTijd(sessie.duurSeconden)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {/* Legend */}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
+            {Object.entries(CATEGORIE_KLEUREN).map(([cat, kleur]) => (
+              <div key={cat} className="flex items-center gap-1.5">
                 <div
-                  className="h-full rounded-full bg-autronis-accent/50 transition-all duration-500"
-                  style={{ width: `${(a.seconden / maxApp) * 100}%` }}
+                  className="w-2.5 h-2.5 rounded-sm"
+                  style={{ backgroundColor: kleur, opacity: cat === "inactief" ? 0.5 : 0.85 }}
                 />
+                <span className="text-xs text-autronis-text-secondary">
+                  {CATEGORIE_LABELS[cat]}
+                </span>
               </div>
-              <span className="text-sm text-autronis-text-secondary tabular-nums w-20 text-right shrink-0">
-                {formatTijd(a.seconden)}
-              </span>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* 5. Top Apps */}
+      {topApps.length > 0 && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+          <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Top apps</h2>
+          <div className="space-y-3">
+            {topApps.map((a, i) => (
+              <div key={a.app} className="flex items-center gap-4">
+                <span className="text-xs text-autronis-text-secondary w-5 text-right tabular-nums shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-sm text-autronis-text-primary w-40 truncate shrink-0">
+                  {a.app}
+                </span>
+                <div className="flex-1 h-4 bg-autronis-bg rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-autronis-accent/50 transition-all duration-500"
+                    style={{ width: `${(a.seconden / maxApp) * 100}%` }}
+                  />
+                </div>
+                <span className="text-sm text-autronis-text-secondary tabular-nums w-20 text-right shrink-0">
+                  {formatTijd(a.seconden)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -832,7 +1053,6 @@ export default function SchermtijdPage() {
   const [datum, setDatum] = useState(() => new Date());
 
   const { van, tot } = useMemo(() => berekenVanTot(datum, periode), [datum, periode]);
-  const { data: entries, isLoading } = useScreenTime(van, tot);
 
   return (
     <PageTransition>
@@ -910,7 +1130,7 @@ export default function SchermtijdPage() {
 
         {/* Tab content */}
         {activeTab === "overzicht" && (
-          <TabOverzicht entries={entries ?? []} isLoading={isLoading} />
+          <TabOverzicht datum={van} />
         )}
         {activeTab === "team" && <TabTeam van={van} tot={tot} />}
         {activeTab === "regels" && <TabRegels />}

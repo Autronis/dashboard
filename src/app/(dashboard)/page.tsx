@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Euro,
   Clock,
@@ -14,61 +15,28 @@ import {
   CalendarDays,
   AlertCircle,
   ListTodo,
+  Lightbulb,
+  TrendingUp,
+  ShieldAlert,
+  ArrowRight,
+  Sparkles,
+  Calendar,
+  Zap,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
+import { useDashboard } from "@/hooks/queries/use-dashboard";
+import { useInzichten, type Inzicht } from "@/hooks/queries/use-inzichten";
+import { useBriefing, useGenereerBriefing, type Briefing } from "@/hooks/queries/use-briefing";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Sparkline } from "@/components/ui/sparkline";
-import { BriefingModal } from "@/components/ui/briefing-modal";
 import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
-
-interface DashboardData {
-  gebruiker: { id: number; naam: string };
-  kpis: {
-    omzetDezeMaand: number;
-    urenDezeWeek: { totaal: number; eigen: number; teamgenoot: number };
-    actieveProjecten: number;
-    deadlinesDezeWeek: number;
-  };
-  mijnTaken: {
-    id: number;
-    titel: string;
-    omschrijving: string | null;
-    status: string;
-    deadline: string | null;
-    prioriteit: string;
-    projectId: number | null;
-    projectNaam: string | null;
-    klantId: number | null;
-  }[];
-  deadlines: {
-    projectId: number;
-    projectNaam: string;
-    klantId: number | null;
-    klantNaam: string;
-    deadline: string;
-    voortgang: number | null;
-  }[];
-  teamgenoot: {
-    id: number;
-    naam: string;
-    email: string;
-    actieveTimer: {
-      id: number;
-      omschrijving: string | null;
-      startTijd: string;
-      projectNaam: string | null;
-    } | null;
-    urenPerDag: number[];
-    urenTotaal: number;
-    taken: { id: number; titel: string; projectNaam: string | null }[];
-  } | null;
-  projecten: { id: number; naam: string; klantNaam: string }[];
-}
 
 function getBegroeting(): string {
   const uur = new Date().getHours();
@@ -110,18 +78,281 @@ function deadlineLabel(deadline: string): string {
   return formatDatum(deadline);
 }
 
+const inzichtConfig: Record<Inzicht["type"], { icon: typeof Lightbulb; color: string; bg: string; border: string }> = {
+  waarschuwing: { icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
+  kans: { icon: TrendingUp, color: "text-autronis-accent", bg: "bg-autronis-accent/10", border: "border-autronis-accent/20" },
+  tip: { icon: Lightbulb, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+  succes: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+};
+
 const prioriteitConfig: Record<string, { color: string; border: string }> = {
   hoog: { color: "text-red-400", border: "border-red-500" },
   normaal: { color: "text-amber-400", border: "border-amber-500" },
   laag: { color: "text-slate-400", border: "border-slate-500" },
 };
 
+const agendaTypeConfig: Record<string, { color: string; bg: string }> = {
+  afspraak: { color: "text-blue-400", bg: "bg-blue-500/10" },
+  deadline: { color: "text-red-400", bg: "bg-red-500/10" },
+  belasting: { color: "text-orange-400", bg: "bg-orange-500/10" },
+  herinnering: { color: "text-purple-400", bg: "bg-purple-500/10" },
+};
+
+const briefingPrioConfig: Record<string, { color: string; bg: string }> = {
+  hoog: { color: "text-red-400", bg: "bg-red-500/10" },
+  normaal: { color: "text-amber-400", bg: "bg-amber-500/10" },
+  laag: { color: "text-emerald-400", bg: "bg-emerald-500/10" },
+};
+
+function voortgangKleur(pct: number): string {
+  if (pct > 66) return "bg-emerald-500";
+  if (pct > 33) return "bg-amber-500";
+  return "bg-red-500";
+}
+
+function formatTijd(datum: string): string {
+  return new Date(datum).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function DailyBriefing() {
+  const vandaag = new Date().toISOString().slice(0, 10);
+  const { data: briefing, isLoading } = useBriefing(vandaag);
+  const genereer = useGenereerBriefing();
+  const { addToast } = useToast();
+
+  // Auto-generate once per session
+  useEffect(() => {
+    const key = `autronis-briefing-auto-${vandaag}`;
+    if (!briefing && !isLoading && !genereer.isPending && !sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, "1");
+      genereer.mutate(vandaag, {
+        onError: () => addToast("Kon briefing niet genereren", "fout"),
+      });
+    }
+  }, [briefing, isLoading, vandaag, genereer, addToast]);
+
+  const handleGenereer = () => {
+    genereer.mutate(vandaag, {
+      onError: () => addToast("Kon briefing niet genereren", "fout"),
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7">
+        <div className="flex items-center gap-3">
+          <Loader2 className="w-5 h-5 text-autronis-accent animate-spin" />
+          <span className="text-autronis-text-secondary">Briefing laden...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!briefing && !genereer.isPending) {
+    return (
+      <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-8 text-center">
+        <div className="inline-flex p-3 bg-autronis-accent/10 rounded-2xl mb-4">
+          <Sparkles className="w-8 h-8 text-autronis-accent" />
+        </div>
+        <h2 className="text-xl font-bold text-autronis-text-primary mb-2">Dagbriefing</h2>
+        <p className="text-autronis-text-secondary mb-5">Start je dag met een overzicht van je agenda, taken en projecten.</p>
+        <button
+          onClick={handleGenereer}
+          className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+        >
+          <Sparkles className="w-4 h-4" />
+          Genereer je dagbriefing
+        </button>
+      </div>
+    );
+  }
+
+  if (genereer.isPending && !briefing) {
+    return (
+      <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-8 text-center">
+        <Loader2 className="w-8 h-8 text-autronis-accent animate-spin mx-auto mb-3" />
+        <p className="text-autronis-text-secondary">Briefing wordt gegenereerd...</p>
+      </div>
+    );
+  }
+
+  if (!briefing) return null;
+
+  return (
+    <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-5 h-5 text-autronis-accent" />
+            <h2 className="text-lg font-semibold text-autronis-text-primary">Dagbriefing</h2>
+          </div>
+          {briefing.samenvatting && (
+            <p className="text-base text-autronis-text-secondary leading-relaxed">
+              {briefing.samenvatting}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={handleGenereer}
+          disabled={genereer.isPending}
+          className="flex-shrink-0 p-2 rounded-xl text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors disabled:opacity-50"
+          title="Vernieuwen"
+        >
+          <RefreshCw className={cn("w-4 h-4", genereer.isPending && "animate-spin")} />
+        </button>
+      </div>
+
+      {/* Content grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Left column */}
+        <div className="space-y-5">
+          {/* Agenda vandaag */}
+          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
+            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-autronis-accent" />
+              Agenda vandaag
+            </h3>
+            {briefing.agendaItems.length === 0 ? (
+              <p className="text-sm text-autronis-text-secondary">Geen afspraken vandaag</p>
+            ) : (
+              <div className="space-y-2">
+                {briefing.agendaItems.map((item, i) => {
+                  const cfg = agendaTypeConfig[item.type] || agendaTypeConfig.herinnering;
+                  return (
+                    <div key={i} className="flex items-center gap-3">
+                      <span className="text-xs text-autronis-text-secondary tabular-nums w-12 flex-shrink-0">
+                        {item.heleDag ? "Hele dag" : formatTijd(item.startDatum)}
+                      </span>
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium", cfg.color, cfg.bg)}>
+                        {item.type}
+                      </span>
+                      <span className="text-sm text-autronis-text-primary truncate">{item.titel}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Prioriteit taken */}
+          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
+            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-autronis-accent" />
+              Prioriteit taken
+            </h3>
+            {briefing.takenPrioriteit.length === 0 ? (
+              <p className="text-sm text-autronis-text-secondary">Geen openstaande taken</p>
+            ) : (
+              <div className="space-y-2">
+                {briefing.takenPrioriteit.map((taak) => {
+                  const cfg = briefingPrioConfig[taak.prioriteit] || briefingPrioConfig.normaal;
+                  return (
+                    <Link
+                      key={taak.id}
+                      href="/taken"
+                      className="flex items-center gap-3 group hover:bg-autronis-bg/50 rounded-lg p-1.5 -mx-1.5 transition-colors"
+                    >
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", cfg.color, cfg.bg)}>
+                        {taak.prioriteit}
+                      </span>
+                      <span className="text-sm text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
+                        {taak.titel}
+                      </span>
+                      {taak.projectNaam && (
+                        <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden sm:inline">
+                          {taak.projectNaam}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column */}
+        <div className="space-y-5">
+          {/* Project updates */}
+          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
+            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-autronis-accent" />
+              Project updates
+            </h3>
+            {briefing.projectUpdates.length === 0 ? (
+              <p className="text-sm text-autronis-text-secondary">Geen actieve projecten</p>
+            ) : (
+              <div className="space-y-3">
+                {briefing.projectUpdates.map((project, i) => (
+                  <div key={i}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-autronis-text-primary font-medium truncate">{project.naam}</span>
+                      <span className="text-xs text-autronis-text-secondary tabular-nums flex-shrink-0 ml-2">{project.voortgang}%</span>
+                    </div>
+                    <div className="h-1.5 bg-autronis-border rounded-full overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all", voortgangKleur(project.voortgang))}
+                        style={{ width: `${project.voortgang}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs text-autronis-text-secondary">{project.klantNaam}</span>
+                      {project.deadline && (
+                        <span className={cn("text-xs", deadlineKleur(project.deadline))}>
+                          {deadlineLabel(project.deadline)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Quick wins */}
+          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
+            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-autronis-accent" />
+              Quick wins
+            </h3>
+            {briefing.quickWins.length === 0 ? (
+              <p className="text-sm text-autronis-text-secondary">Geen quick wins gevonden</p>
+            ) : (
+              <div className="space-y-2">
+                {briefing.quickWins.map((qw) => (
+                  <Link
+                    key={qw.id}
+                    href="/taken"
+                    className="flex items-center gap-3 group hover:bg-autronis-bg/50 rounded-lg p-1.5 -mx-1.5 transition-colors"
+                  >
+                    <div className="w-4 h-4 rounded border border-autronis-border flex-shrink-0 group-hover:border-autronis-accent transition-colors" />
+                    <span className="text-sm text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
+                      {qw.titel}
+                    </span>
+                    {qw.projectNaam && (
+                      <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden sm:inline">
+                        {qw.projectNaam}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { addToast } = useToast();
   const timer = useTimer();
-
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { data, isLoading: loading } = useDashboard();
+  const { data: inzichtenData } = useInzichten();
+  const inzichten = inzichtenData?.inzichten ?? [];
 
   // Timer form state
   const [timerProjectId, setTimerProjectId] = useState<string>("");
@@ -130,23 +361,6 @@ export default function DashboardPage() {
 
   // CheckBurst animation state
   const [completedTaskId, setCompletedTaskId] = useState<number | null>(null);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      setData(json);
-    } catch {
-      addToast("Kon dashboard niet laden", "fout");
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
 
   // Timer tick
   useEffect(() => {
@@ -181,13 +395,8 @@ export default function DashboardPage() {
     };
   }, [timer.isRunning, timer.elapsed, timer.projectId, data?.projecten]);
 
-  const handleStartTimer = async () => {
-    if (!timerProjectId) {
-      addToast("Selecteer een project", "fout");
-      return;
-    }
-
-    try {
+  const startTimerMutation = useMutation({
+    mutationFn: async () => {
       const res = await fetch("/api/tijdregistraties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,63 +406,70 @@ export default function DashboardPage() {
           categorie: timerCategorie,
         }),
       });
-
       if (!res.ok) throw new Error();
-      const { registratie } = await res.json();
-
-      timer.start(
-        Number(timerProjectId),
-        timerOmschrijving,
-        timerCategorie,
-        registratie.id
-      );
-
+      return res.json();
+    },
+    onSuccess: ({ registratie }) => {
+      timer.start(Number(timerProjectId), timerOmschrijving, timerCategorie, registratie.id);
       addToast("Timer gestart", "succes");
       setTimerOmschrijving("");
-    } catch {
-      addToast("Kon timer niet starten", "fout");
-    }
-  };
+    },
+    onError: () => addToast("Kon timer niet starten", "fout"),
+  });
 
-  const handleStopTimer = async () => {
-    if (!timer.registratieId) return;
-
-    try {
+  const stopTimerMutation = useMutation({
+    mutationFn: async () => {
       const eindTijd = new Date().toISOString();
       const startMs = new Date(timer.startTijd!).getTime();
       const duurMinuten = Math.round((Date.now() - startMs) / 60000);
-
       const res = await fetch(`/api/tijdregistraties/${timer.registratieId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eindTijd, duurMinuten }),
       });
-
       if (!res.ok) throw new Error();
+    },
+    onSuccess: () => {
       timer.stop();
       addToast("Timer gestopt", "succes");
-      fetchData();
-    } catch {
-      addToast("Kon timer niet stoppen", "fout");
-    }
-  };
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => addToast("Kon timer niet stoppen", "fout"),
+  });
 
-  const handleTaakAfvinken = async (taakId: number) => {
-    try {
+  const completeTaakMutation = useMutation({
+    mutationFn: async (taakId: number) => {
       const res = await fetch(`/api/taken/${taakId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "afgerond" }),
       });
       if (!res.ok) throw new Error();
-
+      return taakId;
+    },
+    onSuccess: (taakId) => {
       setCompletedTaskId(taakId);
       setTimeout(() => setCompletedTaskId(null), 500);
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: () => addToast("Kon taak niet bijwerken", "fout"),
+  });
 
-      fetchData();
-    } catch {
-      addToast("Kon taak niet bijwerken", "fout");
+  const handleStartTimer = () => {
+    if (!timerProjectId) {
+      addToast("Selecteer een project", "fout");
+      return;
     }
+    startTimerMutation.mutate();
+  };
+
+  const handleStopTimer = () => {
+    if (!timer.registratieId) return;
+    stopTimerMutation.mutate();
+  };
+
+  const handleTaakAfvinken = (taakId: number) => {
+    completeTaakMutation.mutate(taakId);
   };
 
   const formatElapsed = (seconds: number) => {
@@ -289,6 +505,9 @@ export default function DashboardPage() {
           </p>
         </div>
 
+        {/* Dagbriefing */}
+        <DailyBriefing />
+
         {/* KPI balk */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow kpi-gradient-omzet relative overflow-hidden">
@@ -315,7 +534,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <p className="text-3xl font-bold text-autronis-text-primary">
-              <AnimatedNumber value={kpis.urenDezeWeek.totaal} format={(n) => formatUren(n)} />
+              <AnimatedNumber value={kpis.urenDezeWeek.totaal} format={(n) => formatUren(Math.round(n))} />
             </p>
             <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
               Uren deze week
@@ -365,6 +584,56 @@ export default function DashboardPage() {
             </p>
           </div>
         </div>
+
+        {/* Slimme inzichten */}
+        {inzichten.length > 0 && (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+            <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-autronis-accent" />
+              Slimme inzichten
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {inzichten.map((inzicht) => {
+                const config = inzichtConfig[inzicht.type];
+                const Icon = config.icon;
+                return (
+                  <div
+                    key={inzicht.id}
+                    className={cn(
+                      "rounded-xl p-4 border flex gap-3",
+                      config.bg,
+                      config.border
+                    )}
+                  >
+                    <div className={cn("mt-0.5 flex-shrink-0", config.color)}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={cn("text-sm font-semibold", config.color)}>
+                        {inzicht.titel}
+                      </p>
+                      <p className="text-sm text-autronis-text-secondary mt-1 leading-relaxed">
+                        {inzicht.omschrijving}
+                      </p>
+                      {inzicht.actie && (
+                        <Link
+                          href={inzicht.actie.link}
+                          className={cn(
+                            "inline-flex items-center gap-1 text-sm font-medium mt-2 transition-colors hover:underline",
+                            config.color
+                          )}
+                        >
+                          {inzicht.actie.label}
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Twee-kolom layout */}
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
@@ -672,12 +941,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Briefing Modal */}
-        <BriefingModal data={{
-          takenVandaag: mijnTaken.length,
-          deadlinesDezeWeek: kpis.deadlinesDezeWeek,
-          openstaandeFacturen: 0,
-        }} />
       </div>
     </PageTransition>
   );

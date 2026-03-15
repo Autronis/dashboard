@@ -1,3 +1,8 @@
+mod config;
+mod storage;
+mod sync;
+mod tracker;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {

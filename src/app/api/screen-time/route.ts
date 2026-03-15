@@ -65,8 +65,10 @@ export async function GET(req: NextRequest) {
     for (const entry of entries) {
       const cat = entry.categorie ?? "overig";
       categorieOverzicht[cat] = (categorieOverzicht[cat] || 0) + entry.duurSeconden;
-      appOverzicht[entry.app] = (appOverzicht[entry.app] || 0) + entry.duurSeconden;
-      totaalSeconden += entry.duurSeconden;
+      if (cat !== "inactief") {
+        appOverzicht[entry.app] = (appOverzicht[entry.app] || 0) + entry.duurSeconden;
+        totaalSeconden += entry.duurSeconden;
+      }
     }
 
     const topApps = Object.entries(appOverzicht)

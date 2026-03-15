@@ -185,6 +185,14 @@ pub fn run() {
 
                         let idle = tracker::get_idle_duration();
                         if idle.as_secs() > 60 {
+                            // Log idle period instead of skipping
+                            let storage = state.storage.lock().unwrap();
+                            storage.record(
+                                "Inactief",
+                                "Geen activiteit",
+                                None,
+                                track_interval as i64,
+                            ).ok();
                             continue;
                         }
 

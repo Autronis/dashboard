@@ -674,3 +674,19 @@ export const screenTimeSamenvattingen = sqliteTable("screen_time_samenvattingen"
 }, (table) => ({
   uniekGebruikerDatum: uniqueIndex("uniek_gebruiker_datum").on(table.gebruikerId, table.datum),
 }));
+
+// ============ BRIEFINGS ============
+
+export const briefings = sqliteTable("briefings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  datum: text("datum").notNull(),
+  samenvatting: text("samenvatting"),
+  agendaItems: text("agenda_items").default("[]"),
+  takenPrioriteit: text("taken_prioriteit").default("[]"),
+  projectUpdates: text("project_updates").default("[]"),
+  quickWins: text("quick_wins").default("[]"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  uniekGebruikerDatum: uniqueIndex("uniek_briefing_datum").on(table.gebruikerId, table.datum),
+}));

@@ -690,3 +690,22 @@ export const briefings = sqliteTable("briefings", {
 }, (table) => ({
   uniekGebruikerDatum: uniqueIndex("uniek_briefing_datum").on(table.gebruikerId, table.datum),
 }));
+
+// ============ MEETINGS ============
+
+export const meetings = sqliteTable("meetings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  klantId: integer("klant_id").references(() => klanten.id),
+  projectId: integer("project_id").references(() => projecten.id),
+  titel: text("titel").notNull(),
+  datum: text("datum").notNull(),
+  audioPad: text("audio_pad"),
+  transcript: text("transcript"),
+  samenvatting: text("samenvatting"),
+  actiepunten: text("actiepunten").default("[]"),
+  besluiten: text("besluiten").default("[]"),
+  openVragen: text("open_vragen").default("[]"),
+  status: text("status", { enum: ["verwerken", "klaar", "mislukt"] }).default("verwerken"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});

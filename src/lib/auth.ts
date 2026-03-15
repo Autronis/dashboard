@@ -1,5 +1,10 @@
+import { createHash } from "crypto";
 import { getIronSession, type IronSession, type SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
+import { NextRequest } from "next/server";
+import { eq, and } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { apiKeys } from "@/lib/db/schema";
 
 // ============ SESSION CONFIG ============
 
@@ -42,6 +47,35 @@ export async function requireAuth(): Promise<SessionGebruiker> {
     throw new Error("Niet geauthenticeerd");
   }
   return session.gebruiker;
+}
+
+// ============ API KEY AUTH ============
+
+export async function requireApiKey(req: NextRequest): Promise<number> {
+  const authHeader = req.headers.get("authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    throw new Error("API key vereist");
+  }
+
+  const token = authHeader.slice(7);
+  const hash = createHash("sha256").update(token).digest("hex");
+
+  const key = db
+    .select({ aangemaaktDoor: apiKeys.aangemaaktDoor })
+    .from(apiKeys)
+    .where(and(eq(apiKeys.keyHash, hash), eq(apiKeys.isActief, 1)))
+    .get();
+
+  if (!key || !key.aangemaaktDoor) {
+    throw new Error("Ongeldige API key");
+  }
+
+  db.update(apiKeys)
+    .set({ laatstGebruiktOp: new Date().toISOString() })
+    .where(eq(apiKeys.keyHash, hash))
+    .run();
+
+  return key.aangemaaktDoor;
 }
 
 // ============ RATE LIMITER ============

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      let categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" = "overig";
+      let categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | "inactief" = "overig";
       let projectId: number | null = null;
       let klantId: number | null = null;
 

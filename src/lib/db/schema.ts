@@ -620,7 +620,7 @@ export const screenTimeEntries = sqliteTable("screen_time_entries", {
   vensterTitel: text("venster_titel"),
   url: text("url"),
   categorie: text("categorie", {
-    enum: ["development", "communicatie", "design", "administratie", "afleiding", "overig"],
+    enum: ["development", "communicatie", "design", "administratie", "afleiding", "overig", "inactief"],
   }).default("overig"),
   projectId: integer("project_id").references(() => projecten.id),
   klantId: integer("klant_id").references(() => klanten.id),
@@ -640,7 +640,7 @@ export const screenTimeRegels = sqliteTable("screen_time_regels", {
   type: text("type", { enum: ["app", "url", "venstertitel"] }).notNull(),
   patroon: text("patroon").notNull(),
   categorie: text("categorie", {
-    enum: ["development", "communicatie", "design", "administratie", "afleiding", "overig"],
+    enum: ["development", "communicatie", "design", "administratie", "afleiding", "overig", "inactief"],
   }).notNull(),
   projectId: integer("project_id").references(() => projecten.id),
   klantId: integer("klant_id").references(() => klanten.id),
@@ -660,3 +660,17 @@ export const screenTimeSuggesties = sqliteTable("screen_time_suggesties", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   verwerktOp: text("verwerkt_op"),
 });
+
+export const screenTimeSamenvattingen = sqliteTable("screen_time_samenvattingen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  datum: text("datum").notNull(),
+  samenvattingKort: text("samenvatting_kort"),
+  samenvattingDetail: text("samenvatting_detail"),
+  totaalSeconden: integer("totaal_seconden"),
+  productiefPercentage: integer("productief_percentage"),
+  topProject: text("top_project"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  uniekGebruikerDatum: uniqueIndex("uniek_gebruiker_datum").on(table.gebruikerId, table.datum),
+}));

@@ -4,6 +4,8 @@ import type {
   ScreenTimeRegel,
   ScreenTimeSuggestie,
   ScreenTimeCategorie,
+  ScreenTimeSessie,
+  ScreenTimeSamenvatting,
 } from "@/types";
 
 // ============ FETCH FUNCTIONS ============
@@ -174,6 +176,72 @@ export function useCategoriseer() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["screen-time"] });
       queryClient.invalidateQueries({ queryKey: ["screen-time-suggesties"] });
+    },
+  });
+}
+
+// ============ SESSIES ============
+
+interface SessiesData {
+  sessies: ScreenTimeSessie[];
+  stats: {
+    totaalActief: number;
+    totaalIdle: number;
+    productiefPercentage: number;
+    aantalSessies: number;
+  };
+}
+
+async function fetchSessies(datum: string, gebruikerId?: number): Promise<SessiesData> {
+  const params = new URLSearchParams({ datum });
+  if (gebruikerId) params.set("gebruikerId", String(gebruikerId));
+  const res = await fetch(`/api/screen-time/sessies?${params}`);
+  if (!res.ok) throw new Error("Kon sessies niet laden");
+  return res.json();
+}
+
+export function useSessies(datum: string, gebruikerId?: number) {
+  return useQuery({
+    queryKey: ["screen-time-sessies", datum, gebruikerId],
+    queryFn: () => fetchSessies(datum, gebruikerId),
+    staleTime: 30_000,
+  });
+}
+
+// ============ SAMENVATTINGEN ============
+
+async function fetchSamenvatting(datum: string): Promise<ScreenTimeSamenvatting | null> {
+  const res = await fetch(`/api/screen-time/samenvatting?datum=${datum}`);
+  if (!res.ok) throw new Error("Kon samenvatting niet laden");
+  const data = await res.json();
+  return data.samenvatting;
+}
+
+export function useSamenvatting(datum: string) {
+  return useQuery({
+    queryKey: ["screen-time-samenvatting", datum],
+    queryFn: () => fetchSamenvatting(datum),
+    staleTime: 60_000,
+  });
+}
+
+export function useGenereerSamenvatting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (datum: string) => {
+      const res = await fetch("/api/screen-time/samenvatting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ datum }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "Fout bij genereren");
+      }
+      return res.json();
+    },
+    onSuccess: (_data, datum) => {
+      queryClient.invalidateQueries({ queryKey: ["screen-time-samenvatting", datum] });
     },
   });
 }

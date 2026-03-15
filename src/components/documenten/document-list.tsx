@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useDocumenten } from "@/hooks/queries/use-documenten";
+import { useRecentDocuments, usePinnedDocuments } from "@/hooks/use-document-prefs";
 import { DocumentBase, DocumentType, SortOption, DOCUMENT_TYPE_CONFIG, DOCUMENT_TYPE_LABELS, SORT_LABELS } from "@/types/documenten";
-import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { DocumentPreview } from "./document-preview";
+import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight, Pin, X, Clock } from "lucide-react";
 
 export function DocumentList() {
   const [zoekterm, setZoekterm] = useState("");
@@ -13,20 +15,38 @@ export function DocumentList() {
   const [sortBy, setSortBy] = useState<SortOption>("datum-desc");
   const [cursor, setCursor] = useState<string | undefined>();
   const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<DocumentBase | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const { data, isLoading, error } = useDocumenten(sortBy, cursor);
   const documenten = data?.documenten;
+  const { recent, addRecent, hidden: recentHidden, toggleHidden: toggleRecentHidden } = useRecentDocuments();
+  const { togglePin, isPinned } = usePinnedDocuments();
 
   const klantNamen = [...new Set(documenten?.map((d: DocumentBase) => d.klantNaam).filter(Boolean) ?? [])];
 
-  // Client-side filtering (search, type, klant, datum are local filters on top of server data)
-  const gefilterd = documenten?.filter((doc: DocumentBase) => {
-    const matchType = filterType === "alle" || doc.type === filterType;
-    const matchZoek = !zoekterm || doc.titel.toLowerCase().includes(zoekterm.toLowerCase()) || doc.samenvatting.toLowerCase().includes(zoekterm.toLowerCase());
-    const matchKlant = !filterKlant || doc.klantNaam === filterKlant;
-    const matchDatum = !filterDatum || doc.aangemaaktOp.startsWith(filterDatum);
-    return matchType && matchZoek && matchKlant && matchDatum;
-  });
+  // Client-side filtering
+  const gefilterd = documenten
+    ?.filter((doc: DocumentBase) => {
+      const matchType = filterType === "alle" || doc.type === filterType;
+      const matchZoek = !zoekterm || doc.titel.toLowerCase().includes(zoekterm.toLowerCase()) || doc.samenvatting.toLowerCase().includes(zoekterm.toLowerCase());
+      const matchKlant = !filterKlant || doc.klantNaam === filterKlant;
+      const matchDatum = !filterDatum || doc.aangemaaktOp.startsWith(filterDatum);
+      return matchType && matchZoek && matchKlant && matchDatum;
+    })
+    .sort((a: DocumentBase, b: DocumentBase) => {
+      // Pinned items first
+      const aPinned = isPinned(a.notionId) ? 0 : 1;
+      const bPinned = isPinned(b.notionId) ? 0 : 1;
+      if (aPinned !== bPinned) return aPinned - bPinned;
+      return 0; // Server-side sort handles the rest
+    });
+
+  function openPreview(doc: DocumentBase) {
+    setPreviewDoc(doc);
+    setPreviewOpen(true);
+    addRecent(doc.notionId, doc.titel, doc.type);
+  }
 
   function handleNextPage() {
     if (data?.nextCursor) {
@@ -46,6 +66,17 @@ export function DocumentList() {
     setSortBy(newSort);
     setCursor(undefined);
     setCursorHistory([]);
+  }
+
+  function timeAgo(timestamp: number): string {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
+    if (seconds < 60) return "zojuist";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes} min geleden`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} uur geleden`;
+    const days = Math.floor(hours / 24);
+    return `${days} dag${days > 1 ? "en" : ""} geleden`;
   }
 
   if (isLoading) {
@@ -68,6 +99,43 @@ export function DocumentList() {
 
   return (
     <div className="space-y-4">
+      {/* Recent opened */}
+      {!recentHidden && recent.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-autronis-text-secondary uppercase tracking-wide">
+              <Clock className="w-3.5 h-3.5" />
+              Recent
+            </div>
+            <button onClick={toggleRecentHidden} className="p-1 rounded hover:bg-autronis-border transition-colors">
+              <X className="w-3.5 h-3.5 text-autronis-text-secondary" />
+            </button>
+          </div>
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            {recent.map((r) => {
+              const rConfig = DOCUMENT_TYPE_CONFIG[r.type as DocumentType];
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    const found = documenten?.find((d: DocumentBase) => d.notionId === r.id);
+                    if (found) openPreview(found);
+                  }}
+                  className="flex-shrink-0 rounded-lg bg-autronis-card border border-autronis-border px-3 py-2 hover:border-autronis-accent/50 transition-colors text-left min-w-[160px]"
+                >
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: rConfig?.color ?? "#666" }} />
+                    <span className="text-xs text-autronis-text-secondary truncate">{rConfig?.label ?? r.type}</span>
+                  </div>
+                  <p className="text-sm text-autronis-text-primary truncate">{r.titel}</p>
+                  <p className="text-xs text-autronis-text-secondary mt-0.5">{timeAgo(r.timestamp)}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Filters + Sort */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
@@ -132,13 +200,12 @@ export function DocumentList() {
         <div className="space-y-2">
           {gefilterd.map((doc: DocumentBase) => {
             const config = DOCUMENT_TYPE_CONFIG[doc.type];
+            const pinned = isPinned(doc.notionId);
             return (
-              <a
+              <div
                 key={doc.notionId}
-                href={doc.isOptimistic ? undefined : doc.notionUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={`block rounded-xl bg-autronis-card border border-autronis-border p-4 hover:border-autronis-accent/50 transition-colors group ${doc.isOptimistic ? "opacity-60 pointer-events-none" : ""}`}
+                onClick={() => !doc.isOptimistic && openPreview(doc)}
+                className={`rounded-xl bg-autronis-card border p-4 transition-colors group cursor-pointer ${pinned ? "border-amber-500/40" : "border-autronis-border"} ${doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/50"}`}
               >
                 <div className="flex items-start gap-4">
                   {/* Color bar */}
@@ -160,9 +227,26 @@ export function DocumentList() {
                       <span>{doc.aangemaaktDoor}</span>
                     </div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); togglePin(doc.notionId); }}
+                      className={`p-1.5 rounded-lg transition-colors ${pinned ? "text-amber-400" : "text-autronis-text-secondary opacity-0 group-hover:opacity-100"} hover:bg-autronis-border`}
+                      title={pinned ? "Losmaken" : "Vastzetten"}
+                    >
+                      <Pin className="w-4 h-4" />
+                    </button>
+                    <a
+                      href={doc.notionUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1.5 rounded-lg text-autronis-text-secondary opacity-0 group-hover:opacity-100 hover:bg-autronis-border transition-colors"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
                 </div>
-              </a>
+              </div>
             );
           })}
         </div>
@@ -192,6 +276,13 @@ export function DocumentList() {
           </button>
         </div>
       )}
+
+      {/* Preview panel */}
+      <DocumentPreview
+        document={previewDoc}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+      />
     </div>
   );
 }

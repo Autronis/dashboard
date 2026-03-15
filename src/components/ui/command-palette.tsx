@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Command } from "cmdk";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +19,7 @@ import {
   FolderOpen,
   FileText,
   History,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -27,33 +28,13 @@ interface CommandPaletteProps {
   onClose: () => void;
 }
 
-interface Klant {
-  id: number;
-  bedrijfsnaam: string;
-}
-
-interface Project {
-  id: number;
-  naam: string;
-  klant_naam?: string;
-}
-
-interface Taak {
-  id: number;
+interface ZoekResultaat {
+  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document";
+  id: number | string;
   titel: string;
-  project_naam?: string;
-}
-
-interface Factuur {
-  id: number;
-  factuurnummer: string;
-  klant_naam?: string;
-}
-
-interface Lead {
-  id: number;
-  bedrijfsnaam: string;
-  status: string;
+  subtitel: string | null;
+  link?: string;
+  externalUrl?: string;
 }
 
 interface RecentSearch {
@@ -63,6 +44,7 @@ interface RecentSearch {
 
 const RECENT_KEY = "autronis-recent-searches";
 const MAX_RECENT = 5;
+const DEBOUNCE_MS = 250;
 
 const pages = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
@@ -74,7 +56,26 @@ const pages = [
   { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Instellingen", icon: Settings, href: "/instellingen" },
+  { label: "Documenten", icon: FileText, href: "/documenten" },
 ];
+
+const typeIcons: Record<ZoekResultaat["type"], typeof Building2> = {
+  klant: Building2,
+  project: FolderOpen,
+  factuur: FileText,
+  taak: CheckSquare,
+  lead: Target,
+  document: FileText,
+};
+
+const typeLabels: Record<ZoekResultaat["type"], string> = {
+  klant: "Klant",
+  project: "Project",
+  factuur: "Factuur",
+  taak: "Taak",
+  lead: "Lead",
+  document: "Document",
+};
 
 function loadRecentSearches(): RecentSearch[] {
   if (typeof window === "undefined") return [];
@@ -106,50 +107,71 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
-  const [klanten, setKlanten] = useState<Klant[]>([]);
-  const [projecten, setProjecten] = useState<Project[]>([]);
-  const [taken, setTaken] = useState<Taak[]>([]);
-  const [facturen, setFacturen] = useState<Factuur[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [resultaten, setResultaten] = useState<ZoekResultaat[]>([]);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchData = useCallback(async () => {
-    if (loaded) return;
-    try {
-      const [klantenRes, projectenRes, takenRes, facturenRes, leadsRes] =
-        await Promise.all([
-          fetch("/api/klanten").then((r) => r.json()),
-          fetch("/api/projecten").then((r) => r.json()),
-          fetch("/api/taken").then((r) => r.json()),
-          fetch("/api/facturen").then((r) => r.json()),
-          fetch("/api/leads").then((r) => r.json()),
-        ]);
+  // Server-side search met debounce
+  useEffect(() => {
+    if (!open) return;
 
-      if (Array.isArray(klantenRes.klanten)) setKlanten(klantenRes.klanten);
-      if (Array.isArray(projectenRes.projecten))
-        setProjecten(projectenRes.projecten);
-      if (Array.isArray(takenRes.taken)) setTaken(takenRes.taken);
-      if (Array.isArray(facturenRes.facturen))
-        setFacturen(facturenRes.facturen);
-      if (Array.isArray(leadsRes.leads)) setLeads(leadsRes.leads);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (abortRef.current) abortRef.current.abort();
 
-      setLoaded(true);
-    } catch {
-      // Silently fail — data just won't be available
+    const query = search.trim();
+    if (query.length < 2) {
+      setResultaten([]);
+      setLoading(false);
+      return;
     }
-  }, [loaded]);
+
+    setLoading(true);
+
+    debounceRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      try {
+        const res = await fetch(
+          `/api/zoeken?q=${encodeURIComponent(query)}`,
+          { signal: controller.signal }
+        );
+        if (res.ok) {
+          const json = await res.json();
+          setResultaten(json.resultaten ?? []);
+        }
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, DEBOUNCE_MS);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search, open]);
 
   useEffect(() => {
     if (open) {
       setSearch("");
+      setResultaten([]);
       setRecentSearches(loadRecentSearches());
-      fetchData();
       document.body.style.overflow = "hidden";
     }
     return () => {
       document.body.style.overflow = "";
+      if (abortRef.current) abortRef.current.abort();
     };
-  }, [open, fetchData]);
+  }, [open]);
+
+  // Filter pagina's client-side (altijd beschikbaar)
+  const filteredPages = search.trim()
+    ? pages.filter((p) =>
+        p.label.toLowerCase().includes(search.trim().toLowerCase())
+      )
+    : pages;
 
   function navigate(href: string, searchQuery?: string) {
     if (searchQuery) saveRecentSearch(searchQuery);
@@ -160,6 +182,29 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   function handleSelect(href: string) {
     navigate(href, search);
   }
+
+  function handleResultSelect(result: ZoekResultaat) {
+    if (search) saveRecentSearch(search);
+    onClose();
+    if (result.externalUrl) {
+      window.open(result.externalUrl, "_blank");
+    } else if (result.link) {
+      router.push(result.link);
+    }
+  }
+
+  // Groepeer resultaten per type
+  const grouped = resultaten.reduce(
+    (acc, r) => {
+      if (!acc[r.type]) acc[r.type] = [];
+      acc[r.type].push(r);
+      return acc;
+    },
+    {} as Record<string, ZoekResultaat[]>
+  );
+
+  const hasSearch = search.trim().length >= 2;
+  const hasResults = resultaten.length > 0;
 
   return (
     <AnimatePresence>
@@ -191,15 +236,15 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           >
             <Command
               className="flex flex-col"
-              filter={(value, search) => {
-                if (value.toLowerCase().includes(search.toLowerCase()))
-                  return 1;
-                return 0;
-              }}
+              shouldFilter={false}
             >
               {/* Search input */}
               <div className="flex items-center gap-3 px-4 border-b border-autronis-border">
-                <Search className="w-5 h-5 text-autronis-text-secondary flex-shrink-0" />
+                {loading ? (
+                  <Loader2 className="w-5 h-5 text-autronis-accent flex-shrink-0 animate-spin" />
+                ) : (
+                  <Search className="w-5 h-5 text-autronis-text-secondary flex-shrink-0" />
+                )}
                 <Command.Input
                   value={search}
                   onValueChange={setSearch}
@@ -217,14 +262,21 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
               {/* Results */}
               <Command.List className="max-h-80 overflow-y-auto p-2">
-                <Command.Empty className="py-8 text-center text-autronis-text-secondary text-sm">
-                  Geen resultaten gevonden.
-                </Command.Empty>
+                {/* Geen resultaten */}
+                {hasSearch && !loading && !hasResults && filteredPages.length === 0 && (
+                  <div className="py-8 text-center text-autronis-text-secondary text-sm">
+                    Geen resultaten gevonden.
+                  </div>
+                )}
 
                 {/* Recente zoekopdrachten */}
                 {!search && recentSearches.length > 0 && (
                   <Command.Group
-                    heading="Recente zoekopdrachten"
+                    heading={
+                      <span className="text-xs font-medium text-autronis-text-secondary px-2">
+                        Recente zoekopdrachten
+                      </span>
+                    }
                     className="mb-2"
                   >
                     {recentSearches.map((recent) => (
@@ -247,161 +299,75 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 )}
 
                 {/* Pagina's */}
-                <Command.Group heading="Pagina's" className="mb-2">
-                  {pages.map((page) => {
-                    const Icon = page.icon;
-                    return (
-                      <Command.Item
-                        key={page.href}
-                        value={page.label}
-                        onSelect={() => handleSelect(page.href)}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        <span>{page.label}</span>
-                      </Command.Item>
-                    );
-                  })}
-                </Command.Group>
-
-                {/* Klanten */}
-                {klanten.length > 0 && (
-                  <Command.Group heading="Klanten" className="mb-2">
-                    {klanten.map((klant) => (
-                      <Command.Item
-                        key={`klant-${klant.id}`}
-                        value={`klant: ${klant.bedrijfsnaam}`}
-                        onSelect={() =>
-                          handleSelect(`/klanten/${klant.id}`)
-                        }
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <Building2 className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
-                        <span>{klant.bedrijfsnaam}</span>
-                      </Command.Item>
-                    ))}
+                {filteredPages.length > 0 && (
+                  <Command.Group
+                    heading={
+                      <span className="text-xs font-medium text-autronis-text-secondary px-2">
+                        Pagina&apos;s
+                      </span>
+                    }
+                    className="mb-2"
+                  >
+                    {filteredPages.map((page) => {
+                      const Icon = page.icon;
+                      return (
+                        <Command.Item
+                          key={page.href}
+                          value={page.label}
+                          onSelect={() => handleSelect(page.href)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
+                            "text-autronis-text-primary text-sm",
+                            "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
+                            "transition-colors"
+                          )}
+                        >
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span>{page.label}</span>
+                        </Command.Item>
+                      );
+                    })}
                   </Command.Group>
                 )}
 
-                {/* Projecten */}
-                {projecten.length > 0 && (
-                  <Command.Group heading="Projecten" className="mb-2">
-                    {projecten.map((project) => (
-                      <Command.Item
-                        key={`project-${project.id}`}
-                        value={`project: ${project.naam} ${project.klant_naam || ""}`}
-                        onSelect={() =>
-                          handleSelect(`/klanten/${project.id}`)
-                        }
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <FolderOpen className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
-                        <span>{project.naam}</span>
-                        {project.klant_naam && (
-                          <span className="ml-auto text-xs text-autronis-text-secondary">
-                            {project.klant_naam}
-                          </span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {/* Taken */}
-                {taken.length > 0 && (
-                  <Command.Group heading="Taken" className="mb-2">
-                    {taken.map((taak) => (
-                      <Command.Item
-                        key={`taak-${taak.id}`}
-                        value={`taak: ${taak.titel} ${taak.project_naam || ""}`}
-                        onSelect={() => handleSelect("/taken")}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <CheckSquare className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
-                        <span>{taak.titel}</span>
-                        {taak.project_naam && (
-                          <span className="ml-auto text-xs text-autronis-text-secondary">
-                            {taak.project_naam}
-                          </span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {/* Facturen */}
-                {facturen.length > 0 && (
-                  <Command.Group heading="Facturen" className="mb-2">
-                    {facturen.map((factuur) => (
-                      <Command.Item
-                        key={`factuur-${factuur.id}`}
-                        value={`factuur: ${factuur.factuurnummer} ${factuur.klant_naam || ""}`}
-                        onSelect={() =>
-                          handleSelect(`/financien/${factuur.id}`)
-                        }
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <FileText className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
-                        <span>{factuur.factuurnummer}</span>
-                        {factuur.klant_naam && (
-                          <span className="ml-auto text-xs text-autronis-text-secondary">
-                            {factuur.klant_naam}
-                          </span>
-                        )}
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
-
-                {/* Leads */}
-                {leads.length > 0 && (
-                  <Command.Group heading="Leads" className="mb-2">
-                    {leads.map((lead) => (
-                      <Command.Item
-                        key={`lead-${lead.id}`}
-                        value={`lead: ${lead.bedrijfsnaam} ${lead.status}`}
-                        onSelect={() => handleSelect("/crm")}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
-                          "text-autronis-text-primary text-sm",
-                          "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
-                          "transition-colors"
-                        )}
-                      >
-                        <Target className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
-                        <span>{lead.bedrijfsnaam}</span>
-                        <span className="ml-auto text-xs text-autronis-text-secondary capitalize">
-                          {lead.status}
+                {/* Server-side zoekresultaten per type */}
+                {Object.entries(grouped).map(([type, items]) => {
+                  const Icon = typeIcons[type as ZoekResultaat["type"]];
+                  const label = typeLabels[type as ZoekResultaat["type"]];
+                  return (
+                    <Command.Group
+                      key={type}
+                      heading={
+                        <span className="text-xs font-medium text-autronis-text-secondary px-2">
+                          {label}en
                         </span>
-                      </Command.Item>
-                    ))}
-                  </Command.Group>
-                )}
+                      }
+                      className="mb-2"
+                    >
+                      {items.map((item) => (
+                        <Command.Item
+                          key={`${item.type}-${item.id}`}
+                          value={`${item.type}-${item.id}`}
+                          onSelect={() => handleResultSelect(item)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer",
+                            "text-autronis-text-primary text-sm",
+                            "data-[selected=true]:bg-autronis-accent/10 data-[selected=true]:text-autronis-accent",
+                            "transition-colors"
+                          )}
+                        >
+                          <Icon className="w-4 h-4 flex-shrink-0 text-autronis-text-secondary" />
+                          <span>{item.titel}</span>
+                          {item.subtitel && (
+                            <span className="ml-auto text-xs text-autronis-text-secondary">
+                              {item.subtitel}
+                            </span>
+                          )}
+                        </Command.Item>
+                      ))}
+                    </Command.Group>
+                  );
+                })}
               </Command.List>
 
               {/* Footer */}

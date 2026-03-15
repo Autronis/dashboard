@@ -95,7 +95,7 @@ export async function createNotionDocument(
   const response = await withRetry(() => notion.pages.create({
     parent: { database_id: dbId },
     properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
-    children: contentToBlocks(payload.content),
+    children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
   }));
 
   return {
@@ -105,13 +105,15 @@ export async function createNotionDocument(
 }
 
 async function fetchFromDatabase(type: DocumentType, dbId: string): Promise<DocumentBase[]> {
-  const response = await withRetry(() => notion.databases.query({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const response = await withRetry(() => (notion.databases as any).query({
     database_id: dbId,
     sorts: [{ property: "Aangemaakt op", direction: "descending" }],
     page_size: 50,
   }));
 
-  return response.results.map((page) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (response as any).results.map((page: any) => {
     const props = (page as { properties: Record<string, unknown> }).properties as Record<string, {
       title?: Array<{ plain_text: string }>;
       rich_text?: Array<{ plain_text: string }>;

@@ -2,7 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { AUTRONIS_CONTEXT } from "./autronis-context";
 import { AiDraftRequest, AiDraftResponse, AiCategorisatieResponse, DocumentType } from "@/types/documenten";
 
-const anthropic = new Anthropic();
+function getClient() {
+  return new Anthropic();
+}
 
 const TYPE_PROMPTS: Record<DocumentType, string> = {
   contract: "Genereer een professioneel contract. Gebruik duidelijke clausules, partijen, verplichtingen en voorwaarden.",
@@ -19,7 +21,7 @@ export async function generateDraft(request: AiDraftRequest): Promise<AiDraftRes
     .map(([k, v]) => `${k}: ${v}`)
     .join("\n");
 
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 2000,
     system: `${AUTRONIS_CONTEXT}\n\n${TYPE_PROMPTS[request.type]}\n\nSchrijf in het Nederlands.`,
@@ -41,7 +43,7 @@ Genereer het volledige document. Gebruik duidelijke koppen en structuur.`,
 
   const content = message.content[0].type === "text" ? message.content[0].text : "";
 
-  const summaryMessage = await anthropic.messages.create({
+  const summaryMessage = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 200,
     messages: [
@@ -57,7 +59,9 @@ Genereer het volledige document. Gebruik duidelijke koppen en structuur.`,
   return { content, samenvatting };
 }
 
-export type ImproveMode = "formeler" | "korter" | "uitgebreider" | "eenvoudiger" | "toon";
+export type { ImproveMode } from "./documenten-types";
+export { IMPROVE_MODE_LABELS } from "./documenten-types";
+import type { ImproveMode } from "./documenten-types";
 
 const IMPROVE_PROMPTS: Record<ImproveMode, string> = {
   formeler: "Herschrijf dit document professioneler en zakelijker. Behoud alle inhoud maar maak de toon formeler.",
@@ -67,16 +71,8 @@ const IMPROVE_PROMPTS: Record<ImproveMode, string> = {
   toon: "Pas de toon van dit document aan zodat het past bij de Autronis tone of voice: professioneel maar toegankelijk, concreet en to-the-point.",
 };
 
-export const IMPROVE_MODE_LABELS: Record<ImproveMode, string> = {
-  formeler: "Formeler",
-  korter: "Korter",
-  uitgebreider: "Uitgebreider",
-  eenvoudiger: "Eenvoudiger",
-  toon: "Autronis toon",
-};
-
 export async function improveDocument(content: string, mode: ImproveMode): Promise<{ original: string; improved: string }> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 2000,
     system: `${AUTRONIS_CONTEXT}\n\n${IMPROVE_PROMPTS[mode]}\n\nSchrijf in het Nederlands. Geef alleen het verbeterde document terug, geen uitleg.`,
@@ -90,7 +86,7 @@ export async function improveDocument(content: string, mode: ImproveMode): Promi
 }
 
 export async function categorizeDocument(content: string, type: DocumentType): Promise<AiCategorisatieResponse> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 500,
     messages: [
@@ -128,7 +124,7 @@ ${content}`,
 }
 
 export async function generateSummary(content: string): Promise<string> {
-  const message = await anthropic.messages.create({
+  const message = await getClient().messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 200,
     messages: [

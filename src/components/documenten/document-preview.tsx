@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DocumentBase, DOCUMENT_TYPE_CONFIG } from "@/types/documenten";
 import { useImproveDocument } from "@/hooks/queries/use-documenten";
-import { IMPROVE_MODE_LABELS, type ImproveMode } from "@/lib/ai/documenten";
+import { IMPROVE_MODE_LABELS, type ImproveMode } from "@/lib/ai/documenten-types";
 import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw } from "lucide-react";
 
 interface DocumentPreviewProps {

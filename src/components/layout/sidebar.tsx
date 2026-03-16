@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -36,27 +36,35 @@ import {
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+type NavItem = { label: string; icon: typeof LayoutDashboard; href: string } | "separator" | { section: string };
+
+const navItems: NavItem[] = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "Agenda", icon: Calendar, href: "/agenda" },
+  { label: "Taken", icon: CheckSquare, href: "/taken" },
+  { section: "Werk" },
   { label: "Tijdregistratie", icon: Clock, href: "/tijdregistratie" },
   { label: "Schermtijd", icon: Monitor, href: "/schermtijd" },
   { label: "Meetings", icon: Mic, href: "/meetings" },
+  { section: "Klanten & Sales" },
   { label: "Klanten", icon: Users, href: "/klanten" },
-  { label: "Financiën", icon: Euro, href: "/financien" },
-  { label: "Offertes", icon: FileText, href: "/offertes" },
-  { label: "Analytics", icon: BarChart3, href: "/analytics" },
   { label: "CRM / Leads", icon: Target, href: "/crm" },
+  { label: "Offertes", icon: FileText, href: "/offertes" },
+  { section: "Financieel" },
+  { label: "Financiën", icon: Euro, href: "/financien" },
   { label: "Belasting", icon: Landmark, href: "/belasting" },
-  { label: "Agenda", icon: Calendar, href: "/agenda" },
-  { label: "Taken", icon: CheckSquare, href: "/taken" },
-  { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-  { label: "Doelen (OKR)", icon: Crosshair, href: "/doelen" },
-  { label: "Team", icon: Users2, href: "/team" },
   { label: "Kilometers", icon: Car, href: "/kilometers" },
-  { label: "Wiki", icon: BookOpen, href: "/wiki" },
+  { section: "Groei" },
+  { label: "Analytics", icon: BarChart3, href: "/analytics" },
+  { label: "Doelen", icon: Crosshair, href: "/doelen" },
+  { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+  { section: "Content & Kennis" },
   { label: "Content", icon: Megaphone, href: "/content" },
   { label: "Documenten", icon: FileText, href: "/documenten" },
+  { label: "Wiki", icon: BookOpen, href: "/wiki" },
   { label: "Learning Radar", icon: Radar, href: "/radar" },
+  { section: "Team & AI" },
+  { label: "Team", icon: Users2, href: "/team" },
   { label: "AI Assistent", icon: Sparkles, href: "/ai-assistent" },
   { label: "Case Studies", icon: Video, href: "/case-studies" },
 ];
@@ -66,7 +74,6 @@ const bottomNavItem = { label: "Instellingen", icon: Settings, href: "/instellin
 export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
-  const [recentOpen, setRecentOpen] = useState(false);
   const [urgentCount, setUrgentCount] = useState(0);
 
   useEffect(() => {
@@ -152,8 +159,21 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-1">
-          {navItems.map((item) => {
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
+          {navItems.map((item, idx) => {
+            if (item === "separator") {
+              return <div key={`sep-${idx}`} className="my-2 mx-3 border-t border-autronis-border/50" />;
+            }
+            if ("section" in item) {
+              if (isCollapsed) {
+                return <div key={`sec-${idx}`} className="my-2 mx-3 border-t border-autronis-border/50" />;
+              }
+              return (
+                <div key={`sec-${idx}`} className="pt-4 pb-1 px-4">
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-autronis-text-tertiary">{item.section}</span>
+                </div>
+              );
+            }
             const Icon = item.icon;
             const active = isActive(item.href);
             return (
@@ -161,24 +181,24 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-3 py-3 px-4 rounded-lg transition-colors duration-150",
+                  "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group",
                   active
                     ? "bg-autronis-accent/10 border-l-[3px] border-autronis-accent text-white font-semibold"
-                    : "text-autronis-text-secondary hover:bg-white/5 border-l-[3px] border-transparent"
+                    : "text-autronis-text-secondary hover:bg-white/5 hover:text-autronis-text-primary border-l-[3px] border-transparent"
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
                 <span className="relative flex-shrink-0">
-                  <Icon className={cn("w-5 h-5", active ? "text-autronis-accent" : "text-slate-400")} />
+                  <Icon className={cn("w-[18px] h-[18px] transition-colors", active ? "text-autronis-accent" : "text-slate-400 group-hover:text-slate-300")} />
                   {item.href === "/belasting" && urgentCount > 0 && isCollapsed && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-autronis-card animate-pulse" />
+                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
                   )}
                 </span>
                 {!isCollapsed && (
-                  <span className="text-sm truncate flex-1">{item.label}</span>
+                  <span className="text-[13px] truncate flex-1">{item.label}</span>
                 )}
                 {!isCollapsed && item.href === "/belasting" && urgentCount > 0 && (
-                  <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                  <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-red-500 text-white rounded-full animate-pulse">
                     {urgentCount}
                   </span>
                 )}
@@ -188,44 +208,7 @@ export function Sidebar() {
         </nav>
 
         {/* Bottom section */}
-        <div className="border-t border-autronis-border p-2 space-y-1">
-          {/* Shortcuts hint */}
-          {!isCollapsed && (
-            <div className="px-3 py-2 mb-1">
-              <button
-                onClick={() => setRecentOpen(!recentOpen)}
-                className="flex items-center gap-2 text-xs text-autronis-text-secondary hover:text-autronis-text-primary transition-colors w-full"
-              >
-                <ChevronDown className={cn("w-3 h-3 transition-transform", recentOpen && "rotate-180")} />
-                Sneltoetsen
-              </button>
-              {recentOpen && (
-                <div className="mt-2 space-y-1.5 text-xs text-autronis-text-secondary">
-                  <div className="flex items-center justify-between">
-                    <span>Zoeken</span>
-                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">⌘K</kbd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Nieuw item</span>
-                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">N</kbd>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Shortcuts</span>
-                    <kbd className="bg-autronis-bg border border-autronis-border rounded px-1.5 py-0.5 text-[10px] font-mono">?</kbd>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Keyboard search hint */}
-          {!isCollapsed && (
-            <div className="px-3 py-2 mb-1 flex items-center gap-2 text-xs text-autronis-text-secondary">
-              <Command className="w-3.5 h-3.5" />
-              <span>Ctrl+K om te zoeken</span>
-            </div>
-          )}
-
+        <div className="border-t border-autronis-border/50 p-2 space-y-0.5">
           {/* Settings */}
           {(() => {
             const Icon = bottomNavItem.icon;

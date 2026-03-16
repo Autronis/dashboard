@@ -13,10 +13,11 @@ export function CapsuleIcon({ icon, size = 32 }: CapsuleIconProps) {
 
   switch (icon) {
     case "cog":
+      // Real gear/cog icon matching the Lovable reference
       return (
         <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+          <path d="M10.5 2h3l.4 2.4a8 8 0 0 1 2.1 1.2l2.3-.8 1.5 2.6-1.9 1.6a8 8 0 0 1 0 2.4l1.9 1.6-1.5 2.6-2.3-.8a8 8 0 0 1-2.1 1.2L13.5 22h-3l-.4-2.4a8 8 0 0 1-2.1-1.2l-2.3.8-1.5-2.6 1.9-1.6a8 8 0 0 1 0-2.4L4.2 11l1.5-2.6 2.3.8a8 8 0 0 1 2.1-1.2Z" stroke={NEON} strokeWidth={SW} strokeLinejoin="round" />
           <circle cx="12" cy="12" r="3" stroke={NEON} strokeWidth={SW} />
-          <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke={NEON} strokeWidth={SW} strokeLinecap="round" />
         </svg>
       );
     case "brain":

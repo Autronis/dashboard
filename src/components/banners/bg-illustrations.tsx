@@ -70,29 +70,38 @@ function hexGrid(cx: number, cy: number, r: number, size: number, o: number) {
   return <>{hexes}</>;
 }
 
-// Smooth rounded gear path — wide teeth with smooth bezier curves
-function gearPath(cx: number, cy: number, r: number, teeth: number): string {
-  const outerR = r;
-  const innerR = r * 0.78;
+// Gear path matching the Lovable reference: wide trapezoidal teeth with slight rounding
+function gearPath(x: number, y: number, r: number, teeth: number): string {
+  const outerR = r;           // tip of teeth
+  const baseR = r * 0.84;     // base between teeth
   const toothArc = (Math.PI * 2) / teeth;
+
+  const p = (angle: number, radius: number) =>
+    `${x + Math.cos(angle) * radius},${y + Math.sin(angle) * radius}`;
 
   let d = "";
   for (let i = 0; i < teeth; i++) {
     const a = i * toothArc - Math.PI / 2;
-    const riseStart  = a + toothArc * 0.05;
-    const tipStart   = a + toothArc * 0.20;
-    const tipEnd     = a + toothArc * 0.45;
-    const fallEnd    = a + toothArc * 0.60;
-    const nextRise   = a + toothArc * 1.05;
+    // Tooth shape: base → rise → flat top → fall → base
+    const baseStart = a;
+    const riseBottom = a + toothArc * 0.12;   // start of tooth at base radius
+    const riseTop = a + toothArc * 0.18;      // top-left corner of tooth
+    const fallTop = a + toothArc * 0.42;      // top-right corner of tooth
+    const fallBottom = a + toothArc * 0.48;   // end of tooth at base radius
+    const baseEnd = a + toothArc;             // start of next tooth
 
-    const p = (angle: number, radius: number) =>
-      `${cx + Math.cos(angle) * radius} ${cy + Math.sin(angle) * radius}`;
+    if (i === 0) d += `M ${p(baseStart, baseR)} `;
 
-    if (i === 0) d += `M ${p(riseStart, innerR)} `;
-    d += `C ${p(riseStart, innerR + (outerR - innerR) * 0.5)} ${p(tipStart, outerR)} ${p(tipStart, outerR)} `;
-    d += `A ${outerR} ${outerR} 0 0 1 ${p(tipEnd, outerR)} `;
-    d += `C ${p(tipEnd, outerR)} ${p(fallEnd, innerR + (outerR - innerR) * 0.5)} ${p(fallEnd, innerR)} `;
-    d += `A ${innerR} ${innerR} 0 0 1 ${p(nextRise, innerR)} `;
+    // Valley arc (between teeth)
+    d += `A ${baseR} ${baseR} 0 0 1 ${p(riseBottom, baseR)} `;
+    // Rise to tooth tip (slightly curved)
+    d += `L ${p(riseTop, outerR)} `;
+    // Tooth tip flat arc
+    d += `A ${outerR} ${outerR} 0 0 1 ${p(fallTop, outerR)} `;
+    // Fall back to base
+    d += `L ${p(fallBottom, baseR)} `;
+    // Valley to next tooth
+    d += `A ${baseR} ${baseR} 0 0 1 ${p(baseEnd, baseR)} `;
   }
   d += "Z";
   return d;

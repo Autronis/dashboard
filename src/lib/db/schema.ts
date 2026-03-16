@@ -741,3 +741,27 @@ export const radarItems = sqliteTable("radar_items", {
   uniekItemUrl: uniqueIndex("uniek_radar_item_url").on(table.url),
   idxScore: index("idx_radar_score").on(table.score),
 }));
+
+// ============ IDEEEN ============
+
+export const ideeen = sqliteTable("ideeen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  nummer: integer("nummer"),
+  naam: text("naam").notNull(),
+  categorie: text("categorie", {
+    enum: ["saas", "productized_service", "intern", "dev_tools", "video", "design", "website"],
+  }),
+  status: text("status", {
+    enum: ["idee", "uitgewerkt", "actief", "gebouwd"],
+  }).default("idee"),
+  omschrijving: text("omschrijving"),
+  uitwerking: text("uitwerking"),
+  prioriteit: text("prioriteit", {
+    enum: ["laag", "normaal", "hoog"],
+  }).default("normaal"),
+  projectId: integer("project_id").references(() => projecten.id),
+  notionPageId: text("notion_page_id"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});

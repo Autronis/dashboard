@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { ideeen, klanten, projecten, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, isNull, like } from "drizzle-orm";
-import { createNotionDocument } from "@/lib/notion";
+import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
 
 const BACKLOG_PATH = "c:/Users/semmi/OneDrive/Claude AI/Business-ideas/IDEAS_BACKLOG.md";
 
@@ -240,22 +240,14 @@ export async function POST() {
       }
 
       // Create Notion plan document
-      let notionContent = brief || `Project: ${idee.naam}\n\n${idee.omschrijving || ""}`;
-      if (todo) notionContent += `\n\nFasering:\n${todo}`;
-
       try {
-        const notionResult = await createNotionDocument(
-          {
-            type: "plan",
-            titel: `${idee.naam} — Projectplan`,
-            content: notionContent,
-            status: "definitief",
-          },
-          `Intern project: ${idee.naam}`,
-          gebruiker.naam,
-          "Autronis (intern)",
-          idee.naam
-        );
+        const notionResult = await createEnrichedNotionPlan({
+          projectNaam: idee.naam,
+          briefContent: brief,
+          todoContent: todo,
+          status: "In Development",
+          klantNaam: "Autronis (intern)",
+        });
 
         db.update(ideeen)
           .set({ notionPageId: notionResult.notionId })

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
 import { ideeen, projecten, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, like } from "drizzle-orm";
-import { createNotionDocument } from "@/lib/notion";
+import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
 
 const PROJECTS_BASE = "c:/Users/semmi/OneDrive/Claude AI/Projects";
 
@@ -107,18 +107,16 @@ export async function POST(
 
     // 6. Plan in Notion aanmaken
     try {
-      await createNotionDocument(
-        {
-          type: "plan",
-          titel: `Plan: ${idee.naam}`,
-          content: `${idee.omschrijving || ""}\n\n${idee.uitwerking || ""}`.trim(),
-          status: "definitief",
-        },
-        `Projectplan voor ${idee.naam} — gestart vanuit idee #${idee.nummer || idee.id}`,
-        gebruiker.naam,
-        "Autronis (intern)",
-        idee.naam
-      );
+      const briefContent = await readFile(path.join(projectDir, "PROJECT_BRIEF.md"), "utf-8").catch(() => null);
+      const todoContent = await readFile(path.join(projectDir, "TODO.md"), "utf-8").catch(() => null);
+
+      await createEnrichedNotionPlan({
+        projectNaam: idee.naam,
+        briefContent: briefContent,
+        todoContent: todoContent,
+        status: "In Development",
+        klantNaam: "Autronis (intern)",
+      });
     } catch {
       // Notion sync mislukt — project is wel aangemaakt
     }

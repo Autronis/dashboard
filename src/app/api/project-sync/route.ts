@@ -3,10 +3,9 @@ import { db } from "@/lib/db";
 import { klanten, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { like } from "drizzle-orm";
-import { createNotionDocument } from "@/lib/notion";
+import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
 import { readdir, readFile, stat } from "fs/promises";
 import path from "path";
-import type { DocumentPayload } from "@/types/documenten";
 
 const PROJECTS_DIR = "c:/Users/semmi/OneDrive/Claude AI/Projects";
 const SKIP_DIRS = ["Claude AI", "autronis-dashboard"];
@@ -130,20 +129,16 @@ export async function POST() {
 
     // 6. Create plan in Notion
     try {
-      const payload: DocumentPayload = {
-        type: "plan",
-        titel: `${parsed.naam} — Projectplan`,
-        content: `Doel: ${parsed.doel}\n\nFeatures:\n${parsed.features}\n\nTech Stack:\n${parsed.techStack}`,
-        status: "definitief",
-      };
+      const briefContent = await readFile(path.join(PROJECTS_DIR, entry, "PROJECT_BRIEF.md"), "utf-8").catch(() => null);
+      const todoContent = await readFile(path.join(PROJECTS_DIR, entry, "TODO.md"), "utf-8").catch(() => null);
 
-      await createNotionDocument(
-        payload,
-        `Intern project: ${parsed.naam}`,
-        gebruiker.naam,
-        "Autronis (intern)",
-        parsed.naam
-      );
+      await createEnrichedNotionPlan({
+        projectNaam: parsed.naam,
+        briefContent: briefContent,
+        todoContent: todoContent,
+        status: "In Planning",
+        klantNaam: "Autronis (intern)",
+      });
     } catch {
       // Notion failure should not block project creation
     }

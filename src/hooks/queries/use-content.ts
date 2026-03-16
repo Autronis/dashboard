@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus } from "@/types/content";
+import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus, ContentBanner, BannerTemplateType, BannerFormaat, BannerData, BannerStatus } from "@/types/content";
 
 // ============ PROFIEL ============
 
@@ -352,6 +352,177 @@ export function useDeleteVideo() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["content-videos"] });
+    },
+  });
+}
+
+// ============ BANNERS ============
+
+type RawBanner = Omit<ContentBanner, "data"> & { data: string };
+
+function mapBanner(raw: RawBanner): ContentBanner {
+  let data: BannerData;
+  try {
+    data = JSON.parse(raw.data) as BannerData;
+  } catch {
+    data = { tekst: "" };
+  }
+  return { ...raw, data };
+}
+
+async function fetchContentBanners(): Promise<ContentBanner[]> {
+  const res = await fetch("/api/content/banners");
+  if (!res.ok) throw new Error("Kon banners niet ophalen");
+  const json = await res.json() as { banners: (RawBanner | ContentBanner)[] };
+  return (json.banners ?? []).map((b) => {
+    if (typeof (b as RawBanner).data === "string") return mapBanner(b as RawBanner);
+    return b as ContentBanner;
+  });
+}
+
+export function useContentBanners() {
+  return useQuery({
+    queryKey: ["content-banners"],
+    queryFn: fetchContentBanners,
+    staleTime: 30_000,
+  });
+}
+
+export function useCreateBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      postId?: number;
+      templateType: BannerTemplateType;
+      templateVariant?: number;
+      formaat: BannerFormaat;
+      data: BannerData;
+    }) => {
+      const res = await fetch("/api/content/banners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Aanmaken mislukt");
+      }
+      return res.json() as Promise<{ banner: ContentBanner }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useUpdateBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      id: number;
+      data?: BannerData;
+      templateVariant?: number;
+      gridPositie?: number;
+      status?: BannerStatus;
+    }) => {
+      const { id, ...body } = payload;
+      const res = await fetch(`/api/content/banners/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Bijwerken mislukt");
+      }
+      return res.json() as Promise<{ banner: ContentBanner }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useDeleteBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content/banners/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Verwijderen mislukt");
+      }
+      return res.json() as Promise<{ ok: boolean }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useRenderBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content/banners/${id}/render`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Renderen mislukt");
+      }
+      return res.json() as Promise<{ ok: boolean; imagePath: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useAutoGenereerBanner() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { postId: number; formaat?: BannerFormaat }) => {
+      const res = await fetch("/api/content/banners/auto-genereer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Auto-genereren mislukt");
+      }
+      return res.json() as Promise<{ banner: ContentBanner }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useBatchGenereerBanners() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/content/banners/batch", {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Batch genereren mislukt");
+      }
+      return res.json() as Promise<{ generated: number; failed: number; bericht?: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
     },
   });
 }

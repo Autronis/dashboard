@@ -87,3 +87,61 @@ export interface ContentPost {
   gepubliceerdOp?: string;
   aangemaaktOp: string;
 }
+
+// ============ BANNER TYPES ============
+
+export type BannerTemplateType = "quote" | "stat" | "tip" | "case_study";
+export type BannerFormaat = "instagram" | "linkedin";
+export type BannerStatus = "concept" | "klaar" | "fout";
+
+export const BANNER_TEMPLATE_LABELS: Record<BannerTemplateType, string> = {
+  quote: "Quote card",
+  stat: "Stat card",
+  tip: "Tip card",
+  case_study: "Case study card",
+};
+
+export const BANNER_FORMAAT_SIZES: Record<BannerFormaat, { width: number; height: number; label: string }> = {
+  instagram: { width: 1080, height: 1350, label: "Instagram (4:5)" },
+  linkedin: { width: 1200, height: 627, label: "LinkedIn (1200x627)" },
+};
+
+export interface QuoteData {
+  tekst: string;
+  auteur?: string;
+}
+
+export interface StatData {
+  label: string;
+  van: string;
+  naar: string;
+  eenheid?: string;
+}
+
+export interface TipData {
+  titel: string;
+  punten: [string, string, string];
+}
+
+export interface CaseStudyData {
+  klantNaam: string;
+  resultaat: string;
+  beschrijving?: string;
+}
+
+export type BannerData = QuoteData | StatData | TipData | CaseStudyData;
+
+export interface ContentBanner {
+  id: number;
+  postId?: number;
+  templateType: BannerTemplateType;
+  templateVariant: number;
+  formaat: BannerFormaat;
+  data: BannerData;
+  imagePath?: string;
+  status: BannerStatus;
+  gridPositie?: number;
+  aangemaaktOp: string;
+  // Joined
+  postTitel?: string;
+}

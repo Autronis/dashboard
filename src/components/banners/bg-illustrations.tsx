@@ -88,103 +88,124 @@ function hexGrid(cx: number, cy: number, r: number, size: number, o: number) {
   return <>{hexes}</>;
 }
 
-// ─── GEAR (Mechanisme) ─────────────────────────────────────────────────────────
+// ─── GEAR (Mechanisme) — Single large gear filling the canvas ───────────────
 
 function GearIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const r1 = r * 0.55, r2 = r * 0.38, r3 = r * 0.25;
-  const x1 = cx - r * 0.15, y1 = cy + r * 0.05;
-  const x2 = x1 + r1 * 0.92 + r2 * 0.92, y2 = cy - r * 0.25;
-  const x3 = x1 + r1 * 0.5, y3 = cy + r * 0.65;
+  // One LARGE gear centered, filling ~90% of canvas (like reference)
+  const gr = r * 0.95;
   return (
     <>
-      {/* Background measurement grid */}
-      {tickMarks(x1, y1, r1 * 1.2, r1 * 1.35, 36, 0.04)}
-      {/* Main gear */}
-      <path d={gearPath(x1, y1, r1, 12)} fill="none" stroke={N} strokeWidth="2" opacity="0.25" />
-      {ring(x1, y1, r1 * 0.55, 0.08)}{ring(x1, y1, r1 * 0.35, 0.06)}{ring(x1, y1, r1 * 0.12, 0.1, 2)}
-      {dot(x1, y1, r1 * 0.05, 0.12)}
-      {/* Spokes inside main gear */}
-      {Array.from({ length: 6 }, (_, i) => {
-        const a = (i / 6) * Math.PI * 2;
-        return <line key={`s${i}`} x1={x1 + Math.cos(a) * r1 * 0.15} y1={y1 + Math.sin(a) * r1 * 0.15}
-          x2={x1 + Math.cos(a) * r1 * 0.5} y2={y1 + Math.sin(a) * r1 * 0.5}
-          stroke={N} strokeWidth="1" opacity="0.16" />;
+      {/* Main large gear outline */}
+      <path d={gearPath(cx, cy, gr, 14)} fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" />
+      {/* Inner ring 1 — thick */}
+      {ring(cx, cy, gr * 0.72, 0.15, 2)}
+      {/* Inner ring 2 */}
+      {ring(cx, cy, gr * 0.55, 0.12, 1.5)}
+      {/* Inner ring 3 — center detail */}
+      {ring(cx, cy, gr * 0.35, 0.14, 1.8)}
+      {/* Core circle with fill */}
+      {ring(cx, cy, gr * 0.18, 0.18, 2)}
+      <circle cx={cx} cy={cy} r={gr * 0.18} fill={N} opacity="0.03" />
+      {/* Center dot */}
+      {dot(cx, cy, gr * 0.06, 0.2)}
+      {/* 8 spokes from center to outer ring */}
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2;
+        return <line key={`sp${i}`}
+          x1={cx + Math.cos(a) * gr * 0.2} y1={cy + Math.sin(a) * gr * 0.2}
+          x2={cx + Math.cos(a) * gr * 0.7} y2={cy + Math.sin(a) * gr * 0.7}
+          stroke={N} strokeWidth="1.2" opacity="0.1" />;
       })}
-      {/* Medium gear */}
-      <path d={gearPath(x2, y2, r2, 10)} fill="none" stroke={N} strokeWidth="1.8" opacity="0.22" />
-      {ring(x2, y2, r2 * 0.5, 0.07)}{ring(x2, y2, r2 * 0.15, 0.09, 1.5)}
-      {dot(x2, y2, r2 * 0.05, 0.1)}
-      {tickMarks(x2, y2, r2 * 1.15, r2 * 1.25, 20, 0.03)}
-      {/* Small gear */}
-      <path d={gearPath(x3, y3, r3, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
-      {ring(x3, y3, r3 * 0.45, 0.06)}{dot(x3, y3, r3 * 0.05, 0.08)}
-      {/* Rotation arcs */}
-      {arc(x1, y1, r1 * 1.4, -60, 30, 0.04, 1)}
-      {arc(x2, y2, r2 * 1.3, 120, 240, 0.04, 1)}
-      {/* Connecting dots */}
-      {dot(x1 + r1 * 0.9, y1 - r1 * 0.1, 3, 0.08)}
-      {dot(x2 - r2 * 0.85, y2 + r2 * 0.2, 3, 0.08)}
+      {/* Dots at spoke-ring intersections */}
+      {Array.from({ length: 8 }, (_, i) => {
+        const a = (i / 8) * Math.PI * 2;
+        return <g key={`sd${i}`}>
+          {dot(cx + Math.cos(a) * gr * 0.55, cy + Math.sin(a) * gr * 0.55, 3, 0.12)}
+          {dot(cx + Math.cos(a) * gr * 0.72, cy + Math.sin(a) * gr * 0.72, 2.5, 0.1)}
+        </g>;
+      })}
+      {/* Fine tick marks around outer edge */}
+      {tickMarks(cx, cy, gr * 0.85, gr * 0.92, 56, 0.08)}
+      {/* Inner detail arcs (partial circles for tech feel) */}
+      {arc(cx, cy, gr * 0.45, 20, 70, 0.1, 1)}
+      {arc(cx, cy, gr * 0.45, 110, 160, 0.1, 1)}
+      {arc(cx, cy, gr * 0.45, 200, 250, 0.1, 1)}
+      {arc(cx, cy, gr * 0.45, 290, 340, 0.1, 1)}
+      {/* Small secondary gear (bottom-right, partially visible) */}
+      <path d={gearPath(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35, 10)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.1" />
+      {ring(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35 * 0.5, 0.08, 1)}
+      {ring(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35 * 0.2, 0.1, 1.2)}
     </>
   );
 }
 
-// ─── BRAIN (Neuraal Netwerk) ───────────────────────────────────────────────────
+// ─── BRAIN (Neuraal Netwerk) — Large brain with circuit board patterns inside ─
 
 function BrainIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  // Brain lobes with circuit patterns inside
-  const lw = r * 0.95, lh = r * 0.85;
-  // Circuit traces inside brain (like the reference screenshot)
+  const br = r * 0.9; // brain radius - fills most of canvas
+  // Dense circuit traces inside the brain shape (like reference)
   const traces: [number, number, number, number][] = [
-    [-0.5, -0.3, -0.2, -0.5], [-0.2, -0.5, 0.1, -0.4], [0.1, -0.4, 0.3, -0.6],
-    [0.3, -0.6, 0.5, -0.35], [-0.6, 0.1, -0.3, -0.1], [-0.3, -0.1, 0, 0.1],
-    [0, 0.1, 0.3, -0.1], [0.3, -0.1, 0.55, 0.15], [-0.4, 0.3, -0.15, 0.5],
-    [-0.15, 0.5, 0.15, 0.35], [0.15, 0.35, 0.45, 0.5],
-    [-0.7, -0.1, -0.5, -0.3], [0.5, -0.35, 0.7, -0.15],
-    [-0.3, -0.1, -0.3, 0.3], [0.3, -0.1, 0.3, 0.35],
-    [0, -0.2, 0, 0.1], [-0.15, -0.35, -0.5, -0.3],
+    // Left hemisphere horizontal traces
+    [-0.7, -0.4, -0.15, -0.4], [-0.65, -0.15, -0.1, -0.15], [-0.6, 0.1, -0.1, 0.1],
+    [-0.55, 0.35, -0.15, 0.35], [-0.5, -0.55, -0.2, -0.55],
+    // Right hemisphere horizontal traces
+    [0.15, -0.4, 0.7, -0.4], [0.1, -0.15, 0.65, -0.15], [0.1, 0.1, 0.6, 0.1],
+    [0.15, 0.35, 0.55, 0.35], [0.2, -0.55, 0.5, -0.55],
+    // Vertical connections left
+    [-0.45, -0.55, -0.45, -0.15], [-0.3, -0.4, -0.3, 0.1], [-0.55, 0.1, -0.55, 0.35],
+    [-0.15, -0.55, -0.15, 0.35],
+    // Vertical connections right
+    [0.45, -0.55, 0.45, -0.15], [0.3, -0.4, 0.3, 0.1], [0.55, 0.1, 0.55, 0.35],
+    [0.15, -0.4, 0.15, 0.35],
+    // Cross-hemisphere connections
+    [-0.1, -0.25, 0.1, -0.25], [-0.1, 0, 0.1, 0], [-0.1, 0.2, 0.1, 0.2],
+    // Diagonal branches
+    [-0.45, -0.15, -0.3, 0.1], [0.45, -0.15, 0.3, 0.1],
+    [-0.65, -0.15, -0.55, 0.1], [0.65, -0.15, 0.55, 0.1],
   ];
-  // Nodes at junctions
+  // Nodes at circuit junctions
   const nodes: [number, number, number][] = [
-    [-0.5, -0.3, 4], [-0.2, -0.5, 3], [0.1, -0.4, 3.5], [0.3, -0.6, 3],
-    [0.5, -0.35, 4], [-0.6, 0.1, 3], [-0.3, -0.1, 5], [0, 0.1, 5],
-    [0.3, -0.1, 5], [0.55, 0.15, 3.5], [-0.4, 0.3, 3], [-0.15, 0.5, 3],
-    [0.15, 0.35, 3.5], [0.45, 0.5, 3], [0, -0.2, 4],
-    [-0.7, -0.1, 2.5], [0.7, -0.15, 2.5],
+    [-0.45, -0.55, 3], [-0.45, -0.4, 4], [-0.45, -0.15, 4.5], [-0.3, -0.4, 3.5],
+    [-0.3, 0.1, 4], [-0.55, 0.1, 3], [-0.55, 0.35, 3], [-0.15, -0.55, 3.5],
+    [-0.15, -0.4, 5], [-0.15, -0.15, 4], [-0.15, 0.1, 4.5], [-0.15, 0.35, 3.5],
+    [0.45, -0.55, 3], [0.45, -0.4, 4], [0.45, -0.15, 4.5], [0.3, -0.4, 3.5],
+    [0.3, 0.1, 4], [0.55, 0.1, 3], [0.55, 0.35, 3], [0.15, -0.4, 5],
+    [0.15, -0.15, 4], [0.15, 0.1, 4.5], [0.15, 0.35, 3.5],
+    [0, -0.25, 3], [0, 0, 3], [0, 0.2, 3],
   ];
   return (
     <>
-      {/* Brain outline — two lobes */}
-      <ellipse cx={cx - r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-      <ellipse cx={cx + r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-      {/* Center division line */}
-      {ln(cx, cy - lh * 0.85, cx, cy + lh * 0.85, 0.05, 1, "4 4")}
-      {/* Inner brain folds (sulci) */}
-      {arc(cx - r * 0.35, cy - r * 0.15, r * 0.3, -80, 60, 0.05, 1)}
-      {arc(cx + r * 0.35, cy - r * 0.15, r * 0.3, 120, 260, 0.05, 1)}
-      {arc(cx - r * 0.25, cy + r * 0.2, r * 0.25, 10, 150, 0.04, 1)}
-      {arc(cx + r * 0.25, cy + r * 0.2, r * 0.25, 30, 170, 0.04, 1)}
-      {/* Circuit traces inside (like the reference) */}
+      {/* Brain outline — two overlapping lobes */}
+      <ellipse cx={cx - r * 0.22} cy={cy - r * 0.05} rx={br * 0.55} ry={br * 0.82} fill="none" stroke={N} strokeWidth="2.5" opacity="0.16" />
+      <ellipse cx={cx + r * 0.22} cy={cy - r * 0.05} rx={br * 0.55} ry={br * 0.82} fill="none" stroke={N} strokeWidth="2.5" opacity="0.16" />
+      {/* Brain stem */}
+      <path d={`M ${cx - r * 0.08} ${cy + br * 0.7} Q ${cx} ${cy + br * 0.9} ${cx + r * 0.08} ${cy + br * 0.7}`}
+        fill="none" stroke={N} strokeWidth="2" opacity="0.12" />
+      {/* Center division — dashed vertical */}
+      {ln(cx, cy - br * 0.75, cx, cy + br * 0.65, 0.08, 1, "6 4")}
+      {/* Brain folds (sulci) — curved lines inside */}
+      {arc(cx - r * 0.4, cy - r * 0.2, r * 0.35, -70, 50, 0.08, 1.2)}
+      {arc(cx + r * 0.4, cy - r * 0.2, r * 0.35, 130, 250, 0.08, 1.2)}
+      {arc(cx - r * 0.3, cy + r * 0.25, r * 0.28, 0, 140, 0.06, 1)}
+      {arc(cx + r * 0.3, cy + r * 0.25, r * 0.28, 40, 180, 0.06, 1)}
+      {arc(cx - r * 0.15, cy - r * 0.45, r * 0.2, -40, 80, 0.07, 1)}
+      {arc(cx + r * 0.15, cy - r * 0.45, r * 0.2, 100, 220, 0.07, 1)}
+      {/* Circuit traces inside brain (dense network) */}
       {traces.map(([x1, y1, x2, y2], i) => (
-        <line key={`t${i}`} x1={cx + x1 * r} y1={cy + y1 * r} x2={cx + x2 * r} y2={cy + y2 * r}
-          stroke={N} strokeWidth="1" opacity="0.18" />
+        <line key={`ct${i}`} x1={cx + x1 * br} y1={cy + y1 * br} x2={cx + x2 * br} y2={cy + y2 * br}
+          stroke={N} strokeWidth="1" opacity="0.12" />
       ))}
-      {/* Junction nodes with rings */}
+      {/* Circuit nodes at junctions */}
       {nodes.map(([nx, ny, nr], i) => (
-        <g key={`n${i}`}>
-          <circle cx={cx + nx * r} cy={cy + ny * r} r={nr} fill={N} opacity="0.25" />
-          {nr > 3.5 && <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 2.5} fill="none" stroke={N} strokeWidth="0.5" opacity="0.14" />}
+        <g key={`cn${i}`}>
+          <circle cx={cx + nx * br} cy={cy + ny * br} r={nr} fill={N} opacity="0.18" />
+          {nr >= 4.5 && <circle cx={cx + nx * br} cy={cy + ny * br} r={nr * 2.2} fill="none" stroke={N} strokeWidth="0.6" opacity="0.1" />}
         </g>
       ))}
-      {/* Pulse dots along some traces */}
-      {[[-0.35, -0.4], [0.2, -0.45], [-0.15, 0], [0.15, 0], [0.4, 0.05], [-0.35, 0.4]].map(([px, py], i) => (
-        <circle key={`p${i}`} cx={cx + px * r} cy={cy + py * r} r={2} fill={N} opacity="0.30" />
+      {/* Bright pulse points (active synapses) */}
+      {[[-0.15, -0.4], [0.15, -0.4], [-0.15, 0.1], [0.15, 0.1], [0, 0], [-0.45, -0.15], [0.45, -0.15]].map(([px, py], i) => (
+        <circle key={`pulse${i}`} cx={cx + px * br} cy={cy + py * br} r={5} fill={N} opacity="0.06" />
       ))}
-      {/* Outer orbital arcs */}
-      {arc(cx, cy, r * 1.05, -30, 30, 0.03, 0.7)}
-      {arc(cx, cy, r * 1.05, 150, 210, 0.03, 0.7)}
-      {/* Synaptic glow points */}
-      {ring(cx - r * 0.3, cy - r * 0.1, 8, 0.04, 0.5)}
-      {ring(cx + r * 0.3, cy - r * 0.1, 8, 0.04, 0.5)}
     </>
   );
 }
@@ -271,49 +292,82 @@ function NodesIllustration({ cx, cy, r }: { cx: number; cy: number; r: number })
   );
 }
 
-// ─── CHART (Data Dashboard) ───────────────────────────────────────────────────
+// ─── CHART (Data Dashboard) — Tablet/screen frame with dashboard inside ──────
 
 function ChartIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const left = cx - r * 0.9, right = cx + r * 0.9, top = cy - r * 0.7, bottom = cy + r * 0.5;
-  const w = right - left, h = bottom - top;
-  const series1: [number, number][] = [[0, 0.7], [0.15, 0.55], [0.3, 0.6], [0.45, 0.35], [0.6, 0.4], [0.75, 0.2], [0.9, 0.15], [1, 0.05]];
-  const series2: [number, number][] = [[0, 0.85], [0.15, 0.75], [0.3, 0.8], [0.45, 0.6], [0.6, 0.55], [0.75, 0.45], [0.9, 0.35], [1, 0.3]];
-  const toXY = (p: [number, number]): [number, number] => [left + p[0] * w, top + p[1] * h];
+  // Outer tablet/screen frame
+  const fw = r * 1.5, fh = r * 1.2;
+  const fl = cx - fw / 2, ft = cy - fh / 2, fr = cx + fw / 2, fb = cy + fh / 2;
+  // Inner content area
+  const pad = r * 0.08;
+  const il = fl + pad, it = ft + pad + r * 0.1, ir = fr - pad, ib = fb - pad;
+  const iw = ir - il, ih = ib - it;
+
   return (
     <>
-      {/* Grid */}
-      {Array.from({ length: 6 }, (_, i) => {
-        const y = top + (i / 5) * h;
-        return <line key={`gy${i}`} x1={left} y1={y} x2={right} y2={y} stroke={N} strokeWidth="0.5" opacity="0.03" />;
+      {/* Screen/tablet frame */}
+      <rect x={fl} y={ft} width={fw} height={fh} rx={r * 0.04} fill="none" stroke={N} strokeWidth="2.5" opacity="0.16" />
+      {/* Top bar (like a browser/app bar) */}
+      {ln(fl, ft + r * 0.1, fr, ft + r * 0.1, 0.12, 1.5)}
+      {/* Top bar elements — menu icon + title lines */}
+      <rect x={fl + pad} y={ft + pad * 0.4} width={r * 0.05} height={r * 0.003} rx={1} fill={N} opacity="0.15" />
+      <rect x={fl + pad} y={ft + pad * 0.55} width={r * 0.05} height={r * 0.003} rx={1} fill={N} opacity="0.15" />
+      <rect x={fl + pad} y={ft + pad * 0.7} width={r * 0.05} height={r * 0.003} rx={1} fill={N} opacity="0.15" />
+      <rect x={fl + pad + r * 0.08} y={ft + pad * 0.4} width={r * 0.15} height={r * 0.005} rx={1} fill={N} opacity="0.12" />
+      <rect x={fl + pad + r * 0.08} y={ft + pad * 0.65} width={r * 0.1} height={r * 0.004} rx={1} fill={N} opacity="0.08" />
+
+      {/* Bar chart — 10 bars with varying heights */}
+      {Array.from({ length: 10 }, (_, i) => {
+        const bw = iw * 0.07;
+        const gap = iw * 0.03;
+        const bx = il + i * (bw + gap) + gap;
+        const heights = [0.4, 0.6, 0.5, 0.75, 0.65, 0.85, 0.7, 0.9, 0.55, 0.8];
+        const bh = ih * 0.55 * heights[i];
+        const by = ib - bh;
+        return <g key={`bar${i}`}>
+          <rect x={bx} y={by} width={bw} height={bh} fill={N} opacity="0.06" rx={2} />
+          <rect x={bx} y={by} width={bw} height={bh} fill="none" stroke={N} strokeWidth="1" opacity="0.15" rx={2} />
+        </g>;
       })}
-      {Array.from({ length: 9 }, (_, i) => {
-        const x = left + (i / 8) * w;
-        return <line key={`gx${i}`} x1={x} y1={top} x2={x} y2={bottom} stroke={N} strokeWidth="0.5" opacity="0.03" />;
+
+      {/* Line chart overlay on top of bars */}
+      {(() => {
+        const pts: [number, number][] = [
+          [0, 0.6], [0.1, 0.45], [0.2, 0.5], [0.3, 0.3], [0.4, 0.38],
+          [0.5, 0.2], [0.6, 0.32], [0.7, 0.15], [0.8, 0.42], [0.9, 0.22], [1, 0.1],
+        ];
+        const points = pts.map(([px, py]) => `${il + px * iw},${it + ih * 0.15 + py * ih * 0.6}`).join(" ");
+        return <>
+          <polyline points={points} fill="none" stroke={N} strokeWidth="2" opacity="0.2" strokeLinejoin="round" />
+          {/* Area fill under line */}
+          <path d={`M ${il},${ib} ${pts.map(([px, py]) => `L ${il + px * iw} ${it + ih * 0.15 + py * ih * 0.6}`).join(" ")} L ${ir},${ib} Z`}
+            fill={N} opacity="0.03" />
+          {/* Data points */}
+          {pts.filter((_, i) => i % 2 === 0).map(([px, py], i) => {
+            const x = il + px * iw, y = it + ih * 0.15 + py * ih * 0.6;
+            return <g key={`dp${i}`}>{ring(x, y, 4, 0.12, 1.2)}{dot(x, y, 2, 0.15)}</g>;
+          })}
+        </>;
+      })()}
+
+      {/* Axis lines */}
+      {ln(il, ib, ir, ib, 0.1, 1)}
+      {ln(il, it + ih * 0.15, il, ib, 0.1, 1)}
+
+      {/* Horizontal grid lines */}
+      {Array.from({ length: 5 }, (_, i) => {
+        const y = it + ih * 0.15 + i * ih * 0.17;
+        return <line key={`hg${i}`} x1={il} y1={y} x2={ir} y2={y} stroke={N} strokeWidth="0.5" opacity="0.04" />;
       })}
-      {/* Axes */}
-      {ln(left, bottom, right, bottom, 0.08, 1.5)}
-      {ln(left, top, left, bottom, 0.08, 1.5)}
-      {/* Axis ticks */}
-      {Array.from({ length: 9 }, (_, i) => ln(left + (i / 8) * w, bottom, left + (i / 8) * w, bottom + 4, 0.06, 1))}
-      {/* Bar chart background */}
-      {Array.from({ length: 8 }, (_, i) => {
-        const bx = left + (i / 8) * w + w * 0.02;
-        const bh = (0.3 + Math.sin(i * 1.2) * 0.2) * h;
-        return <rect key={`b${i}`} x={bx} y={bottom - bh} width={w * 0.08} height={bh} fill={N} opacity="0.03" rx="2" />;
+
+      {/* Second smaller chart area (bottom-left of frame, like a mini widget) */}
+      <rect x={il} y={ib - ih * 0.2} width={iw * 0.35} height={ih * 0.18} rx={3} fill="none" stroke={N} strokeWidth="0.8" opacity="0.08" />
+      {/* Mini bars inside */}
+      {Array.from({ length: 5 }, (_, i) => {
+        const mx = il + r * 0.02 + i * iw * 0.06;
+        const mh = ih * 0.08 * (0.4 + Math.sin(i * 1.5) * 0.3);
+        return <rect key={`mb${i}`} x={mx} y={ib - ih * 0.04 - mh} width={iw * 0.04} height={mh} fill={N} opacity="0.08" rx={1} />;
       })}
-      {/* Series 1 — main line */}
-      <polyline points={series1.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="2" opacity="0.25" strokeLinejoin="round" />
-      {/* Series 1 area fill */}
-      <path d={`${series1.map((p, i) => `${i === 0 ? "M" : "L"} ${toXY(p).join(" ")}`).join(" ")} L ${right} ${bottom} L ${left} ${bottom} Z`} fill={N} opacity="0.025" />
-      {/* Series 2 — dashed */}
-      <polyline points={series2.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" strokeDasharray="6 4" strokeLinejoin="round" />
-      {/* Data points */}
-      {series1.map((p, i) => { const [x, y] = toXY(p); return <g key={`d${i}`}>{ring(x, y, 4, 0.1, 1.5)}{dot(x, y, 2, 0.12)}</g>; })}
-      {/* Trend line */}
-      {ln(left, top + h * 0.65, right, top + h * 0.1, 0.04, 1, "8 6")}
-      {/* Mini sparkline top-right */}
-      <polyline points={`${right - r * 0.35},${top + r * 0.15} ${right - r * 0.28},${top + r * 0.1} ${right - r * 0.2},${top + r * 0.13} ${right - r * 0.12},${top + r * 0.05} ${right - r * 0.05},${top + r * 0.02}`}
-        fill="none" stroke={N} strokeWidth="1" opacity="0.20" />
     </>
   );
 }

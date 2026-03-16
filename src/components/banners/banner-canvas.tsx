@@ -10,6 +10,7 @@ import { CaseStudyTemplate } from "./templates/case-study-template";
 const FORMAAT_SIZES: Record<BannerFormaat, { width: number; height: number }> = {
   instagram: { width: 1080, height: 1350 },
   linkedin: { width: 1200, height: 627 },
+  instagram_story: { width: 1080, height: 1920 },
 };
 
 interface BannerCanvasProps {

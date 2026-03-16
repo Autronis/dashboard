@@ -8,8 +8,9 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import type { BannerData, QuoteData, StatData, TipData, CaseStudyData } from "@/types/content";
 
-const BG = "#061217";
-const TEAL = "#23C6B7";
+const BG_DARK = "#0B1A1F";
+const BG_DARKER = "#061217";
+const NEON = "#2DD4A8";
 const WHITE = "#F3F5F7";
 const GRAY = "#8B98A3";
 const FONT = "Inter, sans-serif";
@@ -17,18 +18,25 @@ const FONT = "Inter, sans-serif";
 const FORMAAT_SIZES = {
   instagram: { width: 1080, height: 1350 },
   linkedin: { width: 1200, height: 627 },
+  instagram_story: { width: 1080, height: 1920 },
 } as const;
 
+// ─── Shared OG components ─────────────────────────────────────────────────────
+
 function OgHeader({ scale }: { scale: number }) {
+  const iconSize = Math.round(26 * scale);
   return (
-    <div style={{ position: "absolute", top: Math.round(40 * scale), left: Math.round(48 * scale), display: "flex", alignItems: "center", gap: Math.round(8 * scale) }}>
-      <div style={{ width: Math.round(8 * scale), height: Math.round(8 * scale), borderRadius: "50%", background: TEAL }} />
-      <span style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), fontWeight: 600, color: WHITE }}>Autronis</span>
+    <div style={{ position: "absolute", top: Math.round(40 * scale), left: Math.round(48 * scale), display: "flex", alignItems: "center", gap: Math.round(10 * scale) }}>
+      <svg width={iconSize} height={iconSize} viewBox="0 0 26 26">
+        <rect x="2" y="6" width="14" height="14" rx="2" stroke={NEON} strokeWidth="2" fill="none" transform="rotate(-8 9 13)" />
+        <rect x="10" y="6" width="14" height="14" rx="2" fill={`${NEON}22`} stroke={NEON} strokeWidth="2" transform="rotate(8 17 13)" />
+      </svg>
+      <span style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), fontWeight: 700, color: WHITE, letterSpacing: "0.04em" }}>Autronis</span>
     </div>
   );
 }
 
-function OgFooter({ width, scale }: { width: number; height?: number; scale: number }) {
+function OgFooter({ width, scale }: { width: number; scale: number }) {
   return (
     <div style={{
       position: "absolute",
@@ -40,91 +48,173 @@ function OgFooter({ width, scale }: { width: number; height?: number; scale: num
       fontFamily: FONT,
       fontSize: Math.round(14 * scale),
       color: GRAY,
+      letterSpacing: "0.03em",
     }}>
-      autronis.nl · Brengt structuur in je groei.
+      autronis.nl · Brengt structuur in je groei. · zakelijk@autronis.com
     </div>
   );
 }
 
-function renderQuote(data: QuoteData, variant: number, width: number, height: number): React.ReactElement {
-  const scale = width / 1080;
-  const v = variant % 4;
-  const fontSize = Math.min(Math.round(52 * scale), Math.round(height * 0.08));
-
-  if (v === 1) {
-    return (
-      <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
-        <OgHeader scale={scale} />
-        <OgFooter width={width} height={height} scale={scale} />
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: Math.round(8 * scale), background: `linear-gradient(90deg, transparent, ${TEAL}, transparent)` }} />
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: Math.round(80 * scale),
-          right: Math.round(80 * scale),
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          transform: "translateY(-50%)",
-        }}>
-          <span style={{ fontFamily: FONT, fontSize: Math.round(100 * scale), fontWeight: 900, color: TEAL, lineHeight: "0.8", opacity: 0.6 }}>&ldquo;</span>
-          <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(48 * scale), Math.round(height * 0.075)), fontWeight: 700, color: WHITE, lineHeight: 1.35, margin: 0, textAlign: "center" }}>{data.tekst}</p>
-          {data.auteur ? <p style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: GRAY, margin: `${Math.round(20 * scale)}px 0 0` }}>{data.auteur}</p> : null}
-        </div>
-      </div>
-    );
-  }
-
-  if (v === 2 || v === 3) {
-    return (
-      <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
-        <OgHeader scale={scale} />
-        <OgFooter width={width} height={height} scale={scale} />
-        {v === 3 && (
-          <div style={{ position: "absolute", top: 0, left: 0, width: Math.round(width * 0.08), height, background: `linear-gradient(180deg, ${TEAL}22, ${TEAL}66, ${TEAL}22)` }} />
-        )}
-        <div style={{
-          position: "absolute",
-          top: "50%",
-          left: v === 3 ? Math.round(width * 0.08) + Math.round(60 * scale) : Math.round(80 * scale),
-          right: Math.round(60 * scale),
-          display: "flex",
-          flexDirection: "column",
-          transform: "translateY(-50%)",
-        }}>
-          <p style={{ fontFamily: FONT, fontSize, fontWeight: 700, color: WHITE, lineHeight: 1.35, margin: 0 }}>{data.tekst}</p>
-          {data.auteur ? (
-            <div style={{ display: "flex", alignItems: "center", gap: Math.round(12 * scale), marginTop: Math.round(28 * scale) }}>
-              <div style={{ width: Math.round(32 * scale), height: Math.round(2 * scale), background: TEAL }} />
-              <p style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), color: TEAL, margin: 0, fontWeight: 600 }}>{data.auteur}</p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
-
-  // v === 0
+function OgBackground({ width, height, children }: { width: number; height: number; children: React.ReactNode }) {
   return (
-    <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
-      <OgHeader scale={scale} />
-      <OgFooter width={width} height={height} scale={scale} />
+    <div style={{
+      position: "relative",
+      width,
+      height,
+      background: `linear-gradient(145deg, ${BG_DARK} 0%, ${BG_DARKER} 100%)`,
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+      fontFamily: FONT,
+    }}>
+      {/* Radial glow */}
       <div style={{
         position: "absolute",
         top: "50%",
-        left: Math.round(72 * scale),
-        right: Math.round(72 * scale),
-        display: "flex",
-        gap: Math.round(32 * scale),
-        transform: "translateY(-50%)",
-      }}>
-        <div style={{ width: Math.round(4 * scale), background: TEAL, borderRadius: Math.round(2 * scale), alignSelf: "stretch" }} />
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <p style={{ fontFamily: FONT, fontSize, fontWeight: 700, color: WHITE, lineHeight: 1.3, margin: 0 }}>{data.tekst}</p>
-          {data.auteur ? <p style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: TEAL, marginTop: Math.round(24 * scale), fontWeight: 500 }}>— {data.auteur}</p> : null}
-        </div>
-      </div>
+        left: "50%",
+        width: Math.round(width * 0.7),
+        height: Math.round(height * 0.5),
+        background: "radial-gradient(ellipse at center, rgba(45,212,168,0.07) 0%, transparent 70%)",
+        transform: "translate(-50%, -50%)",
+      }} />
+      {/* Flow lines */}
+      <svg style={{ position: "absolute", top: 0, left: 0 }} width={width} height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <path d={`M0,${height * 0.3} C${width * 0.15},${height * 0.22} ${width * 0.35},${height * 0.38} ${width * 0.55},${height * 0.28} S${width * 0.8},${height * 0.32} ${width},${height * 0.26}`} fill="none" stroke={NEON} strokeWidth="2" opacity="0.07" />
+        <path d={`M0,${height * 0.5} C${width * 0.2},${height * 0.42} ${width * 0.4},${height * 0.58} ${width * 0.6},${height * 0.46} S${width * 0.85},${height * 0.54} ${width},${height * 0.48}`} fill="none" stroke={NEON} strokeWidth="1.5" opacity="0.055" />
+        <path d={`M0,${height * 0.7} C${width * 0.25},${height * 0.62} ${width * 0.45},${height * 0.76} ${width * 0.65},${height * 0.66} S${width * 0.88},${height * 0.72} ${width},${height * 0.68}`} fill="none" stroke={NEON} strokeWidth="1" opacity="0.05" />
+      </svg>
+      {children}
     </div>
+  );
+}
+
+type CapsuleIconType = "cog" | "zap" | "chart" | "link" | "bulb" | "users" | "target";
+
+function OgCapsule({ text, scale, icon }: { text: string; scale: number; icon: CapsuleIconType }) {
+  const iconSize = Math.round(32 * scale);
+  const paddingV = Math.round(18 * scale);
+  const paddingH = Math.round(36 * scale);
+  const gap = Math.round(16 * scale);
+  const sw = "2";
+  const s = iconSize;
+
+  function renderIcon() {
+    if (icon === "cog") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3" stroke={NEON} strokeWidth={sw} />
+        <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke={NEON} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    );
+    if (icon === "zap") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke={NEON} strokeWidth={sw} strokeLinejoin="round" strokeLinecap="round" />
+      </svg>
+    );
+    if (icon === "chart") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="12" width="4" height="9" rx="1" stroke={NEON} strokeWidth={sw} />
+        <rect x="10" y="7" width="4" height="14" rx="1" stroke={NEON} strokeWidth={sw} />
+        <rect x="17" y="3" width="4" height="18" rx="1" stroke={NEON} strokeWidth={sw} />
+      </svg>
+    );
+    if (icon === "link") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" stroke={NEON} strokeWidth={sw} strokeLinecap="round" />
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" stroke={NEON} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    );
+    if (icon === "bulb") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <path d="M9 21h6M12 3a6 6 0 0 1 6 6c0 2.22-1.2 4.16-3 5.2V17H9v-2.8A6 6 0 0 1 6 9a6 6 0 0 1 6-6z" stroke={NEON} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+    if (icon === "users") return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke={NEON} strokeWidth={sw} strokeLinecap="round" />
+        <circle cx="9" cy="7" r="4" stroke={NEON} strokeWidth={sw} />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke={NEON} strokeWidth={sw} strokeLinecap="round" />
+      </svg>
+    );
+    // target
+    return (
+      <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="10" stroke={NEON} strokeWidth={sw} />
+        <circle cx="12" cy="12" r="6" stroke={NEON} strokeWidth={sw} />
+        <circle cx="12" cy="12" r="2" stroke={NEON} strokeWidth={sw} />
+      </svg>
+    );
+  }
+
+  return (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      gap,
+      padding: `${paddingV}px ${paddingH}px`,
+      borderRadius: "999px",
+      border: `${Math.round(2 * scale)}px solid ${NEON}`,
+      background: "rgba(45,212,168,0.08)",
+      boxShadow: `0 0 ${Math.round(20 * scale)}px rgba(45,212,168,0.4), 0 0 ${Math.round(60 * scale)}px rgba(45,212,168,0.15)`,
+    }}>
+      {renderIcon()}
+      <span style={{
+        fontFamily: FONT,
+        fontSize: Math.round(28 * scale),
+        fontWeight: 800,
+        color: NEON,
+        textShadow: `0 0 ${Math.round(10 * scale)}px rgba(45,212,168,0.5)`,
+        letterSpacing: "0.01em",
+        whiteSpace: "nowrap",
+      }}>
+        {text}
+      </span>
+    </div>
+  );
+}
+
+// ─── Template renderers ────────────────────────────────────────────────────────
+
+function renderQuote(data: QuoteData, variant: number, width: number, height: number): React.ReactElement {
+  const scale = width / 1080;
+  const v = variant % 4;
+
+  const serviceConfigs: { capsule: string; icon: CapsuleIconType }[] = [
+    { capsule: "Process Automation", icon: "cog" },
+    { capsule: "AI Integration", icon: "cog" },
+    { capsule: "Data & Dashboards", icon: "chart" },
+    { capsule: "System Integration", icon: "link" },
+  ];
+  const config = serviceConfigs[v];
+
+  return (
+    <OgBackground width={width} height={height}>
+      <OgHeader scale={scale} />
+      <OgFooter width={width} scale={scale} />
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: Math.round(28 * scale),
+        padding: `0 ${Math.round(60 * scale)}px`,
+      }}>
+        <OgCapsule text={config.capsule} scale={scale} icon={config.icon} />
+        {data.tekst ? (
+          <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(34 * scale), Math.round(height * 0.05)), fontWeight: 600, color: WHITE, margin: 0, textAlign: "center", lineHeight: 1.4, opacity: 0.85 }}>
+            {data.tekst}
+          </p>
+        ) : null}
+        {data.auteur ? (
+          <p style={{ fontFamily: FONT, fontSize: Math.round(16 * scale), color: NEON, margin: 0, fontWeight: 500, opacity: 0.8 }}>
+            — {data.auteur}
+          </p>
+        ) : null}
+      </div>
+    </OgBackground>
   );
 }
 
@@ -133,74 +223,88 @@ function renderStat(data: StatData, variant: number, width: number, height: numb
   const v = variant % 3;
   const numSize = Math.min(Math.round(96 * scale), Math.round(height * 0.14));
 
-  if (v === 1) {
-    return (
-      <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
-        <OgHeader scale={scale} />
-        <OgFooter width={width} height={height} scale={scale} />
-        <div style={{ position: "absolute", top: 0, left: 0, width: Math.round(width / 2), height, background: "rgba(255,255,255,0.015)" }} />
-        <div style={{ position: "absolute", top: Math.round(height * 0.28), left: 0, right: 0, display: "flex", justifyContent: "center", fontFamily: FONT, fontSize: Math.round(20 * scale), color: GRAY }}>
-          {data.label}
-        </div>
-        <div style={{ position: "absolute", top: "50%", left: 0, right: 0, display: "flex", transform: "translateY(-50%)" }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: `0 ${Math.round(40 * scale)}px` }}>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(14 * scale), color: GRAY, letterSpacing: "0.12em", marginBottom: Math.round(16 * scale) }}>VOOR</div>
-            <div style={{ fontFamily: FONT, fontSize: numSize, fontWeight: 900, color: GRAY, textDecoration: "line-through" }}>{data.van}</div>
-            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), color: GRAY, marginTop: Math.round(10 * scale) }}>{data.eenheid}</div> : null}
-          </div>
-          <div style={{ width: Math.round(2 * scale), background: TEAL, opacity: 0.3, margin: `${Math.round(40 * scale)}px 0` }} />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: `0 ${Math.round(40 * scale)}px` }}>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(14 * scale), color: TEAL, letterSpacing: "0.12em", marginBottom: Math.round(16 * scale) }}>NA</div>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(numSize * 1.25), fontWeight: 900, color: TEAL }}>{data.naar}</div>
-            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), color: TEAL, marginTop: Math.round(10 * scale) }}>{data.eenheid}</div> : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  let capsuleText: string;
+  if (v === 0) capsuleText = `${data.van} → ${data.naar}${data.eenheid ? ` ${data.eenheid}` : ""}`;
+  else if (v === 1) capsuleText = data.label;
+  else capsuleText = `${data.naar}${data.eenheid ? ` ${data.eenheid}` : ""}`;
+
+  const capsuleIcon: CapsuleIconType = v % 2 === 0 ? "chart" : "zap";
 
   return (
-    <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
+    <OgBackground width={width} height={height}>
       <OgHeader scale={scale} />
-      <OgFooter width={width} height={height} scale={scale} />
-      <div style={{ position: "absolute", top: "50%", left: Math.round(60 * scale), right: Math.round(60 * scale), display: "flex", flexDirection: "column", alignItems: "center", transform: "translateY(-50%)" }}>
-        <p style={{ fontFamily: FONT, fontSize: Math.round(22 * scale), color: GRAY, margin: `0 0 ${Math.round(28 * scale)}px`, letterSpacing: "0.08em" }}>{data.label}</p>
-        <div style={{ display: "flex", alignItems: "center", gap: Math.round(32 * scale) }}>
+      <OgFooter width={width} scale={scale} />
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: Math.round(36 * scale),
+        padding: `0 ${Math.round(60 * scale)}px`,
+      }}>
+        <OgCapsule text={capsuleText} scale={scale} icon={capsuleIcon} />
+        <p style={{ fontFamily: FONT, fontSize: Math.round(22 * scale), fontWeight: 400, color: GRAY, margin: 0, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+          {data.label}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: Math.round(32 * scale) }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontFamily: FONT, fontSize: numSize, fontWeight: 900, color: GRAY }}>{data.van}</div>
-            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: GRAY, marginTop: Math.round(8 * scale) }}>{data.eenheid}</div> : null}
+            <div style={{ fontFamily: FONT, fontSize: numSize, fontWeight: 900, color: GRAY, lineHeight: "1", textDecoration: "line-through", opacity: 0.7 }}>{data.van}</div>
+            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: GRAY, marginTop: Math.round(8 * scale), opacity: 0.7 }}>{data.eenheid}</div> : null}
           </div>
-          <div style={{ fontFamily: FONT, fontSize: Math.round(60 * scale), fontWeight: 700, color: TEAL }}>→</div>
+          <div style={{ fontFamily: FONT, fontSize: Math.round(52 * scale), fontWeight: 700, color: NEON, lineHeight: "1", textShadow: "0 0 15px rgba(45,212,168,0.5)" }}>→</div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(numSize * 1.3), fontWeight: 900, color: TEAL }}>{data.naar}</div>
-            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: TEAL, marginTop: Math.round(8 * scale) }}>{data.eenheid}</div> : null}
+            <div style={{ fontFamily: FONT, fontSize: Math.round(numSize * 1.3), fontWeight: 900, color: NEON, lineHeight: "1", textShadow: "0 0 20px rgba(45,212,168,0.4)" }}>{data.naar}</div>
+            {data.eenheid ? <div style={{ fontFamily: FONT, fontSize: Math.round(20 * scale), color: NEON, marginTop: Math.round(8 * scale), opacity: 0.8 }}>{data.eenheid}</div> : null}
           </div>
         </div>
       </div>
-    </div>
+    </OgBackground>
   );
 }
 
 function renderTip(data: TipData, variant: number, width: number, height: number): React.ReactElement {
   const scale = width / 1080;
-  const itemGap = Math.round(Math.min(height * 0.06, 60 * scale));
+  const capsuleText = variant % 3 === 0 ? "AI Tip" : variant % 3 === 1 ? "Automation Hack" : "Weekly Insight";
+  const capsuleIcon: CapsuleIconType = variant % 2 === 1 ? "zap" : "bulb";
+  const pointGap = Math.round(Math.min(height * 0.045, 48 * scale));
+  const pointFontSize = Math.min(Math.round(24 * scale), Math.round(height * 0.034));
 
   return (
-    <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
+    <OgBackground width={width} height={height}>
       <OgHeader scale={scale} />
-      <OgFooter width={width} height={height} scale={scale} />
-      <div style={{ position: "absolute", top: "50%", left: Math.round(72 * scale), right: Math.round(72 * scale), display: "flex", flexDirection: "column", transform: "translateY(-50%)" }}>
-        <h2 style={{ fontFamily: FONT, fontSize: Math.min(Math.round(42 * scale), Math.round(height * 0.06)), fontWeight: 800, color: WHITE, margin: `0 0 ${Math.round(36 * scale)}px` }}>{data.titel}</h2>
-        {data.punten.map((punt, idx) => (
-          <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: Math.round(20 * scale), marginBottom: idx < 2 ? itemGap : 0 }}>
-            <span style={{ fontFamily: FONT, fontSize: Math.round(32 * scale), fontWeight: 900, color: TEAL, lineHeight: "1", minWidth: Math.round(36 * scale) }}>
-              {variant % 3 === 1 ? "✓" : `${idx + 1}.`}
-            </span>
-            <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(26 * scale), Math.round(height * 0.038)), color: idx === 0 ? WHITE : GRAY, margin: 0, lineHeight: 1.4, fontWeight: idx === 0 ? 600 : 400 }}>{punt}</p>
-          </div>
-        ))}
+      <OgFooter width={width} scale={scale} />
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: Math.round(32 * scale),
+        padding: `0 ${Math.round(72 * scale)}px`,
+      }}>
+        <OgCapsule text={capsuleText} scale={scale} icon={capsuleIcon} />
+        <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(36 * scale), Math.round(height * 0.052)), fontWeight: 700, color: WHITE, margin: 0, textAlign: "center", lineHeight: 1.3 }}>
+          {data.titel}
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: pointGap, width: "100%", maxWidth: Math.round(700 * scale) }}>
+          {data.punten.map((punt, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: Math.round(14 * scale) }}>
+              <div style={{ width: Math.round(8 * scale), height: Math.round(8 * scale), borderRadius: "50%", background: NEON, opacity: idx === 0 ? 0.9 : 0.5, flexShrink: 0, marginTop: Math.round(8 * scale) }} />
+              <p style={{ fontFamily: FONT, fontSize: pointFontSize, color: idx === 0 ? WHITE : GRAY, margin: 0, lineHeight: 1.45, fontWeight: idx === 0 ? 500 : 400, opacity: idx === 0 ? 0.85 : 0.6 }}>
+                {punt}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    </OgBackground>
   );
 }
 
@@ -208,41 +312,53 @@ function renderCaseStudy(data: CaseStudyData, variant: number, width: number, he
   const scale = width / 1080;
   const v = variant % 3;
 
-  if (v === 1) {
-    return (
-      <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
-        <OgHeader scale={scale} />
-        <OgFooter width={width} height={height} scale={scale} />
-        <div style={{ position: "absolute", top: 0, left: 0, width: Math.round(width / 2), height, background: `${TEAL}06` }} />
-        <div style={{ position: "absolute", top: "50%", left: 0, right: 0, display: "flex", transform: "translateY(-50%)" }}>
-          <div style={{ flex: 1, padding: `0 ${Math.round(48 * scale)}px`, display: "flex", flexDirection: "column", borderRight: `2px solid ${TEAL}33` }}>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(13 * scale), color: GRAY, letterSpacing: "0.1em", marginBottom: Math.round(12 * scale) }}>KLANT</div>
-            <h2 style={{ fontFamily: FONT, fontSize: Math.min(Math.round(52 * scale), Math.round(height * 0.09)), fontWeight: 900, color: WHITE, margin: 0 }}>{data.klantNaam}</h2>
-          </div>
-          <div style={{ flex: 1, padding: `0 ${Math.round(48 * scale)}px`, display: "flex", flexDirection: "column" }}>
-            <div style={{ fontFamily: FONT, fontSize: Math.round(13 * scale), color: TEAL, letterSpacing: "0.1em", marginBottom: Math.round(12 * scale), fontWeight: 600 }}>RESULTAAT</div>
-            <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(30 * scale), Math.round(height * 0.044)), color: TEAL, margin: 0, fontWeight: 700, lineHeight: 1.35 }}>{data.resultaat}</p>
-            {data.beschrijving ? <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(18 * scale), Math.round(height * 0.027)), color: GRAY, margin: `${Math.round(16 * scale)}px 0 0`, lineHeight: 1.5 }}>{data.beschrijving}</p> : null}
-          </div>
-        </div>
-      </div>
-    );
-  }
+  let capsuleText: string;
+  if (v === 0) capsuleText = `${data.klantNaam} Case Study`;
+  else if (v === 1) capsuleText = "Client Results";
+  else capsuleText = data.klantNaam;
+
+  const capsuleIcon: CapsuleIconType = v % 2 === 0 ? "users" : "target";
+  const resultFontSize = Math.min(Math.round(34 * scale), Math.round(height * 0.05));
+  const descFontSize = Math.min(Math.round(20 * scale), Math.round(height * 0.03));
 
   return (
-    <div style={{ position: "relative", width, height, background: BG, display: "flex", flexDirection: "column" }}>
+    <OgBackground width={width} height={height}>
       <OgHeader scale={scale} />
-      <OgFooter width={width} height={height} scale={scale} />
-      <div style={{ position: "absolute", top: "50%", left: Math.round(72 * scale), right: Math.round(72 * scale), display: "flex", flexDirection: "column", transform: "translateY(-50%)" }}>
-        <div style={{ fontFamily: FONT, fontSize: Math.round(14 * scale), color: TEAL, letterSpacing: "0.14em", marginBottom: Math.round(16 * scale), fontWeight: 600 }}>CASE STUDY</div>
-        <h2 style={{ fontFamily: FONT, fontSize: Math.min(Math.round(64 * scale), Math.round(height * 0.1)), fontWeight: 900, color: WHITE, margin: `0 0 ${Math.round(20 * scale)}px` }}>{data.klantNaam}</h2>
-        <div style={{ width: Math.round(60 * scale), height: Math.round(3 * scale), background: TEAL, marginBottom: Math.round(24 * scale) }} />
-        <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(32 * scale), Math.round(height * 0.048)), color: TEAL, margin: 0, fontWeight: 700, lineHeight: 1.3 }}>{data.resultaat}</p>
-        {data.beschrijving ? <p style={{ fontFamily: FONT, fontSize: Math.min(Math.round(20 * scale), Math.round(height * 0.03)), color: GRAY, margin: `${Math.round(20 * scale)}px 0 0`, lineHeight: 1.5 }}>{data.beschrijving}</p> : null}
+      <OgFooter width={width} scale={scale} />
+      <div style={{
+        position: "absolute",
+        top: "50%",
+        left: 0,
+        right: 0,
+        transform: "translateY(-50%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: Math.round(30 * scale),
+        padding: `0 ${Math.round(72 * scale)}px`,
+      }}>
+        <OgCapsule text={capsuleText} scale={scale} icon={capsuleIcon} />
+        <p style={{ fontFamily: FONT, fontSize: resultFontSize, fontWeight: 700, color: NEON, margin: 0, textAlign: "center", lineHeight: 1.35, textShadow: "0 0 20px rgba(45,212,168,0.25)" }}>
+          {data.resultaat}
+        </p>
+        {data.beschrijving ? (
+          <p style={{ fontFamily: FONT, fontSize: descFontSize, fontWeight: 400, color: GRAY, margin: 0, textAlign: "center", lineHeight: 1.55, opacity: 0.75, maxWidth: Math.round(720 * scale) }}>
+            {data.beschrijving}
+          </p>
+        ) : null}
+        {v === 1 ? (
+          <p style={{ fontFamily: FONT, fontSize: Math.round(18 * scale), fontWeight: 600, color: WHITE, margin: 0, opacity: 0.7, letterSpacing: "0.05em" }}>
+            {data.klantNaam}
+          </p>
+        ) : (
+          <div style={{ width: Math.round(60 * scale), height: Math.round(2 * scale), background: NEON, opacity: 0.4, borderRadius: Math.round(2 * scale) }} />
+        )}
       </div>
-    </div>
+    </OgBackground>
   );
 }
+
+// ─── POST handler ─────────────────────────────────────────────────────────────
 
 export async function POST(
   _req: NextRequest,
@@ -269,7 +385,7 @@ export async function POST(
     }
 
     const data = JSON.parse(banner.data) as BannerData;
-    const formaat = banner.formaat as "instagram" | "linkedin";
+    const formaat = banner.formaat as "instagram" | "linkedin" | "instagram_story";
     const { width, height } = FORMAAT_SIZES[formaat];
     const variant = banner.templateVariant ?? 0;
 

@@ -91,7 +91,7 @@ export interface ContentPost {
 // ============ BANNER TYPES ============
 
 export type BannerTemplateType = "quote" | "stat" | "tip" | "case_study";
-export type BannerFormaat = "instagram" | "linkedin";
+export type BannerFormaat = "instagram" | "linkedin" | "instagram_story";
 export type BannerStatus = "concept" | "klaar" | "fout";
 
 export const BANNER_TEMPLATE_LABELS: Record<BannerTemplateType, string> = {
@@ -104,6 +104,7 @@ export const BANNER_TEMPLATE_LABELS: Record<BannerTemplateType, string> = {
 export const BANNER_FORMAAT_SIZES: Record<BannerFormaat, { width: number; height: number; label: string }> = {
   instagram: { width: 1080, height: 1350, label: "Instagram (4:5)" },
   linkedin: { width: 1200, height: 627, label: "LinkedIn (1200x627)" },
+  instagram_story: { width: 1080, height: 1920, label: "Instagram Story (9:16)" },
 };
 
 export interface QuoteData {

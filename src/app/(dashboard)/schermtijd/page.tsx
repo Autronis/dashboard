@@ -36,9 +36,11 @@ import {
   useScreenTimeSuggestieMutatie,
   useCategoriseer,
   useSessies,
+  useWeekSessies,
   useSamenvatting,
   useGenereerSamenvatting,
 } from "@/hooks/queries/use-screen-time";
+import type { WeekDagData } from "@/hooks/queries/use-screen-time";
 import { useGebruikers } from "@/hooks/queries/use-doelen";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -47,6 +49,7 @@ import type {
   ScreenTimeRegel,
   ScreenTimeSuggestie,
   ScreenTimeCategorie,
+  ScreenTimeSessie,
 } from "@/types";
 
 // ============ CONSTANTS ============
@@ -182,11 +185,378 @@ function gisterenDatum(): string {
 
 // ============ TAB: OVERZICHT ============
 
+type OverzichtView = "dag" | "week";
+
+const DAY_START = 7; // 07:00
+const DAY_END = 23; // 23:00
+const TOTAL_HOURS = DAY_END - DAY_START;
+const HOUR_LABELS = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => i + DAY_START);
+
+function getTimePosition(timeStr: string): number {
+  const d = new Date(timeStr);
+  const hours = d.getHours() + d.getMinutes() / 60;
+  return Math.max(0, Math.min(100, ((hours - DAY_START) / TOTAL_HOURS) * 100));
+}
+
+function getBlockHeight(duurSeconden: number): number {
+  return Math.max(0.8, (duurSeconden / 3600 / TOTAL_HOURS) * 100);
+}
+
+function getCurrentTimePosition(): number | null {
+  const now = new Date();
+  const hours = now.getHours() + now.getMinutes() / 60;
+  if (hours < DAY_START || hours > DAY_END) return null;
+  return ((hours - DAY_START) / TOTAL_HOURS) * 100;
+}
+
+function isToday(dateStr: string): boolean {
+  return dateStr === new Date().toISOString().split("T")[0];
+}
+
+function getWeekStart(datum: string): string {
+  const d = new Date(datum);
+  const day = d.getDay();
+  const maandag = d.getDate() - ((day + 6) % 7);
+  const start = new Date(d.getFullYear(), d.getMonth(), maandag);
+  return start.toISOString().split("T")[0];
+}
+
+interface SessieDetail {
+  app: string;
+  categorie: string;
+  projectNaam: string | null;
+  klantNaam: string | null;
+  startTijd: string;
+  eindTijd: string;
+  duurSeconden: number;
+  venstertitels: string[];
+  isIdle: boolean;
+}
+
+function SessieDetailPanel({
+  sessie,
+  onClose,
+}: {
+  sessie: SessieDetail;
+  onClose: () => void;
+}) {
+  const bestanden = parseBestandenUitTitels(sessie.venstertitels);
+  const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
+
+  return (
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-4 animate-in slide-in-from-right-2 duration-200">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: `${kleur}20` }}
+          >
+            <AppWindow className="w-5 h-5" style={{ color: kleur }} />
+          </div>
+          <div>
+            <p className="text-base font-semibold text-autronis-text-primary">{sessie.app}</p>
+            <CategorieBadge categorie={sessie.categorie} />
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {(sessie.projectNaam || sessie.klantNaam) && (
+        <div className="flex items-center gap-2 text-sm">
+          {sessie.projectNaam && (
+            <span className="text-autronis-accent font-medium">{sessie.projectNaam}</span>
+          )}
+          {sessie.klantNaam && (
+            <span className="text-autronis-text-secondary">
+              {sessie.projectNaam ? `(${sessie.klantNaam})` : sessie.klantNaam}
+            </span>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-autronis-bg rounded-xl p-3">
+          <p className="text-xs text-autronis-text-secondary mb-1">Tijdspan</p>
+          <p className="text-sm font-medium text-autronis-text-primary tabular-nums">
+            {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
+          </p>
+        </div>
+        <div className="bg-autronis-bg rounded-xl p-3">
+          <p className="text-xs text-autronis-text-secondary mb-1">Duur</p>
+          <p className="text-sm font-medium text-autronis-text-primary tabular-nums">
+            {formatTijd(sessie.duurSeconden)}
+          </p>
+        </div>
+      </div>
+
+      {bestanden.length > 0 && (
+        <div>
+          <p className="text-xs text-autronis-text-secondary mb-2 uppercase tracking-wide">Bestanden / pagina&apos;s</p>
+          <div className="space-y-1 max-h-32 overflow-y-auto">
+            {bestanden.slice(0, 10).map((b, i) => (
+              <p key={i} className="text-xs text-autronis-text-primary truncate px-2 py-1 bg-autronis-bg rounded-lg">
+                {b}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DagTimeline({
+  sessies,
+  datum,
+  selectedSessie,
+  onSelect,
+}: {
+  sessies: ScreenTimeSessie[];
+  datum: string;
+  selectedSessie: number | null;
+  onSelect: (idx: number | null) => void;
+}) {
+  const vandaag = isToday(datum);
+  const currentPos = vandaag ? getCurrentTimePosition() : null;
+
+  return (
+    <div className="relative flex" style={{ minHeight: `${TOTAL_HOURS * 56}px` }}>
+      {/* Hour gutter */}
+      <div className="w-12 shrink-0 relative">
+        {HOUR_LABELS.map((hour) => {
+          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+          return (
+            <div
+              key={hour}
+              className="absolute right-3 -translate-y-1/2 text-xs text-autronis-text-secondary tabular-nums select-none"
+              style={{ top: `${top}%` }}
+            >
+              {String(hour).padStart(2, "0")}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Timeline area */}
+      <div className="flex-1 relative border-l border-autronis-border/40">
+        {/* Hour lines */}
+        {HOUR_LABELS.map((hour) => {
+          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+          return (
+            <div
+              key={hour}
+              className="absolute left-0 right-0 border-t border-autronis-border/20"
+              style={{ top: `${top}%` }}
+            />
+          );
+        })}
+
+        {/* Session blocks */}
+        {sessies.map((sessie, idx) => {
+          const top = getTimePosition(sessie.startTijd);
+          const height = getBlockHeight(sessie.duurSeconden);
+          const kleur = sessie.isIdle
+            ? CATEGORIE_KLEUREN.inactief
+            : (CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280");
+          const isSelected = selectedSessie === idx;
+
+          return (
+            <button
+              key={idx}
+              onClick={() => onSelect(isSelected ? null : idx)}
+              className={cn(
+                "absolute left-2 right-2 rounded-lg overflow-hidden text-left transition-all duration-150 cursor-pointer",
+                sessie.isIdle
+                  ? "border border-dashed border-gray-600/50"
+                  : "hover:brightness-110 hover:scale-[1.01]",
+                isSelected && "ring-2 ring-autronis-accent ring-offset-1 ring-offset-autronis-bg"
+              )}
+              style={{
+                top: `${top}%`,
+                height: `${Math.max(height, 1.5)}%`,
+                backgroundColor: sessie.isIdle ? `${kleur}15` : `${kleur}CC`,
+                minHeight: "24px",
+              }}
+            >
+              <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden">
+                {sessie.isIdle ? (
+                  <span className="text-xs text-gray-500 truncate">
+                    Inactief ({formatTijd(sessie.duurSeconden)})
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xs font-medium text-white truncate leading-tight">
+                      {sessie.app}
+                      {sessie.projectNaam && (
+                        <span className="font-normal opacity-80"> - {sessie.projectNaam}</span>
+                      )}
+                    </span>
+                    {height > 3 && (
+                      <span className="text-[10px] text-white/70 truncate leading-tight">
+                        {CATEGORIE_LABELS[sessie.categorie] ?? sessie.categorie} &middot; {formatTijd(sessie.duurSeconden)}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            </button>
+          );
+        })}
+
+        {/* Current time indicator */}
+        {currentPos !== null && (
+          <div
+            className="absolute left-0 right-0 z-10 pointer-events-none"
+            style={{ top: `${currentPos}%` }}
+          >
+            <div className="relative flex items-center">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-[5px] shadow-lg shadow-red-500/30" />
+              <div className="flex-1 h-[2px] bg-red-500 shadow-lg shadow-red-500/20" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function WeekTimeline({
+  weekData,
+  onSelectSessie,
+}: {
+  weekData: WeekDagData[];
+  onSelectSessie: (sessie: ScreenTimeSessie) => void;
+}) {
+  const DAG_NAMEN = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+
+  return (
+    <div className="relative flex" style={{ minHeight: `${TOTAL_HOURS * 56}px` }}>
+      {/* Hour gutter */}
+      <div className="w-10 shrink-0 relative">
+        {HOUR_LABELS.map((hour) => {
+          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+          return (
+            <div
+              key={hour}
+              className="absolute right-2 -translate-y-1/2 text-[10px] text-autronis-text-secondary tabular-nums select-none"
+              style={{ top: `${top}%` }}
+            >
+              {String(hour).padStart(2, "0")}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 7 day columns */}
+      <div className="flex-1 grid grid-cols-7">
+        {weekData.map((dag, dagIdx) => {
+          const dagDate = new Date(dag.datum);
+          const dagNr = dagDate.getDate();
+          const vandaag = isToday(dag.datum);
+          const currentPos = vandaag ? getCurrentTimePosition() : null;
+
+          return (
+            <div
+              key={dag.datum}
+              className={cn(
+                "relative border-l border-autronis-border/20",
+                dagIdx === 0 && "border-l-autronis-border/40"
+              )}
+            >
+              {/* Day header */}
+              <div className={cn(
+                "sticky top-0 z-10 text-center py-1.5 text-xs border-b border-autronis-border/20 bg-autronis-card/95 backdrop-blur-sm",
+                vandaag ? "text-autronis-accent font-semibold" : "text-autronis-text-secondary"
+              )}>
+                {DAG_NAMEN[dagIdx]} {dagNr}
+              </div>
+
+              {/* Hour lines */}
+              {HOUR_LABELS.map((hour) => {
+                const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+                return (
+                  <div
+                    key={hour}
+                    className="absolute left-0 right-0 border-t border-autronis-border/10"
+                    style={{ top: `${top}%` }}
+                  />
+                );
+              })}
+
+              {/* Session blocks */}
+              {dag.sessies.map((sessie, sIdx) => {
+                const top = getTimePosition(sessie.startTijd);
+                const height = getBlockHeight(sessie.duurSeconden);
+                const kleur = sessie.isIdle
+                  ? CATEGORIE_KLEUREN.inactief
+                  : (CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280");
+
+                return (
+                  <div
+                    key={sIdx}
+                    onClick={() => onSelectSessie(sessie)}
+                    className={cn(
+                      "absolute left-[2px] right-[2px] rounded cursor-pointer group",
+                      sessie.isIdle
+                        ? "border border-dashed border-gray-600/30"
+                        : "hover:brightness-125"
+                    )}
+                    style={{
+                      top: `${top}%`,
+                      height: `${Math.max(height, 0.8)}%`,
+                      backgroundColor: sessie.isIdle ? `${kleur}10` : `${kleur}BB`,
+                      minHeight: "4px",
+                    }}
+                  >
+                    {/* Hover tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 pointer-events-none">
+                      <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-xl whitespace-nowrap text-xs">
+                        <p className="text-autronis-text-primary font-medium">{sessie.app}</p>
+                        {sessie.projectNaam && (
+                          <p className="text-autronis-accent text-[10px]">{sessie.projectNaam}</p>
+                        )}
+                        <p className="text-autronis-text-secondary tabular-nums text-[10px]">
+                          {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)} &middot; {formatTijd(sessie.duurSeconden)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Current time */}
+              {currentPos !== null && (
+                <div
+                  className="absolute left-0 right-0 z-10 pointer-events-none"
+                  style={{ top: `${currentPos}%` }}
+                >
+                  <div className="h-[2px] bg-red-500 shadow-sm shadow-red-500/30" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function TabOverzicht({ datum }: { datum: string }) {
+  const [view, setView] = useState<OverzichtView>("dag");
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [weekSelectedSessie, setWeekSelectedSessie] = useState<ScreenTimeSessie | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const weekStart = useMemo(() => getWeekStart(datum), [datum]);
   const { data: sessiesData, isLoading: sessiesLoading } = useSessies(datum);
+  const { data: weekData, isLoading: weekLoading } = useWeekSessies(weekStart);
   const { data: samenvatting, isLoading: samenvattingLoading } = useSamenvatting(datum);
   const genereer = useGenereerSamenvatting();
-  const [detailOpen, setDetailOpen] = useState(false);
 
   // Lazy auto-generation for yesterday's summary
   useEffect(() => {
@@ -203,347 +573,205 @@ function TabOverzicht({ datum }: { datum: string }) {
           genereer.mutate(gisteren);
         }
       })
-      .catch(() => {
-        // Negeer fouten bij auto-generatie
-      });
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sessies = sessiesData?.sessies ?? [];
   const stats = sessiesData?.stats;
+  const selectedSessie = selectedIdx !== null ? sessies[selectedIdx] ?? null : null;
 
-  // Top apps computed from sessions
-  const topApps = useMemo(() => {
-    const perApp: Record<string, number> = {};
-    for (const s of sessies) {
-      if (s.isIdle) continue;
-      perApp[s.app] = (perApp[s.app] ?? 0) + s.duurSeconden;
-    }
-    return Object.entries(perApp)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([app, sec]) => ({ app, seconden: sec }));
-  }, [sessies]);
+  // Reset selection when datum changes
+  useEffect(() => {
+    setSelectedIdx(null);
+    setWeekSelectedSessie(null);
+  }, [datum, view]);
 
-  // Timeline calculations
-  const tijdlijn = useMemo(() => {
-    if (!sessies.length) return null;
-    const eerste = new Date(sessies[0].startTijd).getTime();
-    const laatste = new Date(sessies[sessies.length - 1].eindTijd).getTime();
-    const totaalSpan = laatste - eerste;
-    if (totaalSpan <= 0) return null;
-    return { eerste, laatste, totaalSpan };
-  }, [sessies]);
+  const isLoading = view === "dag" ? sessiesLoading : weekLoading;
 
-  if (sessiesLoading) {
+  if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-24 rounded-2xl" />
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-          <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-28 rounded-2xl" />
-        </div>
-        <Skeleton className="h-48 rounded-2xl" />
-        <Skeleton className="h-16 rounded-2xl" />
-        <Skeleton className="h-64 rounded-2xl" />
+      <div className="space-y-4">
+        <Skeleton className="h-14 rounded-2xl" />
+        <Skeleton className="h-10 rounded-xl" />
+        <Skeleton className="h-[600px] rounded-2xl" />
       </div>
     );
   }
 
-  const maxApp = Math.max(...topApps.map((a) => a.seconden), 1);
+  const activeSessieDetail = view === "dag" ? selectedSessie : weekSelectedSessie;
 
   return (
-    <div className="space-y-6">
-      {/* 1. Dagsamenvatting */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-yellow-400 shrink-0" />
-              <h2 className="text-base font-semibold text-autronis-text-primary">
-                Dagsamenvatting
-              </h2>
-            </div>
-            {samenvattingLoading ? (
-              <Skeleton className="h-5 w-3/4 rounded" />
-            ) : samenvatting?.samenvattingKort ? (
-              <p className="text-sm text-autronis-text-secondary leading-relaxed">
-                {samenvatting.samenvattingKort}
-              </p>
-            ) : (
-              <p className="text-sm text-autronis-text-secondary opacity-60">
-                Nog geen samenvatting voor deze dag.
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {samenvatting?.samenvattingDetail && (
-              <button
-                onClick={() => setDetailOpen(!detailOpen)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-bg rounded-lg transition-colors"
-              >
-                {detailOpen ? "Minder" : "Meer details"}
-                {detailOpen ? (
-                  <ChevronUp className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                )}
-              </button>
-            )}
+    <div className="space-y-4">
+      {/* 1. View toggle + AI Samenvatting row */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* View toggle */}
+        <div className="flex bg-autronis-card border border-autronis-border rounded-xl p-1">
+          {(["dag", "week"] as OverzichtView[]).map((v) => (
             <button
-              onClick={() => genereer.mutate(datum)}
-              disabled={genereer.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50"
-            >
-              {genereer.isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="w-3.5 h-3.5" />
+              key={v}
+              onClick={() => setView(v)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
+                view === v
+                  ? "bg-autronis-accent text-autronis-bg"
+                  : "text-autronis-text-secondary hover:text-autronis-text-primary"
               )}
-              {samenvatting ? "Opnieuw" : "Genereren"}
+            >
+              {v}
             </button>
+          ))}
+        </div>
+
+        {/* Compact AI summary */}
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+          {samenvattingLoading ? (
+            <Skeleton className="h-4 w-48 rounded" />
+          ) : samenvatting?.samenvattingKort ? (
+            <p className="text-xs text-autronis-text-secondary truncate">
+              {samenvatting.samenvattingKort}
+            </p>
+          ) : (
+            <p className="text-xs text-autronis-text-secondary opacity-50">Geen samenvatting</p>
+          )}
+          {samenvatting?.samenvattingDetail && (
+            <button
+              onClick={() => setDetailOpen(!detailOpen)}
+              className="text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary shrink-0 transition-colors"
+            >
+              {detailOpen ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )}
+        </div>
+
+        <button
+          onClick={() => genereer.mutate(datum)}
+          disabled={genereer.isPending}
+          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50 shrink-0"
+        >
+          {genereer.isPending ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : (
+            <RefreshCw className="w-3 h-3" />
+          )}
+          {samenvatting ? "Opnieuw" : "Genereer"}
+        </button>
+      </div>
+
+      {/* Expandable detail */}
+      {detailOpen && samenvatting?.samenvattingDetail && (
+        <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
+          <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+            {samenvatting.samenvattingDetail}
+          </p>
+        </div>
+      )}
+
+      {/* 2. Compact KPI row */}
+      {stats && (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+            <Clock className="w-3.5 h-3.5 text-autronis-accent" />
+            <span className="text-sm font-semibold text-autronis-accent tabular-nums">{formatTijd(stats.totaalActief)}</span>
+            <span className="text-[10px] text-autronis-text-secondary uppercase">Actief</span>
+          </div>
+          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+            <Pause className="w-3.5 h-3.5 text-gray-400" />
+            <span className="text-sm font-semibold text-gray-400 tabular-nums">{formatTijd(stats.totaalIdle)}</span>
+            <span className="text-[10px] text-autronis-text-secondary uppercase">Idle</span>
+          </div>
+          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+            <span className="text-sm font-semibold text-green-400 tabular-nums">{stats.productiefPercentage}%</span>
+            <span className="text-[10px] text-autronis-text-secondary uppercase">Productief</span>
+          </div>
+          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+            <Hash className="w-3.5 h-3.5 text-blue-400" />
+            <span className="text-sm font-semibold text-blue-400 tabular-nums">{stats.aantalSessies}</span>
+            <span className="text-[10px] text-autronis-text-secondary uppercase">Sessies</span>
           </div>
         </div>
-        {detailOpen && samenvatting?.samenvattingDetail && (
-          <div className="mt-4 pt-4 border-t border-autronis-border">
-            <div className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
-              {samenvatting.samenvattingDetail}
-            </div>
+      )}
+
+      {/* 3. Calendar Timeline + Detail panel */}
+      <div className="flex gap-4">
+        {/* Main timeline */}
+        <div className="flex-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 overflow-hidden">
+          {view === "dag" ? (
+            sessies.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Monitor className="w-12 h-12 text-autronis-text-secondary opacity-30 mb-4" />
+                <p className="text-autronis-text-secondary text-sm">Geen data voor deze dag</p>
+              </div>
+            ) : (
+              <DagTimeline
+                sessies={sessies}
+                datum={datum}
+                selectedSessie={selectedIdx}
+                onSelect={setSelectedIdx}
+              />
+            )
+          ) : (
+            weekData && weekData.length > 0 ? (
+              <WeekTimeline
+                weekData={weekData}
+                onSelectSessie={setWeekSelectedSessie}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Monitor className="w-12 h-12 text-autronis-text-secondary opacity-30 mb-4" />
+                <p className="text-autronis-text-secondary text-sm">Geen data voor deze week</p>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* Detail panel */}
+        {activeSessieDetail && (
+          <div className="w-72 shrink-0 hidden lg:block">
+            <SessieDetailPanel
+              sessie={activeSessieDetail}
+              onClose={() => {
+                setSelectedIdx(null);
+                setWeekSelectedSessie(null);
+              }}
+            />
           </div>
         )}
       </div>
 
-      {/* 2. KPI cards */}
-      {stats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="p-2.5 bg-autronis-accent/10 rounded-xl w-fit mb-3">
-              <Clock className="w-5 h-5 text-autronis-accent" />
-            </div>
-            <p className="text-2xl font-bold text-autronis-accent tabular-nums">
-              {formatTijd(stats.totaalActief)}
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Actieve tijd
-            </p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="p-2.5 bg-gray-500/10 rounded-xl w-fit mb-3">
-              <Pause className="w-5 h-5 text-gray-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-400 tabular-nums">
-              {formatTijd(stats.totaalIdle)}
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Idle tijd
-            </p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="p-2.5 bg-green-500/10 rounded-xl w-fit mb-3">
-              <TrendingUp className="w-5 h-5 text-green-400" />
-            </div>
-            <p className="text-2xl font-bold text-green-400 tabular-nums">
-              {stats.productiefPercentage}%
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Productief
-            </p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl w-fit mb-3">
-              <Hash className="w-5 h-5 text-blue-400" />
-            </div>
-            <p className="text-2xl font-bold text-blue-400 tabular-nums">
-              {stats.aantalSessies}
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Sessies
-            </p>
-          </div>
+      {/* Mobile detail (bottom sheet style) */}
+      {activeSessieDetail && (
+        <div className="lg:hidden">
+          <SessieDetailPanel
+            sessie={activeSessieDetail}
+            onClose={() => {
+              setSelectedIdx(null);
+              setWeekSelectedSessie(null);
+            }}
+          />
         </div>
       )}
 
-      {/* 3. Sessie-kaarten */}
-      {sessies.length === 0 ? (
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
-          <Monitor className="w-12 h-12 text-autronis-text-secondary mx-auto mb-4 opacity-40" />
-          <p className="text-autronis-text-secondary text-lg">
-            Geen schermtijd data voor deze dag
-          </p>
-          <p className="text-autronis-text-secondary text-sm mt-1 opacity-60">
-            De screen time agent stuurt automatisch data als deze actief is.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {sessies.map((sessie, idx) => {
-            if (sessie.isIdle) {
-              return (
-                <div
-                  key={idx}
-                  className="bg-autronis-card/50 border border-autronis-border/50 rounded-xl px-4 py-2.5 flex items-center gap-3"
-                >
-                  <div
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: CATEGORIE_KLEUREN.inactief }}
-                  />
-                  <span className="text-sm text-autronis-text-secondary">
-                    Inactief
-                  </span>
-                  <span className="text-xs text-autronis-text-secondary/60 tabular-nums">
-                    {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
-                  </span>
-                  <span className="text-xs text-autronis-text-secondary tabular-nums ml-auto">
-                    {formatTijd(sessie.duurSeconden)}
-                  </span>
-                </div>
-              );
-            }
-
-            const bestanden = parseBestandenUitTitels(sessie.venstertitels);
-            const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
-
-            return (
-              <div
-                key={idx}
-                className="bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/20 transition-colors"
-                style={{ borderLeftColor: kleur, borderLeftWidth: 3 }}
-              >
-                {/* Row 1: Time range, category badge, duration */}
-                <div className="flex items-center gap-3 mb-1.5">
-                  <span className="text-sm text-autronis-text-primary tabular-nums font-medium">
-                    {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
-                  </span>
-                  <CategorieBadge categorie={sessie.categorie} />
-                  <span className="text-sm text-autronis-text-secondary tabular-nums ml-auto">
-                    {formatTijd(sessie.duurSeconden)}
-                  </span>
-                </div>
-                {/* Row 2: App + project */}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-autronis-text-primary">{sessie.app}</span>
-                  {sessie.projectNaam && (
-                    <>
-                      <span className="text-autronis-text-secondary">&mdash;</span>
-                      <span className="text-autronis-accent">{sessie.projectNaam}</span>
-                    </>
-                  )}
-                  {sessie.klantNaam && !sessie.projectNaam && (
-                    <>
-                      <span className="text-autronis-text-secondary">&mdash;</span>
-                      <span className="text-autronis-text-secondary">{sessie.klantNaam}</span>
-                    </>
-                  )}
-                </div>
-                {/* Row 3: Files/pages */}
-                {bestanden.length > 0 && (
-                  <p className="text-xs text-autronis-text-secondary/70 mt-1 truncate">
-                    {bestanden.slice(0, 5).join(", ")}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 4. Tijdlijn */}
-      {tijdlijn && sessies.length > 0 && (
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Tijdlijn</h2>
-          <div className="flex items-center gap-1 text-xs text-autronis-text-secondary mb-2">
-            <span className="tabular-nums">
-              {formatTijdRange(sessies[0].startTijd)}
-            </span>
-            <span className="flex-1" />
-            <span className="tabular-nums">
-              {formatTijdRange(sessies[sessies.length - 1].eindTijd)}
+      {/* 4. Category legend */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
+        {Object.entries(CATEGORIE_KLEUREN).map(([cat, kleur]) => (
+          <div key={cat} className="flex items-center gap-1.5">
+            <div
+              className="w-2.5 h-2.5 rounded-full"
+              style={{ backgroundColor: kleur, opacity: cat === "inactief" ? 0.5 : 0.85 }}
+            />
+            <span className="text-[11px] text-autronis-text-secondary">
+              {CATEGORIE_LABELS[cat]}
             </span>
           </div>
-          <div className="flex w-full h-8 rounded-lg overflow-hidden bg-autronis-bg">
-            {sessies.map((sessie, idx) => {
-              const start = new Date(sessie.startTijd).getTime();
-              const eind = new Date(sessie.eindTijd).getTime();
-              const duur = eind - start;
-              const breedte = (duur / tijdlijn.totaalSpan) * 100;
-              const offset = ((start - tijdlijn.eerste) / tijdlijn.totaalSpan) * 100;
-              const kleur = sessie.isIdle
-                ? CATEGORIE_KLEUREN.inactief
-                : (CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280");
-
-              return (
-                <div
-                  key={idx}
-                  className="h-full relative group"
-                  style={{
-                    width: `${Math.max(breedte, 0.3)}%`,
-                    marginLeft: idx === 0 ? `${offset}%` : undefined,
-                    backgroundColor: kleur,
-                    opacity: sessie.isIdle ? 0.5 : 0.85,
-                  }}
-                >
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                    <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap text-xs">
-                      <p className="text-autronis-text-primary font-medium">{sessie.app}</p>
-                      {sessie.projectNaam && (
-                        <p className="text-autronis-accent">{sessie.projectNaam}</p>
-                      )}
-                      <p className="text-autronis-text-secondary tabular-nums">
-                        {formatTijd(sessie.duurSeconden)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {/* Legend */}
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
-            {Object.entries(CATEGORIE_KLEUREN).map(([cat, kleur]) => (
-              <div key={cat} className="flex items-center gap-1.5">
-                <div
-                  className="w-2.5 h-2.5 rounded-sm"
-                  style={{ backgroundColor: kleur, opacity: cat === "inactief" ? 0.5 : 0.85 }}
-                />
-                <span className="text-xs text-autronis-text-secondary">
-                  {CATEGORIE_LABELS[cat]}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* 5. Top Apps */}
-      {topApps.length > 0 && (
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-          <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Top apps</h2>
-          <div className="space-y-3">
-            {topApps.map((a, i) => (
-              <div key={a.app} className="flex items-center gap-4">
-                <span className="text-xs text-autronis-text-secondary w-5 text-right tabular-nums shrink-0">
-                  {i + 1}
-                </span>
-                <span className="text-sm text-autronis-text-primary w-40 truncate shrink-0">
-                  {a.app}
-                </span>
-                <div className="flex-1 h-4 bg-autronis-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-autronis-accent/50 transition-all duration-500"
-                    style={{ width: `${(a.seconden / maxApp) * 100}%` }}
-                  />
-                </div>
-                <span className="text-sm text-autronis-text-secondary tabular-nums w-20 text-right shrink-0">
-                  {formatTijd(a.seconden)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

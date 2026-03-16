@@ -208,6 +208,38 @@ export function useSessies(datum: string, gebruikerId?: number) {
   });
 }
 
+// ============ WEEK SESSIES ============
+
+export interface WeekDagData {
+  datum: string;
+  sessies: ScreenTimeSessie[];
+  stats: SessiesData["stats"] | null;
+}
+
+export function useWeekSessies(startDatum: string) {
+  const dagen = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(startDatum);
+    d.setDate(d.getDate() + i);
+    return d.toISOString().split("T")[0];
+  });
+
+  return useQuery({
+    queryKey: ["screen-time-week-sessies", startDatum],
+    queryFn: async (): Promise<WeekDagData[]> => {
+      const results = await Promise.all(
+        dagen.map(async (datum) => {
+          const res = await fetch(`/api/screen-time/sessies?datum=${datum}`);
+          if (!res.ok) return { datum, sessies: [], stats: null };
+          const data: SessiesData = await res.json();
+          return { datum, sessies: data.sessies, stats: data.stats };
+        })
+      );
+      return results;
+    },
+    staleTime: 30_000,
+  });
+}
+
 // ============ SAMENVATTINGEN ============
 
 async function fetchSamenvatting(datum: string): Promise<ScreenTimeSamenvatting | null> {

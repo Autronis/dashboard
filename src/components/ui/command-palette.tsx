@@ -31,7 +31,7 @@ interface CommandPaletteProps {
 }
 
 interface ZoekResultaat {
-  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document";
+  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document" | "second-brain";
   id: number | string;
   titel: string;
   subtitel: string | null;
@@ -68,6 +68,7 @@ const typeIcons: Record<ZoekResultaat["type"], typeof Building2> = {
   taak: CheckSquare,
   lead: Target,
   document: FileText,
+  "second-brain": Brain,
 };
 
 const typeLabels: Record<ZoekResultaat["type"], string> = {
@@ -77,6 +78,7 @@ const typeLabels: Record<ZoekResultaat["type"], string> = {
   taak: "Taak",
   lead: "Lead",
   document: "Document",
+  "second-brain": "Second Brain",
 };
 
 function loadRecentSearches(): RecentSearch[] {

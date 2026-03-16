@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, facturen, taken, leads } from "@/lib/db/schema";
+import { klanten, projecten, facturen, taken, leads, secondBrainItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { like, eq, sql, or } from "drizzle-orm";
+import { like, eq, sql, or, and } from "drizzle-orm";
 import { fetchAllDocuments, searchNotionDocuments } from "@/lib/notion";
 import { DocumentBase } from "@/types/documenten";
 
 interface ZoekResultaat {
-  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document";
+  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document" | "second-brain";
   id: number | string;
   titel: string;
   subtitel: string | null;
@@ -32,7 +32,7 @@ async function getCachedDocuments(): Promise<DocumentBase[]> {
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const q = req.nextUrl.searchParams.get("q")?.trim();
 
     if (!q || q.length < 2) {
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const zoekterm = `%${q}%`;
     const resultaten: ZoekResultaat[] = [];
 
-    const [klantenRes, projectenRes, facturenRes, takenRes, leadsRes] = await Promise.all([
+    const [klantenRes, projectenRes, facturenRes, takenRes, leadsRes, secondBrainRes] = await Promise.all([
       db
         .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, contactpersoon: klanten.contactpersoon })
         .from(klanten)
@@ -75,6 +75,26 @@ export async function GET(req: NextRequest) {
         .from(leads)
         .where(or(like(leads.bedrijfsnaam, zoekterm), like(leads.contactpersoon, zoekterm)))
         .limit(5),
+
+      db
+        .select({
+          id: secondBrainItems.id,
+          titel: secondBrainItems.titel,
+          samenvatting: secondBrainItems.aiSamenvatting,
+        })
+        .from(secondBrainItems)
+        .where(
+          and(
+            eq(secondBrainItems.gebruikerId, gebruiker.id),
+            eq(secondBrainItems.isGearchiveerd, 0),
+            or(
+              like(secondBrainItems.titel, zoekterm),
+              like(secondBrainItems.inhoud, zoekterm),
+              like(secondBrainItems.aiSamenvatting, zoekterm)
+            )
+          )
+        )
+        .limit(5),
     ]);
 
     for (const k of klantenRes) {
@@ -91,6 +111,15 @@ export async function GET(req: NextRequest) {
     }
     for (const l of leadsRes) {
       resultaten.push({ type: "lead", id: l.id, titel: l.bedrijfsnaam, subtitel: l.contactpersoon, link: "/crm" });
+    }
+    for (const sb of secondBrainRes) {
+      resultaten.push({
+        type: "second-brain",
+        id: sb.id,
+        titel: sb.titel || "Zonder titel",
+        subtitel: sb.samenvatting,
+        link: "/second-brain",
+      });
     }
 
     // Title-based search from cache

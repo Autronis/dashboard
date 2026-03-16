@@ -65,15 +65,19 @@ async function generateAIBeschrijvingen(sessies: Omit<Sessie, "beschrijving">[])
 Beschrijf per sessie WAT er gedaan is op basis van de venstertitels. Wees specifiek en menselijk.
 
 Regels:
-- Beschrijf de ACTIVITEIT, niet de app. Niet "Chrome geopend" maar "Marktanalyse en trading bekeken"
-- VS Code/Claude Code = development werk. Noem het project waaraan gewerkt is
-- TradingView = "Investerings analyse, marktdata gecheckt"
-- Discord = "Team communicatie" met de server naam
-- Chrome op GitHub = "Code reviews" of "Repository beheer"
-- Chrome op Notion = "Planning en documentatie"
-- Chrome op localhost = "Dashboard/app getest"
+- Beschrijf de ACTIVITEIT, niet de app naam. Niet "TradingView geopend" maar wat er GEDAAN werd
+- Lees de venstertitels GOED — ze bevatten specifieke context:
+  - Crypto pairs (BTCUSD, ETHBTC, SUIUSD, SOLUSD) = "Crypto portfolio analyse: BTC, ETH, SUI en SOL pairs bekeken"
+  - Liquidation Heatmap / CoinAnk = "Liquidation data en marktanalyse gecheckt"
+  - TradingView met pairs = "Investerings analyse: [noem de specifieke coins/pairs]"
+- VS Code bestanden (schema.ts, page.tsx, route.ts) = "Development aan [projectnaam]: [wat er gebouwd/aangepast werd]"
+- Claude Code = "AI-assisted development aan [project]"
+- GitHub = "Code reviews en repository beheer"
+- Notion = "Planning en documentatie bijgewerkt"
+- Discord #channel | Server = "Communicatie in [server]"
 - Spotify/muziek = negeer (achtergrondmuziek)
-- Wees beknopt: max 1 zin per sessie
+- Wees specifiek en concreet. Noem coins, projectnamen, specifieke taken
+- Max 2 zinnen per sessie
 - Schrijf in het Nederlands
 
 ${sessionDescriptions}

@@ -12,14 +12,14 @@ export async function GET(req: NextRequest) {
     const entiteitType = searchParams.get("entiteitType");
     const limiet = parseInt(searchParams.get("limiet") ?? "50", 10);
 
-    const condition = entiteitType
-      ? eq(belastingAuditLog.entiteitType, entiteitType)
-      : undefined;
-
-    const logs = db
+    let query = db
       .select()
-      .from(belastingAuditLog)
-      .where(condition)
+      .from(belastingAuditLog);
+
+    const logs = (entiteitType
+      ? query.where(eq(belastingAuditLog.entiteitType, entiteitType))
+      : query
+    )
       .orderBy(sql`${belastingAuditLog.aangemaaktOp} DESC`)
       .limit(limiet)
       .all();

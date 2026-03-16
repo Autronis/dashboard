@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { readFile } from "fs/promises";
+import { readFile, stat } from "fs/promises";
+import path from "path";
 import { db } from "@/lib/db";
-import { ideeen } from "@/lib/db/schema";
+import { ideeen, klanten, projecten, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull, like } from "drizzle-orm";
+import { createNotionDocument } from "@/lib/notion";
 
 const BACKLOG_PATH = "c:/Users/semmi/OneDrive/Claude AI/Business-ideas/IDEAS_BACKLOG.md";
 
@@ -80,6 +82,44 @@ function parseBacklog(content: string): ParsedIdee[] {
   return parsed;
 }
 
+const PROJECTS_DIR = "c:/Users/semmi/OneDrive/Claude AI/Projects";
+
+function parseBriefGoal(brief: string): string {
+  const goalMatch = brief.match(/Goal:\s*\n([\s\S]*?)(?=\n\w+:|$)/i);
+  return goalMatch ? goalMatch[1].trim() : brief.substring(0, 200);
+}
+
+function parseTodos(todoContent: string, projectId: number, userId: number): number {
+  const lines = todoContent.split("\n");
+  let count = 0;
+  for (const line of lines) {
+    const taskMatch = line.match(/^\s*\[[ x]?\]\s*(.+)/);
+    if (taskMatch) {
+      db.insert(taken)
+        .values({
+          titel: taskMatch[1].trim(),
+          projectId,
+          toegewezenAan: userId,
+          status: "open",
+          prioriteit: "normaal",
+          aangemaaktDoor: userId,
+        })
+        .run();
+      count++;
+    }
+  }
+  return count;
+}
+
+async function directoryExists(dirPath: string): Promise<boolean> {
+  try {
+    const s = await stat(dirPath);
+    return s.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
 // POST /api/ideeen/sync-backlog — sync vanuit IDEAS_BACKLOG.md
 export async function POST() {
   try {
@@ -134,11 +174,116 @@ export async function POST() {
       }
     }
 
+    // === Auto project creation for active ideas ===
+    let projectenAangemaakt = 0;
+    let notionDocumenten = 0;
+
+    const actieveZonderProject = db
+      .select()
+      .from(ideeen)
+      .where(and(eq(ideeen.status, "actief"), isNull(ideeen.projectId)))
+      .all();
+
+    for (const idee of actieveZonderProject) {
+      const slug = idee.naam
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+      const projectDir = path.join(PROJECTS_DIR, slug);
+
+      if (!(await directoryExists(projectDir))) continue;
+
+      // Read PROJECT_BRIEF.md and TODO.md
+      const brief = await readFile(path.join(projectDir, "PROJECT_BRIEF.md"), "utf-8").catch(() => null);
+      const todo = await readFile(path.join(projectDir, "TODO.md"), "utf-8").catch(() => null);
+
+      // Ensure "Autronis (intern)" klant exists
+      let autronisKlant = db
+        .select()
+        .from(klanten)
+        .where(like(klanten.bedrijfsnaam, "%Autronis%"))
+        .get();
+
+      if (!autronisKlant) {
+        const inserted = db
+          .insert(klanten)
+          .values({
+            bedrijfsnaam: "Autronis (intern)",
+            contactpersoon: "Sem",
+            isActief: 1,
+            aangemaaktDoor: gebruiker.id,
+          })
+          .returning()
+          .get();
+        autronisKlant = inserted;
+      }
+
+      // Create project
+      const project = db
+        .insert(projecten)
+        .values({
+          klantId: autronisKlant.id,
+          naam: idee.naam,
+          omschrijving: brief ? parseBriefGoal(brief) : idee.omschrijving,
+          status: "actief",
+          voortgangPercentage: 0,
+          aangemaaktDoor: gebruiker.id,
+        })
+        .returning()
+        .get();
+
+      projectenAangemaakt++;
+
+      // Create taken from TODO.md
+      if (todo) {
+        parseTodos(todo, project.id, gebruiker.id);
+      }
+
+      // Create Notion plan document
+      let notionContent = brief || `Project: ${idee.naam}\n\n${idee.omschrijving || ""}`;
+      if (todo) notionContent += `\n\nFasering:\n${todo}`;
+
+      try {
+        const notionResult = await createNotionDocument(
+          {
+            type: "plan",
+            titel: `${idee.naam} — Projectplan`,
+            content: notionContent,
+            status: "definitief",
+          },
+          `Intern project: ${idee.naam}`,
+          gebruiker.naam,
+          "Autronis (intern)",
+          idee.naam
+        );
+
+        db.update(ideeen)
+          .set({ notionPageId: notionResult.notionId })
+          .where(eq(ideeen.id, idee.id))
+          .run();
+
+        notionDocumenten++;
+      } catch {
+        // Non-critical: Notion sync failure should not block project creation
+      }
+
+      // Update idee with projectId
+      db.update(ideeen)
+        .set({
+          projectId: project.id,
+          bijgewerktOp: new Date().toISOString(),
+        })
+        .where(eq(ideeen.id, idee.id))
+        .run();
+    }
+
     return NextResponse.json({
       resultaat: {
         totaal: parsed.length,
         nieuw,
         bijgewerkt,
+        projectenAangemaakt,
+        notionDocumenten,
       },
     });
   } catch (error) {

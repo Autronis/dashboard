@@ -322,6 +322,52 @@ export const kilometerRegistraties = sqliteTable("kilometer_registraties", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+export const investeringen = sqliteTable("investeringen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  bedrag: real("bedrag").notNull(),
+  datum: text("datum").notNull(),
+  categorie: text("categorie", {
+    enum: ["hardware", "software", "inventaris", "vervoer", "overig"],
+  }).default("overig"),
+  afschrijvingstermijn: integer("afschrijvingstermijn").default(5), // jaren
+  restwaarde: real("restwaarde").default(0),
+  notities: text("notities"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const voorlopigeAanslagen = sqliteTable("voorlopige_aanslagen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  jaar: integer("jaar").notNull(),
+  type: text("type", { enum: ["inkomstenbelasting", "zvw"] }).default("inkomstenbelasting"),
+  bedrag: real("bedrag").notNull(),
+  betaaldBedrag: real("betaald_bedrag").default(0),
+  status: text("status", { enum: ["openstaand", "betaald", "bezwaar"] }).default("openstaand"),
+  vervaldatum: text("vervaldatum"),
+  notities: text("notities"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const belastingReserveringen = sqliteTable("belasting_reserveringen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  maand: text("maand").notNull(), // YYYY-MM
+  bedrag: real("bedrag").notNull(),
+  type: text("type", { enum: ["btw", "inkomstenbelasting", "overig"] }).default("inkomstenbelasting"),
+  notities: text("notities"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const belastingAuditLog = sqliteTable("belasting_audit_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  actie: text("actie").notNull(),
+  entiteitType: text("entiteit_type").notNull(), // btw_aangifte, deadline, investering, etc.
+  entiteitId: integer("entiteit_id"),
+  details: text("details"), // JSON
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ MODULE 2: GEAVANCEERDE BOEKHOUDING ============
 
 export const bankTransacties = sqliteTable("bank_transacties", {

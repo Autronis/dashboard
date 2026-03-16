@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import {
   Building2,
   User,
@@ -9,38 +9,34 @@ import {
   Euro,
   Clock,
   Bell,
+  FolderSync,
+  Loader2,
 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useInstellingen, type Bedrijf, type Profiel } from "@/hooks/queries/use-instellingen";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 
-interface Bedrijf {
-  id: number | null;
-  bedrijfsnaam: string;
-  adres: string;
-  kvkNummer: string;
-  btwNummer: string;
-  iban: string;
-  email: string;
-  telefoon: string;
-  standaardBtw: number;
-  betalingstermijnDagen: number;
-  herinneringNaDagen: number;
-}
-
-interface Profiel {
-  id: number;
-  naam: string;
-  email: string;
-  rol: string;
-  uurtariefStandaard: number | null;
-}
-
 export default function InstellingenPage() {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Bedrijfsgegevens
-  const [bedrijf, setBedrijf] = useState<Bedrijf>({
+  const { data, isLoading } = useInstellingen();
+
+  const [bedrijf, setBedrijf] = useState<Bedrijf | null>(null);
+  const [profiel, setProfiel] = useState<Profiel | null>(null);
+
+  const [huidigWachtwoord, setHuidigWachtwoord] = useState("");
+  const [nieuwWachtwoord, setNieuwWachtwoord] = useState("");
+  const [bevestigWachtwoord, setBevestigWachtwoord] = useState("");
+
+  const [syncResultaten, setSyncResultaten] = useState<
+    Array<{ naam: string; status: "aangemaakt" | "al_aanwezig" }>
+  >([]);
+
+  // Initialize local state from query data
+  const currentBedrijf = bedrijf ?? data?.bedrijf ?? {
     id: null,
     bedrijfsnaam: "Autronis",
     adres: "",
@@ -52,113 +48,129 @@ export default function InstellingenPage() {
     standaardBtw: 21,
     betalingstermijnDagen: 30,
     herinneringNaDagen: 7,
-  });
-  const [bedrijfLaden, setBedrijfLaden] = useState(false);
+  };
 
-  // Profiel
-  const [profiel, setProfiel] = useState<Profiel>({
+  const currentProfiel = profiel ?? data?.profiel ?? {
     id: 0,
     naam: "",
     email: "",
     rol: "",
     uurtariefStandaard: null,
-  });
-  const [profielLaden, setProfielLaden] = useState(false);
+  };
 
-  // Wachtwoord
-  const [huidigWachtwoord, setHuidigWachtwoord] = useState("");
-  const [nieuwWachtwoord, setNieuwWachtwoord] = useState("");
-  const [bevestigWachtwoord, setBevestigWachtwoord] = useState("");
-  const [wachtwoordLaden, setWachtwoordLaden] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const [bedrijfRes, profielRes] = await Promise.all([
-        fetch("/api/instellingen"),
-        fetch("/api/profiel"),
-      ]);
-      if (bedrijfRes.ok) {
-        const d = await bedrijfRes.json();
-        setBedrijf({
-          ...d.bedrijf,
-          adres: d.bedrijf.adres || "",
-          kvkNummer: d.bedrijf.kvkNummer || "",
-          btwNummer: d.bedrijf.btwNummer || "",
-          iban: d.bedrijf.iban || "",
-          email: d.bedrijf.email || "",
-          telefoon: d.bedrijf.telefoon || "",
-        });
-      }
-      if (profielRes.ok) {
-        const d = await profielRes.json();
-        setProfiel(d.gebruiker);
-      }
-    } catch {
-      addToast("Kon instellingen niet laden", "fout");
-    } finally {
-      setLoading(false);
-    }
-  }, [addToast]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  async function handleBedrijfOpslaan() {
-    setBedrijfLaden(true);
-    try {
+  const bedrijfMutation = useMutation({
+    mutationFn: async (body: Bedrijf) => {
       const res = await fetch("/api/instellingen", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(bedrijf),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.fout || "Onbekende fout");
       }
+    },
+    onSuccess: () => {
       addToast("Bedrijfsgegevens opgeslagen", "succes");
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : "Kon niet opslaan", "fout");
-    } finally {
-      setBedrijfLaden(false);
-    }
-  }
+      queryClient.invalidateQueries({ queryKey: ["instellingen"] });
+    },
+    onError: (error: Error) => {
+      addToast(error.message || "Kon niet opslaan", "fout");
+    },
+  });
 
-  async function handleProfielOpslaan() {
-    if (!profiel.naam.trim()) {
-      addToast("Naam is verplicht", "fout");
-      return;
-    }
-    if (!profiel.email.trim()) {
-      addToast("E-mail is verplicht", "fout");
-      return;
-    }
-    setProfielLaden(true);
-    try {
+  const profielMutation = useMutation({
+    mutationFn: async (body: { naam: string; email: string; uurtariefStandaard: number | null }) => {
       const res = await fetch("/api/profiel", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          naam: profiel.naam,
-          email: profiel.email,
-          uurtariefStandaard: profiel.uurtariefStandaard,
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.fout || "Onbekende fout");
       }
+    },
+    onSuccess: () => {
       addToast("Profiel bijgewerkt", "succes");
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : "Kon profiel niet opslaan", "fout");
-    } finally {
-      setProfielLaden(false);
-    }
+      queryClient.invalidateQueries({ queryKey: ["instellingen"] });
+    },
+    onError: (error: Error) => {
+      addToast(error.message || "Kon profiel niet opslaan", "fout");
+    },
+  });
+
+  const wachtwoordMutation = useMutation({
+    mutationFn: async (body: { huidigWachtwoord: string; nieuwWachtwoord: string }) => {
+      const res = await fetch("/api/profiel", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.fout || "Onbekende fout");
+      }
+    },
+    onSuccess: () => {
+      addToast("Wachtwoord gewijzigd", "succes");
+      setHuidigWachtwoord("");
+      setNieuwWachtwoord("");
+      setBevestigWachtwoord("");
+    },
+    onError: (error: Error) => {
+      addToast(error.message || "Kon wachtwoord niet wijzigen", "fout");
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/project-sync", { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.fout || "Synchronisatie mislukt");
+      }
+      return res.json() as Promise<{
+        resultaten: Array<{ naam: string; status: "aangemaakt" | "al_aanwezig" }>;
+      }>;
+    },
+    onSuccess: (data) => {
+      const nieuw = data.resultaten.filter((r) => r.status === "aangemaakt").length;
+      setSyncResultaten(data.resultaten);
+      addToast(
+        nieuw > 0
+          ? `${nieuw} nieuw${nieuw === 1 ? "" : "e"} project${nieuw === 1 ? "" : "en"} gesynchroniseerd`
+          : "Alle projecten zijn al aanwezig",
+        "succes"
+      );
+      queryClient.invalidateQueries({ queryKey: ["projecten"] });
+    },
+    onError: (error: Error) => {
+      addToast(error.message || "Synchronisatie mislukt", "fout");
+    },
+  });
+
+  function handleBedrijfOpslaan() {
+    bedrijfMutation.mutate(currentBedrijf);
   }
 
-  async function handleWachtwoordWijzigen() {
+  function handleProfielOpslaan() {
+    if (!currentProfiel.naam.trim()) {
+      addToast("Naam is verplicht", "fout");
+      return;
+    }
+    if (!currentProfiel.email.trim()) {
+      addToast("E-mail is verplicht", "fout");
+      return;
+    }
+    profielMutation.mutate({
+      naam: currentProfiel.naam,
+      email: currentProfiel.email,
+      uurtariefStandaard: currentProfiel.uurtariefStandaard,
+    });
+  }
+
+  function handleWachtwoordWijzigen() {
     if (!huidigWachtwoord) {
       addToast("Vul je huidige wachtwoord in", "fout");
       return;
@@ -171,32 +183,13 @@ export default function InstellingenPage() {
       addToast("Wachtwoorden komen niet overeen", "fout");
       return;
     }
-    setWachtwoordLaden(true);
-    try {
-      const res = await fetch("/api/profiel", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ huidigWachtwoord, nieuwWachtwoord }),
-      });
-      if (!res.ok) {
-        const d = await res.json();
-        throw new Error(d.fout || "Onbekende fout");
-      }
-      addToast("Wachtwoord gewijzigd", "succes");
-      setHuidigWachtwoord("");
-      setNieuwWachtwoord("");
-      setBevestigWachtwoord("");
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : "Kon wachtwoord niet wijzigen", "fout");
-    } finally {
-      setWachtwoordLaden(false);
-    }
+    wachtwoordMutation.mutate({ huidigWachtwoord, nieuwWachtwoord });
   }
 
   const inputClasses =
     "w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors";
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-8">
         {/* Header skeleton */}
@@ -239,8 +232,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">Bedrijfsnaam</label>
             <input
               type="text"
-              value={bedrijf.bedrijfsnaam}
-              onChange={(e) => setBedrijf({ ...bedrijf, bedrijfsnaam: e.target.value })}
+              value={currentBedrijf.bedrijfsnaam}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, bedrijfsnaam: e.target.value })}
               className={inputClasses}
             />
           </div>
@@ -248,8 +241,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">E-mail (facturen)</label>
             <input
               type="email"
-              value={bedrijf.email}
-              onChange={(e) => setBedrijf({ ...bedrijf, email: e.target.value })}
+              value={currentBedrijf.email}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, email: e.target.value })}
               placeholder="factuur@autronis.com"
               className={inputClasses}
             />
@@ -258,8 +251,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">Adres</label>
             <input
               type="text"
-              value={bedrijf.adres}
-              onChange={(e) => setBedrijf({ ...bedrijf, adres: e.target.value })}
+              value={currentBedrijf.adres}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, adres: e.target.value })}
               placeholder="Straat 1, 1234 AB Stad"
               className={inputClasses}
             />
@@ -268,8 +261,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">Telefoon</label>
             <input
               type="text"
-              value={bedrijf.telefoon}
-              onChange={(e) => setBedrijf({ ...bedrijf, telefoon: e.target.value })}
+              value={currentBedrijf.telefoon}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, telefoon: e.target.value })}
               placeholder="+31 6 12345678"
               className={inputClasses}
             />
@@ -278,8 +271,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">IBAN</label>
             <input
               type="text"
-              value={bedrijf.iban}
-              onChange={(e) => setBedrijf({ ...bedrijf, iban: e.target.value })}
+              value={currentBedrijf.iban}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, iban: e.target.value })}
               placeholder="NL00 BANK 0000 0000 00"
               className={inputClasses}
             />
@@ -288,8 +281,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">KvK-nummer</label>
             <input
               type="text"
-              value={bedrijf.kvkNummer}
-              onChange={(e) => setBedrijf({ ...bedrijf, kvkNummer: e.target.value })}
+              value={currentBedrijf.kvkNummer}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, kvkNummer: e.target.value })}
               placeholder="12345678"
               className={inputClasses}
             />
@@ -298,8 +291,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">BTW-nummer</label>
             <input
               type="text"
-              value={bedrijf.btwNummer}
-              onChange={(e) => setBedrijf({ ...bedrijf, btwNummer: e.target.value })}
+              value={currentBedrijf.btwNummer}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, btwNummer: e.target.value })}
               placeholder="NL000000000B01"
               className={inputClasses}
             />
@@ -317,8 +310,8 @@ export default function InstellingenPage() {
               <label className="block text-sm font-medium text-autronis-text-secondary">Standaard BTW %</label>
               <input
                 type="number"
-                value={bedrijf.standaardBtw}
-                onChange={(e) => setBedrijf({ ...bedrijf, standaardBtw: Number(e.target.value) })}
+                value={currentBedrijf.standaardBtw}
+                onChange={(e) => setBedrijf({ ...currentBedrijf, standaardBtw: Number(e.target.value) })}
                 min={0}
                 className={inputClasses}
               />
@@ -330,8 +323,8 @@ export default function InstellingenPage() {
               </label>
               <input
                 type="number"
-                value={bedrijf.betalingstermijnDagen}
-                onChange={(e) => setBedrijf({ ...bedrijf, betalingstermijnDagen: Number(e.target.value) })}
+                value={currentBedrijf.betalingstermijnDagen}
+                onChange={(e) => setBedrijf({ ...currentBedrijf, betalingstermijnDagen: Number(e.target.value) })}
                 min={1}
                 className={inputClasses}
               />
@@ -343,8 +336,8 @@ export default function InstellingenPage() {
               </label>
               <input
                 type="number"
-                value={bedrijf.herinneringNaDagen}
-                onChange={(e) => setBedrijf({ ...bedrijf, herinneringNaDagen: Number(e.target.value) })}
+                value={currentBedrijf.herinneringNaDagen}
+                onChange={(e) => setBedrijf({ ...currentBedrijf, herinneringNaDagen: Number(e.target.value) })}
                 min={1}
                 className={inputClasses}
               />
@@ -355,11 +348,11 @@ export default function InstellingenPage() {
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleBedrijfOpslaan}
-            disabled={bedrijfLaden}
+            disabled={bedrijfMutation.isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {bedrijfLaden ? "Opslaan..." : "Bedrijfsgegevens opslaan"}
+            {bedrijfMutation.isPending ? "Opslaan..." : "Bedrijfsgegevens opslaan"}
           </button>
         </div>
       </div>
@@ -373,7 +366,7 @@ export default function InstellingenPage() {
           <div>
             <h2 className="text-lg font-semibold text-autronis-text-primary">Mijn profiel</h2>
             <p className="text-sm text-autronis-text-secondary">
-              {profiel.rol === "admin" ? "Beheerder" : "Gebruiker"}
+              {currentProfiel.rol === "admin" ? "Beheerder" : "Gebruiker"}
             </p>
           </div>
         </div>
@@ -383,8 +376,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">Naam</label>
             <input
               type="text"
-              value={profiel.naam}
-              onChange={(e) => setProfiel({ ...profiel, naam: e.target.value })}
+              value={currentProfiel.naam}
+              onChange={(e) => setProfiel({ ...currentProfiel, naam: e.target.value })}
               className={inputClasses}
             />
           </div>
@@ -392,8 +385,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">E-mail</label>
             <input
               type="email"
-              value={profiel.email}
-              onChange={(e) => setProfiel({ ...profiel, email: e.target.value })}
+              value={currentProfiel.email}
+              onChange={(e) => setProfiel({ ...currentProfiel, email: e.target.value })}
               className={inputClasses}
             />
           </div>
@@ -401,8 +394,8 @@ export default function InstellingenPage() {
             <label className="block text-sm font-medium text-autronis-text-secondary">Standaard uurtarief</label>
             <input
               type="number"
-              value={profiel.uurtariefStandaard || ""}
-              onChange={(e) => setProfiel({ ...profiel, uurtariefStandaard: e.target.value ? Number(e.target.value) : null })}
+              value={currentProfiel.uurtariefStandaard || ""}
+              onChange={(e) => setProfiel({ ...currentProfiel, uurtariefStandaard: e.target.value ? Number(e.target.value) : null })}
               min={0}
               step={0.01}
               placeholder="0,00"
@@ -414,11 +407,11 @@ export default function InstellingenPage() {
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleProfielOpslaan}
-            disabled={profielLaden}
+            disabled={profielMutation.isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            {profielLaden ? "Opslaan..." : "Profiel opslaan"}
+            {profielMutation.isPending ? "Opslaan..." : "Profiel opslaan"}
           </button>
         </div>
       </div>
@@ -468,13 +461,66 @@ export default function InstellingenPage() {
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleWachtwoordWijzigen}
-            disabled={wachtwoordLaden}
+            disabled={wachtwoordMutation.isPending}
             className="inline-flex items-center gap-2 px-6 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-primary rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
           >
             <Lock className="w-4 h-4" />
-            {wachtwoordLaden ? "Wijzigen..." : "Wachtwoord wijzigen"}
+            {wachtwoordMutation.isPending ? "Wijzigen..." : "Wachtwoord wijzigen"}
           </button>
         </div>
+      </div>
+
+      {/* Project Synchronisatie */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
+            <FolderSync className="w-5 h-5 text-autronis-accent" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-autronis-text-primary">Project Synchronisatie</h2>
+            <p className="text-sm text-autronis-text-secondary">
+              Scan de Projects map en importeer nieuwe projecten automatisch naar het dashboard en Notion.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => syncMutation.mutate()}
+            disabled={syncMutation.isPending}
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+          >
+            {syncMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FolderSync className="w-4 h-4" />
+            )}
+            {syncMutation.isPending ? "Synchroniseren..." : "Synchroniseren"}
+          </button>
+        </div>
+
+        {syncResultaten.length > 0 && (
+          <div className="mt-6 space-y-2">
+            <h3 className="text-sm font-medium text-autronis-text-secondary mb-3">Resultaten</h3>
+            {syncResultaten.map((r) => (
+              <div
+                key={r.naam}
+                className="flex items-center justify-between bg-autronis-bg rounded-xl px-4 py-2.5 border border-autronis-border"
+              >
+                <span className="text-sm text-autronis-text-primary">{r.naam}</span>
+                <span
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+                    r.status === "aangemaakt"
+                      ? "bg-emerald-500/15 text-emerald-400"
+                      : "bg-autronis-text-secondary/15 text-autronis-text-secondary"
+                  }`}
+                >
+                  {r.status === "aangemaakt" ? "Aangemaakt" : "Al aanwezig"}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
     </PageTransition>

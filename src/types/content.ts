@@ -37,6 +37,35 @@ export interface Inzicht {
   aangemaaktOp: string;
 }
 
+// ============ VIDEO TYPES ============
+
+// Duplicated from @/remotion/types to avoid importing remotion in server/type context
+export interface Scene {
+  tekst: string[];
+  accentRegel?: number;
+  accentKleur?: "turquoise" | "geel";
+  icon?: string;
+  duur?: number;
+  isCta?: boolean;
+}
+
+export type VideoStatus = "script" | "rendering" | "klaar" | "fout";
+
+export interface ContentVideo {
+  id: number;
+  postId: number | null;
+  script: Scene[];
+  status: VideoStatus;
+  videoPath?: string | null;
+  duurSeconden?: number | null;
+  aangemaaktOp: string | null;
+  // Joined from post
+  postTitel?: string;
+  postPlatform?: string;
+}
+
+// ============ CONTENT TYPES ============
+
 export type ContentPlatform = "linkedin" | "instagram";
 export type ContentFormat = "post" | "caption" | "thought_leadership" | "tip" | "storytelling" | "how_to" | "vraag";
 export type ContentStatus = "concept" | "goedgekeurd" | "bewerkt" | "afgewezen" | "gepubliceerd";

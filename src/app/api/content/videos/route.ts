@@ -1,0 +1,90 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { contentVideos, contentPosts } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth";
+import { desc, eq } from "drizzle-orm";
+import { generateVideoScript } from "@/lib/ai/video-script-generator";
+
+export async function GET() {
+  try {
+    await requireAuth();
+
+    const rows = await db
+      .select({
+        id: contentVideos.id,
+        postId: contentVideos.postId,
+        script: contentVideos.script,
+        status: contentVideos.status,
+        videoPath: contentVideos.videoPath,
+        duurSeconden: contentVideos.duurSeconden,
+        aangemaaktOp: contentVideos.aangemaaktOp,
+        postTitel: contentPosts.titel,
+        postPlatform: contentPosts.platform,
+      })
+      .from(contentVideos)
+      .leftJoin(contentPosts, eq(contentVideos.postId, contentPosts.id))
+      .orderBy(desc(contentVideos.aangemaaktOp));
+
+    return NextResponse.json({ videos: rows });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    await requireAuth();
+
+    const body = await req.json() as { postId: number };
+    const { postId } = body;
+
+    if (!postId || typeof postId !== "number") {
+      return NextResponse.json({ fout: "postId is verplicht" }, { status: 400 });
+    }
+
+    const post = await db
+      .select()
+      .from(contentPosts)
+      .where(eq(contentPosts.id, postId))
+      .get();
+
+    if (!post) {
+      return NextResponse.json({ fout: "Post niet gevonden" }, { status: 404 });
+    }
+
+    const inhoud = post.bewerkteInhoud ?? post.inhoud;
+    const scenes = await generateVideoScript(inhoud, post.titel);
+
+    const totaalSeconden = scenes.reduce((sum, scene) => sum + (scene.duur ?? 3), 0);
+
+    const result = await db
+      .insert(contentVideos)
+      .values({
+        postId: post.id,
+        script: JSON.stringify(scenes),
+        status: "script",
+        duurSeconden: totaalSeconden,
+      })
+      .returning()
+      .get();
+
+    return NextResponse.json({
+      video: {
+        id: result.id,
+        script: scenes,
+        status: result.status,
+        duurSeconden: result.duurSeconden,
+        postId: result.postId,
+        aangemaaktOp: result.aangemaaktOp,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}

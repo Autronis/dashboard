@@ -794,6 +794,20 @@ export const contentPosts = sqliteTable("content_posts", {
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ CONTENT ENGINE: VIDEO'S ============
+
+export const contentVideos = sqliteTable("content_videos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  postId: integer("post_id").references(() => contentPosts.id),
+  script: text("script").notNull(), // JSON array of Scene objects
+  status: text("status", {
+    enum: ["script", "rendering", "klaar", "fout"],
+  }).default("script"),
+  videoPath: text("video_path"), // path to rendered MP4
+  duurSeconden: integer("duur_seconden"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ IDEEEN ============
 
 export const ideeen = sqliteTable("ideeen", {

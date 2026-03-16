@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BookOpen, Newspaper } from "lucide-react";
+import { BookOpen, Newspaper, Video } from "lucide-react";
 
 export default function ContentPage() {
   return (
@@ -13,7 +13,7 @@ export default function ContentPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Link
           href="/content/kennisbank"
           className="group bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow transition-all hover:border-autronis-accent/50 flex flex-col gap-3"
@@ -44,6 +44,22 @@ export default function ContentPage() {
             </h2>
             <p className="text-sm text-autronis-text-secondary mt-1">
               AI-gegenereerde LinkedIn en Instagram posts beheren en publiceren.
+            </p>
+          </div>
+        </Link>
+        <Link
+          href="/content/videos"
+          className="group bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow transition-all hover:border-autronis-accent/50 flex flex-col gap-3"
+        >
+          <div className="w-12 h-12 rounded-xl bg-autronis-accent/10 flex items-center justify-center">
+            <Video className="w-6 h-6 text-autronis-accent" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-autronis-text-primary group-hover:text-autronis-accent transition-colors">
+              Video&apos;s
+            </h2>
+            <p className="text-sm text-autronis-text-secondary mt-1">
+              AI-gegenereerde video scripts renderen en beheren.
             </p>
           </div>
         </Link>

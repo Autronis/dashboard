@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform } from "@/types/content";
+import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus } from "@/types/content";
 
 // ============ PROFIEL ============
 
@@ -217,6 +217,98 @@ export function useDeletePost() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["content-posts"] });
+    },
+  });
+}
+
+// ============ VIDEO'S ============
+
+type RawVideo = Omit<ContentVideo, "script"> & { script: string };
+
+function mapVideo(raw: RawVideo): ContentVideo {
+  let script: Scene[] = [];
+  try {
+    script = JSON.parse(raw.script) as Scene[];
+  } catch {
+    script = [];
+  }
+  return { ...raw, script };
+}
+
+async function fetchContentVideos(): Promise<ContentVideo[]> {
+  const res = await fetch("/api/content/videos");
+  if (!res.ok) throw new Error("Kon video's niet ophalen");
+  const data = await res.json() as { videos: (RawVideo & { status: VideoStatus })[] };
+  return (data.videos ?? []).map(mapVideo);
+}
+
+export function useContentVideos() {
+  return useQuery({
+    queryKey: ["content-videos"],
+    queryFn: fetchContentVideos,
+    staleTime: 30_000,
+  });
+}
+
+export function useGenerateVideoScript() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (postId: number) => {
+      const res = await fetch("/api/content/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ postId }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Genereren mislukt");
+      }
+      const data = await res.json() as { video: RawVideo & { status: VideoStatus } };
+      return mapVideo(data.video);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-videos"] });
+    },
+  });
+}
+
+export function useRenderVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (videoId: number) => {
+      const res = await fetch(`/api/content/videos/${videoId}/render`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Renderen mislukt");
+      }
+      return res.json() as Promise<{ ok: boolean; videoPath: string; duurSeconden: number }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-videos"] });
+    },
+  });
+}
+
+export function useDeleteVideo() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (videoId: number) => {
+      const res = await fetch(`/api/content/videos/${videoId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Verwijderen mislukt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-videos"] });
     },
   });
 }

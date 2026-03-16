@@ -36,7 +36,7 @@ Eén nieuwe tabel `second_brain_items`:
 |-------|------|-------------|
 | `id` | integer PK | Auto-increment |
 | `gebruiker_id` | integer FK → gebruikers | Wie heeft het opgeslagen |
-| `type` | text | `tekst`, `url`, `afbeelding`, `pdf`, `code`, `audio` |
+| `type` | text | `tekst`, `url`, `afbeelding`, `pdf`, `code` |
 | `titel` | text | Door gebruiker of AI gegenereerd |
 | `inhoud` | text | Ruwe inhoud (tekst, URL, code snippet, transcriptie) |
 | `ai_samenvatting` | text | Door Claude gegenereerde samenvatting |
@@ -127,7 +127,7 @@ Drie zones:
 
 ### AI Zoekpagina
 
-Tab of aparte sectie binnen /second-brain. Zoekbalk bovenaan, conversational antwoord eronder met klikbare bronverwijzingen naar items. Vergelijkbaar met AI Assistent maar scoped naar Second Brain data.
+Aparte tab binnen /second-brain (tabs: "Feed" en "AI Zoeken"). Zoekbalk bovenaan, conversational antwoord eronder met klikbare bronverwijzingen naar items. Vergelijkbaar met AI Assistent maar scoped naar Second Brain data.
 
 ### Detail Modal
 
@@ -156,6 +156,10 @@ Analyseer dit item en geef JSON terug:
 ```
 
 Gebeurt async — item is direct zichtbaar, AI-velden laden na. Optimistic UI met loading state op tags/samenvatting.
+
+### Async AI verwerking
+
+Na opslaan van een item: de API response gaat direct terug (item zonder AI-velden). Vervolgens wordt Claude aangeroepen in dezelfde request via een fire-and-forget patroon (geen `await` op de Claude call). De frontend pollt het item na 3-5 seconden om de AI-velden op te halen. Alternatief: client pollt via `useQuery` met korte `refetchInterval` totdat `ai_tags` gevuld is.
 
 ### AI-zoeken
 

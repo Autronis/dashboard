@@ -3,9 +3,9 @@ import { db } from "@/lib/db";
 import { contentVideos } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { exec } from "child_process";
 import path from "path";
 import fs from "fs";
-import type { Scene } from "@/types/content";
 
 export async function POST(
   _req: NextRequest,
@@ -31,11 +31,10 @@ export async function POST(
       return NextResponse.json({ fout: "Video niet gevonden" }, { status: 404 });
     }
 
-    let scenes: Scene[];
-    try {
-      scenes = JSON.parse(video.script) as Scene[];
-    } catch {
-      return NextResponse.json({ fout: "Script kan niet worden gelezen" }, { status: 400 });
+    // Ensure videos directory exists
+    const videosDir = path.join(process.cwd(), "public", "videos");
+    if (!fs.existsSync(videosDir)) {
+      fs.mkdirSync(videosDir, { recursive: true });
     }
 
     // Set status to rendering
@@ -44,64 +43,52 @@ export async function POST(
       .set({ status: "rendering" })
       .where(eq(contentVideos.id, videoId));
 
-    try {
-      const { bundle } = await import("@remotion/bundler");
-      const { renderMedia, selectComposition } = await import("@remotion/renderer");
+    const outputPath = path.join(videosDir, `${videoId}.mp4`);
+    const propsPath = path.join(videosDir, `${videoId}-props.json`);
 
-      const videosDir = path.join(process.cwd(), "public", "videos");
-      if (!fs.existsSync(videosDir)) {
-        fs.mkdirSync(videosDir, { recursive: true });
-      }
+    // Write props to temp file
+    fs.writeFileSync(propsPath, video.script);
 
-      const outputPath = path.join(videosDir, `${videoId}.mp4`);
-      const entryPoint = path.join(process.cwd(), "src", "remotion", "index.ts");
+    // Spawn Remotion CLI render as child process (avoids bundling issues with Next.js)
+    const cmd = `npx remotion render src/remotion/index.ts AutronisVideo "${outputPath}" --props="${propsPath}"`;
 
-      const bundled = await bundle({
-        entryPoint,
-        onProgress: () => undefined,
-      });
+    return new Promise<NextResponse>((resolve) => {
+      exec(cmd, { cwd: process.cwd(), timeout: 300000 }, async (error) => {
+        // Clean up props file
+        try { fs.unlinkSync(propsPath); } catch {}
 
-      const inputProps = { scenes };
+        if (error) {
+          await db
+            .update(contentVideos)
+            .set({ status: "fout" })
+            .where(eq(contentVideos.id, videoId));
 
-      const composition = await selectComposition({
-        serveUrl: bundled,
-        id: "AutronisVideo",
-        inputProps,
-      });
+          resolve(NextResponse.json(
+            { fout: "Video rendering mislukt" },
+            { status: 500 }
+          ));
+          return;
+        }
 
-      await renderMedia({
-        composition,
-        serveUrl: bundled,
-        codec: "h264",
-        outputLocation: outputPath,
-        inputProps,
-        onProgress: () => undefined,
-      });
+        const scenes = JSON.parse(video.script);
+        const totalSeconds = scenes.reduce((sum: number, s: { duur?: number }) => sum + (s.duur ?? 3), 0);
 
-      const totalSeconds = scenes.reduce((sum, scene) => sum + (scene.duur ?? 3), 0);
+        await db
+          .update(contentVideos)
+          .set({
+            status: "klaar",
+            videoPath: `/videos/${videoId}.mp4`,
+            duurSeconden: totalSeconds,
+          })
+          .where(eq(contentVideos.id, videoId));
 
-      await db
-        .update(contentVideos)
-        .set({
-          status: "klaar",
+        resolve(NextResponse.json({
+          succes: true,
           videoPath: `/videos/${videoId}.mp4`,
           duurSeconden: totalSeconds,
-        })
-        .where(eq(contentVideos.id, videoId));
-
-      return NextResponse.json({
-        ok: true,
-        videoPath: `/videos/${videoId}.mp4`,
-        duurSeconden: totalSeconds,
+        }));
       });
-    } catch (renderError) {
-      await db
-        .update(contentVideos)
-        .set({ status: "fout" })
-        .where(eq(contentVideos.id, videoId));
-
-      throw renderError;
-    }
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

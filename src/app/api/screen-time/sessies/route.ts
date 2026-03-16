@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { screenTimeEntries, projecten, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, asc, sql } from "drizzle-orm";
+import Anthropic from "@anthropic-ai/sdk";
 
 const SESSION_GAP_SECONDS = 1800; // 30 minutes gap = new session (~3-5 per dag)
 
@@ -32,103 +33,68 @@ interface Sessie {
   beschrijving: string;
 }
 
-function generateBeschrijving(sessie: Omit<Sessie, "beschrijving">): string {
-  const titles = sessie.venstertitels;
-  if (titles.length === 0) return sessie.app;
+function fallbackBeschrijving(sessie: Omit<Sessie, "beschrijving">): string {
+  // Quick fallback while AI generates
+  const apps = sessie.app.split(", ").filter(a => a !== "Inactief");
+  return apps.length > 0 ? apps.join(", ") : sessie.app;
+}
 
-  // Collect context from window titles
-  const codeProjects = new Set<string>();
-  const codeFiles = new Set<string>();
-  const browseActivities: string[] = [];
-  const chatContexts = new Set<string>();
-  let hadClaudeCode = false;
-  let hadTrading = false;
+async function generateAIBeschrijvingen(sessies: Omit<Sessie, "beschrijving">[]): Promise<string[]> {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || sessies.length === 0) return sessies.map(s => fallbackBeschrijving(s));
 
-  for (const title of titles) {
-    // VS Code: "file — project — Visual Studio Code"
-    const vscodeMatch = title.match(/^(.+?)\s*[-—]\s*(.+?)\s*[-—]\s*Visual Studio Code$/);
-    if (vscodeMatch) {
-      codeFiles.add(vscodeMatch[1].trim());
-      codeProjects.add(vscodeMatch[2].trim());
-      continue;
-    }
+  // Build context per session
+  const sessionDescriptions = sessies.map((s, i) => {
+    const start = new Date(s.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+    const end = new Date(s.eindTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+    const duur = Math.round(s.duurSeconden / 60);
+    const titels = s.venstertitels.slice(0, 10).join("\n    ");
+    return `Sessie ${i + 1} (${start}-${end}, ${duur}m, apps: ${s.app}):
+    ${titels || "geen venstertitels"}`;
+  }).join("\n\n");
 
-    // Claude Code
-    if (title.includes("[Claude Code]")) {
-      hadClaudeCode = true;
-      const pathMatch = title.match(/Projects[/\\]([^/\\]+)/);
-      if (pathMatch) codeProjects.add(pathMatch[1]);
-      continue;
-    }
+  try {
+    const client = new Anthropic({ apiKey });
+    const response = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      messages: [{
+        role: "user",
+        content: `Je bent een productiviteits-tracker voor Sem, developer bij Autronis (AI/automation bureau).
 
-    // Chrome pages → describe activity, not app
-    const chromeMatch = title.match(/^(.+?)\s*[-—]\s*Google Chrome$/);
-    if (chromeMatch) {
-      const p = chromeMatch[1].trim();
-      if (p.includes("GitHub")) browseActivities.push("Code reviews en repositories op GitHub");
-      else if (p.includes("Notion")) browseActivities.push("Planning en documentatie in Notion");
-      else if (p.includes("localhost") || p.includes("Dashboard")) browseActivities.push("Dashboard getest");
-      else if (p.includes("Google Zoeken") || p.includes("google.com")) browseActivities.push("Online research");
-      else if (p.includes("Stack Overflow") || p.includes("stackoverflow")) browseActivities.push("Technische oplossingen gezocht");
-      else if (p.includes("YouTube")) browseActivities.push("Video content bekeken");
-      else if (p.includes("LinkedIn")) browseActivities.push("LinkedIn bekeken");
-      else if (p.includes("gmail") || p.includes("mail")) browseActivities.push("E-mail afgehandeld");
-      else if (p.length < 40 && !browseActivities.some(a => a === p)) browseActivities.push(p);
-      continue;
-    }
+Beschrijf per sessie WAT er gedaan is op basis van de venstertitels. Wees specifiek en menselijk.
 
-    // TradingView / investing
-    if (title.includes("TradingView") || title.includes("Trading")) {
-      hadTrading = true;
-      continue;
-    }
+Regels:
+- Beschrijf de ACTIVITEIT, niet de app. Niet "Chrome geopend" maar "Marktanalyse en trading bekeken"
+- VS Code/Claude Code = development werk. Noem het project waaraan gewerkt is
+- TradingView = "Investerings analyse, marktdata gecheckt"
+- Discord = "Team communicatie" met de server naam
+- Chrome op GitHub = "Code reviews" of "Repository beheer"
+- Chrome op Notion = "Planning en documentatie"
+- Chrome op localhost = "Dashboard/app getest"
+- Spotify/muziek = negeer (achtergrondmuziek)
+- Wees beknopt: max 1 zin per sessie
+- Schrijf in het Nederlands
 
-    // Discord
-    const discordMatch = title.match(/^(#.+?)\s*\|\s*(.+?)\s*[-—]\s*Discord$/);
-    if (discordMatch) {
-      chatContexts.add(discordMatch[2].trim());
-      continue;
-    }
+${sessionDescriptions}
 
-    // Spotify — skip
-    if (title.includes("Spotify") || title.includes("Mediaspeler")) continue;
-  }
-
-  // Build natural description
-  const parts: string[] = [];
-
-  // Code work
-  if (codeProjects.size > 0) {
-    const projs = Array.from(codeProjects).slice(0, 3);
-    const projNames = projs.map(p => {
-      // Make project names more readable
-      return p.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+Antwoord als JSON array met exact ${sessies.length} strings, één per sessie:
+["beschrijving sessie 1", "beschrijving sessie 2", ...]
+Alleen JSON.`,
+      }],
     });
-    const fileStr = codeFiles.size > 0 ? `: ${Array.from(codeFiles).slice(0, 4).join(", ")}` : "";
-    const tool = hadClaudeCode ? " met Claude Code" : "";
-    parts.push(`Development aan ${projNames.join(" en ")}${tool}${fileStr}`);
+
+    const tekst = response.content[0].type === "text" ? response.content[0].text : "";
+    const match = tekst.match(/\[[\s\S]*\]/);
+    if (match) {
+      const parsed = JSON.parse(match[0]) as string[];
+      if (parsed.length === sessies.length) return parsed;
+    }
+  } catch {
+    // AI failed, use fallback
   }
 
-  // Trading/investing
-  if (hadTrading) {
-    parts.push("Investerings analyse en marktdata bekeken");
-  }
-
-  // Browse activities (deduplicated)
-  const uniqueBrowse = [...new Set(browseActivities)].slice(0, 2);
-  if (uniqueBrowse.length > 0) {
-    parts.push(uniqueBrowse.join(", "));
-  }
-
-  // Chat
-  if (chatContexts.size > 0) {
-    const servers = Array.from(chatContexts).slice(0, 2).join(" en ");
-    parts.push(`Communicatie via Discord (${servers})`);
-  }
-
-  if (parts.length === 0) return sessie.app;
-
-  return parts.join(". ");
+  return sessies.map(s => fallbackBeschrijving(s));
 }
 
 function groupIntoSessions(entries: RawEntry[]): Sessie[] {
@@ -209,7 +175,7 @@ function buildSession(entries: RawEntry[]): Sessie {
 
   return {
     ...baseSessie,
-    beschrijving: generateBeschrijving(baseSessie),
+    beschrijving: fallbackBeschrijving(baseSessie),
   };
 }
 
@@ -262,7 +228,14 @@ export async function GET(req: NextRequest) {
         categorie: e.categorie ?? "overig",
       }));
 
-    const sessies = groupIntoSessions(filteredEntries);
+    const rawSessies = groupIntoSessions(filteredEntries);
+
+    // Generate AI descriptions (one call for all sessions)
+    const aiBeschrijvingen = await generateAIBeschrijvingen(rawSessies);
+    const sessies = rawSessies.map((s, i) => ({
+      ...s,
+      beschrijving: aiBeschrijvingen[i] || s.beschrijving,
+    }));
 
     // Compute stats from sessions (all are active since idle was filtered pre-grouping)
     const totaalActief = sessies.reduce((sum, s) => sum + s.duurSeconden, 0);

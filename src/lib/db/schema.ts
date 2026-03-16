@@ -965,3 +965,46 @@ export const secondBrainItems = sqliteTable("second_brain_items", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ CONCURRENTEN ============
+
+export const concurrenten = sqliteTable("concurrenten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  websiteUrl: text("website_url").notNull(),
+  linkedinUrl: text("linkedin_url"),
+  instagramHandle: text("instagram_handle"),
+  scanPaginas: text("scan_paginas").default('["diensten","over-ons","pricing","cases"]'),
+  notities: text("notities"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+export const concurrentSnapshots = sqliteTable("concurrent_snapshots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  concurrentId: integer("concurrent_id").references(() => concurrenten.id, { onDelete: "cascade" }),
+  url: text("url").notNull(),
+  contentHash: text("content_hash").notNull(),
+  extractedText: text("extracted_text").notNull(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_snapshots_concurrent_url").on(table.concurrentId, table.url),
+]);
+
+export const concurrentScans = sqliteTable("concurrent_scans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  concurrentId: integer("concurrent_id").references(() => concurrenten.id, { onDelete: "cascade" }),
+  status: text("status", { enum: ["bezig", "voltooid", "mislukt"] }).default("bezig"),
+  scanDatum: text("scan_datum").notNull(),
+  websiteChanges: text("website_changes"),
+  vacatures: text("vacatures"),
+  socialActivity: text("social_activity"),
+  aiSamenvatting: text("ai_samenvatting"),
+  aiHighlights: text("ai_highlights"),
+  trendIndicator: text("trend_indicator", { enum: ["groeiend", "stabiel", "krimpend"] }),
+  kansen: text("kansen"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_scans_concurrent").on(table.concurrentId),
+]);

@@ -26,6 +26,10 @@ import {
   RefreshCw,
   Pause,
   Hash,
+  Zap,
+  Coffee,
+  ArrowLeftRight,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -566,9 +570,204 @@ function WeekTimeline({
   );
 }
 
+// ============ FOCUS SCORE RING ============
+
+function FocusScoreRing({ score }: { score: number }) {
+  const radius = 58;
+  const stroke = 6;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (score / 100) * circumference;
+
+  const getColor = (s: number) => {
+    if (s >= 80) return { color: "#22C55E", label: "Uitstekend", bg: "rgba(34,197,94,0.08)" };
+    if (s >= 60) return { color: "#17B8A5", label: "Goed", bg: "rgba(23,184,165,0.08)" };
+    if (s >= 40) return { color: "#EAB308", label: "Gemiddeld", bg: "rgba(234,179,8,0.08)" };
+    return { color: "#EF4444", label: "Kan beter", bg: "rgba(239,68,68,0.08)" };
+  };
+
+  const { color, label, bg } = getColor(score);
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative" style={{ width: 140, height: 140 }}>
+        <svg width="140" height="140" className="-rotate-90">
+          {/* Background ring */}
+          <circle
+            cx="70"
+            cy="70"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={stroke}
+            className="text-autronis-border"
+          />
+          {/* Progress ring */}
+          <circle
+            cx="70"
+            cy="70"
+            r={radius}
+            fill="none"
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference - progress}
+            className="transition-all duration-1000 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-3xl font-bold tabular-nums" style={{ color }}>
+            {score}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-col items-center gap-0.5">
+        <span
+          className="text-xs font-semibold px-2.5 py-0.5 rounded-full"
+          style={{ color, backgroundColor: bg }}
+        >
+          {label}
+        </span>
+        <span className="text-[11px] text-autronis-text-secondary">Focus Score</span>
+      </div>
+    </div>
+  );
+}
+
+// ============ INZICHTEN GENERATOR ============
+
+interface FocusStats {
+  totaalActief: number;
+  contextSwitches: number;
+  langsteFocusMinuten: number;
+  totaalPauzeMinuten: number;
+  productiefPercentage: number;
+  focusScore: number;
+}
+
+function generateInzichten(stats: FocusStats): string[] {
+  const inzichten: string[] = [];
+
+  if (stats.contextSwitches > 50) {
+    inzichten.push(`Je hebt ${stats.contextSwitches}x van app gewisseld. Probeer meer ononderbroken focus blocks te plannen.`);
+  } else if (stats.contextSwitches < 20) {
+    inzichten.push(`Slechts ${stats.contextSwitches} app-wisselingen \u2014 goede focus vandaag!`);
+  } else {
+    inzichten.push(`${stats.contextSwitches} app-wisselingen vandaag.`);
+  }
+
+  if (stats.langsteFocusMinuten >= 60) {
+    inzichten.push(`Langste focus streak: ${stats.langsteFocusMinuten}m. Indrukwekkend!`);
+  } else if (stats.langsteFocusMinuten < 30 && stats.langsteFocusMinuten > 0) {
+    inzichten.push(`Langste focus streak: ${stats.langsteFocusMinuten}m. Probeer morgen een blok van 60+ minuten te halen.`);
+  } else if (stats.langsteFocusMinuten >= 30) {
+    inzichten.push(`Langste focus streak: ${stats.langsteFocusMinuten}m. Solide concentratie.`);
+  }
+
+  if (stats.totaalPauzeMinuten < 15 && stats.totaalActief > 4 * 3600) {
+    inzichten.push(`Slechts ${stats.totaalPauzeMinuten}m pauze bij ${Math.round(stats.totaalActief / 3600)}u werk. Neem meer pauzes!`);
+  } else if (stats.totaalPauzeMinuten >= 30) {
+    inzichten.push(`${stats.totaalPauzeMinuten}m pauze genomen \u2014 goed voor je concentratie.`);
+  } else if (stats.totaalPauzeMinuten > 0) {
+    inzichten.push(`${stats.totaalPauzeMinuten}m pauze genomen.`);
+  }
+
+  return inzichten;
+}
+
+// ============ SESSION CARD ============
+
+function SessieCard({
+  sessie,
+  isExpanded,
+  onToggle,
+}: {
+  sessie: ScreenTimeSessie;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
+  const apps = sessie.app.split(", ").filter(a => a !== "Inactief");
+  const bestanden = parseBestandenUitTitels(sessie.venstertitels);
+
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "w-full text-left bg-autronis-card border border-autronis-border rounded-xl p-4 transition-all duration-200 cursor-pointer",
+        "hover:border-autronis-accent/30",
+        isExpanded && "border-autronis-accent/40 bg-autronis-card/80"
+      )}
+    >
+      {/* Header: dot + time range + duration */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-2.5 h-2.5 rounded-full shrink-0"
+            style={{ backgroundColor: kleur }}
+          />
+          <span className="text-sm font-medium text-autronis-text-primary tabular-nums">
+            {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)}
+          </span>
+        </div>
+        <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">
+          {formatTijd(sessie.duurSeconden)}
+        </span>
+      </div>
+
+      {/* AI Description */}
+      {sessie.beschrijving && sessie.beschrijving !== sessie.app && (
+        <p className="text-xs text-autronis-text-secondary leading-relaxed mb-3 line-clamp-2 pl-5">
+          {sessie.beschrijving}
+        </p>
+      )}
+
+      {/* App dots */}
+      <div className="flex items-center gap-2 pl-5 flex-wrap">
+        {apps.map((app) => {
+          const appCat = sessie.categorie;
+          const appKleur = CATEGORIE_KLEUREN[appCat] ?? "#6B7280";
+          return (
+            <div key={app} className="flex items-center gap-1.5">
+              <div
+                className="w-2 h-2 rounded-full"
+                style={{ backgroundColor: appKleur, opacity: 0.7 }}
+              />
+              <span className="text-[11px] text-autronis-text-secondary">{app}</span>
+            </div>
+          );
+        })}
+        {sessie.projectNaam && (
+          <span className="text-[11px] text-autronis-accent font-medium ml-auto">
+            {sessie.projectNaam}
+          </span>
+        )}
+      </div>
+
+      {/* Expanded: show window titles */}
+      {isExpanded && bestanden.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-autronis-border/40 pl-5">
+          <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide mb-1.5">
+            Bestanden / pagina&apos;s
+          </p>
+          <div className="space-y-0.5 max-h-28 overflow-y-auto">
+            {bestanden.slice(0, 10).map((b, i) => (
+              <p key={i} className="text-[11px] text-autronis-text-primary truncate px-2 py-0.5 bg-autronis-bg rounded">
+                {b}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+    </button>
+  );
+}
+
+// ============ TAB OVERZICHT (REBUILT) ============
+
 function TabOverzicht({ datum }: { datum: string }) {
   const [view, setView] = useState<OverzichtView>("dag");
-  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [weekSelectedSessie, setWeekSelectedSessie] = useState<ScreenTimeSessie | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -599,145 +798,166 @@ function TabOverzicht({ datum }: { datum: string }) {
 
   const sessies = sessiesData?.sessies ?? [];
   const stats = sessiesData?.stats;
-  const selectedSessie = selectedIdx !== null ? sessies[selectedIdx] ?? null : null;
 
   // Reset selection when datum changes
   useEffect(() => {
-    setSelectedIdx(null);
+    setExpandedIdx(null);
     setWeekSelectedSessie(null);
   }, [datum, view]);
 
   const isLoading = view === "dag" ? sessiesLoading : weekLoading;
 
+  const inzichten = useMemo(() => {
+    if (!stats) return [];
+    return generateInzichten(stats);
+  }, [stats]);
+
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-14 rounded-2xl" />
-        <Skeleton className="h-10 rounded-xl" />
-        <Skeleton className="h-[600px] rounded-2xl" />
+      <div className="space-y-6">
+        <div className="flex justify-center">
+          <Skeleton className="h-[180px] w-[180px] rounded-full" />
+        </div>
+        <div className="flex gap-3">
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full" />
+          <Skeleton className="h-8 w-32 rounded-full" />
+        </div>
+        <Skeleton className="h-[400px] rounded-2xl" />
       </div>
     );
   }
 
-  const activeSessieDetail = view === "dag" ? selectedSessie : weekSelectedSessie;
-
   return (
-    <div className="space-y-4">
-      {/* 1. View toggle + AI Samenvatting row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* View toggle */}
-        <div className="flex bg-autronis-card border border-autronis-border rounded-xl p-1">
-          {(["dag", "week"] as OverzichtView[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
-                view === v
-                  ? "bg-autronis-accent text-autronis-bg"
-                  : "text-autronis-text-secondary hover:text-autronis-text-primary"
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+    <div className="space-y-6">
+      {/* A) Focus Score Hero + View toggle row */}
+      <div className="flex items-start gap-6 flex-col sm:flex-row">
+        {/* Focus Score Ring */}
+        {stats && view === "dag" && (
+          <FocusScoreRing score={stats.focusScore} />
+        )}
 
-        {/* Compact AI summary */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          {samenvattingLoading ? (
-            <Skeleton className="h-4 w-48 rounded" />
-          ) : samenvatting?.samenvattingKort ? (
-            <p className="text-xs text-autronis-text-secondary truncate">
-              {samenvatting.samenvattingKort}
-            </p>
-          ) : (
-            <p className="text-xs text-autronis-text-secondary opacity-50">Geen samenvatting</p>
-          )}
-          {samenvatting?.samenvattingDetail && (
-            <button
-              onClick={() => setDetailOpen(!detailOpen)}
-              className="text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary shrink-0 transition-colors"
-            >
-              {detailOpen ? (
-                <ChevronUp className="w-3.5 h-3.5" />
+        <div className="flex-1 space-y-4">
+          {/* View toggle + AI Samenvatting */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex bg-autronis-card border border-autronis-border rounded-xl p-1">
+              {(["dag", "week"] as OverzichtView[]).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
+                    view === v
+                      ? "bg-autronis-accent text-autronis-bg"
+                      : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+
+            {/* Compact AI summary */}
+            <div className="flex-1 flex items-center gap-2 min-w-0">
+              <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+              {samenvattingLoading ? (
+                <Skeleton className="h-4 w-48 rounded" />
+              ) : samenvatting?.samenvattingKort ? (
+                <p className="text-xs text-autronis-text-secondary truncate">
+                  {samenvatting.samenvattingKort}
+                </p>
               ) : (
-                <ChevronDown className="w-3.5 h-3.5" />
+                <p className="text-xs text-autronis-text-secondary opacity-50">Geen samenvatting</p>
               )}
+              {samenvatting?.samenvattingDetail && (
+                <button
+                  onClick={() => setDetailOpen(!detailOpen)}
+                  className="text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary shrink-0 transition-colors"
+                >
+                  {detailOpen ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={() => genereer.mutate(datum)}
+              disabled={genereer.isPending}
+              className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50 shrink-0"
+            >
+              {genereer.isPending ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <RefreshCw className="w-3 h-3" />
+              )}
+              {samenvatting ? "Opnieuw" : "Genereer"}
             </button>
+          </div>
+
+          {/* Expandable detail */}
+          {detailOpen && samenvatting?.samenvattingDetail && (
+            <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
+              <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+                {samenvatting.samenvattingDetail}
+              </p>
+            </div>
+          )}
+
+          {/* B) 4 Compact KPI pills */}
+          {stats && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-autronis-bg border border-autronis-border rounded-full px-3 py-1.5">
+                <Clock className="w-3 h-3 text-autronis-accent" />
+                <span className="text-xs font-medium text-autronis-text-primary tabular-nums">{formatTijd(stats.totaalActief)}</span>
+                <span className="text-[10px] text-autronis-text-secondary">actief</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-autronis-bg border border-autronis-border rounded-full px-3 py-1.5">
+                <Target className="w-3 h-3 text-purple-400" />
+                <span className="text-xs font-medium text-autronis-text-primary tabular-nums">{stats.langsteFocusMinuten}m</span>
+                <span className="text-[10px] text-autronis-text-secondary">langste focus</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-autronis-bg border border-autronis-border rounded-full px-3 py-1.5">
+                <ArrowLeftRight className="w-3 h-3 text-orange-400" />
+                <span className="text-xs font-medium text-autronis-text-primary tabular-nums">{stats.contextSwitches}</span>
+                <span className="text-[10px] text-autronis-text-secondary">switches</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-autronis-bg border border-autronis-border rounded-full px-3 py-1.5">
+                <Coffee className="w-3 h-3 text-amber-400" />
+                <span className="text-xs font-medium text-autronis-text-primary tabular-nums">{stats.pauzes.length}</span>
+                <span className="text-[10px] text-autronis-text-secondary">pauzes ({stats.totaalPauzeMinuten}m)</span>
+              </div>
+            </div>
           )}
         </div>
-
-        <button
-          onClick={() => genereer.mutate(datum)}
-          disabled={genereer.isPending}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50 shrink-0"
-        >
-          {genereer.isPending ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3 h-3" />
-          )}
-          {samenvatting ? "Opnieuw" : "Genereer"}
-        </button>
       </div>
 
-      {/* Expandable detail */}
-      {detailOpen && samenvatting?.samenvattingDetail && (
-        <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
-          <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
-            {samenvatting.samenvattingDetail}
-          </p>
-        </div>
-      )}
-
-      {/* 2. Compact KPI row */}
-      {stats && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Clock className="w-3.5 h-3.5 text-autronis-accent" />
-            <span className="text-sm font-semibold text-autronis-accent tabular-nums">{formatTijd(stats.totaalActief)}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Actief</span>
+      {/* C) Sessie Cards (dag) or Calendar Timeline (week) */}
+      {view === "dag" ? (
+        sessies.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Monitor className="w-12 h-12 text-autronis-text-secondary opacity-30 mb-4" />
+            <p className="text-autronis-text-secondary text-sm">Geen data voor deze dag</p>
           </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Pause className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-sm font-semibold text-gray-400 tabular-nums">{formatTijd(stats.totaalIdle)}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Idle</span>
-          </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-            <span className="text-sm font-semibold text-green-400 tabular-nums">{stats.productiefPercentage}%</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Productief</span>
-          </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Hash className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-sm font-semibold text-blue-400 tabular-nums">{stats.aantalSessies}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Sessies</span>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Calendar Timeline + Detail panel */}
-      <div className="flex gap-4">
-        {/* Main timeline */}
-        <div className="flex-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 overflow-hidden">
-          {view === "dag" ? (
-            sessies.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-20">
-                <Monitor className="w-12 h-12 text-autronis-text-secondary opacity-30 mb-4" />
-                <p className="text-autronis-text-secondary text-sm">Geen data voor deze dag</p>
-              </div>
-            ) : (
-              <DagTimeline
-                sessies={sessies}
-                datum={datum}
-                selectedSessie={selectedIdx}
-                onSelect={setSelectedIdx}
+        ) : (
+          <div className="space-y-2">
+            {sessies.filter(s => !s.isIdle).map((sessie, idx) => (
+              <SessieCard
+                key={idx}
+                sessie={sessie}
+                isExpanded={expandedIdx === idx}
+                onToggle={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
               />
-            )
-          ) : (
-            weekData && weekData.length > 0 ? (
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="flex gap-4">
+          <div className="flex-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 overflow-hidden">
+            {weekData && weekData.length > 0 ? (
               <WeekTimeline
                 weekData={weekData}
                 onSelectSessie={setWeekSelectedSessie}
@@ -747,38 +967,47 @@ function TabOverzicht({ datum }: { datum: string }) {
                 <Monitor className="w-12 h-12 text-autronis-text-secondary opacity-30 mb-4" />
                 <p className="text-autronis-text-secondary text-sm">Geen data voor deze week</p>
               </div>
-            )
+            )}
+          </div>
+
+          {/* Week detail panel */}
+          {weekSelectedSessie && (
+            <div className="w-72 shrink-0 hidden lg:block">
+              <SessieDetailPanel
+                sessie={weekSelectedSessie}
+                onClose={() => setWeekSelectedSessie(null)}
+              />
+            </div>
           )}
         </div>
+      )}
 
-        {/* Detail panel */}
-        {activeSessieDetail && (
-          <div className="w-72 shrink-0 hidden lg:block">
-            <SessieDetailPanel
-              sessie={activeSessieDetail}
-              onClose={() => {
-                setSelectedIdx(null);
-                setWeekSelectedSessie(null);
-              }}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Mobile detail (bottom sheet style) */}
-      {activeSessieDetail && (
+      {/* Week mobile detail */}
+      {view === "week" && weekSelectedSessie && (
         <div className="lg:hidden">
           <SessieDetailPanel
-            sessie={activeSessieDetail}
-            onClose={() => {
-              setSelectedIdx(null);
-              setWeekSelectedSessie(null);
-            }}
+            sessie={weekSelectedSessie}
+            onClose={() => setWeekSelectedSessie(null)}
           />
         </div>
       )}
 
-      {/* 4. Category legend */}
+      {/* D) Inzichten card */}
+      {stats && inzichten.length > 0 && view === "dag" && (
+        <div className="bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl p-4 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <Zap className="w-3.5 h-3.5 text-autronis-accent" />
+            <span className="text-xs font-semibold text-autronis-accent uppercase tracking-wide">Inzichten</span>
+          </div>
+          {inzichten.map((inzicht, i) => (
+            <p key={i} className="text-xs text-autronis-text-secondary leading-relaxed pl-5">
+              {inzicht}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Category legend */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1">
         {Object.entries(CATEGORIE_KLEUREN).map(([cat, kleur]) => (
           <div key={cat} className="flex items-center gap-1.5">

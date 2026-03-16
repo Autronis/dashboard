@@ -252,6 +252,58 @@ export async function GET(req: NextRequest) {
       .reduce((sum, s) => sum + s.duurSeconden, 0);
     const productiefPercentage = werkSeconden > 0 ? Math.round((productiefSeconden / werkSeconden) * 100) : 0;
 
+    // Context switches: count unique app changes in raw entries
+    let contextSwitches = 0;
+    let lastApp = "";
+    for (const e of filteredEntries) {
+      if (e.app !== lastApp && lastApp !== "") contextSwitches++;
+      lastApp = e.app;
+    }
+
+    // Longest focus streak: longest continuous period in same app category
+    let longestFocusMinutes = 0;
+    let currentStreakStart = filteredEntries[0]?.startTijd;
+    let currentStreakCat = filteredEntries[0]?.categorie;
+    for (let i = 1; i < filteredEntries.length; i++) {
+      if (filteredEntries[i].categorie !== currentStreakCat) {
+        const streakDuration = (new Date(filteredEntries[i - 1].eindTijd).getTime() - new Date(currentStreakStart!).getTime()) / 60000;
+        if (streakDuration > longestFocusMinutes) longestFocusMinutes = Math.round(streakDuration);
+        currentStreakStart = filteredEntries[i].startTijd;
+        currentStreakCat = filteredEntries[i].categorie;
+      }
+    }
+    // Check final streak
+    if (filteredEntries.length > 0) {
+      const lastEntry = filteredEntries[filteredEntries.length - 1];
+      const finalStreak = (new Date(lastEntry.eindTijd).getTime() - new Date(currentStreakStart!).getTime()) / 60000;
+      if (finalStreak > longestFocusMinutes) longestFocusMinutes = Math.round(finalStreak);
+    }
+
+    // Focus score: 0-100 based on:
+    // - Less context switching = higher score (max 40 points)
+    // - Higher productive % = higher score (max 40 points)
+    // - Longer focus streaks = higher score (max 20 points)
+    const switchScore = Math.max(0, 40 - contextSwitches * 0.5);
+    const productiviteitScore = productiefPercentage * 0.4;
+    const focusStreakScore = Math.min(20, longestFocusMinutes / 3);
+    const focusScore = Math.round(switchScore + productiviteitScore + focusStreakScore);
+
+    // Break analysis: find gaps > 5 min between active entries
+    const pauzes: Array<{ start: string; eind: string; duurMinuten: number }> = [];
+    for (let i = 1; i < filteredEntries.length; i++) {
+      const prevEnd = new Date(filteredEntries[i - 1].eindTijd).getTime();
+      const thisStart = new Date(filteredEntries[i].startTijd).getTime();
+      const gapMin = (thisStart - prevEnd) / 60000;
+      if (gapMin >= 5 && gapMin <= 120) {
+        pauzes.push({
+          start: filteredEntries[i - 1].eindTijd,
+          eind: filteredEntries[i].startTijd,
+          duurMinuten: Math.round(gapMin),
+        });
+      }
+    }
+    const totaalPauzeMinuten = pauzes.reduce((s, p) => s + p.duurMinuten, 0);
+
     return NextResponse.json({
       sessies,
       stats: {
@@ -259,6 +311,11 @@ export async function GET(req: NextRequest) {
         totaalIdle,
         productiefPercentage,
         aantalSessies: actiefSessies.length,
+        focusScore,
+        contextSwitches,
+        langsteFocusMinuten: longestFocusMinutes,
+        pauzes,
+        totaalPauzeMinuten,
       },
     });
   } catch (error) {

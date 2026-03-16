@@ -189,6 +189,11 @@ interface SessiesData {
     totaalIdle: number;
     productiefPercentage: number;
     aantalSessies: number;
+    focusScore: number;
+    contextSwitches: number;
+    langsteFocusMinuten: number;
+    pauzes: Array<{ start: string; eind: string; duurMinuten: number }>;
+    totaalPauzeMinuten: number;
   };
 }
 

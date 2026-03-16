@@ -187,10 +187,10 @@ function gisterenDatum(): string {
 
 type OverzichtView = "dag" | "week";
 
-const DAY_START = 7; // 07:00
-const DAY_END = 23; // 23:00
-const TOTAL_HOURS = DAY_END - DAY_START;
-const HOUR_LABELS = Array.from({ length: TOTAL_HOURS + 1 }, (_, i) => i + DAY_START);
+const DAY_START = 0;
+const DAY_END = 24;
+const TOTAL_HOURS = 24;
+const HOUR_LABELS = Array.from({ length: 25 }, (_, i) => i); // 0-24
 
 function getTimePosition(timeStr: string): number {
   const d = new Date(timeStr);
@@ -205,7 +205,6 @@ function getBlockHeight(duurSeconden: number): number {
 function getCurrentTimePosition(): number | null {
   const now = new Date();
   const hours = now.getHours() + now.getMinutes() / 60;
-  if (hours < DAY_START || hours > DAY_END) return null;
   return ((hours - DAY_START) / TOTAL_HOURS) * 100;
 }
 
@@ -329,38 +328,55 @@ function DagTimeline({
   onSelect: (idx: number | null) => void;
 }) {
   const vandaag = isToday(datum);
-  const currentPos = vandaag ? getCurrentTimePosition() : null;
 
   // Filter out idle sessions — show as gaps instead of blocks
   const visibleSessions = sessies.filter(s => !s.isIdle);
 
-  // Pre-compute positions and resolve overlaps
+  // Auto-zoom: compute visible range from sessions
+  const firstHour = visibleSessions.length > 0
+    ? Math.max(0, Math.floor(new Date(visibleSessions[0].startTijd).getHours()) - 1)
+    : 7;
+  const lastHour = visibleSessions.length > 0
+    ? Math.min(24, Math.ceil(new Date(visibleSessions[visibleSessions.length - 1].eindTijd).getHours()) + 1)
+    : 23;
+  const visibleStart = firstHour;
+  const visibleEnd = lastHour;
+  const visibleHours = visibleEnd - visibleStart;
+  const hourLabels = Array.from({ length: visibleHours + 1 }, (_, i) => i + visibleStart);
+
+  // Current time position within visible range
+  const currentPos = useMemo(() => {
+    if (!vandaag) return null;
+    const now = new Date();
+    const hours = now.getHours() + now.getMinutes() / 60;
+    if (hours < visibleStart || hours > visibleEnd) return null;
+    return ((hours - visibleStart) / visibleHours) * 100;
+  }, [vandaag, visibleStart, visibleEnd, visibleHours]);
+
+  // Position blocks at their actual time — no overlap hack
   const positionedBlocks = useMemo(() => {
-    let minNextTop = 0; // Track bottom edge of previous block (in %)
-    return visibleSessions.map((sessie, idx) => {
-      const rawTop = getTimePosition(sessie.startTijd);
-      const height = getBlockHeight(sessie.duurSeconden);
-      // Ensure this block doesn't overlap with previous block
-      const top = Math.max(rawTop, minNextTop);
-      const effectiveHeight = Math.max(height, 1.5);
-      minNextTop = top + effectiveHeight + 0.15; // 0.15% gap between blocks
-      return { sessie, originalIdx: sessies.indexOf(sessie), top, height: effectiveHeight };
+    return visibleSessions.map((sessie) => {
+      const startDate = new Date(sessie.startTijd);
+      const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+      const top = ((startHour - visibleStart) / visibleHours) * 100;
+      const height = Math.max(1.2, (sessie.duurSeconden / 3600 / visibleHours) * 100);
+      return { sessie, originalIdx: sessies.indexOf(sessie), top, height };
     });
-  }, [visibleSessions, sessies]);
+  }, [visibleSessions, sessies, visibleStart, visibleHours]);
 
   return (
-    <div className="relative flex" style={{ minHeight: `${TOTAL_HOURS * 56}px` }}>
+    <div className="relative flex" style={{ minHeight: `${visibleHours * 64}px` }}>
       {/* Hour gutter */}
-      <div className="w-12 shrink-0 relative">
-        {HOUR_LABELS.map((hour) => {
-          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+      <div className="w-14 shrink-0 relative">
+        {hourLabels.map((hour) => {
+          const top = ((hour - visibleStart) / visibleHours) * 100;
           return (
             <div
               key={hour}
               className="absolute right-3 -translate-y-1/2 text-xs text-autronis-text-secondary tabular-nums select-none"
               style={{ top: `${top}%` }}
             >
-              {String(hour).padStart(2, "0")}
+              {String(hour).padStart(2, "0")}:00
             </div>
           );
         })}
@@ -369,8 +385,8 @@ function DagTimeline({
       {/* Timeline area */}
       <div className="flex-1 relative border-l border-autronis-border/40">
         {/* Hour lines */}
-        {HOUR_LABELS.map((hour) => {
-          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
+        {hourLabels.map((hour) => {
+          const top = ((hour - visibleStart) / visibleHours) * 100;
           return (
             <div
               key={hour}
@@ -380,7 +396,7 @@ function DagTimeline({
           );
         })}
 
-        {/* Session blocks (idle filtered out, overlap resolved) */}
+        {/* Session blocks — positioned at actual time, no overlap hack */}
         {positionedBlocks.map(({ sessie, originalIdx, top, height }) => {
           const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
           const isSelected = selectedSessie === originalIdx;
@@ -402,24 +418,12 @@ function DagTimeline({
               }}
             >
               <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden">
-                <span className="text-xs font-medium text-white truncate leading-tight">
-                  {height < 3
-                    ? sessie.app
-                    : sessie.beschrijving && sessie.beschrijving !== sessie.app
-                      ? sessie.beschrijving
-                      : (
-                        <>
-                          {sessie.app}
-                          {sessie.projectNaam && (
-                            <span className="font-normal opacity-80"> - {sessie.projectNaam}</span>
-                          )}
-                        </>
-                      )
-                  }
+                <span className="text-[11px] font-semibold text-white truncate leading-tight">
+                  {sessie.beschrijving || sessie.app}
                 </span>
-                {height > 3 && (
-                  <span className="text-[10px] text-white/70 truncate leading-tight">
-                    {CATEGORIE_LABELS[sessie.categorie] ?? sessie.categorie} &middot; {formatTijd(sessie.duurSeconden)}
+                {height > 2.5 && (
+                  <span className="text-[10px] text-white/60 truncate">
+                    {new Date(sessie.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} - {new Date(sessie.eindTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} &middot; {formatTijd(sessie.duurSeconden)}
                   </span>
                 )}
               </div>

@@ -19,9 +19,9 @@ interface AnalyseResultaat {
 }
 
 async function transcribeAudio(audioPad: string): Promise<string> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
-    throw new Error("OPENAI_API_KEY niet geconfigureerd");
+    throw new Error("GROQ_API_KEY niet geconfigureerd");
   }
 
   const audioBuffer = await readFile(audioPad);
@@ -34,11 +34,11 @@ async function transcribeAudio(audioPad: string): Promise<string> {
     new Blob([audioBuffer], { type: `audio/${ext}` }),
     fileName
   );
-  formData.append("model", "whisper-1");
+  formData.append("model", "whisper-large-v3");
   formData.append("language", "nl");
 
   const response = await fetch(
-    "https://api.openai.com/v1/audio/transcriptions",
+    "https://api.groq.com/openai/v1/audio/transcriptions",
     {
       method: "POST",
       headers: {
@@ -50,7 +50,7 @@ async function transcribeAudio(audioPad: string): Promise<string> {
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Whisper API fout: ${response.status} - ${errorBody}`);
+    throw new Error(`Groq Whisper API fout: ${response.status} - ${errorBody}`);
   }
 
   const result = (await response.json()) as { text: string };

@@ -57,7 +57,7 @@ export const tijdregistraties = sqliteTable("tijdregistraties", {
   startTijd: text("start_tijd").notNull(),
   eindTijd: text("eind_tijd"),
   duurMinuten: integer("duur_minuten"),
-  categorie: text("categorie", { enum: ["development", "meeting", "administratie", "overig"] }).default("development"),
+  categorie: text("categorie", { enum: ["development", "meeting", "administratie", "overig", "focus"] }).default("development"),
   isHandmatig: integer("is_handmatig").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
@@ -932,4 +932,18 @@ export const ideeen = sqliteTable("ideeen", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ FOCUS SESSIES ============
+export const focusSessies = sqliteTable("focus_sessies", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  projectId: integer("project_id").references(() => projecten.id),
+  taakId: integer("taak_id").references(() => taken.id),
+  geplandeDuurMinuten: integer("geplande_duur_minuten").notNull(),
+  werkelijkeDuurMinuten: integer("werkelijke_duur_minuten"),
+  reflectie: text("reflectie"),
+  tijdregistratieId: integer("tijdregistratie_id").notNull().references(() => tijdregistraties.id),
+  status: text("status", { enum: ["actief", "voltooid", "afgebroken"] }).notNull().default("actief"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

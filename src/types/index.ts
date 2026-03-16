@@ -14,7 +14,7 @@ export type TaakStatus = "open" | "bezig" | "afgerond";
 
 export type Prioriteit = "laag" | "normaal" | "hoog";
 
-export type TijdCategorie = "development" | "meeting" | "administratie" | "overig";
+export type TijdCategorie = "development" | "meeting" | "administratie" | "overig" | "focus";
 
 // ============ INTERFACES ============
 
@@ -100,4 +100,31 @@ export interface ScreenTimeSamenvatting {
   productiefPercentage: number | null;
   topProject: string | null;
   aangemaaktOp: string;
+}
+
+// ============ FOCUS MODE ============
+
+export type FocusSessieStatus = "actief" | "voltooid" | "afgebroken";
+
+export interface FocusSessie {
+  id: number;
+  gebruikerId: number;
+  projectId: number;
+  taakId: number | null;
+  geplandeDuurMinuten: number;
+  werkelijkeDuurMinuten: number | null;
+  reflectie: string | null;
+  tijdregistratieId: number;
+  status: FocusSessieStatus;
+  aangemaaktOp: string;
+  projectNaam?: string;
+  taakTitel?: string;
+}
+
+export interface FocusStatistieken {
+  vandaag: { sessies: number; totaleDuurMinuten: number };
+  week: Array<{ dag: string; duurMinuten: number }>;
+  vorigeWeek: { totaleDuurMinuten: number };
+  streak: number;
+  perProject: Array<{ projectId: number; projectNaam: string; duurMinuten: number; sessies: number }>;
 }

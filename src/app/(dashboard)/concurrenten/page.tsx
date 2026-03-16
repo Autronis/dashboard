@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -280,9 +280,11 @@ export default function ConcurrentenPage() {
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   // Stop polling when scan completes
-  if (scanActive && scanStatus && !scanStatus.actief) {
-    setScanActive(false);
-  }
+  useEffect(() => {
+    if (scanActive && scanStatus && !scanStatus.actief) {
+      setScanActive(false);
+    }
+  }, [scanActive, scanStatus]);
 
   function handleScanAll() {
     startScan.mutate(undefined, {

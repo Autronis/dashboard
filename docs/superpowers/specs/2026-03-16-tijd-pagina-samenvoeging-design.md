@@ -72,19 +72,62 @@ Behouden uit schermtijd, getoond in Tijdlijn tab:
 | `/schermtijd` | Redirect → `/tijd` |
 | — | `/tijd` (nieuwe pagina) |
 
-## Sidebar Wijziging
+## Sidebar & Navigatie Wijzigingen
 
 Twee items ("Tijdregistratie" + "Schermtijd") worden één item:
 - Label: "Tijd"
 - Icon: Clock
 - Pad: `/tijd`
 
+Alle verwijzingen naar oude routes updaten:
+- `sidebar.tsx` — menu item
+- `bottom-nav.tsx` — "Timer" link → `/tijd`
+- `header.tsx` — actieve timer indicator link → `/tijd`
+- `page.tsx` (dashboard homepage) — eventuele links
+- `command-palette.tsx` — zoekresultaten
+- `quick-action-button.tsx` — snelacties
+- Alle API routes die naar oude paden verwijzen (grep check)
+
+## Categorie Unificatie
+
+Twee verschillende categorie-sets bestaan:
+- `tijdregistraties`: `development`, `meeting`, `administratie`, `overig`
+- `screen_time_entries`: `development`, `communicatie`, `design`, `administratie`, `afleiding`, `overig`, `inactief`
+
+**Uniforme set voor de /tijd pagina** (schermtijd-set is leidend):
+| Categorie | Kleur | Bron |
+|-----------|-------|------|
+| development | `#17B8A5` (teal) | beide |
+| communicatie | `#3B82F6` (blue) | schermtijd |
+| design | `#A855F7` (purple) | schermtijd |
+| meeting | `#3B82F6` (blue) | tijdregistratie (mapped → zelfde kleur als communicatie) |
+| administratie | `#F59E0B` (amber) | beide |
+| afleiding | `#EF4444` (red) | schermtijd |
+| overig | `#6B7280` (gray) | beide |
+| inactief | `#4B5563` (dark gray) | schermtijd |
+
+`meeting` uit tijdregistraties wordt visueel gelijk behandeld als `communicatie` (zelfde kleur). Geen schema migratie nodig.
+
 ## Data Integratie
 
-- Tijdlijn toont schermtijd-sessies + handmatige timer entries
-- Handmatige entries herkenbaar via `bron` veld of `isHandmatig` flag
-- Registraties tab kan items uit beide bronnen tonen
-- Geen database schema wijzigingen nodig — bestaande tabellen blijven
+### Tijdlijn tab (gecombineerde view)
+- Frontend fetcht van **twee bronnen**: `useSessies()` voor schermtijd + `useRegistraties()` voor handmatige entries
+- Client-side merge: handmatige tijdregistraties worden omgezet naar `ScreenTimeSessie`-achtig format met:
+  - `app`: "Handmatig"
+  - `isIdle`: false
+  - `bron`: "handmatig" (herkenbaar via `isHandmatig` flag op `tijdregistraties` tabel)
+  - `venstertitels`: [omschrijving]
+- Gesorteerd op `startTijd`, ingevoegd in de tijdlijn naast automatische sessies
+- "Handmatig" badge op deze entries in de UI
+
+### Registraties tab
+- Fetcht alleen `useRegistraties()` — toont handmatige timer entries
+- Toekomstige uitbreiding: schermtijd-sessies markeerbaar als factureerbaar
+
+### Geen API wijzigingen
+- Bestaande endpoints blijven ongewijzigd
+- Merge gebeurt client-side in `tab-tijdlijn.tsx`
+- Database tabellen ongewijzigd
 
 ## Wat Verdwijnt
 
@@ -110,5 +153,7 @@ Twee items ("Tijdregistratie" + "Schermtijd") worden één item:
   - `tab-registraties.tsx` — registratielijst (uit tijdregistratie)
   - `tab-team.tsx` — team view (uit schermtijd)
   - `tab-regels-suggesties.tsx` — regels + suggesties (uit schermtijd)
-- Redirect files in oude routes
-- Sidebar aanpassen
+- `handmatig-modal.tsx` verplaatsen van `/tijdregistratie/` naar `/tijd/`
+- Redirects via `page.tsx` met `redirect("/tijd")` (next/navigation) in oude routes
+- Sidebar, bottom-nav, header, command-palette, quick-action-button updaten
+- Grep voor `/tijdregistratie` en `/schermtijd` om alle verwijzingen te vangen

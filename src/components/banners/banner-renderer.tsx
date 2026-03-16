@@ -1,7 +1,7 @@
 "use client";
 
 import type { BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
-import { BANNER_FORMAAT_SIZES } from "@/types/content";
+import { BANNER_FORMAAT_SIZES, BANNER_ILLUSTRATION_BACKGROUNDS } from "@/types/content";
 import { FlowLines } from "./flow-lines";
 import { BgIllustration } from "./bg-illustrations";
 import { CapsuleIcon } from "./capsule-icons";
@@ -56,18 +56,39 @@ export function BannerRenderer({
         flexShrink: 0,
       }}
     >
-      {/* 1. Flow lines */}
-      <FlowLines width={width * scale} height={height * scale} />
-
-      {/* 2. Background illustration */}
-      <BgIllustration
-        type={illustration}
-        width={width * scale}
-        height={height * scale}
-        scale={illustrationScale}
-        offsetX={illustrationOffsetX}
-        offsetY={illustrationOffsetY}
-      />
+      {/* 1. Background — PNG if available, otherwise flow lines + SVG */}
+      {BANNER_ILLUSTRATION_BACKGROUNDS[illustration] ? (
+        <>
+          {/* Real PNG background from Lovable covers */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${BANNER_ILLUSTRATION_BACKGROUNDS[illustration]})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            opacity: 0.85,
+          }} />
+          {/* Dark overlay to ensure capsule readability */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(ellipse at center, rgba(11,26,31,0.3) 0%, rgba(11,26,31,0.6) 70%)",
+          }} />
+        </>
+      ) : (
+        <>
+          {/* Fallback: flow lines + SVG illustration */}
+          <FlowLines width={width * scale} height={height * scale} />
+          <BgIllustration
+            type={illustration}
+            width={width * scale}
+            height={height * scale}
+            scale={illustrationScale}
+            offsetX={illustrationOffsetX}
+            offsetY={illustrationOffsetY}
+          />
+        </>
+      )}
 
       {/* 3. Radial glow behind capsule */}
       <div

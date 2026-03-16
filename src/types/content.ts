@@ -124,14 +124,43 @@ export const BANNER_ICON_LABELS: Record<BannerIcon, string> = {
 export const BANNER_ILLUSTRATIONS = [
   "gear", "brain", "nodes", "chart", "target", "flow", "circuit", "lightbulb",
   "puzzle", "cloud", "rocket", "calendar", "magnet", "handshake",
+  "globe", "shield", "infinity", "dna", "matrix", "wave",
 ] as const;
 export type BannerIllustration = typeof BANNER_ILLUSTRATIONS[number];
 
+// Map illustration types to real PNG background images (from Lovable project)
+// Falls back to SVG illustration if no PNG available
+export const BANNER_ILLUSTRATION_BACKGROUNDS: Partial<Record<BannerIllustration, string>> = {
+  gear: "/banners/backgrounds/cover-process-automation.png",
+  brain: "/banners/backgrounds/cover-ai-agents.png",
+  chart: "/banners/backgrounds/cover-data-reporting.png",
+  nodes: "/banners/backgrounds/cover-systeemintegraties.png",
+  shield: "/banners/backgrounds/cover-veiligheid-data.png",
+  flow: "/banners/backgrounds/cover-hoe-wij-werken.png",
+  lightbulb: "/banners/backgrounds/cover-handmatig-werk.png",
+};
+
 export const BANNER_ILLUSTRATION_LABELS: Record<BannerIllustration, string> = {
-  gear: "Tandwielen", brain: "Neuraal netwerk", nodes: "Netwerk nodes", chart: "Dashboard",
-  target: "Doelwit & magneet", flow: "Flowchart", circuit: "Circuit board", lightbulb: "Idee lamp",
-  puzzle: "Puzzelstukken", cloud: "Cloud systeem", rocket: "Raket lancering", calendar: "Planning",
-  magnet: "Magneet", handshake: "Samenwerking",
+  gear: "Mechanisme",
+  brain: "Neuraal Netwerk",
+  nodes: "Verbonden Netwerk",
+  chart: "Data Dashboard",
+  target: "Precisie Doel",
+  flow: "Procesflow",
+  circuit: "Circuit Board",
+  lightbulb: "Innovatie",
+  puzzle: "Puzzel",
+  cloud: "Cloud Platform",
+  rocket: "Groei & Lancering",
+  calendar: "Planning",
+  magnet: "Aantrekkingskracht",
+  handshake: "Partnership",
+  globe: "Wereldwijd",
+  shield: "Beveiliging",
+  infinity: "Automatisering",
+  dna: "Structuur",
+  matrix: "Data Matrix",
+  wave: "Signaal",
 };
 
 export interface ContentBanner {

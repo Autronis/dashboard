@@ -221,6 +221,49 @@ export function useDeletePost() {
   });
 }
 
+export function useSchedulePost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { id: number; geplandOp: string }) => {
+      const { id, geplandOp } = payload;
+      const res = await fetch(`/api/content/posts/${id}/schedule`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geplandOp }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Inplannen mislukt");
+      }
+      return res.json() as Promise<{ succes: boolean; geplandOp: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-posts"] });
+    },
+  });
+}
+
+export function usePublishPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content/posts/${id}/publish`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Publiceren mislukt");
+      }
+      return res.json() as Promise<{ succes: boolean }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-posts"] });
+    },
+  });
+}
+
 // ============ VIDEO'S ============
 
 type RawVideo = Omit<ContentVideo, "script"> & { script: string };

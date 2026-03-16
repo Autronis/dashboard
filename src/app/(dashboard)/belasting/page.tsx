@@ -1432,19 +1432,19 @@ export default function BelastingPage() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
                   <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
                     <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Omzet</p>
-                    <p className="text-2xl font-bold text-emerald-400 tabular-nums">{formatBedrag(jaaroverzichtData.omzet)}</p>
+                    <p className="text-2xl font-bold text-emerald-400 tabular-nums">{formatBedrag(jaaroverzichtData.omzet?.totaal ?? 0)}</p>
                   </div>
                   <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
                     <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Kosten</p>
-                    <p className="text-2xl font-bold text-orange-400 tabular-nums">{formatBedrag(jaaroverzichtData.kosten)}</p>
+                    <p className="text-2xl font-bold text-orange-400 tabular-nums">{formatBedrag(jaaroverzichtData.kosten?.totaal ?? 0)}</p>
                   </div>
                   <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
                     <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Winst</p>
-                    <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatBedrag(jaaroverzichtData.winst)}</p>
+                    <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatBedrag(jaaroverzichtData.winstVerlies?.brutowinst ?? 0)}</p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
                     <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Belasting</p>
-                    <p className="text-2xl font-bold text-purple-400 tabular-nums">{formatBedrag(jaaroverzichtData.belasting)}</p>
+                    <p className="text-2xl font-bold text-purple-400 tabular-nums">{formatBedrag(jaaroverzichtData.winstVerlies?.geschatteBelasting ?? 0)}</p>
                   </div>
                 </div>
 
@@ -1455,7 +1455,7 @@ export default function BelastingPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-autronis-text-secondary">BTW afgedragen</p>
-                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btwAfgedragen)}</p>
+                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btw?.afgedragen ?? 0)}</p>
                       </div>
                     </div>
                   </div>
@@ -1464,7 +1464,7 @@ export default function BelastingPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-autronis-text-secondary">Totaal uren gewerkt</p>
-                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{jaaroverzichtData.uren}</p>
+                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{typeof jaaroverzichtData.uren === "object" ? `${jaaroverzichtData.uren.totaal} / ${jaaroverzichtData.uren.doel}` : jaaroverzichtData.uren}</p>
                       </div>
                       {urenCriterium && (
                         <div className="flex items-center justify-between">
@@ -1481,7 +1481,7 @@ export default function BelastingPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-autronis-text-secondary">Totaal investeringen</p>
-                        <p className="text-base font-semibold text-blue-400 tabular-nums">{formatBedrag(jaaroverzichtData.investeringen)}</p>
+                        <p className="text-base font-semibold text-blue-400 tabular-nums">{formatBedrag(jaaroverzichtData.investeringen?.totaal ?? 0)}</p>
                       </div>
                     </div>
                   </div>

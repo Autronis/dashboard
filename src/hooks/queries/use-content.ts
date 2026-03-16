@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus, ContentBanner, BannerTemplateType, BannerFormaat, BannerData, BannerStatus } from "@/types/content";
+import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus, ContentBanner, BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
 
 // ============ PROFIEL ============
 
@@ -358,26 +358,11 @@ export function useDeleteVideo() {
 
 // ============ BANNERS ============
 
-type RawBanner = Omit<ContentBanner, "data"> & { data: string };
-
-function mapBanner(raw: RawBanner): ContentBanner {
-  let data: BannerData;
-  try {
-    data = JSON.parse(raw.data) as BannerData;
-  } catch {
-    data = { tekst: "" };
-  }
-  return { ...raw, data };
-}
-
 async function fetchContentBanners(): Promise<ContentBanner[]> {
   const res = await fetch("/api/content/banners");
   if (!res.ok) throw new Error("Kon banners niet ophalen");
-  const json = await res.json() as { banners: (RawBanner | ContentBanner)[] };
-  return (json.banners ?? []).map((b) => {
-    if (typeof (b as RawBanner).data === "string") return mapBanner(b as RawBanner);
-    return b as ContentBanner;
-  });
+  const json = await res.json() as { banners: ContentBanner[] };
+  return json.banners ?? [];
 }
 
 export function useContentBanners() {
@@ -388,16 +373,15 @@ export function useContentBanners() {
   });
 }
 
-export function useCreateBanner() {
+export function useSaveBanner() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (payload: {
-      postId?: number;
-      templateType: BannerTemplateType;
-      templateVariant?: number;
+      onderwerp: string;
+      icon: BannerIcon;
+      illustration: BannerIllustration;
       formaat: BannerFormaat;
-      data: BannerData;
     }) => {
       const res = await fetch("/api/content/banners", {
         method: "POST",
@@ -406,7 +390,7 @@ export function useCreateBanner() {
       });
       if (!res.ok) {
         const json = await res.json() as { fout?: string };
-        throw new Error(json.fout ?? "Aanmaken mislukt");
+        throw new Error(json.fout ?? "Opslaan mislukt");
       }
       return res.json() as Promise<{ banner: ContentBanner }>;
     },
@@ -416,51 +400,19 @@ export function useCreateBanner() {
   });
 }
 
-export function useUpdateBanner() {
-  const queryClient = useQueryClient();
-
+export function useAnalyzeTopic() {
   return useMutation({
-    mutationFn: async (payload: {
-      id: number;
-      data?: BannerData;
-      templateVariant?: number;
-      gridPositie?: number;
-      status?: BannerStatus;
-    }) => {
-      const { id, ...body } = payload;
-      const res = await fetch(`/api/content/banners/${id}`, {
-        method: "PATCH",
+    mutationFn: async (onderwerp: string) => {
+      const res = await fetch("/api/content/banners/analyze", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ onderwerp }),
       });
       if (!res.ok) {
         const json = await res.json() as { fout?: string };
-        throw new Error(json.fout ?? "Bijwerken mislukt");
+        throw new Error(json.fout ?? "Analyseren mislukt");
       }
-      return res.json() as Promise<{ banner: ContentBanner }>;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
-    },
-  });
-}
-
-export function useDeleteBanner() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/content/banners/${id}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        const json = await res.json() as { fout?: string };
-        throw new Error(json.fout ?? "Verwijderen mislukt");
-      }
-      return res.json() as Promise<{ ok: boolean }>;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+      return res.json() as Promise<{ icon: BannerIcon; illustration: BannerIllustration; capsuleText: string }>;
     },
   });
 }
@@ -485,41 +437,19 @@ export function useRenderBanner() {
   });
 }
 
-export function useAutoGenereerBanner() {
+export function useDeleteBanner() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload: { postId: number; formaat?: BannerFormaat }) => {
-      const res = await fetch("/api/content/banners/auto-genereer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content/banners/${id}`, {
+        method: "DELETE",
       });
       if (!res.ok) {
         const json = await res.json() as { fout?: string };
-        throw new Error(json.fout ?? "Auto-genereren mislukt");
+        throw new Error(json.fout ?? "Verwijderen mislukt");
       }
-      return res.json() as Promise<{ banner: ContentBanner }>;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["content-banners"] });
-    },
-  });
-}
-
-export function useBatchGenereerBanners() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const res = await fetch("/api/content/banners/batch", {
-        method: "POST",
-      });
-      if (!res.ok) {
-        const json = await res.json() as { fout?: string };
-        throw new Error(json.fout ?? "Batch genereren mislukt");
-      }
-      return res.json() as Promise<{ generated: number; failed: number; bericht?: string }>;
+      return res.json() as Promise<{ ok: boolean }>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["content-banners"] });

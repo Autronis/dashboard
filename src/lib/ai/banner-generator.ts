@@ -1,119 +1,60 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { BannerTemplateType, BannerData, QuoteData, StatData, TipData, CaseStudyData } from "@/types/content";
-import { AUTRONIS_CONTEXT } from "./autronis-context";
+import type { BannerIcon, BannerIllustration } from "@/types/content";
+import { BANNER_ICONS, BANNER_ILLUSTRATIONS } from "@/types/content";
 
-export type BannerIllustrationType = "gear" | "brain" | "chart" | "nodes" | "lightbulb" | "network" | "target" | "euro";
-
-interface BannerGenerationResult {
-  templateType: BannerTemplateType;
-  data: BannerData;
-  illustration: BannerIllustrationType;
+export interface TopicAnalysis {
+  icon: BannerIcon;
+  illustration: BannerIllustration;
+  capsuleText: string;
 }
 
-interface RawBannerResult {
-  templateType: unknown;
-  data: unknown;
+interface RawTopicAnalysis {
+  icon: unknown;
+  illustration: unknown;
+  capsuleText: unknown;
 }
 
-function buildPrompt(postInhoud: string, postTitel: string): string {
-  return `${AUTRONIS_CONTEXT}
+function buildAnalyzePrompt(onderwerp: string): string {
+  return `Given the topic "${onderwerp}", choose:
+1. The best icon from: ${BANNER_ICONS.join(", ")}
+2. The best background illustration from: ${BANNER_ILLUSTRATIONS.join(", ")}
+3. Clean capsule text (short, max 3 words, like "Process Automation")
 
-## Jouw taak
-Analyseer de onderstaande social media post en genereer de beste banner data.
+Icon guide:
+- cog: process, workflow, automation, system
+- brain: AI, machine learning, intelligence
+- bar-chart: data, analytics, reporting, statistics
+- link: integrations, API, connections, linking
+- lightbulb: tips, insights, ideas, advice
+- target: goals, sales, conversion, targeting
+- git-branch: development, branches, workflows
+- zap: speed, instant, fast automation, triggers
+- plug: connections, integrations, plugins
+- users: team, clients, collaboration, people
+- euro: finance, revenue, costs, pricing
+- shield: security, reliability, protection
 
-Kies het template type op basis van de inhoud:
-- "quote" — als de post een sterke uitspraak, stelling of citaat bevat
-- "stat" — als de post concrete cijfers, tijdsbesparing, percentages of meetbare resultaten bevat
-- "tip" — als de post tips, stappen of een lijst met adviezen bevat
-- "case_study" — als de post een klant, project of concreet resultaat voor iemand beschrijft
+Illustration guide:
+- gear: process automation, workflows
+- brain: AI, machine learning
+- nodes: integrations, connections, network
+- chart: data, analytics, growth
+- target: goals, sales, lead generation
+- flow: workflows, processes, pipelines
+- circuit: tech, development, systems
+- lightbulb: tips, insights, ideas
 
-## Post
-**Titel:** ${postTitel}
-
-**Inhoud:**
-${postInhoud}
-
-## Outputformaat
-Geef ALLEEN een JSON-object terug. Geen uitleg, geen markdown, geen code blocks.
-
-Voor quote:
-{"templateType":"quote","data":{"tekst":"De krachtigste quote of stelling uit de post","auteur":"Optioneel naam"}}
-
-Voor stat:
-{"templateType":"stat","data":{"label":"Wat er verbeterd is","van":"oude waarde","naar":"nieuwe waarde","eenheid":"min/uur/%/etc"}}
-
-Voor tip:
-{"templateType":"tip","data":{"titel":"Titel van de tip","punten":["Punt 1","Punt 2","Punt 3"]}}
-
-Voor case_study:
-{"templateType":"case_study","data":{"klantNaam":"Naam klant of sector","resultaat":"Concreet resultaat in 1 zin","beschrijving":"Optionele korte uitleg"}}
-
-Voeg ook een "illustration" veld toe met de juiste achtergrond illustratie:
-- "gear" — voor process/workflow onderwerpen
-- "brain" — voor AI/machine learning onderwerpen
-- "chart" — voor data/analytics/statistieken
-- "nodes" — voor integraties/API/koppelingen
-- "lightbulb" — voor tips/insights
-- "network" — voor case studies/netwerk
-- "target" — voor lead generation/sales/doelen
-- "euro" — voor financiële onderwerpen
-
-Voorbeeld: {"templateType":"quote","illustration":"gear","data":{"tekst":"...","auteur":"..."}}
-
-Regels:
-- tekst voor quote: max 120 tekens, krachtig en direct
-- punten voor tip: elk max 80 tekens, actief geformuleerd
-- resultaat voor case_study: max 100 tekens
-- Schrijf in het Nederlands
-- Kies altijd de meest passende illustratie voor het onderwerp
-
-Genereer nu de banner data:`;
+Return ONLY valid JSON, no explanation, no markdown:
+{"icon":"cog","illustration":"gear","capsuleText":"Process Automation"}`;
 }
 
-function validateQuoteData(raw: Record<string, unknown>): QuoteData {
-  const tekst = typeof raw.tekst === "string" && raw.tekst.length > 0 ? raw.tekst : "Slimmer werken met AI";
-  const auteur = typeof raw.auteur === "string" && raw.auteur.length > 0 ? raw.auteur : undefined;
-  return { tekst, auteur };
-}
-
-function validateStatData(raw: Record<string, unknown>): StatData {
-  const label = typeof raw.label === "string" && raw.label.length > 0 ? raw.label : "Tijdsbesparing";
-  const van = typeof raw.van === "string" && raw.van.length > 0 ? raw.van : "8u";
-  const naar = typeof raw.naar === "string" && raw.naar.length > 0 ? raw.naar : "1u";
-  const eenheid = typeof raw.eenheid === "string" && raw.eenheid.length > 0 ? raw.eenheid : undefined;
-  return { label, van, naar, eenheid };
-}
-
-function validateTipData(raw: Record<string, unknown>): TipData {
-  const titel = typeof raw.titel === "string" && raw.titel.length > 0 ? raw.titel : "Tips voor automatisering";
-  const rawPunten = Array.isArray(raw.punten) ? raw.punten : [];
-  const punten: [string, string, string] = [
-    typeof rawPunten[0] === "string" ? rawPunten[0] : "Analyseer je werkproces",
-    typeof rawPunten[1] === "string" ? rawPunten[1] : "Automatiseer repetitieve taken",
-    typeof rawPunten[2] === "string" ? rawPunten[2] : "Meet en optimaliseer continu",
-  ];
-  return { titel, punten };
-}
-
-function validateCaseStudyData(raw: Record<string, unknown>): CaseStudyData {
-  const klantNaam = typeof raw.klantNaam === "string" && raw.klantNaam.length > 0 ? raw.klantNaam : "MKB Klant";
-  const resultaat = typeof raw.resultaat === "string" && raw.resultaat.length > 0 ? raw.resultaat : "80% minder handmatig werk";
-  const beschrijving = typeof raw.beschrijving === "string" && raw.beschrijving.length > 0 ? raw.beschrijving : undefined;
-  return { klantNaam, resultaat, beschrijving };
-}
-
-export async function generateBannerData(postInhoud: string, postTitel: string): Promise<BannerGenerationResult> {
+export async function analyzeTopic(onderwerp: string): Promise<TopicAnalysis> {
   const client = new Anthropic();
 
   const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1000,
-    messages: [
-      {
-        role: "user",
-        content: buildPrompt(postInhoud, postTitel),
-      },
-    ],
+    model: "claude-haiku-4-20250514",
+    max_tokens: 150,
+    messages: [{ role: "user", content: buildAnalyzePrompt(onderwerp) }],
   });
 
   const rawText = message.content
@@ -122,49 +63,67 @@ export async function generateBannerData(postInhoud: string, postTitel: string):
     .join("")
     .trim();
 
-  let parsed: RawBannerResult;
+  let parsed: RawTopicAnalysis;
   try {
-    parsed = JSON.parse(rawText) as RawBannerResult;
+    parsed = JSON.parse(rawText) as RawTopicAnalysis;
   } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
+    const match = rawText.match(/\{[\s\S]*?\}/);
     if (!match) {
-      throw new Error("AI-respons bevat geen geldige JSON");
+      return { ...getDefaults(onderwerp), capsuleText: onderwerp };
     }
-    parsed = JSON.parse(match[0]) as RawBannerResult;
+    parsed = JSON.parse(match[0]) as RawTopicAnalysis;
   }
 
-  const VALID_TYPES: BannerTemplateType[] = ["quote", "stat", "tip", "case_study"];
-  const templateType: BannerTemplateType = VALID_TYPES.includes(parsed.templateType as BannerTemplateType)
-    ? (parsed.templateType as BannerTemplateType)
-    : "quote";
+  const icon: BannerIcon = (BANNER_ICONS as readonly string[]).includes(parsed.icon as string)
+    ? (parsed.icon as BannerIcon)
+    : getDefaults(onderwerp).icon;
 
-  if (typeof parsed.data !== "object" || parsed.data === null) {
-    throw new Error("AI-respons bevat geen geldige data");
+  const illustration: BannerIllustration = (BANNER_ILLUSTRATIONS as readonly string[]).includes(parsed.illustration as string)
+    ? (parsed.illustration as BannerIllustration)
+    : getDefaults(onderwerp).illustration;
+
+  const capsuleText =
+    typeof parsed.capsuleText === "string" && parsed.capsuleText.length > 0
+      ? parsed.capsuleText
+      : onderwerp;
+
+  return { icon, illustration, capsuleText };
+}
+
+export function getDefaults(onderwerp: string): { icon: BannerIcon; illustration: BannerIllustration } {
+  const lower = onderwerp.toLowerCase();
+
+  if (/ai|machine|neural|model|leren|intelligence/.test(lower)) {
+    return { icon: "brain", illustration: "brain" };
+  }
+  if (/data|dashboard|rapport|statistiek|analytics|chart|grafiek/.test(lower)) {
+    return { icon: "bar-chart", illustration: "chart" };
+  }
+  if (/integrat|koppel|api|connect|systeem|sync/.test(lower)) {
+    return { icon: "link", illustration: "nodes" };
+  }
+  if (/tip|inzicht|advies|idee|learning/.test(lower)) {
+    return { icon: "lightbulb", illustration: "lightbulb" };
+  }
+  if (/doel|target|sales|lead|conversie|klant/.test(lower)) {
+    return { icon: "target", illustration: "target" };
+  }
+  if (/flow|workflow|pipeline|proces|process/.test(lower)) {
+    return { icon: "git-branch", illustration: "flow" };
+  }
+  if (/snel|snelheid|speed|zap|trigger|instant/.test(lower)) {
+    return { icon: "zap", illustration: "circuit" };
+  }
+  if (/geld|euro|prijs|omzet|financ/.test(lower)) {
+    return { icon: "euro", illustration: "chart" };
+  }
+  if (/team|mensen|gebruiker|klanten|samenwerk/.test(lower)) {
+    return { icon: "users", illustration: "nodes" };
+  }
+  if (/beveiliging|security|shield|bescherm/.test(lower)) {
+    return { icon: "shield", illustration: "circuit" };
   }
 
-  const rawData = parsed.data as Record<string, unknown>;
-  let data: BannerData;
-
-  switch (templateType) {
-    case "quote":
-      data = validateQuoteData(rawData);
-      break;
-    case "stat":
-      data = validateStatData(rawData);
-      break;
-    case "tip":
-      data = validateTipData(rawData);
-      break;
-    case "case_study":
-      data = validateCaseStudyData(rawData);
-      break;
-  }
-
-  const VALID_ILLUSTRATIONS: BannerIllustrationType[] = ["gear", "brain", "chart", "nodes", "lightbulb", "network", "target", "euro"];
-  const rawIllustration = (parsed as { illustration?: string }).illustration;
-  const illustration: BannerIllustrationType = VALID_ILLUSTRATIONS.includes(rawIllustration as BannerIllustrationType)
-    ? (rawIllustration as BannerIllustrationType)
-    : templateType === "tip" ? "lightbulb" : templateType === "case_study" ? "network" : templateType === "stat" ? "chart" : "gear";
-
-  return { templateType, data, illustration };
+  // Default: automation
+  return { icon: "cog", illustration: "gear" };
 }

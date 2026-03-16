@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { contentBanners, contentPosts } from "@/lib/db/schema";
+import { contentBanners } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { desc, eq } from "drizzle-orm";
-import type { BannerTemplateType, BannerFormaat, BannerData } from "@/types/content";
+import { desc } from "drizzle-orm";
+import type { BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
+import { BANNER_ICONS, BANNER_ILLUSTRATIONS, BANNER_FORMAAT_SIZES } from "@/types/content";
 
 export async function GET() {
   try {
@@ -12,25 +13,32 @@ export async function GET() {
     const rows = await db
       .select({
         id: contentBanners.id,
-        postId: contentBanners.postId,
-        templateType: contentBanners.templateType,
-        templateVariant: contentBanners.templateVariant,
-        formaat: contentBanners.formaat,
         data: contentBanners.data,
+        formaat: contentBanners.formaat,
         imagePath: contentBanners.imagePath,
         status: contentBanners.status,
-        gridPositie: contentBanners.gridPositie,
         aangemaaktOp: contentBanners.aangemaaktOp,
-        postTitel: contentPosts.titel,
       })
       .from(contentBanners)
-      .leftJoin(contentPosts, eq(contentBanners.postId, contentPosts.id))
       .orderBy(desc(contentBanners.aangemaaktOp));
 
-    const banners = rows.map((row) => ({
-      ...row,
-      data: JSON.parse(row.data) as BannerData,
-    }));
+    const banners = rows.map((row) => {
+      const parsed = JSON.parse(row.data) as {
+        onderwerp?: string;
+        icon?: string;
+        illustration?: string;
+      };
+      return {
+        id: row.id,
+        onderwerp: parsed.onderwerp ?? "",
+        icon: parsed.icon ?? "cog",
+        illustration: parsed.illustration ?? "gear",
+        formaat: row.formaat,
+        imagePath: row.imagePath ?? undefined,
+        status: row.status ?? "concept",
+        aangemaaktOp: row.aangemaaktOp ?? new Date().toISOString(),
+      };
+    });
 
     return NextResponse.json({ banners });
   } catch (error) {
@@ -41,42 +49,42 @@ export async function GET() {
   }
 }
 
-interface CreateBannerBody {
-  postId?: number;
-  templateType: BannerTemplateType;
-  templateVariant?: number;
+interface SaveBannerBody {
+  onderwerp: string;
+  icon: BannerIcon;
+  illustration: BannerIllustration;
   formaat: BannerFormaat;
-  data: BannerData;
 }
 
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
-    const body = await req.json() as CreateBannerBody;
-    const { postId, templateType, templateVariant, formaat, data } = body;
+    const body = await req.json() as SaveBannerBody;
+    const { onderwerp, icon, illustration, formaat } = body;
 
-    const VALID_TYPES: BannerTemplateType[] = ["quote", "stat", "tip", "case_study"];
-    const VALID_FORMAATS: BannerFormaat[] = ["instagram", "linkedin"];
-
-    if (!VALID_TYPES.includes(templateType)) {
-      return NextResponse.json({ fout: "Ongeldig templateType" }, { status: 400 });
+    if (!onderwerp || typeof onderwerp !== "string" || onderwerp.trim().length === 0) {
+      return NextResponse.json({ fout: "Onderwerp is verplicht" }, { status: 400 });
     }
-    if (!VALID_FORMAATS.includes(formaat)) {
+    if (!(BANNER_ICONS as readonly string[]).includes(icon)) {
+      return NextResponse.json({ fout: "Ongeldig icon" }, { status: 400 });
+    }
+    if (!(BANNER_ILLUSTRATIONS as readonly string[]).includes(illustration)) {
+      return NextResponse.json({ fout: "Ongeldige illustratie" }, { status: 400 });
+    }
+    if (!(formaat in BANNER_FORMAAT_SIZES)) {
       return NextResponse.json({ fout: "Ongeldig formaat" }, { status: 400 });
     }
-    if (!data || typeof data !== "object") {
-      return NextResponse.json({ fout: "Data is verplicht" }, { status: 400 });
-    }
+
+    const data = JSON.stringify({ onderwerp: onderwerp.trim(), icon, illustration });
 
     const result = await db
       .insert(contentBanners)
       .values({
-        postId: postId ?? null,
-        templateType,
-        templateVariant: templateVariant ?? 0,
+        templateType: "capsule",
+        templateVariant: 0,
         formaat,
-        data: JSON.stringify(data),
+        data,
         status: "concept",
       })
       .returning()
@@ -84,8 +92,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       banner: {
-        ...result,
-        data: JSON.parse(result.data) as BannerData,
+        id: result.id,
+        onderwerp: onderwerp.trim(),
+        icon,
+        illustration,
+        formaat: result.formaat,
+        imagePath: result.imagePath ?? undefined,
+        status: result.status ?? "concept",
+        aangemaaktOp: result.aangemaaktOp ?? new Date().toISOString(),
       },
     });
   } catch (error) {

@@ -860,7 +860,7 @@ export const contentBanners = sqliteTable("content_banners", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   postId: integer("post_id").references(() => contentPosts.id),
   templateType: text("template_type", {
-    enum: ["quote", "stat", "tip", "case_study"],
+    enum: ["quote", "stat", "tip", "case_study", "capsule"],
   }).notNull(),
   templateVariant: integer("template_variant").default(0),
   formaat: text("formaat", {

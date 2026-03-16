@@ -90,59 +90,28 @@ export interface ContentPost {
 
 // ============ BANNER TYPES ============
 
-export type BannerTemplateType = "quote" | "stat" | "tip" | "case_study";
-export type BannerFormaat = "instagram" | "linkedin" | "instagram_story";
+export type BannerFormaat = "instagram" | "instagram_story" | "linkedin";
 export type BannerStatus = "concept" | "klaar" | "fout";
-
-export const BANNER_TEMPLATE_LABELS: Record<BannerTemplateType, string> = {
-  quote: "Quote card",
-  stat: "Stat card",
-  tip: "Tip card",
-  case_study: "Case study card",
-};
 
 export const BANNER_FORMAAT_SIZES: Record<BannerFormaat, { width: number; height: number; label: string }> = {
   instagram: { width: 1080, height: 1350, label: "Instagram (4:5)" },
-  linkedin: { width: 1200, height: 627, label: "LinkedIn (1200x627)" },
   instagram_story: { width: 1080, height: 1920, label: "Instagram Story (9:16)" },
+  linkedin: { width: 1200, height: 627, label: "LinkedIn (1200x627)" },
 };
 
-export interface QuoteData {
-  tekst: string;
-  auteur?: string;
-}
+export const BANNER_ICONS = ["cog", "brain", "bar-chart", "link", "lightbulb", "target", "git-branch", "zap", "plug", "users", "euro", "shield"] as const;
+export type BannerIcon = typeof BANNER_ICONS[number];
 
-export interface StatData {
-  label: string;
-  van: string;
-  naar: string;
-  eenheid?: string;
-}
-
-export interface TipData {
-  titel: string;
-  punten: [string, string, string];
-}
-
-export interface CaseStudyData {
-  klantNaam: string;
-  resultaat: string;
-  beschrijving?: string;
-}
-
-export type BannerData = QuoteData | StatData | TipData | CaseStudyData;
+export const BANNER_ILLUSTRATIONS = ["gear", "brain", "nodes", "chart", "target", "flow", "circuit", "lightbulb"] as const;
+export type BannerIllustration = typeof BANNER_ILLUSTRATIONS[number];
 
 export interface ContentBanner {
   id: number;
-  postId?: number;
-  templateType: BannerTemplateType;
-  templateVariant: number;
+  onderwerp: string;
+  icon: BannerIcon;
+  illustration: BannerIllustration;
   formaat: BannerFormaat;
-  data: BannerData;
   imagePath?: string;
   status: BannerStatus;
-  gridPositie?: number;
   aangemaaktOp: string;
-  // Joined
-  postTitel?: string;
 }

@@ -1,43 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Image as ImageIcon,
-  Zap,
   Download,
   Trash2,
   RefreshCw,
   Loader2,
   Instagram,
   Linkedin,
-  Quote,
-  BarChart2,
-  Lightbulb,
-  Star,
+  Sparkles,
   Grid3x3,
+  Plus,
+  Layers,
 } from "lucide-react";
 import {
   useContentBanners,
-  useCreateBanner,
+  useSaveBanner,
   useDeleteBanner,
   useRenderBanner,
-  useBatchGenereerBanners,
+  useAnalyzeTopic,
 } from "@/hooks/queries/use-content";
-import { useContentPosts } from "@/hooks/queries/use-content";
 import { useToast } from "@/hooks/use-toast";
 import { BannerCanvas } from "@/components/banners/banner-canvas";
 import type {
-  BannerTemplateType,
   BannerFormaat,
-  BannerData,
-  QuoteData,
-  StatData,
-  TipData,
-  CaseStudyData,
+  BannerIcon,
+  BannerIllustration,
   ContentBanner,
   BannerStatus,
 } from "@/types/content";
-import { BANNER_TEMPLATE_LABELS } from "@/types/content";
+import {
+  BANNER_FORMAAT_SIZES,
+  BANNER_ICONS,
+  BANNER_ILLUSTRATIONS,
+} from "@/types/content";
+import { getDefaults } from "@/lib/ai/banner-generator";
 
 // ============ STATUS BADGE ============
 
@@ -52,169 +50,6 @@ function StatusBadge({ status }: { status: BannerStatus }) {
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${className}`}>
       {label}
     </span>
-  );
-}
-
-// ============ TEMPLATE TYPE CARDS ============
-
-const TEMPLATE_ICONS: Record<BannerTemplateType, React.ReactNode> = {
-  quote: <Quote className="w-5 h-5" />,
-  stat: <BarChart2 className="w-5 h-5" />,
-  tip: <Lightbulb className="w-5 h-5" />,
-  case_study: <Star className="w-5 h-5" />,
-};
-
-// ============ DEFAULT DATA ============
-
-function defaultData(type: BannerTemplateType): BannerData {
-  switch (type) {
-    case "quote":
-      return { tekst: "", auteur: "" };
-    case "stat":
-      return { label: "", van: "", naar: "", eenheid: "" };
-    case "tip":
-      return { titel: "", punten: ["", "", ""] };
-    case "case_study":
-      return { klantNaam: "", resultaat: "", beschrijving: "" };
-  }
-}
-
-// ============ DATA FORMS ============
-
-function QuoteForm({ data, onChange }: { data: QuoteData; onChange: (d: QuoteData) => void }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Quote tekst *</label>
-        <textarea
-          rows={3}
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent resize-none"
-          placeholder="De krachtigste uitspraak of stelling..."
-          value={data.tekst}
-          onChange={(e) => onChange({ ...data, tekst: e.target.value })}
-        />
-      </div>
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Auteur (optioneel)</label>
-        <input
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-          placeholder="bijv. Sem van Autronis"
-          value={data.auteur ?? ""}
-          onChange={(e) => onChange({ ...data, auteur: e.target.value })}
-        />
-      </div>
-    </div>
-  );
-}
-
-function StatForm({ data, onChange }: { data: StatData; onChange: (d: StatData) => void }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Label *</label>
-        <input
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-          placeholder="bijv. Tijdsbesparing per week"
-          value={data.label}
-          onChange={(e) => onChange({ ...data, label: e.target.value })}
-        />
-      </div>
-      <div className="grid grid-cols-3 gap-3">
-        <div>
-          <label className="text-xs text-autronis-text-secondary mb-1.5 block">Van *</label>
-          <input
-            className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-            placeholder="8"
-            value={data.van}
-            onChange={(e) => onChange({ ...data, van: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-autronis-text-secondary mb-1.5 block">Naar *</label>
-          <input
-            className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-            placeholder="1"
-            value={data.naar}
-            onChange={(e) => onChange({ ...data, naar: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="text-xs text-autronis-text-secondary mb-1.5 block">Eenheid</label>
-          <input
-            className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-            placeholder="uur"
-            value={data.eenheid ?? ""}
-            onChange={(e) => onChange({ ...data, eenheid: e.target.value })}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TipForm({ data, onChange }: { data: TipData; onChange: (d: TipData) => void }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Titel *</label>
-        <input
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-          placeholder="bijv. 3 stappen naar automatisering"
-          value={data.titel}
-          onChange={(e) => onChange({ ...data, titel: e.target.value })}
-        />
-      </div>
-      {data.punten.map((punt, idx) => (
-        <div key={idx}>
-          <label className="text-xs text-autronis-text-secondary mb-1.5 block">Punt {idx + 1} *</label>
-          <input
-            className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-            placeholder={`Tip ${idx + 1}...`}
-            value={punt}
-            onChange={(e) => {
-              const newPunten = [...data.punten] as [string, string, string];
-              newPunten[idx] = e.target.value;
-              onChange({ ...data, punten: newPunten });
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function CaseForm({ data, onChange }: { data: CaseStudyData; onChange: (d: CaseStudyData) => void }) {
-  return (
-    <div className="space-y-3">
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Klant naam *</label>
-        <input
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-          placeholder="bijv. Bakkerij De Molen"
-          value={data.klantNaam}
-          onChange={(e) => onChange({ ...data, klantNaam: e.target.value })}
-        />
-      </div>
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Resultaat *</label>
-        <input
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-          placeholder="bijv. 80% minder handmatig werk"
-          value={data.resultaat}
-          onChange={(e) => onChange({ ...data, resultaat: e.target.value })}
-        />
-      </div>
-      <div>
-        <label className="text-xs text-autronis-text-secondary mb-1.5 block">Beschrijving (optioneel)</label>
-        <textarea
-          rows={2}
-          className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent resize-none"
-          placeholder="Korte toelichting op het project..."
-          value={data.beschrijving ?? ""}
-          onChange={(e) => onChange({ ...data, beschrijving: e.target.value })}
-        />
-      </div>
-    </div>
   );
 }
 
@@ -254,43 +89,39 @@ function BannerCard({ banner }: { banner: ContentBanner }) {
     }
   }
 
-  const FORMAAT_SIZES: Record<string, { width: number; height: number }> = { instagram: { width: 1080, height: 1350 }, linkedin: { width: 1200, height: 627 }, instagram_story: { width: 1080, height: 1920 } };
-  const { width, height } = FORMAAT_SIZES[banner.formaat];
+  const { width, height } = BANNER_FORMAAT_SIZES[banner.formaat];
   const previewScale = 220 / width;
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden group card-glow">
-      {/* Preview */}
       <div
-        className="relative overflow-hidden flex items-center justify-center bg-[#061217]"
+        className="relative overflow-hidden flex items-center justify-center bg-[#0B1A1F]"
         style={{ height: Math.round(height * previewScale) }}
       >
         {banner.imagePath ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={banner.imagePath}
-            alt="Banner preview"
+            alt={`Banner: ${banner.onderwerp}`}
             className="w-full h-full object-cover"
           />
         ) : (
           <BannerCanvas
-            templateType={banner.templateType}
-            variant={banner.templateVariant}
+            onderwerp={banner.onderwerp}
+            icon={banner.icon}
+            illustration={banner.illustration}
             formaat={banner.formaat}
-            data={banner.data}
             scale={previewScale}
           />
         )}
-        {/* Overlay badges */}
-        <div className="absolute top-2 left-2 flex gap-1.5">
-          <span className="bg-black/60 backdrop-blur-sm text-autronis-accent text-xs px-2 py-1 rounded-lg font-medium">
-            {BANNER_TEMPLATE_LABELS[banner.templateType]}
-          </span>
-        </div>
         <div className="absolute top-2 right-2">
           {banner.formaat === "instagram" ? (
             <span className="bg-black/60 backdrop-blur-sm text-pink-400 text-xs px-2 py-1 rounded-lg flex items-center gap-1">
               <Instagram className="w-3 h-3" /> IG
+            </span>
+          ) : banner.formaat === "instagram_story" ? (
+            <span className="bg-black/60 backdrop-blur-sm text-pink-400 text-xs px-2 py-1 rounded-lg flex items-center gap-1">
+              <Instagram className="w-3 h-3" /> Story
             </span>
           ) : (
             <span className="bg-black/60 backdrop-blur-sm text-blue-400 text-xs px-2 py-1 rounded-lg flex items-center gap-1">
@@ -300,13 +131,8 @@ function BannerCard({ banner }: { banner: ContentBanner }) {
         </div>
       </div>
 
-      {/* Info */}
       <div className="p-3 space-y-2">
-        {banner.postTitel && (
-          <p className="text-xs text-autronis-text-secondary truncate">
-            Post: {banner.postTitel}
-          </p>
-        )}
+        <p className="text-xs text-autronis-text-primary font-medium truncate">{banner.onderwerp}</p>
         <div className="flex items-center justify-between">
           <StatusBadge status={banner.status} />
           <div className="flex items-center gap-1">
@@ -340,13 +166,10 @@ function BannerCard({ banner }: { banner: ContentBanner }) {
   );
 }
 
-// ============ INSTAGRAM GRID PREVIEW ============
+// ============ INSTAGRAM GRID ============
 
 function InstagramGridPreview({ banners }: { banners: ContentBanner[] }) {
-  const gridBanners = banners
-    .filter((b) => b.formaat === "instagram")
-    .slice(0, 9);
-
+  const gridBanners = banners.filter((b) => b.formaat === "instagram").slice(0, 9);
   const cells = Array.from({ length: 9 }, (_, i) => gridBanners[i] ?? null);
 
   return (
@@ -364,7 +187,7 @@ function InstagramGridPreview({ banners }: { banners: ContentBanner[] }) {
         {cells.map((banner, idx) => (
           <div
             key={idx}
-            className="aspect-square bg-[#061217] border border-autronis-border/50 rounded overflow-hidden"
+            className="aspect-square bg-[#0B1A1F] border border-autronis-border/50 rounded overflow-hidden"
           >
             {banner ? (
               banner.imagePath ? (
@@ -376,10 +199,10 @@ function InstagramGridPreview({ banners }: { banners: ContentBanner[] }) {
                 />
               ) : (
                 <BannerCanvas
-                  templateType={banner.templateType}
-                  variant={banner.templateVariant}
+                  onderwerp={banner.onderwerp}
+                  icon={banner.icon}
+                  illustration={banner.illustration}
                   formaat={banner.formaat}
-                  data={banner.data}
                   scale={90 / 1080}
                 />
               )
@@ -400,220 +223,295 @@ function InstagramGridPreview({ banners }: { banners: ContentBanner[] }) {
 export default function BannersPage() {
   const { addToast } = useToast();
   const { data: banners = [], isLoading } = useContentBanners();
-  const { data: posts = [] } = useContentPosts();
-  const createBanner = useCreateBanner();
-  const batchGenereer = useBatchGenereerBanners();
+  const saveBanner = useSaveBanner();
   const renderBanner = useRenderBanner();
+  const analyzeTopic = useAnalyzeTopic();
 
-  const [templateType, setTemplateType] = useState<BannerTemplateType>("quote");
+  const [onderwerp, setOnderwerp] = useState("");
   const [formaat, setFormaat] = useState<BannerFormaat>("instagram");
-  const [variant, setVariant] = useState(0);
-  const [bannerData, setBannerData] = useState<BannerData>(defaultData("quote"));
-  const [selectedPostId, setSelectedPostId] = useState<number | undefined>();
-  const [isCreating, setIsCreating] = useState(false);
+  const [icon, setIcon] = useState<BannerIcon>("cog");
+  const [illustration, setIllustration] = useState<BannerIllustration>("gear");
+  const [capsuleText, setCapsuleText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const FORMAAT_SIZES: Record<string, { width: number; height: number }> = { instagram: { width: 1080, height: 1350 }, linkedin: { width: 1200, height: 627 }, instagram_story: { width: 1080, height: 1920 } };
+  // Batch state
+  const [batchInput, setBatchInput] = useState("");
+  const [isBatching, setIsBatching] = useState(false);
 
-  function handleTemplateChange(type: BannerTemplateType) {
-    setTemplateType(type);
-    setBannerData(defaultData(type));
-    setVariant(0);
-  }
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const VARIANTS_COUNT: Record<BannerTemplateType, number> = {
-    quote: 4,
-    stat: 3,
-    tip: 3,
-    case_study: 3,
-  };
+  // On topic change: instant keyword defaults + debounced AI analyze
+  const handleOnderwerpChange = useCallback((value: string) => {
+    setOnderwerp(value);
 
-  const previewWidth = FORMAAT_SIZES[formaat].width;
-  const previewHeight = FORMAAT_SIZES[formaat].height;
+    if (!value.trim()) {
+      setCapsuleText("");
+      return;
+    }
+
+    // Instant keyword-based defaults
+    const defaults = getDefaults(value);
+    setIcon(defaults.icon);
+    setIllustration(defaults.illustration);
+    setCapsuleText(value);
+
+    // Debounced AI
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      if (value.trim().length < 3) return;
+      setIsAnalyzing(true);
+      try {
+        const result = await analyzeTopic.mutateAsync(value.trim());
+        setIcon(result.icon);
+        setIllustration(result.illustration);
+        setCapsuleText(result.capsuleText);
+      } catch {
+        // Keep keyword defaults on AI failure
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }, 500);
+  }, [analyzeTopic]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const previewWidth = BANNER_FORMAAT_SIZES[formaat].width;
   const previewScale = 280 / previewWidth;
+  const displayText = capsuleText || onderwerp || "Jouw onderwerp";
 
-  async function handleCreate() {
-    setIsCreating(true);
+  async function handleSave() {
+    if (!onderwerp.trim()) {
+      addToast("Voer een onderwerp in", "info");
+      return;
+    }
+    setIsSaving(true);
     try {
-      const result = await createBanner.mutateAsync({
-        postId: selectedPostId,
-        templateType,
-        templateVariant: variant,
+      const result = await saveBanner.mutateAsync({
+        onderwerp: capsuleText || onderwerp.trim(),
+        icon,
+        illustration,
         formaat,
-        data: bannerData,
       });
       await renderBanner.mutateAsync(result.banner.id);
-      addToast("Banner aangemaakt en gerenderd", "succes");
+      addToast("Banner opgeslagen en gerenderd", "succes");
     } catch (err) {
-      addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
+      addToast(err instanceof Error ? err.message : "Opslaan mislukt", "fout");
     } finally {
-      setIsCreating(false);
+      setIsSaving(false);
+    }
+  }
+
+  async function handleDownloadDirect() {
+    if (!onderwerp.trim()) {
+      addToast("Voer een onderwerp in", "info");
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const result = await saveBanner.mutateAsync({
+        onderwerp: capsuleText || onderwerp.trim(),
+        icon,
+        illustration,
+        formaat,
+      });
+      const rendered = await renderBanner.mutateAsync(result.banner.id);
+      const a = document.createElement("a");
+      a.href = rendered.imagePath;
+      a.download = `banner-${onderwerp.trim()}-${formaat}.png`;
+      a.click();
+      addToast("Banner gedownload", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Download mislukt", "fout");
+    } finally {
+      setIsSaving(false);
     }
   }
 
   async function handleBatch() {
-    try {
-      const result = await batchGenereer.mutateAsync();
-      if (result.bericht) {
-        addToast(result.bericht, "info");
-      } else {
-        addToast(`${result.generated} banners gegenereerd${result.failed > 0 ? `, ${result.failed} mislukt` : ""}`, result.failed > 0 ? "info" : "succes");
-      }
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : "Batch genereren mislukt", "fout");
+    const topics = batchInput
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    if (topics.length === 0) {
+      addToast("Voer minimaal één onderwerp in", "info");
+      return;
     }
+
+    setIsBatching(true);
+    let success = 0;
+    let failed = 0;
+
+    for (const topic of topics) {
+      try {
+        const defaults = getDefaults(topic);
+        const saved = await saveBanner.mutateAsync({
+          onderwerp: topic,
+          icon: defaults.icon,
+          illustration: defaults.illustration,
+          formaat,
+        });
+        await renderBanner.mutateAsync(saved.banner.id);
+        success++;
+      } catch {
+        failed++;
+      }
+    }
+
+    setIsBatching(false);
+    addToast(
+      `${success} banner${success !== 1 ? "s" : ""} gegenereerd${failed > 0 ? `, ${failed} mislukt` : ""}`,
+      failed > 0 ? "info" : "succes"
+    );
+    setBatchInput("");
   }
 
   return (
     <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">Banners</h1>
-          <p className="text-autronis-text-secondary mt-1">
-            Maak en beheer social media banners voor LinkedIn en Instagram.
-          </p>
-        </div>
-        <button
-          onClick={handleBatch}
-          disabled={batchGenereer.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
-        >
-          {batchGenereer.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-          Batch genereer
-        </button>
+      <div>
+        <h1 className="text-3xl font-bold text-autronis-text-primary">Banner Generator</h1>
+        <p className="text-autronis-text-secondary mt-1">
+          Typ een onderwerp en genereer een neon capsule banner voor LinkedIn of Instagram.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-8 items-start">
         {/* Left: Create form */}
         <div className="space-y-6">
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-autronis-text-primary">Nieuwe banner</h2>
+            <h2 className="text-lg font-semibold text-autronis-text-primary">Nieuw banner</h2>
 
-            {/* Template type */}
+            {/* Onderwerp input */}
             <div>
-              <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">Template type</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {(["quote", "stat", "tip", "case_study"] as BannerTemplateType[]).map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => handleTemplateChange(type)}
-                    className={`flex flex-col items-center gap-2 p-3 rounded-xl border transition-all ${
-                      templateType === type
-                        ? "border-autronis-accent bg-autronis-accent/10 text-autronis-accent"
-                        : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/50"
-                    }`}
-                  >
-                    {TEMPLATE_ICONS[type]}
-                    <span className="text-xs font-medium">{BANNER_TEMPLATE_LABELS[type]}</span>
-                  </button>
-                ))}
-              </div>
+              <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">
+                Onderwerp
+                {isAnalyzing && (
+                  <span className="ml-2 text-autronis-accent text-xs inline-flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" /> AI analyseert…
+                  </span>
+                )}
+              </label>
+              <input
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-base text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
+                placeholder="bijv. Process Automation"
+                value={onderwerp}
+                onChange={(e) => handleOnderwerpChange(e.target.value)}
+              />
+              {capsuleText && capsuleText !== onderwerp && (
+                <p className="text-xs text-autronis-accent mt-1.5">
+                  Capsule tekst: <strong>{capsuleText}</strong>
+                </p>
+              )}
             </div>
 
             {/* Formaat */}
             <div>
               <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">Formaat</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setFormaat("instagram")}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                    formaat === "instagram"
-                      ? "border-pink-400 bg-pink-500/10 text-pink-400"
-                      : "border-autronis-border text-autronis-text-secondary hover:border-pink-400/50"
-                  }`}
-                >
-                  <Instagram className="w-4 h-4" />
-                  Instagram (4:5)
-                </button>
-                <button
-                  onClick={() => setFormaat("linkedin")}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                    formaat === "linkedin"
-                      ? "border-blue-400 bg-blue-500/10 text-blue-400"
-                      : "border-autronis-border text-autronis-text-secondary hover:border-blue-400/50"
-                  }`}
-                >
-                  <Linkedin className="w-4 h-4" />
-                  LinkedIn (1200×627)
-                </button>
+              <div className="flex gap-2 flex-wrap">
+                {(["instagram", "instagram_story", "linkedin"] as BannerFormaat[]).map((f) => {
+                  const { label } = BANNER_FORMAAT_SIZES[f];
+                  const isActive = formaat === f;
+                  const isInstagram = f.startsWith("instagram");
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setFormaat(f)}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                        isActive
+                          ? isInstagram
+                            ? "border-pink-400 bg-pink-500/10 text-pink-400"
+                            : "border-blue-400 bg-blue-500/10 text-blue-400"
+                          : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/50"
+                      }`}
+                    >
+                      {isInstagram ? <Instagram className="w-4 h-4" /> : <Linkedin className="w-4 h-4" />}
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Variant */}
+            {/* Icon override */}
             <div>
-              <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">Variant</label>
-              <div className="flex gap-2">
-                {Array.from({ length: VARIANTS_COUNT[templateType] }, (_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setVariant(i)}
-                    className={`w-9 h-9 rounded-xl border text-sm font-semibold transition-all ${
-                      variant === i
-                        ? "border-autronis-accent bg-autronis-accent/10 text-autronis-accent"
-                        : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/50"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Data form */}
-            <div>
-              <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">Inhoud</label>
-              {templateType === "quote" && (
-                <QuoteForm
-                  data={bannerData as QuoteData}
-                  onChange={(d) => setBannerData(d)}
-                />
-              )}
-              {templateType === "stat" && (
-                <StatForm
-                  data={bannerData as StatData}
-                  onChange={(d) => setBannerData(d)}
-                />
-              )}
-              {templateType === "tip" && (
-                <TipForm
-                  data={bannerData as TipData}
-                  onChange={(d) => setBannerData(d)}
-                />
-              )}
-              {templateType === "case_study" && (
-                <CaseForm
-                  data={bannerData as CaseStudyData}
-                  onChange={(d) => setBannerData(d)}
-                />
-              )}
-            </div>
-
-            {/* Post koppeling */}
-            <div>
-              <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">
-                Koppel aan post <span className="text-autronis-text-secondary/60">(optioneel)</span>
-              </label>
+              <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">Icon</label>
               <select
-                value={selectedPostId ?? ""}
-                onChange={(e) => setSelectedPostId(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                value={icon}
+                onChange={(e) => setIcon(e.target.value as BannerIcon)}
                 className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
               >
-                <option value="">Geen post geselecteerd</option>
-                {posts.map((post) => (
-                  <option key={post.id} value={post.id}>
-                    {post.titel} ({post.platform})
-                  </option>
+                {BANNER_ICONS.map((ic) => (
+                  <option key={ic} value={ic}>{ic}</option>
                 ))}
               </select>
             </div>
 
+            {/* Illustration override */}
+            <div>
+              <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">Achtergrond illustratie</label>
+              <select
+                value={illustration}
+                onChange={(e) => setIllustration(e.target.value as BannerIllustration)}
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
+              >
+                {BANNER_ILLUSTRATIONS.map((il) => (
+                  <option key={il} value={il}>{il}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleSave}
+                disabled={isSaving || !onderwerp.trim()}
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Opslaan
+              </button>
+              <button
+                onClick={handleDownloadDirect}
+                disabled={isSaving || !onderwerp.trim()}
+                className="flex items-center justify-center gap-2 px-5 py-3 bg-autronis-bg border border-autronis-border text-autronis-text-primary font-semibold rounded-xl hover:border-autronis-accent hover:text-autronis-accent transition-colors disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                Download PNG
+              </button>
+            </div>
+          </div>
+
+          {/* Batch section */}
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-autronis-accent/10 flex items-center justify-center">
+                <Layers className="w-4 h-4 text-autronis-accent" />
+              </div>
+              <div>
+                <h2 className="text-base font-semibold text-autronis-text-primary">Batch genereer</h2>
+                <p className="text-xs text-autronis-text-secondary">Eén onderwerp per regel</p>
+              </div>
+            </div>
+            <textarea
+              rows={5}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent resize-none font-mono"
+              placeholder={"Process Automation\nAI Integration\nData & Dashboards\nSysteem Koppelingen"}
+              value={batchInput}
+              onChange={(e) => setBatchInput(e.target.value)}
+            />
             <button
-              onClick={handleCreate}
-              disabled={isCreating}
-              className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
+              onClick={handleBatch}
+              disabled={isBatching || !batchInput.trim()}
+              className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-autronis-bg border border-autronis-border text-autronis-text-primary font-semibold rounded-xl hover:border-autronis-accent hover:text-autronis-accent transition-colors disabled:opacity-50"
             >
-              {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-              Genereer banner
+              {isBatching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {isBatching ? "Genereren…" : "Genereer alle banners"}
             </button>
           </div>
         </div>
@@ -624,15 +522,15 @@ export default function BannersPage() {
             <p className="text-xs text-autronis-text-secondary mb-3 font-medium">Live preview</p>
             <div className="flex justify-center overflow-hidden">
               <BannerCanvas
-                templateType={templateType}
-                variant={variant}
+                onderwerp={displayText}
+                icon={icon}
+                illustration={illustration}
                 formaat={formaat}
-                data={bannerData}
                 scale={previewScale}
               />
             </div>
             <p className="text-center text-xs text-autronis-text-secondary/60 mt-2">
-              {previewWidth} × {previewHeight}px
+              {BANNER_FORMAAT_SIZES[formaat].width} × {BANNER_FORMAAT_SIZES[formaat].height}px
             </p>
           </div>
         </div>
@@ -641,7 +539,7 @@ export default function BannersPage() {
       {/* Banner grid */}
       <div>
         <h2 className="text-xl font-semibold text-autronis-text-primary mb-4">
-          Alle banners
+          Opgeslagen banners
           {banners.length > 0 && (
             <span className="ml-2 text-sm font-normal text-autronis-text-secondary">({banners.length})</span>
           )}
@@ -666,7 +564,7 @@ export default function BannersPage() {
         )}
       </div>
 
-      {/* Instagram grid preview */}
+      {/* Instagram grid */}
       {banners.filter((b) => b.formaat === "instagram").length > 0 && (
         <InstagramGridPreview banners={banners} />
       )}

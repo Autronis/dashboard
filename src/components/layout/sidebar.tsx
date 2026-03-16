@@ -28,6 +28,7 @@ import {
   Monitor,
   Mic,
   Radar,
+  Lightbulb,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -45,6 +46,7 @@ const navItems = [
   { label: "Belasting", icon: Landmark, href: "/belasting" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
+  { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
   { label: "Doelen (OKR)", icon: Crosshair, href: "/doelen" },
   { label: "Team", icon: Users2, href: "/team" },
   { label: "Kilometers", icon: Car, href: "/kilometers" },

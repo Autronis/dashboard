@@ -31,22 +31,22 @@ export default function ContentPage() {
           </div>
         </Link>
 
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 flex flex-col gap-3 opacity-60 cursor-not-allowed">
-          <div className="flex items-start justify-between">
-            <div className="w-12 h-12 rounded-xl bg-autronis-border flex items-center justify-center">
-              <Newspaper className="w-6 h-6 text-autronis-text-secondary" />
-            </div>
-            <span className="text-xs font-medium bg-autronis-border text-autronis-text-secondary px-2 py-0.5 rounded-full">
-              Binnenkort
-            </span>
+        <Link
+          href="/content/posts"
+          className="group bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow transition-all hover:border-autronis-accent/50 flex flex-col gap-3"
+        >
+          <div className="w-12 h-12 rounded-xl bg-autronis-accent/10 flex items-center justify-center">
+            <Newspaper className="w-6 h-6 text-autronis-accent" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-autronis-text-secondary">Posts</h2>
+            <h2 className="text-lg font-semibold text-autronis-text-primary group-hover:text-autronis-accent transition-colors">
+              Posts
+            </h2>
             <p className="text-sm text-autronis-text-secondary mt-1">
               AI-gegenereerde LinkedIn en Instagram posts beheren en publiceren.
             </p>
           </div>
-        </div>
+        </Link>
       </div>
     </div>
   );

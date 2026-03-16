@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProfielEntry, Inzicht, InzichtCategorie } from "@/types/content";
+import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform } from "@/types/content";
 
 // ============ PROFIEL ============
 
@@ -106,6 +106,117 @@ export function useDeleteInzicht() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["content-inzichten"] });
+    },
+  });
+}
+
+// ============ POSTS ============
+
+type RawPost = Omit<ContentPost, "hashtags"> & { gegenereerdeHashtags?: string | null };
+
+function mapPost(raw: RawPost): ContentPost {
+  let hashtags: string[] = [];
+  try {
+    hashtags = JSON.parse(raw.gegenereerdeHashtags ?? "[]") as string[];
+  } catch {
+    hashtags = [];
+  }
+  return { ...raw, hashtags };
+}
+
+interface PostFilters {
+  status?: ContentStatus;
+  platform?: ContentPlatform;
+  batchWeek?: string;
+}
+
+async function fetchContentPosts(filters?: PostFilters): Promise<ContentPost[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.platform) params.set("platform", filters.platform);
+  if (filters?.batchWeek) params.set("batchWeek", filters.batchWeek);
+
+  const url = `/api/content/posts${params.toString() ? `?${params.toString()}` : ""}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("Kon posts niet ophalen");
+  const data = await res.json() as { posts: RawPost[] };
+  return (data.posts ?? []).map(mapPost);
+}
+
+export function useContentPosts(filters?: PostFilters) {
+  return useQuery({
+    queryKey: ["content-posts", filters],
+    queryFn: () => fetchContentPosts(filters),
+    staleTime: 30_000,
+  });
+}
+
+export function useGenerateBatch() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload?: { count?: number; platforms?: string[] }) => {
+      const res = await fetch("/api/content/genereer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload ?? {}),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Genereren mislukt");
+      }
+      return res.json() as Promise<{ posts: ContentPost[]; batchId: string }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-posts"] });
+    },
+  });
+}
+
+export function useUpdatePost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      id: number;
+      status?: ContentStatus;
+      bewerkteInhoud?: string;
+      afwijsReden?: string;
+    }) => {
+      const { id, ...body } = payload;
+      const res = await fetch(`/api/content/posts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Bijwerken mislukt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-posts"] });
+    },
+  });
+}
+
+export function useDeletePost() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/content/posts/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Verwijderen mislukt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-posts"] });
     },
   });
 }

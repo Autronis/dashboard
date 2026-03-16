@@ -100,7 +100,7 @@ function GearIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) 
       {/* Background measurement grid */}
       {tickMarks(x1, y1, r1 * 1.2, r1 * 1.35, 36, 0.04)}
       {/* Main gear */}
-      <path d={gearPath(x1, y1, r1, 12)} fill="none" stroke={N} strokeWidth="2" opacity="0.1" />
+      <path d={gearPath(x1, y1, r1, 12)} fill="none" stroke={N} strokeWidth="2" opacity="0.25" />
       {ring(x1, y1, r1 * 0.55, 0.08)}{ring(x1, y1, r1 * 0.35, 0.06)}{ring(x1, y1, r1 * 0.12, 0.1, 2)}
       {dot(x1, y1, r1 * 0.05, 0.12)}
       {/* Spokes inside main gear */}
@@ -108,15 +108,15 @@ function GearIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) 
         const a = (i / 6) * Math.PI * 2;
         return <line key={`s${i}`} x1={x1 + Math.cos(a) * r1 * 0.15} y1={y1 + Math.sin(a) * r1 * 0.15}
           x2={x1 + Math.cos(a) * r1 * 0.5} y2={y1 + Math.sin(a) * r1 * 0.5}
-          stroke={N} strokeWidth="1" opacity="0.06" />;
+          stroke={N} strokeWidth="1" opacity="0.16" />;
       })}
       {/* Medium gear */}
-      <path d={gearPath(x2, y2, r2, 10)} fill="none" stroke={N} strokeWidth="1.8" opacity="0.09" />
+      <path d={gearPath(x2, y2, r2, 10)} fill="none" stroke={N} strokeWidth="1.8" opacity="0.22" />
       {ring(x2, y2, r2 * 0.5, 0.07)}{ring(x2, y2, r2 * 0.15, 0.09, 1.5)}
       {dot(x2, y2, r2 * 0.05, 0.1)}
       {tickMarks(x2, y2, r2 * 1.15, r2 * 1.25, 20, 0.03)}
       {/* Small gear */}
-      <path d={gearPath(x3, y3, r3, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+      <path d={gearPath(x3, y3, r3, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
       {ring(x3, y3, r3 * 0.45, 0.06)}{dot(x3, y3, r3 * 0.05, 0.08)}
       {/* Rotation arcs */}
       {arc(x1, y1, r1 * 1.4, -60, 30, 0.04, 1)}
@@ -154,8 +154,8 @@ function BrainIllustration({ cx, cy, r }: { cx: number; cy: number; r: number })
   return (
     <>
       {/* Brain outline — two lobes */}
-      <ellipse cx={cx - r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.08" />
-      <ellipse cx={cx + r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.08" />
+      <ellipse cx={cx - r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
+      <ellipse cx={cx + r * 0.2} cy={cy} rx={lw * 0.52} ry={lh} fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
       {/* Center division line */}
       {ln(cx, cy - lh * 0.85, cx, cy + lh * 0.85, 0.05, 1, "4 4")}
       {/* Inner brain folds (sulci) */}
@@ -166,18 +166,18 @@ function BrainIllustration({ cx, cy, r }: { cx: number; cy: number; r: number })
       {/* Circuit traces inside (like the reference) */}
       {traces.map(([x1, y1, x2, y2], i) => (
         <line key={`t${i}`} x1={cx + x1 * r} y1={cy + y1 * r} x2={cx + x2 * r} y2={cy + y2 * r}
-          stroke={N} strokeWidth="1" opacity="0.07" />
+          stroke={N} strokeWidth="1" opacity="0.18" />
       ))}
       {/* Junction nodes with rings */}
       {nodes.map(([nx, ny, nr], i) => (
         <g key={`n${i}`}>
-          <circle cx={cx + nx * r} cy={cy + ny * r} r={nr} fill={N} opacity="0.1" />
-          {nr > 3.5 && <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 2.5} fill="none" stroke={N} strokeWidth="0.5" opacity="0.05" />}
+          <circle cx={cx + nx * r} cy={cy + ny * r} r={nr} fill={N} opacity="0.25" />
+          {nr > 3.5 && <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 2.5} fill="none" stroke={N} strokeWidth="0.5" opacity="0.14" />}
         </g>
       ))}
       {/* Pulse dots along some traces */}
       {[[-0.35, -0.4], [0.2, -0.45], [-0.15, 0], [0.15, 0], [0.4, 0.05], [-0.35, 0.4]].map(([px, py], i) => (
-        <circle key={`p${i}`} cx={cx + px * r} cy={cy + py * r} r={2} fill={N} opacity="0.15" />
+        <circle key={`p${i}`} cx={cx + px * r} cy={cy + py * r} r={2} fill={N} opacity="0.30" />
       ))}
       {/* Outer orbital arcs */}
       {arc(cx, cy, r * 1.05, -30, 30, 0.03, 0.7)}
@@ -197,14 +197,14 @@ function ShieldIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }
   return (
     <>
       {/* Outer shield */}
-      <path d={shieldPath} fill="none" stroke={N} strokeWidth="2.5" opacity="0.1" />
+      <path d={shieldPath} fill="none" stroke={N} strokeWidth="2.5" opacity="0.25" />
       {/* Inner shield layer */}
       {(() => { const s2 = 0.82; const w2 = sw * s2, h2 = sh * s2;
-        return <path d={`M ${cx} ${cy - h2} Q ${cx + w2} ${cy - h2 * 0.6} ${cx + w2} ${cy} Q ${cx + w2 * 0.6} ${cy + h2 * 0.7} ${cx} ${cy + h2} Q ${cx - w2 * 0.6} ${cy + h2 * 0.7} ${cx - w2} ${cy} Q ${cx - w2} ${cy - h2 * 0.6} ${cx} ${cy - h2} Z`} fill="none" stroke={N} strokeWidth="1" opacity="0.06" />;
+        return <path d={`M ${cx} ${cy - h2} Q ${cx + w2} ${cy - h2 * 0.6} ${cx + w2} ${cy} Q ${cx + w2 * 0.6} ${cy + h2 * 0.7} ${cx} ${cy + h2} Q ${cx - w2 * 0.6} ${cy + h2 * 0.7} ${cx - w2} ${cy} Q ${cx - w2} ${cy - h2 * 0.6} ${cx} ${cy - h2} Z`} fill="none" stroke={N} strokeWidth="1" opacity="0.16" />;
       })()}
       {/* Lock icon inside */}
       {/* Lock body */}
-      <rect x={cx - r * 0.15} y={cy - r * 0.05} width={r * 0.3} height={r * 0.25} rx={r * 0.03} fill="none" stroke={N} strokeWidth="2" opacity="0.12" />
+      <rect x={cx - r * 0.15} y={cy - r * 0.05} width={r * 0.3} height={r * 0.25} rx={r * 0.03} fill="none" stroke={N} strokeWidth="2" opacity="0.28" />
       {/* Lock shackle */}
       {arc(cx, cy - r * 0.05, r * 0.1, 180, 360, 0.12, 2)}
       {/* Keyhole */}
@@ -222,7 +222,7 @@ function ShieldIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }
         </g>
       ))}
       {/* Checkmark at top */}
-      <path d={`M ${cx - r * 0.06} ${cy - sh * 0.55} L ${cx - r * 0.02} ${cy - sh * 0.5} L ${cx + r * 0.06} ${cy - sh * 0.62}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+      <path d={`M ${cx - r * 0.06} ${cy - sh * 0.55} L ${cx - r * 0.02} ${cy - sh * 0.5} L ${cx + r * 0.06} ${cy - sh * 0.62}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
     </>
   );
 }
@@ -259,13 +259,13 @@ function NodesIllustration({ cx, cy, r }: { cx: number; cy: number; r: number })
       {pts.map(([nx, ny, nr], i) => (
         <g key={`n${i}`}>
           <circle cx={cx + nx * r} cy={cy + ny * r} r={nr} fill="none" stroke={N} strokeWidth={i === 0 ? 2 : 1.2} opacity={i === 0 ? 0.12 : 0.08} />
-          {i < 5 && <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 0.5} fill={N} opacity="0.06" />}
-          <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 0.25} fill={N} opacity="0.1" />
+          {i < 5 && <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 0.5} fill={N} opacity="0.16" />}
+          <circle cx={cx + nx * r} cy={cy + ny * r} r={nr * 0.25} fill={N} opacity="0.25" />
         </g>
       ))}
       {/* Data flow dots on some edges */}
       {[[0.3, -0.25], [-0.3, -0.2], [0.1, 0.3], [-0.25, 0.15], [0.5, 0.1]].map(([dx, dy], i) => (
-        <circle key={`fd${i}`} cx={cx + dx * r} cy={cy + dy * r} r={2} fill={N} opacity="0.15" />
+        <circle key={`fd${i}`} cx={cx + dx * r} cy={cy + dy * r} r={2} fill={N} opacity="0.30" />
       ))}
     </>
   );
@@ -302,18 +302,18 @@ function ChartIllustration({ cx, cy, r }: { cx: number; cy: number; r: number })
         return <rect key={`b${i}`} x={bx} y={bottom - bh} width={w * 0.08} height={bh} fill={N} opacity="0.03" rx="2" />;
       })}
       {/* Series 1 — main line */}
-      <polyline points={series1.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="2" opacity="0.1" strokeLinejoin="round" />
+      <polyline points={series1.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="2" opacity="0.25" strokeLinejoin="round" />
       {/* Series 1 area fill */}
       <path d={`${series1.map((p, i) => `${i === 0 ? "M" : "L"} ${toXY(p).join(" ")}`).join(" ")} L ${right} ${bottom} L ${left} ${bottom} Z`} fill={N} opacity="0.025" />
       {/* Series 2 — dashed */}
-      <polyline points={series2.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="1.2" opacity="0.07" strokeDasharray="6 4" strokeLinejoin="round" />
+      <polyline points={series2.map(p => toXY(p).join(",")).join(" ")} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" strokeDasharray="6 4" strokeLinejoin="round" />
       {/* Data points */}
       {series1.map((p, i) => { const [x, y] = toXY(p); return <g key={`d${i}`}>{ring(x, y, 4, 0.1, 1.5)}{dot(x, y, 2, 0.12)}</g>; })}
       {/* Trend line */}
       {ln(left, top + h * 0.65, right, top + h * 0.1, 0.04, 1, "8 6")}
       {/* Mini sparkline top-right */}
       <polyline points={`${right - r * 0.35},${top + r * 0.15} ${right - r * 0.28},${top + r * 0.1} ${right - r * 0.2},${top + r * 0.13} ${right - r * 0.12},${top + r * 0.05} ${right - r * 0.05},${top + r * 0.02}`}
-        fill="none" stroke={N} strokeWidth="1" opacity="0.08" />
+        fill="none" stroke={N} strokeWidth="1" opacity="0.20" />
     </>
   );
 }
@@ -341,11 +341,11 @@ function TargetIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }
       {dot(cx + r * 0.35, cy - r * 0.2, 3, 0.15)}{dot(cx - r * 0.15, cy + r * 0.4, 2.5, 0.12)}
       {dot(cx + r * 0.55, cy + r * 0.1, 2, 0.1)}{dot(cx - r * 0.4, cy - r * 0.35, 2, 0.1)}
       {/* Readout rectangles */}
-      <rect x={cx + r * 0.6} y={cy - r * 0.85} width={r * 0.28} height={r * 0.08} rx={2} fill="none" stroke={N} strokeWidth="0.7" opacity="0.05" />
-      <rect x={cx - r * 0.88} y={cy + r * 0.7} width={r * 0.25} height={r * 0.06} rx={2} fill="none" stroke={N} strokeWidth="0.7" opacity="0.05" />
+      <rect x={cx + r * 0.6} y={cy - r * 0.85} width={r * 0.28} height={r * 0.08} rx={2} fill="none" stroke={N} strokeWidth="0.7" opacity="0.14" />
+      <rect x={cx - r * 0.88} y={cy + r * 0.7} width={r * 0.25} height={r * 0.06} rx={2} fill="none" stroke={N} strokeWidth="0.7" opacity="0.14" />
       {/* Arrow pointing inward */}
-      <path d={`M ${cx + r * 0.65} ${cy - r * 0.65} L ${cx + r * 0.25} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.09" />
-      <path d={`M ${cx + r * 0.35} ${cy - r * 0.35} L ${cx + r * 0.25} ${cy - r * 0.25} L ${cx + r * 0.35} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.09" />
+      <path d={`M ${cx + r * 0.65} ${cy - r * 0.65} L ${cx + r * 0.25} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.22" />
+      <path d={`M ${cx + r * 0.35} ${cy - r * 0.35} L ${cx + r * 0.25} ${cy - r * 0.25} L ${cx + r * 0.35} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.22" />
     </>
   );
 }
@@ -366,7 +366,7 @@ function FlowIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) 
   return (
     <>
       <defs><marker id="arrowhead" markerWidth="6" markerHeight="4" refX="5" refY="2" orient="auto">
-        <path d="M 0 0 L 6 2 L 0 4" fill="none" stroke={N} strokeWidth="1" opacity="0.1" />
+        <path d="M 0 0 L 6 2 L 0 4" fill="none" stroke={N} strokeWidth="1" opacity="0.25" />
       </marker></defs>
       {/* Start */}
       {ring(cx - r * 0.7, cy - r * 0.5, r * 0.08, 0.1, 1.5)}
@@ -435,11 +435,11 @@ function CircuitIllustration({ cx, cy, r }: { cx: number; cy: number; r: number 
       ))}
       {/* Via holes */}
       {vias.map(([vx, vy], i) => (
-        <g key={`v${i}`}><circle cx={vx} cy={vy} r={2.5} fill="none" stroke={N} strokeWidth="1" opacity="0.08" />
-        <circle cx={vx} cy={vy} r={1} fill={N} opacity="0.08" /></g>
+        <g key={`v${i}`}><circle cx={vx} cy={vy} r={2.5} fill="none" stroke={N} strokeWidth="1" opacity="0.20" />
+        <circle cx={vx} cy={vy} r={1} fill={N} opacity="0.20" /></g>
       ))}
       {/* IC chip rectangles */}
-      <rect x={cx - r * 0.18} y={cy - r * 0.12} width={r * 0.36} height={r * 0.24} rx={3} fill="none" stroke={N} strokeWidth="1.8" opacity="0.1" />
+      <rect x={cx - r * 0.18} y={cy - r * 0.12} width={r * 0.36} height={r * 0.24} rx={3} fill="none" stroke={N} strokeWidth="1.8" opacity="0.25" />
       {/* IC pins */}
       {Array.from({ length: 6 }, (_, i) => {
         const px = cx - r * 0.15 + i * r * 0.06;
@@ -450,7 +450,7 @@ function CircuitIllustration({ cx, cy, r }: { cx: number; cy: number; r: number 
       })}
       {dot(cx - r * 0.12, cy - r * 0.06, 2.5, 0.1)}
       {/* Second smaller IC */}
-      <rect x={cx + r * 0.35} y={cy - r * 0.35} width={r * 0.2} height={r * 0.15} rx={2} fill="none" stroke={N} strokeWidth="1.2" opacity="0.07" />
+      <rect x={cx + r * 0.35} y={cy - r * 0.35} width={r * 0.2} height={r * 0.15} rx={2} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
       {/* Ground symbol */}
       {ln(cx - r * 0.6, cy + r * 0.4, cx - r * 0.6, cy + r * 0.5, 0.06, 1.5)}
       {ln(cx - r * 0.68, cy + r * 0.5, cx - r * 0.52, cy + r * 0.5, 0.06, 1.5)}
@@ -472,9 +472,9 @@ function LightbulbIllustration({ cx, cy, r }: { cx: number; cy: number; r: numbe
       {ring(cx, cy - r * 0.1, bulbR * 0.7, 0.05, 1)}
       {/* Filament */}
       <path d={`M ${cx - r * 0.08} ${cy + r * 0.1} Q ${cx - r * 0.12} ${cy - r * 0.15} ${cx} ${cy - r * 0.3} Q ${cx + r * 0.12} ${cy - r * 0.15} ${cx + r * 0.08} ${cy + r * 0.1}`}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.09" />
+        fill="none" stroke={N} strokeWidth="1.5" opacity="0.22" />
       {/* Stem */}
-      <rect x={cx - r * 0.1} y={cy + bulbR * 0.7} width={r * 0.2} height={r * 0.18} rx={r * 0.02} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+      <rect x={cx - r * 0.1} y={cy + bulbR * 0.7} width={r * 0.2} height={r * 0.18} rx={r * 0.02} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
       {ln(cx - r * 0.08, cy + bulbR * 0.75, cx + r * 0.08, cy + bulbR * 0.75, 0.06, 1)}
       {ln(cx - r * 0.07, cy + bulbR * 0.82, cx + r * 0.07, cy + bulbR * 0.82, 0.06, 1)}
       {/* Glow rays */}
@@ -515,17 +515,17 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
     case "puzzle":
       return (<>
         {/* 4 puzzle pieces interlocking */}
-        <rect x={cx - r * 0.4} y={cy - r * 0.4} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
-        <rect x={cx + r * 0.05} y={cy - r * 0.4} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
-        <rect x={cx - r * 0.4} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
-        <rect x={cx + r * 0.05} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+        <rect x={cx - r * 0.4} y={cy - r * 0.4} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
+        <rect x={cx + r * 0.05} y={cy - r * 0.4} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
+        <rect x={cx - r * 0.4} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
+        <rect x={cx + r * 0.05} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
         {/* Connectors (tabs) */}
         {arc(cx + r * 0.025, cy - r * 0.22, r * 0.06, 0, 180, 0.07, 1.5)}
         {arc(cx + r * 0.025, cy + r * 0.22, r * 0.06, 180, 360, 0.07, 1.5)}
         {arc(cx - r * 0.22, cy + r * 0.025, r * 0.06, 270, 90, 0.07, 1.5)}
         {arc(cx + r * 0.22, cy + r * 0.025, r * 0.06, 90, 270, 0.07, 1.5)}
         {/* Floating piece */}
-        <rect x={cx + r * 0.55} y={cy - r * 0.65} width={r * 0.25} height={r * 0.25} rx={3} fill="none" stroke={N} strokeWidth="1" opacity="0.05" transform={`rotate(15 ${cx + r * 0.675} ${cy - r * 0.525})`} />
+        <rect x={cx + r * 0.55} y={cy - r * 0.65} width={r * 0.25} height={r * 0.25} rx={3} fill="none" stroke={N} strokeWidth="1" opacity="0.14" transform={`rotate(15 ${cx + r * 0.675} ${cy - r * 0.525})`} />
         {ln(cx + r * 0.5, cy - r * 0.45, cx + r * 0.55, cy - r * 0.5, 0.04, 0.8, "3 3")}
       </>);
 
@@ -533,10 +533,10 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
       return (<>
         {/* Cloud shape */}
         <path d={`M ${cx - r * 0.5} ${cy} A ${r * 0.3} ${r * 0.3} 0 1 1 ${cx - r * 0.15} ${cy - r * 0.35} A ${r * 0.25} ${r * 0.25} 0 1 1 ${cx + r * 0.25} ${cy - r * 0.3} A ${r * 0.35} ${r * 0.35} 0 1 1 ${cx + r * 0.55} ${cy} Z`}
-          fill="none" stroke={N} strokeWidth="2" opacity="0.09" />
+          fill="none" stroke={N} strokeWidth="2" opacity="0.22" />
         {/* Upload arrow */}
         <path d={`M ${cx - r * 0.1} ${cy + r * 0.3} L ${cx - r * 0.1} ${cy + r * 0.1} L ${cx - r * 0.2} ${cy + r * 0.1} L ${cx} ${cy - r * 0.05} L ${cx + r * 0.2} ${cy + r * 0.1} L ${cx + r * 0.1} ${cy + r * 0.1} L ${cx + r * 0.1} ${cy + r * 0.3}`}
-          fill="none" stroke={N} strokeWidth="1.5" opacity="0.07" />
+          fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
         {/* Data dots streaming up */}
         {[-0.15, 0, 0.15].map((ox, i) => (
           <g key={`dd${i}`}>
@@ -545,21 +545,21 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           </g>
         ))}
         {/* Devices below */}
-        <rect x={cx - r * 0.5} y={cy + r * 0.55} width={r * 0.2} height={r * 0.12} rx={2} fill="none" stroke={N} strokeWidth="1" opacity="0.05" />
-        <rect x={cx - r * 0.1} y={cy + r * 0.6} width={r * 0.08} height={r * 0.14} rx={1} fill="none" stroke={N} strokeWidth="1" opacity="0.05" />
-        <rect x={cx + r * 0.2} y={cy + r * 0.55} width={r * 0.25} height={r * 0.15} rx={2} fill="none" stroke={N} strokeWidth="1" opacity="0.05" />
+        <rect x={cx - r * 0.5} y={cy + r * 0.55} width={r * 0.2} height={r * 0.12} rx={2} fill="none" stroke={N} strokeWidth="1" opacity="0.14" />
+        <rect x={cx - r * 0.1} y={cy + r * 0.6} width={r * 0.08} height={r * 0.14} rx={1} fill="none" stroke={N} strokeWidth="1" opacity="0.14" />
+        <rect x={cx + r * 0.2} y={cy + r * 0.55} width={r * 0.25} height={r * 0.15} rx={2} fill="none" stroke={N} strokeWidth="1" opacity="0.14" />
       </>);
 
     case "rocket":
       return (<>
         {/* Rocket body */}
         <path d={`M ${cx} ${cy - r * 0.65} Q ${cx + r * 0.15} ${cy - r * 0.4} ${cx + r * 0.15} ${cy + r * 0.1} L ${cx + r * 0.25} ${cy + r * 0.3} L ${cx - r * 0.25} ${cy + r * 0.3} L ${cx - r * 0.15} ${cy + r * 0.1} Q ${cx - r * 0.15} ${cy - r * 0.4} ${cx} ${cy - r * 0.65}`}
-          fill="none" stroke={N} strokeWidth="2" opacity="0.09" />
+          fill="none" stroke={N} strokeWidth="2" opacity="0.22" />
         {/* Porthole */}
         {ring(cx, cy - r * 0.2, r * 0.08, 0.08, 1.5)}
         {/* Fins */}
-        <path d={`M ${cx - r * 0.15} ${cy + r * 0.05} L ${cx - r * 0.3} ${cy + r * 0.35} L ${cx - r * 0.15} ${cy + r * 0.3}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.07" />
-        <path d={`M ${cx + r * 0.15} ${cy + r * 0.05} L ${cx + r * 0.3} ${cy + r * 0.35} L ${cx + r * 0.15} ${cy + r * 0.3}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.07" />
+        <path d={`M ${cx - r * 0.15} ${cy + r * 0.05} L ${cx - r * 0.3} ${cy + r * 0.35} L ${cx - r * 0.15} ${cy + r * 0.3}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
+        <path d={`M ${cx + r * 0.15} ${cy + r * 0.05} L ${cx + r * 0.3} ${cy + r * 0.35} L ${cx + r * 0.15} ${cy + r * 0.3}`} fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
         {/* Exhaust */}
         {arc(cx, cy + r * 0.35, r * 0.08, 0, 180, 0.08, 1.5)}
         {arc(cx, cy + r * 0.42, r * 0.12, 10, 170, 0.05, 1)}
@@ -579,11 +579,11 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
         {ring(cx, cy, r * 0.7, 0.09, 2)}
         {/* Latitude lines */}
         {[-0.4, -0.15, 0.15, 0.4].map((f, i) => (
-          <ellipse key={`lat${i}`} cx={cx} cy={cy + r * f} rx={r * 0.7 * Math.cos(Math.asin(f / 0.7))} ry={r * 0.06} fill="none" stroke={N} strokeWidth="0.8" opacity="0.05" />
+          <ellipse key={`lat${i}`} cx={cx} cy={cy + r * f} rx={r * 0.7 * Math.cos(Math.asin(f / 0.7))} ry={r * 0.06} fill="none" stroke={N} strokeWidth="0.8" opacity="0.14" />
         ))}
         {/* Longitude lines */}
         {[0, 45, 90, 135].map((deg, i) => (
-          <ellipse key={`lon${i}`} cx={cx} cy={cy} rx={r * 0.7 * Math.cos(deg * Math.PI / 180)} ry={r * 0.7} fill="none" stroke={N} strokeWidth="0.8" opacity="0.05" transform={`rotate(0 ${cx} ${cy})`} />
+          <ellipse key={`lon${i}`} cx={cx} cy={cy} rx={r * 0.7 * Math.cos(deg * Math.PI / 180)} ry={r * 0.7} fill="none" stroke={N} strokeWidth="0.8" opacity="0.14" transform={`rotate(0 ${cx} ${cy})`} />
         ))}
         {/* Connection arcs between "cities" */}
         {arc(cx - r * 0.3, cy - r * 0.15, r * 0.4, -40, 40, 0.06, 1)}
@@ -593,7 +593,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           <g key={`city${i}`}>{dot(cx + ox * r, cy + oy * r, 3, 0.1)}{ring(cx + ox * r, cy + oy * r, 6, 0.05, 0.5)}</g>
         ))}
         {/* Orbit ring */}
-        <ellipse cx={cx} cy={cy} rx={r * 0.9} ry={r * 0.25} fill="none" stroke={N} strokeWidth="0.8" opacity="0.04" transform={`rotate(-20 ${cx} ${cy})`} />
+        <ellipse cx={cx} cy={cy} rx={r * 0.9} ry={r * 0.25} fill="none" stroke={N} strokeWidth="0.8" opacity="0.28" transform={`rotate(-20 ${cx} ${cy})`} />
         {dot(cx + r * 0.85, cy - r * 0.15, 3, 0.08)}
       </>);
 
@@ -608,7 +608,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           return <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 2.5 : 1.5} fill={N} opacity={0.06 + (i % 5) * 0.01} />;
         })}
         {/* Gear at crossover */}
-        <path d={gearPath(cx, cy, r * 0.12, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+        <path d={gearPath(cx, cy, r * 0.12, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
         {dot(cx, cy, 3, 0.1)}
         {/* Flow arrows along the path */}
         {[30, 150, 210, 330].map((deg, i) => {
@@ -616,7 +616,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           const scale = r * 0.55;
           const x = cx + (scale * Math.cos(t)) / (1 + Math.sin(t) ** 2);
           const y = cy + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) ** 2);
-          return <circle key={`a${i}`} cx={x} cy={y} r={4} fill={N} opacity="0.12" />;
+          return <circle key={`a${i}`} cx={x} cy={y} r={4} fill={N} opacity="0.28" />;
         })}
       </>);
 
@@ -629,7 +629,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           const x2 = cx - Math.cos(t) * r * 0.25;
           return <g key={i}>
             {dot(x1, y, 2.5, 0.08)}{dot(x2, y, 2.5, 0.08)}
-            {i % 3 === 0 && <line x1={x1} y1={y} x2={x2} y2={y} stroke={N} strokeWidth="0.8" opacity="0.05" />}
+            {i % 3 === 0 && <line x1={x1} y1={y} x2={x2} y2={y} stroke={N} strokeWidth="0.8" opacity="0.14" />}
           </g>;
         })}
         {/* Backbone curves */}
@@ -637,12 +637,12 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           const t = (i / 30) * Math.PI * 3;
           const y = cy - r * 0.7 + (i / 30) * r * 1.4;
           return `${i === 0 ? "M" : "L"} ${cx + Math.cos(t) * r * 0.25} ${y}`;
-        }).join(" ")}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.07" />
+        }).join(" ")}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
         <path d={`M ${Array.from({ length: 30 }, (_, i) => {
           const t = (i / 30) * Math.PI * 3;
           const y = cy - r * 0.7 + (i / 30) * r * 1.4;
           return `${i === 0 ? "M" : "L"} ${cx - Math.cos(t) * r * 0.25} ${y}`;
-        }).join(" ")}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.07" />
+        }).join(" ")}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
       </>);
 
     case "matrix":
@@ -666,7 +666,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
     case "wave":
       return (<>
         {/* Oscilloscope frame */}
-        <rect x={cx - r * 0.8} y={cy - r * 0.5} width={r * 1.6} height={r * 1} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.06" />
+        <rect x={cx - r * 0.8} y={cy - r * 0.5} width={r * 1.6} height={r * 1} rx={4} fill="none" stroke={N} strokeWidth="1.5" opacity="0.16" />
         {/* Grid */}
         {Array.from({ length: 9 }, (_, i) => ln(cx - r * 0.8, cy - r * 0.5 + i * r * 0.125, cx + r * 0.8, cy - r * 0.5 + i * r * 0.125, 0.02, 0.5))}
         {Array.from({ length: 13 }, (_, i) => ln(cx - r * 0.8 + i * r * 0.133, cy - r * 0.5, cx - r * 0.8 + i * r * 0.133, cy + r * 0.5, 0.02, 0.5))}
@@ -675,19 +675,19 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
           const x = cx - r * 0.75 + (i / 80) * r * 1.5;
           const y = cy + Math.sin((i / 80) * Math.PI * 4) * r * 0.3;
           return `${x},${y}`;
-        }).join(" ")} fill="none" stroke={N} strokeWidth="2" opacity="0.1" />
+        }).join(" ")} fill="none" stroke={N} strokeWidth="2" opacity="0.25" />
         {/* Spectrum bars */}
         {Array.from({ length: 16 }, (_, i) => {
           const x = cx - r * 0.75 + i * r * 0.1;
           const h = r * (0.05 + Math.abs(Math.sin(i * 0.8)) * 0.15);
-          return <rect key={`sp${i}`} x={x} y={cy + r * 0.55} width={r * 0.06} height={h} fill={N} opacity="0.05" rx={1} />;
+          return <rect key={`sp${i}`} x={x} y={cy + r * 0.55} width={r * 0.06} height={h} fill={N} opacity="0.14" rx={1} />;
         })}
       </>);
 
     case "calendar":
       return (<>
         {/* Calendar grid */}
-        <rect x={cx - r * 0.55} y={cy - r * 0.55} width={r * 1.1} height={r * 1.1} rx={6} fill="none" stroke={N} strokeWidth="1.5" opacity="0.08" />
+        <rect x={cx - r * 0.55} y={cy - r * 0.55} width={r * 1.1} height={r * 1.1} rx={6} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
         {/* Header */}
         <rect x={cx - r * 0.55} y={cy - r * 0.55} width={r * 1.1} height={r * 0.18} rx={6} fill={N} opacity="0.03" />
         {/* Grid lines */}
@@ -697,7 +697,7 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
         {[[1, 0], [3, 1], [5, 1], [2, 2], [4, 3]].map(([col, row], i) => {
           const x = cx - r * 0.48 + col * r * 0.157;
           const y = cy - r * 0.28 + row * r * 0.18;
-          return <path key={`ch${i}`} d={`M ${x} ${y + 4} L ${x + 4} ${y + 8} L ${x + 10} ${y}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.08" />;
+          return <path key={`ch${i}`} d={`M ${x} ${y + 4} L ${x + 4} ${y + 8} L ${x + 10} ${y}`} fill="none" stroke={N} strokeWidth="1.2" opacity="0.20" />;
         })}
         {/* Today marker */}
         {ring(cx - r * 0.48 + 3 * r * 0.157 + 5, cy - r * 0.28 + 2 * r * 0.18 + 4, 8, 0.1, 1.5)}
@@ -710,8 +710,8 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
         {ln(cx - r * 0.35, cy - r * 0.1, cx - r * 0.35, cy + r * 0.3, 0.1, 2.5)}
         {ln(cx + r * 0.35, cy - r * 0.1, cx + r * 0.35, cy + r * 0.3, 0.1, 2.5)}
         {/* Pole caps */}
-        <rect x={cx - r * 0.42} y={cy + r * 0.25} width={r * 0.14} height={r * 0.08} fill={N} opacity="0.06" />
-        <rect x={cx + r * 0.28} y={cy + r * 0.25} width={r * 0.14} height={r * 0.08} fill={N} opacity="0.06" />
+        <rect x={cx - r * 0.42} y={cy + r * 0.25} width={r * 0.14} height={r * 0.08} fill={N} opacity="0.16" />
+        <rect x={cx + r * 0.28} y={cy + r * 0.25} width={r * 0.14} height={r * 0.08} fill={N} opacity="0.16" />
         {/* Force field arcs */}
         {[0.5, 0.65, 0.8].map((s, i) => (
           <g key={`f${i}`}>
@@ -727,11 +727,11 @@ function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: nu
     case "handshake":
       return (<>
         {/* Two hands reaching */}
-        <path d={`M ${cx - r * 0.6} ${cy + r * 0.1} Q ${cx - r * 0.3} ${cy - r * 0.1} ${cx - r * 0.05} ${cy}`} fill="none" stroke={N} strokeWidth="2" opacity="0.09" />
-        <path d={`M ${cx + r * 0.6} ${cy + r * 0.1} Q ${cx + r * 0.3} ${cy - r * 0.1} ${cx + r * 0.05} ${cy}`} fill="none" stroke={N} strokeWidth="2" opacity="0.09" />
+        <path d={`M ${cx - r * 0.6} ${cy + r * 0.1} Q ${cx - r * 0.3} ${cy - r * 0.1} ${cx - r * 0.05} ${cy}`} fill="none" stroke={N} strokeWidth="2" opacity="0.22" />
+        <path d={`M ${cx + r * 0.6} ${cy + r * 0.1} Q ${cx + r * 0.3} ${cy - r * 0.1} ${cx + r * 0.05} ${cy}`} fill="none" stroke={N} strokeWidth="2" opacity="0.22" />
         {/* Energy connection */}
         {[- 0.08, 0, 0.08].map((oy, i) => (
-          <line key={`e${i}`} x1={cx - r * 0.05} y1={cy + oy * r} x2={cx + r * 0.05} y2={cy + oy * r} stroke={N} strokeWidth="1.5" opacity="0.12" />
+          <line key={`e${i}`} x1={cx - r * 0.05} y1={cy + oy * r} x2={cx + r * 0.05} y2={cy + oy * r} stroke={N} strokeWidth="1.5" opacity="0.28" />
         ))}
         {/* Glow at connection point */}
         {ring(cx, cy, r * 0.15, 0.06, 1)}
@@ -761,7 +761,7 @@ export function BgIllustration({ type, width, height, scale = 1, offsetX = 0, of
   const props = { cx, cy, r };
 
   return (
-    <div style={{ position: "absolute", inset: 0, opacity: 0.09, overflow: "hidden" }}>
+    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
       <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         {type === "gear" && <GearIllustration {...props} />}
         {type === "brain" && <BrainIllustration {...props} />}

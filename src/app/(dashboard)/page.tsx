@@ -32,6 +32,7 @@ import {
   Image as ImageIcon,
   FileDown,
   Code,
+  Eye,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -582,6 +583,13 @@ export default function DashboardPage() {
   // Belasting deadline alerts
   const [urgentDeadlines, setUrgentDeadlines] = useState<Array<{omschrijving: string; datum: string; dagenOver: number}>>([]);
 
+  // Concurrent updates
+  const [concurrentData, setConcurrentData] = useState<{
+    wijzigingenDezeWeek: number;
+    highlights: Array<{ concurrentNaam: string; tekst: string; type: string }>;
+    laatsteScan: string | null;
+  } | null>(null);
+
   useEffect(() => {
     fetch(`/api/belasting/deadlines?jaar=${new Date().getFullYear()}`)
       .then(r => r.json())
@@ -597,6 +605,8 @@ export default function DashboardPage() {
         setUrgentDeadlines(urgent);
       })
       .catch(() => {});
+
+    fetch("/api/dashboard/concurrenten").then((r) => r.json()).then(setConcurrentData).catch(() => {});
   }, []);
 
   // Timer tick
@@ -1175,6 +1185,36 @@ export default function DashboardPage() {
 
         {/* Documenten widget */}
         <DocumentWidget />
+
+        {/* Concurrent updates widget */}
+        {concurrentData && concurrentData.highlights.length > 0 && (
+          <section className="rounded-2xl border border-autronis-border bg-autronis-card p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="flex items-center gap-2 font-semibold">
+                <Eye className="h-4 w-4 text-autronis-accent" />
+                Concurrent updates
+              </h3>
+              <span className="rounded-full bg-autronis-accent/15 px-2.5 py-0.5 text-xs font-semibold text-autronis-accent">
+                {concurrentData.wijzigingenDezeWeek} nieuw
+              </span>
+            </div>
+            <div className="space-y-3">
+              {concurrentData.highlights.map((h, i) => (
+                <div key={i} className="flex items-start gap-2.5 text-sm">
+                  <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full",
+                    h.type === "kans" ? "bg-green-400" : "bg-autronis-accent")} />
+                  <span className="text-autronis-text-secondary">
+                    <strong className="text-autronis-text-primary">{h.concurrentNaam}</strong>{" "}
+                    {h.tekst}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <Link href="/concurrenten" className="mt-4 block text-xs text-autronis-accent hover:underline">
+              Bekijk alle concurrenten →
+            </Link>
+          </section>
+        )}
 
         {/* Second Brain Widget */}
         <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7">

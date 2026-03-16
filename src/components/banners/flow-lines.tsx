@@ -93,33 +93,7 @@ export function FlowLines({ width, height }: FlowLinesProps) {
         />
       ))}
 
-      {/* 1 traveling dot per wave, at fixed position */}
-      {[0, 1, 2, 3, 4].map((wi) => {
-        const xFrac = DOT_POSITIONS[wi];
-        const x = xFrac * width;
-        const y = getWaveY(x, height, wi);
-        const glowR = 8;
-        const dotR = 2.5;
-        return (
-          <g key={wi}>
-            {/* Glow halo */}
-            <circle
-              cx={x}
-              cy={y}
-              r={glowR}
-              fill={`url(#dot-glow-${wi})`}
-            />
-            {/* Core dot */}
-            <circle
-              cx={x}
-              cy={y}
-              r={dotR}
-              fill="#2DD4A8"
-              opacity="0.85"
-            />
-          </g>
-        );
-      })}
+      {/* No dots — clean lines only */}
     </svg>
   );
 }

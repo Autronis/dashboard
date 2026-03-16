@@ -42,6 +42,7 @@ import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { HabitWidget } from "@/components/gewoontes/habit-widget";
+import { FocusWidget } from "@/components/focus/focus-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 
@@ -757,10 +758,11 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        {/* Dagbriefing + Gewoontes */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+        {/* Dagbriefing + Gewoontes + Focus */}
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-6">
           <DailyBriefing />
           <HabitWidget />
+          <FocusWidget />
         </div>
 
         {/* Idee van de dag */}

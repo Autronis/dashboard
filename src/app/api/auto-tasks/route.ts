@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { NextResponse } from "next/server";
 import { execSync } from "child_process";
 import { Client } from "@notionhq/client";

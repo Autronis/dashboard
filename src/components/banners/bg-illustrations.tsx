@@ -88,53 +88,87 @@ function hexGrid(cx: number, cy: number, r: number, size: number, o: number) {
   return <>{hexes}</>;
 }
 
-// ─── GEAR (Mechanisme) — Single large gear filling the canvas ───────────────
+// ─── GEAR (Mechanisme) — Like the reference: single large smooth gear ────────
+
+function smoothGearPath(x: number, y: number, outerR: number, innerR: number, teeth: number): string {
+  // Creates a smooth gear with rounded teeth (not sharp/angular)
+  const points: string[] = [];
+  for (let i = 0; i < teeth; i++) {
+    const aBase = (i / teeth) * Math.PI * 2 - Math.PI / 2;
+    const aNext = ((i + 1) / teeth) * Math.PI * 2 - Math.PI / 2;
+    const toothWidth = (Math.PI * 2) / teeth;
+    // Tooth tip (outer)
+    const a1 = aBase + toothWidth * 0.15;
+    const a2 = aBase + toothWidth * 0.35;
+    // Valley (inner)
+    const a3 = aBase + toothWidth * 0.65;
+    const a4 = aBase + toothWidth * 0.85;
+
+    if (i === 0) {
+      points.push(`M ${x + Math.cos(a1) * innerR} ${y + Math.sin(a1) * innerR}`);
+    }
+    // Rise to tooth tip
+    points.push(`Q ${x + Math.cos(a1) * outerR} ${y + Math.sin(a1) * outerR} ${x + Math.cos((a1 + a2) / 2) * outerR} ${y + Math.sin((a1 + a2) / 2) * outerR}`);
+    // Tooth tip arc
+    points.push(`Q ${x + Math.cos(a2) * outerR} ${y + Math.sin(a2) * outerR} ${x + Math.cos(a3) * innerR} ${y + Math.sin(a3) * innerR}`);
+    // Valley
+    points.push(`Q ${x + Math.cos((a3 + a4) / 2) * (innerR * 0.97)} ${y + Math.sin((a3 + a4) / 2) * (innerR * 0.97)} ${x + Math.cos(a4) * innerR} ${y + Math.sin(a4) * innerR}`);
+  }
+  points.push("Z");
+  return points.join(" ");
+}
 
 function GearIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  // One LARGE gear centered, filling ~90% of canvas (like reference)
   const gr = r * 0.95;
+  const outerR = gr;
+  const innerR = gr * 0.82;
+
   return (
     <>
-      {/* Main large gear outline */}
-      <path d={gearPath(cx, cy, gr, 14)} fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" />
-      {/* Inner ring 1 — thick */}
-      {ring(cx, cy, gr * 0.72, 0.15, 2)}
-      {/* Inner ring 2 */}
-      {ring(cx, cy, gr * 0.55, 0.12, 1.5)}
-      {/* Inner ring 3 — center detail */}
-      {ring(cx, cy, gr * 0.35, 0.14, 1.8)}
-      {/* Core circle with fill */}
-      {ring(cx, cy, gr * 0.18, 0.18, 2)}
-      <circle cx={cx} cy={cy} r={gr * 0.18} fill={N} opacity="0.03" />
-      {/* Center dot */}
-      {dot(cx, cy, gr * 0.06, 0.2)}
-      {/* 8 spokes from center to outer ring */}
-      {Array.from({ length: 8 }, (_, i) => {
-        const a = (i / 8) * Math.PI * 2;
-        return <line key={`sp${i}`}
-          x1={cx + Math.cos(a) * gr * 0.2} y1={cy + Math.sin(a) * gr * 0.2}
-          x2={cx + Math.cos(a) * gr * 0.7} y2={cy + Math.sin(a) * gr * 0.7}
-          stroke={N} strokeWidth="1.2" opacity="0.1" />;
+      {/* Main gear — smooth rounded teeth */}
+      <path d={smoothGearPath(cx, cy, outerR, innerR, 12)}
+        fill="none" stroke={N} strokeWidth="2.5" opacity="0.2" />
+
+      {/* Concentric inner rings — like the reference with distinct spacing */}
+      {ring(cx, cy, gr * 0.72, 0.16, 2)}
+      {ring(cx, cy, gr * 0.62, 0.12, 1.5)}
+      {ring(cx, cy, gr * 0.42, 0.14, 1.8)}
+      {ring(cx, cy, gr * 0.32, 0.12, 1.2)}
+
+      {/* Center hub — filled circle */}
+      {ring(cx, cy, gr * 0.2, 0.2, 2.5)}
+      <circle cx={cx} cy={cy} r={gr * 0.2} fill={N} opacity="0.04" />
+      {ring(cx, cy, gr * 0.12, 0.15, 1.5)}
+      {dot(cx, cy, gr * 0.04, 0.25)}
+
+      {/* 6 thick spokes connecting hub to mid ring — like reference */}
+      {Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2 - Math.PI / 6;
+        const cos = Math.cos(a), sin = Math.sin(a);
+        const halfW = gr * 0.03; // spoke half-width
+        // Draw spoke as a thin rectangle path
+        const perpCos = Math.cos(a + Math.PI / 2) * halfW;
+        const perpSin = Math.sin(a + Math.PI / 2) * halfW;
+        const x1i = cx + cos * gr * 0.22, y1i = cy + sin * gr * 0.22;
+        const x2o = cx + cos * gr * 0.6, y2o = cy + sin * gr * 0.6;
+        return <path key={`spoke${i}`}
+          d={`M ${x1i + perpCos} ${y1i + perpSin} L ${x2o + perpCos} ${y2o + perpSin} L ${x2o - perpCos} ${y2o - perpSin} L ${x1i - perpCos} ${y1i - perpSin} Z`}
+          fill={N} opacity="0.06" stroke={N} strokeWidth="1" />;
       })}
-      {/* Dots at spoke-ring intersections */}
-      {Array.from({ length: 8 }, (_, i) => {
-        const a = (i / 8) * Math.PI * 2;
-        return <g key={`sd${i}`}>
-          {dot(cx + Math.cos(a) * gr * 0.55, cy + Math.sin(a) * gr * 0.55, 3, 0.12)}
-          {dot(cx + Math.cos(a) * gr * 0.72, cy + Math.sin(a) * gr * 0.72, 2.5, 0.1)}
+
+      {/* Cutout holes in the gear body (between spokes) — like reference */}
+      {Array.from({ length: 6 }, (_, i) => {
+        const a = (i / 6) * Math.PI * 2;
+        const hx = cx + Math.cos(a) * gr * 0.48;
+        const hy = cy + Math.sin(a) * gr * 0.48;
+        return <g key={`hole${i}`}>
+          {ring(hx, hy, gr * 0.08, 0.1, 1.2)}
+          <circle cx={hx} cy={hy} r={gr * 0.08} fill="#0B1A1F" opacity="0.5" />
         </g>;
       })}
-      {/* Fine tick marks around outer edge */}
-      {tickMarks(cx, cy, gr * 0.85, gr * 0.92, 56, 0.08)}
-      {/* Inner detail arcs (partial circles for tech feel) */}
-      {arc(cx, cy, gr * 0.45, 20, 70, 0.1, 1)}
-      {arc(cx, cy, gr * 0.45, 110, 160, 0.1, 1)}
-      {arc(cx, cy, gr * 0.45, 200, 250, 0.1, 1)}
-      {arc(cx, cy, gr * 0.45, 290, 340, 0.1, 1)}
-      {/* Small secondary gear (bottom-right, partially visible) */}
-      <path d={gearPath(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35, 10)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.1" />
-      {ring(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35 * 0.5, 0.08, 1)}
-      {ring(cx + gr * 0.75, cy + gr * 0.75, gr * 0.35 * 0.2, 0.1, 1.2)}
+
+      {/* Subtle tick marks on outermost ring */}
+      {tickMarks(cx, cy, gr * 0.74, gr * 0.78, 48, 0.06)}
     </>
   );
 }

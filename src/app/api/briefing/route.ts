@@ -8,6 +8,7 @@ import {
   klanten,
   facturen,
   screenTimeEntries,
+  belastingDeadlines,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, ne, gte, lte, desc, sql, asc } from "drizzle-orm";
@@ -273,6 +274,17 @@ export async function POST() {
       ? Math.round((screenTimeGisteren.totaal / 3600) * 10) / 10
       : 0;
 
+    // 7. Belasting deadlines komende 30 dagen
+    const alleBelastingDeadlines = db
+      .select()
+      .from(belastingDeadlines)
+      .where(eq(belastingDeadlines.afgerond, 0))
+      .all()
+      .filter(d => {
+        const dagen = Math.ceil((new Date(d.datum).getTime() - new Date().getTime()) / 86400000);
+        return dagen <= 30 && dagen >= -7;
+      });
+
     // ============ AI Samenvatting ============
 
     const begroeting = getBegroeting();
@@ -295,6 +307,12 @@ ${briefingProjecten.length > 0 ? briefingProjecten.map((p) => `- ${p.naam} voor 
 OPENSTAANDE FACTUREN: ${aantalOpenFacturen} facturen, totaal €${openstaandBedrag.toFixed(2)}
 
 ${screenTimeUren > 0 ? `SCHERMTIJD GISTEREN: ${screenTimeUren} uur` : ""}
+
+${alleBelastingDeadlines.length > 0 ? `BELASTING DEADLINES KOMENDE 30 DAGEN:
+${alleBelastingDeadlines.map(d => {
+  const dagen = Math.ceil((new Date(d.datum).getTime() - new Date().getTime()) / 86400000);
+  return `- ${d.omschrijving}: ${d.datum} (${dagen} dagen)`;
+}).join("\n")}` : ""}
 
 Schrijf een persoonlijke samenvatting van 2-3 zinnen. Begin met "${begroeting} ${gebruiker.naam}!" en geef een overzicht van de dag. Wees concreet en noem specifieke taken of afspraken als die er zijn. Houd het kort en motiverend.`;
 

@@ -24,6 +24,8 @@ import {
   Zap,
   RefreshCw,
   Loader2,
+  Radar,
+  ExternalLink,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -39,6 +41,7 @@ import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
+import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 
 function getBegroeting(): string {
   const uur = new Date().getHours();
@@ -434,6 +437,121 @@ function IdeeVanDeDag() {
   );
 }
 
+// ============ LEARNING RADAR WIDGET ============
+
+const categorieBadgeKleur: Record<string, string> = {
+  tools: "bg-blue-500/15 text-blue-400",
+  api_updates: "bg-purple-500/15 text-purple-400",
+  trends: "bg-orange-500/15 text-orange-400",
+  kansen: "bg-green-500/15 text-green-400",
+  must_reads: "bg-red-500/15 text-red-400",
+};
+
+const categorieLabels: Record<string, string> = {
+  tools: "Tools",
+  api_updates: "API Updates",
+  trends: "Trends",
+  kansen: "Kansen",
+  must_reads: "Must-reads",
+};
+
+function RadarWidget() {
+  const { data: items = [], isLoading } = useRadarItems({ minScore: 7 });
+  const topItems = items.slice(0, 5);
+
+  if (isLoading) {
+    return (
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="p-2 bg-autronis-accent/10 rounded-xl">
+            <Radar className="w-5 h-5 text-autronis-accent" />
+          </div>
+          <h2 className="text-lg font-semibold text-autronis-text-primary">Learning Radar</h2>
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-autronis-bg/50 rounded-xl p-4 animate-pulse h-16" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-autronis-accent/10 rounded-xl">
+            <Radar className="w-5 h-5 text-autronis-accent" />
+          </div>
+          <h2 className="text-lg font-semibold text-autronis-text-primary">Learning Radar</h2>
+          <span className="text-sm text-autronis-text-secondary">({items.length} items)</span>
+        </div>
+        <Link
+          href="/radar"
+          className="text-sm text-autronis-accent hover:text-autronis-accent-hover transition-colors flex items-center gap-1"
+        >
+          Bekijk alles
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
+
+      {topItems.length === 0 ? (
+        <p className="text-base text-autronis-text-secondary">
+          Nog geen items. Ga naar de Radar pagina om items op te halen.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {topItems.map((item) => (
+            <a
+              key={item.id}
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-autronis-bg/50 rounded-xl p-4 flex items-start gap-3 hover:bg-autronis-bg/80 transition-colors block group"
+            >
+              <span
+                className={cn(
+                  "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0 mt-0.5",
+                  item.score != null && item.score >= 8
+                    ? "bg-emerald-500/15 text-emerald-400"
+                    : "bg-yellow-500/15 text-yellow-400"
+                )}
+              >
+                {item.score}/10
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors line-clamp-1">
+                  {item.titel}
+                  <ExternalLink className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </p>
+                {item.aiSamenvatting && (
+                  <p className="text-xs text-autronis-text-secondary mt-1 line-clamp-1">
+                    {item.aiSamenvatting}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-1">
+                  {item.categorie && (
+                    <span className={cn(
+                      "text-xs px-1.5 py-0.5 rounded-full",
+                      categorieBadgeKleur[item.categorie] ?? "bg-autronis-border text-autronis-text-secondary"
+                    )}>
+                      {categorieLabels[item.categorie] ?? item.categorie}
+                    </span>
+                  )}
+                  {item.bronNaam && (
+                    <span className="text-xs text-autronis-text-secondary/60">{item.bronNaam}</span>
+                  )}
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { addToast } = useToast();
   const timer = useTimer();
@@ -449,6 +567,26 @@ export default function DashboardPage() {
 
   // CheckBurst animation state
   const [completedTaskId, setCompletedTaskId] = useState<number | null>(null);
+
+  // Belasting deadline alerts
+  const [urgentDeadlines, setUrgentDeadlines] = useState<Array<{omschrijving: string; datum: string; dagenOver: number}>>([]);
+
+  useEffect(() => {
+    fetch(`/api/belasting/deadlines?jaar=${new Date().getFullYear()}`)
+      .then(r => r.json())
+      .then(data => {
+        const nu = new Date();
+        const urgent = (data.deadlines || [])
+          .filter((d: {afgerond: number; datum: string}) => !d.afgerond)
+          .map((d: {omschrijving: string; datum: string}) => {
+            const dagen = Math.ceil((new Date(d.datum).getTime() - nu.getTime()) / 86400000);
+            return { ...d, dagenOver: dagen };
+          })
+          .filter((d: {dagenOver: number}) => d.dagenOver <= 7 && d.dagenOver >= -30);
+        setUrgentDeadlines(urgent);
+      })
+      .catch(() => {});
+  }, []);
 
   // Timer tick
   useEffect(() => {
@@ -592,6 +730,30 @@ export default function DashboardPage() {
             {getDatumString()}
           </p>
         </div>
+
+        {/* Belasting deadline alert */}
+        {urgentDeadlines.length > 0 && (
+          <Link href="/belasting" className="block">
+            <div className="bg-gradient-to-r from-red-500/15 via-orange-500/15 to-red-500/15 border border-red-500/30 rounded-2xl p-4 lg:p-5 hover:border-red-500/50 transition-colors">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 space-y-1">
+                  {urgentDeadlines.map((d) => (
+                    <div key={d.omschrijving} className="flex items-center justify-between text-sm">
+                      <span className="text-autronis-text-primary font-medium">{d.omschrijving}</span>
+                      <span className={cn(
+                        "tabular-nums font-medium",
+                        d.dagenOver < 0 ? "text-red-400" : d.dagenOver <= 3 ? "text-red-400" : "text-orange-400"
+                      )}>
+                        {d.dagenOver < 0 ? `${Math.abs(d.dagenOver)} dagen te laat` : d.dagenOver === 0 ? "Vandaag!" : `${d.dagenOver} dagen`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* Dagbriefing */}
         <DailyBriefing />
@@ -1031,6 +1193,9 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+
+        {/* Learning Radar widget */}
+        <RadarWidget />
 
         {/* Documenten widget */}
         <DocumentWidget />

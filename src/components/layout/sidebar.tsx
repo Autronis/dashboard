@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -64,6 +64,22 @@ export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
   const [recentOpen, setRecentOpen] = useState(false);
+  const [urgentCount, setUrgentCount] = useState(0);
+
+  useEffect(() => {
+    fetch(`/api/belasting/deadlines?jaar=${new Date().getFullYear()}`)
+      .then(r => r.json())
+      .then(data => {
+        const nu = new Date();
+        const count = (data.deadlines || []).filter((d: {afgerond: number; datum: string}) => {
+          if (d.afgerond) return false;
+          const dagen = Math.ceil((new Date(d.datum).getTime() - nu.getTime()) / 86400000);
+          return dagen <= 7;
+        }).length;
+        setUrgentCount(count);
+      })
+      .catch(() => {});
+  }, []);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -148,9 +164,19 @@ export function Sidebar() {
                 )}
                 title={isCollapsed ? item.label : undefined}
               >
-                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="relative flex-shrink-0">
+                  <Icon className="w-5 h-5" />
+                  {item.href === "/belasting" && urgentCount > 0 && isCollapsed && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-autronis-card" />
+                  )}
+                </span>
                 {!isCollapsed && (
-                  <span className="text-sm font-medium truncate">{item.label}</span>
+                  <span className="text-sm font-medium truncate flex-1">{item.label}</span>
+                )}
+                {!isCollapsed && item.href === "/belasting" && urgentCount > 0 && (
+                  <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full">
+                    {urgentCount}
+                  </span>
                 )}
               </Link>
             );

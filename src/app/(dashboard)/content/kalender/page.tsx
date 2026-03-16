@@ -15,6 +15,7 @@ import { useContentPosts, useContentVideos, useSchedulePost, usePublishPost } fr
 import { useToast } from "@/hooks/use-toast";
 import type { ContentPost, ContentPlatform, ContentStatus } from "@/types/content";
 import { cn } from "@/lib/utils";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ---- helpers ----
 
@@ -359,11 +360,12 @@ export default function ContentKalenderPage() {
   const weekLabel = `${weekStart.toLocaleDateString("nl-NL", { day: "numeric", month: "long" })} – ${weekEnd.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}`;
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">Content Kalender</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Content Kalender</h1>
           <p className="text-autronis-text-secondary mt-1">{weekLabel}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -545,5 +547,6 @@ export default function ContentKalenderPage() {
         />
       )}
     </div>
+    </PageTransition>
   );
 }

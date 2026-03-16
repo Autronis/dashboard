@@ -35,6 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { EmailComposer } from "@/components/ui/email-composer";
 import { useLeads, useLeadActiviteiten, useAfzenderEmail, type Lead, type Activiteit } from "@/hooks/queries/use-leads";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ CONSTANTS ============
 
@@ -492,11 +493,12 @@ export default function CrmPage() {
   }
 
   return (
+    <PageTransition>
     <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">CRM / Leads</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">CRM / Leads</h1>
           <p className="text-base text-autronis-text-secondary mt-1">
             {kpis.totaal} leads in pipeline
           </p>
@@ -511,7 +513,7 @@ export default function CrmPage() {
           />
           <button
             onClick={openNieuwModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
           >
             <Plus className="w-4 h-4" />
             Nieuwe lead
@@ -521,7 +523,7 @@ export default function CrmPage() {
 
       {/* KPI balk */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow card-gradient">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
               <Users className="w-5 h-5 text-autronis-accent" />
@@ -774,5 +776,6 @@ export default function CrmPage() {
         variant="danger"
       />
     </div>
+    </PageTransition>
   );
 }

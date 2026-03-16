@@ -34,6 +34,7 @@ import {
   useRegenereerPlan,
   type Idee,
 } from "@/hooks/queries/use-ideeen";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ CONSTANTS ============
 
@@ -313,10 +314,11 @@ export default function IdeeenPage() {
   }
 
   return (
+    <PageTransition>
     <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary">Ideeën</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Ideeën</h1>
         <p className="text-base text-autronis-text-secondary mt-1">
           Product- en projectideeën beheren
         </p>
@@ -442,7 +444,7 @@ export default function IdeeenPage() {
 
         <button
           onClick={openNieuwForm}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
         >
           <Plus className="w-4 h-4" />
           Nieuw idee
@@ -941,5 +943,6 @@ export default function IdeeenPage() {
         variant="danger"
       />
     </div>
+    </PageTransition>
   );
 }

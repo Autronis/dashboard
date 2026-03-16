@@ -15,6 +15,7 @@ import { useContentPosts, useGenerateBatch, useUpdatePost, useDeletePost } from 
 import { useToast } from "@/hooks/use-toast";
 import { Modal } from "@/components/ui/modal";
 import type { ContentPost, ContentStatus, ContentPlatform, ContentFormat } from "@/types/content";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ BADGE HELPERS ============
 
@@ -326,11 +327,12 @@ export default function ContentPostsPage() {
   }
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">Content Posts</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Content Posts</h1>
           <p className="text-autronis-text-secondary mt-1">
             AI-gegenereerde LinkedIn en Instagram posts beheren en publiceren.
           </p>
@@ -338,7 +340,7 @@ export default function ContentPostsPage() {
         <button
           onClick={handleGenereer}
           disabled={generateBatch.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-60 whitespace-nowrap"
+          className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-60 whitespace-nowrap btn-press"
         >
           {generateBatch.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -420,5 +422,6 @@ export default function ContentPostsPage() {
         </div>
       ) : null}
     </div>
+    </PageTransition>
   );
 }

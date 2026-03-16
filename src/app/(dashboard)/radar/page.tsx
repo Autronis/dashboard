@@ -27,6 +27,7 @@ import {
   type RadarItem,
   type RadarBron,
 } from "@/hooks/queries/use-radar";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ CONSTANTS ============
 
@@ -361,11 +362,12 @@ export default function RadarPage() {
   }
 
   return (
+    <PageTransition>
     <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">Learning Radar</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Learning Radar</h1>
           <p className="text-base text-autronis-text-secondary mt-1">
             AI & tech trends automatisch gescand en gescoord
           </p>
@@ -373,7 +375,7 @@ export default function RadarPage() {
         <button
           onClick={handleFetch}
           disabled={fetchMutation.isPending}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50 btn-press"
         >
           {fetchMutation.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -620,5 +622,6 @@ export default function RadarPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }

@@ -6,6 +6,7 @@ import { DocumentList } from "@/components/documenten/document-list";
 import { DocumentModal } from "@/components/documenten/document-modal";
 import { Plus } from "lucide-react";
 import { DocumentType } from "@/types/documenten";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export default function DocumentenPage() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -27,15 +28,16 @@ export default function DocumentenPage() {
   }
 
   return (
+    <PageTransition>
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary">Documenten</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Documenten</h1>
           <p className="text-sm text-autronis-text-secondary mt-1">Alle documenten in Notion</p>
         </div>
         <button
           onClick={() => openModal()}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-autronis-accent text-white text-sm font-medium hover:bg-autronis-accent-hover transition-colors"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-autronis-accent text-white text-sm font-medium hover:bg-autronis-accent-hover transition-colors btn-press"
         >
           <Plus className="w-4 h-4" />
           Nieuw document
@@ -50,5 +52,6 @@ export default function DocumentenPage() {
         initialType={initialType}
       />
     </div>
+    </PageTransition>
   );
 }

@@ -39,6 +39,7 @@ import {
   BANNER_ILLUSTRATION_LABELS,
 } from "@/types/content";
 import { getDefaults } from "@/lib/ai/banner-generator";
+import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ STATUS BADGE ============
 
@@ -389,10 +390,11 @@ export default function BannersPage() {
   }
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary">Banner Generator</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Banner Generator</h1>
         <p className="text-autronis-text-secondary mt-1">
           Typ een onderwerp en genereer een neon capsule banner voor LinkedIn of Instagram.
         </p>
@@ -552,7 +554,7 @@ export default function BannersPage() {
               <button
                 onClick={handleSave}
                 disabled={isSaving || !onderwerp.trim()}
-                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 px-5 py-3 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-50 btn-press"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                 Opslaan
@@ -654,5 +656,6 @@ export default function BannersPage() {
         <InstagramGridPreview banners={banners} />
       )}
     </div>
+    </PageTransition>
   );
 }

@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { BookOpen, Newspaper, Video, CalendarDays, Image as ImageIcon } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 
 export default function ContentPage() {
   return (
+    <PageTransition>
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary">Content Engine</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Content Engine</h1>
         <p className="text-autronis-text-secondary mt-1">
           Beheer je kennisbank en genereer social media content voor Autronis.
         </p>
@@ -99,5 +101,6 @@ export default function ContentPage() {
         </Link>
       </div>
     </div>
+    </PageTransition>
   );
 }

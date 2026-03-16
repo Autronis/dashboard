@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink, Video, FileText, Image, Loader2 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 import { useState } from "react";
 
 const GENERATOR_URL = "http://localhost:3456";
@@ -78,10 +79,11 @@ export default function CaseStudiesPage() {
   }
 
   return (
+    <PageTransition>
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Case Study Generator</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Case Study Generator</h1>
         <p className="text-muted-foreground mt-1">
           Genereer automatisch een case study, voiceover script, banners en pagina.
         </p>
@@ -182,7 +184,7 @@ export default function CaseStudiesPage() {
         </div>
 
         <button type="submit" disabled={loading}
-          className="w-full rounded-xl bg-primary py-4 text-primary-foreground font-bold text-base hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+          className="w-full rounded-xl bg-primary py-4 text-primary-foreground font-bold text-base hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-press">
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -225,5 +227,6 @@ export default function CaseStudiesPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }

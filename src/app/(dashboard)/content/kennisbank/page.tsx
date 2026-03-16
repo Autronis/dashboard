@@ -7,6 +7,7 @@ import { useContentProfiel, useUpdateProfiel, useContentInzichten, useCreateInzi
 import { useKlanten } from "@/hooks/queries/use-klanten";
 import { useToast } from "@/hooks/use-toast";
 import { INZICHT_CATEGORIE_LABELS, INZICHT_CATEGORIE_COLORS, type InzichtCategorie } from "@/types/content";
+import { PageTransition } from "@/components/ui/page-transition";
 
 const PROFIEL_LABELS: Record<string, string> = {
   over_ons: "Over ons",
@@ -128,10 +129,11 @@ export default function KennisbankPage() {
     : [];
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary">Kennisbank</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Kennisbank</h1>
         <p className="text-autronis-text-secondary mt-1">
           Autronis profiel en inzichten voor content generatie.
         </p>
@@ -166,7 +168,7 @@ export default function KennisbankPage() {
           <h2 className="text-xl font-semibold text-autronis-text-primary">Inzichten</h2>
           <button
             onClick={() => setModalOpen(true)}
-            className="flex items-center gap-2 bg-autronis-accent text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-autronis-accent/90 transition-colors"
+            className="flex items-center gap-2 bg-autronis-accent text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-autronis-accent/90 transition-colors btn-press"
           >
             <Plus className="w-4 h-4" />
             Nieuw inzicht
@@ -322,5 +324,6 @@ export default function KennisbankPage() {
         </div>
       </Modal>
     </div>
+    </PageTransition>
   );
 }

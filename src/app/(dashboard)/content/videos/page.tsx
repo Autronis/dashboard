@@ -6,6 +6,7 @@ import { useContentVideos, useGenerateVideoScript, useRenderVideo, useDeleteVide
 import { useContentPosts } from "@/hooks/queries/use-content";
 import { useToast } from "@/hooks/use-toast";
 import type { ContentVideo, VideoStatus } from "@/types/content";
+import { PageTransition } from "@/components/ui/page-transition";
 
 function StatusBadge({ status }: { status: VideoStatus }) {
   const map: Record<VideoStatus, { label: string; className: string }> = {
@@ -203,9 +204,10 @@ export default function VideosPage() {
   }
 
   return (
+    <PageTransition>
     <div className="p-6 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary">Video&apos;s</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">Video&apos;s</h1>
         <p className="text-autronis-text-secondary mt-1">
           Genereer en beheer Autronis video&apos;s
         </p>
@@ -242,7 +244,7 @@ export default function VideosPage() {
           <button
             onClick={handleGenereer}
             disabled={!selectedPostId || generateScript.isPending}
-            className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl text-sm font-semibold hover:bg-autronis-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl text-sm font-semibold hover:bg-autronis-accent/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed btn-press"
           >
             {generateScript.isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -282,5 +284,6 @@ export default function VideosPage() {
         </div>
       )}
     </div>
+    </PageTransition>
   );
 }

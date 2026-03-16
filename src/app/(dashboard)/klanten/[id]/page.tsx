@@ -26,6 +26,7 @@ import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useKlantDetail, NotFoundError } from "@/hooks/queries/use-klant-detail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageTransition } from "@/components/ui/page-transition";
 import { KlantModal } from "../klant-modal";
 import { ProjectModal } from "./project-modal";
 import { NoteModal } from "./note-modal";
@@ -141,6 +142,7 @@ export default function KlantDetailPage() {
   const { klant, projecten, notities, documenten, recenteTijdregistraties, kpis } = data;
 
   return (
+    <PageTransition>
     <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
       {/* Top section */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -152,7 +154,7 @@ export default function KlantDetailPage() {
             <ArrowLeft className="w-5 h-5" />
             Klanten
           </Link>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">
+          <h1 className="text-3xl font-bold text-white tracking-tight">
             {klant.bedrijfsnaam}
           </h1>
           {klant.notities && (
@@ -162,7 +164,7 @@ export default function KlantDetailPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setKlantModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
           >
             <Pencil className="w-4 h-4" />
             Bewerken
@@ -588,5 +590,6 @@ export default function KlantDetailPage() {
         variant="danger"
       />
     </div>
+    </PageTransition>
   );
 }

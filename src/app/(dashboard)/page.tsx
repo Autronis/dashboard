@@ -36,6 +36,7 @@ import { useBriefing, useGenereerBriefing, type Briefing } from "@/hooks/queries
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { KPICard } from "@/components/ui/kpi-card";
 import { Sparkline } from "@/components/ui/sparkline";
 import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
@@ -163,7 +164,7 @@ function DailyBriefing() {
         <p className="text-autronis-text-secondary mb-5">Start je dag met een overzicht van je agenda, taken en projecten.</p>
         <button
           onClick={handleGenereer}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
         >
           <Sparkles className="w-4 h-4" />
           Genereer je dagbriefing
@@ -184,13 +185,13 @@ function DailyBriefing() {
   if (!briefing) return null;
 
   return (
-    <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 space-y-6">
+    <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 space-y-6 card-gradient">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="w-5 h-5 text-autronis-accent" />
-            <h2 className="text-lg font-semibold text-autronis-text-primary">Dagbriefing</h2>
+            <h2 className="text-xl font-semibold text-white">Dagbriefing</h2>
           </div>
           {briefing.samenvatting && (
             <p className="text-base text-autronis-text-secondary leading-relaxed">
@@ -373,7 +374,7 @@ function IdeeVanDeDag() {
 
   if (!beste) {
     return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow flex items-center justify-between gap-4">
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow card-gradient flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-amber-500/10 rounded-xl">
             <Lightbulb className="w-5 h-5 text-amber-400" />
@@ -386,7 +387,7 @@ function IdeeVanDeDag() {
         <button
           onClick={handleGenereer}
           disabled={genereer.isPending}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 btn-press"
         >
           {genereer.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           Genereer nieuwe ideeën
@@ -396,7 +397,7 @@ function IdeeVanDeDag() {
   }
 
   return (
-    <div className="bg-autronis-card border border-amber-500/20 rounded-2xl p-5 card-glow">
+    <div className="bg-autronis-card border border-amber-500/20 rounded-2xl p-5 card-glow card-gradient">
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3 min-w-0">
           <div className="p-2 bg-amber-500/10 rounded-xl flex-shrink-0 mt-0.5">
@@ -466,7 +467,7 @@ function RadarWidget() {
           <div className="p-2 bg-autronis-accent/10 rounded-xl">
             <Radar className="w-5 h-5 text-autronis-accent" />
           </div>
-          <h2 className="text-lg font-semibold text-autronis-text-primary">Learning Radar</h2>
+          <h2 className="text-xl font-semibold text-white">Learning Radar</h2>
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -478,13 +479,13 @@ function RadarWidget() {
   }
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow card-gradient">
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <div className="p-2 bg-autronis-accent/10 rounded-xl">
             <Radar className="w-5 h-5 text-autronis-accent" />
           </div>
-          <h2 className="text-lg font-semibold text-autronis-text-primary">Learning Radar</h2>
+          <h2 className="text-xl font-semibold text-white">Learning Radar</h2>
           <span className="text-sm text-autronis-text-secondary">({items.length} items)</span>
         </div>
         <Link
@@ -723,7 +724,7 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
         {/* Begroeting */}
         <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary">
+          <h1 className="text-3xl font-bold text-white tracking-tight">
             {getBegroeting()}, {gebruiker.naam.split(" ")[0]}
           </h1>
           <p className="text-base text-autronis-text-secondary mt-1 capitalize">
@@ -762,86 +763,43 @@ export default function DashboardPage() {
         <IdeeVanDeDag />
 
         {/* KPI balk */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow kpi-gradient-omzet relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                <Euro className="w-5 h-5 text-autronis-accent" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-autronis-accent">
-              <AnimatedNumber value={kpis.omzetDezeMaand} format={(n) => formatBedrag(n)} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-              Omzet deze maand
-            </p>
-            <div className="absolute bottom-2 right-2 opacity-60">
-              <Sparkline data={[3, 5, 2, 8, 4, 7, 6]} />
-            </div>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow kpi-gradient-uren relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                <Clock className="w-5 h-5 text-autronis-accent" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-autronis-text-primary">
-              <AnimatedNumber value={kpis.urenDezeWeek.totaal} format={(n) => formatUren(Math.round(n))} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-              Uren deze week
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-0.5">
-              {gebruiker.naam.split(" ")[0]} {formatUren(kpis.urenDezeWeek.eigen)} · {teamgenoot?.naam.split(" ")[0] || "Team"} {formatUren(kpis.urenDezeWeek.teamgenoot)}
-            </p>
-            <div className="absolute bottom-2 right-2 opacity-60">
-              <Sparkline data={[120, 90, 150, 180, 140, 160, 200]} />
-            </div>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow kpi-gradient-projecten relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                <FolderKanban className="w-5 h-5 text-autronis-accent" />
-              </div>
-            </div>
-            <p className="text-3xl font-bold text-autronis-text-primary">
-              <AnimatedNumber value={kpis.actieveProjecten} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-              Actieve projecten
-            </p>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow kpi-gradient-deadlines relative overflow-hidden">
-            <div className="flex items-center gap-3 mb-3">
-              <div className={cn(
-                "p-2.5 rounded-xl",
-                kpis.deadlinesDezeWeek > 0 ? "bg-red-500/10" : "bg-autronis-accent/10"
-              )}>
-                <AlertTriangle className={cn(
-                  "w-5 h-5",
-                  kpis.deadlinesDezeWeek > 0 ? "text-red-400" : "text-autronis-accent"
-                )} />
-              </div>
-            </div>
-            <p className={cn(
-              "text-3xl font-bold",
-              kpis.deadlinesDezeWeek > 0 ? "text-red-400" : "text-autronis-text-primary"
-            )}>
-              <AnimatedNumber value={kpis.deadlinesDezeWeek} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-              Deadlines deze week
-            </p>
-          </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+          <KPICard
+            label="Omzet deze maand"
+            value={kpis.omzetDezeMaand}
+            format={(n) => formatBedrag(n)}
+            icon={<Euro className="w-5 h-5" />}
+            color="emerald"
+            index={0}
+          />
+          <KPICard
+            label="Uren deze week"
+            value={kpis.urenDezeWeek.totaal}
+            format={(n) => formatUren(Math.round(n))}
+            icon={<Clock className="w-5 h-5" />}
+            color="blue"
+            index={1}
+          />
+          <KPICard
+            label="Actieve projecten"
+            value={kpis.actieveProjecten}
+            icon={<FolderKanban className="w-5 h-5" />}
+            color="purple"
+            index={2}
+          />
+          <KPICard
+            label="Deadlines deze week"
+            value={kpis.deadlinesDezeWeek}
+            icon={<AlertTriangle className="w-5 h-5" />}
+            color={kpis.deadlinesDezeWeek > 0 ? "red" : "accent"}
+            index={3}
+          />
         </div>
 
         {/* Slimme inzichten */}
         {inzichten.length > 0 && (
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-            <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-autronis-accent" />
               Slimme inzichten
             </h2>
@@ -899,7 +857,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                      <h2 className="text-lg font-semibold text-autronis-text-primary">
+                      <h2 className="text-xl font-semibold text-white">
                         Timer loopt
                       </h2>
                     </div>
@@ -918,7 +876,7 @@ export default function DashboardPage() {
                     </div>
                     <button
                       onClick={handleStopTimer}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors btn-press"
                     >
                       <Square className="w-4 h-4" />
                       Stop
@@ -927,7 +885,7 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <>
-                  <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-autronis-accent" />
                     Snel starten
                   </h2>
@@ -964,7 +922,7 @@ export default function DashboardPage() {
                     </select>
                     <button
                       onClick={handleStartTimer}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 whitespace-nowrap"
+                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 whitespace-nowrap btn-press"
                     >
                       <Play className="w-4 h-4" />
                       Start
@@ -977,7 +935,7 @@ export default function DashboardPage() {
             {/* Mijn Taken */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
                   <ListTodo className="w-5 h-5 text-autronis-accent" />
                   Mijn taken
                 </h2>
@@ -1035,7 +993,7 @@ export default function DashboardPage() {
 
             {/* Aankomende Deadlines */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+              <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
                 <CalendarDays className="w-5 h-5 text-autronis-accent" />
                 Aankomende deadlines
               </h2>

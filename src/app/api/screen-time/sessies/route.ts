@@ -4,7 +4,7 @@ import { screenTimeEntries, projecten, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, asc, sql } from "drizzle-orm";
 
-const SESSION_GAP_SECONDS = 300; // 5 minutes of inactivity = new session
+const SESSION_GAP_SECONDS = 1800; // 30 minutes gap = new session (~3-5 per dag)
 
 interface RawEntry {
   app: string;
@@ -115,7 +115,8 @@ function groupIntoSessions(entries: RawEntry[]): Sessie[] {
 
   const sessions: Sessie[] = [];
 
-  // Time-based grouping: gap > 5 min = new session (regardless of app)
+  // Time-based grouping: gap > 30 min = new session
+  // Results in ~3-5 sessions per day (ochtend, middag, avond)
   let currentEntries: RawEntry[] = [entries[0]];
 
   for (let i = 1; i < entries.length; i++) {

@@ -40,7 +40,8 @@ export function DocumentModal({ open, onClose, initialType, initialValues }: Doc
   const [gerelateerdAan, setGerelateerdAan] = useState("intern");
   const [datum, setDatum] = useState("");
 
-  const { data: klanten } = useKlanten();
+  const { data: klantenData } = useKlanten();
+  const klanten = klantenData?.klanten;
   const { data: allDocs } = useDocumenten();
   const createDocument = useCreateDocument();
   const generateDraft = useGenerateDraft();

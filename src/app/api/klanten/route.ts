@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties } from "@/lib/db/schema";
+import { klanten, projecten, tijdregistraties, facturen, notities as notitiesTabel } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, inArray } from "drizzle-orm";
 
-// GET /api/klanten — All active clients with KPIs
+// GET /api/klanten — All clients with enriched KPIs, health indicators
 export async function GET(req: NextRequest) {
   try {
     await requireAuth();
@@ -30,29 +30,144 @@ export async function GET(req: NextRequest) {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(klanten.bedrijfsnaam);
 
-    // Fetch KPIs per client
-    const klantenMetKPIs = await Promise.all(
-      lijst.map(async (klant) => {
-        const [projectCount] = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(projecten)
-          .where(and(eq(projecten.klantId, klant.id), eq(projecten.isActief, 1)));
-
-        const [urenTotaal] = await db
-          .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
-          .from(tijdregistraties)
-          .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-          .where(eq(projecten.klantId, klant.id));
-
-        return {
-          ...klant,
-          aantalProjecten: projectCount?.count || 0,
-          totaalMinuten: urenTotaal?.totaal || 0,
-        };
+    // Batch: project counts per klant
+    const projectStats = await db
+      .select({
+        klantId: projecten.klantId,
+        aantalProjecten: sql<number>`count(*)`,
+        actieveProjecten: sql<number>`sum(case when ${projecten.status} = 'actief' then 1 else 0 end)`,
       })
-    );
+      .from(projecten)
+      .where(eq(projecten.isActief, 1))
+      .groupBy(projecten.klantId);
+    const projectMap = new Map(projectStats.map((p) => [p.klantId, p]));
 
-    return NextResponse.json({ klanten: klantenMetKPIs });
+    // Batch: total hours per klant
+    const urenStats = await db
+      .select({
+        klantId: projecten.klantId,
+        totaalMinuten: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)`,
+      })
+      .from(tijdregistraties)
+      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+      .groupBy(projecten.klantId);
+    const urenMap = new Map(urenStats.map((u) => [u.klantId, u.totaalMinuten]));
+
+    // Batch: factuur stats per klant (total revenue, outstanding)
+    const factuurStats = await db
+      .select({
+        klantId: facturen.klantId,
+        totaleOmzet: sql<number>`coalesce(sum(case when ${facturen.status} = 'betaald' then ${facturen.bedragInclBtw} else 0 end), 0)`,
+        openstaand: sql<number>`coalesce(sum(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.bedragInclBtw} else 0 end), 0)`,
+        oudsteOpenVervaldatum: sql<string>`min(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.vervaldatum} else null end)`,
+      })
+      .from(facturen)
+      .where(eq(facturen.isActief, 1))
+      .groupBy(facturen.klantId);
+    const factuurMap = new Map(factuurStats.map((f) => [f.klantId, f]));
+
+    // Batch: last interaction per klant (most recent note, time entry, or factuur)
+    const laatsteNotities = await db
+      .select({
+        klantId: notitiesTabel.klantId,
+        laatsteNotitie: sql<string>`max(${notitiesTabel.aangemaaktOp})`,
+      })
+      .from(notitiesTabel)
+      .groupBy(notitiesTabel.klantId);
+    const notitieMap = new Map(laatsteNotities.map((n) => [n.klantId, n.laatsteNotitie]));
+
+    const laatsteTijd = await db
+      .select({
+        klantId: projecten.klantId,
+        laatsteRegistratie: sql<string>`max(${tijdregistraties.startTijd})`,
+      })
+      .from(tijdregistraties)
+      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+      .groupBy(projecten.klantId);
+    const tijdMap = new Map(laatsteTijd.map((t) => [t.klantId, t.laatsteRegistratie]));
+
+    // Calculate health + enrichment per klant
+    const nu = new Date();
+    const klantenMetKPIs = lijst.map((klant) => {
+      const projStats = projectMap.get(klant.id);
+      const totaalMinuten = urenMap.get(klant.id) || 0;
+      const fStats = factuurMap.get(klant.id);
+      const totaleOmzet = fStats?.totaleOmzet || 0;
+      const openstaand = fStats?.openstaand || 0;
+
+      // Determine health: green/orange/red
+      let gezondheid: "groen" | "oranje" | "rood" = "groen";
+      let gezondheidReden = "";
+
+      // Check for overdue invoices
+      if (fStats?.oudsteOpenVervaldatum) {
+        const vervaldatum = new Date(fStats.oudsteOpenVervaldatum);
+        const dagenOver = Math.floor((nu.getTime() - vervaldatum.getTime()) / (1000 * 60 * 60 * 24));
+        if (dagenOver > 30) {
+          gezondheid = "rood";
+          gezondheidReden = `Factuur ${dagenOver} dagen over vervaldatum`;
+        } else if (dagenOver > 0) {
+          gezondheid = "oranje";
+          gezondheidReden = `Factuur ${dagenOver} dagen over vervaldatum`;
+        }
+      }
+
+      // Check last contact (notitie or tijdregistratie)
+      const laatsteNotitie = notitieMap.get(klant.id);
+      const laatsteReg = tijdMap.get(klant.id);
+      const laatsteContact = [laatsteNotitie, laatsteReg]
+        .filter(Boolean)
+        .sort()
+        .reverse()[0] || null;
+
+      if (laatsteContact && gezondheid === "groen") {
+        const contactDatum = new Date(laatsteContact.includes("T") ? laatsteContact : laatsteContact.replace(" ", "T") + "Z");
+        const dagenGeleden = Math.floor((nu.getTime() - contactDatum.getTime()) / (1000 * 60 * 60 * 24));
+        if (dagenGeleden > 30) {
+          gezondheid = "rood";
+          gezondheidReden = `Geen contact sinds ${dagenGeleden} dagen`;
+        } else if (dagenGeleden > 14) {
+          gezondheid = "oranje";
+          gezondheidReden = `Laatste contact ${dagenGeleden} dagen geleden`;
+        }
+      }
+
+      // Effective hourly rate
+      const effectiefUurtarief = totaalMinuten > 0 ? (totaleOmzet / (totaalMinuten / 60)) : klant.uurtarief || 0;
+
+      return {
+        ...klant,
+        aantalProjecten: projStats?.aantalProjecten || 0,
+        actieveProjecten: projStats?.actieveProjecten || 0,
+        totaalMinuten,
+        totaleOmzet,
+        openstaand,
+        effectiefUurtarief: Math.round(effectiefUurtarief * 100) / 100,
+        gezondheid,
+        gezondheidReden,
+        laatsteContact,
+      };
+    });
+
+    // Global KPIs
+    const totaleOmzetAlleKlanten = klantenMetKPIs.reduce((s, k) => s + k.totaleOmzet, 0);
+    const totaalOpenstaand = klantenMetKPIs.reduce((s, k) => s + k.openstaand, 0);
+    const actieveKlanten = klantenMetKPIs.filter((k) => k.isActief).length;
+    const gezondheidsVerdeling = {
+      groen: klantenMetKPIs.filter((k) => k.gezondheid === "groen" && k.isActief).length,
+      oranje: klantenMetKPIs.filter((k) => k.gezondheid === "oranje" && k.isActief).length,
+      rood: klantenMetKPIs.filter((k) => k.gezondheid === "rood" && k.isActief).length,
+    };
+
+    return NextResponse.json({
+      klanten: klantenMetKPIs,
+      kpis: {
+        actieveKlanten,
+        totaleOmzet: totaleOmzetAlleKlanten,
+        totaalOpenstaand,
+        gezondheid: gezondheidsVerdeling,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

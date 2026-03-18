@@ -68,7 +68,8 @@ function ProfielKaart({ id, onderwerp, inhoud }: { id: number; onderwerp: string
 export default function KennisbankPage() {
   const { data: profielEntries, isLoading: profielLoading } = useContentProfiel();
   const { data: inzichten, isLoading: inzichtenLoading } = useContentInzichten();
-  const { data: klanten } = useKlanten();
+  const { data: klantenData } = useKlanten();
+  const klanten = klantenData?.klanten;
   const createInzicht = useCreateInzicht();
   const deleteInzicht = useDeleteInzicht();
   const { addToast } = useToast();

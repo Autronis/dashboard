@@ -11,14 +11,27 @@ export interface Klant {
   uurtarief: number | null;
   isActief: number;
   aantalProjecten: number;
+  actieveProjecten: number;
   totaalMinuten: number;
+  totaleOmzet: number;
+  openstaand: number;
+  effectiefUurtarief: number;
+  gezondheid: "groen" | "oranje" | "rood";
+  gezondheidReden: string;
+  laatsteContact: string | null;
 }
 
-async function fetchKlanten(): Promise<Klant[]> {
+export interface KlantenKpis {
+  actieveKlanten: number;
+  totaleOmzet: number;
+  totaalOpenstaand: number;
+  gezondheid: { groen: number; oranje: number; rood: number };
+}
+
+async function fetchKlanten(): Promise<{ klanten: Klant[]; kpis: KlantenKpis }> {
   const res = await fetch("/api/klanten");
   if (!res.ok) throw new Error("Kon klanten niet laden");
-  const data = await res.json();
-  return data.klanten || [];
+  return res.json() as Promise<{ klanten: Klant[]; kpis: KlantenKpis }>;
 }
 
 export function useKlanten() {

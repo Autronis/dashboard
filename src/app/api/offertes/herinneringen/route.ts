@@ -25,7 +25,7 @@ export async function POST() {
     zevenDagenGeleden.setDate(zevenDagenGeleden.getDate() - 7);
     const grens = zevenDagenGeleden.toISOString().split("T")[0] ?? "";
 
-    const teHerinnerenOffertes = db
+    const teHerinnerenOffertes = await db
       .select({
         id: offertes.id,
         offertenummer: offertes.offertenummer,

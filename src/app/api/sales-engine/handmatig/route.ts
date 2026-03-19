@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         .where(eq(leads.id, existingLead.id))
         .run();
     } else {
-      const [newLead] = db
+      const [newLead] = await db
         .insert(leads)
         .values({
           bedrijfsnaam: body.bedrijfsnaam,
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create scan record
-    const [scan] = db
+    const [scan] = await db
       .insert(salesEngineScans)
       .values({
         leadId: existingLead.id,

@@ -189,7 +189,7 @@ export async function POST(request: NextRequest) {
     let projectList: { id: number; naam: string; klantNaam?: string }[] = [];
 
     if (body.projectId) {
-      const project = db
+      const project = await db
         .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
         .from(projecten)
         .where(eq(projecten.id, body.projectId))
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
       projectList = [{ id: project.id, naam: project.naam, klantNaam }];
     } else if (body.projectNaam) {
       // Find project by name (case-insensitive)
-      const allProjects = db
+      const allProjects = await db
         .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
         .from(projecten)
         .where(eq(projecten.isActief, 1))
@@ -228,7 +228,7 @@ export async function POST(request: NextRequest) {
       projectList = [{ id: match.id, naam: match.naam, klantNaam }];
     } else {
       // All active projects
-      const allProjects = db
+      const allProjects = await db
         .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
         .from(projecten)
         .where(eq(projecten.isActief, 1))

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const logs = db
+    const logs = await db
       .select({
         id: gewoonteLogboek.id,
         gewoonteId: gewoonteLogboek.gewoonteId,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify habit belongs to user
-    const gewoonte = db
+    const gewoonte = await db
       .select()
       .from(gewoontes)
       .where(
@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if log already exists
-    const existing = db
+    const existing = await db
       .select()
       .from(gewoonteLogboek)
       .where(

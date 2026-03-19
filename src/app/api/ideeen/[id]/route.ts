@@ -14,7 +14,7 @@ export async function GET(
     await requireAuth();
     const { id } = await params;
 
-    const idee = db
+    const idee = await db
       .select()
       .from(ideeen)
       .where(eq(ideeen.id, Number(id)))
@@ -121,7 +121,7 @@ export async function DELETE(
     await requireAuth();
     const { id } = await params;
 
-    const idee = db
+    const idee = await db
       .select()
       .from(ideeen)
       .where(eq(ideeen.id, Number(id)))

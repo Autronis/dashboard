@@ -9,7 +9,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const bronnen = db
+    const bronnen = await db
       .select()
       .from(radarBronnen)
       .orderBy(radarBronnen.naam)
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check URL uniciteit
-    const bestaand = db
+    const bestaand = await db
       .select({ id: radarBronnen.id })
       .from(radarBronnen)
       .where(eq(radarBronnen.url, url))
@@ -53,12 +53,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = db
+    const result = await db
       .insert(radarBronnen)
       .values({ naam, url, type })
       .run();
 
-    const bron = db
+    const bron = await db
       .select()
       .from(radarBronnen)
       .where(eq(radarBronnen.id, Number(result.lastInsertRowid)))

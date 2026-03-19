@@ -62,7 +62,7 @@ export async function GET(
     }
 
     // Fetch all tasks for this project
-    const alleTaken = db
+    const alleTaken = await db
       .select({
         id: taken.id,
         titel: taken.titel,
@@ -103,7 +103,7 @@ export async function GET(
     }));
 
     // Get total time tracked
-    const urenStats = db
+    const urenStats = await db
       .select({
         totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
       })

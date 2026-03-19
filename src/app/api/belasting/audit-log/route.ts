@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = db
+    const result = await db
       .insert(belastingAuditLog)
       .values({
         gebruikerId: gebruiker.id,

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
 
     // Get or create uren criterium record
-    let record = db
+    let record = await db
       .select()
       .from(urenCriterium)
       .where(
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       .get();
 
     if (!record) {
-      const [nieuw] = db
+      const [nieuw] = await db
         .insert(urenCriterium)
         .values({
           gebruikerId: gebruiker.id,
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const startJaar = `${jaar}-01-01T00:00:00`;
     const eindJaar = `${jaar}-12-31T23:59:59`;
 
-    const result = db
+    const result = await db
       .select({
         totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
       })
@@ -96,7 +96,7 @@ export async function PUT(req: NextRequest) {
     }
 
     // Get or create record
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(urenCriterium)
       .where(
@@ -108,7 +108,7 @@ export async function PUT(req: NextRequest) {
       .get();
 
     if (bestaand) {
-      const [bijgewerkt] = db
+      const [bijgewerkt] = await db
         .update(urenCriterium)
         .set({ doelUren: body.doelUren })
         .where(eq(urenCriterium.id, bestaand.id))
@@ -116,7 +116,7 @@ export async function PUT(req: NextRequest) {
         .all();
       return NextResponse.json({ urenCriterium: bijgewerkt });
     } else {
-      const [nieuw] = db
+      const [nieuw] = await db
         .insert(urenCriterium)
         .values({
           gebruikerId: gebruiker.id,

@@ -12,7 +12,7 @@ export async function GET() {
     weekGeleden.setDate(weekGeleden.getDate() - 7);
     const weekGeledenStr = weekGeleden.toISOString();
 
-    const recenteScans = db
+    const recenteScans = await db
       .select()
       .from(concurrentScans)
       .where(and(

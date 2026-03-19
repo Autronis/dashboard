@@ -31,7 +31,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
   const { van, tot } = getMonthRange();
 
   // Revenue this month (betaald facturen)
-  const omzetResult = db
+  const omzetResult = await db
     .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)` })
     .from(facturen)
     .where(
@@ -45,7 +45,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
   const omzet = omzetResult?.totaal ?? 0;
 
   // Hours this month
-  const urenResult = db
+  const urenResult = await db
     .select({ totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
     .from(tijdregistraties)
     .where(gte(tijdregistraties.startTijd, van))
@@ -55,7 +55,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
   const uren = Math.round((urenMinuten / 60) * 10) / 10;
 
   // Active projects
-  const actieveProjecten = db
+  const actieveProjecten = await db
     .select({
       naam: projecten.naam,
       klantNaam: klanten.bedrijfsnaam,
@@ -68,7 +68,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
     .all();
 
   // Open facturen
-  const openFacturen = db
+  const openFacturen = await db
     .select({
       factuurnummer: facturen.factuurnummer,
       bedrag: facturen.bedragInclBtw,
@@ -88,7 +88,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
   const openFacturenWaarde = openFacturen.reduce((sum: number, f: { bedrag: number | null }) => sum + (f.bedrag ?? 0), 0);
 
   // Leads pipeline
-  const leadsData = db
+  const leadsData = await db
     .select({
       status: leads.status,
       count: sql<number>`COUNT(*)`,
@@ -104,7 +104,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
     .join(", ");
 
   // Recent time entries
-  const recenteTijden = db
+  const recenteTijden = await db
     .select({
       omschrijving: tijdregistraties.omschrijving,
       duur: tijdregistraties.duurMinuten,
@@ -125,7 +125,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
     .join("\n");
 
   // Klanten with active projects
-  const klantenData = db
+  const klantenData = await db
     .select({
       bedrijfsnaam: klanten.bedrijfsnaam,
       actieveProjecten: sql<number>`(SELECT COUNT(*) FROM projecten WHERE klant_id = ${klanten.id} AND status = 'actief' AND is_actief = 1)`,
@@ -139,7 +139,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
     .join("\n");
 
   // Open taken
-  const openTaken = db
+  const openTaken = await db
     .select({ count: sql<number>`COUNT(*)` })
     .from(taken)
     .where(ne(taken.status, "afgerond"))
@@ -155,7 +155,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
 
   // Screen time vandaag
   const vandaag = new Date().toISOString().split("T")[0];
-  const screenTimeSamenvatting = db
+  const screenTimeSamenvatting = await db
     .select({
       categorie: screenTimeEntries.categorie,
       totaal: sql<number>`SUM(duur_seconden)`,
@@ -170,7 +170,7 @@ async function gatherBusinessContext(gebruikerId: number): Promise<string> {
     .groupBy(screenTimeEntries.categorie)
     .all();
 
-  const topAppsVandaag = db
+  const topAppsVandaag = await db
     .select({
       app: screenTimeEntries.app,
       totaal: sql<number>`SUM(duur_seconden)`,
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
     let bestaandeBerichten: Bericht[] = [];
 
     if (currentGesprekId) {
-      const gesprek = db
+      const gesprek = await db
         .select()
         .from(aiGesprekken)
         .where(
@@ -273,7 +273,7 @@ export async function POST(request: NextRequest) {
       bestaandeBerichten = JSON.parse(gesprek.berichten ?? "[]") as Bericht[];
     } else {
       // Create new conversation
-      const result = db
+      const result = await db
         .insert(aiGesprekken)
         .values({
           gebruikerId: gebruiker.id,

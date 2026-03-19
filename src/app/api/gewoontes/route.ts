@@ -42,7 +42,7 @@ async function generateAiSuggesties(
     veertienDagenGeleden.setDate(veertienDagenGeleden.getDate() - 14);
     const vanDatum = veertienDagenGeleden.toISOString();
 
-    const screenTimeStats = db
+    const screenTimeStats = await db
       .select({
         categorie: screenTimeEntries.categorie,
         totaalSec: sql<number>`SUM(${screenTimeEntries.duurSeconden})`,
@@ -125,7 +125,7 @@ async function generateAiSuggesties(
     }
 
     // 6. Check active projects → suggest project-specific habits
-    const actieveProjecten = db
+    const actieveProjecten = await db
       .select({ naam: projecten.naam })
       .from(projecten)
       .where(and(eq(projecten.isActief, 1), eq(projecten.status, "actief")))
@@ -197,7 +197,7 @@ export async function GET() {
   try {
     const gebruiker = await requireAuth();
 
-    const items = db
+    const items = await db
       .select()
       .from(gewoontes)
       .where(
@@ -211,7 +211,7 @@ export async function GET() {
 
     // Get today's logs
     const vandaag = new Date().toISOString().slice(0, 10);
-    const logs = db
+    const logs = await db
       .select()
       .from(gewoonteLogboek)
       .where(
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get max volgorde
-    const maxVolgorde = db
+    const maxVolgorde = await db
       .select({ volgorde: gewoontes.volgorde })
       .from(gewoontes)
       .where(eq(gewoontes.gebruikerId, gebruiker.id))
@@ -278,7 +278,7 @@ export async function POST(req: NextRequest) {
       ? Math.max(...maxVolgorde.map((v) => v.volgorde ?? 0)) + 1
       : 0;
 
-    const result = db
+    const result = await db
       .insert(gewoontes)
       .values({
         gebruikerId: gebruiker.id,

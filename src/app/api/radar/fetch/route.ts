@@ -89,7 +89,7 @@ export async function POST() {
       // Zorg dat de bron bestaat in lokale DB
       let bronId: number | null = null;
       if (item.sources?.name) {
-        const bestaandeBron = db
+        const bestaandeBron = await db
           .select({ id: radarBronnen.id })
           .from(radarBronnen)
           .where(eq(radarBronnen.naam, item.sources.name))
@@ -98,7 +98,7 @@ export async function POST() {
         if (bestaandeBron) {
           bronId = bestaandeBron.id;
         } else {
-          const result = db
+          const result = await db
             .insert(radarBronnen)
             .values({
               naam: item.sources.name,
@@ -112,7 +112,7 @@ export async function POST() {
       }
 
       // Check of item al bestaat (op URL)
-      const bestaand = db
+      const bestaand = await db
         .select({ id: radarItems.id, score: radarItems.score })
         .from(radarItems)
         .where(eq(radarItems.url, item.url))
@@ -154,7 +154,7 @@ export async function POST() {
       nieuweItems++;
     }
 
-    const totaal = db
+    const totaal = await db
       .select({ id: radarItems.id })
       .from(radarItems)
       .all().length;

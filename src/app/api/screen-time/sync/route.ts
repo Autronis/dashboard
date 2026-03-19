@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Geen entries meegegeven" }, { status: 400 });
     }
 
-    const regels = db
+    const regels = await db
       .select()
       .from(screenTimeRegels)
       .where(eq(screenTimeRegels.isActief, 1))
@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
       .all();
 
     // Cache projects for title matching
-    const projectCache = db
+    const projectCache = await db
       .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
       .from(projecten)
       .where(eq(projecten.isActief, 1))
@@ -222,7 +222,7 @@ export async function POST(req: NextRequest) {
       const chunks = splitEntry(entry);
 
       for (const chunk of chunks) {
-        const bestaand = db
+        const bestaand = await db
           .select({ id: screenTimeEntries.id })
           .from(screenTimeEntries)
           .where(eq(screenTimeEntries.clientId, chunk.clientId))

@@ -14,7 +14,7 @@ export async function POST() {
 
     for (const jaar of jaren) {
       // ---- DEADLINES ----
-      const bestaandeDeadlines = db
+      const bestaandeDeadlines = await db
         .select()
         .from(belastingDeadlines)
         .where(eq(belastingDeadlines.jaar, jaar))
@@ -107,7 +107,7 @@ export async function POST() {
       }
 
       // ---- BTW AANGIFTES ----
-      const bestaandeAangiftes = db
+      const bestaandeAangiftes = await db
         .select()
         .from(btwAangiftes)
         .where(eq(btwAangiftes.jaar, jaar))

@@ -13,7 +13,7 @@ export async function GET(
   const { trackingId } = await params;
 
   // Update email als nog niet geopend
-  const email = db
+  const email = await db
     .select({ id: outreachEmails.id, geopendOp: outreachEmails.geopendOp })
     .from(outreachEmails)
     .where(eq(outreachEmails.trackingId, trackingId))

@@ -67,7 +67,7 @@ export async function GET() {
   try {
     const gebruiker = await requireAuth();
 
-    const actieveGewoontes = db
+    const actieveGewoontes = await db
       .select()
       .from(gewoontes)
       .where(
@@ -96,7 +96,7 @@ export async function GET() {
     jaarGeleden.setFullYear(jaarGeleden.getFullYear() - 1);
     const vanDatum = jaarGeleden.toISOString().slice(0, 10);
 
-    const alleLogs = db
+    const alleLogs = await db
       .select()
       .from(gewoonteLogboek)
       .where(

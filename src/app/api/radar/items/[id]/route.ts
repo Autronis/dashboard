@@ -17,7 +17,7 @@ export async function PUT(
     const body = await req.json();
     const { bewaard, categorie } = body;
 
-    const bestaand = db
+    const bestaand = await db
       .select({ id: radarItems.id })
       .from(radarItems)
       .where(eq(radarItems.id, itemId))
@@ -41,7 +41,7 @@ export async function PUT(
       .where(eq(radarItems.id, itemId))
       .run();
 
-    const item = db
+    const item = await db
       .select()
       .from(radarItems)
       .where(eq(radarItems.id, itemId))
@@ -67,7 +67,7 @@ export async function DELETE(
     const { id } = await params;
     const itemId = parseInt(id, 10);
 
-    const bestaand = db
+    const bestaand = await db
       .select({ id: radarItems.id })
       .from(radarItems)
       .where(eq(radarItems.id, itemId))

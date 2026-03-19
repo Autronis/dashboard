@@ -13,7 +13,7 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const existing = db
+    const existing = await db
       .select()
       .from(gewoontes)
       .where(
@@ -25,7 +25,7 @@ export async function PUT(
       return NextResponse.json({ fout: "Gewoonte niet gevonden" }, { status: 404 });
     }
 
-    const updated = db
+    const updated = await db
       .update(gewoontes)
       .set({
         ...(body.naam !== undefined && { naam: body.naam }),

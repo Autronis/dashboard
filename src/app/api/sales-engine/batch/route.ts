@@ -142,14 +142,14 @@ export async function POST(req: NextRequest) {
       const url = bedrijf.websiteUrl.trim();
 
       // Find or create lead
-      let existingLead = db
+      let existingLead = await db
         .select({ id: leads.id })
         .from(leads)
         .where(eq(leads.bedrijfsnaam, naam))
         .get();
 
       if (!existingLead) {
-        const [newLead] = db
+        const [newLead] = await db
           .insert(leads)
           .values({
             bedrijfsnaam: naam,
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Create scan record with pending status
-      const [scan] = db
+      const [scan] = await db
         .insert(salesEngineScans)
         .values({
           leadId: existingLead.id,

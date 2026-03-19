@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ fout: "Ongeldig scan ID" }, { status: 400 });
     }
 
-    const scan = db
+    const scan = await db
       .select()
       .from(salesEngineScans)
       .where(eq(salesEngineScans.id, scanId))
@@ -31,7 +31,7 @@ export async function GET(
       ? db.select().from(leads).where(eq(leads.id, scan.leadId)).get()
       : null;
 
-    const kansen = db
+    const kansen = await db
       .select()
       .from(salesEngineKansen)
       .where(eq(salesEngineKansen.scanId, scanId))

@@ -171,7 +171,7 @@ export async function POST() {
     let bijgewerkt = 0;
 
     for (const item of parsed) {
-      const bestaand = db
+      const bestaand = await db
         .select()
         .from(ideeen)
         .where(eq(ideeen.nummer, item.nummer))
@@ -209,7 +209,7 @@ export async function POST() {
     let projectenAangemaakt = 0;
     let notionDocumenten = 0;
 
-    const actieveZonderProject = db
+    const actieveZonderProject = await db
       .select()
       .from(ideeen)
       .where(and(eq(ideeen.status, "actief"), isNull(ideeen.projectId)))
@@ -229,14 +229,14 @@ export async function POST() {
       const todo = await readFile(path.join(projectDir, "TODO.md"), "utf-8").catch(() => null);
 
       // Ensure "Autronis (intern)" klant exists
-      let autronisKlant = db
+      let autronisKlant = await db
         .select()
         .from(klanten)
         .where(like(klanten.bedrijfsnaam, "%Autronis%"))
         .get();
 
       if (!autronisKlant) {
-        const inserted = db
+        const inserted = await db
           .insert(klanten)
           .values({
             bedrijfsnaam: "Autronis (intern)",
@@ -250,7 +250,7 @@ export async function POST() {
       }
 
       // Create project
-      const project = db
+      const project = await db
         .insert(projecten)
         .values({
           klantId: autronisKlant.id,

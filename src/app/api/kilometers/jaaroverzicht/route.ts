@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
     ];
 
     // Totaal jaar
-    const totaalResult = db
+    const totaalResult = await db
       .select({
         totaalKm: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
         aantalRitten: sql<number>`COUNT(*)`,
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const totaalAftrekbaar = Math.round(totaalKm * 0.23 * 100) / 100;
 
     // Per maand
-    const perMaand = db
+    const perMaand = await db
       .select({
         maand: sql<number>`CAST(SUBSTR(${kilometerRegistraties.datum}, 6, 2) AS INTEGER)`,
         km: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
       .all();
 
     // Per klant
-    const perKlant = db
+    const perKlant = await db
       .select({
         klantId: kilometerRegistraties.klantId,
         klantNaam: klanten.bedrijfsnaam,
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
 
     // Vergelijking vorig jaar
     const vorigJaar = String(parseInt(jaar) - 1);
-    const vorigResult = db
+    const vorigResult = await db
       .select({
         totaalKm: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
       })

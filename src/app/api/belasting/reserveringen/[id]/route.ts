@@ -15,7 +15,7 @@ export async function PUT(
     const resId = parseInt(id, 10);
     const body = await req.json();
 
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(belastingReserveringen)
       .where(eq(belastingReserveringen.id, resId))
@@ -36,7 +36,7 @@ export async function PUT(
       notities?: string;
     };
 
-    const updated = db
+    const updated = await db
       .update(belastingReserveringen)
       .set({
         ...(maand !== undefined && { maand }),
@@ -75,7 +75,7 @@ export async function DELETE(
     const { id } = await params;
     const resId = parseInt(id, 10);
 
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(belastingReserveringen)
       .where(eq(belastingReserveringen.id, resId))

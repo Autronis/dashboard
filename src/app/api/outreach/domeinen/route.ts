@@ -8,7 +8,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const domeinen = db
+    const domeinen = await db
       .select()
       .from(outreachDomeinen)
       .orderBy(desc(outreachDomeinen.aangemaaktOp))
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "domein, emailAdres en displayNaam zijn verplicht" }, { status: 400 });
     }
 
-    const [domein] = db
+    const [domein] = await db
       .insert(outreachDomeinen)
       .values({
         domein: body.domein.trim(),

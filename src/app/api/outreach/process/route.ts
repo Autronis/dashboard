@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Vind emails die verstuurd moeten worden
-    const teVersturenEmails = db
+    const teVersturenEmails = await db
       .select({
         emailId: outreachEmails.id,
         sequentieId: outreachEmails.sequentieId,
@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check of sequenties voltooid zijn (alle emails verstuurd/beantwoord)
-    const actieveSequenties = db
+    const actieveSequenties = await db
       .select()
       .from(outreachSequenties)
       .where(eq(outreachSequenties.status, "actief"))

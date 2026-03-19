@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Check of er al een actieve sequentie is voor deze lead
-    const bestaandeSequentie = db
+    const bestaandeSequentie = await db
       .select()
       .from(outreachSequenties)
       .where(
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     // Kies een actief domein met capaciteit (mailbox rotatie)
     const vandaag = new Date().toISOString().split("T")[0];
-    const domein = db
+    const domein = await db
       .select()
       .from(outreachDomeinen)
       .where(
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     const gekozenEmails = gekozenVariant === "a" ? variantA : variantB;
 
     // Maak sequentie aan
-    const [sequentie] = db
+    const [sequentie] = await db
       .insert(outreachSequenties)
       .values({
         leadId: lead.id,

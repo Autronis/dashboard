@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     // Find project (case-insensitive)
-    const project = db
+    const project = await db
       .select()
       .from(projecten)
       .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
     // Mark completed tasks (fuzzy: case-insensitive substring match)
     if (voltooide_taken && voltooide_taken.length > 0) {
       // Get all non-completed tasks for this project
-      const openTaken = db
+      const openTaken = await db
         .select()
         .from(taken)
         .where(
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     // Add new tasks
     if (nieuwe_taken && nieuwe_taken.length > 0) {
-      const maxVolgorde = db
+      const maxVolgorde = await db
         .select({ max: sql<number>`MAX(${taken.volgorde})` })
         .from(taken)
         .where(eq(taken.projectId, project.id))
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
         if (!trimmed) continue;
 
         // Check if task already exists (case-insensitive)
-        const bestaat = db
+        const bestaat = await db
           .select({ id: taken.id })
           .from(taken)
           .where(
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Recalculate project voortgang_percentage
-    const takenStats = db
+    const takenStats = await db
       .select({
         totaal: sql<number>`COUNT(*)`,
         afgerond: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,

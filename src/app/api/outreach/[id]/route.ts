@@ -17,7 +17,7 @@ export async function GET(
       return NextResponse.json({ fout: "Ongeldig ID" }, { status: 400 });
     }
 
-    const sequentie = db
+    const sequentie = await db
       .select()
       .from(outreachSequenties)
       .where(eq(outreachSequenties.id, seqId))
@@ -39,7 +39,7 @@ export async function GET(
       ? db.select().from(salesEngineScans).where(eq(salesEngineScans.id, sequentie.scanId)).get()
       : null;
 
-    const emails = db
+    const emails = await db
       .select()
       .from(outreachEmails)
       .where(eq(outreachEmails.sequentieId, seqId))

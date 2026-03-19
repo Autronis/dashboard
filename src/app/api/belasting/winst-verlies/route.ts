@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
     const jaarEind = `${jaar}-12-31`;
 
     // Bruto omzet: betaalde facturen
-    const omzetResult = db
+    const omzetResult = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
       })
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
     const brutoOmzet = Math.round((omzetResult?.totaal ?? 0) * 100) / 100;
 
     // Kosten per categorie
-    const kostenRows = db
+    const kostenRows = await db
       .select({
         categorie: uitgaven.categorie,
         totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
     totaleKosten = Math.round(totaleKosten * 100) / 100;
 
     // Afschrijvingen
-    const alleInvesteringen = db
+    const alleInvesteringen = await db
       .select()
       .from(investeringen)
       .all();
@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
     totaleAfschrijvingen = Math.round(totaleAfschrijvingen * 100) / 100;
 
     // Kilometer aftrek
-    const kmResult = db
+    const kmResult = await db
       .select({
         totaalKm: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
       })
@@ -164,7 +164,7 @@ export async function GET(req: NextRequest) {
     const kmAftrek = Math.round(totaalKm * 0.23 * 100) / 100;
 
     // Uren criterium check
-    const urenRecord = db
+    const urenRecord = await db
       .select()
       .from(urenCriterium)
       .where(eq(urenCriterium.jaar, jaar))
@@ -174,7 +174,7 @@ export async function GET(req: NextRequest) {
     // If no urenCriterium record, calculate from tijdregistraties
     let totaalUren = urenRecord?.behaaldUren ?? 0;
     if (!urenRecord) {
-      const urenResult = db
+      const urenResult = await db
         .select({
           totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
         })
@@ -217,7 +217,7 @@ export async function GET(req: NextRequest) {
     for (let q = 1; q <= 4; q++) {
       const { start, end } = getQuarterDateRange(q, jaar);
 
-      const qOmzet = db
+      const qOmzet = await db
         .select({
           totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
         })
@@ -232,7 +232,7 @@ export async function GET(req: NextRequest) {
         )
         .get();
 
-      const qKosten = db
+      const qKosten = await db
         .select({
           totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
         })

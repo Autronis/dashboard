@@ -14,7 +14,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const meeting = db
+    const meeting = await db
       .select({ audioPad: meetings.audioPad })
       .from(meetings)
       .where(eq(meetings.id, Number(id)))

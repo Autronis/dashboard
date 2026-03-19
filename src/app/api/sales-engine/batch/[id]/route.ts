@@ -16,7 +16,7 @@ export async function GET(
       return NextResponse.json({ fout: "Batch ID is verplicht" }, { status: 400 });
     }
 
-    const scans = db
+    const scans = await db
       .select({
         id: salesEngineScans.id,
         status: salesEngineScans.status,

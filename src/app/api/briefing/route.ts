@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     const gebruiker = await requireAuth();
     const datum = request.nextUrl.searchParams.get("datum") || todayStr();
 
-    const bestaande = db
+    const bestaande = await db
       .select()
       .from(briefings)
       .where(
@@ -131,7 +131,7 @@ export async function POST() {
     const dagStart = `${datum}T00:00:00`;
     const dagEind = `${datum}T23:59:59`;
 
-    const agendaVandaag = db
+    const agendaVandaag = await db
       .select({
         titel: agendaItems.titel,
         type: agendaItems.type,
@@ -163,7 +163,7 @@ export async function POST() {
     // 2. Top priority taken (niet afgerond, max 5)
     const prioriteitVolgorde = sql`CASE ${taken.prioriteit} WHEN 'hoog' THEN 1 WHEN 'normaal' THEN 2 WHEN 'laag' THEN 3 END`;
 
-    const topTaken = db
+    const topTaken = await db
       .select({
         id: taken.id,
         titel: taken.titel,
@@ -192,7 +192,7 @@ export async function POST() {
     }));
 
     // 3. Actieve projecten
-    const actieveProjecten = db
+    const actieveProjecten = await db
       .select({
         naam: projecten.naam,
         klantNaam: klanten.bedrijfsnaam,
@@ -218,7 +218,7 @@ export async function POST() {
     }));
 
     // 4. Quick wins (lage prioriteit, open taken)
-    const quickWinTaken = db
+    const quickWinTaken = await db
       .select({
         id: taken.id,
         titel: taken.titel,
@@ -243,7 +243,7 @@ export async function POST() {
     }));
 
     // 5. Openstaande facturen
-    const openFacturen = db
+    const openFacturen = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)`,
         aantal: sql<number>`COUNT(*)`,
@@ -261,7 +261,7 @@ export async function POST() {
     const aantalOpenFacturen = openFacturen?.aantal ?? 0;
 
     // 6. Screen time gisteren
-    const screenTimeGisteren = db
+    const screenTimeGisteren = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`,
       })
@@ -280,7 +280,7 @@ export async function POST() {
       : 0;
 
     // 7. Gewoontes vandaag
-    const actieveGewoontes = db
+    const actieveGewoontes = await db
       .select()
       .from(gewoontes)
       .where(
@@ -288,7 +288,7 @@ export async function POST() {
       )
       .all();
 
-    const vandaagLogs = db
+    const vandaagLogs = await db
       .select()
       .from(gewoonteLogboek)
       .where(
@@ -303,7 +303,7 @@ export async function POST() {
     const gewoonteTotaal = actieveGewoontes.length;
 
     // 8. Belasting deadlines komende 30 dagen
-    const alleBelastingDeadlines = db
+    const alleBelastingDeadlines = await db
       .select()
       .from(belastingDeadlines)
       .where(eq(belastingDeadlines.afgerond, 0))
@@ -316,7 +316,7 @@ export async function POST() {
     // 9. Concurrent updates afgelopen week
     const weekGeleden = new Date();
     weekGeleden.setDate(weekGeleden.getDate() - 7);
-    const concurrentUpdates = db
+    const concurrentUpdates = await db
       .select({
         naam: concurrentenTabel.naam,
         samenvatting: concurrentScans.aiSamenvatting,
@@ -332,7 +332,7 @@ export async function POST() {
       .all();
 
     // 10. Learning Radar — top item van vandaag/gisteren
-    const radarTopItems = db
+    const radarTopItems = await db
       .select({
         titel: radarItems.titel,
         url: radarItems.url,
@@ -390,7 +390,7 @@ Schrijf een persoonlijke samenvatting van 2-3 zinnen. Begin met "${begroeting} $
 
     // ============ Upsert briefing ============
 
-    const bestaande = db
+    const bestaande = await db
       .select()
       .from(briefings)
       .where(
@@ -421,7 +421,7 @@ Schrijf een persoonlijke samenvatting van 2-3 zinnen. Begin met "${begroeting} $
         .run();
       briefingId = bestaande.id;
     } else {
-      const inserted = db
+      const inserted = await db
         .insert(briefings)
         .values({
           gebruikerId: gebruiker.id,

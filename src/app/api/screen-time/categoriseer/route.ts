@@ -11,7 +11,7 @@ export async function POST() {
   try {
     await requireAuth();
 
-    const ongecategoriseerd = db
+    const ongecategoriseerd = await db
       .select({
         id: screenTimeEntries.id,
         app: screenTimeEntries.app,

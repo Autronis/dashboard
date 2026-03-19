@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     const jaarParam = searchParams.get("jaar");
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
 
-    const aangiftes = db
+    const aangiftes = await db
       .select()
       .from(btwAangiftes)
       .where(eq(btwAangiftes.jaar, jaar))
@@ -35,11 +35,11 @@ export async function GET(req: NextRequest) {
       .all();
 
     // Auto-calculate BTW from facturen and uitgaven per quarter
-    const enrichedAangiftes = aangiftes.map((aangifte) => {
+    const enrichedAangiftes = await Promise.all(aangiftes.map(async (aangifte) => {
       const { start, end } = getQuarterDateRange(aangifte.kwartaal, aangifte.jaar);
 
       // BTW ontvangen: from betaalde facturen within quarter
-      const facturenResult = db
+      const facturenResult = await db
         .select({
           totaalBtw: sql<number>`COALESCE(SUM(${facturen.btwBedrag}), 0)`,
         })
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
         .get();
 
       // BTW betaald: from uitgaven within quarter
-      const uitgavenResult = db
+      const uitgavenResult = await db
         .select({
           totaalBtw: sql<number>`COALESCE(SUM(${uitgaven.btwBedrag}), 0)`,
         })
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
         btwBetaald,
         btwAfdragen,
       };
-    });
+    }));
 
     return NextResponse.json({ aangiftes: enrichedAangiftes });
   } catch (error) {
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     const jaar = body.jaar ?? new Date().getFullYear();
 
     // Check if aangiftes already exist for this year
-    const bestaande = db
+    const bestaande = await db
       .select()
       .from(btwAangiftes)
       .where(eq(btwAangiftes.jaar, jaar))
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       }).run();
     }
 
-    const aangiftes = db
+    const aangiftes = await db
       .select()
       .from(btwAangiftes)
       .where(eq(btwAangiftes.jaar, jaar))

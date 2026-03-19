@@ -39,7 +39,7 @@ export async function GET() {
     const inzichten: Inzicht[] = [];
 
     // 1. Te late facturen (verzonden, vervaldatum verstreken)
-    const teLateFact = db
+    const teLateFact = await db
       .select({
         id: facturen.id,
         factuurnummer: facturen.factuurnummer,
@@ -73,7 +73,7 @@ export async function GET() {
     // 2. Facturen bijna verlopen (vervaldatum binnen 3 dagen)
     const drieDAgen = new Date(nu);
     drieDAgen.setDate(drieDAgen.getDate() + 3);
-    const bijnaVerlopen = db
+    const bijnaVerlopen = await db
       .select({
         factuurnummer: facturen.factuurnummer,
         klantNaam: klanten.bedrijfsnaam,
@@ -103,7 +103,7 @@ export async function GET() {
     }
 
     // 3. Leads zonder opvolging (status "nieuw" of "contact" met geen activiteit >7 dagen)
-    const verwaarloosdeLeads = db
+    const verwaarloosdeLeads = await db
       .select({
         id: leads.id,
         bedrijfsnaam: leads.bedrijfsnaam,
@@ -132,7 +132,7 @@ export async function GET() {
     }
 
     // 4. Taken met hoge prioriteit
-    const urgenteTaken = db
+    const urgenteTaken = await db
       .select({
         count: sql<number>`COUNT(*)`,
       })
@@ -157,7 +157,7 @@ export async function GET() {
     }
 
     // 5. Projecten zonder tijdregistratie afgelopen week
-    const actieveProjectenLijst = db
+    const actieveProjectenLijst = await db
       .select({
         id: projecten.id,
         naam: projecten.naam,
@@ -170,7 +170,7 @@ export async function GET() {
       )
       .all();
 
-    const projectenMetUren = db
+    const projectenMetUren = await db
       .select({
         projectId: tijdregistraties.projectId,
       })
@@ -200,7 +200,7 @@ export async function GET() {
     const eersteVorigeMaand = new Date(nu.getFullYear(), nu.getMonth() - 1, 1);
     const laatsteVorigeMaand = new Date(nu.getFullYear(), nu.getMonth(), 0, 23, 59, 59);
 
-    const omzetDezeMaand = db
+    const omzetDezeMaand = await db
       .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)` })
       .from(facturen)
       .where(
@@ -211,7 +211,7 @@ export async function GET() {
       )
       .get();
 
-    const omzetVorigeMaand = db
+    const omzetVorigeMaand = await db
       .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)` })
       .from(facturen)
       .where(
@@ -249,7 +249,7 @@ export async function GET() {
     }
 
     // 7. Concept facturen die al lang open staan
-    const oudeConcepten = db
+    const oudeConcepten = await db
       .select({
         factuurnummer: facturen.factuurnummer,
         klantNaam: klanten.bedrijfsnaam,
@@ -278,7 +278,7 @@ export async function GET() {
     }
 
     // 8. Leads met hoge waarde in pipeline
-    const waardevollLeads = db
+    const waardevollLeads = await db
       .select({
         bedrijfsnaam: leads.bedrijfsnaam,
         waarde: leads.waarde,

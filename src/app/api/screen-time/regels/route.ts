@@ -9,7 +9,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const regels = db
+    const regels = await db
       .select({
         id: screenTimeRegels.id,
         type: screenTimeRegels.type,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Ongeldig regex patroon." }, { status: 400 });
     }
 
-    const regel = db
+    const regel = await db
       .insert(screenTimeRegels)
       .values({
         type: body.type.trim(),

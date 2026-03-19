@@ -291,7 +291,7 @@ export async function POST() {
     const gebruiker = await requireAuth();
 
     // Check of er al artikelen zijn
-    const bestaande = db
+    const bestaande = await db
       .select({ count: sql<number>`count(*)` })
       .from(wikiArtikelen)
       .get();

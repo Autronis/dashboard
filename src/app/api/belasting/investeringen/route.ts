@@ -24,7 +24,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const alleInvesteringen = db
+    const alleInvesteringen = await db
       .select()
       .from(investeringen)
       .orderBy(sql`${investeringen.datum} DESC`)
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = db
+    const result = await db
       .insert(investeringen)
       .values({
         naam,

@@ -14,7 +14,7 @@ export async function POST(
     await requireAuth();
     const { id } = await params;
 
-    const [factuur] = db
+    const [factuur] = await db
       .select({
         id: facturen.id,
         factuurnummer: facturen.factuurnummer,

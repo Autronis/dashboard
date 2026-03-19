@@ -15,7 +15,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const meeting = db
+    const meeting = await db
       .select({
         id: meetings.id,
         titel: meetings.titel,
@@ -81,7 +81,7 @@ export async function PUT(
     // If this is a calendar-imported meeting being saved for the first time
     if (body.calendarImport && body.titel && body.datum) {
       // Check if we already have this meeting in DB
-      const existing = db
+      const existing = await db
         .select({ id: meetings.id })
         .from(meetings)
         .where(eq(meetings.id, meetingId))
@@ -89,7 +89,7 @@ export async function PUT(
 
       if (!existing) {
         // Create new DB record for calendar meeting
-        const result = db
+        const result = await db
           .insert(meetings)
           .values({
             titel: body.titel,
@@ -100,7 +100,7 @@ export async function PUT(
           })
           .run();
 
-        const newMeeting = db
+        const newMeeting = await db
           .select()
           .from(meetings)
           .where(eq(meetings.id, Number(result.lastInsertRowid)))
@@ -110,7 +110,7 @@ export async function PUT(
       }
     }
 
-    const meeting = db
+    const meeting = await db
       .select({ id: meetings.id })
       .from(meetings)
       .where(eq(meetings.id, meetingId))
@@ -134,7 +134,7 @@ export async function PUT(
         .run();
     }
 
-    const updated = db
+    const updated = await db
       .select({
         id: meetings.id,
         titel: meetings.titel,
@@ -183,7 +183,7 @@ export async function PATCH(
     const { id } = await params;
     const meetingId = Number(id);
 
-    const meeting = db
+    const meeting = await db
       .select({ id: meetings.id, audioPad: meetings.audioPad })
       .from(meetings)
       .where(eq(meetings.id, meetingId))
@@ -241,7 +241,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const meeting = db
+    const meeting = await db
       .select({ id: meetings.id, audioPad: meetings.audioPad })
       .from(meetings)
       .where(eq(meetings.id, Number(id)))

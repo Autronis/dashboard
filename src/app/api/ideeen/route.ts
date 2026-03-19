@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     if (categorie) conditions.push(eq(ideeen.categorie, categorie as "dashboard" | "klant_verkoop" | "intern" | "dev_tools" | "content_media" | "geld_groei" | "experimenteel" | "website"));
     if (prioriteit) conditions.push(eq(ideeen.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
 
-    const rows = db
+    const rows = await db
       .select()
       .from(ideeen)
       .where(conditions.length > 0 ? and(...conditions) : undefined)

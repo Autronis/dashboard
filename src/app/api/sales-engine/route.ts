@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(salesEngineScans.status, status as "pending" | "completed" | "failed"));
     }
 
-    const scans = db
+    const scans = await db
       .select({
         id: salesEngineScans.id,
         leadId: salesEngineScans.leadId,
@@ -34,8 +34,8 @@ export async function GET(req: NextRequest) {
       .orderBy(desc(salesEngineScans.aangemaaktOp))
       .all();
 
-    const scansWithKansen = scans.map((scan) => {
-      const kansen = db
+    const scansWithKansen = await Promise.all(scans.map(async (scan) => {
+      const kansen = await db
         .select({ impact: salesEngineKansen.impact })
         .from(salesEngineKansen)
         .where(eq(salesEngineKansen.scanId, scan.id))
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
             : null;
 
       return { ...scan, aantalKansen: kansen.length, hoogsteImpact };
-    });
+    }));
 
     const totaal = scans.length;
     const dezeWeek = scans.filter((s) => {

@@ -9,7 +9,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const lijst = db
+    const lijst = await db
       .select({
         id: contracten.id,
         klantId: contracten.klantId,
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Ongeldig contracttype." }, { status: 400 });
     }
 
-    const [nieuw] = db
+    const [nieuw] = await db
       .insert(contracten)
       .values({
         klantId: Number(klantId),

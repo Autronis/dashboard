@@ -17,7 +17,7 @@ export async function PUT(
     const body = await req.json();
     const { naam, url, type, actief } = body;
 
-    const bestaand = db
+    const bestaand = await db
       .select({ id: radarBronnen.id })
       .from(radarBronnen)
       .where(eq(radarBronnen.id, bronId))
@@ -32,7 +32,7 @@ export async function PUT(
 
     // Check URL uniciteit als URL gewijzigd
     if (url) {
-      const duplicaat = db
+      const duplicaat = await db
         .select({ id: radarBronnen.id })
         .from(radarBronnen)
         .where(eq(radarBronnen.url, url))
@@ -57,7 +57,7 @@ export async function PUT(
       .where(eq(radarBronnen.id, bronId))
       .run();
 
-    const bron = db
+    const bron = await db
       .select()
       .from(radarBronnen)
       .where(eq(radarBronnen.id, bronId))
@@ -83,7 +83,7 @@ export async function DELETE(
     const { id } = await params;
     const bronId = parseInt(id, 10);
 
-    const bestaand = db
+    const bestaand = await db
       .select({ id: radarBronnen.id })
       .from(radarBronnen)
       .where(eq(radarBronnen.id, bronId))

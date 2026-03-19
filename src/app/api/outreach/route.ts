@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(outreachSequenties.status, statusFilter as "draft" | "actief" | "gepauzeerd" | "voltooid" | "gestopt"));
     }
 
-    const sequenties = db
+    const sequenties = await db
       .select({
         id: outreachSequenties.id,
         leadId: outreachSequenties.leadId,
@@ -35,8 +35,8 @@ export async function GET(req: NextRequest) {
       .all();
 
     // Voeg email stats toe per sequentie
-    const sequentiesMetStats = sequenties.map((seq) => {
-      const emails = db
+    const sequentiesMetStats = await Promise.all(sequenties.map(async (seq) => {
+      const emails = await db
         .select()
         .from(outreachEmails)
         .where(eq(outreachEmails.sequentieId, seq.id))
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         beantwoord: emails.filter((e) => e.beantwoordOp).length,
         bounced: emails.filter((e) => e.bouncedOp).length,
       };
-    });
+    }));
 
     // KPIs
     const alleEmails = await db.select().from(outreachEmails).all();

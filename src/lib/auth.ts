@@ -60,7 +60,7 @@ export async function requireApiKey(req: NextRequest): Promise<number> {
   const token = authHeader.slice(7);
   const hash = createHash("sha256").update(token).digest("hex");
 
-  const key = db
+  const key = await db
     .select({ aangemaaktDoor: apiKeys.aangemaaktDoor })
     .from(apiKeys)
     .where(and(eq(apiKeys.keyHash, hash), eq(apiKeys.isActief, 1)))

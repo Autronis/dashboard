@@ -110,7 +110,7 @@ async function scanWebsite(
     const text = stripHtml(html);
     const hash = hashText(text);
 
-    const vorige = db
+    const vorige = await db
       .select()
       .from(concurrentSnapshots)
       .where(and(
@@ -131,7 +131,7 @@ async function scanWebsite(
     }).run();
 
     // Cleanup: bewaar alleen laatste 2 snapshots per URL
-    const alleSnapshots = db
+    const alleSnapshots = await db
       .select({ id: concurrentSnapshots.id })
       .from(concurrentSnapshots)
       .where(and(
@@ -317,7 +317,7 @@ export async function scanConcurrent(
   concurrentId: number,
   onStap?: StapCallback
 ): Promise<ScanResult> {
-  const concurrent = db
+  const concurrent = await db
     .select()
     .from(concurrenten)
     .where(eq(concurrenten.id, concurrentId))
@@ -325,7 +325,7 @@ export async function scanConcurrent(
 
   if (!concurrent) throw new Error("Concurrent niet gevonden");
 
-  const vorigeScan = db
+  const vorigeScan = await db
     .select()
     .from(concurrentScans)
     .where(and(

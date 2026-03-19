@@ -9,7 +9,7 @@ export async function POST() {
   try {
     const gebruiker = await requireAuth();
 
-    const terugkerend = db
+    const terugkerend = await db
       .select()
       .from(facturen)
       .where(
@@ -39,7 +39,7 @@ export async function POST() {
 
       // Generate next factuurnummer
       const jaar = new Date().getFullYear();
-      const [laatste] = db
+      const [laatste] = await db
         .select({ factuurnummer: facturen.factuurnummer })
         .from(facturen)
         .where(like(facturen.factuurnummer, `AUT-${jaar}-%`))
@@ -62,7 +62,7 @@ export async function POST() {
       const vervaldatum = vervaldatumDate.toISOString().slice(0, 10);
 
       // Create new invoice
-      const [nieuw] = db
+      const [nieuw] = await db
         .insert(facturen)
         .values({
           klantId: f.klantId,
@@ -84,7 +84,7 @@ export async function POST() {
         .all();
 
       // Copy factuurregels
-      const bronRegels = db
+      const bronRegels = await db
         .select()
         .from(factuurRegels)
         .where(eq(factuurRegels.factuurId, f.id))

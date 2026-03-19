@@ -153,7 +153,7 @@ export async function GET(req: NextRequest) {
       : gebruiker.id;
 
     // Fetch entries for this day
-    const entries = db
+    const entries = await db
       .select({
         app: screenTimeEntries.app,
         vensterTitel: screenTimeEntries.vensterTitel,

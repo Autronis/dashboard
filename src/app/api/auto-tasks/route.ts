@@ -24,7 +24,7 @@ export async function POST() {
     const results: Record<string, unknown> = {};
 
     // 1. Mark overdue invoices as te_laat
-    const overdue = db
+    const overdue = await db
       .update(facturen)
       .set({ status: "te_laat", bijgewerktOp: new Date().toISOString() })
       .where(
@@ -38,7 +38,7 @@ export async function POST() {
     results.overdueMarked = overdue.changes;
 
     // 2. Generate periodic invoices (if any recurring paid invoices are due)
-    const terugkerend = db
+    const terugkerend = await db
       .select()
       .from(facturen)
       .where(
@@ -61,7 +61,7 @@ export async function POST() {
 
       // Generate next factuurnummer
       const jaar = new Date().getFullYear();
-      const maxNr = db
+      const maxNr = await db
         .select({ max: sql<string>`MAX(factuurnummer)` })
         .from(facturen)
         .where(sql`factuurnummer LIKE ${"AUT-" + jaar + "-%"}`)
@@ -74,7 +74,7 @@ export async function POST() {
         .toISOString()
         .split("T")[0];
 
-      const [nieuw] = db
+      const [nieuw] = await db
         .insert(facturen)
         .values({
           klantId: f.klantId,
@@ -98,7 +98,7 @@ export async function POST() {
 
       // Copy factuurregels
       if (nieuw) {
-        const regels = db
+        const regels = await db
           .select()
           .from(factuurRegels)
           .where(eq(factuurRegels.factuurId, f.id))
@@ -121,7 +121,7 @@ export async function POST() {
     results.periodiekeAangemaakt = periodiekeAangemaakt;
 
     // 3. Count ideeën backlog
-    const ideeenCount = db
+    const ideeenCount = await db
       .select({ count: sql<number>`COUNT(*)` })
       .from(ideeen)
       .get();

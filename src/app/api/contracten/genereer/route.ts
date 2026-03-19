@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch klant info
-    const [klant] = db
+    const [klant] = await db
       .select({
         bedrijfsnaam: klanten.bedrijfsnaam,
         contactpersoon: klanten.contactpersoon,

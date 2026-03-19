@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const jaarParam = searchParams.get("jaar");
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
 
-    const aanslagen = db
+    const aanslagen = await db
       .select()
       .from(voorlopigeAanslagen)
       .where(eq(voorlopigeAanslagen.jaar, jaar))
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = db
+    const result = await db
       .insert(voorlopigeAanslagen)
       .values({
         jaar,

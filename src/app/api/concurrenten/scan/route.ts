@@ -33,7 +33,7 @@ export async function POST() {
       return NextResponse.json({ fout: "Scan is al bezig" }, { status: 409 });
     }
 
-    const actieveConcurrenten = db
+    const actieveConcurrenten = await db
       .select()
       .from(concurrenten)
       .where(eq(concurrenten.isActief, 1))

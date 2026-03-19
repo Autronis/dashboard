@@ -132,7 +132,7 @@ function parseICS(icsText: string): ParsedEvent[] {
 }
 
 async function fetchCalendarMeetings(): Promise<CalendarMeeting[]> {
-  const kalenders = db
+  const kalenders = await db
     .select()
     .from(externeKalenders)
     .where(eq(externeKalenders.isActief, 1))
@@ -347,7 +347,7 @@ export async function POST(req: NextRequest) {
       await writeFile(audioPad, buffer);
     }
 
-    const result = db
+    const result = await db
       .insert(meetings)
       .values({
         titel,
@@ -360,7 +360,7 @@ export async function POST(req: NextRequest) {
       })
       .run();
 
-    const meeting = db
+    const meeting = await db
       .select()
       .from(meetings)
       .where(eq(meetings.id, Number(result.lastInsertRowid)))

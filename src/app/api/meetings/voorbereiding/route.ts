@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
     if (projectId) conditions.push(eq(meetings.projectId, Number(projectId)));
     conditions.push(eq(meetings.status, "klaar"));
 
-    const vorigeMeetings = db
+    const vorigeMeetings = await db
       .select({
         titel: meetings.titel,
         datum: meetings.datum,
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     if (projectId) takenConditions.push(eq(taken.projectId, Number(projectId)));
     takenConditions.push(eq(taken.status, "open"));
 
-    const openTaken = db
+    const openTaken = await db
       .select({ titel: taken.titel, prioriteit: taken.prioriteit, deadline: taken.deadline })
       .from(taken)
       .where(and(...takenConditions))
@@ -67,7 +67,7 @@ export async function GET(req: NextRequest) {
     // Klant info
     let klantNaam = "";
     if (klantId) {
-      const klant = db
+      const klant = await db
         .select({ bedrijfsnaam: klanten.bedrijfsnaam })
         .from(klanten)
         .where(eq(klanten.id, Number(klantId)))
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
 
     let projectNaam = "";
     if (projectId) {
-      const project = db
+      const project = await db
         .select({ naam: projecten.naam })
         .from(projecten)
         .where(eq(projecten.id, Number(projectId)))

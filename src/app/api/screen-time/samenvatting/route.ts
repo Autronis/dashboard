@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ fout: "Datum is verplicht" }, { status: 400 });
     }
 
-    const samenvatting = db
+    const samenvatting = await db
       .select()
       .from(screenTimeSamenvattingen)
       .where(
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Gather day's data grouped by app+project
-    const entries = db
+    const entries = await db
       .select({
         app: screenTimeEntries.app,
         categorie: screenTimeEntries.categorie,
@@ -121,7 +121,7 @@ export async function POST(req: NextRequest) {
       .join("\n");
 
     // Fetch agenda items for calendar context
-    const agendaDag = db
+    const agendaDag = await db
       .select({
         titel: agendaItems.titel,
         type: agendaItems.type,
@@ -176,7 +176,7 @@ Koppel schermtijd aan agenda items als die overlappen (bijv. "Tijdens de meeting
     }
 
     // Upsert
-    const bestaand = db
+    const bestaand = await db
       .select({ id: screenTimeSamenvattingen.id })
       .from(screenTimeSamenvattingen)
       .where(and(
@@ -208,7 +208,7 @@ Koppel schermtijd aan agenda items als die overlappen (bijv. "Tijdens de meeting
       }).run();
     }
 
-    const samenvatting = db
+    const samenvatting = await db
       .select()
       .from(screenTimeSamenvattingen)
       .where(and(

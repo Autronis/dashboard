@@ -13,7 +13,7 @@ export async function GET(
     await requireAuth();
     const { id } = await params;
 
-    const [contract] = db
+    const [contract] = await db
       .select({
         id: contracten.id,
         klantId: contracten.klantId,

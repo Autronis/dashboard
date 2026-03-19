@@ -79,9 +79,9 @@ export async function POST(req: NextRequest) {
       end: body.eindDatum || undefined,
       allDay: !!body.heleDag,
     })
-      .then((event) => {
+      .then(async (event) => {
         if (event?.id) {
-          db.update(agendaItems)
+          await db.update(agendaItems)
             .set({ googleEventId: event.id })
             .where(eq(agendaItems.id, nieuw.id))
             .execute();

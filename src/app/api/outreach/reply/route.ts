@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Zoek de lead op basis van email
-    const lead = db
+    const lead = await db
       .select()
       .from(leads)
       .where(eq(leads.email, replyEmail.toLowerCase()))
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Zoek actieve sequentie voor deze lead
-    const sequentie = db
+    const sequentie = await db
       .select()
       .from(outreachSequenties)
       .where(
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
       .run();
 
     // Markeer de laatst verstuurde email als beantwoord
-    const emails = db
+    const emails = await db
       .select()
       .from(outreachEmails)
       .where(eq(outreachEmails.sequentieId, sequentie.id))

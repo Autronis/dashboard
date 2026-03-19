@@ -12,7 +12,7 @@ export async function GET(
   const targetUrl = searchParams.get("url");
 
   // Update email als nog niet geklikt
-  const email = db
+  const email = await db
     .select({ id: outreachEmails.id, gekliktOp: outreachEmails.gekliktOp, geopendOp: outreachEmails.geopendOp })
     .from(outreachEmails)
     .where(eq(outreachEmails.trackingId, trackingId))

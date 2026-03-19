@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(radarItems.nietRelevant, 0));
     }
 
-    const items = db
+    const items = await db
       .select({
         id: radarItems.id,
         bronId: radarItems.bronId,

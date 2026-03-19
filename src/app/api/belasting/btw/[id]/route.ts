@@ -16,7 +16,7 @@ export async function PUT(
     const body = await req.json();
 
     // Verify aangifte exists
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(btwAangiftes)
       .where(eq(btwAangiftes.id, aangifteId))
@@ -44,7 +44,7 @@ export async function PUT(
       return NextResponse.json({ fout: "Geen velden om bij te werken." }, { status: 400 });
     }
 
-    const [bijgewerkt] = db
+    const [bijgewerkt] = await db
       .update(btwAangiftes)
       .set(updateData)
       .where(eq(btwAangiftes.id, aangifteId))

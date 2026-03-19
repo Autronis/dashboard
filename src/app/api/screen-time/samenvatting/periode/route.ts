@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     const range = type === "week" ? getWeekRange(datum) : getMaandRange(datum);
 
     // Aggregate screen time per app + category for the period
-    const entries = db
+    const entries = await db
       .select({
         app: screenTimeEntries.app,
         categorie: screenTimeEntries.categorie,
@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
     const aantalDagen = Object.keys(perDag).length;
 
     // Agenda items in period
-    const agenda = db
+    const agenda = await db
       .select({
         titel: agendaItems.titel,
         startDatum: agendaItems.startDatum,

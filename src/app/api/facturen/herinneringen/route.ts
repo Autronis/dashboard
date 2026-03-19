@@ -12,7 +12,7 @@ export async function POST() {
 
     const nu = new Date().toISOString().split("T")[0];
 
-    const overdueFacturen = db
+    const overdueFacturen = await db
       .select({
         id: facturen.id,
         factuurnummer: facturen.factuurnummer,

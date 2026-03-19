@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const suggesties = db
+    const suggesties = await db
       .select()
       .from(screenTimeSuggesties)
       .where(
@@ -64,7 +64,7 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const suggestie = db
+    const suggestie = await db
       .select()
       .from(screenTimeSuggesties)
       .where(eq(screenTimeSuggesties.id, id))
@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest) {
         );
       }
 
-      const overlapping = db
+      const overlapping = await db
         .select({ id: tijdregistraties.id })
         .from(tijdregistraties)
         .where(

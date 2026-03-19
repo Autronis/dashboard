@@ -18,7 +18,7 @@ export async function GET(
       return Response.json({ fout: "Ongeldig ID" }, { status: 400 });
     }
 
-    const gesprek = db
+    const gesprek = await db
       .select()
       .from(aiGesprekken)
       .where(

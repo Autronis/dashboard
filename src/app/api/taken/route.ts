@@ -169,9 +169,9 @@ export async function POST(req: NextRequest) {
         start: deadline,
         allDay: true,
       })
-        .then((event) => {
+        .then(async (event) => {
           if (event?.id) {
-            db.update(taken)
+            await db.update(taken)
               .set({ googleEventId: event.id })
               .where(eq(taken.id, nieuw.id))
               .execute();

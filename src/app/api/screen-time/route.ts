@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const entries = db
+    const entries = await db
       .select({
         id: screenTimeEntries.id,
         app: screenTimeEntries.app,

@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const jaarParam = searchParams.get("jaar");
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
 
-    const deadlines = db
+    const deadlines = await db
       .select()
       .from(belastingDeadlines)
       .where(eq(belastingDeadlines.jaar, jaar))
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const jaar = body.jaar ?? new Date().getFullYear();
 
     // Check if deadlines already exist for this year
-    const bestaande = db
+    const bestaande = await db
       .select()
       .from(belastingDeadlines)
       .where(eq(belastingDeadlines.jaar, jaar))
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest) {
       await db.insert(belastingDeadlines).values(deadline).run();
     }
 
-    const deadlines = db
+    const deadlines = await db
       .select()
       .from(belastingDeadlines)
       .where(eq(belastingDeadlines.jaar, jaar))

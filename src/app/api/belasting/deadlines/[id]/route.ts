@@ -16,7 +16,7 @@ export async function PUT(
     const body = await req.json();
 
     // Verify deadline exists
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(belastingDeadlines)
       .where(eq(belastingDeadlines.id, deadlineId))
@@ -40,7 +40,7 @@ export async function PUT(
       return NextResponse.json({ fout: "Geen velden om bij te werken." }, { status: 400 });
     }
 
-    const [bijgewerkt] = db
+    const [bijgewerkt] = await db
       .update(belastingDeadlines)
       .set(updateData)
       .where(eq(belastingDeadlines.id, deadlineId))

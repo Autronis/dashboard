@@ -458,7 +458,7 @@ export async function POST() {
       }
 
       // Recalculate project progress
-      const statsResult = db
+      const statsResult = await db
         .select({
           totaal: sql<number>`COUNT(*)`,
           af: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,

@@ -21,7 +21,7 @@ export async function POST(
     const { id } = await params;
 
     // 1. Idee ophalen
-    const idee = db
+    const idee = await db
       .select()
       .from(ideeen)
       .where(eq(ideeen.id, Number(id)))
@@ -39,7 +39,7 @@ export async function POST(
     }
 
     // 2. Autronis (intern) klant vinden of aanmaken
-    let autronisKlant = db
+    let autronisKlant = await db
       .select()
       .from(klanten)
       .where(like(klanten.bedrijfsnaam, "%Autronis%"))

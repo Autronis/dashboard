@@ -24,7 +24,7 @@ export async function GET() {
     const nu = new Date();
 
     // Get all outstanding invoices (verzonden or te_laat)
-    const openstaand = db
+    const openstaand = await db
       .select({
         id: facturen.id,
         bedragInclBtw: facturen.bedragInclBtw,

@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ fout: "objectiveId is verplicht" }, { status: 400 });
     }
 
-    const checkIns = db
+    const checkIns = await db
       .select()
       .from(okrCheckIns)
       .where(eq(okrCheckIns.objectiveId, objectiveId))
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify objective exists
-    const objective = db
+    const objective = await db
       .select()
       .from(okrObjectives)
       .where(eq(okrObjectives.id, body.objectiveId))
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     const { week, jaar } = getWeekNumber();
 
     // Check if check-in already exists for this week
-    const existing = db
+    const existing = await db
       .select()
       .from(okrCheckIns)
       .where(
@@ -97,7 +97,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create new check-in
-    const result = db
+    const result = await db
       .insert(okrCheckIns)
       .values({
         objectiveId: body.objectiveId,

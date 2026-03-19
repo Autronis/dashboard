@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
     // Deduplication: check for recent scan with same email + URL
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-    const existingLeadForDedup = db
+    const existingLeadForDedup = await db
       .select({ id: leads.id })
       .from(leads)
       .where(eq(leads.email, body.email))
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Match or create lead
-    let existingLead = db
+    let existingLead = await db
       .select({ id: leads.id })
       .from(leads)
       .where(eq(leads.email, body.email))
@@ -122,7 +122,7 @@ export async function POST(req: NextRequest) {
         .where(eq(leads.id, existingLead.id))
         .run();
     } else {
-      const [newLead] = db
+      const [newLead] = await db
         .insert(leads)
         .values({
           bedrijfsnaam: body.bedrijfsnaam,
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create scan record
-    const [scan] = db
+    const [scan] = await db
       .insert(salesEngineScans)
       .values({
         leadId: existingLead.id,
@@ -227,7 +227,7 @@ export async function POST(req: NextRequest) {
           const optOut = await db.select().from(outreachOptOuts).where(eq(outreachOptOuts.email, lead.email)).get();
           if (!optOut) {
             // Check bestaande sequentie
-            const bestaand = db
+            const bestaand = await db
               .select()
               .from(outreachSequenties)
               .where(and(eq(outreachSequenties.leadId, existingLead.id), sql`${outreachSequenties.status} IN ('draft', 'actief')`))
@@ -236,7 +236,7 @@ export async function POST(req: NextRequest) {
             if (!bestaand) {
               // Zoek beschikbaar domein
               const vandaag = new Date().toISOString().split("T")[0];
-              const domein = db
+              const domein = await db
                 .select()
                 .from(outreachDomeinen)
                 .where(and(eq(outreachDomeinen.isActief, 1), eq(outreachDomeinen.sesConfigured, 1)))
@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
                 const variant = Math.random() < 0.5 ? "a" as const : "b" as const;
                 const generated = await generateEmailSequence(emailInput, variant);
 
-                const [seq] = db
+                const [seq] = await db
                   .insert(outreachSequenties)
                   .values({
                     leadId: existingLead.id,

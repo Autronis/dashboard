@@ -130,7 +130,7 @@ export async function POST(
     const { id } = await params;
     const meetingId = Number(id);
 
-    const meeting = db
+    const meeting = await db
       .select()
       .from(meetings)
       .where(eq(meetings.id, meetingId))
@@ -194,7 +194,7 @@ export async function POST(
       .where(eq(meetings.id, meetingId))
       .run();
 
-    const updated = db
+    const updated = await db
       .select()
       .from(meetings)
       .where(eq(meetings.id, meetingId))

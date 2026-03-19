@@ -51,7 +51,7 @@ export async function GET(
   // Stop alle actieve sequenties voor dit email
   const leadRecords = await db.select().from(leads).where(eq(leads.email, gevondenEmail)).all();
   for (const lead of leadRecords) {
-    const actieveSeqs = db
+    const actieveSeqs = await db
       .select()
       .from(outreachSequenties)
       .where(

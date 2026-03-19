@@ -54,14 +54,14 @@ export async function POST() {
 
   // 1. Ensure Autronis klant exists
   let autronisId: number;
-  const autronis = db
+  const autronis = await db
     .select()
     .from(klanten)
     .where(like(klanten.bedrijfsnaam, "%Autronis%"))
     .get();
 
   if (!autronis) {
-    const result = db
+    const result = await db
       .insert(klanten)
       .values({
         bedrijfsnaam: "Autronis (intern)",
@@ -104,7 +104,7 @@ export async function POST() {
     }
 
     // 4. Check if project already exists
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(projecten)
       .where(like(projecten.naam, parsed.naam))

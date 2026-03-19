@@ -15,7 +15,7 @@ export async function PUT(
     const aanslagId = parseInt(id, 10);
     const body = await req.json();
 
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(voorlopigeAanslagen)
       .where(eq(voorlopigeAanslagen.id, aanslagId))
@@ -38,7 +38,7 @@ export async function PUT(
       type?: string;
     };
 
-    const updated = db
+    const updated = await db
       .update(voorlopigeAanslagen)
       .set({
         ...(bedrag !== undefined && { bedrag }),
@@ -79,7 +79,7 @@ export async function DELETE(
     const { id } = await params;
     const aanslagId = parseInt(id, 10);
 
-    const bestaand = db
+    const bestaand = await db
       .select()
       .from(voorlopigeAanslagen)
       .where(eq(voorlopigeAanslagen.id, aanslagId))

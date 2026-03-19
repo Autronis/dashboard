@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const gebruiker = await requireAuth();
 
-    const routes = db
+    const routes = await db
       .select({
         id: opgeslagenRoutes.id,
         naam: opgeslagenRoutes.naam,
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const [nieuw] = db
+    const [nieuw] = await db
       .insert(opgeslagenRoutes)
       .values({
         gebruikerId: gebruiker.id,

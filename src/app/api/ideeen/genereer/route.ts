@@ -21,7 +21,7 @@ export async function POST() {
     const gebruiker = await requireAuth();
 
     // Get existing ideas to prevent duplicates
-    const bestaande = db
+    const bestaande = await db
       .select({ naam: ideeen.naam })
       .from(ideeen)
       .all()
@@ -71,7 +71,7 @@ Alleen JSON, geen uitleg.`,
     }
 
     // Get next nummer
-    const maxNummer = db
+    const maxNummer = await db
       .select({ max: sql<number>`MAX(nummer)` })
       .from(ideeen)
       .get();
@@ -101,7 +101,7 @@ Alleen JSON, geen uitleg.`,
         ? (idee.categorie as (typeof validCategorieen)[number])
         : "intern";
 
-      const result = db
+      const result = await db
         .insert(ideeen)
         .values({
           nummer: nextNummer++,

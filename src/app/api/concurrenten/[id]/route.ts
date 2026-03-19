@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const concurrentId = parseInt(id, 10);
 
-    const concurrent = db
+    const concurrent = await db
       .select()
       .from(concurrenten)
       .where(eq(concurrenten.id, concurrentId))
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ fout: "Concurrent niet gevonden" }, { status: 404 });
     }
 
-    const scans = db
+    const scans = await db
       .select()
       .from(concurrentScans)
       .where(eq(concurrentScans.concurrentId, concurrentId))
@@ -47,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     const concurrentId = parseInt(id, 10);
     const body = await req.json();
 
-    const updated = db
+    const updated = await db
       .update(concurrenten)
       .set({
         ...(body.naam !== undefined && { naam: body.naam.trim() }),

@@ -23,7 +23,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const concurrent = db
+    const concurrent = await db
       .select()
       .from(concurrenten)
       .where(eq(concurrenten.id, concurrentId))

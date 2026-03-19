@@ -9,7 +9,7 @@ export async function GET() {
   try {
     const gebruiker = await requireAuth();
 
-    const gesprekken = db
+    const gesprekken = await db
       .select({
         id: aiGesprekken.id,
         titel: aiGesprekken.titel,
@@ -45,7 +45,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verify ownership
-    const gesprek = db
+    const gesprek = await db
       .select({ id: aiGesprekken.id })
       .from(aiGesprekken)
       .where(

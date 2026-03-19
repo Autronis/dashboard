@@ -120,7 +120,7 @@ Alleen JSON, geen uitleg.`,
       ? (parsed.categorie as ValidCat)
       : "overig";
 
-    const [uitgave] = db
+    const [uitgave] = await db
       .insert(uitgaven)
       .values({
         omschrijving: parsed.omschrijving || file.name,

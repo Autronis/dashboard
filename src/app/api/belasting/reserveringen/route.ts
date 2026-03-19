@@ -26,7 +26,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   const jaarStart = `${jaar}-01-01`;
   const jaarEind = `${jaar}-12-31`;
 
-  const omzetResult = db
+  const omzetResult = await db
     .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)` })
     .from(facturen)
     .where(and(eq(facturen.status, "betaald"), eq(facturen.isActief, 1), gte(facturen.betaaldOp, jaarStart), lte(facturen.betaaldOp, jaarEind)))
@@ -34,7 +34,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
 
   const brutoOmzet = omzetResult?.totaal ?? 0;
 
-  const kostenResult = db
+  const kostenResult = await db
     .select({ totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)` })
     .from(uitgaven)
     .where(and(gte(uitgaven.datum, jaarStart), lte(uitgaven.datum, jaarEind)))
@@ -59,7 +59,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   }
 
   // Km aftrek
-  const kmResult = db
+  const kmResult = await db
     .select({ totaalKm: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)` })
     .from(kilometerRegistraties)
     .where(and(gte(kilometerRegistraties.datum, jaarStart), lte(kilometerRegistraties.datum, jaarEind)))
@@ -73,7 +73,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   const urenRecord = await db.select().from(urenCriterium).where(eq(urenCriterium.jaar, jaar)).limit(1).get();
   let totaalUren = urenRecord?.behaaldUren ?? 0;
   if (!urenRecord) {
-    const urenResult = db
+    const urenResult = await db
       .select({ totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
       .from(tijdregistraties)
       .where(and(gte(tijdregistraties.startTijd, jaarStart), lte(tijdregistraties.startTijd, jaarEind)))
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     const maandStart = `${jaar}-01`;
     const maandEind = `${jaar}-12`;
 
-    const reserveringen = db
+    const reserveringen = await db
       .select()
       .from(belastingReserveringen)
       .where(
@@ -159,7 +159,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = db
+    const result = await db
       .insert(belastingReserveringen)
       .values({
         maand,

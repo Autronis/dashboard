@@ -9,7 +9,7 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const rows = db
+    const rows = await db
       .select()
       .from(concurrenten)
       .where(eq(concurrenten.isActief, 1))
@@ -17,8 +17,8 @@ export async function GET() {
       .all();
 
     // Haal laatste scan per concurrent op
-    const metLaatsteScan = rows.map((c) => {
-      const laatsteScan = db
+    const metLaatsteScan = await Promise.all(rows.map(async (c) => {
+      const laatsteScan = await db
         .select()
         .from(concurrentScans)
         .where(eq(concurrentScans.concurrentId, c.id))
@@ -27,7 +27,7 @@ export async function GET() {
         .get();
 
       return { ...c, laatsteScan: laatsteScan ?? null };
-    });
+    }));
 
     const kpis = {
       totaal: rows.length,

@@ -41,7 +41,7 @@ export async function GET() {
     // ============ FETCH ALL DATA IN PARALLEL ============
 
     // Time entries last 90 days with project + client
-    const entries = db
+    const entries = await db
       .select({
         duurMinuten: tijdregistraties.duurMinuten,
         startTijd: tijdregistraties.startTijd,
@@ -68,7 +68,7 @@ export async function GET() {
       .all();
 
     // All year entries for YTD calculations
-    const entriesJaar = db
+    const entriesJaar = await db
       .select({
         duurMinuten: tijdregistraties.duurMinuten,
         startTijd: tijdregistraties.startTijd,
@@ -91,7 +91,7 @@ export async function GET() {
       .all();
 
     // Active projects
-    const actieveProjecten = db
+    const actieveProjecten = await db
       .select({
         id: projecten.id,
         naam: projecten.naam,
@@ -109,14 +109,14 @@ export async function GET() {
       .all();
 
     // All clients
-    const alleKlanten = db
+    const alleKlanten = await db
       .select()
       .from(klanten)
       .where(eq(klanten.isActief, 1))
       .all();
 
     // Open invoices (verzonden + te_laat)
-    const openFacturen = db
+    const openFacturen = await db
       .select({
         id: facturen.id,
         klantId: facturen.klantId,
@@ -136,7 +136,7 @@ export async function GET() {
       .all();
 
     // Paid invoices this year
-    const betaaldeFacturen = db
+    const betaaldeFacturen = await db
       .select({
         klantId: facturen.klantId,
         bedragExclBtw: facturen.bedragExclBtw,
@@ -154,7 +154,7 @@ export async function GET() {
       .all();
 
     // Pipeline: open/active offertes
-    const openOffertes = db
+    const openOffertes = await db
       .select({
         id: offertes.id,
         klantNaam: klanten.bedrijfsnaam,
@@ -176,7 +176,7 @@ export async function GET() {
       .all();
 
     // Active leads
-    const actieveLeads = db
+    const actieveLeads = await db
       .select()
       .from(leads)
       .where(
@@ -189,7 +189,7 @@ export async function GET() {
       .all();
 
     // Costs this year
-    const kostenJaar = db
+    const kostenJaar = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
       })
@@ -199,7 +199,7 @@ export async function GET() {
 
     // Last 3 months income/costs for cash flow
     const maand3geleden = new Date(jaar, maand - 3, 1).toISOString().slice(0, 10);
-    const inkomstenL3 = db
+    const inkomstenL3 = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
       })
@@ -213,7 +213,7 @@ export async function GET() {
       )
       .get();
 
-    const kostenL3 = db
+    const kostenL3 = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
       })

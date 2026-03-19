@@ -91,7 +91,7 @@ export async function POST(
 
     // Send email
     const resend = new Resend(apiKey);
-    const fromEmail = bedrijfData.email || "factuur@autronis.com";
+    const fromEmail = bedrijfData.email || "zakelijk@autronis.com";
 
     await resend.emails.send({
       from: `${bedrijfData.bedrijfsnaam || "Autronis"} <${fromEmail}>`,

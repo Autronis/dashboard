@@ -70,6 +70,17 @@ export async function POST(req: NextRequest) {
         linkedinUrl: body.linkedinUrl?.trim() || null,
         instagramHandle: body.instagramHandle?.trim()?.replace(/^@/, "") || null,
         scanPaginas: body.scanPaginas ? JSON.stringify(body.scanPaginas) : undefined,
+        beschrijving: body.beschrijving?.trim() || null,
+        diensten: body.diensten ? JSON.stringify(body.diensten) : null,
+        techStack: body.techStack ? JSON.stringify(body.techStack) : null,
+        prijzen: body.prijzen?.trim() || null,
+        teamGrootte: body.teamGrootte?.trim() || null,
+        sterktes: body.sterktes ? JSON.stringify(body.sterktes) : null,
+        zwaktes: body.zwaktes ? JSON.stringify(body.zwaktes) : null,
+        overlapScore: body.overlapScore ?? null,
+        overlapUitleg: body.overlapUitleg?.trim() || null,
+        threatLevel: body.threatLevel || null,
+        threatUitleg: body.threatUitleg?.trim() || null,
         notities: body.notities?.trim() || null,
       })
       .returning();

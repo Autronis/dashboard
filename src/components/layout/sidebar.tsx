@@ -1,105 +1,245 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  LayoutDashboard,
-  Clock,
-  Users,
-  Euro,
-  BarChart3,
-  Calendar,
-  CheckSquare,
-  Settings,
-  ChevronLeft,
-  X,
-  Command,
-  ChevronDown,
-  Landmark,
-  Users2,
-  Sparkles,
-  FileText,
-  Crosshair,
-  Car,
-  BookOpen,
-  Mic,
-  Radar,
-  Lightbulb,
-  Eye,
-  Megaphone,
-  Video,
-  Flame,
-  Focus,
-  Brain,
-  Zap,
-  FolderKanban,
-  Rocket,
+  LayoutDashboard, Clock, Users, Euro, BarChart3, Calendar,
+  CheckSquare, ChevronLeft, X, Landmark, Users2, FileText,
+  Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
+  Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
+  Rocket, ChevronDown, Mail,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 
-type NavItem = { label: string; icon: typeof LayoutDashboard; href: string } | "separator" | { section: string };
+interface NavLink { label: string; icon: typeof LayoutDashboard; href: string }
+interface NavSection { section: string; items: NavLink[] }
 
-const navItems: NavItem[] = [
+const navSections: (NavLink | NavSection)[] = [
+  // Top-level (always visible)
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
-  { section: "Werk" },
-  { label: "Tijd", icon: Clock, href: "/tijd" },
-  { label: "Focus", icon: Focus, href: "/focus" },
-  { label: "Meetings", icon: Mic, href: "/meetings" },
-  { section: "Klanten & Sales" },
-  { label: "Projecten", icon: FolderKanban, href: "/projecten" },
-  { label: "Klanten", icon: Users, href: "/klanten" },
-  { label: "Leads", icon: Zap, href: "/leads" },
-  { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
-  { label: "Offertes", icon: FileText, href: "/offertes" },
-  { section: "Financieel" },
-  { label: "Financiën", icon: Euro, href: "/financien" },
-  { label: "Belasting", icon: Landmark, href: "/belasting" },
-  { label: "Kilometers", icon: Car, href: "/kilometers" },
-  { section: "Groei" },
-  { label: "Analytics", icon: BarChart3, href: "/analytics" },
-  { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
-  { label: "Doelen", icon: Crosshair, href: "/doelen" },
-  { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-  { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
-  { section: "Content & Kennis" },
-  { label: "Content", icon: Megaphone, href: "/content" },
-  { label: "Documenten", icon: FileText, href: "/documenten" },
-  { label: "Wiki", icon: BookOpen, href: "/wiki" },
-  { label: "Learning Radar", icon: Radar, href: "/radar" },
-  { label: "Second Brain", icon: Brain, href: "/second-brain" },
-  { section: "Team & AI" },
-  { label: "Team", icon: Users2, href: "/team" },
-  { label: "A.R.I.", icon: Sparkles, href: "/ai-assistent" },
-  { label: "Case Studies", icon: Video, href: "/case-studies" },
+
+  // Grouped sections
+  {
+    section: "Werk",
+    items: [
+      { label: "Tijd", icon: Clock, href: "/tijd" },
+      { label: "Focus", icon: Focus, href: "/focus" },
+      { label: "Meetings", icon: Mic, href: "/meetings" },
+    ],
+  },
+  {
+    section: "Klanten & Sales",
+    items: [
+      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
+      { label: "Klanten", icon: Users, href: "/klanten" },
+      { label: "Leads", icon: Zap, href: "/leads" },
+      { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
+      { label: "Outreach", icon: Mail, href: "/outreach" },
+      { label: "Offertes", icon: FileText, href: "/offertes" },
+      { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
+    ],
+  },
+  {
+    section: "Financieel",
+    items: [
+      { label: "Financiën", icon: Euro, href: "/financien" },
+      { label: "Belasting", icon: Landmark, href: "/belasting" },
+      { label: "Kilometers", icon: Car, href: "/kilometers" },
+    ],
+  },
+  {
+    section: "Groei",
+    items: [
+      { label: "Analytics", icon: BarChart3, href: "/analytics" },
+      { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
+      { label: "Doelen", icon: Crosshair, href: "/doelen" },
+      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+      { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
+    ],
+  },
+  {
+    section: "Content & Kennis",
+    items: [
+      { label: "Content", icon: Megaphone, href: "/content" },
+      { label: "Case Studies", icon: Video, href: "/case-studies" },
+      { label: "Documenten", icon: FileText, href: "/documenten" },
+      { label: "Wiki", icon: BookOpen, href: "/wiki" },
+      { label: "Learning Radar", icon: Radar, href: "/radar" },
+      { label: "Second Brain", icon: Brain, href: "/second-brain" },
+    ],
+  },
+  {
+    section: "Team",
+    items: [
+      { label: "Team", icon: Users2, href: "/team" },
+    ],
+  },
 ];
 
-const bottomNavItem = { label: "Instellingen", icon: Settings, href: "/instellingen" };
+function NavItem({ item, isCollapsed, isActive }: { item: NavLink; isCollapsed: boolean; isActive: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group relative",
+        isActive
+          ? "bg-autronis-accent/10 text-white font-semibold"
+          : "text-autronis-text-secondary hover:bg-white/5 hover:text-autronis-text-primary"
+      )}
+      title={isCollapsed ? item.label : undefined}
+    >
+      {isActive && (
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-autronis-accent rounded-r" />
+      )}
+      <Icon className={cn(
+        "w-[18px] h-[18px] transition-colors flex-shrink-0",
+        isActive ? "text-autronis-accent" : "text-slate-400 group-hover:text-slate-300"
+      )} />
+      {!isCollapsed && (
+        <span className="text-[13px] truncate">{item.label}</span>
+      )}
+    </Link>
+  );
+}
+
+const SIDEBAR_SECTIONS_KEY = "autronis-sidebar-sections";
+
+function useSectionState(section: string, defaultOpen: boolean) {
+  const [expanded, setExpanded] = useState(defaultOpen);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_SECTIONS_KEY);
+      if (stored) {
+        const map = JSON.parse(stored) as Record<string, boolean>;
+        if (section in map) setExpanded(map[section]);
+      }
+    } catch { /* ignore */ }
+    setLoaded(true);
+  }, [section]);
+
+  const toggle = useCallback(() => {
+    setExpanded((prev) => {
+      const next = !prev;
+      try {
+        const stored = localStorage.getItem(SIDEBAR_SECTIONS_KEY);
+        const map = stored ? JSON.parse(stored) as Record<string, boolean> : {};
+        map[section] = next;
+        localStorage.setItem(SIDEBAR_SECTIONS_KEY, JSON.stringify(map));
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, [section]);
+
+  return { expanded: loaded ? expanded : defaultOpen, toggle };
+}
+
+function CollapsibleSection({
+  section,
+  items,
+  isCollapsed,
+  pathname,
+}: {
+  section: string;
+  items: NavLink[];
+  isCollapsed: boolean;
+  pathname: string;
+}) {
+  const hasActiveChild = items.some((item) =>
+    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+  );
+  const { expanded, toggle } = useSectionState(section, true);
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    // Exact match first, then prefix match only if the next char is "/" or end of string
+    // This prevents /offertes matching when on /offertes/contracten
+    if (pathname === href) return true;
+    if (pathname.startsWith(href + "/")) {
+      // Check no sibling route is a better match
+      const betterMatch = items.some(
+        (other) => other.href !== href && other.href.startsWith(href + "/") && pathname.startsWith(other.href)
+      );
+      return !betterMatch;
+    }
+    return false;
+  }
+
+  if (isCollapsed) {
+    return (
+      <>
+        <div className="my-1.5 mx-3 border-t border-autronis-border/30" />
+        {items.map((item) => (
+          <NavItem key={item.href} item={item} isCollapsed isActive={isActive(item.href)} />
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <div className="mt-3 first:mt-1">
+      <button
+        onClick={toggle}
+        className={cn(
+          "w-full flex items-center justify-between px-3 py-1.5 rounded-md cursor-pointer transition-colors",
+          "hover:bg-autronis-accent/5",
+          hasActiveChild && "bg-autronis-accent/5"
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "text-[10px] font-bold uppercase tracking-widest transition-colors",
+            hasActiveChild ? "text-autronis-accent/80" : "text-autronis-text-secondary/50 group-hover:text-autronis-text-secondary/70"
+          )}>
+            {section}
+          </span>
+          <span className={cn(
+            "text-[9px] tabular-nums px-1.5 py-0.5 rounded-full transition-colors",
+            hasActiveChild
+              ? "bg-autronis-accent/15 text-autronis-accent/70"
+              : "bg-white/5 text-autronis-text-secondary/40"
+          )}>
+            {items.length}
+          </span>
+        </div>
+        <ChevronDown className={cn(
+          "w-3.5 h-3.5 transition-transform duration-200",
+          hasActiveChild ? "text-autronis-accent/50" : "text-autronis-text-secondary/40",
+          !expanded && "-rotate-90"
+        )} />
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="space-y-0.5 pt-0.5 pb-1">
+              {items.map((item) => (
+                <NavItem key={item.href} item={item} isCollapsed={false} isActive={isActive(item.href)} />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
 export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
-  const [urgentCount, setUrgentCount] = useState(0);
-
-  useEffect(() => {
-    fetch(`/api/belasting/deadlines?jaar=${new Date().getFullYear()}`)
-      .then(r => r.json())
-      .then(data => {
-        const nu = new Date();
-        const count = (data.deadlines || []).filter((d: {afgerond: number; datum: string}) => {
-          if (d.afgerond) return false;
-          const dagen = Math.ceil((new Date(d.datum).getTime() - nu.getTime()) / 86400000);
-          return dagen <= 7;
-        }).length;
-        setUrgentCount(count);
-      })
-      .catch(() => {});
-  }, []);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -110,138 +250,67 @@ export function Sidebar() {
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/50 lg:hidden"
-          onClick={() => setOpen(false)}
-        />
+        <div className="fixed inset-0 z-20 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />
       )}
 
       {/* Sidebar */}
       <motion.aside
-        animate={{ width: isCollapsed ? 72 : 260 }}
+        animate={{ width: isCollapsed ? 72 : 256 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed top-0 left-0 h-full z-30 flex flex-col glass border-r border-autronis-border",
-          // Mobile: hidden unless isOpen
+          "fixed top-0 left-0 h-full z-30 flex flex-col bg-[#0c1215]/95 backdrop-blur-xl border-r border-white/[0.06]",
           "max-lg:translate-x-full max-lg:w-64 max-lg:transition-transform max-lg:duration-300",
           isOpen && "max-lg:translate-x-0"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 h-16 border-b border-autronis-border flex-shrink-0">
-          {!isCollapsed ? (
-            <Image
-              src="/logo.png"
-              alt="Autronis"
-              width={140}
-              height={36}
-              className="h-9 w-auto"
-              priority
-            />
-          ) : (
-            <Image
-              src="/logo.png"
-              alt="Autronis"
-              width={32}
-              height={32}
-              className="h-8 w-8 object-contain"
-              priority
-            />
-          )}
-          {/* Close button on mobile */}
-          <button
-            onClick={() => setOpen(false)}
-            className="p-1 rounded-lg hover:bg-autronis-border text-autronis-text-secondary lg:hidden ml-auto"
-          >
+        <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.06] flex-shrink-0">
+          <Link href="/" className="flex-shrink-0">
+            {!isCollapsed ? (
+              <Image src="/logo.png" alt="Autronis" width={130} height={34} className="h-8 w-auto" priority />
+            ) : (
+              <Image src="/logo.png" alt="Autronis" width={28} height={28} className="h-7 w-7 object-contain" priority />
+            )}
+          </Link>
+          <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/5 text-autronis-text-secondary lg:hidden ml-auto">
             <X className="w-5 h-5" />
           </button>
-          {/* Collapse button on desktop */}
           <button
             onClick={() => setCollapsed(!isCollapsed)}
-            className={cn(
-              "hidden lg:flex p-1 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-transform duration-300",
-              isCollapsed ? "ml-auto rotate-180" : "ml-auto"
-            )}
-            aria-label={isCollapsed ? "Uitklappen" : "Inklappen"}
+            className={cn("hidden lg:flex p-1 rounded-lg hover:bg-white/5 text-autronis-text-secondary transition-transform duration-300", isCollapsed ? "ml-auto rotate-180" : "ml-auto")}
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-          {navItems.map((item, idx) => {
-            if (item === "separator") {
-              return <div key={`sep-${idx}`} className="my-2 mx-3 border-t border-autronis-border/50" />;
-            }
-            if ("section" in item) {
-              if (isCollapsed) {
-                return <div key={`sec-${idx}`} className="my-2 mx-3 border-t border-autronis-border/50" />;
-              }
+        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin">
+          {navSections.map((entry, idx) => {
+            if ("section" in entry) {
               return (
-                <div key={`sec-${idx}`} className="pt-4 pb-1 px-4">
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-autronis-text-tertiary">{item.section}</span>
-                </div>
+                <CollapsibleSection
+                  key={entry.section}
+                  section={entry.section}
+                  items={entry.items}
+                  isCollapsed={isCollapsed}
+                  pathname={pathname}
+                />
               );
             }
-            const Icon = item.icon;
-            const active = isActive(item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group",
-                  active
-                    ? "bg-autronis-accent/10 border-l-[3px] border-autronis-accent text-white font-semibold"
-                    : "text-autronis-text-secondary hover:bg-white/5 hover:text-autronis-text-primary border-l-[3px] border-transparent"
-                )}
-                title={isCollapsed ? item.label : undefined}
-              >
-                <span className="relative flex-shrink-0">
-                  <Icon className={cn("w-[18px] h-[18px] transition-colors", active ? "text-autronis-accent" : "text-slate-400 group-hover:text-slate-300")} />
-                  {item.href === "/belasting" && urgentCount > 0 && isCollapsed && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                  )}
-                </span>
-                {!isCollapsed && (
-                  <span className="text-[13px] truncate flex-1">{item.label}</span>
-                )}
-                {!isCollapsed && item.href === "/belasting" && urgentCount > 0 && (
-                  <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center w-4 h-4 text-[9px] font-bold bg-red-500 text-white rounded-full animate-pulse">
-                    {urgentCount}
-                  </span>
-                )}
-              </Link>
+              <NavItem key={entry.href} item={entry} isCollapsed={isCollapsed} isActive={isActive(entry.href)} />
             );
           })}
         </nav>
 
-        {/* Bottom section */}
-        <div className="border-t border-autronis-border/50 p-2 space-y-0.5">
-          {/* Settings */}
-          {(() => {
-            const Icon = bottomNavItem.icon;
-            const active = isActive(bottomNavItem.href);
-            return (
-              <Link
-                href={bottomNavItem.href}
-                className={cn(
-                  "flex items-center gap-3 py-3 px-4 rounded-lg transition-colors duration-150",
-                  active
-                    ? "bg-autronis-accent/10 border-l-[3px] border-autronis-accent text-white font-semibold"
-                    : "text-autronis-text-secondary hover:bg-white/5 border-l-[3px] border-transparent"
-                )}
-                title={isCollapsed ? bottomNavItem.label : undefined}
-              >
-                <Icon className={cn("w-5 h-5 flex-shrink-0", active ? "text-autronis-accent" : "text-slate-400")} />
-                {!isCollapsed && (
-                  <span className="text-sm">{bottomNavItem.label}</span>
-                )}
-              </Link>
-            );
-          })()}
-        </div>
+        {/* Keyboard shortcut hint */}
+        {!isCollapsed && (
+          <div className="border-t border-white/[0.06] p-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-autronis-text-secondary/40">
+              <span className="text-[10px]">⌘K zoeken</span>
+            </div>
+          </div>
+        )}
       </motion.aside>
     </>
   );

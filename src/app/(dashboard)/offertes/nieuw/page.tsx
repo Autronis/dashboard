@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Trash2, Eye, PenLine } from "lucide-react";
+import { Plus, Trash2, Eye, PenLine, Wand2, Zap, BarChart3, Bot } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { DocumentPreview } from "@/components/shared/document-preview";
 import { formatBedrag, formatDatum } from "@/lib/utils";
+import { offerteTemplates } from "@/lib/offerte-templates";
+import { cn } from "@/lib/utils";
 
 interface Klant {
   id: number;
@@ -52,112 +55,19 @@ function OffertePreview({
   notities: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-lg sticky top-8">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-10">
-        <div>
-          <h2 className="text-2xl font-bold text-[#128C7E]">Autronis</h2>
-          <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-            offerte@autronis.com
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold text-[#128C7E]">OFFERTE</p>
-        </div>
-      </div>
-
-      {/* Info row */}
-      <div className="grid grid-cols-2 gap-8 mb-10">
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offerte aan</p>
-          <p className="text-sm text-gray-800 leading-relaxed">
-            {klant ? (
-              <>
-                {klant.bedrijfsnaam}
-                {klant.contactpersoon && <><br />{klant.contactpersoon}</>}
-                {klant.adres && <><br />{klant.adres}</>}
-                {klant.email && <><br />{klant.email}</>}
-              </>
-            ) : (
-              <span className="text-gray-400 italic">Selecteer een klant...</span>
-            )}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offertenummer</p>
-          <p className="text-sm text-gray-400 italic">Wordt automatisch gegenereerd</p>
-          {titel && (
-            <>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Titel</p>
-              <p className="text-sm text-gray-800">{titel}</p>
-            </>
-          )}
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Offertedatum</p>
-          <p className="text-sm text-gray-800">{datum ? formatDatum(datum) : "\u2014"}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Geldig tot</p>
-          <p className="text-sm text-gray-800">{geldigTot ? formatDatum(geldigTot) : "\u2014"}</p>
-        </div>
-      </div>
-
-      {/* Regels tabel */}
-      <table className="w-full mb-8">
-        <thead>
-          <tr className="border-b-2 border-gray-200">
-            <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Omschrijving</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">Aantal</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Prijs</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">BTW %</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Totaal</th>
-          </tr>
-        </thead>
-        <tbody>
-          {regels.map((regel, i) => (
-            <tr key={i} className="border-b border-gray-100">
-              <td className="py-3 text-sm text-gray-800">
-                {regel.omschrijving || <span className="text-gray-400 italic">...</span>}
-              </td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.aantal}</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.eenheidsprijs)}</td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.btwPercentage}%</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.aantal * regel.eenheidsprijs)}</td>
-            </tr>
-          ))}
-          {regels.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-sm text-gray-400 text-center italic">
-                Voeg een regel toe...
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* Totalen */}
-      <div className="flex justify-end">
-        <div className="w-60 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotaal</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(subtotaal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">BTW</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(btwBedrag)}</span>
-          </div>
-          <div className="border-t-2 border-gray-200 pt-2 flex justify-between">
-            <span className="text-lg font-bold text-gray-800">Totaal</span>
-            <span className="text-lg font-bold text-[#128C7E] tabular-nums">{formatBedrag(totaal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Notities */}
-      {notities.trim() && (
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Opmerkingen</p>
-          <p className="text-sm text-gray-600 leading-relaxed">{notities}</p>
-        </div>
-      )}
-    </div>
+    <DocumentPreview
+      type="OFFERTE"
+      klant={klant}
+      titel={titel}
+      datum={datum}
+      geldigTot={geldigTot}
+      regels={regels}
+      subtotaal={subtotaal}
+      btwBedrag={btwBedrag}
+      totaal={totaal}
+      notities={notities}
+      sticky
+    />
   );
 }
 
@@ -176,9 +86,29 @@ export default function NieuweOffertePage() {
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
   const [geldigTotDagen, setGeldigTotDagen] = useState(30);
   const [notities, setNotities] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [regels, setRegels] = useState<Regel[]>([
     { omschrijving: "", aantal: 1, eenheidsprijs: 0, btwPercentage: 21 },
   ]);
+
+  function applyTemplate(templateId: string) {
+    const template = offerteTemplates.find((t) => t.id === templateId);
+    if (!template) return;
+    setSelectedTemplate(templateId);
+    setTitel(template.standaardTitel);
+    setRegels(template.regels.map((r) => ({
+      omschrijving: r.omschrijving,
+      aantal: r.aantal,
+      eenheidsprijs: r.eenheidsprijs,
+      btwPercentage: r.btwPercentage,
+    })));
+  }
+
+  const templateIcons: Record<string, typeof Wand2> = {
+    "workflow-automatisering": Zap,
+    "ai-integratie": Bot,
+    "dashboard-rapportage": BarChart3,
+  };
 
   useEffect(() => {
     fetch("/api/klanten").then((r) => r.json()).then((d) => setKlanten(d.klanten || []));
@@ -266,6 +196,54 @@ export default function NieuweOffertePage() {
 
   const formContent = (
     <div className="space-y-8">
+      {/* Template selectie */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+        <div className="flex items-center gap-3 mb-5">
+          <Wand2 className="w-5 h-5 text-autronis-accent" />
+          <h2 className="text-lg font-semibold text-autronis-text-primary">Start vanuit template</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {offerteTemplates.map((template) => {
+            const Icon = templateIcons[template.id] || Wand2;
+            const isSelected = selectedTemplate === template.id;
+            return (
+              <button
+                key={template.id}
+                onClick={() => applyTemplate(template.id)}
+                className={cn(
+                  "text-left p-4 rounded-xl border-2 transition-all",
+                  isSelected
+                    ? "border-autronis-accent bg-autronis-accent/10"
+                    : "border-autronis-border hover:border-autronis-accent/50 bg-autronis-bg/50 hover:bg-autronis-bg"
+                )}
+              >
+                <div className={cn(
+                  "p-2 rounded-lg w-fit mb-3",
+                  isSelected ? "bg-autronis-accent/20" : "bg-autronis-accent/10"
+                )}>
+                  <Icon className="w-4 h-4 text-autronis-accent" />
+                </div>
+                <span className="font-semibold text-sm text-autronis-text-primary block mb-1">{template.naam}</span>
+                <p className="text-xs text-autronis-text-secondary leading-relaxed">{template.beschrijving}</p>
+                <p className="text-xs text-autronis-accent mt-2 font-medium">{template.regels.length} regels</p>
+              </button>
+            );
+          })}
+        </div>
+        {selectedTemplate && (
+          <button
+            onClick={() => {
+              setSelectedTemplate(null);
+              setTitel("");
+              setRegels([{ omschrijving: "", aantal: 1, eenheidsprijs: 0, btwPercentage: 21 }]);
+            }}
+            className="mt-3 text-xs text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+          >
+            Template verwijderen en opnieuw beginnen
+          </button>
+        )}
+      </div>
+
       {/* Klant & Project */}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
         <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Klant & Project</h2>

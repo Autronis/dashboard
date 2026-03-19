@@ -12,8 +12,16 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  Pause,
-  Hash,
+  Brain,
+  Zap,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  Lightbulb,
+  Trophy,
+  Shield,
+  Shuffle,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -21,7 +29,9 @@ import {
   useWeekSessies,
   useSamenvatting,
   useGenereerSamenvatting,
+  useGenereerPeriodeSamenvatting,
 } from "@/hooks/queries/use-screen-time";
+import type { PeriodeSamenvatting, FocusInzicht, BesteFocusBlok } from "@/hooks/queries/use-screen-time";
 import type { WeekDagData } from "@/hooks/queries/use-screen-time";
 import { useRegistraties } from "@/hooks/queries/use-tijdregistraties";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -67,7 +77,9 @@ function getCurrentTimePosition(): number | null {
 }
 
 function isToday(dateStr: string): boolean {
-  return dateStr === new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const todayLocal = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return dateStr === todayLocal;
 }
 
 function getWeekStart(datum: string): string {
@@ -75,7 +87,7 @@ function getWeekStart(datum: string): string {
   const day = d.getDay();
   const maandag = d.getDate() - ((day + 6) % 7);
   const start = new Date(d.getFullYear(), d.getMonth(), maandag);
-  return start.toISOString().split("T")[0] ?? "";
+  return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`;
 }
 
 // ============ SESSIE DETAIL PANEL ============
@@ -101,7 +113,7 @@ function SessieDetailPanel({
   sessie: SessieDetail;
   onClose: () => void;
 }) {
-  const bestanden = parseBestandenUitTitels(sessie.venstertitels);
+  const parsedTitels = parseBestandenUitTitels(sessie.venstertitels);
   const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
 
   return (
@@ -168,14 +180,22 @@ function SessieDetailPanel({
         </div>
       </div>
 
-      {bestanden.length > 0 && (
+      {parsedTitels.length > 0 && (
         <div>
-          <p className="text-xs text-autronis-text-secondary mb-2 uppercase tracking-wide">Bestanden / pagina&apos;s</p>
-          <div className="space-y-1 max-h-32 overflow-y-auto">
-            {bestanden.slice(0, 10).map((b, i) => (
-              <p key={i} className="text-xs text-autronis-text-primary truncate px-2 py-1 bg-autronis-bg rounded-lg">
-                {b}
-              </p>
+          <p className="text-xs text-autronis-text-secondary mb-2 uppercase tracking-wide">Activiteiten</p>
+          <div className="space-y-1 max-h-40 overflow-y-auto">
+            {parsedTitels.slice(0, 12).map((p, i) => (
+              <div key={i} className="flex items-center gap-2 px-2 py-1.5 bg-autronis-bg rounded-lg">
+                <span className={cn(
+                  "w-1.5 h-1.5 rounded-full shrink-0",
+                  p.type === "vscode" ? "bg-blue-400" :
+                  p.type === "chrome" ? "bg-yellow-400" :
+                  p.type === "tradingview" ? "bg-green-400" :
+                  p.type === "discord" ? "bg-indigo-400" :
+                  "bg-gray-400"
+                )} />
+                <p className="text-xs text-autronis-text-primary truncate">{p.label}</p>
+              </div>
             ))}
           </div>
         </div>
@@ -223,86 +243,124 @@ function DagTimeline({
     return ((hours - visibleStart) / visibleHours) * 100;
   }, [vandaag, visibleStart, visibleEnd, visibleHours]);
 
-  // Position blocks at their actual time — no overlap hack
+  // Position sessions directly — API now returns properly merged blocks
   const positionedBlocks = useMemo(() => {
-    return visibleSessions.map((sessie) => {
+    return visibleSessions.map((sessie, idx) => {
       const startDate = new Date(sessie.startTijd);
       const startHour = startDate.getHours() + startDate.getMinutes() / 60;
+      const endDate = new Date(sessie.eindTijd);
+      const endHour = endDate.getHours() + endDate.getMinutes() / 60;
       const top = ((startHour - visibleStart) / visibleHours) * 100;
-      const height = Math.max(1.2, (sessie.duurSeconden / 3600 / visibleHours) * 100);
-      return { sessie, originalIdx: sessies.indexOf(sessie), top, height };
+      const height = Math.max(1.5, ((endHour - startHour) / visibleHours) * 100);
+      const originalIdx = sessies.indexOf(sessie);
+      return { sessie, top, height, originalIdx };
     });
   }, [visibleSessions, sessies, visibleStart, visibleHours]);
 
+  // Build a flat list of items: sessions + gaps (for pauze indicators)
+  const timelineItems = useMemo(() => {
+    const items: Array<{ type: "sessie"; sessie: typeof visibleSessions[0]; originalIdx: number } | { type: "pauze"; duurMin: number }> = [];
+    for (let i = 0; i < positionedBlocks.length; i++) {
+      // Check for gap before this block
+      if (i > 0) {
+        const prevEnd = new Date(positionedBlocks[i - 1].sessie.eindTijd).getTime();
+        const thisStart = new Date(positionedBlocks[i].sessie.startTijd).getTime();
+        const gapMin = (thisStart - prevEnd) / 60000;
+        if (gapMin >= 20) {
+          items.push({ type: "pauze", duurMin: Math.round(gapMin) });
+        }
+      }
+      items.push({ type: "sessie", sessie: positionedBlocks[i].sessie, originalIdx: positionedBlocks[i].originalIdx });
+    }
+    return items;
+  }, [positionedBlocks]);
+
+  // Scale: 2px per minute, min 30px for readability
+  const PX_PER_MIN = 2;
+  const MIN_BLOCK_PX = 30;
+  const PAUZE_PX_PER_MIN = 0.8; // pauzes are compressed
+
   return (
-    <div className="relative flex" style={{ minHeight: `${visibleHours * 64}px` }}>
-      {/* Hour gutter */}
+    <div className="relative flex">
+      {/* Hour gutter — positioned by time */}
       <div className="w-14 shrink-0 relative">
-        {hourLabels.map((hour) => {
-          const top = ((hour - visibleStart) / visibleHours) * 100;
+        {timelineItems.map((item, idx) => {
+          if (item.type !== "sessie") return null;
+          const startTime = new Date(item.sessie.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
           return (
-            <div
-              key={hour}
-              className="absolute right-3 -translate-y-1/2 text-xs text-autronis-text-secondary tabular-nums select-none"
-              style={{ top: `${top}%` }}
-            >
-              {String(hour).padStart(2, "0")}:00
+            <div key={`time-${idx}`} className="text-[11px] text-autronis-text-secondary/50 tabular-nums select-none" style={{ height: 0, position: "relative" }}>
+              {/* Rendered inline — height handled by main column */}
             </div>
           );
         })}
       </div>
 
-      {/* Timeline area */}
-      <div className="flex-1 relative border-l border-autronis-border/40">
-        {/* Hour lines */}
-        {hourLabels.map((hour) => {
-          const top = ((hour - visibleStart) / visibleHours) * 100;
-          return (
-            <div
-              key={hour}
-              className="absolute left-0 right-0 border-t border-autronis-border/20"
-              style={{ top: `${top}%` }}
-            />
-          );
-        })}
+      {/* Main timeline column */}
+      <div className="flex-1 space-y-0">
+        {timelineItems.map((item, idx) => {
+          if (item.type === "pauze") {
+            const pxHeight = Math.max(24, Math.round(item.duurMin * PAUZE_PX_PER_MIN));
+            const hours = Math.floor(item.duurMin / 60);
+            const mins = item.duurMin % 60;
+            const label = hours > 0 ? `${hours}u ${mins}m pauze` : `${mins}m pauze`;
+            return (
+              <div key={`pauze-${idx}`} className="flex items-center gap-3 px-2 relative" style={{ height: `${pxHeight}px` }}>
+                <div className="absolute inset-0 bg-autronis-border/5 rounded-lg" />
+                <div className="border-t border-dashed border-autronis-border/30 flex-1 relative z-10" />
+                <span className="text-xs text-autronis-text-secondary/50 shrink-0 relative z-10">{label}</span>
+                <div className="border-t border-dashed border-autronis-border/30 flex-1 relative z-10" />
+              </div>
+            );
+          }
 
-        {/* Session blocks — positioned at actual time, no overlap hack */}
-        {positionedBlocks.map(({ sessie, originalIdx, top, height }) => {
+          const { sessie, originalIdx } = item;
           const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
           const isSelected = selectedSessie === originalIdx;
-          const isHandmatig = sessie.app === "Handmatig";
+          const catLabel = CATEGORIE_LABELS[sessie.categorie] || sessie.categorie;
+          const duurMin = Math.round((new Date(sessie.eindTijd).getTime() - new Date(sessie.startTijd).getTime()) / 60000);
+          const pxHeight = Math.max(MIN_BLOCK_PX, Math.round(duurMin * PX_PER_MIN));
+          const startTime = new Date(sessie.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+          const endTime = new Date(sessie.eindTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+          const beschrijving = sessie.beschrijving && sessie.beschrijving !== sessie.app ? sessie.beschrijving : catLabel;
+          const showDetails = pxHeight >= 44;
+          const showCategory = pxHeight >= 56;
 
           return (
             <button
-              key={originalIdx}
+              key={`${sessie.startTijd}-${originalIdx}`}
               onClick={() => onSelect(isSelected ? null : originalIdx)}
               className={cn(
-                "absolute left-2 right-2 rounded-lg overflow-hidden text-left transition-all duration-150 cursor-pointer",
-                "hover:brightness-110 hover:scale-[1.01]",
-                isSelected && "ring-2 ring-autronis-accent ring-offset-1 ring-offset-autronis-bg"
+                "w-full rounded-lg text-left transition-all duration-150 cursor-pointer group mb-1",
+                "hover:brightness-110",
+                isSelected && "ring-2 ring-white/60 ring-offset-1 ring-offset-autronis-bg"
               )}
               style={{
-                top: `${top}%`,
-                height: `${height}%`,
-                backgroundColor: `${kleur}CC`,
-                minHeight: "24px",
+                height: `${pxHeight}px`,
+                backgroundColor: `${kleur}30`,
+                borderLeft: `4px solid ${kleur}`,
               }}
             >
-              <div className="px-2.5 py-1 h-full flex flex-col justify-center overflow-hidden">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] font-semibold text-white truncate leading-tight">
-                    {sessie.beschrijving || sessie.app}
+              <div className="h-full flex flex-col justify-center px-3.5 min-w-0">
+                {/* Row 1: Time + Description + Duration */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[11px] text-white/40 tabular-nums shrink-0 w-[90px]">{startTime}–{endTime}</span>
+                  <span className="text-[13px] font-semibold text-white truncate flex-1" title={beschrijving}>
+                    {beschrijving}
                   </span>
-                  {isHandmatig && (
-                    <span className="shrink-0 text-[9px] font-medium bg-white/20 text-white px-1 rounded">
-                      H
-                    </span>
-                  )}
+                  <span className="text-xs text-white/50 tabular-nums shrink-0 pl-2">{formatTijd(duurMin * 60)}</span>
                 </div>
-                {height > 2.5 && (
-                  <span className="text-[10px] text-white/60 truncate">
-                    {new Date(sessie.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} - {new Date(sessie.eindTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })} &middot; {formatTijd(sessie.duurSeconden)}
-                  </span>
+                {/* Row 2: Category label (medium/long blocks only) */}
+                {showDetails && (
+                  <div className="flex items-center gap-2 mt-1 ml-[90px]">
+                    {showCategory && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: `${kleur}40`, color: kleur }}>
+                        {catLabel}
+                      </span>
+                    )}
+                    {sessie.projectNaam && (
+                      <span className="text-[10px] text-autronis-accent">{sessie.projectNaam}</span>
+                    )}
+                  </div>
                 )}
               </div>
             </button>
@@ -310,15 +368,13 @@ function DagTimeline({
         })}
 
         {/* Current time indicator */}
-        {currentPos !== null && (
-          <div
-            className="absolute left-0 right-0 z-10 pointer-events-none"
-            style={{ top: `${currentPos}%` }}
-          >
-            <div className="relative flex items-center">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 -ml-[5px] shadow-lg shadow-red-500/30" />
-              <div className="flex-1 h-[2px] bg-red-500 shadow-lg shadow-red-500/20" />
-            </div>
+        {vandaag && (
+          <div className="flex items-center gap-2 py-1 mt-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-lg shadow-red-500/30 shrink-0" />
+            <div className="flex-1 h-[2px] bg-red-500 shadow-lg shadow-red-500/20" />
+            <span className="text-[10px] text-red-400 tabular-nums shrink-0">
+              {new Date().toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+            </span>
           </div>
         )}
       </div>
@@ -337,115 +393,133 @@ function WeekTimeline({
 }) {
   const DAG_NAMEN = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
-  return (
-    <div className="relative flex" style={{ minHeight: `${TOTAL_HOURS * 56}px` }}>
-      {/* Hour gutter */}
-      <div className="w-10 shrink-0 relative">
-        {HOUR_LABELS.map((hour) => {
-          const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
-          return (
-            <div
-              key={hour}
-              className="absolute right-2 -translate-y-1/2 text-[10px] text-autronis-text-secondary tabular-nums select-none"
-              style={{ top: `${top}%` }}
-            >
-              {String(hour).padStart(2, "0")}
-            </div>
-          );
-        })}
-      </div>
+  // Auto-detect time range: find earliest and latest activity across week
+  const allSessies = weekData.flatMap(d => d.sessies.filter(s => !s.isIdle));
+  const startHour = allSessies.length > 0
+    ? Math.max(0, Math.floor(Math.min(...allSessies.map(s => new Date(s.startTijd).getHours()))) - 1)
+    : 8;
+  const endHour = allSessies.length > 0
+    ? Math.min(24, Math.ceil(Math.max(...allSessies.map(s => new Date(s.eindTijd).getHours()))) + 1)
+    : 20;
+  const visHours = endHour - startHour;
+  const hourLabels = Array.from({ length: visHours + 1 }, (_, i) => i + startHour);
 
-      {/* 7 day columns */}
-      <div className="flex-1 grid grid-cols-7">
+  return (
+    <div>
+      {/* Day columns as grid */}
+      <div className="grid grid-cols-7 gap-1">
         {weekData.map((dag, dagIdx) => {
           const dagDate = new Date(dag.datum);
           const dagNr = dagDate.getDate();
           const vandaag = isToday(dag.datum);
-          const currentPos = vandaag ? getCurrentTimePosition() : null;
+          const activeSessies = dag.sessies.filter(s => !s.isIdle);
+          const dagTotaal = activeSessies.reduce((s, sess) =>
+            s + Math.max(0, (new Date(sess.eindTijd).getTime() - new Date(sess.startTijd).getTime()) / 1000), 0);
 
           return (
-            <div
-              key={dag.datum}
-              className={cn(
-                "relative border-l border-autronis-border/20",
-                dagIdx === 0 && "border-l-autronis-border/40"
-              )}
-            >
+            <div key={dag.datum} className={cn(
+              "rounded-lg border overflow-hidden",
+              vandaag ? "border-autronis-accent/40 bg-autronis-accent/5" : "border-autronis-border/30 bg-autronis-card/50"
+            )}>
               {/* Day header */}
               <div className={cn(
-                "sticky top-0 z-10 text-center py-1.5 text-xs border-b border-autronis-border/20 bg-autronis-card/95 backdrop-blur-sm",
-                vandaag ? "text-autronis-accent font-semibold" : "text-autronis-text-secondary"
+                "text-center py-2 border-b",
+                vandaag ? "border-autronis-accent/20" : "border-autronis-border/20"
               )}>
-                {DAG_NAMEN[dagIdx]} {dagNr}
+                <span className={cn(
+                  "text-xs font-semibold",
+                  vandaag ? "text-autronis-accent" : "text-autronis-text-secondary"
+                )}>
+                  {DAG_NAMEN[dagIdx]} {dagNr}
+                </span>
+                {dagTotaal > 0 && (
+                  <p className={cn("text-[10px] tabular-nums mt-0.5", vandaag ? "text-autronis-accent/70" : "text-autronis-text-secondary/50")}>
+                    {formatTijd(dagTotaal)}
+                  </p>
+                )}
               </div>
 
-              {/* Hour lines */}
-              {HOUR_LABELS.map((hour) => {
-                const top = ((hour - DAY_START) / TOTAL_HOURS) * 100;
-                return (
-                  <div
-                    key={hour}
-                    className="absolute left-0 right-0 border-t border-autronis-border/10"
-                    style={{ top: `${top}%` }}
-                  />
-                );
-              })}
+              {/* Time grid */}
+              <div className="relative" style={{ height: `${visHours * 28}px` }}>
+                {/* Hour lines */}
+                {hourLabels.map((hour) => {
+                  const top = ((hour - startHour) / visHours) * 100;
+                  return (
+                    <div key={hour} className="absolute left-0 right-0 border-t border-autronis-border/10" style={{ top: `${top}%` }}>
+                      {dagIdx === 0 && (
+                        <span className="absolute -left-0.5 -translate-y-1/2 text-[8px] text-autronis-text-secondary/30 select-none">
+                          {String(hour).padStart(2, "0")}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
 
-              {/* Session blocks (idle filtered out) */}
-              {dag.sessies.filter(s => !s.isIdle).map((sessie, sIdx) => {
-                const top = getTimePosition(sessie.startTijd);
-                const height = getBlockHeight(sessie.duurSeconden);
-                const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
-                const isHandmatig = sessie.app === "Handmatig";
+                {/* Session blocks — solid colored */}
+                {activeSessies.map((sessie, sIdx) => {
+                  const sHour = new Date(sessie.startTijd).getHours() + new Date(sessie.startTijd).getMinutes() / 60;
+                  const eHour = new Date(sessie.eindTijd).getHours() + new Date(sessie.eindTijd).getMinutes() / 60;
+                  const top = ((sHour - startHour) / visHours) * 100;
+                  const height = Math.max(2, ((eHour - sHour) / visHours) * 100);
+                  const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
+                  const catLabel = CATEGORIE_LABELS[sessie.categorie] || sessie.categorie;
+                  const duurMin = Math.round(sessie.duurSeconden / 60);
 
-                return (
-                  <div
-                    key={sIdx}
-                    onClick={() => onSelectSessie(sessie)}
-                    className="absolute left-[2px] right-[2px] rounded cursor-pointer group hover:brightness-125"
-                    style={{
-                      top: `${top}%`,
-                      height: `${Math.max(height, 0.8)}%`,
-                      backgroundColor: `${kleur}BB`,
-                      minHeight: "4px",
-                    }}
-                  >
-                    {/* Hover tooltip */}
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-20 pointer-events-none">
-                      <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-xl max-w-xs text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-autronis-text-primary font-medium truncate">
-                            {sessie.beschrijving && sessie.beschrijving !== sessie.app
-                              ? sessie.beschrijving
-                              : sessie.app}
-                          </p>
-                          {isHandmatig && (
-                            <span className="shrink-0 text-[9px] font-medium bg-autronis-accent/20 text-autronis-accent px-1 rounded">
-                              Handmatig
-                            </span>
-                          )}
+                  return (
+                    <div
+                      key={sIdx}
+                      onClick={() => onSelectSessie(sessie)}
+                      className="absolute left-1 right-1 rounded-lg cursor-pointer group hover:brightness-125 hover:z-10 overflow-hidden"
+                      style={{
+                        top: `${top}%`,
+                        height: `${height}%`,
+                        minHeight: "8px",
+                        backgroundColor: `${kleur}55`,
+                      }}
+                    >
+                      {/* Label on large enough blocks */}
+                      {height > 8 && (
+                        <div className="px-1 py-0.5 h-full flex flex-col justify-center">
+                          <span className="text-[9px] font-semibold text-white truncate leading-tight">{catLabel}</span>
+                          {height > 14 && <span className="text-[8px] text-white/60 tabular-nums">{formatTijd(duurMin * 60)}</span>}
                         </div>
-                        {sessie.projectNaam && (
-                          <p className="text-autronis-accent text-[10px]">{sessie.projectNaam}</p>
-                        )}
-                        <p className="text-autronis-text-secondary tabular-nums text-[10px] whitespace-nowrap">
-                          {formatTijdRange(sessie.startTijd)} - {formatTijdRange(sessie.eindTijd)} &middot; {formatTijd(sessie.duurSeconden)}
-                        </p>
+                      )}
+
+                      {/* Hover tooltip */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-30 pointer-events-none">
+                        <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 mb-1">
+                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: kleur }} />
+                            <span className="text-xs font-semibold text-autronis-text-primary">{catLabel}</span>
+                          </div>
+                          {sessie.beschrijving && sessie.beschrijving !== sessie.app && (
+                            <p className="text-[11px] text-autronis-text-secondary mb-1">{sessie.beschrijving}</p>
+                          )}
+                          <p className="text-[10px] text-autronis-text-secondary tabular-nums">
+                            {formatTijdRange(sessie.startTijd)} – {formatTijdRange(sessie.eindTijd)} · {formatTijd(sessie.duurSeconden)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {/* Current time */}
-              {currentPos !== null && (
-                <div
-                  className="absolute left-0 right-0 z-10 pointer-events-none"
-                  style={{ top: `${currentPos}%` }}
-                >
-                  <div className="h-[2px] bg-red-500 shadow-sm shadow-red-500/30" />
-                </div>
-              )}
+                {/* Empty day indicator */}
+                {activeSessies.length === 0 && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] text-autronis-text-secondary/30">—</span>
+                  </div>
+                )}
+
+                {/* Current time */}
+                {vandaag && (() => {
+                  const now = new Date();
+                  const h = now.getHours() + now.getMinutes() / 60;
+                  if (h < startHour || h > endHour) return null;
+                  const pos = ((h - startHour) / visHours) * 100;
+                  return <div className="absolute left-0 right-0 h-[2px] bg-red-500 z-10 pointer-events-none" style={{ top: `${pos}%` }} />;
+                })()}
+              </div>
             </div>
           );
         })}
@@ -456,11 +530,14 @@ function WeekTimeline({
 
 // ============ TAB TIJDLIJN ============
 
-export function TabTijdlijn({ datum }: { datum: string }) {
-  const [view, setView] = useState<TijdlijnView>("dag");
+export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode?: string }) {
+  const view: TijdlijnView = periode === "week" ? "week" : "dag";
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [weekSelectedSessie, setWeekSelectedSessie] = useState<ScreenTimeSessie | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [periodeRapport, setPeriodeRapport] = useState<PeriodeSamenvatting | null>(null);
+  const [periodeDetailOpen, setPeriodeDetailOpen] = useState(false);
+  const genereerPeriode = useGenereerPeriodeSamenvatting();
 
   const weekStart = useMemo(() => getWeekStart(datum), [datum]);
   const { data: sessiesData, isLoading: sessiesLoading } = useSessies(datum);
@@ -502,7 +579,8 @@ export function TabTijdlijn({ datum }: { datum: string }) {
   // Lazy auto-generation for yesterday's summary
   useEffect(() => {
     const lastCheck = sessionStorage.getItem("lastSummaryCheck");
-    const vandaag = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const vandaag = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     if (lastCheck === vandaag) return;
     sessionStorage.setItem("lastSummaryCheck", vandaag ?? "");
 
@@ -540,27 +618,9 @@ export function TabTijdlijn({ datum }: { datum: string }) {
 
   return (
     <div className="space-y-4">
-      {/* 1. View toggle + AI Samenvatting row */}
+      {/* 1. AI Samenvatting row */}
       <div className="flex items-center gap-3 flex-wrap">
-        {/* View toggle */}
-        <div className="flex bg-autronis-card border border-autronis-border rounded-xl p-1">
-          {(["dag", "week"] as TijdlijnView[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
-                view === v
-                  ? "bg-autronis-accent text-autronis-bg"
-                  : "text-autronis-text-secondary hover:text-autronis-text-primary"
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-
-        {/* Compact AI summary */}
+        {/* Compact AI summary — auto-generated fallback if no AI summary yet */}
         <div className="flex-1 flex items-center gap-2 min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
           {samenvattingLoading ? (
@@ -569,8 +629,22 @@ export function TabTijdlijn({ datum }: { datum: string }) {
             <p className="text-xs text-autronis-text-secondary truncate">
               {samenvatting.samenvattingKort}
             </p>
-          ) : (
-            <p className="text-xs text-autronis-text-secondary opacity-50">Geen samenvatting</p>
+          ) : alleSessies.length > 0 ? (() => {
+            // Auto-generate local summary from session data
+            const descriptions = alleSessies
+              .filter(s => s.beschrijving && s.beschrijving !== s.app)
+              .map(s => s.beschrijving)
+              .slice(0, 3);
+            const totalMin = Math.round(alleSessies.reduce((sum, s) => sum + (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000, 0) / 60);
+            const hours = Math.floor(totalMin / 60);
+            const mins = totalMin % 60;
+            const timeStr = hours > 0 ? `${hours}u${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
+            const text = descriptions.length > 0
+              ? `${timeStr} actief: ${descriptions.join(", ")}`
+              : `${timeStr} actief over ${alleSessies.length} sessies`;
+            return <p className="text-xs text-autronis-text-secondary truncate">{text}</p>;
+          })() : (
+            <p className="text-xs text-autronis-text-secondary opacity-50">Geen activiteit</p>
           )}
           {samenvatting?.samenvattingDetail && (
             <button
@@ -598,6 +672,27 @@ export function TabTijdlijn({ datum }: { datum: string }) {
           )}
           {samenvatting ? "Opnieuw" : "Genereer"}
         </button>
+
+        {/* Week/maand rapportage knop */}
+        {view === "week" && (
+          <button
+            onClick={() => {
+              genereerPeriode.mutate(
+                { datum, type: "week" },
+                { onSuccess: (data) => { setPeriodeRapport(data); setPeriodeDetailOpen(true); } }
+              );
+            }}
+            disabled={genereerPeriode.isPending}
+            className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-yellow-400 bg-yellow-400/10 rounded-lg hover:bg-yellow-400/20 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {genereerPeriode.isPending ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : (
+              <TrendingUp className="w-3 h-3" />
+            )}
+            Weekrapportage
+          </button>
+        )}
       </div>
 
       {/* Expandable detail */}
@@ -609,31 +704,201 @@ export function TabTijdlijn({ datum }: { datum: string }) {
         </div>
       )}
 
-      {/* 2. Compact KPI row */}
-      {stats && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Clock className="w-3.5 h-3.5 text-autronis-accent" />
-            <span className="text-sm font-semibold text-autronis-accent tabular-nums">{formatTijd(stats.totaalActief)}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Actief</span>
+      {/* Periode rapportage */}
+      {periodeRapport && periodeDetailOpen && (
+        <div className="bg-autronis-card border border-yellow-400/30 rounded-2xl p-5 space-y-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-yellow-400" />
+              <span className="text-sm font-semibold text-autronis-text-primary">{periodeRapport.periode}</span>
+            </div>
+            <button
+              onClick={() => setPeriodeDetailOpen(false)}
+              className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Pause className="w-3.5 h-3.5 text-gray-400" />
-            <span className="text-sm font-semibold text-gray-400 tabular-nums">{formatTijd(stats.totaalIdle)}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Idle</span>
+          <div className="flex items-center gap-4 text-xs">
+            <span className="text-autronis-accent font-medium tabular-nums">{formatTijd(periodeRapport.totaalSeconden)}</span>
+            <span className="text-green-400 font-medium tabular-nums">{periodeRapport.productiefPercentage}% productief</span>
+            <span className="text-autronis-text-secondary tabular-nums">{periodeRapport.aantalDagen} dagen</span>
+            {periodeRapport.topProject && (
+              <span className="text-yellow-400">Top: {periodeRapport.topProject}</span>
+            )}
           </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-            <span className="text-sm font-semibold text-green-400 tabular-nums">{stats.productiefPercentage}%</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Productief</span>
-          </div>
-          <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
-            <Hash className="w-3.5 h-3.5 text-blue-400" />
-            <span className="text-sm font-semibold text-blue-400 tabular-nums">{stats.aantalSessies}</span>
-            <span className="text-[10px] text-autronis-text-secondary uppercase">Sessies</span>
-          </div>
+          <p className="text-sm text-autronis-text-primary leading-relaxed">{periodeRapport.samenvattingKort}</p>
+          {periodeRapport.samenvattingDetail && (
+            <div className="border-t border-autronis-border/30 pt-3">
+              <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+                {periodeRapport.samenvattingDetail}
+              </p>
+            </div>
+          )}
         </div>
       )}
+
+      {/* 2. Focus Optimization Panel */}
+      {stats && (() => {
+        // Category distribution
+        const catTime: Record<string, number> = {};
+        for (const s of alleSessies) {
+          const timespan = Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000);
+          catTime[s.categorie] = (catTime[s.categorie] || 0) + timespan;
+        }
+        const totalCatTime = Object.values(catTime).reduce((s, v) => s + v, 0);
+        const catEntries = Object.entries(catTime).sort(([, a], [, b]) => b - a);
+
+        const focusScoreColor = stats.focusScore >= 70 ? "text-emerald-400" : stats.focusScore >= 40 ? "text-amber-400" : "text-red-400";
+        const focusScoreLabel = stats.focusScore >= 70 ? "Sterk" : stats.focusScore >= 40 ? "Kan beter" : "Zwak";
+        const focusScoreBg = stats.focusScore >= 70 ? "bg-emerald-500/10 border-emerald-500/20" : stats.focusScore >= 40 ? "bg-amber-500/10 border-amber-500/20" : "bg-red-500/10 border-red-500/20";
+
+        const dwPct = stats.deepWorkTarget > 0 ? Math.min(100, Math.round((stats.deepWorkMinuten / stats.deepWorkTarget) * 100)) : 0;
+        const dwColor = dwPct >= 75 ? "bg-emerald-400" : dwPct >= 40 ? "bg-amber-400" : "bg-red-400";
+
+        const prodLabel = stats.productiefPercentage >= 80 ? "Uitstekend — je tijd gaat naar waardevol werk" : stats.productiefPercentage >= 60 ? "Goed — ruimte voor verbetering" : "Laag — te veel afleiding of overig";
+
+        const inzichten: FocusInzicht[] = stats.inzichten || [];
+
+        return (
+          <div className="space-y-3">
+            {/* Row 1: Core metrics */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Flow Score — the hero metric */}
+              <div className={cn("flex items-center gap-2 rounded-xl px-3.5 py-2 border", focusScoreBg)}>
+                <Brain className={cn("w-3.5 h-3.5", focusScoreColor)} />
+                <span className={cn("text-sm font-bold tabular-nums", focusScoreColor)}>{stats.focusScore}</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Flow Score</span>
+                <span className={cn("text-[9px] font-medium px-1.5 py-0.5 rounded-md", focusScoreBg, focusScoreColor)}>{focusScoreLabel}</span>
+              </div>
+
+              {/* Active time */}
+              <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+                <Clock className="w-3.5 h-3.5 text-autronis-accent" />
+                <span className="text-sm font-semibold text-autronis-accent tabular-nums">{formatTijd(stats.totaalActief)}</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Actief</span>
+              </div>
+
+              {/* Productief % with explanation */}
+              <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2 group relative">
+                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                <span className="text-sm font-semibold text-green-400 tabular-nums">{stats.productiefPercentage}%</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Productief</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                  {prodLabel}
+                </div>
+              </div>
+
+              {/* Focus sessions */}
+              <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+                <Target className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-sm font-semibold text-purple-400 tabular-nums">{stats.aantalFocusSessies}</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Focus sessies</span>
+              </div>
+
+              {/* Context switches */}
+              <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2">
+                <Shuffle className="w-3.5 h-3.5 text-orange-400" />
+                <span className="text-sm font-semibold text-orange-400 tabular-nums">{stats.contextSwitches}</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Switches</span>
+              </div>
+            </div>
+
+            {/* Row 2: Deep Work progress bar + session length */}
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Deep Work with target bar */}
+              <div className="flex items-center gap-3 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2 flex-1 min-w-[260px]">
+                <Zap className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] text-autronis-text-secondary uppercase">Deep Work (≥25 min ononderbroken)</span>
+                    <span className="text-xs font-semibold text-yellow-400 tabular-nums">{formatTijd(stats.deepWorkMinuten * 60)} / {formatTijd(stats.deepWorkTarget * 60)}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-autronis-border/30 rounded-full overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all", dwColor)} style={{ width: `${dwPct}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Avg session length */}
+              <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2 group relative">
+                <Monitor className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-sm font-semibold text-blue-400 tabular-nums">{stats.gemSessieLengte}m</span>
+                <span className="text-[10px] text-autronis-text-secondary uppercase">Gem. sessie</span>
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                  {stats.gemSessieLengte >= 45 ? "Uitstekend — diepe concentratie" : stats.gemSessieLengte >= 25 ? "Goed — probeer richting 45 min" : "Kort — je wordt vaak onderbroken"}
+                </div>
+              </div>
+
+              {/* Longest focus */}
+              {stats.langsteFocusMinuten > 0 && (
+                <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2 group relative">
+                  <Trophy className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="text-sm font-semibold text-amber-400 tabular-nums">{stats.langsteFocusMinuten}m</span>
+                  <span className="text-[10px] text-autronis-text-secondary uppercase">Langste focus</span>
+                  {stats.besteFocusBlok && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl max-w-xs">
+                      {formatTijdRange(stats.besteFocusBlok.startTijd)} – {formatTijdRange(stats.besteFocusBlok.eindTijd)}: {stats.besteFocusBlok.beschrijving}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Row 3: Category distribution */}
+            {totalCatTime > 0 && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex h-2 rounded-full overflow-hidden bg-autronis-border/30">
+                  {catEntries.map(([cat, sec]) => {
+                    const pct = (sec / totalCatTime) * 100;
+                    if (pct < 2) return null;
+                    return (
+                      <div key={cat} className="h-full transition-all"
+                        style={{ width: `${pct}%`, backgroundColor: CATEGORIE_KLEUREN[cat] || "#6B7280" }}
+                        title={`${CATEGORIE_LABELS[cat] || cat}: ${Math.round(pct)}%`} />
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {catEntries.slice(0, 3).map(([cat, sec]) => (
+                    <span key={cat} className="text-[10px] text-autronis-text-secondary flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORIE_KLEUREN[cat] || "#6B7280" }} />
+                      {CATEGORIE_LABELS[cat] || cat} {Math.round((sec / totalCatTime) * 100)}%
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Row 4: Focus Insights — actionable */}
+            {inzichten.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {inzichten.slice(0, 4).map((inzicht, i) => {
+                  const config = {
+                    positief: { icon: CheckCircle2, border: "border-emerald-500/20", bg: "bg-emerald-500/5", color: "text-emerald-400" },
+                    waarschuwing: { icon: AlertTriangle, border: "border-amber-500/20", bg: "bg-amber-500/5", color: "text-amber-400" },
+                    tip: { icon: Lightbulb, border: "border-blue-500/20", bg: "bg-blue-500/5", color: "text-blue-400" },
+                    actie: { icon: ArrowRight, border: "border-autronis-accent/20", bg: "bg-autronis-accent/5", color: "text-autronis-accent" },
+                  }[inzicht.type];
+                  const InzichtIcon = config.icon;
+                  return (
+                    <div key={i} className={cn("flex items-start gap-2 rounded-lg px-3 py-2 border shrink-0 max-w-xs", config.border, config.bg)}>
+                      <InzichtIcon className={cn("w-3.5 h-3.5 mt-0.5 shrink-0", config.color)} />
+                      <p className="text-[11px] text-autronis-text-primary leading-relaxed">{inzicht.tekst}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {stats.mogelijkOnnauwkeurig && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                <span className="text-xs text-orange-400">Mogelijk onnauwkeurige data door idle tracking</span>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 3. Calendar Timeline + Detail panel */}
       <div className="flex gap-4">

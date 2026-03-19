@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1773697081044,
+      "tag": "0000_fine_ultimo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1773765877792,
+      "tag": "0001_clumsy_marvex",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1773783310186,
+      "tag": "0002_open_jocasta",
+      "breakpoints": true
+    }
+  ]
+}

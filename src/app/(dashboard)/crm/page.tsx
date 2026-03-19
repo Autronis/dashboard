@@ -125,7 +125,7 @@ function DraggableLeadCard({
       {...attributes}
       onClick={onClick}
       className={cn(
-        "w-full text-left bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/50 transition-all group cursor-grab active:cursor-grabbing",
+        "w-full text-left bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/50 transition-all group cursor-grab active:cursor-grabbing card-glow",
         isDragging && "opacity-30"
       )}
     >

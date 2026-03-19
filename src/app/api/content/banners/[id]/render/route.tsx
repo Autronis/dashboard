@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { writeFile, mkdir, readFile } from "fs/promises";
 import { join } from "path";
 import type { BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
-import { BANNER_FORMAAT_SIZES } from "@/types/content";
+import { BANNER_FORMAAT_SIZES, BANNER_ILLUSTRATION_BACKGROUNDS } from "@/types/content";
 
 async function getLogoBase64(): Promise<string> {
   try {
@@ -532,6 +532,7 @@ function OgBanner({
   illustrationScale,
   illustrationOffsetX,
   illustrationOffsetY,
+  aiBgBase64,
 }: {
   onderwerp: string;
   icon: BannerIcon;
@@ -542,6 +543,7 @@ function OgBanner({
   illustrationScale?: number;
   illustrationOffsetX?: number;
   illustrationOffsetY?: number;
+  aiBgBase64?: string;
 }) {
   const scale = width / 1080;
   const iconSize = Math.round(44 * scale);
@@ -565,15 +567,32 @@ function OgBanner({
       {/* Flow lines */}
       <OgFlowLines width={width} height={height} />
 
-      {/* Illustration */}
-      <OgIllustration
-        type={illustration}
-        width={width}
-        height={height}
-        scale={illustrationScale}
-        offsetX={illustrationOffsetX}
-        offsetY={illustrationOffsetY}
-      />
+      {/* Background: AI image or SVG illustration */}
+      {aiBgBase64 ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={aiBgBase64}
+          alt=""
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width,
+            height,
+            objectFit: "cover",
+            opacity: 0.5,
+          }}
+        />
+      ) : (
+        <OgIllustration
+          type={illustration}
+          width={width}
+          height={height}
+          scale={illustrationScale}
+          offsetX={illustrationOffsetX}
+          offsetY={illustrationOffsetY}
+        />
+      )}
 
       {/* Radial glow */}
       <div
@@ -725,6 +744,7 @@ export async function POST(
       illustrationScale?: number;
       illustrationOffsetX?: number;
       illustrationOffsetY?: number;
+      aiBgUrl?: string;
     };
 
     const onderwerp = parsed.onderwerp ?? "Autronis";
@@ -733,8 +753,21 @@ export async function POST(
     const illustrationScale = typeof parsed.illustrationScale === "number" ? parsed.illustrationScale : 1.0;
     const illustrationOffsetX = typeof parsed.illustrationOffsetX === "number" ? parsed.illustrationOffsetX : 0;
     const illustrationOffsetY = typeof parsed.illustrationOffsetY === "number" ? parsed.illustrationOffsetY : 0;
+    const aiBgUrl = parsed.aiBgUrl ?? undefined;
     const formaat = (banner.formaat ?? "instagram") as BannerFormaat;
     const { width, height } = BANNER_FORMAAT_SIZES[formaat];
+
+    // Priority: AI bg > pre-generated PNG > SVG fallback
+    const bgImagePath = aiBgUrl || BANNER_ILLUSTRATION_BACKGROUNDS[illustration as BannerIllustration];
+    let aiBgBase64: string | undefined;
+    if (bgImagePath) {
+      try {
+        const bgBuffer = await readFile(join(process.cwd(), "public", bgImagePath));
+        aiBgBase64 = `data:image/png;base64,${bgBuffer.toString("base64")}`;
+      } catch {
+        // Fall back to SVG illustration if file not found
+      }
+    }
 
     const logoSrc = await getLogoBase64();
 
@@ -749,6 +782,7 @@ export async function POST(
         illustrationScale={illustrationScale}
         illustrationOffsetX={illustrationOffsetX}
         illustrationOffsetY={illustrationOffsetY}
+        aiBgBase64={aiBgBase64}
       />
     );
 

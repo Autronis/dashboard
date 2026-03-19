@@ -17,6 +17,10 @@ interface KlantModalProps {
     adres: string | null;
     uurtarief: number | null;
     notities: string | null;
+    website?: string | null;
+    branche?: string | null;
+    kvkNummer?: string | null;
+    btwNummer?: string | null;
   } | null;
   onOpgeslagen: () => void;
 }
@@ -35,6 +39,10 @@ const leegFormulier = {
   adres: "",
   uurtarief: "",
   notities: "",
+  website: "",
+  branche: "",
+  kvkNummer: "",
+  btwNummer: "",
 };
 
 export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalProps) {
@@ -54,6 +62,10 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
           adres: klant.adres ?? "",
           uurtarief: klant.uurtarief != null ? String(klant.uurtarief) : "",
           notities: klant.notities ?? "",
+          website: klant.website ?? "",
+          branche: klant.branche ?? "",
+          kvkNummer: klant.kvkNummer ?? "",
+          btwNummer: klant.btwNummer ?? "",
         });
       } else {
         setFormulier(leegFormulier);
@@ -94,6 +106,10 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
         adres: formulier.adres.trim() || null,
         uurtarief: formulier.uurtarief.trim() ? Number(formulier.uurtarief) : null,
         notities: formulier.notities.trim() || null,
+        website: formulier.website.trim() || null,
+        branche: formulier.branche.trim() || null,
+        kvkNummer: formulier.kvkNummer.trim() || null,
+        btwNummer: formulier.btwNummer.trim() || null,
       };
 
       const url = klant ? `/api/klanten/${klant.id}` : "/api/klanten";
@@ -171,21 +187,39 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
           placeholder="Naam contactpersoon"
         />
 
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            label="Email"
+            type="email"
+            value={formulier.email}
+            onChange={(e) => updateVeld("email", e.target.value)}
+            placeholder="email@voorbeeld.nl"
+            fout={fouten.email}
+          />
+
+          <FormField
+            label="Telefoon"
+            type="text"
+            value={formulier.telefoon}
+            onChange={(e) => updateVeld("telefoon", e.target.value)}
+            placeholder="Telefoonnummer"
+          />
+        </div>
+
         <FormField
-          label="Email"
-          type="email"
-          value={formulier.email}
-          onChange={(e) => updateVeld("email", e.target.value)}
-          placeholder="email@voorbeeld.nl"
-          fout={fouten.email}
+          label="Website"
+          type="text"
+          value={formulier.website}
+          onChange={(e) => updateVeld("website", e.target.value)}
+          placeholder="https://voorbeeld.nl"
         />
 
         <FormField
-          label="Telefoon"
+          label="Branche"
           type="text"
-          value={formulier.telefoon}
-          onChange={(e) => updateVeld("telefoon", e.target.value)}
-          placeholder="Telefoonnummer"
+          value={formulier.branche}
+          onChange={(e) => updateVeld("branche", e.target.value)}
+          placeholder="bijv. IT & Software, Retail, Bouw"
         />
 
         <div className="space-y-1.5">
@@ -194,10 +228,28 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
           </label>
           <textarea
             className={textareaClasses}
-            rows={3}
+            rows={2}
             value={formulier.adres}
             onChange={(e) => updateVeld("adres", e.target.value)}
             placeholder="Adresgegevens"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField
+            label="KvK nummer"
+            type="text"
+            value={formulier.kvkNummer}
+            onChange={(e) => updateVeld("kvkNummer", e.target.value)}
+            placeholder="12345678"
+          />
+
+          <FormField
+            label="BTW nummer"
+            type="text"
+            value={formulier.btwNummer}
+            onChange={(e) => updateVeld("btwNummer", e.target.value)}
+            placeholder="NL123456789B01"
           />
         </div>
 

@@ -332,7 +332,7 @@ export function TabRegistraties() {
                       <div
                         key={reg.id}
                         className={cn(
-                          "group bg-autronis-card border rounded-2xl px-5 py-4 flex items-center justify-between transition-all",
+                          "group bg-autronis-card border rounded-2xl px-5 py-4 flex items-center justify-between transition-all card-glow",
                           isActief
                             ? "border-autronis-accent shadow-sm shadow-autronis-accent/10"
                             : "border-autronis-border hover:border-autronis-text-secondary/20"

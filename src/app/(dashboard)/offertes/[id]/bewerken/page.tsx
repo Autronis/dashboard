@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DocumentPreview } from "@/components/shared/document-preview";
 import { formatBedrag, formatDatum } from "@/lib/utils";
 
 interface Klant {
@@ -67,105 +68,20 @@ function OffertePreview({
   offertenummer: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-lg sticky top-8">
-      <div className="flex justify-between items-start mb-10">
-        <div>
-          <h2 className="text-2xl font-bold text-[#128C7E]">Autronis</h2>
-          <p className="text-sm text-gray-500 mt-1 leading-relaxed">offerte@autronis.com</p>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold text-[#128C7E]">OFFERTE</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-8 mb-10">
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offerte aan</p>
-          <p className="text-sm text-gray-800 leading-relaxed">
-            {klant ? (
-              <>
-                {klant.bedrijfsnaam}
-                {klant.contactpersoon && <><br />{klant.contactpersoon}</>}
-                {klant.adres && <><br />{klant.adres}</>}
-                {klant.email && <><br />{klant.email}</>}
-              </>
-            ) : (
-              <span className="text-gray-400 italic">Selecteer een klant...</span>
-            )}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offertenummer</p>
-          <p className="text-sm text-gray-800">{offertenummer}</p>
-          {titel && (
-            <>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Titel</p>
-              <p className="text-sm text-gray-800">{titel}</p>
-            </>
-          )}
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Offertedatum</p>
-          <p className="text-sm text-gray-800">{datum ? formatDatum(datum) : "\u2014"}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Geldig tot</p>
-          <p className="text-sm text-gray-800">{geldigTot ? formatDatum(geldigTot) : "\u2014"}</p>
-        </div>
-      </div>
-
-      <table className="w-full mb-8">
-        <thead>
-          <tr className="border-b-2 border-gray-200">
-            <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Omschrijving</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">Aantal</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Prijs</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">BTW %</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Totaal</th>
-          </tr>
-        </thead>
-        <tbody>
-          {regels.map((regel, i) => (
-            <tr key={i} className="border-b border-gray-100">
-              <td className="py-3 text-sm text-gray-800">
-                {regel.omschrijving || <span className="text-gray-400 italic">...</span>}
-              </td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.aantal}</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.eenheidsprijs)}</td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.btwPercentage}%</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.aantal * regel.eenheidsprijs)}</td>
-            </tr>
-          ))}
-          {regels.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-sm text-gray-400 text-center italic">
-                Voeg een regel toe...
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <div className="flex justify-end">
-        <div className="w-60 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotaal</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(subtotaal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">BTW</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(btwBedrag)}</span>
-          </div>
-          <div className="border-t-2 border-gray-200 pt-2 flex justify-between">
-            <span className="text-lg font-bold text-gray-800">Totaal</span>
-            <span className="text-lg font-bold text-[#128C7E] tabular-nums">{formatBedrag(totaal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {notities.trim() && (
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Opmerkingen</p>
-          <p className="text-sm text-gray-600 leading-relaxed">{notities}</p>
-        </div>
-      )}
-    </div>
+    <DocumentPreview
+      type="OFFERTE"
+      klant={klant}
+      nummer={offertenummer}
+      titel={titel}
+      datum={datum}
+      geldigTot={geldigTot}
+      regels={regels}
+      subtotaal={subtotaal}
+      btwBedrag={btwBedrag}
+      totaal={totaal}
+      notities={notities}
+      sticky
+    />
   );
 }
 

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { screenTimeSamenvattingen, screenTimeEntries, projecten } from "@/lib/db/schema";
+import { screenTimeSamenvattingen, screenTimeEntries, projecten, agendaItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
+import { aiComplete } from "@/lib/ai/client";
 
 export async function GET(req: NextRequest) {
   try {
@@ -85,8 +85,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Cap at 16 hours to prevent impossible data from idle tracking
+    const MAX_DAGELIJKSE_SECONDEN = 57600; // 16 uur
+    const ongecaptSeconden = totaalSeconden;
+    totaalSeconden = Math.min(totaalSeconden, MAX_DAGELIJKSE_SECONDEN);
+    productiefSeconden = Math.min(productiefSeconden, totaalSeconden);
+
     const productiefPercentage = totaalSeconden > 0 ? Math.round((productiefSeconden / totaalSeconden) * 100) : 0;
     const topProject = Object.values(perApp).sort((a, b) => b.seconden - a.seconden)[0]?.project || null;
+    const mogelijkOnnauwkeurig = ongecaptSeconden > 43200; // > 12 hours
 
     // Build rich context for Claude with window titles
     const activiteitenLijst = Object.entries(perApp)
@@ -113,24 +120,38 @@ export async function POST(req: NextRequest) {
       })
       .join("\n");
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ fout: "ANTHROPIC_API_KEY niet geconfigureerd" }, { status: 500 });
-    }
+    // Fetch agenda items for calendar context
+    const agendaDag = db
+      .select({
+        titel: agendaItems.titel,
+        type: agendaItems.type,
+        startDatum: agendaItems.startDatum,
+        eindDatum: agendaItems.eindDatum,
+      })
+      .from(agendaItems)
+      .where(
+        and(
+          eq(agendaItems.gebruikerId, gebruiker.id),
+          gte(agendaItems.startDatum, `${datum}T00:00:00`),
+          lte(agendaItems.startDatum, `${datum}T23:59:59`)
+        )
+      )
+      .orderBy(asc(agendaItems.startDatum))
+      .all();
 
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{
-        role: "user",
-        content: `Je bent een productiviteitsassistent voor Sem, developer bij Autronis (AI/automation bureau).
-Schrijf een nauwkeurige dagsamenvatting op basis van de schermtijd data. Wees SPECIFIEK over welke projecten en bestanden er aan gewerkt is.
+    const agendaStr = agendaDag.length > 0
+      ? `\nAGENDA ITEMS:\n${agendaDag.map(a => {
+          const start = new Date(a.startDatum).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+          const eind = a.eindDatum ? new Date(a.eindDatum).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : "";
+          return `- ${start}${eind ? `-${eind}` : ""}: ${a.titel} (${a.type ?? "afspraak"})`;
+        }).join("\n")}\n`
+      : "";
 
-Datum: ${datum}
+    const { text: tekst } = await aiComplete({
+      prompt: `Datum: ${datum}
 Totale actieve tijd: ${Math.floor(totaalSeconden / 3600)}u ${Math.round((totaalSeconden % 3600) / 60)}m
-Productief: ${productiefPercentage}%
-
+Productief: ${productiefPercentage}%${mogelijkOnnauwkeurig ? "\nLET OP: De actieve tijd was oorspronkelijk " + Math.floor(ongecaptSeconden / 3600) + "u, wat onrealistisch is. Vermeldt dit kort: 'Mogelijk onnauwkeurige data door idle tracking.'" : ""}
+${agendaStr}
 Activiteiten met details:
 ${activiteitenLijst}
 
@@ -141,10 +162,11 @@ Genereer JSON:
 }
 
 Alleen JSON, geen uitleg.`,
-      }],
+      system: `Je bent een productiviteitsassistent voor Sem, developer bij Autronis (AI/automation bureau).
+Schrijf een nauwkeurige dagsamenvatting op basis van de schermtijd data. Wees SPECIFIEK over welke projecten en bestanden er aan gewerkt is.
+Koppel schermtijd aan agenda items als die overlappen (bijv. "Tijdens de meeting van 10:30 met X was je in Google Meet").`,
+      maxTokens: 1024,
     });
-
-    const tekst = response.content[0].type === "text" ? response.content[0].text : "";
     let parsed: { kort: string; detail: string };
     try {
       const jsonMatch = tekst.match(/\{[\s\S]*\}/);

@@ -65,7 +65,7 @@ export async function POST(
 
     const [bedrijf] = db.select().from(bedrijfsinstellingen).limit(1).all();
     const bedrijfNaam = bedrijf?.bedrijfsnaam || "Autronis";
-    const fromEmail = bedrijf?.email || "factuur@autronis.com";
+    const fromEmail = bedrijf?.email || "zakelijk@autronis.com";
     const iban = bedrijf?.iban;
 
     const bedragFormatted = new Intl.NumberFormat("nl-NL", {

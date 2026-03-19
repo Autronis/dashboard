@@ -51,6 +51,24 @@ export async function PUT(
     if (body.omschrijving !== undefined) updateData.omschrijving = body.omschrijving?.trim() || null;
     if (body.uitwerking !== undefined) updateData.uitwerking = body.uitwerking?.trim() || null;
     if (body.prioriteit !== undefined) updateData.prioriteit = body.prioriteit;
+    if (body.impact !== undefined) updateData.impact = body.impact;
+    if (body.effort !== undefined) updateData.effort = body.effort;
+    if (body.revenuePotential !== undefined) updateData.revenuePotential = body.revenuePotential;
+
+    // Recalculate aiScore if manual scores are set
+    if (body.impact !== undefined || body.effort !== undefined || body.revenuePotential !== undefined) {
+      const existing = db.select().from(ideeen).where(eq(ideeen.id, Number(id))).get();
+      const impact = body.impact ?? existing?.impact ?? 5;
+      const effort = body.effort ?? existing?.effort ?? 5;
+      const revenue = body.revenuePotential ?? existing?.revenuePotential ?? 5;
+      // Priority score: high impact + high revenue + low effort = high score
+      const effortInverted = 11 - Math.max(1, Math.min(10, effort));
+      updateData.aiScore = Math.round((impact + revenue + effortInverted) / 3 * 10) / 10;
+    }
+
+    // Handle AI suggestion fields
+    if (body.gepromoveerd !== undefined) updateData.gepromoveerd = body.gepromoveerd;
+    if (body.isAiSuggestie !== undefined) updateData.isAiSuggestie = body.isAiSuggestie;
 
     const [bijgewerkt] = await db
       .update(ideeen)

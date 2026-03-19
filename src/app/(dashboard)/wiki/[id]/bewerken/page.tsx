@@ -14,6 +14,11 @@ const categorieOpties = [
   { value: "technisch", label: "Technisch" },
   { value: "templates", label: "Templates" },
   { value: "financien", label: "Financieel" },
+  { value: "strategie", label: "Strategie" },
+  { value: "geleerde-lessen", label: "Geleerde lessen" },
+  { value: "tools", label: "Tools" },
+  { value: "ideeen", label: "Ideeën" },
+  { value: "educatie", label: "Educatie" },
 ];
 
 function renderPreview(text: string): string {

@@ -23,6 +23,9 @@ export interface Idee {
   verdienmodel: string | null;
   isAiSuggestie: number;
   gepromoveerd: number;
+  impact: number | null;
+  effort: number | null;
+  revenuePotential: number | null;
 }
 
 // ============ FETCH FUNCTIONS ============
@@ -102,6 +105,11 @@ export function useUpdateIdee() {
         omschrijving?: string | null;
         uitwerking?: string | null;
         prioriteit?: string;
+        impact?: number;
+        effort?: number;
+        revenuePotential?: number;
+        gepromoveerd?: number;
+        isAiSuggestie?: number;
       };
     }) => {
       const res = await fetch(`/api/ideeen/${id}`, {

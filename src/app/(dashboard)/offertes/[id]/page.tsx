@@ -18,6 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DocumentPreview } from "@/components/shared/document-preview";
 
 interface OfferteDetail {
   id: number;
@@ -310,97 +311,31 @@ export default function OfferteDetailPage() {
         </div>
 
         {/* Offerte preview */}
-        <div className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-10">
-            <div>
-              <h2 className="text-2xl font-bold text-[#128C7E]">Autronis</h2>
-              <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-                offerte@autronis.com
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-[#128C7E]">OFFERTE</p>
-            </div>
-          </div>
-
-          {/* Info row */}
-          <div className="grid grid-cols-2 gap-8 mb-10">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offerte aan</p>
-              <p className="text-sm text-gray-800 leading-relaxed">
-                {offerte.klantNaam}
-                {offerte.klantContactpersoon && <><br />{offerte.klantContactpersoon}</>}
-                {offerte.klantAdres && <><br />{offerte.klantAdres}</>}
-                {offerte.klantEmail && <><br />{offerte.klantEmail}</>}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Offertenummer</p>
-              <p className="text-sm text-gray-800">{offerte.offertenummer}</p>
-              {offerte.titel && (
-                <>
-                  <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Titel</p>
-                  <p className="text-sm text-gray-800">{offerte.titel}</p>
-                </>
-              )}
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Offertedatum</p>
-              <p className="text-sm text-gray-800">{offerte.datum ? formatDatum(offerte.datum) : "\u2014"}</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Geldig tot</p>
-              <p className="text-sm text-gray-800">{offerte.geldigTot ? formatDatum(offerte.geldigTot) : "\u2014"}</p>
-            </div>
-          </div>
-
-          {/* Regels tabel */}
-          <table className="w-full mb-8">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Omschrijving</th>
-                <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Aantal</th>
-                <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">Prijs</th>
-                <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">BTW %</th>
-                <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">Totaal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {regels.map((regel) => (
-                <tr key={regel.id} className="border-b border-gray-100">
-                  <td className="py-3 text-sm text-gray-800">{regel.omschrijving}</td>
-                  <td className="py-3 text-sm text-gray-800 text-center">{regel.aantal || 1}</td>
-                  <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.eenheidsprijs || 0)}</td>
-                  <td className="py-3 text-sm text-gray-800 text-center">{regel.btwPercentage ?? 21}%</td>
-                  <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.totaal || 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Totalen */}
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotaal</span>
-                <span className="text-gray-800 tabular-nums">{formatBedrag(offerte.bedragExclBtw || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">BTW ({offerte.btwPercentage || 21}%)</span>
-                <span className="text-gray-800 tabular-nums">{formatBedrag(offerte.btwBedrag || 0)}</span>
-              </div>
-              <div className="border-t-2 border-gray-200 pt-2 flex justify-between">
-                <span className="text-lg font-bold text-gray-800">Totaal</span>
-                <span className="text-lg font-bold text-[#128C7E] tabular-nums">{formatBedrag(offerte.bedragInclBtw || 0)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Notities */}
-          {offerte.notities && (
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Opmerkingen</p>
-              <p className="text-sm text-gray-600 leading-relaxed">{offerte.notities}</p>
-            </div>
-          )}
-        </div>
+        <DocumentPreview
+          type="OFFERTE"
+          klant={{
+            bedrijfsnaam: offerte.klantNaam,
+            contactpersoon: offerte.klantContactpersoon,
+            adres: offerte.klantAdres,
+            email: offerte.klantEmail,
+          }}
+          nummer={offerte.offertenummer}
+          titel={offerte.titel || undefined}
+          datum={offerte.datum || ""}
+          geldigTot={offerte.geldigTot || undefined}
+          btwPercentage={offerte.btwPercentage || 21}
+          regels={regels.map((r) => ({
+            omschrijving: r.omschrijving,
+            aantal: r.aantal || 1,
+            eenheidsprijs: r.eenheidsprijs || 0,
+            btwPercentage: r.btwPercentage ?? 21,
+            totaal: r.totaal || 0,
+          }))}
+          subtotaal={offerte.bedragExclBtw || 0}
+          btwBedrag={offerte.btwBedrag || 0}
+          totaal={offerte.bedragInclBtw || 0}
+          notities={offerte.notities}
+        />
 
         {/* Delete dialog */}
         <ConfirmDialog

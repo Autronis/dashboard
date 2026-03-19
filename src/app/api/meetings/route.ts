@@ -1,10 +1,200 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { meetings, klanten, projecten } from "@/lib/db/schema";
+import { meetings, klanten, projecten, externeKalenders } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
+
+// ============ ICS PARSING (reuse from agenda/sync) ============
+
+interface Attendee {
+  naam: string | null;
+  email: string;
+}
+
+interface CalendarMeeting {
+  id: string;
+  titel: string;
+  datum: string;
+  eindDatum: string | null;
+  duurMinuten: number | null;
+  meetingUrl: string | null;
+  deelnemers: Attendee[];
+  bron: "kalender";
+  bronNaam: string;
+  kleur: string;
+  locatie: string | null;
+  omschrijving: string | null;
+  organisator: string | null;
+}
+
+function parseICSDate(value: string): Date | null {
+  const clean = value.replace(/[^0-9TZ]/g, "");
+  if (clean.length >= 8) {
+    const y = parseInt(clean.slice(0, 4), 10);
+    const m = parseInt(clean.slice(4, 6), 10) - 1;
+    const d = parseInt(clean.slice(6, 8), 10);
+    if (clean.length >= 15) {
+      const h = parseInt(clean.slice(9, 11), 10);
+      const min = parseInt(clean.slice(11, 13), 10);
+      const s = parseInt(clean.slice(13, 15), 10);
+      if (clean.endsWith("Z")) return new Date(Date.UTC(y, m, d, h, min, s));
+      return new Date(y, m, d, h, min, s);
+    }
+    return new Date(y, m, d);
+  }
+  return null;
+}
+
+function unfoldICS(text: string): string {
+  return text.replace(/\r?\n[ \t]/g, "");
+}
+
+function extractEmail(line: string): string {
+  const match = line.match(/mailto:([^\s;]+)/i);
+  return match ? match[1] : "";
+}
+
+function extractCN(line: string): string | null {
+  const match = line.match(/CN=([^;:]+)/i);
+  return match ? match[1].trim() : null;
+}
+
+function extractMeetingUrl(description: string, location: string): string | null {
+  if (location && /^https?:\/\//.test(location)) return location;
+  const urlMatch = description.match(
+    /(https?:\/\/(?:meet\.google\.com|zoom\.us|teams\.microsoft\.com|app\.cal\.com)[^\s\\)]+)/i
+  );
+  return urlMatch ? urlMatch[1] : null;
+}
+
+interface ParsedEvent {
+  uid: string;
+  summary: string;
+  description: string;
+  location: string;
+  dtstart: string;
+  dtend: string;
+  heleDag: boolean;
+  organisator: string | null;
+  deelnemers: Attendee[];
+}
+
+function parseICS(icsText: string): ParsedEvent[] {
+  const unfolded = unfoldICS(icsText);
+  const events: ParsedEvent[] = [];
+
+  const blocks = unfolded.split("BEGIN:VEVENT");
+  for (let i = 1; i < blocks.length; i++) {
+    const block = blocks[i].split("END:VEVENT")[0];
+    const lines = block.split(/\r?\n/);
+
+    let uid = "";
+    let summary = "";
+    let description = "";
+    let location = "";
+    let dtstart = "";
+    let dtend = "";
+    let heleDag = false;
+    let organisator: string | null = null;
+    const deelnemers: Attendee[] = [];
+
+    for (const line of lines) {
+      if (line.startsWith("UID:")) uid = line.slice(4).trim();
+      else if (line.startsWith("SUMMARY:")) summary = line.slice(8).trim();
+      else if (line.startsWith("DESCRIPTION:")) {
+        description = line.slice(12).trim().replace(/\\n/g, "\n").replace(/\\,/g, ",");
+      } else if (line.startsWith("LOCATION:")) location = line.slice(9).trim();
+      else if (line.startsWith("DTSTART")) {
+        const val = line.split(":").pop()?.trim() ?? "";
+        dtstart = val;
+        heleDag = line.includes("VALUE=DATE") && !line.includes("VALUE=DATE-TIME");
+        if (!line.includes("VALUE=") && val.length === 8) heleDag = true;
+      } else if (line.startsWith("DTEND")) {
+        dtend = line.split(":").pop()?.trim() ?? "";
+      } else if (line.startsWith("ORGANIZER")) {
+        organisator = extractCN(line) || extractEmail(line) || null;
+      } else if (line.startsWith("ATTENDEE")) {
+        const email = extractEmail(line);
+        if (email) {
+          deelnemers.push({ naam: extractCN(line), email });
+        }
+      }
+    }
+
+    if (dtstart) {
+      events.push({ uid, summary, description, location, dtstart, dtend, heleDag, organisator, deelnemers });
+    }
+  }
+
+  return events;
+}
+
+async function fetchCalendarMeetings(): Promise<CalendarMeeting[]> {
+  const kalenders = db
+    .select()
+    .from(externeKalenders)
+    .where(eq(externeKalenders.isActief, 1))
+    .all();
+
+  const allMeetings: CalendarMeeting[] = [];
+  const now = new Date();
+  const van = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
+  const tot = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days ahead
+
+  for (const kalender of kalenders) {
+    try {
+      const response = await fetch(kalender.url, {
+        headers: { "User-Agent": "Autronis-Dashboard/1.0" },
+        signal: AbortSignal.timeout(10000),
+      });
+      if (!response.ok) continue;
+
+      const icsText = await response.text();
+      const parsed = parseICS(icsText);
+
+      for (const event of parsed) {
+        const start = parseICSDate(event.dtstart);
+        const end = event.dtend ? parseICSDate(event.dtend) : null;
+
+        if (!start || isNaN(start.getTime())) continue;
+        if (start > tot || (end && end < van) || (!end && start < van)) continue;
+        if (event.heleDag) continue; // Skip all-day events, not meetings
+
+        const meetingUrl = extractMeetingUrl(event.description, event.location);
+
+        // Only include events with meeting URLs or that have attendees
+        if (!meetingUrl && event.deelnemers.length === 0) continue;
+
+        let duurMinuten: number | null = null;
+        if (end) {
+          duurMinuten = Math.round((end.getTime() - start.getTime()) / 60000);
+        }
+
+        allMeetings.push({
+          id: `cal-${kalender.id}-${event.uid}`,
+          titel: event.summary || "Zonder titel",
+          datum: start.toISOString(),
+          eindDatum: end ? end.toISOString() : null,
+          duurMinuten,
+          meetingUrl,
+          deelnemers: event.deelnemers,
+          bron: "kalender",
+          bronNaam: kalender.naam,
+          kleur: kalender.kleur ?? "#17B8A5",
+          locatie: event.location || null,
+          omschrijving: event.description || null,
+          organisator: event.organisator,
+        });
+      }
+    } catch {
+      // Skip failed calendars
+    }
+  }
+
+  return allMeetings;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,18 +203,25 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const klantId = searchParams.get("klantId");
     const projectId = searchParams.get("projectId");
+    const includeCalendar = searchParams.get("includeCalendar") !== "false";
 
     let query = db
       .select({
         id: meetings.id,
         titel: meetings.titel,
         datum: meetings.datum,
+        duurMinuten: meetings.duurMinuten,
         status: meetings.status,
         klantId: meetings.klantId,
         projectId: meetings.projectId,
         klantNaam: klanten.bedrijfsnaam,
         projectNaam: projecten.naam,
         samenvatting: meetings.samenvatting,
+        actiepunten: meetings.actiepunten,
+        sentiment: meetings.sentiment,
+        tags: meetings.tags,
+        transcript: meetings.transcript,
+        audioPad: meetings.audioPad,
         aangemaaktOp: meetings.aangemaaktOp,
       })
       .from(meetings)
@@ -39,9 +236,70 @@ export async function GET(req: NextRequest) {
       query = query.where(eq(meetings.projectId, Number(projectId)));
     }
 
-    const result = query.all();
+    const dbMeetings = query.all();
 
-    return NextResponse.json({ meetings: result });
+    // Enrich DB meetings with source info
+    const enrichedDbMeetings = dbMeetings.map((m) => ({
+      ...m,
+      bron: "database" as const,
+      meetingUrl: null as string | null,
+      deelnemers: [] as Attendee[],
+      eindDatum: null as string | null,
+      bronNaam: null as string | null,
+      locatie: null as string | null,
+      omschrijving: null as string | null,
+      organisator: null as string | null,
+      hasNotities: !!(m.samenvatting || m.transcript),
+    }));
+
+    if (!includeCalendar || klantId || projectId) {
+      return NextResponse.json({ meetings: enrichedDbMeetings });
+    }
+
+    // Fetch calendar meetings
+    let calendarMeetings: CalendarMeeting[] = [];
+    try {
+      calendarMeetings = await fetchCalendarMeetings();
+    } catch {
+      // Calendar fetch failed, return DB only
+    }
+
+    // Deduplicate: if a calendar event matches a DB meeting by title+date (same day), skip calendar version
+    const dbDateTitles = new Set(
+      dbMeetings.map(
+        (m) => `${m.titel.toLowerCase().trim()}|${m.datum.slice(0, 10)}`
+      )
+    );
+
+    const uniqueCalendarMeetings = calendarMeetings
+      .filter((cm) => {
+        const key = `${cm.titel.toLowerCase().trim()}|${cm.datum.slice(0, 10)}`;
+        return !dbDateTitles.has(key);
+      })
+      .map((cm) => ({
+        ...cm,
+        status: null as string | null,
+        klantId: null as number | null,
+        projectId: null as number | null,
+        klantNaam: null as string | null,
+        projectNaam: null as string | null,
+        samenvatting: null as string | null,
+        actiepunten: "[]",
+        sentiment: null as string | null,
+        tags: "[]",
+        transcript: null as string | null,
+        audioPad: null as string | null,
+        aangemaaktOp: null as string | null,
+        hasNotities: false,
+      }));
+
+    // Merge and sort by date desc
+    const combined = [
+      ...enrichedDbMeetings,
+      ...uniqueCalendarMeetings,
+    ].sort((a, b) => new Date(b.datum).getTime() - new Date(a.datum).getTime());
+
+    return NextResponse.json({ meetings: combined });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Onbekende fout";
     if (message === "Niet geauthenticeerd") {

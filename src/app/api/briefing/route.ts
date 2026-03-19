@@ -13,10 +13,11 @@ import {
   gewoonteLogboek,
   concurrentScans,
   concurrenten as concurrentenTabel,
+  radarItems,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, ne, gte, lte, desc, sql, asc } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { aiComplete } from "@/lib/ai/client";
 
 // ============ TYPES ============
 
@@ -330,6 +331,21 @@ export async function POST() {
       ))
       .all();
 
+    // 10. Learning Radar — top item van vandaag/gisteren
+    const radarTopItems = db
+      .select({
+        titel: radarItems.titel,
+        url: radarItems.url,
+        score: radarItems.score,
+        aiSamenvatting: radarItems.aiSamenvatting,
+        categorie: radarItems.categorie,
+      })
+      .from(radarItems)
+      .where(gte(radarItems.score, 7))
+      .orderBy(desc(radarItems.gepubliceerdOp))
+      .limit(3)
+      .all();
+
     // ============ AI Samenvatting ============
 
     const begroeting = getBegroeting();
@@ -364,20 +380,13 @@ ${alleBelastingDeadlines.map(d => {
 ${concurrentUpdates.length > 0 ? `CONCURRENT UPDATES DEZE WEEK:
 ${concurrentUpdates.map((u) => `- ${u.naam}: ${u.samenvatting ?? "Geen samenvatting"}`).join("\n")}` : ""}
 
-Schrijf een persoonlijke samenvatting van 2-3 zinnen. Begin met "${begroeting} ${gebruiker.naam}!" en geef een overzicht van de dag. Wees concreet en noem specifieke taken of afspraken als die er zijn. Houd het kort en motiverend.${concurrentUpdates.length > 0 ? " Neem de belangrijkste concurrent-update op in je briefing als die relevant is." : ""}`;
+${radarTopItems.length > 0 ? `AI/TECH NIEUWS (Learning Radar, score 7+):
+${radarTopItems.map((r) => `- [${r.categorie}] ${r.titel} (score: ${r.score}) — ${r.aiSamenvatting ?? ""}`).join("\n")}` : ""}
 
-    const anthropic = new Anthropic();
+Schrijf een persoonlijke samenvatting van 2-3 zinnen. Begin met "${begroeting} ${gebruiker.naam}!" en geef een overzicht van de dag. Wees concreet en noem specifieke taken of afspraken als die er zijn. Houd het kort en motiverend.${concurrentUpdates.length > 0 ? " Neem de belangrijkste concurrent-update op in je briefing als die relevant is." : ""}${radarTopItems.length > 0 ? " Noem het meest relevante AI/tech nieuws kort als tip van de dag." : ""}`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 300,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const samenvatting =
-      response.content[0].type === "text"
-        ? response.content[0].text
-        : "";
+    const aiResult = await aiComplete({ prompt, maxTokens: 300 });
+    const samenvatting = aiResult.text;
 
     // ============ Upsert briefing ============
 

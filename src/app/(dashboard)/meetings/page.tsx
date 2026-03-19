@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   Mic,
+  MicOff,
   Upload,
   FileText,
   CheckCircle2,
@@ -15,8 +16,22 @@ import {
   X,
   ArrowLeft,
   Calendar,
-  Users,
   ClipboardList,
+  Search,
+  Clock,
+  AlertTriangle,
+  Target,
+  Sparkles,
+  Play,
+  Pause,
+  Tag,
+  TrendingUp,
+  Heart,
+  Video,
+  Users,
+  ExternalLink,
+  Save,
+  ChevronRight,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +43,9 @@ import {
   useVerwerkMeeting,
   useSubmitTranscript,
   useDeleteMeeting,
+  useUpdateMeeting,
+  useUploadMeetingAudio,
+  useMeetingVoorbereiding,
 } from "@/hooks/queries/use-meetings";
 import type { Meeting } from "@/hooks/queries/use-meetings";
 
@@ -61,28 +79,559 @@ function getVerantwoordelijkeStyle(naam: string) {
   return verantwoordelijkeConfig.klant;
 }
 
+function formatDuur(minuten: number | null): string {
+  if (!minuten) return "-";
+  if (minuten < 60) return `${minuten} min`;
+  const uren = Math.floor(minuten / 60);
+  const rest = minuten % 60;
+  return rest > 0 ? `${uren}u ${rest}min` : `${uren}u`;
+}
+
+function formatTijd(datum: string): string {
+  const d = new Date(datum);
+  return d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+
+function formatCountdown(datum: string): string {
+  const now = new Date();
+  const target = new Date(datum);
+  const diff = target.getTime() - now.getTime();
+
+  if (diff < 0) return "Gestart";
+
+  const minuten = Math.floor(diff / 60000);
+  const uren = Math.floor(minuten / 60);
+  const dagen = Math.floor(uren / 24);
+
+  if (dagen > 0) return `Over ${dagen}d ${uren % 24}u`;
+  if (uren > 0) return `Over ${uren}u ${minuten % 60}min`;
+  return `Over ${minuten}min`;
+}
+
+function isUpcoming(datum: string): boolean {
+  return new Date(datum) > new Date();
+}
+
+function isThisWeek(datum: string): boolean {
+  const d = new Date(datum);
+  const now = new Date();
+  const startOfWeek = new Date(now);
+  startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 7);
+  return d >= startOfWeek && d < endOfWeek;
+}
+
+// ============ AUDIO PLAYER ============
+
+function AudioPlayer({ src }: { src: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const toggle = useCallback(() => {
+    if (!audioRef.current) return;
+    if (playing) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setPlaying(!playing);
+  }, [playing]);
+
+  const seek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current || !duration) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioRef.current.currentTime = pct * duration;
+  }, [duration]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="flex items-center gap-3 bg-autronis-bg/50 rounded-xl px-4 py-3">
+      <audio
+        ref={audioRef}
+        src={src}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
+        onEnded={() => setPlaying(false)}
+      />
+      <button
+        onClick={toggle}
+        className="p-2 bg-autronis-accent/20 rounded-lg hover:bg-autronis-accent/30 transition-colors"
+      >
+        {playing ? <Pause className="w-4 h-4 text-autronis-accent" /> : <Play className="w-4 h-4 text-autronis-accent" />}
+      </button>
+      <span className="text-xs text-autronis-text-secondary tabular-nums w-10">{formatTime(currentTime)}</span>
+      <div
+        className="flex-1 h-2 bg-autronis-border rounded-full cursor-pointer relative"
+        onClick={seek}
+      >
+        <div
+          className="h-full bg-autronis-accent rounded-full transition-all"
+          style={{ width: duration ? `${(currentTime / duration) * 100}%` : "0%" }}
+        />
+      </div>
+      <span className="text-xs text-autronis-text-secondary tabular-nums w-10">{formatTime(duration)}</span>
+    </div>
+  );
+}
+
+// ============ LIVE RECORDER ============
+
+function LiveRecorder({ onRecorded }: { onRecorded: (file: File) => void }) {
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `opname_${Date.now()}.webm`, { type: "audio/webm" });
+        onRecorded(file);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+
+      mediaRecorder.start(1000);
+      setRecording(true);
+      setElapsed(0);
+      intervalRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+    } catch {
+      // Microfoon geweigerd
+    }
+  }, [onRecorded]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
+    setRecording(false);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (mediaRecorderRef.current?.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, []);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div className="flex items-center gap-3">
+      {recording ? (
+        <>
+          <button
+            onClick={stopRecording}
+            className="flex items-center gap-2 px-4 py-2.5 bg-red-500/20 text-red-400 rounded-xl font-medium hover:bg-red-500/30 transition-colors"
+          >
+            <MicOff className="w-4 h-4" />
+            Stop opname
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+            <span className="text-sm text-red-400 tabular-nums font-medium">{formatTime(elapsed)}</span>
+          </div>
+        </>
+      ) : (
+        <button
+          onClick={startRecording}
+          className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent/20 text-autronis-accent rounded-xl font-medium hover:bg-autronis-accent/30 transition-colors"
+        >
+          <Mic className="w-4 h-4" />
+          Live opnemen
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ============ VOORBEREIDING PANEL ============
+
+function VoorbereidingPanel({ klantId, projectId, titel }: { klantId?: number | null; projectId?: number | null; titel?: string }) {
+  const { data: voorbereiding, isLoading } = useMeetingVoorbereiding(klantId, projectId, titel);
+
+  if (!klantId && !projectId) return null;
+
+  if (isLoading) {
+    return (
+      <div className="bg-gradient-to-r from-autronis-accent/5 to-blue-500/5 border border-autronis-accent/20 rounded-2xl p-6">
+        <div className="flex items-center gap-2 text-autronis-accent">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm font-medium">AI voorbereiding laden...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!voorbereiding) return null;
+
+  return (
+    <div className="bg-gradient-to-r from-autronis-accent/5 to-blue-500/5 border border-autronis-accent/20 rounded-2xl p-6 space-y-4">
+      <h3 className="text-base font-semibold text-autronis-text-primary flex items-center gap-2">
+        <Sparkles className="w-5 h-5 text-autronis-accent" />
+        AI Voorbereiding
+      </h3>
+
+      <p className="text-sm text-autronis-text-secondary leading-relaxed">{voorbereiding.context}</p>
+
+      {voorbereiding.suggesties.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-wide text-autronis-text-secondary mb-2">Gespreksonderwerpen</p>
+          <div className="space-y-1.5">
+            {voorbereiding.suggesties.map((s, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-autronis-text-primary">
+                <Target className="w-3.5 h-3.5 text-autronis-accent mt-0.5 flex-shrink-0" />
+                {s}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {voorbereiding.waarschuwingen && voorbereiding.waarschuwingen.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-wide text-yellow-400 mb-2">Aandachtspunten</p>
+          <div className="space-y-1.5">
+            {voorbereiding.waarschuwingen.map((w, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-yellow-300">
+                <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 mt-0.5 flex-shrink-0" />
+                {w}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {voorbereiding.openActiepunten.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-wide text-autronis-text-secondary mb-2">
+            Openstaande actiepunten uit vorige meetings
+          </p>
+          <div className="space-y-1.5">
+            {voorbereiding.openActiepunten.slice(0, 5).map((ap, i) => (
+              <div key={i} className="flex items-start gap-2 text-sm text-autronis-text-secondary">
+                <CheckCircle2 className="w-3.5 h-3.5 text-autronis-text-secondary/50 mt-0.5 flex-shrink-0" />
+                <span className="flex-1">{ap.tekst}</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-autronis-bg/50">{ap.verantwoordelijke}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ UPCOMING MEETING CARD ============
+
+function UpcomingMeetingCard({ meeting, onSelect }: { meeting: Meeting; onSelect: () => void }) {
+  return (
+    <div
+      onClick={onSelect}
+      className="bg-gradient-to-br from-autronis-card to-autronis-card/80 border border-autronis-border rounded-2xl p-6 card-glow cursor-pointer hover:border-autronis-accent/30 transition-all"
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="p-2 bg-autronis-accent/10 rounded-lg">
+            <Video className="w-4 h-4 text-autronis-accent" />
+          </div>
+          <span className="text-xs font-medium text-autronis-accent px-2 py-0.5 rounded-full bg-autronis-accent/10">
+            {formatCountdown(meeting.datum)}
+          </span>
+        </div>
+        {meeting.meetingUrl && (
+          <a
+            href={meeting.meetingUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent text-autronis-bg text-xs font-semibold rounded-lg hover:bg-autronis-accent-hover transition-colors"
+          >
+            <ExternalLink className="w-3 h-3" />
+            Deelnemen
+          </a>
+        )}
+      </div>
+
+      <h3 className="text-base font-semibold text-autronis-text-primary mb-1 truncate">{meeting.titel}</h3>
+
+      <div className="flex items-center gap-3 text-sm text-autronis-text-secondary mb-3">
+        <span className="flex items-center gap-1">
+          <Calendar className="w-3.5 h-3.5" />
+          {formatDatum(meeting.datum)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5" />
+          {formatTijd(meeting.datum)}
+          {meeting.eindDatum && ` - ${formatTijd(meeting.eindDatum)}`}
+        </span>
+      </div>
+
+      {meeting.deelnemers.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Users className="w-3.5 h-3.5 text-autronis-text-secondary" />
+          <div className="flex items-center gap-1 flex-wrap">
+            {meeting.deelnemers.slice(0, 4).map((d, i) => (
+              <span
+                key={i}
+                className="text-xs px-2 py-0.5 rounded-full bg-autronis-bg/50 text-autronis-text-secondary"
+                title={d.email}
+              >
+                {d.naam || d.email.split("@")[0]}
+              </span>
+            ))}
+            {meeting.deelnemers.length > 4 && (
+              <span className="text-xs text-autronis-text-secondary">
+                +{meeting.deelnemers.length - 4}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ MEETING LIST ITEM ============
+
+function MeetingListItem({ meeting, onSelect, onDelete }: {
+  meeting: Meeting;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const isDb = meeting.bron === "database";
+  const sc = meeting.status && statusConfig[meeting.status];
+  const upcoming = isUpcoming(meeting.datum);
+
+  return (
+    <button
+      onClick={onSelect}
+      className="w-full text-left bg-autronis-bg/30 rounded-xl border border-autronis-border/50 px-5 py-4 hover:border-autronis-accent/30 transition-colors group"
+    >
+      <div className="flex items-center gap-4">
+        <div className="flex-shrink-0">
+          {meeting.bron === "kalender" ? (
+            <div className="p-2.5 bg-blue-500/10 rounded-xl">
+              <Calendar className="w-4 h-4 text-blue-400" />
+            </div>
+          ) : (
+            <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
+              <Mic className="w-4 h-4 text-autronis-accent" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3">
+            <p className="text-base font-medium text-autronis-text-primary truncate">{meeting.titel}</p>
+            {sc && (
+              <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5 flex-shrink-0", sc.bg, sc.color)}>
+                {meeting.status === "verwerken" && <Loader2 className="w-3 h-3 animate-spin" />}
+                {sc.label}
+              </span>
+            )}
+            {meeting.bron === "kalender" && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 flex-shrink-0">
+                Kalender
+              </span>
+            )}
+            {upcoming && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-autronis-accent/10 text-autronis-accent flex-shrink-0">
+                {formatCountdown(meeting.datum)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-1.5 text-sm text-autronis-text-secondary flex-wrap">
+            <span>{formatDatum(meeting.datum)} {formatTijd(meeting.datum)}</span>
+            {meeting.duurMinuten && (
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDuur(meeting.duurMinuten)}
+              </span>
+            )}
+            {meeting.klantNaam && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-autronis-accent/10 text-autronis-accent">
+                {meeting.klantNaam}
+              </span>
+            )}
+            {meeting.deelnemers.length > 0 && (
+              <span className="flex items-center gap-1 text-xs">
+                <Users className="w-3 h-3" />
+                {meeting.deelnemers.length}
+              </span>
+            )}
+            {meeting.meetingUrl && (
+              <span className="flex items-center gap-1 text-xs text-blue-400">
+                <Video className="w-3 h-3" />
+                Link
+              </span>
+            )}
+            {isDb && meeting.status === "klaar" && (
+              <span className="text-xs">
+                {meeting.actiepunten.length} actiepunten
+              </span>
+            )}
+            {meeting.hasNotities ? (
+              <span className="flex items-center gap-1 text-xs text-emerald-400">
+                <FileText className="w-3 h-3" />
+                Notities
+              </span>
+            ) : !upcoming ? (
+              <span className="flex items-center gap-1 text-xs text-autronis-text-secondary/50">
+                <FileText className="w-3 h-3" />
+                Geen notities
+              </span>
+            ) : null}
+            {meeting.tags.slice(0, 3).map((tag) => (
+              <span key={tag} className="flex items-center gap-1 text-xs text-autronis-text-secondary/70">
+                <Tag className="w-3 h-3" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {meeting.meetingUrl && upcoming && (
+            <a
+              href={meeting.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent text-autronis-bg text-xs font-semibold rounded-lg hover:bg-autronis-accent-hover transition-colors"
+            >
+              <ExternalLink className="w-3 h-3" />
+              Deelnemen
+            </a>
+          )}
+          {isDb && (
+            <Trash2
+              className="w-4 h-4 text-autronis-text-secondary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
+          )}
+          <ChevronRight className="w-4 h-4 text-autronis-text-secondary/50" />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ============ MAIN PAGE ============
+
 export default function MeetingsPage() {
   const { addToast } = useToast();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
   const [pasteTranscript, setPasteTranscript] = useState("");
-
-  const { data: meetings = [], isLoading } = useMeetings();
-  const { data: selectedMeeting } = useMeeting(selectedId ?? 0);
+  const [transcriptZoek, setTranscriptZoek] = useState("");
+  const [filterKlant, setFilterKlant] = useState<number | null>(null);
+  const [zoekTerm, setZoekTerm] = useState("");
+  const [notitiesText, setNotitiesText] = useState("");
+  const [notitiesDirty, setNotitiesDirty] = useState(false);
+  const { data: meetings = [], isLoading } = useMeetings(filterKlant ?? undefined);
+  const selectedNumericId = typeof selectedId === "number" ? selectedId : 0;
+  const { data: selectedMeeting } = useMeeting(selectedNumericId);
   const uploadMutation = useUploadMeeting();
   const verwerkMutation = useVerwerkMeeting();
   const transcriptMutation = useSubmitTranscript();
   const deleteMutation = useDeleteMeeting();
+  const updateMutation = useUpdateMeeting();
+  const uploadAudioMutation = useUploadMeetingAudio();
 
-  // KPI calculations
-  const totaal = meetings.length;
-  const dezeMaand = meetings.filter((m) => {
-    const d = new Date(m.datum);
+  // Klanten for filter
+  const [klanten, setKlanten] = useState<Klant[]>([]);
+  useEffect(() => {
+    fetch("/api/klanten")
+      .then((r) => r.json())
+      .then((d) => setKlanten(d.klanten || []))
+      .catch(() => {});
+  }, []);
+
+  // When selecting a DB meeting, populate notities
+  useEffect(() => {
+    if (selectedMeeting) {
+      setNotitiesText(selectedMeeting.samenvatting || "");
+      setNotitiesDirty(false);
+    }
+  }, [selectedMeeting]);
+
+  // Split meetings into upcoming and recent
+  const { upcoming, recent, kpis } = useMemo(() => {
     const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
-  const inVerwerking = meetings.filter((m) => m.status === "verwerken").length;
+    const upcomingMeetings: Meeting[] = [];
+    const recentMeetings: Meeting[] = [];
+
+    const filtered = zoekTerm.trim()
+      ? meetings.filter((m) => {
+          const lower = zoekTerm.toLowerCase();
+          return (
+            m.titel.toLowerCase().includes(lower) ||
+            m.klantNaam?.toLowerCase().includes(lower) ||
+            m.projectNaam?.toLowerCase().includes(lower) ||
+            m.samenvatting?.toLowerCase().includes(lower) ||
+            m.tags.some((t) => t.toLowerCase().includes(lower))
+          );
+        })
+      : meetings;
+
+    for (const m of filtered) {
+      if (new Date(m.datum) > now) {
+        upcomingMeetings.push(m);
+      } else {
+        recentMeetings.push(m);
+      }
+    }
+
+    // Upcoming sorted by soonest first
+    upcomingMeetings.sort((a, b) => new Date(a.datum).getTime() - new Date(b.datum).getTime());
+
+    const aankomend = upcomingMeetings.length;
+    const dezeWeek = meetings.filter((m) => isThisWeek(m.datum)).length;
+    const metDuur = meetings.filter((m) => m.duurMinuten);
+    const gemDuur = metDuur.length > 0
+      ? Math.round(metDuur.reduce((s, m) => s + (m.duurMinuten || 0), 0) / metDuur.length)
+      : null;
+    const metNotities = meetings.filter((m) => m.hasNotities).length;
+
+    return {
+      upcoming: upcomingMeetings,
+      recent: recentMeetings,
+      kpis: { aankomend, dezeWeek, gemDuur, metNotities },
+    };
+  }, [meetings, zoekTerm]);
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -95,6 +644,22 @@ export default function MeetingsPage() {
       });
     },
     [deleteMutation, addToast, selectedId]
+  );
+
+  const handleSaveNotities = useCallback(
+    (id: number) => {
+      updateMutation.mutate(
+        { id, notities: notitiesText },
+        {
+          onSuccess: () => {
+            addToast("Notities opgeslagen", "succes");
+            setNotitiesDirty(false);
+          },
+          onError: () => addToast("Opslaan mislukt", "fout"),
+        }
+      );
+    },
+    [updateMutation, notitiesText, addToast]
   );
 
   const handleSubmitTranscript = useCallback(
@@ -124,10 +689,39 @@ export default function MeetingsPage() {
     [verwerkMutation, addToast]
   );
 
-  // Detail view
-  if (selectedId && selectedMeeting) {
+  const handleUploadAudio = useCallback(
+    (id: number, file: File) => {
+      uploadAudioMutation.mutate(
+        { id, audio: file },
+        {
+          onSuccess: () => {
+            addToast("Audio geupload, starten met verwerking...", "succes");
+            verwerkMutation.mutate(id, {
+              onSuccess: () => addToast("Verwerking gestart", "succes"),
+              onError: () => addToast("Verwerking mislukt", "fout"),
+            });
+          },
+          onError: () => addToast("Upload mislukt", "fout"),
+        }
+      );
+    },
+    [uploadAudioMutation, verwerkMutation, addToast]
+  );
+
+  // Highlight search in transcript
+  const highlightTranscript = useCallback(
+    (text: string) => {
+      if (!transcriptZoek.trim()) return text;
+      const regex = new RegExp(`(${transcriptZoek.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+      return text.replace(regex, "**$1**");
+    },
+    [transcriptZoek]
+  );
+
+  // ============ DETAIL VIEW ============
+  if (selectedId !== null && typeof selectedId === "number" && selectedMeeting) {
     const m = selectedMeeting;
-    const sc = statusConfig[m.status];
+    const sc = m.status ? statusConfig[m.status] : null;
 
     return (
       <PageTransition>
@@ -135,7 +729,7 @@ export default function MeetingsPage() {
           {/* Back + header */}
           <div>
             <button
-              onClick={() => setSelectedId(null)}
+              onClick={() => { setSelectedId(null); setShowTranscript(false); setTranscriptZoek(""); }}
               className="flex items-center gap-2 text-autronis-text-secondary hover:text-autronis-accent transition-colors mb-4"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -144,11 +738,17 @@ export default function MeetingsPage() {
             <div className="flex items-start justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-autronis-text-primary">{m.titel}</h1>
-                <div className="flex items-center gap-3 mt-2 text-autronis-text-secondary">
-                  <span className="flex items-center gap-1.5">
+                <div className="flex items-center gap-3 mt-2 flex-wrap">
+                  <span className="flex items-center gap-1.5 text-autronis-text-secondary">
                     <Calendar className="w-4 h-4" />
-                    {formatDatum(m.datum)}
+                    {formatDatum(m.datum)} {formatTijd(m.datum)}
                   </span>
+                  {m.duurMinuten && (
+                    <span className="flex items-center gap-1.5 text-autronis-text-secondary">
+                      <Clock className="w-4 h-4" />
+                      {formatDuur(m.duurMinuten)}
+                    </span>
+                  )}
                   {m.klantNaam && (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-autronis-accent/15 text-autronis-accent">
                       {m.klantNaam}
@@ -159,20 +759,86 @@ export default function MeetingsPage() {
                       {m.projectNaam}
                     </span>
                   )}
-                  <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5", sc.bg, sc.color)}>
-                    {m.status === "verwerken" && <Loader2 className="w-3 h-3 animate-spin" />}
-                    {sc.label}
-                  </span>
+                  {sc && (
+                    <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5", sc.bg, sc.color)}>
+                      {m.status === "verwerken" && <Loader2 className="w-3 h-3 animate-spin" />}
+                      {sc.label}
+                    </span>
+                  )}
+                  {m.deelnemers.length > 0 && (
+                    <span className="flex items-center gap-1.5 text-autronis-text-secondary">
+                      <Users className="w-4 h-4" />
+                      {m.deelnemers.length} deelnemers
+                    </span>
+                  )}
+                  {m.tags.map((tag) => (
+                    <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-autronis-bg border border-autronis-border text-autronis-text-secondary">
+                      {tag}
+                    </span>
+                  ))}
                 </div>
               </div>
               <button
-                onClick={() => handleDelete(m.id)}
+                onClick={() => handleDelete(m.id as number)}
                 className="p-2 text-autronis-text-secondary hover:text-red-400 transition-colors"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
             </div>
           </div>
+
+          {/* Meeting URL */}
+          {m.meetingUrl && (
+            <a
+              href={m.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-accent/10 text-autronis-accent rounded-xl hover:bg-autronis-accent/20 transition-colors"
+            >
+              <Video className="w-4 h-4" />
+              Deelnemen aan meeting
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
+
+          {/* Sentiment */}
+          {m.sentiment && (
+            <div className="flex items-center gap-2 bg-autronis-card/50 border border-autronis-border/50 rounded-xl px-4 py-3">
+              <Heart className="w-4 h-4 text-pink-400" />
+              <span className="text-sm text-autronis-text-secondary">Stemming:</span>
+              <span className="text-sm text-autronis-text-primary font-medium">{m.sentiment}</span>
+            </div>
+          )}
+
+          {/* Audio player or upload */}
+          {m.audioPad ? (
+            <AudioPlayer src={`/api/meetings/${m.id}/audio`} />
+          ) : (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <h3 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-2 mb-3">
+                <Upload className="w-4 h-4 text-autronis-text-secondary" />
+                Upload opname
+              </h3>
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border border-autronis-border border-dashed rounded-xl cursor-pointer hover:border-autronis-accent/50 transition-colors">
+                  <Upload className="w-4 h-4 text-autronis-text-secondary" />
+                  <span className="text-sm text-autronis-text-secondary">Kies audiobestand (mp3, m4a, wav, webm)</span>
+                  <input
+                    type="file"
+                    accept=".mp3,.m4a,.wav,.webm,audio/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUploadAudio(m.id as number, file);
+                    }}
+                  />
+                </label>
+                {uploadAudioMutation.isPending && (
+                  <Loader2 className="w-4 h-4 text-autronis-accent animate-spin" />
+                )}
+              </div>
+            </div>
+          )}
 
           {m.status === "verwerken" && (
             <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 flex items-center gap-3">
@@ -185,7 +851,7 @@ export default function MeetingsPage() {
             <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
               <p className="text-red-400 font-medium mb-3">Verwerking mislukt</p>
               <button
-                onClick={() => handleVerwerk(m.id)}
+                onClick={() => handleVerwerk(m.id as number)}
                 disabled={verwerkMutation.isPending}
                 className="px-4 py-2 bg-autronis-accent text-autronis-bg rounded-xl font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
               >
@@ -194,60 +860,75 @@ export default function MeetingsPage() {
             </div>
           )}
 
-          {/* Samenvatting */}
-          {m.samenvatting && (
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
-                <FileText className="w-5 h-5 text-autronis-accent" />
-                Samenvatting
-              </h2>
-              <div className="text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">{m.samenvatting}</div>
-            </div>
-          )}
+          {/* Samenvatting / Notities */}
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+            <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
+              <FileText className="w-5 h-5 text-autronis-accent" />
+              {m.status === "klaar" ? "Samenvatting & Notities" : "Notities"}
+            </h2>
+            <textarea
+              value={notitiesText}
+              onChange={(e) => { setNotitiesText(e.target.value); setNotitiesDirty(true); }}
+              placeholder="Voeg notities toe aan deze meeting..."
+              rows={6}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none leading-relaxed"
+            />
+            {notitiesDirty && (
+              <button
+                onClick={() => handleSaveNotities(m.id as number)}
+                disabled={updateMutation.isPending}
+                className="mt-3 flex items-center gap-2 px-4 py-2 bg-autronis-accent text-autronis-bg rounded-xl font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+              >
+                {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Opslaan
+              </button>
+            )}
+          </div>
 
-          {/* Actiepunten */}
-          {m.actiepunten.length > 0 && (
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                Actiepunten
-                <span className="text-sm font-normal text-autronis-text-secondary">({m.actiepunten.length})</span>
-              </h2>
-              <div className="space-y-3">
-                {m.actiepunten.map((ap, i) => {
-                  const style = getVerantwoordelijkeStyle(ap.verantwoordelijke);
-                  return (
+          {/* Actiepunten + Besluiten grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {m.actiepunten.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+                <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  Actiepunten
+                  <span className="text-sm font-normal text-autronis-text-secondary">({m.actiepunten.length})</span>
+                </h2>
+                <div className="space-y-2.5">
+                  {m.actiepunten.map((ap, i) => {
+                    const style = getVerantwoordelijkeStyle(ap.verantwoordelijke);
+                    return (
+                      <div key={i} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
+                        <CheckCircle2 className="w-4 h-4 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-autronis-text-primary flex-1">{ap.tekst}</span>
+                        <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0", style.bg, style.color)}>
+                          {ap.verantwoordelijke}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {m.besluiten.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+                <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
+                  <ClipboardList className="w-5 h-5 text-blue-400" />
+                  Besluiten
+                  <span className="text-sm font-normal text-autronis-text-secondary">({m.besluiten.length})</span>
+                </h2>
+                <div className="space-y-2">
+                  {m.besluiten.map((b, i) => (
                     <div key={i} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
-                      <CheckCircle2 className="w-4 h-4 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                      <span className="text-autronis-text-primary flex-1">{ap.tekst}</span>
-                      <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex-shrink-0", style.bg, style.color)}>
-                        {ap.verantwoordelijke}
-                      </span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
+                      <span className="text-sm text-autronis-text-primary">{b}</span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-
-          {/* Besluiten */}
-          {m.besluiten.length > 0 && (
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
-                <ClipboardList className="w-5 h-5 text-blue-400" />
-                Besluiten
-                <span className="text-sm font-normal text-autronis-text-secondary">({m.besluiten.length})</span>
-              </h2>
-              <div className="space-y-2">
-                {m.besluiten.map((b, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
-                    <span className="text-autronis-text-primary">{b}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Open vragen */}
           {m.openVragen.length > 0 && (
@@ -261,7 +942,7 @@ export default function MeetingsPage() {
                 {m.openVragen.map((v, i) => (
                   <div key={i} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
                     <HelpCircle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-                    <span className="text-autronis-text-primary">{v}</span>
+                    <span className="text-sm text-autronis-text-primary">{v}</span>
                   </div>
                 ))}
               </div>
@@ -280,8 +961,32 @@ export default function MeetingsPage() {
                 <ChevronDown className={cn("w-5 h-5 text-autronis-text-secondary ml-auto transition-transform", showTranscript && "rotate-180")} />
               </button>
               {showTranscript && (
-                <div className="mt-4 text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
-                  {m.transcript}
+                <div className="mt-4 space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
+                    <input
+                      type="text"
+                      value={transcriptZoek}
+                      onChange={(e) => setTranscriptZoek(e.target.value)}
+                      placeholder="Zoek in transcript..."
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-xl pl-9 pr-4 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                    />
+                  </div>
+                  <div className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-wrap max-h-96 overflow-y-auto">
+                    {transcriptZoek.trim() ? (
+                      highlightTranscript(m.transcript).split("**").map((part, i) =>
+                        i % 2 === 1 ? (
+                          <mark key={i} className="bg-autronis-accent/30 text-autronis-text-primary rounded px-0.5">
+                            {part}
+                          </mark>
+                        ) : (
+                          <span key={i}>{part}</span>
+                        )
+                      )
+                    ) : (
+                      m.transcript
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -299,7 +1004,7 @@ export default function MeetingsPage() {
                 className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none"
               />
               <button
-                onClick={() => handleSubmitTranscript(m.id)}
+                onClick={() => handleSubmitTranscript(m.id as number)}
                 disabled={transcriptMutation.isPending || !pasteTranscript.trim()}
                 className="mt-3 px-5 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50 flex items-center gap-2"
               >
@@ -313,7 +1018,166 @@ export default function MeetingsPage() {
     );
   }
 
-  // Loading state
+  // ============ CALENDAR MEETING EXPANDED VIEW ============
+  if (selectedId !== null && typeof selectedId === "string") {
+    const calMeeting = meetings.find((m) => m.id === selectedId);
+    if (!calMeeting) {
+      setSelectedId(null);
+      return null;
+    }
+
+    return (
+      <PageTransition>
+        <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-6">
+          <button
+            onClick={() => setSelectedId(null)}
+            className="flex items-center gap-2 text-autronis-text-secondary hover:text-autronis-accent transition-colors mb-4"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Terug naar overzicht
+          </button>
+
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
+                Kalender
+              </span>
+              {isUpcoming(calMeeting.datum) && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-autronis-accent/10 text-autronis-accent">
+                  {formatCountdown(calMeeting.datum)}
+                </span>
+              )}
+            </div>
+            <h1 className="text-3xl font-bold text-autronis-text-primary">{calMeeting.titel}</h1>
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              <span className="flex items-center gap-1.5 text-autronis-text-secondary">
+                <Calendar className="w-4 h-4" />
+                {formatDatum(calMeeting.datum)} {formatTijd(calMeeting.datum)}
+                {calMeeting.eindDatum && ` - ${formatTijd(calMeeting.eindDatum)}`}
+              </span>
+              {calMeeting.duurMinuten && (
+                <span className="flex items-center gap-1.5 text-autronis-text-secondary">
+                  <Clock className="w-4 h-4" />
+                  {formatDuur(calMeeting.duurMinuten)}
+                </span>
+              )}
+              {calMeeting.bronNaam && (
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/15 text-blue-400">
+                  {calMeeting.bronNaam}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Meeting URL */}
+          {calMeeting.meetingUrl && (
+            <a
+              href={calMeeting.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-5 py-3 bg-autronis-accent text-autronis-bg rounded-xl font-semibold hover:bg-autronis-accent-hover transition-colors"
+            >
+              <Video className="w-5 h-5" />
+              Deelnemen aan meeting
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+
+          {/* Deelnemers */}
+          {calMeeting.deelnemers.length > 0 && (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
+                <Users className="w-5 h-5 text-blue-400" />
+                Deelnemers
+                <span className="text-sm font-normal text-autronis-text-secondary">({calMeeting.deelnemers.length})</span>
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {calMeeting.deelnemers.map((d, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
+                    <div className="w-8 h-8 rounded-full bg-autronis-accent/15 flex items-center justify-center text-xs font-semibold text-autronis-accent">
+                      {(d.naam || d.email)[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm text-autronis-text-primary truncate">{d.naam || d.email.split("@")[0]}</p>
+                      <p className="text-xs text-autronis-text-secondary truncate">{d.email}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Omschrijving */}
+          {calMeeting.omschrijving && (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-3">
+                <FileText className="w-5 h-5 text-autronis-text-secondary" />
+                Omschrijving
+              </h2>
+              <p className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+                {calMeeting.omschrijving}
+              </p>
+            </div>
+          )}
+
+          {/* Locatie */}
+          {calMeeting.locatie && !calMeeting.meetingUrl && (
+            <div className="flex items-center gap-2 bg-autronis-card/50 border border-autronis-border/50 rounded-xl px-4 py-3">
+              <span className="text-sm text-autronis-text-secondary">Locatie:</span>
+              <span className="text-sm text-autronis-text-primary">{calMeeting.locatie}</span>
+            </div>
+          )}
+
+          {/* Create DB record + add notities */}
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
+              <FileText className="w-5 h-5 text-autronis-accent" />
+              Notities toevoegen
+            </h2>
+            <p className="text-sm text-autronis-text-secondary mb-3">
+              Voeg notities toe om deze meeting op te slaan in de database.
+            </p>
+            <textarea
+              value={notitiesText}
+              onChange={(e) => { setNotitiesText(e.target.value); setNotitiesDirty(true); }}
+              placeholder="Voeg notities toe aan deze meeting..."
+              rows={6}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none"
+            />
+            <button
+              onClick={() => {
+                updateMutation.mutate(
+                  {
+                    id: 0,
+                    calendarImport: true,
+                    titel: calMeeting.titel,
+                    datum: calMeeting.datum,
+                    notities: notitiesText,
+                  },
+                  {
+                    onSuccess: () => {
+                      addToast("Meeting opgeslagen met notities", "succes");
+                      setSelectedId(null);
+                      setNotitiesText("");
+                      setNotitiesDirty(false);
+                    },
+                    onError: () => addToast("Opslaan mislukt", "fout"),
+                  }
+                );
+              }}
+              disabled={updateMutation.isPending || !notitiesText.trim()}
+              className="mt-3 flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+            >
+              {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Opslaan als meeting
+            </button>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
+
+  // ============ LOADING ============
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto p-4 lg:p-8 flex items-center justify-center min-h-[400px]">
@@ -322,6 +1186,7 @@ export default function MeetingsPage() {
     );
   }
 
+  // ============ LIST VIEW ============
   return (
     <PageTransition>
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
@@ -330,7 +1195,7 @@ export default function MeetingsPage() {
           <div>
             <h1 className="text-3xl font-bold text-autronis-text-primary">Meetings</h1>
             <p className="text-base text-autronis-text-secondary mt-1">
-              {totaal} meetings &middot; {inVerwerking} in verwerking
+              Kalender-afspraken en opgenomen meetings
             </p>
           </div>
           <button
@@ -343,114 +1208,149 @@ export default function MeetingsPage() {
         </div>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                <Mic className="w-5 h-5 text-autronis-accent" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-autronis-accent/10 rounded-lg">
+                <Calendar className="w-4 h-4 text-autronis-accent" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-autronis-text-primary tabular-nums">{totaal}</p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Totaal meetings</p>
+            <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{kpis.aankomend}</p>
+            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Aankomend</p>
           </div>
 
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-blue-500/10 rounded-xl">
-                <Calendar className="w-5 h-5 text-blue-400" />
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Clock className="w-4 h-4 text-blue-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-blue-400 tabular-nums">{dezeMaand}</p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Deze maand</p>
+            <p className="text-2xl font-bold text-blue-400 tabular-nums">{kpis.dezeWeek}</p>
+            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Deze week</p>
           </div>
 
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-yellow-500/10 rounded-xl">
-                <Loader2 className="w-5 h-5 text-yellow-400" />
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-purple-500/10 rounded-lg">
+                <TrendingUp className="w-4 h-4 text-purple-400" />
               </div>
             </div>
-            <p className="text-3xl font-bold text-yellow-400 tabular-nums">{inVerwerking}</p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">In verwerking</p>
+            <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.gemDuur ? formatDuur(kpis.gemDuur) : "-"}</p>
+            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. duur</p>
+          </div>
+
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-2 bg-emerald-500/10 rounded-lg">
+                <FileText className="w-4 h-4 text-emerald-400" />
+              </div>
+            </div>
+            <p className="text-2xl font-bold text-emerald-400 tabular-nums">{kpis.metNotities}</p>
+            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Met notities</p>
           </div>
         </div>
 
-        {/* Meeting list */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-          <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Alle meetings</h2>
+        {/* Search + filter bar */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
+            <input
+              type="text"
+              value={zoekTerm}
+              onChange={(e) => setZoekTerm(e.target.value)}
+              placeholder="Zoek in meetings, transcripten, tags..."
+              className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+            />
+          </div>
+          <select
+            value={filterKlant ?? ""}
+            onChange={(e) => setFilterKlant(e.target.value ? Number(e.target.value) : null)}
+            className="bg-autronis-card border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+          >
+            <option value="">Alle klanten</option>
+            {klanten.map((k) => (
+              <option key={k.id} value={k.id}>{k.bedrijfsnaam}</option>
+            ))}
+          </select>
+        </div>
 
-          {meetings.length === 0 ? (
+        {/* Aankomende meetings */}
+        {upcoming.length > 0 && (
+          <div>
+            <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-autronis-accent" />
+              Aankomende meetings
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {upcoming.slice(0, 6).map((m) => (
+                <UpcomingMeetingCard
+                  key={String(m.id)}
+                  meeting={m}
+                  onSelect={() => setSelectedId(m.id)}
+                />
+              ))}
+            </div>
+            {upcoming.length > 6 && (
+              <p className="text-sm text-autronis-text-secondary mt-3">
+                + {upcoming.length - 6} meer aankomende meetings
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Recente meetings */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+          <h2 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-autronis-text-secondary" />
+            Recente meetings
+          </h2>
+
+          {recent.length === 0 ? (
             <div className="text-center py-12">
               <Mic className="w-12 h-12 text-autronis-text-secondary/30 mx-auto mb-4" />
-              <p className="text-autronis-text-secondary">Nog geen meetings</p>
-              <button
-                onClick={() => setShowModal(true)}
-                className="mt-3 text-autronis-accent hover:text-autronis-accent-hover transition-colors text-sm font-medium"
-              >
-                Voeg je eerste meeting toe
-              </button>
+              <p className="text-autronis-text-secondary">
+                {zoekTerm ? "Geen meetings gevonden" : "Nog geen recente meetings"}
+              </p>
+              {!zoekTerm && (
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="mt-3 text-autronis-accent hover:text-autronis-accent-hover transition-colors text-sm font-medium"
+                >
+                  Voeg je eerste meeting toe
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-2">
-              {meetings.map((m) => {
-                const sc = statusConfig[m.status];
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedId(m.id)}
-                    className="w-full text-left bg-autronis-bg/30 rounded-xl border border-autronis-border/50 px-5 py-4 hover:border-autronis-accent/30 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3">
-                          <p className="text-base font-medium text-autronis-text-primary truncate">{m.titel}</p>
-                          <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5 flex-shrink-0", sc.bg, sc.color)}>
-                            {m.status === "verwerken" && <Loader2 className="w-3 h-3 animate-spin" />}
-                            {sc.label}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5 text-sm text-autronis-text-secondary">
-                          <span>{formatDatum(m.datum)}</span>
-                          {m.klantNaam && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-autronis-accent/10 text-autronis-accent">
-                              {m.klantNaam}
-                            </span>
-                          )}
-                          {m.projectNaam && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-blue-500/10 text-blue-400">
-                              {m.projectNaam}
-                            </span>
-                          )}
-                          {m.status === "klaar" && (
-                            <span className="text-xs text-autronis-text-secondary">
-                              {m.actiepunten.length} actiepunten &middot; {m.besluiten.length} besluiten
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <Trash2
-                        className="w-4 h-4 text-autronis-text-secondary hover:text-red-400 transition-colors flex-shrink-0"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(m.id);
-                        }}
-                      />
-                    </div>
-                  </button>
-                );
-              })}
+              {recent.map((m) => (
+                <MeetingListItem
+                  key={String(m.id)}
+                  meeting={m}
+                  onSelect={() => setSelectedId(m.id)}
+                  onDelete={() => {
+                    if (typeof m.id === "number") handleDelete(m.id);
+                  }}
+                />
+              ))}
             </div>
           )}
         </div>
 
         {/* Upload modal */}
-        {showModal && <UploadModal onClose={() => setShowModal(false)} uploadMutation={uploadMutation} verwerkMutation={verwerkMutation} addToast={addToast} />}
+        {showModal && (
+          <UploadModal
+            onClose={() => setShowModal(false)}
+            uploadMutation={uploadMutation}
+            verwerkMutation={verwerkMutation}
+            addToast={addToast}
+          />
+        )}
       </div>
     </PageTransition>
   );
 }
 
-// ---- Upload Modal ----
+// ============ UPLOAD MODAL ============
 
 interface UploadModalProps {
   onClose: () => void;
@@ -466,6 +1366,7 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
   const [projectId, setProjectId] = useState<number | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [transcript, setTranscript] = useState("");
+  const [inputModus, setInputModus] = useState<"upload" | "opname" | "transcript">("upload");
   const [klanten, setKlanten] = useState<Klant[]>([]);
   const [projecten, setProjecten] = useState<Project[]>([]);
 
@@ -487,6 +1388,12 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
       .then((d) => setProjecten(d.projecten || []))
       .catch(() => {});
   }, [klantId]);
+
+  const handleRecorded = useCallback((file: File) => {
+    setAudioFile(file);
+    setInputModus("upload");
+    addToast("Opname opgeslagen", "succes");
+  }, [addToast]);
 
   const handleSubmit = async () => {
     if (!titel.trim()) {
@@ -589,41 +1496,86 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
             </div>
           )}
 
-          {/* Audio upload */}
-          <div>
-            <label className="block text-sm font-medium text-autronis-text-secondary mb-1.5">Audio bestand</label>
-            <label className="flex items-center gap-3 bg-autronis-bg border border-autronis-border border-dashed rounded-xl px-4 py-4 cursor-pointer hover:border-autronis-accent/50 transition-colors">
-              <Upload className="w-5 h-5 text-autronis-text-secondary" />
-              <span className="text-sm text-autronis-text-secondary">
-                {audioFile ? audioFile.name : "Kies een audiobestand..."}
-              </span>
-              <input
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
+          {/* AI Voorbereiding */}
+          <VoorbereidingPanel klantId={klantId} projectId={projectId} titel={titel} />
+
+          {/* Input mode tabs */}
+          <div className="flex items-center gap-1 bg-autronis-bg rounded-xl p-1">
+            <button
+              onClick={() => setInputModus("upload")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                inputModus === "upload" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+              )}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload
+            </button>
+            <button
+              onClick={() => setInputModus("opname")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                inputModus === "opname" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+              )}
+            >
+              <Mic className="w-3.5 h-3.5" />
+              Opnemen
+            </button>
+            <button
+              onClick={() => setInputModus("transcript")}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                inputModus === "transcript" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+              )}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Transcript
+            </button>
           </div>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-autronis-border" />
-            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">of</span>
-            <div className="flex-1 h-px bg-autronis-border" />
-          </div>
+          {/* Upload */}
+          {inputModus === "upload" && (
+            <div>
+              <label className="flex items-center gap-3 bg-autronis-bg border border-autronis-border border-dashed rounded-xl px-4 py-4 cursor-pointer hover:border-autronis-accent/50 transition-colors">
+                <Upload className="w-5 h-5 text-autronis-text-secondary" />
+                <span className="text-sm text-autronis-text-secondary">
+                  {audioFile ? audioFile.name : "Kies een audiobestand (mp3, m4a, wav, webm)..."}
+                </span>
+                <input
+                  type="file"
+                  accept=".mp3,.m4a,.wav,.webm,audio/*,video/*"
+                  className="hidden"
+                  onChange={(e) => setAudioFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* Live recording */}
+          {inputModus === "opname" && (
+            <div className="bg-autronis-bg rounded-xl p-4 border border-autronis-border">
+              <LiveRecorder onRecorded={handleRecorded} />
+              {audioFile && (
+                <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Opname klaar: {audioFile.name}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Direct transcript */}
-          <div>
-            <label className="block text-sm font-medium text-autronis-text-secondary mb-1.5">Direct transcript plakken</label>
-            <textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Plak hier het transcript..."
-              rows={5}
-              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none"
-            />
-          </div>
+          {inputModus === "transcript" && (
+            <div>
+              <textarea
+                value={transcript}
+                onChange={(e) => setTranscript(e.target.value)}
+                placeholder="Plak hier het transcript..."
+                rows={6}
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none"
+              />
+            </div>
+          )}
         </div>
 
         {/* Actions */}

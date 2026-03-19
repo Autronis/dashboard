@@ -27,11 +27,24 @@ interface SupabaseItem {
 // ============ CATEGORY MAPPING ============
 
 // Supabase gebruikt "opportunities", dashboard gebruikt "kansen"
-function mapCategory(cat: string | null): "tools" | "api_updates" | "trends" | "kansen" | "must_reads" | null {
+type RadarCategorie = "ai_tools" | "api_updates" | "automation" | "business" | "competitors" | "tutorials" | "trends" | "kansen" | "must_reads";
+
+function mapCategory(cat: string | null): RadarCategorie | null {
   if (!cat) return null;
-  if (cat === "opportunities") return "kansen";
-  const valid = ["tools", "api_updates", "trends", "kansen", "must_reads"];
-  return valid.includes(cat) ? cat as "tools" | "api_updates" | "trends" | "kansen" | "must_reads" : null;
+  const mapping: Record<string, RadarCategorie> = {
+    opportunities: "kansen",
+    tools: "ai_tools",
+    ai_tools: "ai_tools",
+    api_updates: "api_updates",
+    automation: "automation",
+    business: "business",
+    competitors: "competitors",
+    tutorials: "tutorials",
+    trends: "trends",
+    kansen: "kansen",
+    must_reads: "must_reads",
+  };
+  return mapping[cat] || null;
 }
 
 // ============ MAIN SYNC ============

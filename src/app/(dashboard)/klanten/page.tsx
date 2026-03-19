@@ -9,17 +9,17 @@ import {
   Mail,
   Phone,
   Users,
-  Clock,
-  Euro,
   Eye,
   EyeOff,
   AlertCircle,
   TrendingUp,
   FileText,
-  Calendar,
-  ExternalLink,
+  Tag,
+  FlaskConical,
+  Receipt,
+  FileCheck,
 } from "lucide-react";
-import { cn, formatUren, formatBedrag } from "@/lib/utils";
+import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { KlantModal } from "./klant-modal";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useKlanten } from "@/hooks/queries/use-klanten";
@@ -97,7 +97,8 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
       onClick={onClick}
       className={cn(
         "bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 cursor-pointer card-glow flex flex-col group",
-        !klant.isActief && "opacity-60"
+        !klant.isActief && "opacity-60",
+        klant.isDemo && "border-dashed border-autronis-border/60"
       )}
     >
       {/* Header: Avatar + Name + Health */}
@@ -116,12 +117,41 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
             {klant.contactpersoon || "Geen contactpersoon"}
           </p>
         </div>
+        {klant.isDemo ? (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium flex-shrink-0">
+            DEMO
+          </span>
+        ) : null}
       </div>
 
-      {/* Last contact */}
-      <p className="text-xs text-autronis-text-secondary/70 mb-3">
-        Laatste contact: {formatRelatief(klant.laatsteContact)}
-      </p>
+      {/* Branche tag + last contact */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {klant.branche && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent font-medium">
+            {klant.branche}
+          </span>
+        )}
+        <span className="text-xs text-autronis-text-secondary/70">
+          {formatRelatief(klant.laatsteContact)}
+        </span>
+      </div>
+
+      {/* Last invoice + open offertes */}
+      <div className="flex items-center gap-2 mb-3 text-xs text-autronis-text-secondary/70">
+        {klant.laatsteFactuurDatum && (
+          <span className="flex items-center gap-1">
+            <Receipt className="w-3 h-3" />
+            {formatDatumKort(klant.laatsteFactuurDatum)}
+            {klant.laatsteFactuurBedrag ? ` (${formatBedrag(klant.laatsteFactuurBedrag)})` : ""}
+          </span>
+        )}
+        {klant.openstaandeOffertes > 0 && (
+          <span className="flex items-center gap-1 text-blue-400">
+            <FileCheck className="w-3 h-3" />
+            {klant.openstaandeOffertes} offerte{klant.openstaandeOffertes > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
 
       {/* Quick contact actions */}
       <div className="flex items-center gap-2 mb-4">
@@ -153,6 +183,20 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
         )}
       </div>
 
+      {/* Tags */}
+      {klant.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {klant.tags.map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-bg/80 text-autronis-text-secondary border border-autronis-border/50"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Divider */}
       <div className="h-px bg-autronis-border mt-auto mb-4" />
 
@@ -179,7 +223,8 @@ export default function KlantenPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { data, isLoading: laden } = useKlanten();
+  const [toonDemo, setToonDemo] = useState(false);
+  const { data, isLoading: laden } = useKlanten(toonDemo);
   const klanten = data?.klanten ?? [];
   const kpis = data?.kpis;
 
@@ -197,7 +242,8 @@ export default function KlantenPage() {
           return (
             k.bedrijfsnaam.toLowerCase().includes(zoek) ||
             (k.contactpersoon?.toLowerCase().includes(zoek) ?? false) ||
-            (k.email?.toLowerCase().includes(zoek) ?? false)
+            (k.email?.toLowerCase().includes(zoek) ?? false) ||
+            (k.branche?.toLowerCase().includes(zoek) ?? false)
           );
         }
         return true;
@@ -298,7 +344,7 @@ export default function KlantenPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-autronis-text-secondary/50" />
             <input
               type="text"
-              placeholder="Zoek op bedrijfsnaam, contactpersoon of email..."
+              placeholder="Zoek op bedrijfsnaam, contactpersoon, email of branche..."
               value={zoekterm}
               onChange={(e) => setZoekterm(e.target.value)}
               className="w-full bg-autronis-card border border-autronis-border text-autronis-text-primary rounded-xl pl-11 pr-4 py-3 text-sm placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent/40 transition-colors"
@@ -317,11 +363,24 @@ export default function KlantenPage() {
             {toonInactief ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             {toonInactief ? "Inactief zichtbaar" : "Toon inactief"}
           </button>
+
+          <button
+            onClick={() => setToonDemo(!toonDemo)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border transition-colors",
+              toonDemo
+                ? "bg-purple-500/10 border-purple-500/30 text-purple-400"
+                : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+            )}
+          >
+            <FlaskConical className="w-4 h-4" />
+            {toonDemo ? "Demo zichtbaar" : "Toon demo klanten"}
+          </button>
         </div>
 
-        {/* Card grid */}
+        {/* Card grid — responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
         {laden ? (
-          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="bg-autronis-card border border-autronis-border rounded-2xl p-6 h-56 animate-pulse">
                 <div className="flex gap-3 mb-4">
@@ -342,7 +401,7 @@ export default function KlantenPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-6" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))" }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {gefilterdeKlanten.map((klant) => (
               <KlantCard
                 key={klant.id}

@@ -14,7 +14,8 @@ export const CATEGORIE_KLEUREN: Record<string, string> = {
   communicatie: "#3B82F6",
   meeting: "#3B82F6",
   design: "#A855F7",
-  administratie: "#F59E0B",
+  administratie: "#F97316",
+  finance: "#EAB308",
   afleiding: "#EF4444",
   overig: "#6B7280",
   inactief: "#4B5563",
@@ -26,6 +27,7 @@ export const CATEGORIE_LABELS: Record<string, string> = {
   meeting: "Meeting",
   design: "Design",
   administratie: "Administratie",
+  finance: "Finance",
   afleiding: "Afleiding",
   overig: "Overig",
   inactief: "Inactief",
@@ -62,6 +64,14 @@ export function datumLabel(datum: Date, periode: Periode): string {
   return datum.toLocaleDateString("nl-NL", opties);
 }
 
+// Format date as YYYY-MM-DD in LOCAL timezone (not UTC!)
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function berekenVanTot(
   datum: Date,
   periode: Periode,
@@ -82,8 +92,8 @@ export function berekenVanTot(
     tot = new Date(d.getFullYear(), d.getMonth() + 1, 1);
   }
   return {
-    van: van.toISOString().split("T")[0] ?? "",
-    tot: tot.toISOString().split("T")[0] ?? "",
+    van: localDateStr(van),
+    tot: localDateStr(tot),
   };
 }
 
@@ -99,14 +109,91 @@ export function navigeerDatum(
   return d;
 }
 
-export function parseBestandenUitTitels(titels: string[]): string[] {
-  return [
-    ...new Set(
-      titels
-        .map((t) => t.split(" \u2014 ")[0]?.trim())
-        .filter((v): v is string => Boolean(v)),
-    ),
-  ];
+export interface ParsedTitel {
+  type: "vscode" | "chrome" | "tradingview" | "discord" | "overig";
+  label: string;
+  project?: string;
+  bestand?: string;
+  website?: string;
+  asset?: string;
+  kanaal?: string;
+  server?: string;
+}
+
+export function parseTitel(titel: string): ParsedTitel {
+  // VS Code: "bestand.tsx — project — Visual Studio Code"
+  const vsMatch = titel.match(/^(.+?)\s*[—-]\s*(.+?)\s*[—-]\s*Visual Studio Code$/);
+  if (vsMatch) {
+    return {
+      type: "vscode",
+      label: `${vsMatch[1].trim()} (${vsMatch[2].trim()})`,
+      bestand: vsMatch[1].trim(),
+      project: vsMatch[2].trim(),
+    };
+  }
+
+  // TradingView: "BTCUSD — TradingView" of "Liquidation Heatmap | CoinAnk"
+  const tvMatch = titel.match(/^(.+?)\s*[—-]\s*TradingView$/i);
+  if (tvMatch) {
+    return {
+      type: "tradingview",
+      label: `TradingView: ${tvMatch[1].trim()}`,
+      asset: tvMatch[1].trim(),
+    };
+  }
+  if (/coinank|coinglass|liquidation/i.test(titel)) {
+    return {
+      type: "tradingview",
+      label: titel.split(/[—-]/)[0]?.trim() ?? titel,
+      asset: titel.split(/[—-]/)[0]?.trim(),
+    };
+  }
+
+  // Discord: "kanaal | server - Discord"
+  const discordMatch = titel.match(/^(?:#\s*)?(.+?)\s*\|\s*(.+?)\s*[—-]\s*Discord$/i);
+  if (discordMatch) {
+    return {
+      type: "discord",
+      label: `Discord: #${discordMatch[1].trim()} (${discordMatch[2].trim()})`,
+      kanaal: discordMatch[1].trim(),
+      server: discordMatch[2].trim(),
+    };
+  }
+  if (/discord/i.test(titel)) {
+    const parts = titel.split(/[—-]/);
+    return {
+      type: "discord",
+      label: `Discord: ${parts[0]?.trim() ?? titel}`,
+      kanaal: parts[0]?.trim(),
+    };
+  }
+
+  // Chrome / browser: "Paginatitel - Google Chrome"
+  const chromeMatch = titel.match(/^(.+?)\s*[—-]\s*Google Chrome$/);
+  if (chromeMatch) {
+    return {
+      type: "chrome",
+      label: chromeMatch[1].trim(),
+      website: chromeMatch[1].trim(),
+    };
+  }
+
+  // Overig
+  return {
+    type: "overig",
+    label: titel.split(/[—-]/)[0]?.trim() ?? titel,
+  };
+}
+
+export function parseBestandenUitTitels(titels: string[]): ParsedTitel[] {
+  const seen = new Set<string>();
+  return titels
+    .map(parseTitel)
+    .filter((p) => {
+      if (seen.has(p.label)) return false;
+      seen.add(p.label);
+      return true;
+    });
 }
 
 export function formatTijdRange(iso: string): string {

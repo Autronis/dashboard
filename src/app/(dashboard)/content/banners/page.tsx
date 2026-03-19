@@ -14,6 +14,7 @@ import {
   Grid3x3,
   Plus,
   Layers,
+  Wand2,
 } from "lucide-react";
 import {
   useContentBanners,
@@ -21,6 +22,7 @@ import {
   useDeleteBanner,
   useRenderBanner,
   useAnalyzeTopic,
+  useGenerateAiBg,
 } from "@/hooks/queries/use-content";
 import { useToast } from "@/hooks/use-toast";
 import { BannerCanvas } from "@/components/banners/banner-canvas";
@@ -230,6 +232,7 @@ export default function BannersPage() {
   const saveBanner = useSaveBanner();
   const renderBanner = useRenderBanner();
   const analyzeTopic = useAnalyzeTopic();
+  const generateAiBg = useGenerateAiBg();
 
   const previewRef = useRef<HTMLDivElement>(null);
   const [onderwerp, setOnderwerp] = useState("");
@@ -242,6 +245,8 @@ export default function BannersPage() {
   const [illustrationOffsetY, setIllustrationOffsetY] = useState<number>(0);
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiBgUrl, setAiBgUrl] = useState<string>("");
+  const [isGeneratingBg, setIsGeneratingBg] = useState(false);
 
   // Batch state
   const [batchInput, setBatchInput] = useState("");
@@ -307,6 +312,7 @@ export default function BannersPage() {
         illustrationScale,
         illustrationOffsetX,
         illustrationOffsetY,
+        ...(aiBgUrl ? { aiBgUrl } : {}),
       });
       await renderBanner.mutateAsync(result.banner.id);
       addToast("Banner opgeslagen en gerenderd", "succes");
@@ -433,7 +439,7 @@ export default function BannersPage() {
             <div>
               <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">Formaat</label>
               <div className="flex gap-2 flex-wrap">
-                {(["instagram", "instagram_story", "linkedin"] as BannerFormaat[]).map((f) => {
+                {(["instagram", "instagram_square", "instagram_story", "linkedin"] as BannerFormaat[]).map((f) => {
                   const { label } = BANNER_FORMAAT_SIZES[f];
                   const isActive = formaat === f;
                   const isInstagram = f.startsWith("instagram");
@@ -549,6 +555,59 @@ export default function BannersPage() {
               </div>
             </div>
 
+            {/* AI Achtergrond */}
+            <div>
+              <label className="text-sm font-medium text-autronis-text-secondary mb-3 block">
+                AI Achtergrond (DALL-E 3)
+              </label>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={async () => {
+                    if (!onderwerp.trim()) {
+                      addToast("Voer eerst een onderwerp in", "info");
+                      return;
+                    }
+                    setIsGeneratingBg(true);
+                    try {
+                      const result = await generateAiBg.mutateAsync({
+                        onderwerp: onderwerp.trim(),
+                        illustration,
+                        formaat,
+                      });
+                      setAiBgUrl(result.imagePath);
+                      addToast("AI achtergrond gegenereerd", "succes");
+                    } catch (err) {
+                      addToast(err instanceof Error ? err.message : "AI achtergrond mislukt", "fout");
+                    } finally {
+                      setIsGeneratingBg(false);
+                    }
+                  }}
+                  disabled={isGeneratingBg || !onderwerp.trim()}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-purple-500/50 bg-purple-500/10 text-purple-400 text-sm font-medium hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+                >
+                  {isGeneratingBg ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="w-4 h-4" />
+                  )}
+                  {isGeneratingBg ? "Genereren (~15s)…" : "Genereer AI achtergrond"}
+                </button>
+                {aiBgUrl && (
+                  <button
+                    onClick={() => setAiBgUrl("")}
+                    className="text-xs text-autronis-text-secondary hover:text-red-400 transition-colors"
+                  >
+                    Verwijder
+                  </button>
+                )}
+              </div>
+              {aiBgUrl && (
+                <p className="text-xs text-purple-400 mt-2">
+                  AI achtergrond actief — wordt gebruikt in de banner
+                </p>
+              )}
+            </div>
+
             {/* Actions */}
             <div className="flex gap-3">
               <button
@@ -614,6 +673,7 @@ export default function BannersPage() {
                 illustrationScale={illustrationScale}
                 illustrationOffsetX={illustrationOffsetX * previewScale}
                 illustrationOffsetY={illustrationOffsetY * previewScale}
+                aiBgUrl={aiBgUrl || undefined}
               />
             </div>
             <p className="text-center text-xs text-autronis-text-secondary/60 mt-2">

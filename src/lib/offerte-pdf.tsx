@@ -1,5 +1,8 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import path from "path";
+import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
+
+const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
 
 Font.register({
   family: "Inter",
@@ -10,136 +13,303 @@ Font.register({
   ],
 });
 
+// Autronis brand colors
+const TEAL = "#17B8A5";
+const DARK_BG = "#0E1719";
+const TEXT_PRIMARY = "#E8ECED";
+const TEXT_SECONDARY = "#8A9BA0";
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Inter",
     fontSize: 10,
-    padding: 50,
-    color: "#1F2529",
+    color: "#1F2937",
+    backgroundColor: "#FFFFFF",
   },
-  header: {
+  // ===== DARK HEADER =====
+  headerBand: {
+    backgroundColor: DARK_BG,
+    paddingHorizontal: 50,
+    paddingTop: 30,
+    paddingBottom: 25,
+  },
+  headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 40,
+    alignItems: "center",
   },
+  logoSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  logoImage: {
+    width: 36,
+    height: 36,
+  },
+  logoTextWrap: {},
   bedrijfsnaam: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 700,
-    color: "#128C7E",
+    color: TEAL,
+    letterSpacing: 1.5,
   },
-  bedrijfsInfo: {
+  tagline: {
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    letterSpacing: 0.8,
+    marginTop: 2,
+  },
+  headerRight: {
+    alignItems: "flex-end",
+  },
+  documentType: {
+    fontSize: 26,
+    fontWeight: 700,
+    color: TEXT_PRIMARY,
+    letterSpacing: 3,
+  },
+  offerteNummer: {
     fontSize: 9,
-    color: "#64748B",
-    lineHeight: 1.6,
+    color: TEXT_SECONDARY,
+    marginTop: 4,
   },
-  offerteTitel: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#128C7E",
-    marginBottom: 20,
+  // ===== TEAL ACCENT LINE =====
+  accentLine: {
+    height: 3,
+    backgroundColor: TEAL,
   },
+  // ===== BODY =====
+  body: {
+    paddingHorizontal: 50,
+    paddingTop: 28,
+    paddingBottom: 20,
+  },
+  // ===== INFO SECTION =====
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 30,
+    marginBottom: 24,
   },
   infoBlock: {
     width: "48%",
   },
   infoLabel: {
-    fontSize: 8,
-    color: "#94A3B8",
+    fontSize: 7,
+    fontWeight: 600,
+    color: TEAL,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 6,
   },
   infoValue: {
     fontSize: 10,
-    lineHeight: 1.6,
+    lineHeight: 1.7,
+    color: "#374151",
   },
+  // ===== META BAR =====
+  metaBar: {
+    flexDirection: "row",
+    backgroundColor: "#F8FAFB",
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 20,
+    gap: 30,
+  },
+  metaItem: {},
+  metaItemLabel: {
+    fontSize: 7,
+    fontWeight: 600,
+    color: "#9CA3AF",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 3,
+  },
+  metaItemValue: {
+    fontSize: 10,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  // ===== INTRO TEXT =====
+  introSection: {
+    marginBottom: 22,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  introText: {
+    fontSize: 10,
+    lineHeight: 1.7,
+    color: "#4B5563",
+  },
+  // ===== TABLE =====
   table: {
-    marginTop: 10,
     marginBottom: 20,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    padding: 8,
+    backgroundColor: DARK_BG,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 4,
   },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    padding: 8,
+    borderBottomColor: "#F3F4F6",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
-  colOmschrijving: { width: "40%" },
+  tableRowAlt: {
+    backgroundColor: "#F9FAFB",
+  },
+  colOmschrijving: { width: "42%" },
   colAantal: { width: "12%", textAlign: "center" },
-  colPrijs: { width: "18%", textAlign: "right" },
+  colPrijs: { width: "16%", textAlign: "right" },
   colBtw: { width: "12%", textAlign: "center" },
   colTotaal: { width: "18%", textAlign: "right" },
   headerText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 600,
-    color: "#64748B",
+    color: TEXT_PRIMARY,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
+  regelText: {
+    fontSize: 9.5,
+    color: "#374151",
+  },
+  regelOptional: {
+    fontSize: 7,
+    color: "#9CA3AF",
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+  // ===== TOTALS =====
   totalen: {
     alignItems: "flex-end",
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 20,
+  },
+  totalenBox: {
+    width: 280,
+    backgroundColor: "#F8FAFB",
+    borderRadius: 8,
+    padding: 14,
   },
   totalenRij: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    width: 250,
+    justifyContent: "space-between",
     paddingVertical: 4,
   },
   totalenLabel: {
-    width: 130,
-    textAlign: "right",
-    paddingRight: 15,
-    color: "#64748B",
+    color: "#6B7280",
+    fontSize: 10,
   },
   totalenWaarde: {
-    width: 120,
-    textAlign: "right",
+    fontSize: 10,
+    color: "#374151",
   },
   totalenGroot: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
-    color: "#128C7E",
+    color: TEAL,
   },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    marginVertical: 20,
+  totalenDivider: {
+    borderTopWidth: 2,
+    borderTopColor: TEAL,
+    paddingTop: 8,
+    marginTop: 6,
   },
-  footer: {
-    marginTop: "auto",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    paddingTop: 15,
-  },
-  footerText: {
-    fontSize: 9,
-    color: "#64748B",
-    lineHeight: 1.6,
-  },
+  // ===== NOTITIES =====
   notities: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 4,
+    marginTop: 12,
+    padding: 14,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: TEAL,
   },
   notitiesLabel: {
+    fontSize: 7,
+    fontWeight: 600,
+    color: TEAL,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  // ===== BETALINGSVOORWAARDEN =====
+  voorwaarden: {
+    marginTop: 16,
+    padding: 14,
+    backgroundColor: "#F0FDFA",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+  },
+  voorwaardenTitel: {
     fontSize: 8,
     fontWeight: 600,
-    color: "#64748B",
+    color: "#0F766E",
     textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  voorwaardenText: {
+    fontSize: 8.5,
+    color: "#0F766E",
+    lineHeight: 1.7,
+  },
+  // ===== GELDIGHEID =====
+  geldigheid: {
+    marginTop: 14,
+    padding: 12,
+    backgroundColor: `#FFFBEB`,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+  },
+  geldigheidText: {
+    fontSize: 9,
+    color: "#92400E",
+    fontWeight: 600,
+  },
+  // ===== FOOTER =====
+  footer: {
+    backgroundColor: DARK_BG,
+    paddingHorizontal: 50,
+    paddingVertical: 18,
+    marginTop: "auto",
+  },
+  footerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  footerCol: {
+    width: "30%",
+  },
+  footerLabel: {
+    fontSize: 6,
+    fontWeight: 600,
+    color: TEAL,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
     marginBottom: 4,
+  },
+  footerText: {
+    fontSize: 8,
+    color: TEXT_SECONDARY,
+    lineHeight: 1.6,
+  },
+  footerCenter: {
+    textAlign: "center",
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#2A3538",
   },
 });
 
@@ -149,12 +319,15 @@ interface Regel {
   eenheidsprijs: number | null;
   btwPercentage: number | null;
   totaal: number | null;
+  isOptioneel?: number | null;
+  sectie?: string | null;
 }
 
 interface OffertePDFProps {
   offerte: {
     offertenummer: string;
     titel: string | null;
+    type?: string | null;
     datum: string | null;
     geldigTot: string | null;
     bedragExclBtw: number | null;
@@ -162,6 +335,7 @@ interface OffertePDFProps {
     btwBedrag: number | null;
     bedragInclBtw: number | null;
     notities: string | null;
+    korting?: number | null;
     klantNaam: string;
     klantContactpersoon: string | null;
     klantEmail: string | null;
@@ -195,114 +369,231 @@ function formatDatumPDF(datum: string): string {
   });
 }
 
+function getTypeLabel(type: string | null | undefined): string {
+  switch (type) {
+    case "fixed": return "Fixed Price";
+    case "retainer": return "Retainer";
+    default: return "Per Uur";
+  }
+}
+
 export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
+  const subtotaal = offerte.bedragExclBtw || 0;
+  const korting = offerte.korting || 0;
+  const subtotaalNaKorting = subtotaal - korting;
+  const btwBedrag = korting > 0
+    ? subtotaalNaKorting * ((offerte.btwPercentage || 21) / 100)
+    : (offerte.btwBedrag || 0);
+  const totaal = korting > 0
+    ? subtotaalNaKorting + btwBedrag
+    : (offerte.bedragInclBtw || 0);
+
+  const contactNaam = offerte.klantContactpersoon || offerte.klantNaam;
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.bedrijfsnaam}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
-            <Text style={styles.bedrijfsInfo}>
-              {bedrijf.adres ? `${bedrijf.adres}\n` : ""}
-              {bedrijf.email ? `${bedrijf.email}\n` : ""}
-              {bedrijf.telefoon ? `${bedrijf.telefoon}\n` : ""}
-              {bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}\n` : ""}
-              {bedrijf.btwNummer ? `BTW: ${bedrijf.btwNummer}` : ""}
-            </Text>
-          </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.offerteTitel}>OFFERTE</Text>
-          </View>
-        </View>
-
-        {/* Info row */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>Offerte aan</Text>
-            <Text style={styles.infoValue}>
-              {offerte.klantNaam}
-              {offerte.klantContactpersoon ? `\n${offerte.klantContactpersoon}` : ""}
-              {offerte.klantAdres ? `\n${offerte.klantAdres}` : ""}
-              {offerte.klantEmail ? `\n${offerte.klantEmail}` : ""}
-            </Text>
-          </View>
-          <View style={[styles.infoBlock, { alignItems: "flex-end" }]}>
-            <Text style={styles.infoLabel}>Offertenummer</Text>
-            <Text style={styles.infoValue}>{offerte.offertenummer}</Text>
-            {offerte.titel && (
-              <>
-                <Text style={[styles.infoLabel, { marginTop: 10 }]}>Titel</Text>
-                <Text style={styles.infoValue}>{offerte.titel}</Text>
-              </>
-            )}
-            <Text style={[styles.infoLabel, { marginTop: 10 }]}>Offertedatum</Text>
-            <Text style={styles.infoValue}>
-              {offerte.datum ? formatDatumPDF(offerte.datum) : "\u2014"}
-            </Text>
-            <Text style={[styles.infoLabel, { marginTop: 10 }]}>Geldig tot</Text>
-            <Text style={styles.infoValue}>
-              {offerte.geldigTot ? formatDatumPDF(offerte.geldigTot) : "\u2014"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Table */}
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.headerText, styles.colOmschrijving]}>Omschrijving</Text>
-            <Text style={[styles.headerText, styles.colAantal]}>Aantal</Text>
-            <Text style={[styles.headerText, styles.colPrijs]}>Prijs</Text>
-            <Text style={[styles.headerText, styles.colBtw]}>BTW %</Text>
-            <Text style={[styles.headerText, styles.colTotaal]}>Totaal</Text>
-          </View>
-          {regels.map((regel, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={styles.colOmschrijving}>{regel.omschrijving}</Text>
-              <Text style={styles.colAantal}>{regel.aantal || 1}</Text>
-              <Text style={styles.colPrijs}>{formatBedragPDF(regel.eenheidsprijs || 0)}</Text>
-              <Text style={styles.colBtw}>{regel.btwPercentage ?? 21}%</Text>
-              <Text style={styles.colTotaal}>{formatBedragPDF(regel.totaal || 0)}</Text>
+        {/* ===== DARK HEADER ===== */}
+        <View style={styles.headerBand}>
+          <View style={styles.headerContent}>
+            <View style={styles.logoSection}>
+              <Image src={LOGO_PATH} style={styles.logoImage} />
+              <View style={styles.logoTextWrap}>
+                <Text style={styles.bedrijfsnaam}>
+                  {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}
+                </Text>
+                <Text style={styles.tagline}>AI & Automatisering</Text>
+              </View>
             </View>
-          ))}
+            <View style={styles.headerRight}>
+              <Text style={styles.documentType}>OFFERTE</Text>
+              <Text style={styles.offerteNummer}>{offerte.offertenummer}</Text>
+              {offerte.type && (
+                <Text style={[styles.offerteNummer, { color: TEAL, marginTop: 2 }]}>
+                  {getTypeLabel(offerte.type)}
+                </Text>
+              )}
+            </View>
+          </View>
         </View>
 
-        {/* Totals */}
-        <View style={styles.totalen}>
-          <View style={styles.totalenRij}>
-            <Text style={styles.totalenLabel}>Subtotaal</Text>
-            <Text style={styles.totalenWaarde}>{formatBedragPDF(offerte.bedragExclBtw || 0)}</Text>
+        {/* Accent line */}
+        <View style={styles.accentLine} />
+
+        {/* ===== BODY ===== */}
+        <View style={styles.body}>
+          {/* Info row */}
+          <View style={styles.infoRow}>
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>Van</Text>
+              <Text style={styles.infoValue}>
+                {bedrijf.bedrijfsnaam || "Autronis"}
+                {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
+                {bedrijf.email ? `\n${bedrijf.email}` : "\nzakelijk@autronis.com"}
+                {"\nautronis.nl"}
+              </Text>
+            </View>
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>Offerte aan</Text>
+              <Text style={styles.infoValue}>
+                {offerte.klantNaam}
+                {offerte.klantContactpersoon ? `\nt.a.v. ${offerte.klantContactpersoon}` : ""}
+                {offerte.klantAdres ? `\n${offerte.klantAdres}` : ""}
+                {offerte.klantEmail ? `\n${offerte.klantEmail}` : ""}
+              </Text>
+            </View>
           </View>
-          <View style={styles.totalenRij}>
-            <Text style={styles.totalenLabel}>BTW ({offerte.btwPercentage || 21}%)</Text>
-            <Text style={styles.totalenWaarde}>{formatBedragPDF(offerte.btwBedrag || 0)}</Text>
+
+          {/* Meta bar */}
+          <View style={styles.metaBar}>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaItemLabel}>Offertenummer</Text>
+              <Text style={styles.metaItemValue}>{offerte.offertenummer}</Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaItemLabel}>Datum</Text>
+              <Text style={styles.metaItemValue}>
+                {offerte.datum ? formatDatumPDF(offerte.datum) : "\u2014"}
+              </Text>
+            </View>
+            <View style={styles.metaItem}>
+              <Text style={styles.metaItemLabel}>Geldig tot</Text>
+              <Text style={styles.metaItemValue}>
+                {offerte.geldigTot ? formatDatumPDF(offerte.geldigTot) : "\u2014"}
+              </Text>
+            </View>
+            {offerte.type && (
+              <View style={styles.metaItem}>
+                <Text style={styles.metaItemLabel}>Type</Text>
+                <Text style={[styles.metaItemValue, { color: TEAL }]}>
+                  {getTypeLabel(offerte.type)}
+                </Text>
+              </View>
+            )}
           </View>
-          <View style={[styles.totalenRij, { borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingTop: 8, marginTop: 4 }]}>
-            <Text style={[styles.totalenLabel, styles.totalenGroot]}>Totaal</Text>
-            <Text style={[styles.totalenWaarde, styles.totalenGroot]}>
-              {formatBedragPDF(offerte.bedragInclBtw || 0)}
+
+          {/* Introductie */}
+          <View style={styles.introSection}>
+            <Text style={styles.introText}>
+              Beste {contactNaam},{"\n\n"}
+              Hierbij ontvangt u onze offerte{offerte.titel ? ` voor ${offerte.titel}` : ""}. Wij hebben dit voorstel samengesteld op basis van uw wensen en behoeften. Hieronder vindt u een overzicht van de werkzaamheden en bijbehorende kosten.
             </Text>
           </View>
+
+          {/* ===== TABLE ===== */}
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.headerText, styles.colOmschrijving]}>Omschrijving</Text>
+              <Text style={[styles.headerText, styles.colAantal]}>Aantal</Text>
+              <Text style={[styles.headerText, styles.colPrijs]}>Prijs</Text>
+              <Text style={[styles.headerText, styles.colBtw]}>BTW</Text>
+              <Text style={[styles.headerText, styles.colTotaal]}>Totaal</Text>
+            </View>
+            {regels.map((regel, i) => (
+              <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <View style={styles.colOmschrijving}>
+                  <Text style={styles.regelText}>{regel.omschrijving}</Text>
+                  {regel.isOptioneel === 1 && (
+                    <Text style={styles.regelOptional}>Optioneel</Text>
+                  )}
+                </View>
+                <Text style={[styles.regelText, styles.colAantal]}>{regel.aantal || 1}</Text>
+                <Text style={[styles.regelText, styles.colPrijs]}>{formatBedragPDF(regel.eenheidsprijs || 0)}</Text>
+                <Text style={[styles.regelText, styles.colBtw]}>{regel.btwPercentage ?? 21}%</Text>
+                <Text style={[styles.regelText, styles.colTotaal]}>{formatBedragPDF(regel.totaal || 0)}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ===== TOTALS ===== */}
+          <View style={styles.totalen}>
+            <View style={styles.totalenBox}>
+              <View style={styles.totalenRij}>
+                <Text style={styles.totalenLabel}>Subtotaal</Text>
+                <Text style={styles.totalenWaarde}>{formatBedragPDF(subtotaal)}</Text>
+              </View>
+              {korting > 0 && (
+                <View style={styles.totalenRij}>
+                  <Text style={[styles.totalenLabel, { color: "#DC2626" }]}>Korting</Text>
+                  <Text style={[styles.totalenWaarde, { color: "#DC2626" }]}>
+                    - {formatBedragPDF(korting)}
+                  </Text>
+                </View>
+              )}
+              <View style={styles.totalenRij}>
+                <Text style={styles.totalenLabel}>BTW ({offerte.btwPercentage || 21}%)</Text>
+                <Text style={styles.totalenWaarde}>{formatBedragPDF(btwBedrag)}</Text>
+              </View>
+              <View style={[styles.totalenRij, styles.totalenDivider]}>
+                <Text style={[styles.totalenLabel, styles.totalenGroot]}>Totaal</Text>
+                <Text style={[styles.totalenWaarde, styles.totalenGroot]}>
+                  {formatBedragPDF(totaal)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Notities */}
+          {offerte.notities && (
+            <View style={styles.notities}>
+              <Text style={styles.notitiesLabel}>Opmerkingen</Text>
+              <Text style={{ fontSize: 9, lineHeight: 1.7, color: "#374151" }}>
+                {offerte.notities}
+              </Text>
+            </View>
+          )}
+
+          {/* Betalingsvoorwaarden */}
+          <View style={styles.voorwaarden}>
+            <Text style={styles.voorwaardenTitel}>Betalingsvoorwaarden</Text>
+            <Text style={styles.voorwaardenText}>
+              {"\u2022"} Betaling binnen 14 dagen na factuurdatum{"\n"}
+              {"\u2022"} 50% aanbetaling bij akkoord, 50% bij oplevering{"\n"}
+              {"\u2022"} Facturatie geschiedt per fase of op basis van bestede uren{"\n"}
+              {"\u2022"} Op al onze diensten zijn de algemene voorwaarden van {bedrijf.bedrijfsnaam || "Autronis"} van toepassing
+            </Text>
+          </View>
+
+          {/* Geldigheid */}
+          {offerte.geldigTot && (
+            <View style={styles.geldigheid}>
+              <Text style={styles.geldigheidText}>
+                Deze offerte is geldig tot {formatDatumPDF(offerte.geldigTot)}.
+                Na deze datum vervalt het aanbod automatisch.
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Notities */}
-        {offerte.notities && (
-          <View style={styles.notities}>
-            <Text style={styles.notitiesLabel}>Opmerkingen</Text>
-            <Text style={{ fontSize: 9, lineHeight: 1.6 }}>{offerte.notities}</Text>
-          </View>
-        )}
-
-        {/* Footer */}
+        {/* ===== DARK FOOTER ===== */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {offerte.geldigTot
-              ? `Deze offerte is geldig tot ${formatDatumPDF(offerte.geldigTot)}.`
-              : ""}
-            {`\nO.v.v. ${offerte.offertenummer}`}
-            {`\n\n${bedrijf.bedrijfsnaam || "Autronis"}`}
-            {bedrijf.kvkNummer ? ` | KvK: ${bedrijf.kvkNummer}` : ""}
-            {bedrijf.btwNummer ? ` | BTW: ${bedrijf.btwNummer}` : ""}
+          <View style={styles.footerContent}>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Contact</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.bedrijfsnaam || "Autronis"}
+                {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
+              </Text>
+            </View>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Bereikbaar</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.email || "zakelijk@autronis.com"}
+                {bedrijf.telefoon ? `\n${bedrijf.telefoon}` : ""}
+                {"\nautronis.nl"}
+              </Text>
+            </View>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Gegevens</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}` : ""}
+                {bedrijf.btwNummer ? `\nBTW: ${bedrijf.btwNummer}` : ""}
+                {bedrijf.iban ? `\nIBAN: ${bedrijf.iban}` : ""}
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.footerCenter}>
+            Autronis | autronis.nl | zakelijk@autronis.com
           </Text>
         </View>
       </Page>

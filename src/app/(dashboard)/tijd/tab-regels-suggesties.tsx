@@ -215,7 +215,7 @@ function RegelsSection() {
           {regels?.map((regel) => (
             <div
               key={regel.id}
-              className="bg-autronis-card border border-autronis-border rounded-xl p-4 flex items-center gap-4 hover:border-autronis-accent/20 transition-colors"
+              className="bg-autronis-card border border-autronis-border rounded-xl p-4 flex items-center gap-4 hover:border-autronis-accent/20 transition-colors card-glow"
             >
               <TypeIcon type={regel.type} />
               <span className="text-sm font-mono text-autronis-text-primary flex-1 truncate">
@@ -347,7 +347,7 @@ function SuggestiesSection() {
           {suggesties.map((s) => (
             <div
               key={s.id}
-              className="bg-autronis-card border border-autronis-border rounded-xl p-5 flex items-start gap-4 hover:border-autronis-accent/20 transition-colors"
+              className="bg-autronis-card border border-autronis-border rounded-xl p-5 flex items-start gap-4 hover:border-autronis-accent/20 transition-colors card-glow"
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-2">

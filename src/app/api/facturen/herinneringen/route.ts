@@ -43,7 +43,7 @@ export async function POST() {
 
     const apiKey = process.env.RESEND_API_KEY;
     const resend = apiKey ? new Resend(apiKey) : null;
-    const fromEmail = bedrijf?.email || "factuur@autronis.com";
+    const fromEmail = bedrijf?.email || "zakelijk@autronis.com";
 
     const resultaten: Array<{ factuurId: number; factuurnummer: string; klant: string | null; emailVerstuurd: boolean }> = [];
 

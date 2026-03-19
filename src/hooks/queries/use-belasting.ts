@@ -290,7 +290,13 @@ export function useReserveringen(jaar: number) {
       const res = await fetch(`/api/belasting/reserveringen?jaar=${jaar}`);
       if (!res.ok) throw new Error("Kon reserveringen niet laden");
       const data = await res.json();
-      return data.reserveringen;
+      return {
+        reserveringen: data.reserveringen ?? [],
+        totaalGereserveerd: data.samenvatting?.totaalGereserveerd ?? 0,
+        suggestieMaandelijks: data.samenvatting?.suggestieMaandelijks ?? 0,
+        geschatteBelasting: data.samenvatting?.geschatteBelasting ?? 0,
+        tekort: data.samenvatting?.tekort ?? 0,
+      };
     },
     staleTime: 60_000,
   });

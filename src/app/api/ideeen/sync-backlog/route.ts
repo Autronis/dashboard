@@ -61,34 +61,53 @@ function parseBacklog(content: string): ParsedIdee[] {
       }
     }
 
-    // Parse table rows: | # | Naam | Status | Omschrijving |
-    const tableMatch = line.match(/^\|\s*(\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.*?)\s*\|/);
-    if (tableMatch) {
-      const nummer = parseInt(tableMatch[1], 10);
-      const naam = tableMatch[2].trim();
-      const statusCell = tableMatch[3].trim();
-      const omschrijving = tableMatch[4]?.trim() || "";
+    // Parse table rows: | # | Naam | Cat | Status | Omschrijving |
+    // Split by pipe and filter empty segments
+    if (!line.startsWith("|")) continue;
+    const cells = line.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cells.length < 4) continue;
 
-      // Skip header rows
-      if (isNaN(nummer) || naam === "Naam" || naam.startsWith("-")) continue;
+    const nummerStr = cells[0];
+    const nummer = parseInt(nummerStr, 10);
+    if (isNaN(nummer)) continue; // Skip header/separator rows
 
-      // Map status emoji
-      let status: "idee" | "uitgewerkt" | "actief" | "gebouwd" = "idee";
-      for (const [emoji, mapped] of Object.entries(STATUS_MAP)) {
-        if (statusCell.includes(emoji)) {
-          status = mapped;
-          break;
-        }
-      }
+    const naam = cells[1];
+    if (naam === "Naam" || naam.startsWith("-")) continue;
 
-      parsed.push({
-        nummer,
-        naam,
-        status,
-        omschrijving,
-        categorie: currentCategorie,
-      });
+    // Determine which cell is status (contains emoji) and which is omschrijving
+    // Format can be 4 cols (# | Naam | Status | Omschrijving) or 5 cols (# | Naam | Cat | Status | Omschrijving)
+    let statusCell: string;
+    let omschrijving: string;
+
+    if (cells.length >= 5) {
+      // 5-column format: # | Naam | Cat | Status | Omschrijving
+      statusCell = cells[3];
+      omschrijving = cells[4] || "";
+    } else {
+      // 4-column format: # | Naam | Status | Omschrijving
+      statusCell = cells[2];
+      omschrijving = cells[3] || "";
     }
+
+    // Map status emoji
+    let status: "idee" | "uitgewerkt" | "actief" | "gebouwd" = "idee";
+    for (const [emoji, mapped] of Object.entries(STATUS_MAP)) {
+      if (statusCell.includes(emoji)) {
+        status = mapped;
+        break;
+      }
+    }
+
+    // Filter out emoji-only omschrijvingen (leftover status emojis)
+    const cleanOmschrijving = omschrijving.replace(/^[⚪🟡🟢✅🔵🔴☑️✔️\s]+$/, "").trim();
+
+    parsed.push({
+      nummer,
+      naam,
+      status,
+      omschrijving: cleanOmschrijving,
+      categorie: currentCategorie,
+    });
   }
 
   return parsed;

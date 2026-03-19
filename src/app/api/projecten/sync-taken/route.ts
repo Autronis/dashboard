@@ -1,0 +1,159 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { taken, projecten, gebruikers } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth";
+
+// POST /api/projecten/sync-taken
+// Body: { projectNaam: string, voltooide_taken: string[], nieuwe_taken: string[] }
+export async function POST(req: NextRequest) {
+  try {
+    await requireAuth();
+
+    const body = await req.json();
+    const { projectNaam, voltooide_taken, nieuwe_taken } = body as {
+      projectNaam: string;
+      voltooide_taken?: string[];
+      nieuwe_taken?: string[];
+    };
+
+    if (!projectNaam) {
+      return NextResponse.json({ fout: "projectNaam is verplicht" }, { status: 400 });
+    }
+
+    const errors: string[] = [];
+
+    // Find project (case-insensitive)
+    const project = db
+      .select()
+      .from(projecten)
+      .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
+      .get();
+
+    if (!project) {
+      return NextResponse.json({ fout: `Project "${projectNaam}" niet gevonden` }, { status: 404 });
+    }
+
+    // Get default user
+    const defaultUser = db.select().from(gebruikers).limit(1).get();
+    const userId = defaultUser?.id ?? 1;
+
+    let matched = 0;
+    let added = 0;
+
+    // Mark completed tasks (fuzzy: case-insensitive substring match)
+    if (voltooide_taken && voltooide_taken.length > 0) {
+      // Get all non-completed tasks for this project
+      const openTaken = db
+        .select()
+        .from(taken)
+        .where(
+          and(
+            eq(taken.projectId, project.id),
+            sql`${taken.status} != 'afgerond'`
+          )
+        )
+        .all();
+
+      for (const titel of voltooide_taken) {
+        const trimmed = titel.trim();
+        if (!trimmed) continue;
+
+        const lower = trimmed.toLowerCase();
+
+        // Fuzzy match: case-insensitive substring match
+        const match = openTaken.find(
+          (t) =>
+            t.titel.toLowerCase().includes(lower) ||
+            lower.includes(t.titel.toLowerCase())
+        );
+
+        if (match) {
+          db.update(taken)
+            .set({
+              status: "afgerond",
+              bijgewerktOp: sql`(datetime('now'))`,
+            })
+            .where(eq(taken.id, match.id))
+            .run();
+          matched++;
+        } else {
+          errors.push(`Geen match gevonden voor: "${trimmed}"`);
+        }
+      }
+    }
+
+    // Add new tasks
+    if (nieuwe_taken && nieuwe_taken.length > 0) {
+      const maxVolgorde = db
+        .select({ max: sql<number>`MAX(${taken.volgorde})` })
+        .from(taken)
+        .where(eq(taken.projectId, project.id))
+        .get();
+      let volgorde = (maxVolgorde?.max ?? 0) + 1;
+
+      for (const titel of nieuwe_taken) {
+        const trimmed = titel.trim();
+        if (!trimmed) continue;
+
+        // Check if task already exists (case-insensitive)
+        const bestaat = db
+          .select({ id: taken.id })
+          .from(taken)
+          .where(
+            and(
+              eq(taken.projectId, project.id),
+              sql`LOWER(${taken.titel}) = LOWER(${trimmed})`
+            )
+          )
+          .get();
+
+        if (!bestaat) {
+          db.insert(taken).values({
+            projectId: project.id,
+            toegewezenAan: userId,
+            aangemaaktDoor: userId,
+            titel: trimmed,
+            status: "open",
+            prioriteit: "normaal",
+            uitvoerder: "claude",
+            volgorde,
+          }).run();
+          added++;
+          volgorde++;
+        } else {
+          errors.push(`Taak bestaat al: "${trimmed}"`);
+        }
+      }
+    }
+
+    // Recalculate project voortgang_percentage
+    const takenStats = db
+      .select({
+        totaal: sql<number>`COUNT(*)`,
+        afgerond: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+      })
+      .from(taken)
+      .where(eq(taken.projectId, project.id))
+      .get();
+
+    const voortgang = takenStats && takenStats.totaal > 0
+      ? Math.round(((takenStats.afgerond ?? 0) / takenStats.totaal) * 100)
+      : 0;
+
+    db.update(projecten)
+      .set({
+        voortgangPercentage: voortgang,
+        bijgewerktOp: sql`(datetime('now'))`,
+      })
+      .where(eq(projecten.id, project.id))
+      .run();
+
+    return NextResponse.json({ matched, added, errors });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}

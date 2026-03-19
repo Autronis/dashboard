@@ -13,9 +13,12 @@ export async function GET() {
       .select({
         id: contentVideos.id,
         postId: contentVideos.postId,
+        titel: contentVideos.titel,
+        templateId: contentVideos.templateId,
         script: contentVideos.script,
         status: contentVideos.status,
         videoPath: contentVideos.videoPath,
+        formaat: contentVideos.formaat,
         duurSeconden: contentVideos.duurSeconden,
         aangemaaktOp: contentVideos.aangemaaktOp,
         postTitel: contentPosts.titel,

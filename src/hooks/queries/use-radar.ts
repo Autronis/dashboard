@@ -8,6 +8,8 @@ export interface RadarBron {
   url: string;
   type: string;
   actief: number;
+  laatstGescand: string | null;
+  aantalItems: number;
   aangemaaktOp: string;
 }
 
@@ -22,8 +24,11 @@ export interface RadarItem {
   score: number | null;
   scoreRedenering: string | null;
   aiSamenvatting: string | null;
+  relevantie: string | null;
+  leesMinuten: number | null;
   categorie: string | null;
   bewaard: number;
+  nietRelevant: number;
   bronNaam: string | null;
   aangemaaktOp: string;
 }
@@ -41,11 +46,13 @@ async function fetchItems(filters?: {
   categorie?: string;
   minScore?: number;
   bewaard?: boolean;
+  nietRelevant?: boolean;
 }): Promise<RadarItem[]> {
   const params = new URLSearchParams();
   if (filters?.categorie) params.set("categorie", filters.categorie);
   if (filters?.minScore != null) params.set("minScore", String(filters.minScore));
   if (filters?.bewaard != null) params.set("bewaard", filters.bewaard ? "1" : "0");
+  if (filters?.nietRelevant != null) params.set("nietRelevant", filters.nietRelevant ? "1" : "0");
   const res = await fetch(`/api/radar/items?${params}`);
   if (!res.ok) throw new Error("Kon radar items niet laden");
   const data = await res.json();
@@ -66,6 +73,7 @@ export function useRadarItems(filters?: {
   categorie?: string;
   minScore?: number;
   bewaard?: boolean;
+  nietRelevant?: boolean;
 }) {
   return useQuery({
     queryKey: ["radar-items", filters],
@@ -92,6 +100,7 @@ export function useRadarFetch() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["radar-items"] });
+      queryClient.invalidateQueries({ queryKey: ["radar-bronnen"] });
     },
   });
 }
@@ -107,6 +116,25 @@ export function useToggleBewaard() {
         body: JSON.stringify({ bewaard: bewaard ? 1 : 0 }),
       });
       if (!res.ok) throw new Error("Kon bewaard status niet wijzigen");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["radar-items"] });
+    },
+  });
+}
+
+export function useMarkNietRelevant() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/radar/items/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nietRelevant: 1 }),
+      });
+      if (!res.ok) throw new Error("Kon item niet markeren");
       return res.json();
     },
     onSuccess: () => {

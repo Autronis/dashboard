@@ -220,7 +220,7 @@ export function LiquiditeitTab() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
           <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">
             Gemiddelde maandelijkse uitgaven
           </h4>
@@ -231,7 +231,7 @@ export function LiquiditeitTab() {
             Gebaseerd op laatste 3 maanden
           </p>
         </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
           <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">
             Verwachte project-inkomsten
           </h4>

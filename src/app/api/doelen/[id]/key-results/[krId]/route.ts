@@ -14,15 +14,19 @@ export async function PUT(
     const { krId } = await params;
     const keyResultId = Number(krId);
 
-    const body = await req.json() as { huidigeWaarde: number };
+    const body = await req.json() as { huidigeWaarde?: number; confidence?: number };
 
-    if (body.huidigeWaarde === undefined || body.huidigeWaarde === null) {
-      return NextResponse.json({ fout: "Huidige waarde is verplicht" }, { status: 400 });
+    if (body.huidigeWaarde === undefined && body.confidence === undefined) {
+      return NextResponse.json({ fout: "Huidige waarde of confidence is verplicht" }, { status: 400 });
     }
+
+    const updates: Record<string, number> = {};
+    if (body.huidigeWaarde !== undefined) updates.huidigeWaarde = body.huidigeWaarde;
+    if (body.confidence !== undefined) updates.confidence = Math.max(0, Math.min(100, body.confidence));
 
     const [updated] = await db
       .update(okrKeyResults)
-      .set({ huidigeWaarde: body.huidigeWaarde })
+      .set(updates)
       .where(eq(okrKeyResults.id, keyResultId))
       .returning();
 

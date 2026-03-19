@@ -4,6 +4,145 @@ import { screenTimeEntries, screenTimeRegels, projecten } from "@/lib/db/schema"
 import { requireApiKey } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
+// ─── Server-side idle detection constants ───
+const MAX_ENTRY_DURATION_SECONDS = 300; // 5 min cap per entry
+const NACHT_START_UUR = 22; // 22:00
+const NACHT_EIND_UUR = 8;  // 08:00
+
+function isNachtUur(tijdStr: string): boolean {
+  const d = new Date(tijdStr);
+  const uur = d.getHours();
+  return uur >= NACHT_START_UUR || uur < NACHT_EIND_UUR;
+}
+
+/** Split een entry die langer is dan MAX_ENTRY_DURATION_SECONDS in chunks */
+function splitEntry(entry: {
+  clientId: string;
+  app: string;
+  venstertitel?: string;
+  url?: string;
+  startTijd: string;
+  eindTijd: string;
+  duurSeconden: number;
+}): Array<{
+  clientId: string;
+  app: string;
+  venstertitel?: string;
+  url?: string;
+  startTijd: string;
+  eindTijd: string;
+  duurSeconden: number;
+}> {
+  if (entry.duurSeconden <= MAX_ENTRY_DURATION_SECONDS) {
+    return [entry];
+  }
+
+  const chunks: typeof entry[] = [];
+  const startMs = new Date(entry.startTijd).getTime();
+  let offset = 0;
+  let chunkIdx = 0;
+
+  while (offset < entry.duurSeconden) {
+    const chunkDuur = Math.min(MAX_ENTRY_DURATION_SECONDS, entry.duurSeconden - offset);
+    const chunkStart = new Date(startMs + offset * 1000);
+    const chunkEnd = new Date(startMs + (offset + chunkDuur) * 1000);
+
+    chunks.push({
+      clientId: `${entry.clientId}_chunk${chunkIdx}`,
+      app: entry.app,
+      venstertitel: entry.venstertitel,
+      url: entry.url,
+      startTijd: chunkStart.toISOString(),
+      eindTijd: chunkEnd.toISOString(),
+      duurSeconden: chunkDuur,
+    });
+
+    offset += chunkDuur;
+    chunkIdx++;
+  }
+
+  return chunks;
+}
+
+// ─── Smart auto-categorization based on URL + app + title patterns ───
+// Rize-style: if no rule matches, use built-in heuristics before falling back to "overig"
+const AUTO_CATEGORISATIE: Array<{
+  test: (app: string, url: string, titel: string) => boolean;
+  categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig";
+}> = [
+  // Development — code editors, dev tools, dev websites
+  { test: (app) => /code|cursor|vim|neovim|webstorm|intellij/i.test(app), categorie: "development" },
+  { test: (_app, url) => /github\.com|gitlab\.com|bitbucket\.org|stackoverflow\.com/i.test(url), categorie: "development" },
+  { test: (_app, url) => /claude\.ai|chat\.openai\.com|anthropic\.com|platform\.openai\.com/i.test(url), categorie: "development" },
+  { test: (_app, url) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(url), categorie: "development" },
+  { test: (_app, url) => /vercel\.com|netlify\.com|railway\.app|supabase\.com/i.test(url), categorie: "development" },
+  { test: (_app, url) => /npmjs\.com|docs\.rs|crates\.io|pypi\.org/i.test(url), categorie: "development" },
+  { test: (app) => /terminal|cmd|powershell|warp|iterm|hyper|alacritty/i.test(app), categorie: "development" },
+  { test: (_app, _url, titel) => /\.(tsx?|jsx?|rs|py|go|css|html|json|md)\s*[—–-]/i.test(titel), categorie: "development" },
+  { test: (_app, url) => /notion\.so/i.test(url), categorie: "development" },
+  // Chrome with Autronis/dashboard/Lovable in title = development work, not communicatie
+  { test: (_app, _url, titel) => /Autronis Dashboard|Autronis \||localhost:\d+/i.test(titel), categorie: "development" },
+  { test: (_app, _url, titel) => /Lovable|Remix of Autronis/i.test(titel), categorie: "development" },
+  // Chrome with Claude conversation = development (AI-assisted coding)
+  { test: (_app, _url, titel) => /Claude.*Google Chrome|Claude - /i.test(titel), categorie: "development" },
+  // Chrome with Tailwind/React/Next docs = development
+  { test: (_app, _url, titel) => /Tailwind|React|Next\.js|MDN|W3Schools/i.test(titel), categorie: "development" },
+  { test: (_app, url) => /make\.com|n8n\.io|zapier\.com|autronis\.nl|autronis\.com/i.test(url), categorie: "development" },
+
+  // Communicatie
+  { test: (app) => /discord|slack|teams|zoom|telegram|whatsapp|signal/i.test(app), categorie: "communicatie" },
+  { test: (_app, url) => /mail\.google\.com|outlook\.live\.com|outlook\.office/i.test(url), categorie: "communicatie" },
+  { test: (_app, url) => /discord\.com|slack\.com|teams\.microsoft\.com/i.test(url), categorie: "communicatie" },
+  { test: (_app, url) => /meet\.google\.com|zoom\.us/i.test(url), categorie: "communicatie" },
+  { test: (_app, url) => /calendar\.google\.com/i.test(url), categorie: "communicatie" },
+
+  // Design
+  { test: (app) => /figma|sketch|photoshop|illustrator|canva|affinity/i.test(app), categorie: "design" },
+  { test: (_app, url) => /figma\.com|canva\.com|dribbble\.com|behance\.net/i.test(url), categorie: "design" },
+
+  // Administratie
+  { test: (_app, url) => /moneybird\.com|exactonline|twinfield|e-boekhouden/i.test(url), categorie: "administratie" },
+  { test: (_app, url) => /mijnbelastingdienst|belastingdienst\.nl/i.test(url), categorie: "administratie" },
+  { test: (_app, url) => /kvk\.nl|ing\.nl|rabobank\.nl|abnamro\.nl/i.test(url), categorie: "administratie" },
+  { test: (_app, url) => /digid\.nl/i.test(url), categorie: "administratie" },
+  { test: (_app, _url, titel) => /KVK|Kamer van Koophandel|kvk\.nl|eenmanszaak|vennootschap|VOF|DigiD/i.test(titel), categorie: "administratie" },
+  { test: (_app, url) => /docs\.google\.com\/spreadsheet|sheets\.google/i.test(url), categorie: "administratie" },
+  { test: (app) => /excel|numbers/i.test(app), categorie: "administratie" },
+
+  // YouTube educational → development (check BEFORE afleiding)
+  { test: (_app, url) => /youtube\.com.*(?:claude|code|programming|tutorial|dev|react|next|rust|agent|cursor|api|typescript|javascript|python|automation|n8n|make)/i.test(url), categorie: "development" },
+  { test: (_app, _url, titel) => /YouTube.*(Claude|Code|Agent|Team|Programming|Tutorial|Developer|Coding|API|Build|Setup|Cursor|n8n)/i.test(titel), categorie: "development" },
+
+  // Afleiding
+  { test: (_app, url) => /youtube\.com/i.test(url), categorie: "afleiding" },
+  { test: (_app, _url, titel) => /YouTube/i.test(titel), categorie: "afleiding" },
+  { test: (_app, url) => /reddit\.com(?!.*(?:programming|webdev|react|rust|automation))/i.test(url), categorie: "afleiding" },
+  { test: (_app, url) => /twitter\.com|x\.com|instagram\.com|facebook\.com|tiktok\.com/i.test(url), categorie: "afleiding" },
+  { test: (_app, url) => /netflix\.com|disney|primevideo|twitch\.tv/i.test(url), categorie: "afleiding" },
+  { test: (app) => /spotify|music/i.test(app), categorie: "afleiding" },
+
+  // Trading/Investing → administratie (goud kleur)
+  { test: (app) => /tradingview/i.test(app), categorie: "administratie" },
+  { test: (_app, _url, titel) => /System Investing|Investing V\d/i.test(titel), categorie: "administratie" },
+  { test: (_app, url) => /tradingview\.com|binance\.com|coinbase\.com|coingecko\.com/i.test(url), categorie: "administratie" },
+
+  // Business sites → administratie
+  { test: (_app, url) => /linkedin\.com/i.test(url), categorie: "communicatie" },
+  { test: (_app, url) => /make\.com|n8n\.io|zapier\.com/i.test(url), categorie: "development" },
+  { test: (_app, url) => /autronis\.nl|autronis\.com/i.test(url), categorie: "development" },
+];
+
+function autoCategoriseer(
+  app: string,
+  url: string,
+  titel: string
+): "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | null {
+  for (const rule of AUTO_CATEGORISATIE) {
+    if (rule.test(app, url, titel)) return rule.categorie;
+  }
+  return null;
+}
+
 function detectProjectFromTitle(
   app: string,
   title: string,
@@ -79,65 +218,96 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      const bestaand = db
-        .select({ id: screenTimeEntries.id })
-        .from(screenTimeEntries)
-        .where(eq(screenTimeEntries.clientId, entry.clientId))
-        .get();
+      // Split entries > 5 min into chunks (idle detection)
+      const chunks = splitEntry(entry);
 
-      if (bestaand) {
-        overgeslagen++;
-        continue;
-      }
+      for (const chunk of chunks) {
+        const bestaand = db
+          .select({ id: screenTimeEntries.id })
+          .from(screenTimeEntries)
+          .where(eq(screenTimeEntries.clientId, chunk.clientId))
+          .get();
 
-      let categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | "inactief" = "overig";
-      let projectId: number | null = null;
-      let klantId: number | null = null;
+        if (bestaand) {
+          overgeslagen++;
+          continue;
+        }
 
-      for (const regel of regels) {
-        const matchTarget =
-          regel.type === "app" ? entry.app :
-          regel.type === "url" ? (entry.url || "") :
-          (entry.venstertitel || "");
+        let categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | "inactief" = "overig";
+        let projectId: number | null = null;
+        let klantId: number | null = null;
+        let matchedByRule = false;
 
-        try {
-          if (new RegExp(regel.patroon, "i").test(matchTarget)) {
-            categorie = regel.categorie;
-            projectId = regel.projectId;
-            klantId = regel.klantId;
-            break;
+        // Nachturen (22:00-08:00) → overig categorie
+        const isNacht = isNachtUur(chunk.startTijd);
+
+        // 1. Try user-defined rules first (highest priority)
+        for (const regel of regels) {
+          const matchTarget =
+            regel.type === "app" ? chunk.app :
+            regel.type === "url" ? (chunk.url || "") :
+            (chunk.venstertitel || "");
+
+          try {
+            if (new RegExp(regel.patroon, "i").test(matchTarget)) {
+              categorie = regel.categorie;
+              projectId = regel.projectId;
+              klantId = regel.klantId;
+              matchedByRule = true;
+              break;
+            }
+          } catch {
+            // Invalid regex, skip rule
           }
-        } catch {
-          // Invalid regex, skip rule
         }
-      }
 
-      // Project detection from window title (if no project assigned by rules)
-      if (!projectId && entry.venstertitel) {
-        const detected = detectProjectFromTitle(entry.app, entry.venstertitel, projectCache);
-        if (detected) {
-          projectId = detected.projectId;
-          klantId = detected.klantId;
+        // 2. If no rule matched, use smart auto-categorization (Rize-style)
+        if (!matchedByRule) {
+          const autoCategorie = autoCategoriseer(
+            chunk.app,
+            chunk.url || "",
+            chunk.venstertitel || ""
+          );
+          if (autoCategorie) {
+            categorie = autoCategorie;
+          }
         }
+
+        // Override categorie for night hours
+        if (isNacht) {
+          categorie = "overig";
+        }
+
+        // Project detection from window title (if no project assigned by rules)
+        if (!projectId && chunk.venstertitel) {
+          const detected = detectProjectFromTitle(chunk.app, chunk.venstertitel, projectCache);
+          if (detected) {
+            projectId = detected.projectId;
+            klantId = detected.klantId;
+          }
+        }
+
+        // Cap duration at MAX_ENTRY_DURATION_SECONDS
+        const cappedDuur = Math.min(chunk.duurSeconden, MAX_ENTRY_DURATION_SECONDS);
+
+        db.insert(screenTimeEntries).values({
+          clientId: chunk.clientId,
+          gebruikerId,
+          app: chunk.app,
+          vensterTitel: chunk.venstertitel || null,
+          url: chunk.url || null,
+          categorie,
+          projectId,
+          klantId,
+          startTijd: chunk.startTijd,
+          eindTijd: chunk.eindTijd,
+          duurSeconden: cappedDuur,
+          bron: "agent",
+        }).run();
+
+        categorieen.push({ clientId: chunk.clientId, categorie, projectId });
+        verwerkt++;
       }
-
-      db.insert(screenTimeEntries).values({
-        clientId: entry.clientId,
-        gebruikerId,
-        app: entry.app,
-        vensterTitel: entry.venstertitel || null,
-        url: entry.url || null,
-        categorie,
-        projectId,
-        klantId,
-        startTijd: entry.startTijd,
-        eindTijd: entry.eindTijd,
-        duurSeconden: entry.duurSeconden,
-        bron: "agent",
-      }).run();
-
-      categorieen.push({ clientId: entry.clientId, categorie, projectId });
-      verwerkt++;
     }
 
     return NextResponse.json({ verwerkt, overgeslagen, categorieen });

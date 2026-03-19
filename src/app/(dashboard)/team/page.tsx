@@ -414,7 +414,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
           return (
             <div
               key={maand}
-              className="bg-autronis-card border border-autronis-border rounded-2xl p-4"
+              className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow"
             >
               <h3 className="text-sm font-semibold text-autronis-text-primary mb-3">
                 {MAANDEN[maand]}

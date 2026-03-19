@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { agendaItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { deleteGoogleEvent } from "@/lib/google-calendar";
 
 // PUT /api/agenda/[id]
 export async function PUT(
@@ -48,8 +49,21 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { id } = await params;
+
+    // Get item to check for Google event
+    const [item] = await db
+      .select({ googleEventId: agendaItems.googleEventId })
+      .from(agendaItems)
+      .where(eq(agendaItems.id, Number(id)))
+      .limit(1);
+
+    // Delete from Google Calendar if linked
+    if (item?.googleEventId) {
+      deleteGoogleEvent(gebruiker.id, item.googleEventId).catch(() => {});
+    }
+
     await db.delete(agendaItems).where(eq(agendaItems.id, Number(id)));
     return NextResponse.json({ succes: true });
   } catch (error) {

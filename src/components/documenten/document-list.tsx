@@ -274,7 +274,7 @@ export function DocumentList() {
               <div
                 key={doc.notionId}
                 onClick={() => !doc.isOptimistic && openPreview(doc)}
-                className={`rounded-xl bg-autronis-card border p-4 transition-colors group cursor-pointer ${pinned ? "border-amber-500/40" : "border-autronis-border"} ${doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/50"}`}
+                className={`rounded-xl bg-autronis-card border p-4 transition-colors group cursor-pointer card-glow ${pinned ? "border-amber-500/40" : "border-autronis-border"} ${doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/50"}`}
               >
                 <div className="flex items-start gap-4">
                   {/* Color bar */}

@@ -258,7 +258,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, icon }: StatCardProps) {
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-xl px-4 py-3 flex items-center gap-3">
+    <div className="bg-autronis-card border border-autronis-border rounded-xl px-4 py-3 flex items-center gap-3 card-glow">
       <div className="text-autronis-accent">{icon}</div>
       <div>
         <div className="text-xl font-bold text-autronis-text-primary leading-none">{value}</div>
@@ -505,7 +505,7 @@ export default function ContentKalenderPage() {
             {unscheduled.map((post) => (
               <div
                 key={post.id}
-                className="bg-autronis-card border border-autronis-border rounded-xl p-4 space-y-3"
+                className="bg-autronis-card border border-autronis-border rounded-xl p-4 space-y-3 card-glow"
               >
                 <div className="flex items-start gap-2">
                   <PlatformDot platform={post.platform} />

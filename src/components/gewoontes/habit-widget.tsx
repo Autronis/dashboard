@@ -19,6 +19,8 @@ import {
   Lightbulb,
   Plus,
   Loader2,
+  Droplets,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +39,8 @@ const ICON_MAP: Record<string, typeof Target> = {
   Lightbulb,
   Plus,
   CheckCircle2,
+  Droplets,
+  Shield,
 };
 
 interface Gewoonte {
@@ -138,19 +142,18 @@ export function HabitWidget() {
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow card-gradient">
       {/* Header */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <div className="p-2 bg-orange-500/10 rounded-xl">
-            <Flame className="w-5 h-5 text-orange-400" />
+      <div className="flex items-center justify-between mb-5 gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="p-1.5 bg-orange-500/10 rounded-lg flex-shrink-0">
+            <Flame className="w-4 h-4 text-orange-400" />
           </div>
-          <h2 className="text-lg font-semibold text-white">Gewoontes</h2>
+          <h2 className="text-base font-semibold text-white truncate">Gewoontes</h2>
         </div>
         <Link
           href="/gewoontes"
-          className="text-sm text-autronis-accent hover:text-autronis-accent-hover transition-colors flex items-center gap-1"
+          className="text-xs text-autronis-accent hover:text-autronis-accent-hover transition-colors flex items-center gap-1 flex-shrink-0"
         >
-          Alles
-          <ArrowRight className="w-3.5 h-3.5" />
+          Alles <ArrowRight className="w-3 h-3" />
         </Link>
       </div>
 

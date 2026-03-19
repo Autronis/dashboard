@@ -9,1208 +9,763 @@ interface BgIllustrationProps {
   offsetY?: number;
 }
 
-const N = "#2DD4A8";
+// Autronis teal + background color for double-line effect
+const C = "#17B8A5";
+const BG = "#0A1214";
 
-// ─── Helper functions ──────────────────────────────────────────────────────────
-
-function ring(x: number, y: number, r: number, o: number, sw = 1.5) {
-  return <circle cx={x} cy={y} r={r} fill="none" stroke={N} strokeWidth={sw} opacity={o} />;
-}
-
-function dot(x: number, y: number, r: number, o: number) {
-  return <circle cx={x} cy={y} r={r} fill={N} opacity={o} />;
-}
-
-function ln(x1: number, y1: number, x2: number, y2: number, o: number, sw = 1, dash?: string) {
-  return <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={N} strokeWidth={sw} opacity={o} strokeDasharray={dash} />;
-}
-
-function arc(cx: number, cy: number, r: number, startDeg: number, endDeg: number, o: number, sw = 1.5) {
-  const s = (startDeg * Math.PI) / 180;
-  const e = (endDeg * Math.PI) / 180;
-  const x1 = cx + Math.cos(s) * r;
-  const y1 = cy + Math.sin(s) * r;
-  const x2 = cx + Math.cos(e) * r;
-  const y2 = cy + Math.sin(e) * r;
-  const large = endDeg - startDeg > 180 ? 1 : 0;
-  return <path d={`M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`} fill="none" stroke={N} strokeWidth={sw} opacity={o} />;
-}
-
-function tickMarks(cx: number, cy: number, innerR: number, outerR: number, count: number, o: number) {
-  const lines = [];
-  for (let i = 0; i < count; i++) {
-    const a = (i / count) * Math.PI * 2;
-    lines.push(
-      <line key={i} x1={cx + Math.cos(a) * innerR} y1={cy + Math.sin(a) * innerR}
-        x2={cx + Math.cos(a) * outerR} y2={cy + Math.sin(a) * outerR}
-        stroke={N} strokeWidth={i % 5 === 0 ? 1.5 : 0.7} opacity={o} />
-    );
-  }
-  return <>{lines}</>;
-}
-
-function hexGrid(cx: number, cy: number, r: number, size: number, o: number) {
-  const hexes = [];
-  const h = size * Math.sqrt(3);
-  const cols = Math.ceil(r * 2 / (size * 1.5));
-  const rows = Math.ceil(r * 2 / h);
-  for (let row = -rows; row <= rows; row++) {
-    for (let col = -cols; col <= cols; col++) {
-      const hx = cx + col * size * 1.5;
-      const hy = cy + row * h + (col % 2 ? h / 2 : 0);
-      const dist = Math.sqrt((hx - cx) ** 2 + (hy - cy) ** 2);
-      if (dist > r) continue;
-      const pts = Array.from({ length: 6 }, (_, i) => {
-        const a = (i * 60 - 30) * Math.PI / 180;
-        return `${hx + Math.cos(a) * size * 0.45},${hy + Math.sin(a) * size * 0.45}`;
-      }).join(" ");
-      hexes.push(<polygon key={`${row}-${col}`} points={pts} fill="none" stroke={N} strokeWidth="0.5" opacity={o * (1 - dist / r * 0.5)} />);
-    }
-  }
-  return <>{hexes}</>;
-}
-
-// Gear path matching the Lovable reference: wide trapezoidal teeth with slight rounding
-function gearPath(x: number, y: number, r: number, teeth: number): string {
-  const outerR = r;           // tip of teeth
-  const baseR = r * 0.84;     // base between teeth
-  const toothArc = (Math.PI * 2) / teeth;
-
-  const p = (angle: number, radius: number) =>
-    `${x + Math.cos(angle) * radius},${y + Math.sin(angle) * radius}`;
-
-  let d = "";
-  for (let i = 0; i < teeth; i++) {
-    const a = i * toothArc - Math.PI / 2;
-    // Tooth shape: base → rise → flat top → fall → base
-    const baseStart = a;
-    const riseBottom = a + toothArc * 0.12;   // start of tooth at base radius
-    const riseTop = a + toothArc * 0.18;      // top-left corner of tooth
-    const fallTop = a + toothArc * 0.42;      // top-right corner of tooth
-    const fallBottom = a + toothArc * 0.48;   // end of tooth at base radius
-    const baseEnd = a + toothArc;             // start of next tooth
-
-    if (i === 0) d += `M ${p(baseStart, baseR)} `;
-
-    // Valley arc (between teeth)
-    d += `A ${baseR} ${baseR} 0 0 1 ${p(riseBottom, baseR)} `;
-    // Rise to tooth tip (slightly curved)
-    d += `L ${p(riseTop, outerR)} `;
-    // Tooth tip flat arc
-    d += `A ${outerR} ${outerR} 0 0 1 ${p(fallTop, outerR)} `;
-    // Fall back to base
-    d += `L ${p(fallBottom, baseR)} `;
-    // Valley to next tooth
-    d += `A ${baseR} ${baseR} 0 0 1 ${p(baseEnd, baseR)} `;
-  }
-  d += "Z";
-  return d;
-}
-
-// ─── GEAR — One massive gear, center-right, partially off-screen ─────────────
-// Reference: huge gear extending beyond canvas edges, 10-12 wide rounded teeth,
-// 3 concentric inner circles, small center dot. NO spokes, NO tick marks.
-
-function GearIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  // Shift gear to center-right / slightly down, just like reference
-  const gcx = cx + r * 0.25;
-  const gcy = cy + r * 0.15;
-  // Make it so large it blows past the canvas edges
-  const gr = r * 1.55;
-  const teeth = 11;
+/**
+ * Large, clean SVG background illustrations with double-line effect.
+ * Renders icon twice: outer thick teal stroke, inner cutout in bg color = double lines.
+ */
+export function BgIllustration({ type, width, height, scale = 1, offsetX = 0, offsetY = 0 }: BgIllustrationProps) {
+  const cx = width / 2 + offsetX;
+  // For tall formats, shift up to align with capsule (which sits at width/height * 50%)
+  const cy = (height > width ? height * (width / height) * 0.5 : height * 0.5) + offsetY;
+  const s = Math.min(width, height) * 0.45 * (scale ?? 1);
+  const op = 0.18;
 
   return (
-    <>
-      {/* THE massive gear outline */}
-      <path d={gearPath(gcx, gcy, gr, teeth)} fill="none" stroke={N} strokeWidth="3" opacity="0.18" strokeLinejoin="round" />
-
-      {/* 3 concentric inner rings, evenly spaced */}
-      {ring(gcx, gcy, gr * 0.62, 0.14, 2.5)}
-      {ring(gcx, gcy, gr * 0.42, 0.12, 2)}
-      {ring(gcx, gcy, gr * 0.22, 0.16, 2.5)}
-
-      {/* Center dot */}
-      {dot(gcx, gcy, gr * 0.05, 0.18)}
-    </>
+    <svg
+      style={{ position: "absolute", top: 0, left: 0, pointerEvents: "none" }}
+      width={width}
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+    >
+      {/* Pass 1: outer thin teal stroke */}
+      <g opacity={op} stroke={C} strokeWidth={3} fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {renderIcon(type, cx, cy, s)}
+      </g>
+      {/* Pass 2: cutout gap in background color */}
+      <g opacity={op} stroke={BG} strokeWidth={1.5} fill="none" strokeLinecap="round" strokeLinejoin="round">
+        {renderIcon(type, cx, cy, s)}
+      </g>
+    </svg>
   );
 }
 
-// ─── BRAIN — Large brain with circuit board traces inside ─────────────────────
-// Reference: two brain lobes, circuit traces (H+V grid), PCB-style via dots,
-// clean and symmetrical, brain stem at bottom.
-
-function BrainIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const br = r * 0.95;
-
-  // Circuit traces — horizontal and vertical grid pattern inside brain contour
-  const hTraces: [number, number, number, number][] = [
-    // Left lobe horizontals
-    [-0.68, -0.52, -0.12, -0.52],
-    [-0.72, -0.30, -0.10, -0.30],
-    [-0.72, -0.08, -0.10, -0.08],
-    [-0.68,  0.14, -0.12,  0.14],
-    [-0.58,  0.36, -0.15,  0.36],
-    // Right lobe horizontals
-    [ 0.12, -0.52,  0.68, -0.52],
-    [ 0.10, -0.30,  0.72, -0.30],
-    [ 0.10, -0.08,  0.72, -0.08],
-    [ 0.12,  0.14,  0.68,  0.14],
-    [ 0.15,  0.36,  0.58,  0.36],
-    // Center bridge
-    [-0.10, -0.20,  0.10, -0.20],
-    [-0.10,  0.02,  0.10,  0.02],
-    [-0.10,  0.24,  0.10,  0.24],
-  ];
-  const vTraces: [number, number, number, number][] = [
-    // Left lobe verticals
-    [-0.52, -0.52, -0.52,  0.36],
-    [-0.32, -0.52, -0.32,  0.36],
-    [-0.12, -0.52, -0.12,  0.36],
-    [-0.68, -0.30, -0.68,  0.14],
-    // Right lobe verticals
-    [ 0.52, -0.52,  0.52,  0.36],
-    [ 0.32, -0.52,  0.32,  0.36],
-    [ 0.12, -0.52,  0.12,  0.36],
-    [ 0.68, -0.30,  0.68,  0.14],
-  ];
-
-  // Via dots at grid intersections
-  const vias: [number, number][] = [
-    [-0.52, -0.52], [-0.52, -0.30], [-0.52, -0.08], [-0.52, 0.14], [-0.52, 0.36],
-    [-0.32, -0.52], [-0.32, -0.30], [-0.32, -0.08], [-0.32, 0.14], [-0.32, 0.36],
-    [-0.12, -0.52], [-0.12, -0.30], [-0.12, -0.08], [-0.12, 0.14], [-0.12, 0.36],
-    [ 0.52, -0.52], [ 0.52, -0.30], [ 0.52, -0.08], [ 0.52, 0.14], [ 0.52, 0.36],
-    [ 0.32, -0.52], [ 0.32, -0.30], [ 0.32, -0.08], [ 0.32, 0.14], [ 0.32, 0.36],
-    [ 0.12, -0.52], [ 0.12, -0.30], [ 0.12, -0.08], [ 0.12, 0.14], [ 0.12, 0.36],
-    [-0.68, -0.30], [-0.68,  0.14],
-    [ 0.68, -0.30], [ 0.68,  0.14],
-    [-0.10, -0.20], [ 0.10, -0.20],
-    [-0.10,  0.02], [ 0.10,  0.02],
-    [-0.10,  0.24], [ 0.10,  0.24],
-  ];
-
-  return (
-    <>
-      {/* Left brain lobe */}
-      <ellipse cx={cx - r * 0.24} cy={cy - r * 0.04} rx={br * 0.56} ry={br * 0.82}
-        fill="rgba(45,212,168,0.03)" stroke={N} strokeWidth="2.5" opacity="0.16" />
-      {/* Right brain lobe */}
-      <ellipse cx={cx + r * 0.24} cy={cy - r * 0.04} rx={br * 0.56} ry={br * 0.82}
-        fill="rgba(45,212,168,0.03)" stroke={N} strokeWidth="2.5" opacity="0.16" />
-
-      {/* Brain stem */}
-      <path d={`M ${cx - r * 0.09} ${cy + br * 0.68} Q ${cx} ${cy + br * 0.88} ${cx + r * 0.09} ${cy + br * 0.68}`}
-        fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-
-      {/* Center dividing groove */}
-      {ln(cx, cy - br * 0.78, cx, cy + br * 0.62, 0.07, 1, "5 5")}
-
-      {/* Horizontal circuit traces */}
-      {hTraces.map(([x1, y1, x2, y2], i) => (
-        <line key={`ht${i}`}
-          x1={cx + x1 * br} y1={cy + y1 * br}
-          x2={cx + x2 * br} y2={cy + y2 * br}
-          stroke={N} strokeWidth="1.2" opacity="0.11" />
-      ))}
-
-      {/* Vertical circuit traces */}
-      {vTraces.map(([x1, y1, x2, y2], i) => (
-        <line key={`vt${i}`}
-          x1={cx + x1 * br} y1={cy + y1 * br}
-          x2={cx + x2 * br} y2={cy + y2 * br}
-          stroke={N} strokeWidth="1.2" opacity="0.11" />
-      ))}
-
-      {/* PCB via dots at junctions */}
-      {vias.map(([vx, vy], i) => (
-        <g key={`via${i}`}>
-          <circle cx={cx + vx * br} cy={cy + vy * br} r={3.5}
-            fill="none" stroke={N} strokeWidth="1" opacity="0.18" />
-          <circle cx={cx + vx * br} cy={cy + vy * br} r={1.5}
-            fill={N} opacity="0.20" />
-        </g>
-      ))}
-    </>
-  );
-}
-
-// ─── CHART — Tablet/screen frame with bar chart + line chart inside ───────────
-// Reference: rounded-rect screen frame, toolbar header, bar columns, line overlay.
-
-function ChartIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const fw = r * 1.55, fh = r * 1.15;
-  const fl = cx - fw / 2, ft = cy - fh / 2;
-  const fr = cx + fw / 2, fb = cy + fh / 2;
-  const headerH = fh * 0.12;
-  const pad = r * 0.07;
-  const il = fl + pad, it = ft + headerH + pad;
-  const ir = fr - pad, ib = fb - pad;
-  const iw = ir - il, ih = ib - it;
-
-  const barHeights = [0.42, 0.62, 0.50, 0.78, 0.65, 0.88, 0.72, 0.92, 0.58, 0.80];
-  const linePoints: [number, number][] = [
-    [0, 0.58], [0.11, 0.42], [0.22, 0.48], [0.33, 0.28], [0.44, 0.36],
-    [0.55, 0.18], [0.66, 0.30], [0.77, 0.14], [0.88, 0.40], [1, 0.10],
-  ];
-
-  return (
-    <>
-      {/* Screen / tablet frame */}
-      <rect x={fl} y={ft} width={fw} height={fh} rx={r * 0.035}
-        fill="none" stroke={N} strokeWidth="2.5" opacity="0.17" />
-
-      {/* Top toolbar header bar */}
-      {ln(fl, ft + headerH, fr, ft + headerH, 0.13, 1.5)}
-
-      {/* Toolbar UI elements — hamburger lines + title stub */}
-      {[0, 1, 2].map(i => (
-        <rect key={`hb${i}`}
-          x={fl + pad} y={ft + pad * 0.35 + i * (headerH * 0.22)}
-          width={r * 0.055} height={r * 0.008} rx={1}
-          fill={N} opacity="0.16" />
-      ))}
-      <rect x={fl + pad + r * 0.085} y={ft + pad * 0.35}
-        width={r * 0.16} height={r * 0.007} rx={1} fill={N} opacity="0.13" />
-      <rect x={fl + pad + r * 0.085} y={ft + pad * 0.58}
-        width={r * 0.10} height={r * 0.006} rx={1} fill={N} opacity="0.09" />
-
-      {/* Bar chart columns */}
-      {barHeights.map((h, i) => {
-        const bw = iw * 0.067;
-        const gap = iw * 0.028;
-        const bx = il + i * (bw + gap) + gap * 0.5;
-        const bh = ih * 0.58 * h;
-        const by = ib - bh;
-        return (
-          <g key={`bar${i}`}>
-            <rect x={bx} y={by} width={bw} height={bh} rx={2}
-              fill={N} opacity="0.05" />
-            <rect x={bx} y={by} width={bw} height={bh} rx={2}
-              fill="none" stroke={N} strokeWidth="1.2" opacity="0.14" />
-          </g>
-        );
-      })}
-
-      {/* Line chart overlay */}
-      <polyline
-        points={linePoints.map(([px, py]) =>
-          `${il + px * iw},${it + ih * 0.12 + py * ih * 0.62}`).join(" ")}
-        fill="none" stroke={N} strokeWidth="2" opacity="0.20" strokeLinejoin="round" />
-
-      {/* Area fill under line */}
-      <path
-        d={`M ${il},${ib} ${linePoints.map(([px, py]) =>
-          `L ${il + px * iw} ${it + ih * 0.12 + py * ih * 0.62}`).join(" ")} L ${ir},${ib} Z`}
-        fill={N} opacity="0.03" />
-
-      {/* Data point dots on line */}
-      {linePoints.filter((_, i) => i % 2 === 0).map(([px, py], i) => {
-        const x = il + px * iw;
-        const y = it + ih * 0.12 + py * ih * 0.62;
-        return <g key={`dp${i}`}>{ring(x, y, 3.5, 0.12, 1)}{dot(x, y, 1.8, 0.16)}</g>;
-      })}
-
-      {/* Axis lines */}
-      {ln(il, ib, ir, ib, 0.10, 1)}
-      {ln(il, it + ih * 0.12, il, ib, 0.10, 1)}
-
-      {/* Horizontal grid lines */}
-      {Array.from({ length: 4 }, (_, i) => {
-        const y = it + ih * 0.14 + i * ih * 0.20;
-        return <line key={`hg${i}`} x1={il} y1={y} x2={ir} y2={y}
-          stroke={N} strokeWidth="0.5" opacity="0.04" />;
-      })}
-    </>
-  );
-}
-
-// ─── NODES → CHAIN LINK — Two large interlocking chain links ─────────────────
-// Reference: chain / ketting — two large oval links that overlap each other,
-// thick smooth outlines, very simple and clean.
-
-function NodesIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  // Two oval chain links side by side, overlapping in the center
-  const lw = r * 0.52;  // link half-width
-  const lh = r * 0.30;  // link half-height
-  const offset = r * 0.40; // horizontal offset from center
-
-  const leftCx  = cx - offset;
-  const rightCx = cx + offset;
-
-  return (
-    <>
-      {/* Left chain link — outer oval */}
-      <ellipse cx={leftCx} cy={cy} rx={lw} ry={lh}
-        fill="none" stroke={N} strokeWidth="3" opacity="0.18" />
-      {/* Left chain link — inner oval (thickness illusion) */}
-      <ellipse cx={leftCx} cy={cy} rx={lw * 0.72} ry={lh * 0.60}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.10" />
-
-      {/* Right chain link — outer oval */}
-      <ellipse cx={rightCx} cy={cy} rx={lw} ry={lh}
-        fill="none" stroke={N} strokeWidth="3" opacity="0.18" />
-      {/* Right chain link — inner oval */}
-      <ellipse cx={rightCx} cy={cy} rx={lw * 0.72} ry={lh * 0.60}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.10" />
-
-      {/* Overlap region — draw right link arc over left link to show interlock */}
-      {/* Clip the right side of left link in the overlap zone with a mask */}
-      <defs>
-        <clipPath id="rightLinkClip">
-          <rect x={cx - r * 0.02} y={cy - lh * 1.2} width={lw + r * 0.1} height={lh * 2.4} />
-        </clipPath>
-        <clipPath id="leftLinkClip">
-          <rect x={cx - lw - r * 0.1} y={cy - lh * 1.2} width={lw + r * 0.1} height={lh * 2.4} />
-        </clipPath>
-      </defs>
-
-      {/* Re-draw right oval over left in the overlap — creates interlocking illusion */}
-      <ellipse cx={rightCx} cy={cy} rx={lw} ry={lh}
-        fill="none" stroke={N} strokeWidth="3" opacity="0.18"
-        clipPath="url(#leftLinkClip)" />
-    </>
-  );
-}
-
-// ─── SHIELD — Large shield with padlock inside + double border ────────────────
-// Reference: pointed-bottom shield, inner shield outline, padlock (rect + shackle arc),
-// inner circle behind lock, bold and clean.
-
-function ShieldIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const sw = r * 0.72, sh = r * 0.90;
-
-  const shieldD = (scale: number) => {
-    const w = sw * scale, h = sh * scale;
-    return `M ${cx} ${cy - h} Q ${cx + w} ${cy - h * 0.55} ${cx + w} ${cy - h * 0.05} Q ${cx + w * 0.55} ${cy + h * 0.68} ${cx} ${cy + h} Q ${cx - w * 0.55} ${cy + h * 0.68} ${cx - w} ${cy - h * 0.05} Q ${cx - w} ${cy - h * 0.55} ${cx} ${cy - h} Z`;
-  };
-
-  return (
-    <>
-      {/* Outer shield */}
-      <path d={shieldD(1)} fill="rgba(45,212,168,0.03)" stroke={N} strokeWidth="3" opacity="0.18" />
-
-      {/* Inner shield border */}
-      <path d={shieldD(0.80)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.12" />
-
-      {/* Inner circle behind lock */}
-      {ring(cx, cy + r * 0.05, r * 0.28, 0.08, 1.5)}
-
-      {/* Lock body */}
-      <rect x={cx - r * 0.13} y={cy + r * 0.02} width={r * 0.26} height={r * 0.22}
-        rx={r * 0.025} fill="none" stroke={N} strokeWidth="2.5" opacity="0.20" />
-
-      {/* Lock shackle arc */}
-      {arc(cx, cy + r * 0.02, r * 0.10, 180, 360, 0.16, 2.5)}
-
-      {/* Keyhole */}
-      {dot(cx, cy + r * 0.10, r * 0.025, 0.14)}
-      {ln(cx, cy + r * 0.10, cx, cy + r * 0.18, 0.12, 1.5)}
-    </>
-  );
-}
-
-// ─── FLOW — Process diagram: rounded rect boxes + right-angle connectors ──────
-// Reference: 4-5 rounded rectangles connected with lines that have right-angle
-// turns, branching pattern, very clean minimal diagram.
-
-function FlowIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const bw = r * 0.32, bh = r * 0.16;
-
-  // Box positions [x, y] — relative to center
-  const boxes: [number, number][] = [
-    [ 0,     -0.62],   // 0 top
-    [ 0,     -0.28],   // 1 second
-    [-0.42,   0.08],   // 2 branch left
-    [ 0.42,   0.08],   // 3 branch right
-    [ 0,      0.44],   // 4 bottom merge
-  ];
-
-  // Connector lines [from box, to box] drawn as right-angle paths
-  // We'll define them manually as SVG paths for precise right-angle turns
-  const connectors = [
-    // 0 → 1 (straight down)
-    `M ${cx} ${cy + (-0.62 + 0.08) * r} L ${cx} ${cy + (-0.28 - 0.08) * r}`,
-    // 1 → 2 (down then left)
-    `M ${cx} ${cy + (-0.28 + 0.08) * r} L ${cx} ${cy} L ${cx - 0.42 * r} ${cy} L ${cx - 0.42 * r} ${cy + 0.08 * r - bh / 2}`,
-    // 1 → 3 (down then right)
-    `M ${cx} ${cy + (-0.28 + 0.08) * r} L ${cx} ${cy} L ${cx + 0.42 * r} ${cy} L ${cx + 0.42 * r} ${cy + 0.08 * r - bh / 2}`,
-    // 2 → 4 (down then right)
-    `M ${cx - 0.42 * r} ${cy + (0.08 + 0.08) * r} L ${cx - 0.42 * r} ${cy + 0.34 * r} L ${cx} ${cy + 0.34 * r} L ${cx} ${cy + 0.44 * r - bh / 2}`,
-    // 3 → 4 (down then left)
-    `M ${cx + 0.42 * r} ${cy + (0.08 + 0.08) * r} L ${cx + 0.42 * r} ${cy + 0.34 * r} L ${cx} ${cy + 0.34 * r} L ${cx} ${cy + 0.44 * r - bh / 2}`,
-  ];
-
-  return (
-    <>
-      {/* Connector lines */}
-      {connectors.map((d, i) => (
-        <path key={`conn${i}`} d={d} fill="none" stroke={N}
-          strokeWidth="2" opacity="0.14" strokeLinejoin="round" />
-      ))}
-
-      {/* Process boxes */}
-      {boxes.map(([ox, oy], i) => (
-        <rect key={`box${i}`}
-          x={cx + ox * r - bw / 2} y={cy + oy * r - bh / 2}
-          width={bw} height={bh} rx={5}
-          fill="rgba(45,212,168,0.04)" stroke={N} strokeWidth="2.5" opacity="0.17" />
-      ))}
-
-      {/* Arrow tips at connector ends */}
-      {[
-        [cx, cy + (-0.28 - 0.08) * r, 90],
-        [cx - 0.42 * r, cy + 0.08 * r - bh / 2, 90],
-        [cx + 0.42 * r, cy + 0.08 * r - bh / 2, 90],
-        [cx, cy + 0.44 * r - bh / 2, 90],
-      ].map(([ax, ay, rot], i) => (
-        <path key={`arr${i}`}
-          d={`M ${ax as number - 5} ${ay as number + 5} L ${ax} ${ay} L ${ax as number + 5} ${ay as number + 5}`}
-          fill="none" stroke={N} strokeWidth="1.5" opacity="0.14" />
-      ))}
-    </>
-  );
-}
-
-// ─── CLOCK/MONEY — Clock face with clock hands + currency sign ────────────────
-// Replaces the old "lightbulb" illustration with the clock reference design.
-// Reference: large clock, hour markers, hands, euro/dollar sign, small gear accent.
-
-function LightbulbIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const cr = r * 0.85; // clock radius
-
-  return (
-    <>
-      {/* Clock outer circle */}
-      {ring(cx, cy, cr, 0.18, 3)}
-      {/* Clock inner rim */}
-      {ring(cx, cy, cr * 0.88, 0.08, 1)}
-
-      {/* Hour markers — 12 short tick marks */}
-      {Array.from({ length: 12 }, (_, i) => {
-        const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
-        const isMain = i % 3 === 0;
-        const inner = cr * (isMain ? 0.74 : 0.80);
-        const outer = cr * 0.88;
-        return (
-          <line key={`tick${i}`}
-            x1={cx + Math.cos(a) * inner} y1={cy + Math.sin(a) * inner}
-            x2={cx + Math.cos(a) * outer} y2={cy + Math.sin(a) * outer}
-            stroke={N} strokeWidth={isMain ? 2 : 1} opacity={isMain ? 0.20 : 0.13} />
-        );
-      })}
-
-      {/* Hour hand — pointing to ~10 o'clock */}
-      <line x1={cx} y1={cy}
-        x2={cx + Math.cos((10 / 12) * Math.PI * 2 - Math.PI / 2) * cr * 0.52}
-        y2={cy + Math.sin((10 / 12) * Math.PI * 2 - Math.PI / 2) * cr * 0.52}
-        stroke={N} strokeWidth="3" opacity="0.20" strokeLinecap="round" />
-
-      {/* Minute hand — pointing to ~2 o'clock */}
-      <line x1={cx} y1={cy}
-        x2={cx + Math.cos((2 / 12) * Math.PI * 2 - Math.PI / 2) * cr * 0.70}
-        y2={cy + Math.sin((2 / 12) * Math.PI * 2 - Math.PI / 2) * cr * 0.70}
-        stroke={N} strokeWidth="2.5" opacity="0.18" strokeLinecap="round" />
-
-      {/* Center hub */}
-      {dot(cx, cy, cr * 0.04, 0.22)}
-      {ring(cx, cy, cr * 0.07, 0.14, 1.5)}
-
-      {/* Euro/dollar sign overlapping the clock — large, center */}
-      <text x={cx + cr * 0.18} y={cy + cr * 0.12}
-        fontSize={cr * 0.60} fontFamily="system-ui, sans-serif"
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.13"
-        textAnchor="middle" dominantBaseline="middle">€</text>
-
-      {/* Small gear accent — bottom-right area */}
-      <path d={gearPath(cx + cr * 0.68, cy + cr * 0.60, r * 0.14, 8)}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.12" />
-      {ring(cx + cr * 0.68, cy + cr * 0.60, r * 0.06, 0.10, 1)}
-    </>
-  );
-}
-
-// ─── CIRCUIT — Circuit board grid with IC chip ─────────────────────────────────
-
-function CircuitIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  const step = r * 0.16;
-  const traces: [number, number, number, number][] = [];
-  const vias: [number, number][] = [];
-
-  for (let row = -4; row <= 4; row++) {
-    const y = cy + row * step;
-    const startX = cx - r * 0.82 + Math.abs(row) * step * 0.28;
-    const endX = cx + r * 0.82 - Math.abs(row) * step * 0.28;
-    if (row % 2 === 0) {
-      traces.push([startX, y, endX, y]);
-      vias.push([startX, y], [endX, y]);
-    }
-  }
-  for (let col = -4; col <= 4; col++) {
-    const x = cx + col * step;
-    if (col % 2 !== 0) {
-      const startY = cy - r * 0.52 + Math.abs(col) * step * 0.18;
-      const endY = cy + r * 0.52 - Math.abs(col) * step * 0.18;
-      traces.push([x, startY, x, endY]);
-      vias.push([x, startY], [x, endY]);
-    }
-  }
-
-  return (
-    <>
-      {traces.map(([x1, y1, x2, y2], i) => (
-        <line key={`t${i}`} x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke={N} strokeWidth={i < 5 ? 1.5 : 0.8} opacity={0.06 + (i % 3) * 0.01} />
-      ))}
-      {vias.map(([vx, vy], i) => (
-        <g key={`v${i}`}>
-          <circle cx={vx} cy={vy} r={2.5} fill="none" stroke={N} strokeWidth="1" opacity="0.20" />
-          <circle cx={vx} cy={vy} r={1} fill={N} opacity="0.20" />
-        </g>
-      ))}
-      <rect x={cx - r * 0.18} y={cy - r * 0.12} width={r * 0.36} height={r * 0.24}
-        rx={3} fill="none" stroke={N} strokeWidth="1.8" opacity="0.25" />
-      {Array.from({ length: 6 }, (_, i) => {
-        const px = cx - r * 0.15 + i * r * 0.06;
-        return (
-          <g key={`p${i}`}>
-            {ln(px, cy - r * 0.12, px, cy - r * 0.20, 0.07, 1)}
-            {ln(px, cy + r * 0.12, px, cy + r * 0.20, 0.07, 1)}
-          </g>
-        );
-      })}
-      {dot(cx - r * 0.12, cy - r * 0.06, 2.5, 0.10)}
-      <rect x={cx + r * 0.35} y={cy - r * 0.35} width={r * 0.20} height={r * 0.15}
-        rx={2} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
-      {ln(cx - r * 0.60, cy + r * 0.40, cx - r * 0.60, cy + r * 0.50, 0.06, 1.5)}
-      {ln(cx - r * 0.68, cy + r * 0.50, cx - r * 0.52, cy + r * 0.50, 0.06, 1.5)}
-      {ln(cx - r * 0.64, cy + r * 0.54, cx - r * 0.56, cy + r * 0.54, 0.05, 1)}
-      {ln(cx - r * 0.62, cy + r * 0.57, cx - r * 0.58, cy + r * 0.57, 0.04, 0.8)}
-    </>
-  );
-}
-
-// ─── TARGET ───────────────────────────────────────────────────────────────────
-
-function TargetIllustration({ cx, cy, r }: { cx: number; cy: number; r: number }) {
-  return (
-    <>
-      {[0.90, 0.68, 0.46, 0.24].map((s, i) => (
-        <g key={`r${i}`}>
-          {ring(cx, cy, r * s, i === 0 ? 0.07 : 0.09, i === 0 ? 1.2 : 1.8)}
-          {i < 2 && tickMarks(cx, cy, r * s - 3, r * s + 3, i === 0 ? 72 : 36, 0.04)}
-        </g>
-      ))}
-      {dot(cx, cy, r * 0.08, 0.14)}
-      {ln(cx - r, cy, cx - r * 0.28, cy, 0.07, 1)}
-      {ln(cx + r * 0.28, cy, cx + r, cy, 0.07, 1)}
-      {ln(cx, cy - r, cx, cy - r * 0.28, 0.07, 1)}
-      {ln(cx, cy + r * 0.28, cx, cy + r, 0.07, 1)}
-      {arc(cx, cy, r * 0.82, -15, 45, 0.10, 2.5)}
-      {arc(cx, cy, r * 0.55, 160, 230, 0.07, 2)}
-      {dot(cx + r * 0.35, cy - r * 0.20, 3, 0.15)}
-      {dot(cx - r * 0.15, cy + r * 0.40, 2.5, 0.12)}
-      <rect x={cx + r * 0.60} y={cy - r * 0.85} width={r * 0.28} height={r * 0.08}
-        rx={2} fill="none" stroke={N} strokeWidth="0.7" opacity="0.14" />
-      <path d={`M ${cx + r * 0.65} ${cy - r * 0.65} L ${cx + r * 0.25} ${cy - r * 0.25}`}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.22" />
-      <path d={`M ${cx + r * 0.35} ${cy - r * 0.35} L ${cx + r * 0.25} ${cy - r * 0.25} L ${cx + r * 0.35} ${cy - r * 0.25}`}
-        fill="none" stroke={N} strokeWidth="1.5" opacity="0.22" />
-    </>
-  );
-}
-
-// ─── Remaining illustration types ─────────────────────────────────────────────
-
-function SimpleIllustration({ cx, cy, r, type }: { cx: number; cy: number; r: number; type: string }) {
+function renderIcon(type: BannerIllustration, cx: number, cy: number, s: number) {
   switch (type) {
-    case "puzzle":
+
+    // ─── Gear: clean settings-style cog (like iOS/Android settings icon) ───
+    case "gear":
       return (
         <>
-          <rect x={cx - r * 0.40} y={cy - r * 0.40} width={r * 0.35} height={r * 0.35} rx={4}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-          <rect x={cx + r * 0.05} y={cy - r * 0.40} width={r * 0.35} height={r * 0.35} rx={4}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-          <rect x={cx - r * 0.40} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-          <rect x={cx + r * 0.05} y={cy + r * 0.05} width={r * 0.35} height={r * 0.35} rx={4}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-          {arc(cx + r * 0.025, cy - r * 0.22, r * 0.06, 0, 180, 0.08, 1.5)}
-          {arc(cx + r * 0.025, cy + r * 0.22, r * 0.06, 180, 360, 0.08, 1.5)}
-          {arc(cx - r * 0.22, cy + r * 0.025, r * 0.06, 270, 90, 0.08, 1.5)}
-          {arc(cx + r * 0.22, cy + r * 0.025, r * 0.06, 90, 270, 0.08, 1.5)}
+          {/* Inner circle (hole) */}
+          <circle cx={cx} cy={cy} r={s * 0.16} />
+          {/* Smooth cog outline with 8 rounded teeth */}
+          <path d={Array.from({ length: 8 }, (_, i) => {
+            const toothAngle = (Math.PI * 2) / 8;
+            const a = i * toothAngle - Math.PI / 2;
+            const innerR = s * 0.32;
+            const outerR = s * 0.44;
+            const halfTooth = toothAngle * 0.22;
+            const halfGap = toothAngle * 0.28;
+            // Tooth: go out, arc across top, come back in, arc along inner
+            const points = [
+              // Start of tooth (inner)
+              `${i === 0 ? "M" : "L"}${cx + Math.cos(a - halfGap) * innerR},${cy + Math.sin(a - halfGap) * innerR}`,
+              // Go to outer
+              `L${cx + Math.cos(a - halfTooth) * outerR},${cy + Math.sin(a - halfTooth) * outerR}`,
+              // Arc across tooth top
+              `A${outerR},${outerR} 0 0 1 ${cx + Math.cos(a + halfTooth) * outerR},${cy + Math.sin(a + halfTooth) * outerR}`,
+              // Back to inner
+              `L${cx + Math.cos(a + halfGap) * innerR},${cy + Math.sin(a + halfGap) * innerR}`,
+              // Arc along inner to next tooth
+              `A${innerR},${innerR} 0 0 1 ${cx + Math.cos(a + toothAngle - halfGap) * innerR},${cy + Math.sin(a + toothAngle - halfGap) * innerR}`,
+            ];
+            return points.join(" ");
+          }).join(" ") + " Z"} />
         </>
       );
 
-    case "cloud":
+    // ─── Nodes: connected network of 5 nodes ───
+    case "nodes":
       return (
         <>
-          <path d={`M ${cx - r * 0.52} ${cy + r * 0.05} A ${r * 0.32} ${r * 0.32} 0 1 1 ${cx - r * 0.12} ${cy - r * 0.38} A ${r * 0.26} ${r * 0.26} 0 1 1 ${cx + r * 0.28} ${cy - r * 0.32} A ${r * 0.36} ${r * 0.36} 0 1 1 ${cx + r * 0.58} ${cy + r * 0.05} Z`}
-            fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" />
-          <path d={`M ${cx - r * 0.10} ${cy + r * 0.32} L ${cx - r * 0.10} ${cy + r * 0.10} L ${cx - r * 0.20} ${cy + r * 0.10} L ${cx} ${cy - r * 0.06} L ${cx + r * 0.20} ${cy + r * 0.10} L ${cx + r * 0.10} ${cy + r * 0.10} L ${cx + r * 0.10} ${cy + r * 0.32}`}
-            fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
-        </>
-      );
-
-    case "rocket":
-      return (
-        <>
-          <path d={`M ${cx} ${cy - r * 0.68} Q ${cx + r * 0.16} ${cy - r * 0.40} ${cx + r * 0.16} ${cy + r * 0.10} L ${cx + r * 0.26} ${cy + r * 0.32} L ${cx - r * 0.26} ${cy + r * 0.32} L ${cx - r * 0.16} ${cy + r * 0.10} Q ${cx - r * 0.16} ${cy - r * 0.40} ${cx} ${cy - r * 0.68}`}
-            fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" />
-          {ring(cx, cy - r * 0.20, r * 0.09, 0.10, 1.5)}
-          <path d={`M ${cx - r * 0.16} ${cy + r * 0.06} L ${cx - r * 0.32} ${cy + r * 0.36} L ${cx - r * 0.16} ${cy + r * 0.32}`}
-            fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
-          <path d={`M ${cx + r * 0.16} ${cy + r * 0.06} L ${cx + r * 0.32} ${cy + r * 0.36} L ${cx + r * 0.16} ${cy + r * 0.32}`}
-            fill="none" stroke={N} strokeWidth="1.5" opacity="0.18" />
-          {arc(cx, cy + r * 0.36, r * 0.09, 0, 180, 0.10, 1.5)}
-          {arc(cx, cy + r * 0.44, r * 0.13, 10, 170, 0.06, 1)}
-          {[[-0.5, -0.5], [0.5, -0.5], [0.6, 0.1], [-0.6, 0.3], [0.3, -0.72]].map(([ox, oy], i) => (
-            <g key={`s${i}`}>
-              {ln(cx + ox * r - 4, cy + oy * r, cx + ox * r + 4, cy + oy * r, 0.07, 0.8)}
-              {ln(cx + ox * r, cy + oy * r - 4, cx + ox * r, cy + oy * r + 4, 0.07, 0.8)}
+          {/* Central node */}
+          <circle cx={cx} cy={cy} r={s * 0.1} />
+          <circle cx={cx} cy={cy} r={s * 0.035} fill={C} stroke="none" />
+          {/* 4 outer nodes with lines */}
+          {[
+            { x: -0.38, y: -0.3 },
+            { x: 0.38, y: -0.25 },
+            { x: -0.35, y: 0.32 },
+            { x: 0.4, y: 0.3 },
+          ].map((pos, i) => (
+            <g key={i}>
+              <line x1={cx} y1={cy} x2={cx + pos.x * s} y2={cy + pos.y * s} strokeDasharray="6 4" />
+              <circle cx={cx + pos.x * s} cy={cy + pos.y * s} r={s * 0.07} />
+              <circle cx={cx + pos.x * s} cy={cy + pos.y * s} r={s * 0.025} fill={C} stroke="none" />
             </g>
           ))}
+          {/* Cross connections */}
+          <line x1={cx - s * 0.38} y1={cy - s * 0.3} x2={cx + s * 0.38} y2={cy - s * 0.25} strokeDasharray="4 6" strokeWidth={1} />
+          <line x1={cx - s * 0.35} y1={cy + s * 0.32} x2={cx + s * 0.4} y2={cy + s * 0.3} strokeDasharray="4 6" strokeWidth={1} />
         </>
       );
 
-    case "globe":
+    // ─── Chart: bar chart + trend line + axis ───
+    case "chart":
       return (
         <>
-          {ring(cx, cy, r * 0.72, 0.10, 2.5)}
-          {[-0.40, -0.15, 0.15, 0.40].map((f, i) => (
-            <ellipse key={`lat${i}`} cx={cx} cy={cy + r * f}
-              rx={r * 0.72 * Math.cos(Math.asin(Math.min(Math.abs(f / 0.72), 1)))}
-              ry={r * 0.065}
-              fill="none" stroke={N} strokeWidth="1" opacity="0.14" />
+          {/* Y axis */}
+          <line x1={cx - s * 0.42} y1={cy - s * 0.42} x2={cx - s * 0.42} y2={cy + s * 0.4} />
+          {/* X axis */}
+          <line x1={cx - s * 0.42} y1={cy + s * 0.4} x2={cx + s * 0.45} y2={cy + s * 0.4} />
+          {/* 5 bars */}
+          {[0.25, 0.5, 0.38, 0.72, 0.6].map((h, i) => {
+            const bw = s * 0.1;
+            const gap = s * 0.16;
+            const bx = cx - s * 0.32 + i * gap;
+            const bh = s * h * 0.9;
+            return <rect key={i} x={bx} y={cy + s * 0.4 - bh} width={bw} height={bh} rx={s * 0.015} />;
+          })}
+          {/* Trend line with dots */}
+          <polyline points={`${cx - s * 0.27},${cy + s * 0.18} ${cx - s * 0.11},${cy - s * 0.02} ${cx + s * 0.05},${cy + s * 0.06} ${cx + s * 0.21},${cy - s * 0.2} ${cx + s * 0.37},${cy - s * 0.12}`} strokeWidth={1.5} />
+          {[
+            { x: -0.27, y: 0.18 }, { x: -0.11, y: -0.02 }, { x: 0.05, y: 0.06 },
+            { x: 0.21, y: -0.2 }, { x: 0.37, y: -0.12 },
+          ].map((p, i) => (
+            <circle key={i} cx={cx + p.x * s} cy={cy + p.y * s} r={s * 0.02} fill={C} stroke="none" />
           ))}
-          {[0, 45, 90, 135].map((deg, i) => (
-            <ellipse key={`lon${i}`} cx={cx} cy={cy}
-              rx={r * 0.72 * Math.abs(Math.cos(deg * Math.PI / 180)) || r * 0.04}
-              ry={r * 0.72}
-              fill="none" stroke={N} strokeWidth="0.8" opacity="0.12" />
+          {/* Horizontal grid lines */}
+          {[0.05, -0.15, -0.35].map((y, i) => (
+            <line key={i} x1={cx - s * 0.4} y1={cy + y * s} x2={cx + s * 0.44} y2={cy + y * s} strokeWidth={0.5} strokeDasharray="4 6" />
           ))}
-          {[[0.30, -0.25], [-0.25, 0.15], [0.10, -0.45], [-0.35, -0.28], [0.40, 0.20]].map(([ox, oy], i) => (
-            <g key={`city${i}`}>
-              {dot(cx + ox * r, cy + oy * r, 3, 0.12)}
-              {ring(cx + ox * r, cy + oy * r, 6, 0.06, 0.6)}
+        </>
+      );
+
+    // ─── Flow: vertical flowchart with 4 steps ───
+    case "flow":
+      return (
+        <>
+          {/* 4 nodes vertically */}
+          {[-0.4, -0.13, 0.13, 0.4].map((y, i) => (
+            <g key={i}>
+              <circle cx={cx} cy={cy + y * s} r={s * 0.09} />
+              <circle cx={cx} cy={cy + y * s} r={s * 0.03} fill={C} stroke="none" />
             </g>
           ))}
-          <ellipse cx={cx} cy={cy} rx={r * 0.92} ry={r * 0.26}
-            fill="none" stroke={N} strokeWidth="1" opacity="0.22"
-            transform={`rotate(-20 ${cx} ${cy})`} />
+          {/* Connecting lines with arrows */}
+          {[-0.27, 0, 0.27].map((y, i) => (
+            <g key={i}>
+              <line x1={cx} y1={cy + (y - 0.04) * s} x2={cx} y2={cy + (y + 0.04) * s} />
+              <line x1={cx - s * 0.03} y1={cy + (y + 0.02) * s} x2={cx} y2={cy + (y + 0.04) * s} />
+              <line x1={cx + s * 0.03} y1={cy + (y + 0.02) * s} x2={cx} y2={cy + (y + 0.04) * s} />
+            </g>
+          ))}
+          {/* Side labels (horizontal lines) */}
+          {[-0.4, -0.13, 0.13, 0.4].map((y, i) => (
+            <line key={`l${i}`} x1={cx + s * 0.12} y1={cy + y * s} x2={cx + s * 0.3} y2={cy + y * s} strokeWidth={1} strokeDasharray="3 4" />
+          ))}
         </>
       );
 
-    case "infinity":
+    // ─── Shield: shield with lock + circuit pattern ───
+    case "shield":
       return (
         <>
-          {Array.from({ length: 60 }, (_, i) => {
-            const t = (i / 60) * Math.PI * 2;
-            const scale = r * 0.56;
-            const x = cx + (scale * Math.cos(t)) / (1 + Math.sin(t) ** 2);
-            const y = cy + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) ** 2);
-            return <circle key={i} cx={x} cy={y} r={i % 3 === 0 ? 2.5 : 1.5}
-              fill={N} opacity={0.06 + (i % 5) * 0.01} />;
-          })}
-          <path d={gearPath(cx, cy, r * 0.13, 8)} fill="none" stroke={N} strokeWidth="1.5" opacity="0.20" />
-          {dot(cx, cy, 3, 0.12)}
-          {[30, 150, 210, 330].map((deg, i) => {
-            const t = (deg / 360) * Math.PI * 2;
-            const scale = r * 0.56;
-            const x = cx + (scale * Math.cos(t)) / (1 + Math.sin(t) ** 2);
-            const y = cy + (scale * Math.sin(t) * Math.cos(t)) / (1 + Math.sin(t) ** 2);
-            return <circle key={`a${i}`} cx={x} cy={y} r={4} fill={N} opacity="0.28" />;
-          })}
+          {/* Shield shape */}
+          <path d={`M${cx},${cy - s * 0.52} L${cx + s * 0.42},${cy - s * 0.32} L${cx + s * 0.42},${cy + s * 0.08} Q${cx + s * 0.42},${cy + s * 0.48} ${cx},${cy + s * 0.55} Q${cx - s * 0.42},${cy + s * 0.48} ${cx - s * 0.42},${cy + s * 0.08} L${cx - s * 0.42},${cy - s * 0.32} Z`} />
+          {/* Inner shield outline */}
+          <path d={`M${cx},${cy - s * 0.38} L${cx + s * 0.3},${cy - s * 0.22} L${cx + s * 0.3},${cy + s * 0.06} Q${cx + s * 0.3},${cy + s * 0.34} ${cx},${cy + s * 0.4} Q${cx - s * 0.3},${cy + s * 0.34} ${cx - s * 0.3},${cy + s * 0.06} L${cx - s * 0.3},${cy - s * 0.22} Z`} strokeWidth={1} />
+          {/* Keyhole */}
+          <circle cx={cx} cy={cy - s * 0.06} r={s * 0.1} />
+          <path d={`M${cx - s * 0.05},${cy + s * 0.03} L${cx},${cy + s * 0.22} L${cx + s * 0.05},${cy + s * 0.03}`} />
         </>
       );
 
-    case "dna":
+    // ─── Brain: neural network with nodes + connections ───
+    case "brain":
       return (
         <>
-          {Array.from({ length: 30 }, (_, i) => {
-            const t = (i / 30) * Math.PI * 3;
-            const y = cy - r * 0.72 + (i / 30) * r * 1.44;
-            const x1 = cx + Math.cos(t) * r * 0.26;
-            const x2 = cx - Math.cos(t) * r * 0.26;
+          {/* Central brain circle */}
+          <circle cx={cx} cy={cy} r={s * 0.2} />
+          <circle cx={cx} cy={cy} r={s * 0.07} fill={C} stroke="none" />
+          {/* Inner pattern */}
+          <path d={`M${cx - s * 0.12},${cy - s * 0.08} Q${cx},${cy - s * 0.18} ${cx + s * 0.12},${cy - s * 0.08}`} strokeWidth={1} />
+          <path d={`M${cx - s * 0.12},${cy + s * 0.08} Q${cx},${cy + s * 0.18} ${cx + s * 0.12},${cy + s * 0.08}`} strokeWidth={1} />
+          {/* 8 radiating connections with end nodes */}
+          {Array.from({ length: 8 }, (_, i) => {
+            const a = (i / 8) * Math.PI * 2 - Math.PI / 2;
+            const x1 = cx + Math.cos(a) * s * 0.2;
+            const y1 = cy + Math.sin(a) * s * 0.2;
+            const x2 = cx + Math.cos(a) * s * 0.48;
+            const y2 = cy + Math.sin(a) * s * 0.48;
             return (
               <g key={i}>
-                {dot(x1, y, 2.5, 0.09)}
-                {dot(x2, y, 2.5, 0.09)}
-                {i % 3 === 0 && <line x1={x1} y1={y} x2={x2} y2={y}
-                  stroke={N} strokeWidth="1" opacity="0.14" />}
+                <line x1={x1} y1={y1} x2={x2} y2={y2} />
+                <circle cx={x2} cy={y2} r={s * 0.055} />
+                <circle cx={x2} cy={y2} r={s * 0.02} fill={C} stroke="none" />
               </g>
             );
           })}
-          <path d={Array.from({ length: 30 }, (_, i) => {
-            const t = (i / 30) * Math.PI * 3;
-            const y = cy - r * 0.72 + (i / 30) * r * 1.44;
-            return `${i === 0 ? "M" : "L"} ${cx + Math.cos(t) * r * 0.26} ${y}`;
-          }).join(" ")} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
-          <path d={Array.from({ length: 30 }, (_, i) => {
-            const t = (i / 30) * Math.PI * 3;
-            const y = cy - r * 0.72 + (i / 30) * r * 1.44;
-            return `${i === 0 ? "M" : "L"} ${cx - Math.cos(t) * r * 0.26} ${y}`;
-          }).join(" ")} fill="none" stroke={N} strokeWidth="1.2" opacity="0.18" />
-        </>
-      );
-
-    case "matrix":
-      return (
-        <>
-          {Array.from({ length: 8 }, (_, col) =>
-            Array.from({ length: 12 }, (_, row) => {
-              const x = cx - r * 0.60 + col * r * 0.18;
-              const y = cy - r * 0.72 + row * r * 0.13;
-              const fade = Math.max(0, 1 - row / 12);
-              return <rect key={`${col}-${row}`} x={x} y={y} width={r * 0.06} height={r * 0.06} rx={1}
-                fill={N} opacity={0.02 + fade * 0.04} />;
-            })
-          )}
-          {ln(cx - r * 0.72, cy - r * 0.10, cx + r * 0.72, cy - r * 0.10, 0.08, 1)}
-          <rect x={cx - r * 0.06} y={cy - r * 0.75} width={r * 0.12} height={r * 1.50}
-            fill={N} opacity="0.02" />
-        </>
-      );
-
-    case "wave":
-      return (
-        <>
-          <rect x={cx - r * 0.82} y={cy - r * 0.52} width={r * 1.64} height={r * 1.04} rx={4}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.16" />
-          {Array.from({ length: 9 }, (_, i) =>
-            ln(cx - r * 0.82, cy - r * 0.52 + i * r * 0.13, cx + r * 0.82, cy - r * 0.52 + i * r * 0.13, 0.025, 0.5)
-          )}
-          <polyline points={Array.from({ length: 80 }, (_, i) => {
-            const x = cx - r * 0.76 + (i / 80) * r * 1.52;
-            const y = cy + Math.sin((i / 80) * Math.PI * 4) * r * 0.30;
-            return `${x},${y}`;
-          }).join(" ")} fill="none" stroke={N} strokeWidth="2.5" opacity="0.22" />
-          {Array.from({ length: 14 }, (_, i) => {
-            const x = cx - r * 0.76 + i * r * 0.115;
-            const h = r * (0.05 + Math.abs(Math.sin(i * 0.8)) * 0.14);
-            return <rect key={`sp${i}`} x={x} y={cy + r * 0.56} width={r * 0.07} height={h}
-              fill={N} opacity="0.13" rx={1} />;
+          {/* Cross connections between outer nodes */}
+          {[0, 2, 4, 6].map((i) => {
+            const a1 = (i / 8) * Math.PI * 2 - Math.PI / 2;
+            const a2 = ((i + 1) / 8) * Math.PI * 2 - Math.PI / 2;
+            return (
+              <line key={i} x1={cx + Math.cos(a1) * s * 0.48} y1={cy + Math.sin(a1) * s * 0.48} x2={cx + Math.cos(a2) * s * 0.48} y2={cy + Math.sin(a2) * s * 0.48} strokeWidth={1} strokeDasharray="3 5" />
+            );
           })}
         </>
       );
 
+    // ─── Lightbulb: detailed bulb with rays ───
+    case "lightbulb":
+      return (
+        <>
+          {/* Bulb */}
+          <circle cx={cx} cy={cy - s * 0.14} r={s * 0.3} />
+          {/* Connection to base */}
+          <path d={`M${cx - s * 0.18},${cy + s * 0.12} Q${cx - s * 0.18},${cy + s * 0.2} ${cx - s * 0.14},${cy + s * 0.2}`} />
+          <path d={`M${cx + s * 0.18},${cy + s * 0.12} Q${cx + s * 0.18},${cy + s * 0.2} ${cx + s * 0.14},${cy + s * 0.2}`} />
+          {/* Screw base */}
+          <line x1={cx - s * 0.14} y1={cy + s * 0.22} x2={cx + s * 0.14} y2={cy + s * 0.22} />
+          <line x1={cx - s * 0.12} y1={cy + s * 0.27} x2={cx + s * 0.12} y2={cy + s * 0.27} />
+          <line x1={cx - s * 0.1} y1={cy + s * 0.32} x2={cx + s * 0.1} y2={cy + s * 0.32} />
+          {/* Tip */}
+          <path d={`M${cx - s * 0.06},${cy + s * 0.32} Q${cx},${cy + s * 0.38} ${cx + s * 0.06},${cy + s * 0.32}`} />
+          {/* Filament */}
+          <path d={`M${cx - s * 0.08},${cy + s * 0.02} L${cx - s * 0.04},${cy - s * 0.12} L${cx + s * 0.04},${cy - s * 0.04} L${cx + s * 0.08},${cy - s * 0.18}`} strokeWidth={1.5} />
+          {/* Rays */}
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+            const a = (deg * Math.PI) / 180;
+            const inner = s * 0.38;
+            const outer = s * 0.46;
+            return <line key={deg} x1={cx + Math.cos(a) * inner} y1={cy - s * 0.14 + Math.sin(a) * inner} x2={cx + Math.cos(a) * outer} y2={cy - s * 0.14 + Math.sin(a) * outer} strokeWidth={1} />;
+          })}
+        </>
+      );
+
+    // ─── Target: magnifying glass with crosshair ───
+    case "target":
+      return (
+        <>
+          {/* Glass circle */}
+          <circle cx={cx - s * 0.08} cy={cy - s * 0.08} r={s * 0.34} />
+          {/* Inner circle */}
+          <circle cx={cx - s * 0.08} cy={cy - s * 0.08} r={s * 0.2} strokeDasharray="4 4" strokeWidth={1} />
+          {/* Crosshair */}
+          <line x1={cx - s * 0.08} y1={cy - s * 0.08 - s * 0.15} x2={cx - s * 0.08} y2={cy - s * 0.08 + s * 0.15} strokeWidth={1} />
+          <line x1={cx - s * 0.08 - s * 0.15} y1={cy - s * 0.08} x2={cx - s * 0.08 + s * 0.15} y2={cy - s * 0.08} strokeWidth={1} />
+          {/* Center dot */}
+          <circle cx={cx - s * 0.08} cy={cy - s * 0.08} r={s * 0.03} fill={C} stroke="none" />
+          {/* Handle */}
+          <line x1={cx + s * 0.16} y1={cy + s * 0.16} x2={cx + s * 0.48} y2={cy + s * 0.48} strokeWidth={3} />
+          <line x1={cx + s * 0.42} y1={cy + s * 0.48} x2={cx + s * 0.48} y2={cy + s * 0.42} strokeWidth={2} />
+        </>
+      );
+
+    // ─── Puzzle: crossed wrench & screwdriver ───
+    case "puzzle":
+      return (
+        <>
+          {/* Wrench */}
+          <line x1={cx - s * 0.4} y1={cy + s * 0.4} x2={cx + s * 0.15} y2={cy - s * 0.15} strokeWidth={2.5} />
+          <circle cx={cx - s * 0.4} cy={cy + s * 0.4} r={s * 0.12} />
+          <circle cx={cx - s * 0.4} cy={cy + s * 0.4} r={s * 0.05} />
+          {/* Screwdriver */}
+          <line x1={cx + s * 0.4} y1={cy + s * 0.4} x2={cx - s * 0.15} y2={cy - s * 0.15} strokeWidth={2.5} />
+          {/* Screwdriver tip */}
+          <path d={`M${cx - s * 0.18},${cy - s * 0.18} L${cx - s * 0.25},${cy - s * 0.35} L${cx - s * 0.2},${cy - s * 0.4} L${cx - s * 0.12},${cy - s * 0.22}`} />
+          {/* Screwdriver handle */}
+          <rect x={cx + s * 0.32} y={cy + s * 0.28} width={s * 0.16} height={s * 0.22} rx={s * 0.04} transform={`rotate(45 ${cx + s * 0.4} ${cy + s * 0.4})`} />
+        </>
+      );
+
+    // ─── Circuit: toolbox with tools ───
+    case "circuit":
+      return (
+        <>
+          {/* Box body */}
+          <rect x={cx - s * 0.42} y={cy - s * 0.12} width={s * 0.84} height={s * 0.48} rx={s * 0.04} />
+          {/* Lid line */}
+          <line x1={cx - s * 0.42} y1={cy - s * 0.12} x2={cx + s * 0.42} y2={cy - s * 0.12} strokeWidth={2.5} />
+          {/* Handle */}
+          <path d={`M${cx - s * 0.18},${cy - s * 0.12} L${cx - s * 0.18},${cy - s * 0.28} Q${cx - s * 0.18},${cy - s * 0.34} ${cx - s * 0.12},${cy - s * 0.34} L${cx + s * 0.12},${cy - s * 0.34} Q${cx + s * 0.18},${cy - s * 0.34} ${cx + s * 0.18},${cy - s * 0.28} L${cx + s * 0.18},${cy - s * 0.12}`} />
+          {/* Latch */}
+          <rect x={cx - s * 0.07} y={cy - s * 0.17} width={s * 0.14} height={s * 0.06} rx={s * 0.02} />
+          {/* Dividers inside */}
+          <line x1={cx - s * 0.14} y1={cy - s * 0.12} x2={cx - s * 0.14} y2={cy + s * 0.36} strokeWidth={1} />
+          <line x1={cx + s * 0.14} y1={cy - s * 0.12} x2={cx + s * 0.14} y2={cy + s * 0.36} strokeWidth={1} />
+        </>
+      );
+
+    // ─── Rocket: monitor with play button + detail ───
+    case "rocket":
+      return (
+        <>
+          {/* Screen bezel */}
+          <rect x={cx - s * 0.42} y={cy - s * 0.32} width={s * 0.84} height={s * 0.52} rx={s * 0.04} />
+          {/* Inner screen */}
+          <rect x={cx - s * 0.36} y={cy - s * 0.26} width={s * 0.72} height={s * 0.38} rx={s * 0.02} strokeWidth={1} />
+          {/* Stand neck */}
+          <line x1={cx} y1={cy + s * 0.2} x2={cx} y2={cy + s * 0.32} strokeWidth={2} />
+          {/* Stand base */}
+          <path d={`M${cx - s * 0.2},${cy + s * 0.38} Q${cx},${cy + s * 0.32} ${cx + s * 0.2},${cy + s * 0.38}`} strokeWidth={2} />
+          {/* Play triangle */}
+          <path d={`M${cx - s * 0.1},${cy - s * 0.15} L${cx + s * 0.15},${cy - s * 0.02} L${cx - s * 0.1},${cy + s * 0.08} Z`} />
+        </>
+      );
+
+    // ─── Cloud: with upload arrow ───
+    case "cloud":
+      return (
+        <>
+          <path d={`M${cx - s * 0.38},${cy + s * 0.1} Q${cx - s * 0.52},${cy + s * 0.1} ${cx - s * 0.52},${cy - s * 0.06} Q${cx - s * 0.52},${cy - s * 0.22} ${cx - s * 0.32},${cy - s * 0.22} Q${cx - s * 0.28},${cy - s * 0.42} ${cx - s * 0.05},${cy - s * 0.38} Q${cx + s * 0.18},${cy - s * 0.48} ${cx + s * 0.32},${cy - s * 0.28} Q${cx + s * 0.52},${cy - s * 0.28} ${cx + s * 0.52},${cy - s * 0.06} Q${cx + s * 0.52},${cy + s * 0.1} ${cx + s * 0.38},${cy + s * 0.1} Z`} />
+          {/* Upload arrow */}
+          <line x1={cx} y1={cy + s * 0.28} x2={cx} y2={cy - s * 0.05} />
+          <line x1={cx - s * 0.1} y1={cy + s * 0.05} x2={cx} y2={cy - s * 0.05} />
+          <line x1={cx + s * 0.1} y1={cy + s * 0.05} x2={cx} y2={cy - s * 0.05} />
+        </>
+      );
+
+    // ─── Calendar: with date grid ───
     case "calendar":
       return (
         <>
-          <rect x={cx - r * 0.58} y={cy - r * 0.58} width={r * 1.16} height={r * 1.16} rx={6}
-            fill="none" stroke={N} strokeWidth="2" opacity="0.20" />
-          <rect x={cx - r * 0.58} y={cy - r * 0.58} width={r * 1.16} height={r * 0.20} rx={6}
-            fill={N} opacity="0.03" />
-          {Array.from({ length: 5 }, (_, i) =>
-            ln(cx - r * 0.58, cy - r * 0.38 + i * r * 0.19, cx + r * 0.58, cy - r * 0.38 + i * r * 0.19, 0.04, 0.5)
+          <rect x={cx - s * 0.38} y={cy - s * 0.32} width={s * 0.76} height={s * 0.65} rx={s * 0.04} />
+          {/* Header bar */}
+          <rect x={cx - s * 0.38} y={cy - s * 0.32} width={s * 0.76} height={s * 0.15} rx={s * 0.04} fill={C} stroke="none" opacity={0.08} />
+          <line x1={cx - s * 0.38} y1={cy - s * 0.17} x2={cx + s * 0.38} y2={cy - s * 0.17} />
+          {/* Hooks */}
+          <line x1={cx - s * 0.18} y1={cy - s * 0.38} x2={cx - s * 0.18} y2={cy - s * 0.26} strokeWidth={2.5} />
+          <line x1={cx + s * 0.18} y1={cy - s * 0.38} x2={cx + s * 0.18} y2={cy - s * 0.26} strokeWidth={2.5} />
+          {/* Date grid 4x3 */}
+          {[0, 1, 2].map((row) =>
+            [0, 1, 2, 3].map((col) => (
+              <circle key={`${row}-${col}`} cx={cx - s * 0.22 + col * s * 0.15} cy={cy - s * 0.04 + row * s * 0.14} r={s * 0.025} fill={C} stroke="none" />
+            ))
           )}
-          {Array.from({ length: 6 }, (_, i) =>
-            ln(cx - r * 0.58 + (i + 1) * r * 0.166, cy - r * 0.38, cx - r * 0.58 + (i + 1) * r * 0.166, cy + r * 0.58, 0.03, 0.5)
-          )}
-          {[[1, 0], [3, 1], [5, 1], [2, 2], [4, 3]].map(([col, row], i) => {
-            const x = cx - r * 0.50 + col * r * 0.166;
-            const y = cy - r * 0.28 + row * r * 0.19;
-            return <path key={`ch${i}`} d={`M ${x} ${y + 4} L ${x + 4} ${y + 8} L ${x + 10} ${y}`}
-              fill="none" stroke={N} strokeWidth="1.2" opacity="0.20" />;
-          })}
+          {/* Highlighted date */}
+          <circle cx={cx + s * 0.08} cy={cy + s * 0.1} r={s * 0.05} strokeWidth={1.5} />
         </>
       );
 
+    // ─── Magnet: horseshoe with field lines ───
     case "magnet":
       return (
         <>
-          {arc(cx, cy - r * 0.10, r * 0.36, 180, 360, 0.12, 3)}
-          {ln(cx - r * 0.36, cy - r * 0.10, cx - r * 0.36, cy + r * 0.32, 0.12, 3)}
-          {ln(cx + r * 0.36, cy - r * 0.10, cx + r * 0.36, cy + r * 0.32, 0.12, 3)}
-          <rect x={cx - r * 0.44} y={cy + r * 0.26} width={r * 0.16} height={r * 0.09}
-            fill={N} opacity="0.16" />
-          <rect x={cx + r * 0.28} y={cy + r * 0.26} width={r * 0.16} height={r * 0.09}
-            fill={N} opacity="0.16" />
-          {[0.52, 0.66, 0.82].map((s, i) => (
-            arc(cx, cy + r * 0.36, r * s, 200, 340, 0.05 - i * 0.01, 1)
+          <path d={`M${cx - s * 0.3},${cy - s * 0.2} L${cx - s * 0.3},${cy + s * 0.15} A${s * 0.3},${s * 0.3} 0 0 0 ${cx + s * 0.3},${cy + s * 0.15} L${cx + s * 0.3},${cy - s * 0.2}`} strokeWidth={2.5} />
+          {/* Pole markings */}
+          <line x1={cx - s * 0.3} y1={cy - s * 0.1} x2={cx - s * 0.18} y2={cy - s * 0.1} strokeWidth={2} />
+          <line x1={cx + s * 0.3} y1={cy - s * 0.1} x2={cx + s * 0.18} y2={cy - s * 0.1} strokeWidth={2} />
+          {/* Field lines */}
+          {[0.4, 0.5, 0.6].map((r, i) => (
+            <path key={i} d={`M${cx - s * 0.15},${cy - s * 0.2} Q${cx},${cy - s * r * 1.2} ${cx + s * 0.15},${cy - s * 0.2}`} strokeWidth={1} strokeDasharray="3 4" />
           ))}
-          {[[0, 0.56], [-0.14, 0.50], [0.14, 0.50], [-0.07, 0.64], [0.07, 0.64]].map(([ox, oy], i) => (
-            <circle key={`p${i}`} cx={cx + ox * r} cy={cy + oy * r}
-              r={2.5 - i * 0.3} fill={N} opacity={0.10 - i * 0.01} />
+          {/* Small particles */}
+          {[
+            { x: -0.05, y: -0.38 }, { x: 0.08, y: -0.42 }, { x: -0.1, y: -0.35 },
+          ].map((p, i) => (
+            <circle key={i} cx={cx + p.x * s} cy={cy + p.y * s} r={s * 0.015} fill={C} stroke="none" />
           ))}
         </>
       );
 
+    // ─── Handshake: two hands with cuffs ───
     case "handshake":
       return (
         <>
-          <path d={`M ${cx - r * 0.65} ${cy + r * 0.12} Q ${cx - r * 0.32} ${cy - r * 0.10} ${cx - r * 0.06} ${cy}`}
-            fill="none" stroke={N} strokeWidth="2.5" opacity="0.20" />
-          <path d={`M ${cx + r * 0.65} ${cy + r * 0.12} Q ${cx + r * 0.32} ${cy - r * 0.10} ${cx + r * 0.06} ${cy}`}
-            fill="none" stroke={N} strokeWidth="2.5" opacity="0.20" />
-          {[-0.08, 0, 0.08].map((oy, i) => (
-            <line key={`e${i}`} x1={cx - r * 0.06} y1={cy + oy * r} x2={cx + r * 0.06} y2={cy + oy * r}
-              stroke={N} strokeWidth="1.5" opacity="0.28" />
+          {/* Left hand outline */}
+          <path d={`M${cx - s * 0.45},${cy + s * 0.05} L${cx - s * 0.2},${cy + s * 0.05} L${cx - s * 0.05},${cy - s * 0.08} L${cx + s * 0.1},${cy + s * 0.02}`} strokeWidth={2.5} />
+          {/* Right hand outline */}
+          <path d={`M${cx + s * 0.45},${cy - s * 0.05} L${cx + s * 0.2},${cy - s * 0.05} L${cx + s * 0.05},${cy + s * 0.08} L${cx - s * 0.1},${cy - s * 0.02}`} strokeWidth={2.5} />
+          {/* Grip overlap */}
+          <path d={`M${cx - s * 0.12},${cy - s * 0.02} Q${cx},${cy - s * 0.12} ${cx + s * 0.12},${cy + s * 0.02}`} strokeWidth={1.5} />
+          {/* Left cuff */}
+          <rect x={cx - s * 0.55} y={cy - s * 0.06} width={s * 0.12} height={s * 0.2} rx={s * 0.03} />
+          {/* Right cuff */}
+          <rect x={cx + s * 0.43} y={cy - s * 0.14} width={s * 0.12} height={s * 0.2} rx={s * 0.03} />
+        </>
+      );
+
+    // ─── Globe: with latitude/longitude lines ───
+    case "globe":
+      return (
+        <>
+          <circle cx={cx} cy={cy} r={s * 0.42} />
+          {/* Equator */}
+          <ellipse cx={cx} cy={cy} rx={s * 0.42} ry={s * 0.12} />
+          {/* Tropics */}
+          <ellipse cx={cx} cy={cy - s * 0.18} rx={s * 0.36} ry={s * 0.08} strokeDasharray="4 4" strokeWidth={1} />
+          <ellipse cx={cx} cy={cy + s * 0.18} rx={s * 0.36} ry={s * 0.08} strokeDasharray="4 4" strokeWidth={1} />
+          {/* Meridians */}
+          <ellipse cx={cx} cy={cy} rx={s * 0.12} ry={s * 0.42} />
+          <ellipse cx={cx} cy={cy} rx={s * 0.3} ry={s * 0.42} />
+        </>
+      );
+
+    // ─── Infinity ───
+    case "infinity":
+      return (
+        <>
+          <path d={`M${cx},${cy} C${cx - s * 0.18},${cy - s * 0.28} ${cx - s * 0.52},${cy - s * 0.28} ${cx - s * 0.52},${cy} C${cx - s * 0.52},${cy + s * 0.28} ${cx - s * 0.18},${cy + s * 0.28} ${cx},${cy} C${cx + s * 0.18},${cy - s * 0.28} ${cx + s * 0.52},${cy - s * 0.28} ${cx + s * 0.52},${cy} C${cx + s * 0.52},${cy + s * 0.28} ${cx + s * 0.18},${cy + s * 0.28} ${cx},${cy}`} strokeWidth={2.5} />
+          {/* Data particles along path */}
+          {[-0.42, -0.2, 0.2, 0.42].map((x, i) => (
+            <circle key={i} cx={cx + x * s} cy={cy + (i % 2 === 0 ? -0.12 : 0.12) * s} r={s * 0.02} fill={C} stroke="none" />
           ))}
-          {ring(cx, cy, r * 0.16, 0.07, 1)}
-          {ring(cx, cy, r * 0.28, 0.04, 0.8)}
-          {[[-0.72, -0.28], [0.72, -0.28], [-0.50, 0.52], [0.50, 0.52], [0, -0.52]].map(([ox, oy], i) => (
-            <g key={`n${i}`}>
-              {ring(cx + ox * r, cy + oy * r, 5, 0.06, 0.8)}
-              {dot(cx + ox * r, cy + oy * r, 2, 0.07)}
-              {ln(cx + ox * r, cy + oy * r, cx, cy, 0.02, 0.5, "3 6")}
+        </>
+      );
+
+    // ─── DNA: double helix with bridges ───
+    case "dna":
+      return (
+        <>
+          {Array.from({ length: 12 }, (_, i) => {
+            const y = cy - s * 0.48 + i * s * 0.088;
+            const offset = Math.sin(i * 0.65) * s * 0.24;
+            return (
+              <g key={i}>
+                {i % 2 === 0 && <line x1={cx - offset} y1={y} x2={cx + offset} y2={y} strokeWidth={1} />}
+                <circle cx={cx - offset} cy={y} r={s * 0.025} fill={C} stroke="none" />
+                <circle cx={cx + offset} cy={y} r={s * 0.025} fill={C} stroke="none" />
+              </g>
+            );
+          })}
+          {/* Spine curves */}
+          <path d={Array.from({ length: 12 }, (_, i) => {
+            const y = cy - s * 0.48 + i * s * 0.088;
+            const x = cx - Math.sin(i * 0.65) * s * 0.24;
+            return `${i === 0 ? "M" : "L"}${x},${y}`;
+          }).join(" ")} strokeWidth={1.5} />
+          <path d={Array.from({ length: 12 }, (_, i) => {
+            const y = cy - s * 0.48 + i * s * 0.088;
+            const x = cx + Math.sin(i * 0.65) * s * 0.24;
+            return `${i === 0 ? "M" : "L"}${x},${y}`;
+          }).join(" ")} strokeWidth={1.5} />
+        </>
+      );
+
+    // ─── Matrix: 4x4 dot grid with connections ───
+    case "matrix":
+      return (
+        <>
+          {[0, 1, 2, 3].map((row) =>
+            [0, 1, 2, 3].map((col) => (
+              <circle key={`${row}-${col}`} cx={cx - s * 0.3 + col * s * 0.2} cy={cy - s * 0.3 + row * s * 0.2} r={s * 0.035} />
+            ))
+          )}
+          {/* Diagonal connections */}
+          <line x1={cx - s * 0.3} y1={cy - s * 0.3} x2={cx + s * 0.3} y2={cy + s * 0.3} strokeWidth={1} />
+          <line x1={cx + s * 0.3} y1={cy - s * 0.3} x2={cx - s * 0.3} y2={cy + s * 0.3} strokeWidth={1} />
+          {/* Horizontal/vertical */}
+          <line x1={cx - s * 0.3} y1={cy} x2={cx + s * 0.3} y2={cy} strokeWidth={1} strokeDasharray="4 4" />
+          <line x1={cx} y1={cy - s * 0.3} x2={cx} y2={cy + s * 0.3} strokeWidth={1} strokeDasharray="4 4" />
+        </>
+      );
+
+    // ─── Wave: multiple flowing lines ───
+    case "wave":
+      return (
+        <>
+          {[-2, -1, 0, 1, 2].map((i) => (
+            <path key={i} d={`M${cx - s * 0.5},${cy + i * s * 0.12} Q${cx - s * 0.25},${cy + i * s * 0.12 - s * 0.1} ${cx},${cy + i * s * 0.12} Q${cx + s * 0.25},${cy + i * s * 0.12 + s * 0.1} ${cx + s * 0.5},${cy + i * s * 0.12}`} strokeWidth={i === 0 ? 2 : 1.2} />
+          ))}
+        </>
+      );
+
+    // ─── Radar: sweep with blips ───
+    case "radar":
+      return (
+        <>
+          {[0.18, 0.3, 0.42].map((r, i) => (
+            <circle key={i} cx={cx} cy={cy} r={s * r} strokeDasharray={i === 2 ? "none" : "4 4"} strokeWidth={i === 2 ? 2 : 1} />
+          ))}
+          {/* Sweep line */}
+          <line x1={cx} y1={cy} x2={cx + s * 0.38} y2={cy - s * 0.2} strokeWidth={2} />
+          {/* Cross */}
+          <line x1={cx - s * 0.42} y1={cy} x2={cx + s * 0.42} y2={cy} strokeWidth={0.8} />
+          <line x1={cx} y1={cy - s * 0.42} x2={cx} y2={cy + s * 0.42} strokeWidth={0.8} />
+          {/* Blips */}
+          <circle cx={cx + s * 0.25} cy={cy - s * 0.15} r={s * 0.025} fill={C} stroke="none" />
+          <circle cx={cx - s * 0.12} cy={cy + s * 0.22} r={s * 0.02} fill={C} stroke="none" />
+          <circle cx={cx + s * 0.08} cy={cy - s * 0.32} r={s * 0.018} fill={C} stroke="none" />
+        </>
+      );
+
+    // ─── Funnel: with items flowing through ───
+    case "funnel":
+      return (
+        <>
+          <path d={`M${cx - s * 0.42},${cy - s * 0.38} L${cx + s * 0.42},${cy - s * 0.38} L${cx + s * 0.07},${cy + s * 0.1} L${cx + s * 0.07},${cy + s * 0.38} L${cx - s * 0.07},${cy + s * 0.38} L${cx - s * 0.07},${cy + s * 0.1} Z`} />
+          {/* Inner level lines */}
+          <line x1={cx - s * 0.28} y1={cy - s * 0.22} x2={cx + s * 0.28} y2={cy - s * 0.22} strokeWidth={1} />
+          <line x1={cx - s * 0.16} y1={cy - s * 0.06} x2={cx + s * 0.16} y2={cy - s * 0.06} strokeWidth={1} />
+          {/* Items entering */}
+          {[-0.25, -0.08, 0.1, 0.28].map((x, i) => (
+            <circle key={i} cx={cx + x * s} cy={cy - s * 0.32} r={s * 0.02} fill={C} stroke="none" />
+          ))}
+          {/* Item exiting */}
+          <circle cx={cx} cy={cy + s * 0.45} r={s * 0.025} fill={C} stroke="none" />
+        </>
+      );
+
+    // ─── Server: 3 stacked units ───
+    case "server":
+      return (
+        <>
+          {[0, 1, 2].map((i) => (
+            <g key={i}>
+              <rect x={cx - s * 0.38} y={cy - s * 0.38 + i * s * 0.26} width={s * 0.76} height={s * 0.2} rx={s * 0.03} />
+              {/* Status dot */}
+              <circle cx={cx + s * 0.26} cy={cy - s * 0.28 + i * s * 0.26} r={s * 0.025} fill={C} stroke="none" />
+              {/* Lines */}
+              <line x1={cx - s * 0.24} y1={cy - s * 0.28 + i * s * 0.26} x2={cx + s * 0.12} y2={cy - s * 0.28 + i * s * 0.26} strokeWidth={1} />
             </g>
           ))}
         </>
       );
 
-    case "radar":
-      return (<>
-        {/* Radar sweep display */}
-        {ring(cx, cy, r * 0.9, 0.14, 2.5)}
-        {ring(cx, cy, r * 0.65, 0.10, 1.5)}
-        {ring(cx, cy, r * 0.4, 0.08, 1.5)}
-        {ring(cx, cy, r * 0.15, 0.12, 2)}
-        {/* Crosshair */}
-        {ln(cx - r, cy, cx + r, cy, 0.06, 0.8)}
-        {ln(cx, cy - r, cx, cy + r, 0.06, 0.8)}
-        {/* Sweep arc */}
-        {arc(cx, cy, r * 0.88, -20, 40, 0.18, 3)}
-        {/* Blips */}
-        {dot(cx + r * 0.3, cy - r * 0.5, 4, 0.2)}
-        {dot(cx - r * 0.5, cy + r * 0.2, 3, 0.15)}
-        {dot(cx + r * 0.6, cy + r * 0.3, 3.5, 0.18)}
-        {dot(cx - r * 0.2, cy - r * 0.6, 2.5, 0.12)}
-      </>);
-
-    case "funnel":
-      return (<>
-        {/* Sales funnel — wide top, narrow bottom */}
-        <path d={`M ${cx - r * 0.8} ${cy - r * 0.7} L ${cx + r * 0.8} ${cy - r * 0.7} L ${cx + r * 0.15} ${cy + r * 0.7} L ${cx - r * 0.15} ${cy + r * 0.7} Z`}
-          fill="none" stroke={N} strokeWidth="2.5" opacity="0.16" strokeLinejoin="round" />
-        {/* Horizontal stage lines */}
-        {ln(cx - r * 0.55, cy - r * 0.3, cx + r * 0.55, cy - r * 0.3, 0.10, 1.5)}
-        {ln(cx - r * 0.38, cy + r * 0.05, cx + r * 0.38, cy + r * 0.05, 0.10, 1.5)}
-        {ln(cx - r * 0.22, cy + r * 0.35, cx + r * 0.22, cy + r * 0.35, 0.10, 1.5)}
-        {/* Dots falling through */}
-        {dot(cx - r * 0.3, cy - r * 0.5, 4, 0.15)}
-        {dot(cx + r * 0.2, cy - r * 0.5, 3, 0.12)}
-        {dot(cx, cy - r * 0.15, 3.5, 0.14)}
-        {dot(cx + r * 0.05, cy + r * 0.2, 3, 0.16)}
-        {dot(cx, cy + r * 0.55, 4, 0.2)}
-        {/* Arrow at bottom */}
-        <path d={`M ${cx} ${cy + r * 0.7} L ${cx} ${cy + r * 0.9}`} fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-        <path d={`M ${cx - r * 0.05} ${cy + r * 0.85} L ${cx} ${cy + r * 0.9} L ${cx + r * 0.05} ${cy + r * 0.85}`} fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-      </>);
-
-    case "server":
-      return (<>
-        {/* Server rack — 3 stacked server units */}
-        {[- 0.4, -0.05, 0.3].map((yo, i) => (
-          <g key={`srv${i}`}>
-            <rect x={cx - r * 0.55} y={cy + yo * r} width={r * 1.1} height={r * 0.28} rx={4}
-              fill="none" stroke={N} strokeWidth="2" opacity="0.16" />
-            {/* Drive bays */}
-            {dot(cx - r * 0.4, cy + yo * r + r * 0.14, 3, 0.12)}
-            {dot(cx - r * 0.3, cy + yo * r + r * 0.14, 3, 0.10)}
-            {/* Status LEDs */}
-            {dot(cx + r * 0.35, cy + yo * r + r * 0.14, 2.5, 0.18)}
-            {dot(cx + r * 0.42, cy + yo * r + r * 0.14, 2.5, 0.12)}
-            {/* Ventilation lines */}
-            {ln(cx + r * 0.05, cy + yo * r + r * 0.06, cx + r * 0.25, cy + yo * r + r * 0.06, 0.06, 0.8)}
-            {ln(cx + r * 0.05, cy + yo * r + r * 0.11, cx + r * 0.25, cy + yo * r + r * 0.11, 0.06, 0.8)}
-            {ln(cx + r * 0.05, cy + yo * r + r * 0.16, cx + r * 0.25, cy + yo * r + r * 0.16, 0.06, 0.8)}
-          </g>
-        ))}
-        {/* Connection lines between servers */}
-        {ln(cx + r * 0.5, cy - r * 0.12, cx + r * 0.5, cy + r * 0.3, 0.08, 1, "3 3")}
-        {ln(cx - r * 0.45, cy - r * 0.12, cx - r * 0.45, cy + r * 0.3, 0.08, 1, "3 3")}
-      </>);
-
+    // ─── Chatbot: speech bubble with content ───
     case "chatbot":
-      return (<>
-        {/* Chat bubble — large */}
-        <path d={`M ${cx - r * 0.6} ${cy - r * 0.5} Q ${cx - r * 0.6} ${cy - r * 0.8} ${cx} ${cy - r * 0.8} Q ${cx + r * 0.6} ${cy - r * 0.8} ${cx + r * 0.6} ${cy - r * 0.5} L ${cx + r * 0.6} ${cy + r * 0.1} Q ${cx + r * 0.6} ${cy + r * 0.35} ${cx} ${cy + r * 0.35} L ${cx - r * 0.15} ${cy + r * 0.35} L ${cx - r * 0.35} ${cy + r * 0.6} L ${cx - r * 0.25} ${cy + r * 0.35} Q ${cx - r * 0.6} ${cy + r * 0.35} ${cx - r * 0.6} ${cy + r * 0.1} Z`}
-          fill="none" stroke={N} strokeWidth="2.5" opacity="0.16" />
-        {/* Text lines inside */}
-        {ln(cx - r * 0.35, cy - r * 0.45, cx + r * 0.35, cy - r * 0.45, 0.10, 1.5)}
-        {ln(cx - r * 0.35, cy - r * 0.25, cx + r * 0.2, cy - r * 0.25, 0.08, 1.2)}
-        {ln(cx - r * 0.35, cy - r * 0.05, cx + r * 0.3, cy - r * 0.05, 0.10, 1.5)}
-        {/* Bot icon */}
-        {ring(cx, cy + r * 0.1, r * 0.08, 0.14, 1.5)}
-        {dot(cx - r * 0.03, cy + r * 0.08, 2, 0.18)}
-        {dot(cx + r * 0.03, cy + r * 0.08, 2, 0.18)}
-      </>);
+      return (
+        <>
+          <rect x={cx - s * 0.38} y={cy - s * 0.32} width={s * 0.76} height={s * 0.48} rx={s * 0.1} />
+          {/* Tail */}
+          <path d={`M${cx - s * 0.12},${cy + s * 0.16} L${cx - s * 0.22},${cy + s * 0.38} L${cx + s * 0.06},${cy + s * 0.16}`} />
+          {/* Three dots */}
+          {[-1, 0, 1].map((i) => (
+            <circle key={i} cx={cx + i * s * 0.14} cy={cy - s * 0.08} r={s * 0.04} fill={C} stroke="none" />
+          ))}
+        </>
+      );
 
+    // ─── Lock: padlock with detail ───
     case "lock":
-      return (<>
-        {/* Large padlock */}
-        <rect x={cx - r * 0.4} y={cy - r * 0.1} width={r * 0.8} height={r * 0.65} rx={8}
-          fill="none" stroke={N} strokeWidth="3" opacity="0.18" />
-        {/* Shackle */}
-        {arc(cx, cy - r * 0.1, r * 0.25, 180, 360, 0.16, 3)}
-        {ln(cx - r * 0.25, cy - r * 0.1, cx - r * 0.25, cy + r * 0.05, 0.16, 3)}
-        {ln(cx + r * 0.25, cy - r * 0.1, cx + r * 0.25, cy + r * 0.05, 0.16, 3)}
-        {/* Keyhole */}
-        {ring(cx, cy + r * 0.15, r * 0.08, 0.2, 2)}
-        {ln(cx, cy + r * 0.15, cx, cy + r * 0.35, 0.16, 2)}
-        {/* Encryption particles around */}
-        {[30, 75, 120, 165, 210, 255, 300, 345].map((deg, i) => {
-          const a = (deg * Math.PI) / 180;
-          return <g key={`ep${i}`}>
-            {dot(cx + Math.cos(a) * r * 0.7, cy + r * 0.15 + Math.sin(a) * r * 0.5, 2, 0.08)}
-          </g>;
-        })}
-      </>);
+      return (
+        <>
+          {/* Body */}
+          <rect x={cx - s * 0.28} y={cy - s * 0.05} width={s * 0.56} height={s * 0.44} rx={s * 0.06} />
+          {/* Shackle */}
+          <path d={`M${cx - s * 0.18},${cy - s * 0.05} L${cx - s * 0.18},${cy - s * 0.25} A${s * 0.18},${s * 0.18} 0 0 1 ${cx + s * 0.18},${cy - s * 0.25} L${cx + s * 0.18},${cy - s * 0.05}`} strokeWidth={2.5} />
+          {/* Keyhole */}
+          <circle cx={cx} cy={cy + s * 0.1} r={s * 0.07} />
+          <path d={`M${cx - s * 0.03},${cy + s * 0.16} L${cx},${cy + s * 0.28} L${cx + s * 0.03},${cy + s * 0.16}`} />
+        </>
+      );
 
+    // ─── Speedometer: gauge with ticks ───
     case "speedometer":
-      return (<>
-        {/* Gauge arc */}
-        {arc(cx, cy + r * 0.1, r * 0.8, 210, 330, 0.16, 3)}
-        {/* Inner arc */}
-        {arc(cx, cy + r * 0.1, r * 0.65, 215, 325, 0.10, 1.5)}
-        {/* Tick marks */}
-        {Array.from({ length: 9 }, (_, i) => {
-          const a = ((210 + i * 15) * Math.PI) / 180;
-          return <line key={`t${i}`}
-            x1={cx + Math.cos(a) * r * 0.7} y1={cy + r * 0.1 + Math.sin(a) * r * 0.7}
-            x2={cx + Math.cos(a) * r * 0.8} y2={cy + r * 0.1 + Math.sin(a) * r * 0.8}
-            stroke={N} strokeWidth={i % 2 === 0 ? 2 : 1} opacity={i % 2 === 0 ? 0.16 : 0.10} />;
-        })}
-        {/* Needle — pointing to ~75% */}
-        <line x1={cx} y1={cy + r * 0.1}
-          x2={cx + Math.cos((300 * Math.PI) / 180) * r * 0.55} y2={cy + r * 0.1 + Math.sin((300 * Math.PI) / 180) * r * 0.55}
-          stroke={N} strokeWidth="2.5" opacity="0.2" strokeLinecap="round" />
-        {/* Center hub */}
-        {ring(cx, cy + r * 0.1, r * 0.06, 0.18, 2)}
-        {dot(cx, cy + r * 0.1, r * 0.03, 0.2)}
-      </>);
+      return (
+        <>
+          {/* Outer arc */}
+          <path d={`M${cx - s * 0.42},${cy + s * 0.08} A${s * 0.42},${s * 0.42} 0 0 1 ${cx + s * 0.42},${cy + s * 0.08}`} strokeWidth={2.5} />
+          {/* Inner arc */}
+          <path d={`M${cx - s * 0.32},${cy + s * 0.06} A${s * 0.32},${s * 0.32} 0 0 1 ${cx + s * 0.32},${cy + s * 0.06}`} strokeWidth={1} strokeDasharray="3 3" />
+          {/* Base line */}
+          <line x1={cx - s * 0.42} y1={cy + s * 0.08} x2={cx + s * 0.42} y2={cy + s * 0.08} />
+          {/* Needle */}
+          <line x1={cx} y1={cy + s * 0.05} x2={cx + s * 0.25} y2={cy - s * 0.28} strokeWidth={2.5} />
+          <circle cx={cx} cy={cy + s * 0.05} r={s * 0.05} fill={C} stroke="none" />
+          {/* Tick marks */}
+          {Array.from({ length: 15 }, (_, i) => {
+            const a = Math.PI + (i / 14) * Math.PI;
+            const isMajor = i % 3 === 0;
+            return <line key={i} x1={cx + Math.cos(a) * s * (isMajor ? 0.36 : 0.38)} y1={cy + s * 0.05 + Math.sin(a) * s * (isMajor ? 0.36 : 0.38)} x2={cx + Math.cos(a) * s * 0.42} y2={cy + s * 0.05 + Math.sin(a) * s * 0.42} strokeWidth={isMajor ? 2 : 1} />;
+          })}
+        </>
+      );
 
+    // ─── Hierarchy: org chart with detail ───
     case "hierarchy":
-      return (<>
-        {/* Org chart — top node, 2 middle, 4 bottom */}
-        {/* Top */}
-        <rect x={cx - r * 0.15} y={cy - r * 0.7} width={r * 0.3} height={r * 0.18} rx={4} fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" />
-        {/* Middle */}
-        <rect x={cx - r * 0.55} y={cy - r * 0.2} width={r * 0.28} height={r * 0.15} rx={3} fill="none" stroke={N} strokeWidth="2" opacity="0.15" />
-        <rect x={cx + r * 0.27} y={cy - r * 0.2} width={r * 0.28} height={r * 0.15} rx={3} fill="none" stroke={N} strokeWidth="2" opacity="0.15" />
-        {/* Bottom */}
-        {[-0.7, -0.3, 0.1, 0.5].map((xo, i) => (
-          <rect key={`b${i}`} x={cx + xo * r} y={cy + r * 0.3} width={r * 0.22} height={r * 0.12} rx={3} fill="none" stroke={N} strokeWidth="1.5" opacity="0.12" />
-        ))}
-        {/* Connecting lines */}
-        {ln(cx, cy - r * 0.52, cx, cy - r * 0.35, 0.12, 1.5)}
-        {ln(cx, cy - r * 0.35, cx - r * 0.41, cy - r * 0.35, 0.10, 1.5)}
-        {ln(cx, cy - r * 0.35, cx + r * 0.41, cy - r * 0.35, 0.10, 1.5)}
-        {ln(cx - r * 0.41, cy - r * 0.35, cx - r * 0.41, cy - r * 0.2, 0.10, 1.5)}
-        {ln(cx + r * 0.41, cy - r * 0.35, cx + r * 0.41, cy - r * 0.2, 0.10, 1.5)}
-        {ln(cx - r * 0.41, cy - r * 0.05, cx - r * 0.41, cy + r * 0.15, 0.08, 1)}
-        {ln(cx + r * 0.41, cy - r * 0.05, cx + r * 0.41, cy + r * 0.15, 0.08, 1)}
-        {ln(cx - r * 0.41, cy + r * 0.15, cx - r * 0.59, cy + r * 0.15, 0.08, 1)}
-        {ln(cx - r * 0.41, cy + r * 0.15, cx - r * 0.19, cy + r * 0.15, 0.08, 1)}
-        {ln(cx + r * 0.41, cy + r * 0.15, cx + r * 0.21, cy + r * 0.15, 0.08, 1)}
-        {ln(cx + r * 0.41, cy + r * 0.15, cx + r * 0.61, cy + r * 0.15, 0.08, 1)}
-        {[-0.59, -0.19, 0.21, 0.61].map((xo, i) => ln(cx + xo * r, cy + r * 0.15, cx + xo * r, cy + r * 0.3, 0.08, 1))}
-      </>);
+      return (
+        <>
+          {/* Top node */}
+          <rect x={cx - s * 0.12} y={cy - s * 0.42} width={s * 0.24} height={s * 0.14} rx={s * 0.03} />
+          {/* Lines down */}
+          <line x1={cx} y1={cy - s * 0.28} x2={cx} y2={cy - s * 0.12} />
+          <line x1={cx - s * 0.35} y1={cy - s * 0.12} x2={cx + s * 0.35} y2={cy - s * 0.12} />
+          {/* 3 bottom nodes */}
+          {[-1, 0, 1].map((i) => (
+            <g key={i}>
+              <line x1={cx + i * s * 0.35} y1={cy - s * 0.12} x2={cx + i * s * 0.35} y2={cy + s * 0.02} />
+              <rect x={cx + i * s * 0.35 - s * 0.1} y={cy + s * 0.02} width={s * 0.2} height={s * 0.12} rx={s * 0.03} />
+            </g>
+          ))}
+          {/* Sub-nodes from middle */}
+          <line x1={cx} y1={cy + s * 0.14} x2={cx} y2={cy + s * 0.22} />
+          <line x1={cx - s * 0.18} y1={cy + s * 0.22} x2={cx + s * 0.18} y2={cy + s * 0.22} />
+          {[-1, 1].map((i) => (
+            <g key={`s${i}`}>
+              <line x1={cx + i * s * 0.18} y1={cy + s * 0.22} x2={cx + i * s * 0.18} y2={cy + s * 0.3} />
+              <circle cx={cx + i * s * 0.18} cy={cy + s * 0.34} r={s * 0.04} />
+            </g>
+          ))}
+        </>
+      );
 
+    // ─── Pipeline: 3 stages with arrows ───
     case "pipeline":
-      return (<>
-        {/* Horizontal pipeline with valves */}
-        {/* Main pipe */}
-        {ln(cx - r * 0.9, cy - r * 0.05, cx + r * 0.9, cy - r * 0.05, 0.14, 2.5)}
-        {ln(cx - r * 0.9, cy + r * 0.05, cx + r * 0.9, cy + r * 0.05, 0.14, 2.5)}
-        {/* Valve 1 */}
-        {ring(cx - r * 0.4, cy, r * 0.1, 0.16, 2)}
-        <path d={`M ${cx - r * 0.4} ${cy - r * 0.1} L ${cx - r * 0.4} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-        {ln(cx - r * 0.47, cy - r * 0.25, cx - r * 0.33, cy - r * 0.25, 0.14, 2)}
-        {/* Valve 2 */}
-        {ring(cx + r * 0.3, cy, r * 0.1, 0.16, 2)}
-        <path d={`M ${cx + r * 0.3} ${cy - r * 0.1} L ${cx + r * 0.3} ${cy - r * 0.25}`} fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-        {ln(cx + r * 0.23, cy - r * 0.25, cx + r * 0.37, cy - r * 0.25, 0.14, 2)}
-        {/* Branch pipe going down */}
-        {ln(cx, cy + r * 0.05, cx, cy + r * 0.5, 0.12, 2)}
-        {ln(cx - r * 0.05, cy + r * 0.05, cx - r * 0.05, cy + r * 0.5, 0.12, 2)}
-        {/* Flow direction arrows */}
-        {[-0.65, -0.1, 0.55].map((xo, i) => (
-          <path key={`fa${i}`} d={`M ${cx + xo * r - r * 0.04} ${cy - r * 0.02} L ${cx + xo * r + r * 0.04} ${cy} L ${cx + xo * r - r * 0.04} ${cy + r * 0.02}`}
-            fill="none" stroke={N} strokeWidth="1.5" opacity="0.12" />
-        ))}
-      </>);
+      return (
+        <>
+          {[-1, 0, 1].map((i) => (
+            <g key={i}>
+              <circle cx={cx + i * s * 0.38} cy={cy} r={s * 0.12} />
+              <circle cx={cx + i * s * 0.38} cy={cy} r={s * 0.04} fill={C} stroke="none" />
+            </g>
+          ))}
+          {/* Arrows between */}
+          {[-1, 1].map((dir, i) => {
+            const x = cx + (dir * 0.5 - 0.5 + i) * s * 0.38;
+            return (
+              <g key={i}>
+                <line x1={x - s * 0.05} y1={cy} x2={x + s * 0.12} y2={cy} strokeWidth={1.5} />
+                <line x1={x + s * 0.08} y1={cy - s * 0.04} x2={x + s * 0.12} y2={cy} />
+                <line x1={x + s * 0.08} y1={cy + s * 0.04} x2={x + s * 0.12} y2={cy} />
+              </g>
+            );
+          })}
+          {/* Labels */}
+          {[-1, 0, 1].map((i) => (
+            <line key={`l${i}`} x1={cx + i * s * 0.38 - s * 0.06} y1={cy + s * 0.2} x2={cx + i * s * 0.38 + s * 0.06} y2={cy + s * 0.2} strokeWidth={1} />
+          ))}
+        </>
+      );
 
+    // ─── Antenna: with signal waves ───
     case "antenna":
-      return (<>
-        {/* Radio tower / zendmast */}
-        {/* Tower structure */}
-        {ln(cx, cy - r * 0.8, cx - r * 0.25, cy + r * 0.7, 0.14, 2)}
-        {ln(cx, cy - r * 0.8, cx + r * 0.25, cy + r * 0.7, 0.14, 2)}
-        {/* Cross braces */}
-        {[-0.3, 0, 0.3].map((yo, i) => (
-          <g key={`br${i}`}>
-            {ln(cx - r * (0.08 + (yo + 0.3) * 0.28), cy + yo * r, cx + r * (0.08 + (yo + 0.3) * 0.28), cy + yo * r, 0.10, 1.5)}
-          </g>
-        ))}
-        {/* Signal waves */}
-        {arc(cx, cy - r * 0.8, r * 0.2, 220, 320, 0.14, 2)}
-        {arc(cx, cy - r * 0.8, r * 0.35, 225, 315, 0.10, 1.5)}
-        {arc(cx, cy - r * 0.8, r * 0.5, 230, 310, 0.07, 1.2)}
-        {/* Top dot */}
-        {dot(cx, cy - r * 0.8, 4, 0.2)}
-      </>);
+      return (
+        <>
+          {/* Mast */}
+          <line x1={cx} y1={cy + s * 0.38} x2={cx} y2={cy - s * 0.12} strokeWidth={2.5} />
+          {/* Base */}
+          <line x1={cx - s * 0.18} y1={cy + s * 0.38} x2={cx + s * 0.18} y2={cy + s * 0.38} strokeWidth={2} />
+          {/* Tripod */}
+          <line x1={cx} y1={cy + s * 0.2} x2={cx - s * 0.22} y2={cy + s * 0.38} strokeWidth={1.5} />
+          <line x1={cx} y1={cy + s * 0.2} x2={cx + s * 0.22} y2={cy + s * 0.38} strokeWidth={1.5} />
+          {/* Signal arcs */}
+          {[0.15, 0.26, 0.38].map((r, i) => (
+            <path key={i} d={`M${cx - s * r * 0.75},${cy - s * 0.12 - s * r * 0.75} A${s * r},${s * r} 0 0 1 ${cx + s * r * 0.75},${cy - s * 0.12 - s * r * 0.75}`} strokeWidth={i === 2 ? 1 : 1.5} />
+          ))}
+          {/* Tip */}
+          <circle cx={cx} cy={cy - s * 0.12} r={s * 0.04} fill={C} stroke="none" />
+        </>
+      );
 
+    // ─── Microscope ───
     case "microscope":
-      return (<>
-        {/* Microscope — abstract scientific analysis */}
-        {/* Eyepiece */}
-        <rect x={cx - r * 0.06} y={cy - r * 0.75} width={r * 0.12} height={r * 0.2} rx={3} fill="none" stroke={N} strokeWidth="2" opacity="0.16" />
-        {/* Body tube */}
-        {ln(cx, cy - r * 0.55, cx, cy - r * 0.15, 0.14, 2.5)}
-        {/* Objective lens */}
-        <rect x={cx - r * 0.08} y={cy - r * 0.18} width={r * 0.16} height={r * 0.12} rx={3} fill="none" stroke={N} strokeWidth="2" opacity="0.16" />
-        {/* Stage */}
-        {ln(cx - r * 0.35, cy + r * 0.05, cx + r * 0.35, cy + r * 0.05, 0.16, 2.5)}
-        {/* Base arm */}
-        <path d={`M ${cx} ${cy - r * 0.35} Q ${cx + r * 0.3} ${cy - r * 0.35} ${cx + r * 0.3} ${cy + r * 0.05}`}
-          fill="none" stroke={N} strokeWidth="2" opacity="0.12" />
-        {/* Base */}
-        {ln(cx - r * 0.3, cy + r * 0.55, cx + r * 0.3, cy + r * 0.55, 0.16, 2.5)}
-        {ln(cx, cy + r * 0.05, cx, cy + r * 0.55, 0.12, 2)}
-        {/* Data particles */}
-        {[[-0.25, -0.3], [0.3, -0.5], [-0.35, 0.3], [0.35, 0.35]].map(([ox, oy], i) => (
-          <g key={`p${i}`}>{ring(cx + ox * r, cy + oy * r, 5, 0.06, 0.8)}{dot(cx + ox * r, cy + oy * r, 2, 0.08)}</g>
-        ))}
-      </>);
+      return (
+        <>
+          <rect x={cx - s * 0.07} y={cy - s * 0.44} width={s * 0.14} height={s * 0.1} rx={s * 0.03} />
+          <line x1={cx} y1={cy - s * 0.34} x2={cx} y2={cy + s * 0.08} strokeWidth={2.5} />
+          <rect x={cx - s * 0.05} y={cy + s * 0.08} width={s * 0.1} height={s * 0.08} rx={s * 0.02} />
+          <line x1={cx - s * 0.24} y1={cy + s * 0.2} x2={cx + s * 0.24} y2={cy + s * 0.2} strokeWidth={2.5} />
+          <path d={`M${cx},${cy - s * 0.18} L${cx + s * 0.15},${cy - s * 0.18} L${cx + s * 0.15},${cy + s * 0.28}`} strokeWidth={2} />
+          <line x1={cx - s * 0.18} y1={cy + s * 0.4} x2={cx + s * 0.28} y2={cy + s * 0.4} strokeWidth={2.5} />
+          <line x1={cx + s * 0.15} y1={cy + s * 0.28} x2={cx + s * 0.15} y2={cy + s * 0.4} strokeWidth={2} />
+          {/* Focus knob */}
+          <circle cx={cx + s * 0.2} cy={cy} r={s * 0.04} />
+        </>
+      );
 
+    // ─── Diamond: faceted gem ───
     case "diamond":
-      return (<>
-        {/* Premium diamond — faceted gem */}
-        <path d={`M ${cx} ${cy - r * 0.7} L ${cx + r * 0.6} ${cy - r * 0.25} L ${cx + r * 0.35} ${cy + r * 0.7} L ${cx - r * 0.35} ${cy + r * 0.7} L ${cx - r * 0.6} ${cy - r * 0.25} Z`}
-          fill="none" stroke={N} strokeWidth="2.5" opacity="0.18" strokeLinejoin="round" />
-        {/* Horizontal facet line */}
-        {ln(cx - r * 0.6, cy - r * 0.25, cx + r * 0.6, cy - r * 0.25, 0.14, 1.5)}
-        {/* Facet lines from top */}
-        {ln(cx - r * 0.25, cy - r * 0.25, cx, cy - r * 0.7, 0.10, 1.2)}
-        {ln(cx + r * 0.25, cy - r * 0.25, cx, cy - r * 0.7, 0.10, 1.2)}
-        {/* Facet lines to bottom */}
-        {ln(cx - r * 0.25, cy - r * 0.25, cx, cy + r * 0.7, 0.08, 1)}
-        {ln(cx + r * 0.25, cy - r * 0.25, cx, cy + r * 0.7, 0.08, 1)}
-        {ln(cx - r * 0.6, cy - r * 0.25, cx, cy + r * 0.7, 0.06, 0.8)}
-        {ln(cx + r * 0.6, cy - r * 0.25, cx, cy + r * 0.7, 0.06, 0.8)}
-        {/* Sparkle */}
-        {dot(cx, cy - r * 0.7, 3, 0.2)}
-      </>);
+      return (
+        <>
+          {/* Crown */}
+          <path d={`M${cx},${cy - s * 0.45} L${cx + s * 0.2},${cy - s * 0.18} L${cx + s * 0.35},${cy - s * 0.12} L${cx},${cy + s * 0.45} L${cx - s * 0.35},${cy - s * 0.12} L${cx - s * 0.2},${cy - s * 0.18} Z`} />
+          {/* Girdle line */}
+          <line x1={cx - s * 0.35} y1={cy - s * 0.12} x2={cx + s * 0.35} y2={cy - s * 0.12} />
+          {/* Facet lines */}
+          <line x1={cx - s * 0.2} y1={cy - s * 0.18} x2={cx} y2={cy - s * 0.12} strokeWidth={1} />
+          <line x1={cx + s * 0.2} y1={cy - s * 0.18} x2={cx} y2={cy - s * 0.12} strokeWidth={1} />
+          <line x1={cx} y1={cy - s * 0.12} x2={cx} y2={cy + s * 0.45} strokeWidth={1} />
+          {/* Light ray */}
+          <line x1={cx + s * 0.15} y1={cy - s * 0.55} x2={cx + s * 0.08} y2={cy - s * 0.38} strokeWidth={1} />
+          <line x1={cx + s * 0.25} y1={cy - s * 0.52} x2={cx + s * 0.18} y2={cy - s * 0.35} strokeWidth={1} />
+        </>
+      );
 
+    // ─── Hourglass: with sand particles ───
     case "hourglass":
-      return (<>
-        {/* Top and bottom frames */}
-        {ln(cx - r * 0.4, cy - r * 0.75, cx + r * 0.4, cy - r * 0.75, 0.18, 2.5)}
-        {ln(cx - r * 0.4, cy + r * 0.75, cx + r * 0.4, cy + r * 0.75, 0.18, 2.5)}
-        {/* Glass sides — X shape */}
-        {ln(cx - r * 0.35, cy - r * 0.75, cx - r * 0.05, cy, 0.14, 2)}
-        {ln(cx + r * 0.35, cy - r * 0.75, cx + r * 0.05, cy, 0.14, 2)}
-        {ln(cx - r * 0.05, cy, cx - r * 0.35, cy + r * 0.75, 0.14, 2)}
-        {ln(cx + r * 0.05, cy, cx + r * 0.35, cy + r * 0.75, 0.14, 2)}
-        {/* Sand dots in top */}
-        {[[-0.1, -0.35], [0.1, -0.35], [0, -0.45], [-0.15, -0.5], [0.15, -0.5]].map(([ox, oy], i) => (
-          dot(cx + ox * r, cy + oy * r, 2.5, 0.10)
-        ))}
-        {/* Sand stream through center */}
-        {dot(cx, cy - r * 0.1, 2, 0.15)}
-        {dot(cx, cy, 1.5, 0.18)}
-        {dot(cx, cy + r * 0.1, 2, 0.15)}
-        {/* Sand pile at bottom */}
-        {arc(cx, cy + r * 0.5, r * 0.2, 200, 340, 0.12, 1.5)}
-      </>);
+      return (
+        <>
+          {/* Frame */}
+          <line x1={cx - s * 0.28} y1={cy - s * 0.42} x2={cx + s * 0.28} y2={cy - s * 0.42} strokeWidth={2.5} />
+          <line x1={cx - s * 0.28} y1={cy + s * 0.42} x2={cx + s * 0.28} y2={cy + s * 0.42} strokeWidth={2.5} />
+          {/* Glass shape */}
+          <path d={`M${cx - s * 0.24},${cy - s * 0.42} L${cx - s * 0.04},${cy - s * 0.02} L${cx - s * 0.24},${cy + s * 0.42}`} />
+          <path d={`M${cx + s * 0.24},${cy - s * 0.42} L${cx + s * 0.04},${cy - s * 0.02} L${cx + s * 0.24},${cy + s * 0.42}`} />
+          {/* Neck */}
+          <line x1={cx} y1={cy - s * 0.06} x2={cx} y2={cy + s * 0.06} strokeWidth={1} />
+          {/* Sand in top */}
+          <path d={`M${cx - s * 0.12},${cy - s * 0.18} L${cx + s * 0.12},${cy - s * 0.18}`} strokeWidth={1} />
+          {/* Sand in bottom */}
+          <path d={`M${cx - s * 0.14},${cy + s * 0.32} L${cx + s * 0.14},${cy + s * 0.32}`} strokeWidth={1} />
+          {/* Falling particles */}
+          {[0.08, 0.15, 0.22].map((y, i) => (
+            <circle key={i} cx={cx} cy={cy + y * s} r={s * 0.012} fill={C} stroke="none" />
+          ))}
+        </>
+      );
 
+    // ─── Compass: with rose detail ───
     case "compass":
-      return (<>
-        {/* Outer ring */}
-        {ring(cx, cy, r * 0.85, 0.16, 2.5)}
-        {ring(cx, cy, r * 0.75, 0.08, 1)}
-        {/* Cardinal direction marks */}
-        {[0, 90, 180, 270].map((deg, i) => {
-          const a = (deg * Math.PI) / 180 - Math.PI / 2;
-          return <line key={`cd${i}`}
-            x1={cx + Math.cos(a) * r * 0.65} y1={cy + Math.sin(a) * r * 0.65}
-            x2={cx + Math.cos(a) * r * 0.85} y2={cy + Math.sin(a) * r * 0.85}
-            stroke={N} strokeWidth="2.5" opacity="0.18" />;
-        })}
-        {/* Minor marks */}
-        {[45, 135, 225, 315].map((deg, i) => {
-          const a = (deg * Math.PI) / 180 - Math.PI / 2;
-          return <line key={`md${i}`}
-            x1={cx + Math.cos(a) * r * 0.7} y1={cy + Math.sin(a) * r * 0.7}
-            x2={cx + Math.cos(a) * r * 0.85} y2={cy + Math.sin(a) * r * 0.85}
-            stroke={N} strokeWidth="1.5" opacity="0.10" />;
-        })}
-        {/* Compass needle — north */}
-        <path d={`M ${cx} ${cy} L ${cx - r * 0.06} ${cy + r * 0.25} L ${cx} ${cy - r * 0.55} L ${cx + r * 0.06} ${cy + r * 0.25} Z`}
-          fill="none" stroke={N} strokeWidth="2" opacity="0.18" />
-        {/* Center */}
-        {ring(cx, cy, r * 0.05, 0.2, 2)}
-      </>);
+      return (
+        <>
+          <circle cx={cx} cy={cy} r={s * 0.42} />
+          <circle cx={cx} cy={cy} r={s * 0.38} strokeWidth={1} />
+          {/* Needle */}
+          <path d={`M${cx},${cy - s * 0.32} L${cx + s * 0.06},${cy} L${cx},${cy + s * 0.32} L${cx - s * 0.06},${cy} Z`} />
+          {/* Center */}
+          <circle cx={cx} cy={cy} r={s * 0.04} fill={C} stroke="none" />
+          {/* Cardinal marks */}
+          {[0, 90, 180, 270].map((deg) => {
+            const a = ((deg - 90) * Math.PI) / 180;
+            return (
+              <g key={deg}>
+                <line x1={cx + Math.cos(a) * s * 0.34} y1={cy + Math.sin(a) * s * 0.34} x2={cx + Math.cos(a) * s * 0.42} y2={cy + Math.sin(a) * s * 0.42} strokeWidth={2} />
+              </g>
+            );
+          })}
+          {/* Minor marks */}
+          {[45, 135, 225, 315].map((deg) => {
+            const a = ((deg - 90) * Math.PI) / 180;
+            return <line key={deg} x1={cx + Math.cos(a) * s * 0.36} y1={cy + Math.sin(a) * s * 0.36} x2={cx + Math.cos(a) * s * 0.42} y2={cy + Math.sin(a) * s * 0.42} strokeWidth={1} />;
+          })}
+        </>
+      );
 
+    // ─── Fingerprint: concentric arches ───
     case "fingerprint":
-      return (<>
-        {/* Fingerprint — concentric partial arcs */}
-        {[0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85].map((s, i) => (
-          <g key={`fp${i}`}>
-            {arc(cx, cy + r * 0.05, r * s, 200 + i * 5, 340 - i * 5, 0.08 + i * 0.012, 1.5)}
-          </g>
-        ))}
-        {/* Whorl center */}
-        {arc(cx + r * 0.02, cy - r * 0.05, r * 0.08, 0, 270, 0.16, 1.5)}
-        {dot(cx + r * 0.02, cy - r * 0.05, 2, 0.18)}
-        {/* Scan line */}
-        {ln(cx - r * 0.9, cy + r * 0.3, cx + r * 0.9, cy + r * 0.3, 0.12, 1, "6 4")}
-      </>);
+      return (
+        <>
+          {[0.08, 0.15, 0.22, 0.3, 0.38].map((r, i) => (
+            <path key={i} d={`M${cx - s * r},${cy + s * 0.06} A${s * r},${s * r * 1.3} 0 0 1 ${cx + s * r},${cy + s * 0.06}`} />
+          ))}
+          {[0.08, 0.15, 0.22, 0.3].map((r, i) => (
+            <path key={`b${i}`} d={`M${cx - s * r * 0.85},${cy - s * 0.06} A${s * r * 0.9},${s * r * 1.1} 0 0 0 ${cx + s * r * 0.85},${cy - s * 0.06}`} />
+          ))}
+        </>
+      );
 
+    // ─── Telescope: on tripod with stars ───
     case "telescope":
-      return (<>
-        {/* Telescope tube */}
-        <path d={`M ${cx - r * 0.5} ${cy + r * 0.3} L ${cx + r * 0.4} ${cy - r * 0.4}`}
-          fill="none" stroke={N} strokeWidth="3" opacity="0.16" strokeLinecap="round" />
-        {/* Lens */}
-        {ring(cx + r * 0.45, cy - r * 0.45, r * 0.12, 0.16, 2)}
-        {/* Eyepiece */}
-        <rect x={cx - r * 0.56} y={cy + r * 0.22} width={r * 0.14} height={r * 0.16} rx={2}
-          fill="none" stroke={N} strokeWidth="2" opacity="0.14" />
-        {/* Tripod legs */}
-        {ln(cx - r * 0.15, cy + r * 0.1, cx - r * 0.4, cy + r * 0.7, 0.12, 1.5)}
-        {ln(cx - r * 0.15, cy + r * 0.1, cx + r * 0.15, cy + r * 0.7, 0.12, 1.5)}
-        {ln(cx - r * 0.15, cy + r * 0.1, cx - r * 0.05, cy + r * 0.7, 0.10, 1.2)}
-        {/* Stars */}
-        {[[0.5, -0.7], [0.7, -0.55], [0.3, -0.75], [-0.4, -0.65], [-0.6, -0.5]].map(([ox, oy], i) => (
-          <g key={`st${i}`}>
-            {ln(cx + ox * r - 4, cy + oy * r, cx + ox * r + 4, cy + oy * r, 0.08, 0.8)}
-            {ln(cx + ox * r, cy + oy * r - 4, cx + ox * r, cy + oy * r + 4, 0.08, 0.8)}
-          </g>
-        ))}
-      </>);
+      return (
+        <>
+          {/* Tube body */}
+          <line x1={cx - s * 0.34} y1={cy - s * 0.22} x2={cx + s * 0.22} y2={cy + s * 0.12} strokeWidth={3} />
+          {/* Lens */}
+          <circle cx={cx - s * 0.38} cy={cy - s * 0.25} r={s * 0.1} />
+          {/* Eyepiece */}
+          <rect x={cx + s * 0.2} y={cy + s * 0.08} width={s * 0.12} height={s * 0.08} rx={s * 0.02} />
+          {/* Tripod */}
+          <line x1={cx - s * 0.02} y1={cy} x2={cx - s * 0.2} y2={cy + s * 0.38} strokeWidth={1.5} />
+          <line x1={cx - s * 0.02} y1={cy} x2={cx + s * 0.18} y2={cy + s * 0.38} strokeWidth={1.5} />
+          <line x1={cx - s * 0.02} y1={cy} x2={cx - s * 0.02} y2={cy + s * 0.34} strokeWidth={1.5} />
+          {/* Stars */}
+          {[
+            { x: -0.5, y: -0.42 }, { x: 0.42, y: -0.38 }, { x: -0.35, y: -0.5 },
+            { x: 0.28, y: -0.48 }, { x: 0.5, y: -0.3 },
+          ].map((p, i) => (
+            <circle key={i} cx={cx + p.x * s} cy={cy + p.y * s} r={s * (i % 2 === 0 ? 0.015 : 0.02)} fill={C} stroke="none" />
+          ))}
+        </>
+      );
 
     default:
-      return <>{ring(cx, cy, r * 0.5, 0.07)}</>;
+      return <circle cx={cx} cy={cy} r={s * 0.38} />;
   }
-}
-
-// ─── Main export ──────────────────────────────────────────────────────────────
-
-export function BgIllustration({ type, width, height, scale = 1, offsetX = 0, offsetY = 0 }: BgIllustrationProps) {
-  const cx = width / 2 + offsetX;
-  const cy = height / 2 + offsetY;
-  const r = Math.min(width, height) * 0.38 * scale;
-
-  const props = { cx, cy, r };
-
-  return (
-    <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
-      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-        {type === "gear"      && <GearIllustration {...props} />}
-        {type === "brain"     && <BrainIllustration {...props} />}
-        {type === "chart"     && <ChartIllustration {...props} />}
-        {type === "nodes"     && <NodesIllustration {...props} />}
-        {type === "shield"    && <ShieldIllustration {...props} />}
-        {type === "flow"      && <FlowIllustration {...props} />}
-        {type === "lightbulb" && <LightbulbIllustration {...props} />}
-        {type === "circuit"   && <CircuitIllustration {...props} />}
-        {type === "target"    && <TargetIllustration {...props} />}
-        {!["gear", "brain", "chart", "nodes", "shield", "flow", "lightbulb", "circuit", "target"].includes(type) && (
-          <SimpleIllustration {...props} type={type} />
-        )}
-      </svg>
-    </div>
-  );
 }

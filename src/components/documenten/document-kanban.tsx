@@ -94,7 +94,7 @@ export function DocumentKanban({ documenten, onSelect, isPinned, onTogglePin }: 
                         <div
                           key={doc.notionId}
                           onClick={() => onSelect(doc)}
-                          className={`rounded-xl bg-autronis-card border p-3 cursor-pointer transition-colors group hover:border-autronis-accent/50 ${pinned ? "border-amber-500/40" : "border-autronis-border"}`}
+                          className={`rounded-xl bg-autronis-card border p-3 cursor-pointer transition-colors group card-glow hover:border-autronis-accent/50 ${pinned ? "border-amber-500/40" : "border-autronis-border"}`}
                         >
                           {/* Color bar top */}
                           <div className="w-full h-0.5 rounded-full mb-2 opacity-60" style={{ backgroundColor: config.color }} />

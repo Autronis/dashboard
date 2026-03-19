@@ -10,6 +10,13 @@ export interface Klant {
   notities: string | null;
   uurtarief: number | null;
   isActief: number;
+  isDemo: number | null;
+  website: string | null;
+  branche: string | null;
+  kvkNummer: string | null;
+  btwNummer: string | null;
+  aantalMedewerkers: string | null;
+  klantSinds: string | null;
   aantalProjecten: number;
   actieveProjecten: number;
   totaalMinuten: number;
@@ -19,6 +26,10 @@ export interface Klant {
   gezondheid: "groen" | "oranje" | "rood";
   gezondheidReden: string;
   laatsteContact: string | null;
+  laatsteFactuurDatum: string | null;
+  laatsteFactuurBedrag: number | null;
+  openstaandeOffertes: number;
+  tags: string[];
 }
 
 export interface KlantenKpis {
@@ -28,16 +39,18 @@ export interface KlantenKpis {
   gezondheid: { groen: number; oranje: number; rood: number };
 }
 
-async function fetchKlanten(): Promise<{ klanten: Klant[]; kpis: KlantenKpis }> {
-  const res = await fetch("/api/klanten");
+async function fetchKlanten(toonDemo: boolean): Promise<{ klanten: Klant[]; kpis: KlantenKpis }> {
+  const params = new URLSearchParams();
+  if (toonDemo) params.set("demo", "1");
+  const res = await fetch(`/api/klanten?${params.toString()}`);
   if (!res.ok) throw new Error("Kon klanten niet laden");
   return res.json() as Promise<{ klanten: Klant[]; kpis: KlantenKpis }>;
 }
 
-export function useKlanten() {
+export function useKlanten(toonDemo = false) {
   return useQuery({
-    queryKey: ["klanten"],
-    queryFn: fetchKlanten,
+    queryKey: ["klanten", { toonDemo }],
+    queryFn: () => fetchKlanten(toonDemo),
     staleTime: 30_000,
   });
 }

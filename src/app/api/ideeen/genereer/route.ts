@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ideeen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { sql } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { aiComplete } from "@/lib/ai/client";
 
 interface AiIdee {
   naam: string;
@@ -27,23 +27,8 @@ export async function POST() {
       .all()
       .map((i) => i.naam);
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json(
-        { fout: "ANTHROPIC_API_KEY niet geconfigureerd" },
-        { status: 500 }
-      );
-    }
-
-    const client = new Anthropic({ apiKey });
-
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 3000,
-      messages: [
-        {
-          role: "user",
-          content: `Je bent een business ideeën generator voor Autronis, een AI- en automatiseringsbureau.
+    const { text: tekst } = await aiComplete({
+      prompt: `Je bent een business ideeën generator voor Autronis, een AI- en automatiseringsbureau.
 
 Over Autronis:
 - Diensten: workflow automatisering (Make.com, n8n), AI integraties (OpenAI, Claude), systeem integraties (CRM, boekhouding, webshops), data & dashboards
@@ -71,12 +56,8 @@ Per idee geef:
 Antwoord als JSON array:
 [{"naam": "...", "categorie": "...", "omschrijving": "...", "doelgroep": "...", "verdienmodel": "...", "haalbaarheid": 8, "marktpotentie": 7, "fitAutronis": 9}]
 Alleen JSON, geen uitleg.`,
-        },
-      ],
+      maxTokens: 3000,
     });
-
-    const tekst =
-      response.content[0].type === "text" ? response.content[0].text : "";
     let resultaten: AiIdee[] = [];
 
     try {

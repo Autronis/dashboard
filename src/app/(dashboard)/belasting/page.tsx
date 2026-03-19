@@ -25,6 +25,22 @@ import {
   Trash2,
   Download,
   History,
+  Wallet,
+  Lightbulb,
+  ShieldCheck,
+  Gift,
+  BookOpen,
+  Car,
+  Coffee,
+  Monitor,
+  Megaphone,
+  GraduationCap,
+  Wrench,
+  Globe,
+  ExternalLink,
+  Info,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { cn, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -56,7 +72,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // ============ CONSTANTS ============
 
-type TabId = "overzicht" | "btw" | "winst-verlies" | "investeringen" | "reserveringen" | "jaaroverzicht";
+type TabId = "overzicht" | "btw" | "winst-verlies" | "investeringen" | "reserveringen" | "kosten" | "subsidies" | "jaaroverzicht";
 
 const tabs: { id: TabId; label: string; icon: typeof Receipt }[] = [
   { id: "overzicht", label: "Overzicht", icon: FileBarChart },
@@ -64,6 +80,8 @@ const tabs: { id: TabId; label: string; icon: typeof Receipt }[] = [
   { id: "winst-verlies", label: "Winst & Verlies", icon: TrendingUp },
   { id: "investeringen", label: "Investeringen", icon: Package },
   { id: "reserveringen", label: "Reserveringen", icon: PiggyBank },
+  { id: "kosten", label: "Kosten & Aftrek", icon: Wallet },
+  { id: "subsidies", label: "Subsidies & Tips", icon: Lightbulb },
   { id: "jaaroverzicht", label: "Jaaroverzicht", icon: FileBarChart },
 ];
 
@@ -1405,6 +1423,330 @@ export default function BelastingPage() {
                 <p className="text-autronis-text-secondary">Geen reserveringsdata beschikbaar voor {jaar}.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ===== TAB: KOSTEN & AFTREK ===== */}
+        {activeTab === "kosten" && (
+          <div className="space-y-6">
+            {/* Intro */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-start gap-3">
+                <Info className="w-5 h-5 text-autronis-accent mt-0.5 shrink-0" />
+                <div>
+                  <h3 className="text-base font-semibold text-autronis-text-primary mb-1">Zakelijke kosten & aftrekposten</h3>
+                  <p className="text-sm text-autronis-text-secondary leading-relaxed">
+                    Alle zakelijke kosten die je maakt zijn aftrekbaar van je winst, wat je belasting verlaagt.
+                    Bewaar altijd je bonnetjes en facturen. BTW op zakelijke aankopen kun je terugvragen via je BTW-aangifte.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Aftrekbare kostenposten overzicht */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-autronis-accent" />
+                Aftrekbare kostenposten
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { icon: Monitor, label: "Hardware & apparatuur", desc: "Laptop, monitor, toetsenbord, muis, telefoon, headset, camera. Boven €450 afschrijven via Investeringen tab.", color: "text-blue-400", bg: "bg-blue-500/10" },
+                  { icon: Globe, label: "Software & abonnementen", desc: "SaaS tools, hosting, domeinen, cloud services, AI tools (OpenAI, Anthropic), licenties.", color: "text-purple-400", bg: "bg-purple-500/10" },
+                  { icon: Building2, label: "Kantoor & werkplek", desc: "Huur werkruimte, coworking, kantoorartikelen, bureau, bureaustoel, verlichting.", color: "text-amber-400", bg: "bg-amber-500/10" },
+                  { icon: Car, label: "Vervoer & reizen", desc: "Zakelijke kilometers (€0,23/km), OV, parkeren, vliegtickets, verblijfkosten.", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+                  { icon: Megaphone, label: "Marketing & acquisitie", desc: "Website, advertenties, drukwerk, visitekaartjes, beurzen, netwerkevenementen.", color: "text-pink-400", bg: "bg-pink-500/10" },
+                  { icon: GraduationCap, label: "Opleiding & ontwikkeling", desc: "Cursussen, trainingen, boeken, conferenties, coaching, certificeringen.", color: "text-green-400", bg: "bg-green-500/10" },
+                  { icon: Coffee, label: "Representatie", desc: "Zakelijke lunches (80% aftrekbaar), koffie voor klanten, relatiegeschenken (max €227/pp).", color: "text-orange-400", bg: "bg-orange-500/10" },
+                  { icon: Wrench, label: "Professionele diensten", desc: "Boekhouder, accountant, juridisch advies, KvK, notaris, verzekeringen (beroeps-/aansprakelijkheid).", color: "text-indigo-400", bg: "bg-indigo-500/10" },
+                  { icon: CreditCard, label: "Bankkosten & financieel", desc: "Zakelijke bankrekening, betaalkosten (Stripe/Mollie), incassokosten, valuta-kosten.", color: "text-slate-400", bg: "bg-slate-500/10" },
+                  { icon: Receipt, label: "Telefoon & internet", desc: "Zakelijk telefoonabonnement, internet (zakelijk deel aftrekbaar als je thuiswerkt).", color: "text-teal-400", bg: "bg-teal-500/10" },
+                ].map((item) => (
+                  <div key={item.label} className={cn("rounded-xl border border-autronis-border p-4 flex gap-3", item.bg)}>
+                    <div className="shrink-0 mt-0.5">
+                      <item.icon className={cn("w-5 h-5", item.color)} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm text-autronis-text-primary">{item.label}</p>
+                      <p className="text-xs text-autronis-text-secondary mt-1 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Fiscale aftrekposten specifiek voor ZZP/VOF */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-green-400" />
+                Fiscale aftrekposten (automatisch berekend)
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[
+                  { label: "Zelfstandigenaftrek", bedrag: "€ 3.750", voorwaarde: "Urencriterium (1.225 uur)", status: urenCriterium?.voldoet ? "Bereikt" : "Nog niet", statusColor: urenCriterium?.voldoet ? "text-green-400" : "text-yellow-400" },
+                  { label: "Startersaftrek", bedrag: "€ 2.123", voorwaarde: "Eerste 3 jaar als ondernemer", status: "Check zelf", statusColor: "text-blue-400" },
+                  { label: "MKB-winstvrijstelling", bedrag: "14% van winst", voorwaarde: "Automatisch bij IB-ondernemer", status: "Altijd", statusColor: "text-green-400" },
+                  { label: "KIA (Kleinschaligheidsinvesteringsaftrek)", bedrag: "Tot 28%", voorwaarde: "Investeringen €2.801 - €373.030", status: (investeringenData?.length ?? 0) > 0 ? "Actief" : "Geen inv.", statusColor: (investeringenData?.length ?? 0) > 0 ? "text-green-400" : "text-autronis-text-secondary" },
+                  { label: "FOR (Fiscale Oudedagsreserve)", bedrag: "Max 9,44% winst", voorwaarde: "Max €10.100/jaar, AOW-leeftijd < 10 jr", status: "Check zelf", statusColor: "text-blue-400" },
+                  { label: "Km-vergoeding", bedrag: "€ 0,23/km", voorwaarde: "Zakelijke kilometers bijhouden", status: "Bijgehouden", statusColor: "text-green-400" },
+                ].map((item) => (
+                  <div key={item.label} className="bg-autronis-bg/50 border border-autronis-border rounded-xl p-4">
+                    <p className="font-semibold text-sm text-autronis-text-primary mb-1">{item.label}</p>
+                    <p className="text-lg font-bold text-autronis-accent tabular-nums">{item.bedrag}</p>
+                    <p className="text-xs text-autronis-text-secondary mt-2">{item.voorwaarde}</p>
+                    <p className={cn("text-xs font-medium mt-1", item.statusColor)}>Status: {item.status}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bonnetjes & administratie tips */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-amber-400" />
+                Bonnetjes & administratie
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { titel: "Bewaarplicht", tekst: "Je bent verplicht je administratie 7 jaar te bewaren. Dit geldt voor facturen, bonnetjes, bankafschriften, contracten en offertes." },
+                  { titel: "Digitale bonnetjes", tekst: "Foto's van bonnetjes zijn geldig als bewijs. Gebruik een app of scan ze in. Zorg dat datum, bedrag en BTW leesbaar zijn." },
+                  { titel: "BTW terugvragen", tekst: "BTW op zakelijke aankopen mag je terugvragen via je BTW-aangifte. Dit geldt voor alle aankopen met een factuur op naam van je bedrijf." },
+                  { titel: "Gemengd gebruik", tekst: "Bij privé + zakelijk gebruik (bijv. telefoon, auto) mag je alleen het zakelijke deel aftrekken. Houd een logboek bij." },
+                  { titel: "Kleine aankopen", tekst: "Aankopen onder €450 (excl. BTW) mag je direct als kosten boeken. Daarboven moet je afschrijven over meerdere jaren." },
+                  { titel: "Factuurvereisten", tekst: "Een geldige factuur bevat: naam + adres leverancier, jouw bedrijfsnaam, datum, omschrijving, bedrag excl. BTW, BTW-bedrag, BTW-nummer." },
+                ].map((tip) => (
+                  <div key={tip.titel} className="flex gap-3 p-3 rounded-lg bg-autronis-bg/30 border border-autronis-border/50">
+                    <CheckCircle2 className="w-4 h-4 text-autronis-accent mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-autronis-text-primary">{tip.titel}</p>
+                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed">{tip.tekst}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Veelgemaakte fouten */}
+            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Veelgemaakte fouten
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {[
+                  "Bonnetjes niet bewaren — zonder bewijs geen aftrek",
+                  "Privékosten als zakelijk boeken — boetes bij controle",
+                  "BTW niet terugvragen op zakelijke aankopen",
+                  "Investeringen niet afschrijven (boven €450)",
+                  "Zakelijke kilometers niet bijhouden",
+                  "Representatiekosten 100% aftrekken (max 80%)",
+                  "Geen apart zakelijke bankrekening",
+                  "Facturen zonder BTW-nummer versturen",
+                ].map((fout) => (
+                  <div key={fout} className="flex items-start gap-2 text-sm">
+                    <span className="text-red-400 mt-0.5">✕</span>
+                    <span className="text-autronis-text-secondary">{fout}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== TAB: SUBSIDIES & TIPS ===== */}
+        {activeTab === "subsidies" && (
+          <div className="space-y-6">
+            {/* Relevante subsidies */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
+                <Gift className="w-5 h-5 text-autronis-accent" />
+                Subsidies & regelingen voor Autronis
+              </h3>
+              <p className="text-sm text-autronis-text-secondary mb-5">
+                Als AI- en automatiseringsbedrijf kom je mogelijk in aanmerking voor deze regelingen. Check jaarlijks of je er gebruik van kunt maken.
+              </p>
+              <div className="space-y-4">
+                {[
+                  {
+                    naam: "WBSO (Wet Bevordering Speur- en Ontwikkelingswerk)",
+                    relevant: "Zeer relevant",
+                    relevantColor: "text-green-400 bg-green-500/15",
+                    bedrag: "Tot 32% loonheffingskorting op R&D uren",
+                    beschrijving: "Als je nieuwe software, AI-modellen of technische oplossingen ontwikkelt, kun je WBSO aanvragen. Dit geldt voor het ontwikkelen van nieuwe technische producten, processen of programmatuur. Je moet minimaal 500 S&O-uren per jaar maken.",
+                    deadline: "Aanvragen via RVO.nl, 3x per jaar (uiterlijk 1 maand voor startdatum)",
+                    url: "rvo.nl/subsidies-financiering/wbso",
+                  },
+                  {
+                    naam: "Innovatiebox",
+                    relevant: "Relevant bij winst uit IP",
+                    relevantColor: "text-blue-400 bg-blue-500/15",
+                    bedrag: "9% belasting i.p.v. tot 49,5% op innovatiewinst",
+                    beschrijving: "Als je winst maakt uit zelf ontwikkelde software of technologie (met WBSO-verklaring), kun je die winst in de innovatiebox laten vallen. Je betaalt dan slechts 9% belasting over dat deel.",
+                    deadline: "Bij belastingaangifte, vereist S&O-verklaring (WBSO)",
+                    url: "belastingdienst.nl/innovatiebox",
+                  },
+                  {
+                    naam: "SLIM-regeling (Stimuleringsregeling Leren en ontwikkelen in MKB)",
+                    relevant: "Relevant",
+                    relevantColor: "text-green-400 bg-green-500/15",
+                    bedrag: "Tot 80% subsidie op scholingskosten",
+                    beschrijving: "Subsidie voor het ontwikkelen van een leerrijke werkomgeving, opleidingsplannen of het aanbieden van een derde leerweg. Geldt voor cursussen, trainingen en certificeringen.",
+                    deadline: "Wisselende aanvraagperiodes via RVO.nl",
+                    url: "rvo.nl/subsidies-financiering/slim",
+                  },
+                  {
+                    naam: "MIT (MKB Innovatiestimulering Topsectoren)",
+                    relevant: "Bij innovatieprojecten",
+                    relevantColor: "text-blue-400 bg-blue-500/15",
+                    bedrag: "Tot €25.000 (haalbaarheid) of €200.000 (R&D)",
+                    beschrijving: "Voor innovatieve projecten die aansluiten bij een van de topsectoren (zoals ICT). Geschikt als je een nieuw AI-product of -dienst wilt ontwikkelen.",
+                    deadline: "Jaarlijks openstellingsmoment, via provincie of RVO",
+                    url: "rvo.nl/subsidies-financiering/mit",
+                  },
+                  {
+                    naam: "Groeifaciliteit",
+                    relevant: "Bij externe financiering",
+                    relevantColor: "text-amber-400 bg-amber-500/15",
+                    bedrag: "50% staatsgarantie op risicokapitaal",
+                    beschrijving: "Als je externe financiering (lening of risicokapitaal) nodig hebt om te groeien, kan de overheid 50% garant staan. Handig als je wilt opschalen.",
+                    deadline: "Doorlopend aanvragen via je bank",
+                    url: "rvo.nl/subsidies-financiering/groeifaciliteit",
+                  },
+                  {
+                    naam: "EIA (Energie-investeringsaftrek)",
+                    relevant: "Bij energie-investeringen",
+                    relevantColor: "text-amber-400 bg-amber-500/15",
+                    bedrag: "45,5% extra aftrek op energiebesparende investeringen",
+                    beschrijving: "Als je investeert in energiezuinige apparatuur, zonnepanelen, of energie-efficiënte systemen voor je kantoor. Moet op de Energielijst staan.",
+                    deadline: "Binnen 3 maanden na aanschaf aanmelden bij RVO",
+                    url: "rvo.nl/subsidies-financiering/eia",
+                  },
+                ].map((subsidie) => (
+                  <div key={subsidie.naam} className="bg-autronis-bg/50 border border-autronis-border rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-4 mb-2">
+                      <h4 className="font-semibold text-autronis-text-primary">{subsidie.naam}</h4>
+                      <span className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0", subsidie.relevantColor)}>
+                        {subsidie.relevant}
+                      </span>
+                    </div>
+                    <p className="text-sm font-bold text-autronis-accent mb-2">{subsidie.bedrag}</p>
+                    <p className="text-sm text-autronis-text-secondary leading-relaxed mb-3">{subsidie.beschrijving}</p>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-autronis-text-secondary"><span className="text-amber-400 font-medium">Deadline:</span> {subsidie.deadline}</span>
+                      <a
+                        href={`https://${subsidie.url}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-autronis-accent hover:text-autronis-accent-hover transition-colors"
+                      >
+                        Meer info <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Belastingtips */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-yellow-400" />
+                Belastingtips voor {jaar}
+              </h3>
+              <div className="space-y-3">
+                {[
+                  { tip: "Doe investeringen slim", tekst: "Plan grote aankopen zodat ze in het juiste jaar vallen. Als je vlak bij de KIA-grens zit, kan het slim zijn om een aankoop naar voren te halen of uit te stellen." },
+                  { tip: "Vraag voorlopige aanslag aan", tekst: "Een voorlopige aanslag voorkomt dat je een groot bedrag ineens moet betalen. Je betaalt dan maandelijks een voorschot aan de Belastingdienst." },
+                  { tip: "Reserveer maandelijks voor belasting", tekst: "Zet elke maand 30-40% van je winst apart op een spaarrekening. Zo word je niet verrast door de definitieve aanslag." },
+                  { tip: "Houd je urencriterium bij", tekst: "Je hebt minimaal 1.225 uur nodig voor zelfstandigenaftrek (€3.750) en startersaftrek (€2.123). Dat is ~24 uur per week." },
+                  { tip: "Check je FOR-mogelijkheid", tekst: "Met de Fiscale Oudedagsreserve kun je tot 9,44% van je winst (max €10.100) belastingvrij opzij zetten voor je pensioen." },
+                  { tip: "Maak gebruik van de WBSO", tekst: "Als AI-bedrijf is de WBSO zeer relevant. Je kunt tot 32% korting krijgen op loonheffing voor R&D-werkzaamheden." },
+                  { tip: "Betaal facturen voor 31 december", tekst: "Kosten zijn aftrekbaar in het jaar dat je ze betaalt. Betaal openstaande facturen voor het einde van het jaar." },
+                  { tip: "Vergeet de thuiswerkaftrek niet", tekst: "Als je vanuit huis werkt, kun je een deel van je huur/hypotheek, gas, water en internet als zakelijke kosten opvoeren." },
+                ].map((item) => (
+                  <div key={item.tip} className="flex gap-3 p-3 rounded-lg bg-autronis-bg/30 border border-autronis-border/50">
+                    <Lightbulb className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-autronis-text-primary">{item.tip}</p>
+                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed">{item.tekst}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Jaarafsluiting checklist */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <CheckSquare className="w-5 h-5 text-autronis-accent" />
+                Jaarafsluiting checklist {jaar}
+              </h3>
+              <div className="space-y-2">
+                {[
+                  "Alle facturen verstuurd en betaald?",
+                  "Openstaande debiteuren opvolgen",
+                  "Bonnetjes en facturen compleet en gescand?",
+                  "Zakelijke bankrekening geklopt met administratie?",
+                  "BTW-aangiftes alle kwartalen ingediend?",
+                  "Urencriterium gehaald (1.225 uur)?",
+                  "Investeringen correct geregistreerd en afgeschreven?",
+                  "KIA-aftrek berekend en geclaimd?",
+                  "Kilometers compleet bijgehouden?",
+                  "FOR-dotatie bepaald?",
+                  "Voorlopige aanslagen verwerkt en betaald?",
+                  "WBSO-aanvraag ingediend (als van toepassing)?",
+                  "Privégebruik zakelijke spullen gecorrigeerd?",
+                  "Reserveringen voor belasting op peil?",
+                  "Jaaroverzicht geëxporteerd en opgeslagen?",
+                ].map((item, i) => (
+                  <label key={i} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-autronis-bg/30 transition-colors cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 rounded border-autronis-border text-autronis-accent focus:ring-autronis-accent bg-autronis-bg"
+                    />
+                    <span className="text-sm text-autronis-text-secondary group-hover:text-autronis-text-primary transition-colors">{item}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Belangrijke datums */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+                <CalendarClock className="w-5 h-5 text-blue-400" />
+                Belangrijke belastingdata {jaar}
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-autronis-border">
+                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Deadline</th>
+                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Wat</th>
+                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { datum: `28 feb ${jaar}`, wat: "BTW Q4 vorig jaar", details: "Aangifte omzetbelasting 4e kwartaal" },
+                      { datum: `1 apr ${jaar}`, wat: "Voorlopige aanslag", details: "Controleer of je voorlopige aanslag klopt" },
+                      { datum: `30 apr ${jaar}`, wat: "BTW Q1", details: "Aangifte omzetbelasting 1e kwartaal" },
+                      { datum: `1 mei ${jaar}`, wat: "Inkomstenbelasting", details: `IB-aangifte ${jaar - 1} indienen` },
+                      { datum: `31 jul ${jaar}`, wat: "BTW Q2", details: "Aangifte omzetbelasting 2e kwartaal" },
+                      { datum: `31 okt ${jaar}`, wat: "BTW Q3", details: "Aangifte omzetbelasting 3e kwartaal" },
+                      { datum: `31 dec ${jaar}`, wat: "Jaarafsluiting", details: "Administratie afsluiten, laatste facturen betalen" },
+                      { datum: `31 jan ${jaar + 1}`, wat: "BTW Q4", details: `Aangifte omzetbelasting 4e kwartaal ${jaar}` },
+                      { datum: `28 feb ${jaar + 1}`, wat: "Jaarrekening", details: "Jaarrekening (+ evt. publicatie KvK)" },
+                    ].map((item, i) => (
+                      <tr key={i} className="border-b border-autronis-border/50">
+                        <td className="py-3 font-medium text-autronis-text-primary whitespace-nowrap tabular-nums">{item.datum}</td>
+                        <td className="py-3 text-autronis-accent font-medium">{item.wat}</td>
+                        <td className="py-3 text-autronis-text-secondary">{item.details}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

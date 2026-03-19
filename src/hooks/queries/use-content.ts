@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus, ContentBanner, BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
+import type { ProfielEntry, Inzicht, InzichtCategorie, ContentPost, ContentStatus, ContentPlatform, ContentVideo, Scene, VideoStatus, VideoFormaat, ContentBanner, BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
 
 // ============ PROFIEL ============
 
@@ -356,6 +356,90 @@ export function useDeleteVideo() {
   });
 }
 
+// ============ VIDEO TEMPLATES ============
+
+export interface VideoTemplateVeld {
+  key: string;
+  label: string;
+  type: "text" | "textarea" | "number";
+  required: boolean;
+  placeholder?: string;
+}
+
+export interface VideoTemplateInfo {
+  id: string;
+  naam: string;
+  beschrijving: string;
+  categorie: string;
+  icon: string;
+  velden: VideoTemplateVeld[];
+  voorbeeldInput: Record<string, string>;
+}
+
+async function fetchVideoTemplates(): Promise<VideoTemplateInfo[]> {
+  const res = await fetch("/api/content/videos/template");
+  if (!res.ok) throw new Error("Kon templates niet ophalen");
+  const data = await res.json() as { templates: VideoTemplateInfo[] };
+  return data.templates ?? [];
+}
+
+export function useVideoTemplates() {
+  return useQuery({
+    queryKey: ["video-templates"],
+    queryFn: fetchVideoTemplates,
+    staleTime: 300_000, // templates change rarely
+  });
+}
+
+export function useGenerateFromTemplate() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: {
+      templateId: string;
+      input: Record<string, string>;
+      titel?: string;
+    }) => {
+      const res = await fetch("/api/content/videos/template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Genereren mislukt");
+      }
+      const data = await res.json() as { video: RawVideo & { status: VideoStatus } };
+      return mapVideo(data.video);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-videos"] });
+    },
+  });
+}
+
+export function useRenderVideoWithFormat() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: { videoId: number; formaat?: VideoFormaat }) => {
+      const res = await fetch(`/api/content/videos/${payload.videoId}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formaat: payload.formaat ?? "square" }),
+      });
+      if (!res.ok) {
+        const data = await res.json() as { fout?: string };
+        throw new Error(data.fout ?? "Renderen mislukt");
+      }
+      return res.json() as Promise<{ succes: boolean; videoPath: string; duurSeconden: number; formaat: VideoFormaat }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["content-videos"] });
+    },
+  });
+}
+
 // ============ BANNERS ============
 
 async function fetchContentBanners(): Promise<ContentBanner[]> {
@@ -385,6 +469,7 @@ export function useSaveBanner() {
       illustrationScale?: number;
       illustrationOffsetX?: number;
       illustrationOffsetY?: number;
+      aiBgUrl?: string;
     }) => {
       const res = await fetch("/api/content/banners", {
         method: "POST",
@@ -436,6 +521,27 @@ export function useRenderBanner() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["content-banners"] });
+    },
+  });
+}
+
+export function useGenerateAiBg() {
+  return useMutation({
+    mutationFn: async (payload: {
+      onderwerp: string;
+      illustration: string;
+      formaat: BannerFormaat;
+    }) => {
+      const res = await fetch("/api/content/banners/ai-achtergrond", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "AI achtergrond genereren mislukt");
+      }
+      return res.json() as Promise<{ ok: boolean; imagePath: string }>;
     },
   });
 }

@@ -33,6 +33,9 @@ export async function PUT(
         ...(body.frequentie !== undefined && { frequentie: body.frequentie }),
         ...(body.streefwaarde !== undefined && { streefwaarde: body.streefwaarde }),
         ...(body.volgorde !== undefined && { volgorde: body.volgorde }),
+        ...(body.doel !== undefined && { doel: body.doel }),
+        ...(body.waarom !== undefined && { waarom: body.waarom }),
+        ...(body.verwachteTijd !== undefined && { verwachteTijd: body.verwachteTijd }),
         ...(body.isActief !== undefined && { isActief: body.isActief }),
       })
       .where(

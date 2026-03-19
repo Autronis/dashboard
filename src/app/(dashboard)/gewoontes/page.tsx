@@ -26,6 +26,14 @@ import {
   Crown,
   ChevronDown,
   ChevronUp,
+  ArrowRight,
+  AlertTriangle,
+  Clock,
+  Brain,
+  Shield,
+  TrendingDown,
+  Rocket,
+  Droplets,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +44,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 const ICON_MAP: Record<string, typeof Target> = {
   Target, Dumbbell, BookOpen, Megaphone, Users, GraduationCap,
   Sparkles, Flame, Trophy, TrendingUp, Calendar, CheckCircle2,
-  Lightbulb, Plus, Award, Zap, Star, Crown,
+  Lightbulb, Plus, Award, Zap, Star, Crown, Droplets, Shield,
 };
 
 const ICON_OPTIONS = [
@@ -52,6 +60,8 @@ const ICON_OPTIONS = [
   { naam: "TrendingUp", icon: TrendingUp },
   { naam: "Calendar", icon: Calendar },
   { naam: "Lightbulb", icon: Lightbulb },
+  { naam: "Droplets", icon: Droplets },
+  { naam: "Shield", icon: Shield },
 ];
 
 interface Gewoonte {
@@ -60,6 +70,9 @@ interface Gewoonte {
   icoon: string;
   frequentie: string;
   streefwaarde: string | null;
+  doel: string | null;
+  waarom: string | null;
+  verwachteTijd: string | null;
   volgorde: number;
   voltooidVandaag: boolean;
 }
@@ -69,12 +82,18 @@ interface Suggestie {
   icoon: string;
   streefwaarde: string | null;
   frequentie?: string;
+  doel?: string;
+  waarom?: string;
+  bron?: string;
 }
 
 interface HabitStat {
   id: number;
   naam: string;
   icoon: string;
+  doel: string | null;
+  waarom: string | null;
+  verwachteTijd: string | null;
   huidigeStreak: number;
   langsteStreak: number;
   weekVoltooid: number;
@@ -84,6 +103,34 @@ interface HabitStat {
   besteDag: string;
   slechteDag: string;
   heatmap: Record<string, number>;
+  trend: number;
+  voltooidVandaag: boolean;
+  dagTelling: Record<number, number>;
+}
+
+interface Inzicht {
+  type: "positief" | "waarschuwing" | "tip" | "actie";
+  tekst: string;
+}
+
+interface VandaagFocusItem {
+  id: number;
+  naam: string;
+  icoon: string;
+  streak: number;
+  verwachteTijd: string | null;
+  besteDag: string;
+  reden: string;
+}
+
+interface BadgeVoortgang {
+  naam: string;
+  icoon: string;
+  kleur: string;
+  behaald: boolean;
+  huidig: number;
+  doel: number;
+  tip: string;
 }
 
 // ─── Gamification ───
@@ -115,21 +162,6 @@ function calculateLevel(totaalPunten: number): { level: number; naam: string; vo
   return { level: currentLevel + 1, naam: levels[currentLevel].naam, volgende, voortgang };
 }
 
-function getBadges(stats: HabitStat[]): Array<{ naam: string; icoon: typeof Trophy; kleur: string; behaald: boolean }> {
-  const maxStreak = Math.max(...stats.map((s) => s.huidigeStreak), 0);
-  const maxLangsteStreak = Math.max(...stats.map((s) => s.langsteStreak), 0);
-  const gemRate = stats.length > 0 ? stats.reduce((s, st) => s + st.completionRate, 0) / stats.length : 0;
-
-  return [
-    { naam: "7 dagen streak", icoon: Flame, kleur: "text-orange-400 bg-orange-500/10", behaald: maxStreak >= 7 },
-    { naam: "30 dagen streak", icoon: Flame, kleur: "text-red-400 bg-red-500/10", behaald: maxLangsteStreak >= 30 },
-    { naam: "Week perfect", icoon: Star, kleur: "text-yellow-400 bg-yellow-500/10", behaald: stats.some((s) => s.weekVoltooid >= 7) },
-    { naam: "80% consistent", icoon: TrendingUp, kleur: "text-emerald-400 bg-emerald-500/10", behaald: gemRate >= 80 },
-    { naam: "5 gewoontes", icoon: Crown, kleur: "text-purple-400 bg-purple-500/10", behaald: stats.length >= 5 },
-    { naam: "100 keer voltooid", icoon: Trophy, kleur: "text-autronis-accent bg-autronis-accent/10", behaald: stats.some((s) => s.totaalVoltooid >= 100) },
-  ];
-}
-
 // ─── Streak flame scaling ───
 function StreakFlame({ streak }: { streak: number }) {
   if (streak === 0) return null;
@@ -145,10 +177,54 @@ function StreakFlame({ streak }: { streak: number }) {
   );
 }
 
+// ─── Feedback Toast after completing a habit ───
+function CompletionFeedback({ stat, onClose }: { stat: HabitStat; onClose: () => void }) {
+  const messages = [
+    stat.huidigeStreak >= 7 ? `${stat.huidigeStreak} dagen op rij! Je bent on fire.` : null,
+    stat.huidigeStreak === 1 ? "Eerste stap gezet. Morgen weer!" : null,
+    stat.huidigeStreak >= 21 ? "Dit is nu een gevestigde gewoonte. Respect." : null,
+    stat.totaalVoltooid % 10 === 0 && stat.totaalVoltooid > 0 ? `Milestone: ${stat.totaalVoltooid} keer voltooid!` : null,
+    stat.completionRate >= 90 ? "Top 10% consistentie. Blijf zo doorgaan." : null,
+  ].filter(Boolean);
+
+  const message = messages[0] || "Gedaan! Punt verdiend.";
+  const punten = stat.huidigeStreak >= 7 ? 3 : stat.huidigeStreak >= 3 ? 2 : 1;
+
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3500);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+      <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-2xl p-4 pr-10 backdrop-blur-xl shadow-2xl max-w-sm">
+        <button onClick={onClose} className="absolute top-3 right-3 text-autronis-text-secondary hover:text-white">
+          <X className="w-4 h-4" />
+        </button>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-emerald-500/20 rounded-xl">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-emerald-400">{stat.naam}</p>
+            <p className="text-xs text-autronis-text-secondary">+{punten} punt{punten > 1 ? "en" : ""}</p>
+          </div>
+          {stat.huidigeStreak > 0 && (
+            <div className="ml-auto">
+              <StreakFlame streak={stat.huidigeStreak} />
+            </div>
+          )}
+        </div>
+        <p className="text-sm text-autronis-text-primary">{message}</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Heatmap ───
 function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>; naam?: string; totaalGewoontes?: number }) {
   const nu = new Date();
-  const weken = 26; // 6 months for more detail
+  const weken = 26;
 
   const start = new Date(nu);
   start.setDate(start.getDate() - (weken * 7) - (start.getDay() === 0 ? 6 : start.getDay() - 1));
@@ -168,7 +244,6 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
     }
   }
 
-  // Month labels
   const maanden: { label: string; week: number }[] = [];
   let laatsteMaand = -1;
   for (const cel of cellen) {
@@ -201,7 +276,6 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
       )}
       <div className="overflow-x-auto">
         <div className="inline-block">
-          {/* Month labels */}
           <div className="flex mb-1 ml-8">
             {maanden.map((m, i) => (
               <span key={i} className="text-[10px] text-autronis-text-secondary" style={{ position: "relative", left: `${m.week * 15}px` }}>
@@ -210,15 +284,11 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
             ))}
           </div>
           <div className="flex gap-[3px]">
-            {/* Day labels — show all 7 */}
             <div className="flex flex-col gap-[3px] mr-1">
               {dagLabels.map((d) => (
-                <span key={d} className="text-[9px] text-autronis-text-secondary h-[13px] leading-[13px] w-5">
-                  {d}
-                </span>
+                <span key={d} className="text-[9px] text-autronis-text-secondary h-[13px] leading-[13px] w-5">{d}</span>
               ))}
             </div>
-            {/* Grid */}
             {Array.from({ length: weken + 1 }, (_, w) => (
               <div key={w} className="flex flex-col gap-[3px]">
                 {Array.from({ length: 7 }, (_, d) => {
@@ -226,13 +296,8 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
                   if (!cel) return <div key={d} className="w-[13px] h-[13px]" />;
                   const isVandaag = cel.datum === nu.toISOString().slice(0, 10);
                   return (
-                    <div
-                      key={d}
-                      className={cn(
-                        "w-[13px] h-[13px] rounded-sm transition-colors",
-                        getCelColor(cel.waarde),
-                        isVandaag && "ring-1 ring-autronis-accent"
-                      )}
+                    <div key={d}
+                      className={cn("w-[13px] h-[13px] rounded-sm transition-colors", getCelColor(cel.waarde), isVandaag && "ring-1 ring-autronis-accent")}
                       title={`${new Date(cel.datum).toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" })}: ${cel.waarde > 0 ? `${cel.waarde} voltooid` : "Gemist"}`}
                     />
                   );
@@ -254,16 +319,19 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
   );
 }
 
-// ─── Modal ───
+// ─── Modal (with motivation fields) ───
 function GewoonteModal({ open, onClose, onSave, gewoonte }: {
   open: boolean; onClose: () => void;
-  onSave: (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string }) => void;
+  onSave: (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string }) => void;
   gewoonte?: Gewoonte | null;
 }) {
   const [naam, setNaam] = useState("");
   const [icoon, setIcoon] = useState("Target");
   const [frequentie, setFrequentie] = useState("dagelijks");
   const [streefwaarde, setStreefwaarde] = useState("");
+  const [doel, setDoel] = useState("");
+  const [waarom, setWaarom] = useState("");
+  const [verwachteTijd, setVerwachteTijd] = useState("");
 
   useEffect(() => {
     if (gewoonte) {
@@ -271,8 +339,12 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
       setIcoon(gewoonte.icoon);
       setFrequentie(gewoonte.frequentie);
       setStreefwaarde(gewoonte.streefwaarde || "");
+      setDoel(gewoonte.doel || "");
+      setWaarom(gewoonte.waarom || "");
+      setVerwachteTijd(gewoonte.verwachteTijd || "");
     } else {
       setNaam(""); setIcoon("Target"); setFrequentie("dagelijks"); setStreefwaarde("");
+      setDoel(""); setWaarom(""); setVerwachteTijd("");
     }
   }, [gewoonte, open]);
 
@@ -280,7 +352,7 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl">
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h3 className="text-lg font-semibold text-white">{gewoonte ? "Gewoonte bewerken" : "Nieuwe gewoonte"}</h3>
           <button onClick={onClose} className="text-autronis-text-secondary hover:text-white transition-colors"><X className="w-5 h-5" /></button>
@@ -304,23 +376,49 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
               ))}
             </div>
           </div>
-          <div>
-            <label className="text-sm text-autronis-text-secondary mb-1 block">Frequentie</label>
-            <select value={frequentie} onChange={(e) => setFrequentie(e.target.value)}
-              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
-              <option value="dagelijks">Dagelijks</option>
-              <option value="weekelijks">Weekelijks</option>
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm text-autronis-text-secondary mb-1 block">Frequentie</label>
+              <select value={frequentie} onChange={(e) => setFrequentie(e.target.value)}
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+                <option value="dagelijks">Dagelijks</option>
+                <option value="weekelijks">Weekelijks</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm text-autronis-text-secondary mb-1 block">Verwachte tijd</label>
+              <input type="text" value={verwachteTijd} onChange={(e) => setVerwachteTijd(e.target.value)} placeholder="Bijv. 15 min"
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
+            </div>
           </div>
           <div>
             <label className="text-sm text-autronis-text-secondary mb-1 block">Streefwaarde (optioneel)</label>
             <input type="text" value={streefwaarde} onChange={(e) => setStreefwaarde(e.target.value)} placeholder="Bijv. 30 min"
               className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
           </div>
+
+          {/* Motivation layer */}
+          <div className="border-t border-autronis-border pt-4">
+            <p className="text-xs font-medium text-autronis-accent mb-3 flex items-center gap-1.5">
+              <Brain className="w-3.5 h-3.5" /> Motivatie — waarom doe je dit?
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm text-autronis-text-secondary mb-1 block">Doel</label>
+                <input type="text" value={doel} onChange={(e) => setDoel(e.target.value)} placeholder="Bijv. 10 kg afvallen, boek per maand lezen"
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
+              </div>
+              <div>
+                <label className="text-sm text-autronis-text-secondary mb-1 block">Waarom</label>
+                <input type="text" value={waarom} onChange={(e) => setWaarom(e.target.value)} placeholder="Bijv. Meer energie, betere focus op werk"
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
+              </div>
+            </div>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 px-4 py-3 border border-autronis-border rounded-xl text-sm text-autronis-text-secondary hover:bg-autronis-border/30 transition-colors">Annuleren</button>
-          <button onClick={() => { if (!naam.trim()) return; onSave({ naam: naam.trim(), icoon, frequentie, streefwaarde }); }} disabled={!naam.trim()}
+          <button onClick={() => { if (!naam.trim()) return; onSave({ naam: naam.trim(), icoon, frequentie, streefwaarde, doel, waarom, verwachteTijd }); }} disabled={!naam.trim()}
             className="flex-1 px-4 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 btn-press">
             {gewoonte ? "Opslaan" : "Toevoegen"}
           </button>
@@ -338,12 +436,18 @@ export default function GewoontesPagina() {
   const [statistieken, setStatistieken] = useState<HabitStat[]>([]);
   const [weekRate, setWeekRate] = useState(0);
   const [maandRate, setMaandRate] = useState(0);
+  const [weekUitleg, setWeekUitleg] = useState("");
+  const [maandUitleg, setMaandUitleg] = useState("");
+  const [inzichten, setInzichten] = useState<Inzicht[]>([]);
+  const [vandaagFocus, setVandaagFocus] = useState<VandaagFocusItem[]>([]);
+  const [badgeVoortgang, setBadgeVoortgang] = useState<BadgeVoortgang[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editGewoonte, setEditGewoonte] = useState<Gewoonte | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showSuggesties, setShowSuggesties] = useState(false);
   const [showStats, setShowStats] = useState(true);
+  const [completedStat, setCompletedStat] = useState<HabitStat | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -358,6 +462,11 @@ export default function GewoontesPagina() {
       setStatistieken(sData.statistieken || []);
       setWeekRate(sData.weekCompletionRate || 0);
       setMaandRate(sData.maandCompletionRate || 0);
+      setWeekUitleg(sData.weekUitleg || "");
+      setMaandUitleg(sData.maandUitleg || "");
+      setInzichten(sData.inzichten || []);
+      setVandaagFocus(sData.vandaagFocus || []);
+      setBadgeVoortgang(sData.badgeVoortgang || []);
     } catch {
       addToast("Kon gewoontes niet laden", "fout");
     } finally {
@@ -369,7 +478,9 @@ export default function GewoontesPagina() {
 
   const toggleGewoonte = async (gewoonteId: number) => {
     const vandaag = new Date().toISOString().slice(0, 10);
-    // Optimistic update first
+    const wasVoltooid = gewoontesList.find((g) => g.id === gewoonteId)?.voltooidVandaag;
+
+    // Optimistic update
     setGewoontesList((prev) =>
       prev.map((g) => g.id === gewoonteId ? { ...g, voltooidVandaag: !g.voltooidVandaag } : g)
     );
@@ -380,14 +491,27 @@ export default function GewoontesPagina() {
         body: JSON.stringify({ gewoonteId, datum: vandaag }),
       });
       if (!res.ok) throw new Error();
-      // Refresh stats in background
-      fetch("/api/gewoontes/statistieken").then((r) => r.json()).then((d) => {
-        setStatistieken(d.statistieken || []);
-        setWeekRate(d.weekCompletionRate || 0);
-        setMaandRate(d.maandCompletionRate || 0);
-      });
+
+      // Refresh stats
+      const sRes = await fetch("/api/gewoontes/statistieken");
+      const sData = await sRes.json();
+      setStatistieken(sData.statistieken || []);
+      setWeekRate(sData.weekCompletionRate || 0);
+      setMaandRate(sData.maandCompletionRate || 0);
+      setWeekUitleg(sData.weekUitleg || "");
+      setMaandUitleg(sData.maandUitleg || "");
+      setInzichten(sData.inzichten || []);
+      setVandaagFocus(sData.vandaagFocus || []);
+      setBadgeVoortgang(sData.badgeVoortgang || []);
+
+      // Show feedback when completing (not uncompleting)
+      if (!wasVoltooid) {
+        const updatedStat = (sData.statistieken || []).find((s: HabitStat) => s.id === gewoonteId);
+        if (updatedStat) {
+          setCompletedStat(updatedStat);
+        }
+      }
     } catch {
-      // Revert optimistic update
       setGewoontesList((prev) =>
         prev.map((g) => g.id === gewoonteId ? { ...g, voltooidVandaag: !g.voltooidVandaag } : g)
       );
@@ -395,7 +519,7 @@ export default function GewoontesPagina() {
     }
   };
 
-  const handleSave = async (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string }) => {
+  const handleSave = async (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string }) => {
     try {
       if (editGewoonte) {
         const res = await fetch(`/api/gewoontes/${editGewoonte.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
@@ -439,10 +563,8 @@ export default function GewoontesPagina() {
   // Gamification
   const totaalPunten = useMemo(() => statistieken.reduce((s, st) => s + st.totaalVoltooid, 0), [statistieken]);
   const levelInfo = useMemo(() => calculateLevel(totaalPunten), [totaalPunten]);
-  const badges = useMemo(() => getBadges(statistieken), [statistieken]);
-  const behaalBadges = badges.filter((b) => b.behaald);
 
-  // Combined heatmap data (all habits)
+  // Combined heatmap
   const combinedHeatmap = useMemo(() => {
     const combined: Record<string, number> = {};
     for (const stat of statistieken) {
@@ -452,6 +574,18 @@ export default function GewoontesPagina() {
     }
     return combined;
   }, [statistieken]);
+
+  // Total expected time for remaining habits
+  const verwachteTijdTotaal = useMemo(() => {
+    return vandaagFocus
+      .filter((f) => f.verwachteTijd)
+      .reduce((sum, f) => {
+        const match = f.verwachteTijd?.match(/(\d+)/);
+        return sum + (match ? parseInt(match[1]) : 0);
+      }, 0);
+  }, [vandaagFocus]);
+
+  const vandaagDagNaam = new Date().toLocaleDateString("nl-NL", { weekday: "long" });
 
   if (loading) {
     return (
@@ -496,22 +630,32 @@ export default function GewoontesPagina() {
                 </p>
               </div>
 
-              {/* Week rate */}
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              {/* Week rate — with explanation */}
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow group relative">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-blue-500/10"><TrendingUp className="w-4 h-4 text-blue-400" /></div>
                 </div>
                 <p className="text-2xl font-bold text-white tabular-nums">{weekRate}%</p>
                 <p className="text-xs text-autronis-text-secondary mt-1">Week</p>
+                {weekUitleg && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                    {weekUitleg}
+                  </div>
+                )}
               </div>
 
-              {/* Month rate */}
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              {/* Month rate — with explanation */}
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow group relative">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-purple-500/10"><Calendar className="w-4 h-4 text-purple-400" /></div>
                 </div>
                 <p className="text-2xl font-bold text-white tabular-nums">{maandRate}%</p>
                 <p className="text-xs text-autronis-text-secondary mt-1">Maand</p>
+                {maandUitleg && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                    {maandUitleg}
+                  </div>
+                )}
               </div>
 
               {/* Total points */}
@@ -532,10 +676,121 @@ export default function GewoontesPagina() {
                 <div className="w-full h-1.5 bg-autronis-border rounded-full mt-2 overflow-hidden">
                   <div className="h-full bg-autronis-accent rounded-full transition-all" style={{ width: `${levelInfo.voortgang}%` }} />
                 </div>
+                <p className="text-[10px] text-autronis-text-secondary mt-1">{totaalPunten}/{levelInfo.volgende} naar volgend level</p>
               </div>
             </div>
 
-            {/* ─── Vandaag: habit list with large checkboxes ─── */}
+            {/* ─── BADGES — top for motivation ─── */}
+            {badgeVoortgang.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  Badges
+                  <span className="text-xs text-autronis-text-secondary ml-1">{badgeVoortgang.filter((b) => b.behaald).length}/{badgeVoortgang.length}</span>
+                </h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                  {badgeVoortgang.map((badge) => {
+                    const BadgeIcon = ICON_MAP[badge.icoon] || Trophy;
+                    const progress = (badge.huidig / badge.doel) * 100;
+                    const colorMap: Record<string, string> = {
+                      orange: "text-orange-400 bg-orange-500/10",
+                      red: "text-red-400 bg-red-500/10",
+                      yellow: "text-yellow-400 bg-yellow-500/10",
+                      emerald: "text-emerald-400 bg-emerald-500/10",
+                      purple: "text-purple-400 bg-purple-500/10",
+                      teal: "text-autronis-accent bg-autronis-accent/10",
+                    };
+                    const progressColorMap: Record<string, string> = {
+                      orange: "bg-orange-400",
+                      red: "bg-red-400",
+                      yellow: "bg-yellow-400",
+                      emerald: "bg-emerald-400",
+                      purple: "bg-purple-400",
+                      teal: "bg-autronis-accent",
+                    };
+                    return (
+                      <div key={badge.naam}
+                        className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors group relative",
+                          badge.behaald
+                            ? "bg-autronis-bg/50 border-autronis-border"
+                            : "bg-autronis-bg/20 border-autronis-border/30")}>
+                        <div className={cn("p-2.5 rounded-xl", badge.behaald ? (colorMap[badge.kleur] || colorMap.teal) : "bg-autronis-border/30 text-autronis-text-secondary")}>
+                          <BadgeIcon className="w-5 h-5" />
+                        </div>
+                        <span className="text-[11px] text-center text-autronis-text-secondary font-medium">{badge.naam}</span>
+                        {!badge.behaald && (
+                          <div className="w-full space-y-1">
+                            <div className="w-full h-1 bg-autronis-border/50 rounded-full overflow-hidden">
+                              <div className={cn("h-full rounded-full transition-all", progressColorMap[badge.kleur] || "bg-autronis-accent")}
+                                style={{ width: `${progress}%` }} />
+                            </div>
+                            <p className="text-[9px] text-autronis-text-secondary text-center tabular-nums">{badge.huidig}/{badge.doel}</p>
+                          </div>
+                        )}
+                        {badge.behaald && (
+                          <span className="text-[9px] text-emerald-400 font-bold">Behaald</span>
+                        )}
+                        {!badge.behaald && (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
+                            {badge.tip}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ─── 1. NEXT ACTION — What to do right now ─── */}
+            {vandaagFocus.length > 0 && (
+              <div className="bg-gradient-to-r from-autronis-accent/5 to-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 card-glow">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                    <Rocket className="w-5 h-5 text-autronis-accent" />
+                    Doe dit nu
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    {verwachteTijdTotaal > 0 && (
+                      <span className="text-xs text-autronis-text-secondary flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> ~{verwachteTijdTotaal} min
+                      </span>
+                    )}
+                    <span className="text-xs text-autronis-text-secondary capitalize">{vandaagDagNaam}</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {vandaagFocus.map((item) => {
+                    const Icon = ICON_MAP[item.icoon] || Target;
+                    return (
+                      <div key={item.id}
+                        onClick={() => toggleGewoonte(item.id)}
+                        className="flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent hover:border-autronis-accent/20 transition-all cursor-pointer select-none group"
+                      >
+                        <div className="w-10 h-10 rounded-xl border-2 border-autronis-accent/30 group-hover:border-autronis-accent/60 flex items-center justify-center transition-all flex-shrink-0">
+                          <Icon className="w-5 h-5 text-autronis-accent" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-base font-medium text-autronis-text-primary">{item.naam}</p>
+                          <p className="text-xs text-autronis-accent/80 mt-0.5">{item.reden}</p>
+                        </div>
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          {item.verwachteTijd && (
+                            <span className="text-xs text-autronis-text-secondary flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> {item.verwachteTijd}
+                            </span>
+                          )}
+                          {item.streak > 0 && <StreakFlame streak={item.streak} />}
+                          <ArrowRight className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ─── 2. VANDAAG: habit list with checkboxes ─── */}
             <div className={cn("rounded-2xl border p-6 lg:p-7 card-glow",
               allesGedaan ? "bg-emerald-500/5 border-emerald-500/20" : "bg-autronis-card border-autronis-border")}>
               <div className="flex items-center justify-between mb-5">
@@ -584,11 +839,27 @@ export default function GewoontesPagina() {
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           {g.streefwaarde && <span className="text-xs text-autronis-text-secondary">{g.streefwaarde}</span>}
+                          {g.verwachteTijd && <span className="text-xs text-autronis-text-secondary flex items-center gap-0.5"><Clock className="w-3 h-3" />{g.verwachteTijd}</span>}
                           <span className="text-xs text-autronis-text-secondary capitalize">{g.frequentie}</span>
+                          {/* Motivation: show goal inline */}
+                          {g.doel && (
+                            <span className="text-xs text-autronis-accent/60 truncate max-w-[200px]">
+                              {g.doel}
+                            </span>
+                          )}
                         </div>
                       </div>
 
-                      {/* Streak - prominent */}
+                      {/* Trend indicator */}
+                      {stat && stat.trend !== 0 && (
+                        <span className={cn("flex items-center gap-0.5 text-[10px] font-bold flex-shrink-0",
+                          stat.trend > 0 ? "text-emerald-400" : "text-red-400/70")}>
+                          {stat.trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                          {stat.trend > 0 ? "+" : ""}{stat.trend}
+                        </span>
+                      )}
+
+                      {/* Streak */}
                       <StreakFlame streak={stat?.huidigeStreak || 0} />
 
                       {/* Edit/Delete */}
@@ -607,34 +878,47 @@ export default function GewoontesPagina() {
                   );
                 })}
               </div>
+
+              {/* Motivation reminder: show a random "waarom" when not all done */}
+              {!allesGedaan && statistieken.some((s) => s.waarom && !s.voltooidVandaag) && (
+                <div className="mt-4 px-4 py-3 bg-autronis-accent/5 rounded-xl border border-autronis-accent/10">
+                  <p className="text-xs text-autronis-text-secondary flex items-center gap-1.5">
+                    <Brain className="w-3.5 h-3.5 text-autronis-accent" />
+                    <span className="font-medium text-autronis-accent">Onthoud waarom:</span>
+                    {statistieken.find((s) => s.waarom && !s.voltooidVandaag)?.waarom}
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* ─── Badges ─── */}
-            {badges.length > 0 && (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+            {/* ─── 3. HABIT INTELLIGENCE — Pattern insights ─── */}
+            {inzichten.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
                 <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Trophy className="w-5 h-5 text-yellow-400" />
-                  Badges
-                  <span className="text-xs text-autronis-text-secondary ml-1">{behaalBadges.length}/{badges.length}</span>
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  Gewoonte-intelligentie
                 </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {badges.map((badge) => (
-                    <div key={badge.naam}
-                      className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors",
-                        badge.behaald
-                          ? "bg-autronis-bg/50 border-autronis-border"
-                          : "bg-autronis-bg/20 border-autronis-border/30 opacity-40")}>
-                      <div className={cn("p-2.5 rounded-xl", badge.behaald ? badge.kleur : "bg-autronis-border/30 text-autronis-text-secondary")}>
-                        <badge.icoon className="w-5 h-5" />
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                  {inzichten.map((inzicht, i) => {
+                    const config = {
+                      positief: { icon: CheckCircle2, border: "border-emerald-500/20", bg: "bg-emerald-500/5", color: "text-emerald-400" },
+                      waarschuwing: { icon: AlertTriangle, border: "border-amber-500/20", bg: "bg-amber-500/5", color: "text-amber-400" },
+                      tip: { icon: Lightbulb, border: "border-blue-500/20", bg: "bg-blue-500/5", color: "text-blue-400" },
+                      actie: { icon: ArrowRight, border: "border-autronis-accent/20", bg: "bg-autronis-accent/5", color: "text-autronis-accent" },
+                    }[inzicht.type];
+                    const InzichtIcon = config.icon;
+                    return (
+                      <div key={i} className={cn("flex items-start gap-3 rounded-xl p-4 border", config.border, config.bg)}>
+                        <InzichtIcon className={cn("w-4 h-4 mt-0.5 flex-shrink-0", config.color)} />
+                        <p className="text-sm text-autronis-text-primary leading-relaxed">{inzicht.tekst}</p>
                       </div>
-                      <span className="text-[11px] text-center text-autronis-text-secondary font-medium">{badge.naam}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* ─── Combined Heatmap ─── */}
+            {/* ─── 4. Combined Heatmap ─── */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
               <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-autronis-accent" />
@@ -643,7 +927,7 @@ export default function GewoontesPagina() {
               <Heatmap data={combinedHeatmap} totaalGewoontes={totaal} />
             </div>
 
-            {/* ─── Per-habit Statistieken (collapsible) ─── */}
+            {/* ─── 6. Per-habit Statistieken (with smarter stats) ─── */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
               <button onClick={() => setShowStats(!showStats)}
                 className="flex items-center justify-between w-full mb-4">
@@ -660,13 +944,37 @@ export default function GewoontesPagina() {
                     const isRecordStreak = stat.huidigeStreak > 0 && stat.huidigeStreak >= stat.langsteStreak;
                     return (
                       <div key={stat.id} className="bg-autronis-bg/50 rounded-xl p-5">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-1">
                           <div className="p-2 bg-autronis-accent/10 rounded-xl"><Icon className="w-4 h-4 text-autronis-accent" /></div>
                           <span className="text-base font-semibold text-autronis-text-primary">{stat.naam}</span>
                           {isRecordStreak && (
                             <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 font-bold">RECORD!</span>
                           )}
+                          {stat.trend !== 0 && (
+                            <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-0.5",
+                              stat.trend > 0 ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400")}>
+                              {stat.trend > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                              {stat.trend > 0 ? "+" : ""}{stat.trend} deze week
+                            </span>
+                          )}
                         </div>
+
+                        {/* Motivation: goal + why */}
+                        {(stat.doel || stat.waarom) && (
+                          <div className="ml-12 mb-4 flex items-center gap-3">
+                            {stat.doel && (
+                              <span className="text-xs text-autronis-accent/70 flex items-center gap-1">
+                                <Target className="w-3 h-3" /> {stat.doel}
+                              </span>
+                            )}
+                            {stat.waarom && (
+                              <span className="text-xs text-autronis-text-secondary flex items-center gap-1">
+                                <Brain className="w-3 h-3" /> {stat.waarom}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-5">
                           <div>
                             <p className="text-[10px] text-autronis-text-secondary uppercase">Streak</p>
@@ -680,14 +988,19 @@ export default function GewoontesPagina() {
                           <div>
                             <p className="text-[10px] text-autronis-text-secondary uppercase">Beste dag</p>
                             <p className="text-sm font-bold text-emerald-400">{stat.besteDag}</p>
+                            <p className="text-[10px] text-autronis-text-secondary">Plan dit hier in</p>
                           </div>
                           <div>
                             <p className="text-[10px] text-autronis-text-secondary uppercase">Slechtste dag</p>
                             <p className="text-sm font-bold text-red-400/70">{stat.slechteDag}</p>
+                            <p className="text-[10px] text-autronis-text-secondary">Extra aandacht nodig</p>
                           </div>
                           <div>
                             <p className="text-[10px] text-autronis-text-secondary uppercase">Rate</p>
                             <p className="text-sm font-bold text-blue-400 tabular-nums">{stat.completionRate}%</p>
+                            <p className="text-[10px] text-autronis-text-secondary">
+                              {stat.completionRate >= 90 ? "Elite" : stat.completionRate >= 70 ? "Goed" : stat.completionRate >= 50 ? "OK" : "Verbeter"}
+                            </p>
                           </div>
                         </div>
                         <Heatmap data={stat.heatmap} naam="" />
@@ -697,43 +1010,10 @@ export default function GewoontesPagina() {
                 </div>
               )}
             </div>
-
-            {/* ─── AI Tips ─── */}
-            {statistieken.some((s) => s.totaalVoltooid > 3) && (
-              <div className="bg-autronis-card border border-amber-500/20 rounded-2xl p-6 lg:p-7 card-glow">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <Lightbulb className="w-5 h-5 text-amber-400" />
-                  Slimme tips
-                </h2>
-                <div className="space-y-3">
-                  {statistieken.filter((s) => s.totaalVoltooid > 3).flatMap((stat) => {
-                    const tips: string[] = [];
-                    if (stat.slechteDag !== "-" && stat.slechteDag !== stat.besteDag) {
-                      tips.push(`Je mist "${stat.naam}" vaak op ${stat.slechteDag}. Probeer het in de ochtend in te plannen.`);
-                    }
-                    if (stat.huidigeStreak > 5) {
-                      tips.push(`Sterk! Je streak van ${stat.huidigeStreak} dagen voor "${stat.naam}" is indrukwekkend.`);
-                    }
-                    if (stat.completionRate < 50) {
-                      tips.push(`"${stat.naam}" heeft een lage rate (${stat.completionRate}%). Overweeg de streefwaarde te verlagen.`);
-                    }
-                    if (stat.completionRate >= 80) {
-                      tips.push(`"${stat.naam}" loopt top (${stat.completionRate}%). Misschien de lat hoger leggen?`);
-                    }
-                    return tips.map((tip, i) => (
-                      <div key={`${stat.id}-${i}`} className="flex items-start gap-3 bg-amber-500/5 rounded-xl p-4 border border-amber-500/10">
-                        <Lightbulb className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-autronis-text-primary leading-relaxed">{tip}</p>
-                      </div>
-                    ));
-                  })}
-                </div>
-              </div>
-            )}
           </>
         )}
 
-        {/* ─── Suggesties (always shown if available) ─── */}
+        {/* ─── Suggesties ─── */}
         {suggesties.length > 0 && (
           <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 card-glow">
             <button onClick={() => setShowSuggesties(!showSuggesties)}
@@ -751,17 +1031,31 @@ export default function GewoontesPagina() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
                 {suggesties.map((s) => {
                   const Icon = ICON_MAP[s.icoon] || Target;
+                  const isAi = s.bron && s.bron !== "standaard";
                   return (
                     <button key={s.naam} onClick={() => addSuggestie(s)}
-                      className="flex items-center gap-3 bg-autronis-bg/50 rounded-xl p-4 text-left hover:bg-autronis-bg/80 transition-colors group border border-transparent hover:border-autronis-accent/30">
-                      <div className="p-2 bg-autronis-accent/10 rounded-xl group-hover:bg-autronis-accent/20 transition-colors">
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl p-4 text-left transition-colors group border",
+                        isAi
+                          ? "bg-autronis-accent/5 border-autronis-accent/15 hover:border-autronis-accent/40"
+                          : "bg-autronis-bg/50 border-transparent hover:bg-autronis-bg/80 hover:border-autronis-accent/30"
+                      )}>
+                      <div className="p-2 bg-autronis-accent/10 rounded-xl group-hover:bg-autronis-accent/20 transition-colors flex-shrink-0 mt-0.5">
                         <Icon className="w-4 h-4 text-autronis-accent" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-autronis-text-primary">{s.naam}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-autronis-text-primary">{s.naam}</p>
+                          {isAi && (
+                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent flex-shrink-0">
+                              AI
+                            </span>
+                          )}
+                        </div>
                         {s.streefwaarde && <p className="text-[11px] text-autronis-text-secondary truncate">{s.streefwaarde}</p>}
+                        {isAi && s.waarom && <p className="text-[10px] text-autronis-text-secondary/70 mt-1 line-clamp-2">{s.waarom}</p>}
                       </div>
-                      <Plus className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                      <Plus className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-1" />
                     </button>
                   );
                 })}
@@ -787,6 +1081,11 @@ export default function GewoontesPagina() {
 
         <GewoonteModal open={modalOpen} onClose={() => { setModalOpen(false); setEditGewoonte(null); }} onSave={handleSave} gewoonte={editGewoonte} />
         <ConfirmDialog open={deleteId !== null} titel="Gewoonte verwijderen" bericht="Weet je zeker dat je deze gewoonte wilt verwijderen? De bijbehorende statistieken gaan verloren." onBevestig={handleDelete} onClose={() => setDeleteId(null)} />
+
+        {/* Completion feedback toast */}
+        {completedStat && (
+          <CompletionFeedback stat={completedStat} onClose={() => setCompletedStat(null)} />
+        )}
       </div>
     </PageTransition>
   );

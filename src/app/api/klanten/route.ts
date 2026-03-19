@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties, facturen, notities as notitiesTabel } from "@/lib/db/schema";
+import { klanten, projecten, tijdregistraties, facturen, offertes, notities as notitiesTabel } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql, and, inArray } from "drizzle-orm";
+import { eq, sql, and } from "drizzle-orm";
 
 // GET /api/klanten — All clients with enriched KPIs, health indicators
 export async function GET(req: NextRequest) {
@@ -10,8 +10,11 @@ export async function GET(req: NextRequest) {
     await requireAuth();
     const { searchParams } = new URL(req.url);
     const toonInactief = searchParams.get("inactief") === "1";
+    const toonDemo = searchParams.get("demo") === "1";
 
-    const conditions = toonInactief ? [] : [eq(klanten.isActief, 1)];
+    const conditions = [];
+    if (!toonInactief) conditions.push(eq(klanten.isActief, 1));
+    if (!toonDemo) conditions.push(eq(klanten.isDemo, 0));
 
     const lijst = await db
       .select({
@@ -24,6 +27,13 @@ export async function GET(req: NextRequest) {
         uurtarief: klanten.uurtarief,
         notities: klanten.notities,
         isActief: klanten.isActief,
+        isDemo: klanten.isDemo,
+        website: klanten.website,
+        branche: klanten.branche,
+        kvkNummer: klanten.kvkNummer,
+        btwNummer: klanten.btwNummer,
+        aantalMedewerkers: klanten.aantalMedewerkers,
+        klantSinds: klanten.klantSinds,
         aangemaaktOp: klanten.aangemaaktOp,
       })
       .from(klanten)
@@ -53,18 +63,38 @@ export async function GET(req: NextRequest) {
       .groupBy(projecten.klantId);
     const urenMap = new Map(urenStats.map((u) => [u.klantId, u.totaalMinuten]));
 
-    // Batch: factuur stats per klant (total revenue, outstanding)
+    // Batch: factuur stats per klant (total revenue, outstanding, last invoice)
     const factuurStats = await db
       .select({
         klantId: facturen.klantId,
         totaleOmzet: sql<number>`coalesce(sum(case when ${facturen.status} = 'betaald' then ${facturen.bedragInclBtw} else 0 end), 0)`,
         openstaand: sql<number>`coalesce(sum(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.bedragInclBtw} else 0 end), 0)`,
         oudsteOpenVervaldatum: sql<string>`min(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.vervaldatum} else null end)`,
+        laatsteFactuurDatum: sql<string>`max(${facturen.factuurdatum})`,
+        laatsteFactuurBedrag: sql<number>`(
+          SELECT f2.bedrag_incl_btw FROM facturen f2
+          WHERE f2.klant_id = ${facturen.klantId} AND f2.is_actief = 1
+          ORDER BY f2.factuurdatum DESC LIMIT 1
+        )`,
       })
       .from(facturen)
       .where(eq(facturen.isActief, 1))
       .groupBy(facturen.klantId);
     const factuurMap = new Map(factuurStats.map((f) => [f.klantId, f]));
+
+    // Batch: open offertes per klant
+    const offerteStats = await db
+      .select({
+        klantId: offertes.klantId,
+        openstaandeOffertes: sql<number>`count(*)`,
+      })
+      .from(offertes)
+      .where(and(
+        eq(offertes.isActief, 1),
+        sql`${offertes.status} IN ('concept', 'verzonden')`
+      ))
+      .groupBy(offertes.klantId);
+    const offerteMap = new Map(offerteStats.map((o) => [o.klantId, o.openstaandeOffertes]));
 
     // Batch: last interaction per klant (most recent note, time entry, or factuur)
     const laatsteNotities = await db
@@ -123,10 +153,10 @@ export async function GET(req: NextRequest) {
       if (laatsteContact && gezondheid === "groen") {
         const contactDatum = new Date(laatsteContact.includes("T") ? laatsteContact : laatsteContact.replace(" ", "T") + "Z");
         const dagenGeleden = Math.floor((nu.getTime() - contactDatum.getTime()) / (1000 * 60 * 60 * 24));
-        if (dagenGeleden > 30) {
+        if (dagenGeleden > 60) {
           gezondheid = "rood";
           gezondheidReden = `Geen contact sinds ${dagenGeleden} dagen`;
-        } else if (dagenGeleden > 14) {
+        } else if (dagenGeleden > 30) {
           gezondheid = "oranje";
           gezondheidReden = `Laatste contact ${dagenGeleden} dagen geleden`;
         }
@@ -134,6 +164,17 @@ export async function GET(req: NextRequest) {
 
       // Effective hourly rate
       const effectiefUurtarief = totaalMinuten > 0 ? (totaleOmzet / (totaalMinuten / 60)) : klant.uurtarief || 0;
+
+      // Build tags
+      const tags: string[] = [];
+      if (klant.klantSinds) {
+        tags.push(`Klant sinds ${klant.klantSinds.substring(0, 4)}`);
+      } else if (klant.aangemaaktOp) {
+        tags.push(`Klant sinds ${klant.aangemaaktOp.substring(0, 4)}`);
+      }
+      const projCount = projStats?.aantalProjecten || 0;
+      if (projCount > 0) tags.push(`${projCount} project${projCount > 1 ? "en" : ""}`);
+      if (klant.branche) tags.push(klant.branche);
 
       return {
         ...klant,
@@ -146,17 +187,22 @@ export async function GET(req: NextRequest) {
         gezondheid,
         gezondheidReden,
         laatsteContact,
+        laatsteFactuurDatum: fStats?.laatsteFactuurDatum || null,
+        laatsteFactuurBedrag: fStats?.laatsteFactuurBedrag || null,
+        openstaandeOffertes: offerteMap.get(klant.id) || 0,
+        tags,
       };
     });
 
-    // Global KPIs
-    const totaleOmzetAlleKlanten = klantenMetKPIs.reduce((s, k) => s + k.totaleOmzet, 0);
-    const totaalOpenstaand = klantenMetKPIs.reduce((s, k) => s + k.openstaand, 0);
-    const actieveKlanten = klantenMetKPIs.filter((k) => k.isActief).length;
+    // Global KPIs (exclude demo)
+    const echteKlanten = klantenMetKPIs.filter((k) => !k.isDemo);
+    const totaleOmzetAlleKlanten = echteKlanten.reduce((s, k) => s + k.totaleOmzet, 0);
+    const totaalOpenstaand = echteKlanten.reduce((s, k) => s + k.openstaand, 0);
+    const actieveKlanten = echteKlanten.filter((k) => k.isActief).length;
     const gezondheidsVerdeling = {
-      groen: klantenMetKPIs.filter((k) => k.gezondheid === "groen" && k.isActief).length,
-      oranje: klantenMetKPIs.filter((k) => k.gezondheid === "oranje" && k.isActief).length,
-      rood: klantenMetKPIs.filter((k) => k.gezondheid === "rood" && k.isActief).length,
+      groen: echteKlanten.filter((k) => k.gezondheid === "groen" && k.isActief).length,
+      oranje: echteKlanten.filter((k) => k.gezondheid === "oranje" && k.isActief).length,
+      rood: echteKlanten.filter((k) => k.gezondheid === "rood" && k.isActief).length,
     };
 
     return NextResponse.json({
@@ -182,7 +228,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst } = body;
+    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst, website, branche } = body;
 
     if (!bedrijfsnaam?.trim()) {
       return NextResponse.json({ fout: "Bedrijfsnaam is verplicht." }, { status: 400 });
@@ -206,6 +252,9 @@ export async function POST(req: NextRequest) {
         adres: adres?.trim() || null,
         uurtarief: uurtarief || null,
         notities: notitiesTekst?.trim() || null,
+        website: website?.trim() || null,
+        branche: branche?.trim() || null,
+        klantSinds: new Date().toISOString().substring(0, 10),
         aangemaaktDoor: gebruiker.id,
       })
       .returning();

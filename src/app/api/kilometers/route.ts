@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
         zakelijkDoel: kilometerRegistraties.zakelijkDoel,
         klantId: kilometerRegistraties.klantId,
         projectId: kilometerRegistraties.projectId,
+        isRetour: kilometerRegistraties.isRetour,
+        doelType: kilometerRegistraties.doelType,
         tariefPerKm: kilometerRegistraties.tariefPerKm,
         aangemaaktOp: kilometerRegistraties.aangemaaktOp,
         klantNaam: klanten.bedrijfsnaam,
@@ -76,7 +78,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { datum, vanLocatie, naarLocatie, kilometers, zakelijkDoel, klantId, projectId, tariefPerKm } = body;
+    const { datum, vanLocatie, naarLocatie, kilometers, zakelijkDoel, doelType, isRetour, klantId, projectId, opgeslagenRouteId, tariefPerKm } = body;
 
     if (!datum || !vanLocatie?.trim() || !naarLocatie?.trim() || !kilometers) {
       return NextResponse.json(
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Kilometers moet positief zijn." }, { status: 400 });
     }
 
+    const kmWaarde = isRetour ? parseFloat(kilometers) * 2 : parseFloat(kilometers);
+
     const [nieuw] = await db
       .insert(kilometerRegistraties)
       .values({
@@ -96,10 +100,13 @@ export async function POST(req: NextRequest) {
         datum,
         vanLocatie: vanLocatie.trim(),
         naarLocatie: naarLocatie.trim(),
-        kilometers: parseFloat(kilometers),
+        kilometers: kmWaarde,
+        isRetour: isRetour ? 1 : 0,
         zakelijkDoel: zakelijkDoel?.trim() || null,
+        doelType: doelType || null,
         klantId: klantId || null,
         projectId: projectId || null,
+        opgeslagenRouteId: opgeslagenRouteId || null,
         tariefPerKm: tariefPerKm ?? 0.23,
       })
       .returning();

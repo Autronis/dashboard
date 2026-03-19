@@ -26,6 +26,16 @@ export const klanten = sqliteTable("klanten", {
   uurtarief: real("uurtarief"),
   notities: text("notities"),
   isActief: integer("is_actief").default(1),
+  isDemo: integer("is_demo").default(0),
+  website: text("website"),
+  branche: text("branche"),
+  kvkNummer: text("kvk_nummer"),
+  btwNummer: text("btw_nummer"),
+  aantalMedewerkers: text("aantal_medewerkers"),
+  diensten: text("diensten"), // JSON array
+  techStack: text("tech_stack"), // JSON array
+  klantSinds: text("klant_sinds"),
+  aiVerrijktOp: text("ai_verrijkt_op"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
@@ -195,7 +205,33 @@ export const agendaItems = sqliteTable("agenda_items", {
   eindDatum: text("eind_datum"),
   heleDag: integer("hele_dag").default(0),
   herinneringMinuten: integer("herinnering_minuten"),
+  googleEventId: text("google_event_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ EXTERNE KALENDERS ============
+export const externeKalenders = sqliteTable("externe_kalenders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  naam: text("naam").notNull(),
+  url: text("url").notNull(),
+  bron: text("bron", { enum: ["google", "icloud", "outlook", "overig"] }).notNull(),
+  kleur: text("kleur").default("#17B8A5"),
+  isActief: integer("is_actief").default(1),
+  laatstGesyncOp: text("laatst_gesynced_op"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ GOOGLE OAUTH TOKENS ============
+export const googleTokens = sqliteTable("google_tokens", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  accessToken: text("access_token").notNull(),
+  refreshToken: text("refresh_token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+  calendarId: text("calendar_id").default("primary"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
 // ============ TAKEN ============
@@ -206,9 +242,15 @@ export const taken = sqliteTable("taken", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   titel: text("titel").notNull(),
   omschrijving: text("omschrijving"),
+  fase: text("fase"),
+  volgorde: integer("volgorde").default(0),
   status: text("status", { enum: ["open", "bezig", "afgerond"] }).default("open"),
   deadline: text("deadline"),
   prioriteit: text("prioriteit", { enum: ["laag", "normaal", "hoog"] }).default("normaal"),
+  uitvoerder: text("uitvoerder", { enum: ["claude", "handmatig"] }).default("handmatig"),
+  prompt: text("prompt"),
+  projectMap: text("project_map"),
+  googleEventId: text("google_event_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
@@ -315,10 +357,27 @@ export const kilometerRegistraties = sqliteTable("kilometer_registraties", {
   vanLocatie: text("van_locatie").notNull(),
   naarLocatie: text("naar_locatie").notNull(),
   kilometers: real("kilometers").notNull(),
+  isRetour: integer("is_retour").default(0),
   zakelijkDoel: text("zakelijk_doel"),
+  doelType: text("doel_type", { enum: ["klantbezoek", "meeting", "inkoop", "netwerk", "training", "boekhouder", "overig"] }),
   klantId: integer("klant_id").references(() => klanten.id),
   projectId: integer("project_id").references(() => projecten.id),
+  opgeslagenRouteId: integer("opgeslagen_route_id"),
   tariefPerKm: real("tarief_per_km").default(0.23),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const opgeslagenRoutes = sqliteTable("opgeslagen_routes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  naam: text("naam").notNull(),
+  vanLocatie: text("van_locatie").notNull(),
+  naarLocatie: text("naar_locatie").notNull(),
+  kilometers: real("kilometers").notNull(),
+  klantId: integer("klant_id").references(() => klanten.id),
+  projectId: integer("project_id").references(() => projecten.id),
+  doelType: text("doel_type", { enum: ["klantbezoek", "meeting", "inkoop", "netwerk", "training", "boekhouder", "overig"] }),
+  aantalKeerGebruikt: integer("aantal_keer_gebruikt").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -397,6 +456,17 @@ export const offertes = sqliteTable("offertes", {
   btwPercentage: real("btw_percentage").default(21),
   btwBedrag: real("btw_bedrag").default(0),
   bedragInclBtw: real("bedrag_incl_btw").default(0),
+  type: text("type", { enum: ["per_uur", "fixed", "retainer"] }).default("per_uur"),
+  korting: real("korting").default(0),
+  kortingType: text("korting_type", { enum: ["percentage", "vast"] }).default("vast"),
+  scope: text("scope"),
+  deliverables: text("deliverables"),
+  tijdlijn: text("tijdlijn"),
+  voorwaarden: text("voorwaarden"),
+  interneNotities: text("interne_notities"),
+  acceptatieToken: text("acceptatie_token"),
+  geaccepteerdOp: text("geaccepteerd_op"),
+  herinneringVerstuurdOp: text("herinnering_verstuurd_op"),
   notities: text("notities"),
   isActief: integer("is_actief").default(1),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
@@ -412,6 +482,8 @@ export const offerteRegels = sqliteTable("offerte_regels", {
   eenheidsprijs: real("eenheidsprijs").notNull(),
   btwPercentage: real("btw_percentage").default(21),
   totaal: real("totaal"),
+  isOptioneel: integer("is_optioneel").default(0),
+  sectie: text("sectie"),
 });
 
 // ============ MODULE 3: HR & TEAM MANAGEMENT ============
@@ -477,6 +549,20 @@ export const okrKeyResults = sqliteTable("okr_key_results", {
   huidigeWaarde: real("huidige_waarde").default(0),
   eenheid: text("eenheid"),
   autoKoppeling: text("auto_koppeling", { enum: ["omzet", "uren", "taken", "klanten", "geen"] }).default("geen"),
+  confidence: integer("confidence").default(70),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const okrCheckIns = sqliteTable("okr_check_ins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  objectiveId: integer("objective_id").references(() => okrObjectives.id, { onDelete: "cascade" }),
+  voortgang: integer("voortgang").default(0),
+  blocker: text("blocker"),
+  volgendeStap: text("volgende_stap"),
+  notities: text("notities"),
+  week: integer("week").notNull(),
+  jaar: integer("jaar").notNull(),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -536,7 +622,7 @@ export const wikiArtikelen = sqliteTable("wiki_artikelen", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   titel: text("titel").notNull(),
   inhoud: text("inhoud").default(""),
-  categorie: text("categorie", { enum: ["processen", "klanten", "technisch", "templates", "financien"] }).default("processen"),
+  categorie: text("categorie", { enum: ["processen", "klanten", "technisch", "templates", "financien", "strategie", "geleerde-lessen", "tools", "ideeen", "educatie"] }).default("processen"),
   tags: text("tags").default("[]"), // JSON array
   auteurId: integer("auteur_id").references(() => gebruikers.id),
   gepubliceerd: integer("gepubliceerd").default(1),
@@ -745,12 +831,15 @@ export const meetings = sqliteTable("meetings", {
   projectId: integer("project_id").references(() => projecten.id),
   titel: text("titel").notNull(),
   datum: text("datum").notNull(),
+  duurMinuten: integer("duur_minuten"),
   audioPad: text("audio_pad"),
   transcript: text("transcript"),
   samenvatting: text("samenvatting"),
   actiepunten: text("actiepunten").default("[]"),
   besluiten: text("besluiten").default("[]"),
   openVragen: text("open_vragen").default("[]"),
+  sentiment: text("sentiment"),
+  tags: text("tags").default("[]"),
   status: text("status", { enum: ["verwerken", "klaar", "mislukt"] }).default("verwerken"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
@@ -762,8 +851,10 @@ export const radarBronnen = sqliteTable("radar_bronnen", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   naam: text("naam").notNull(),
   url: text("url").notNull(),
-  type: text("type", { enum: ["rss", "reddit", "twitter", "producthunt", "github"] }).default("rss"),
+  type: text("type", { enum: ["rss", "reddit", "twitter", "producthunt", "github", "api", "website", "newsletter"] }).default("rss"),
   actief: integer("actief").default(1),
+  laatstGescand: text("laatst_gescand"),
+  aantalItems: integer("aantal_items").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   uniekUrl: uniqueIndex("uniek_radar_bron_url").on(table.url),
@@ -780,8 +871,11 @@ export const radarItems = sqliteTable("radar_items", {
   score: integer("score"),
   scoreRedenering: text("score_redenering"),
   aiSamenvatting: text("ai_samenvatting"),
-  categorie: text("categorie", { enum: ["tools", "api_updates", "trends", "kansen", "must_reads"] }),
+  relevantie: text("relevantie"),
+  leesMinuten: integer("lees_minuten"),
+  categorie: text("categorie", { enum: ["ai_tools", "api_updates", "automation", "business", "competitors", "tutorials", "trends", "kansen", "must_reads"] }),
   bewaard: integer("bewaard").default(0),
+  nietRelevant: integer("niet_relevant").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   uniekItemUrl: uniqueIndex("uniek_radar_item_url").on(table.url),
@@ -845,11 +939,16 @@ export const contentPosts = sqliteTable("content_posts", {
 export const contentVideos = sqliteTable("content_videos", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   postId: integer("post_id").references(() => contentPosts.id),
+  titel: text("titel"), // standalone video title (when not from post)
+  templateId: text("template_id"), // which template was used (null = from post)
   script: text("script").notNull(), // JSON array of Scene objects
   status: text("status", {
     enum: ["script", "rendering", "klaar", "fout"],
   }).default("script"),
   videoPath: text("video_path"), // path to rendered MP4
+  formaat: text("formaat", {
+    enum: ["square", "reels", "feed", "youtube"],
+  }).default("square"),
   duurSeconden: integer("duur_seconden"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
@@ -864,7 +963,7 @@ export const contentBanners = sqliteTable("content_banners", {
   }).notNull(),
   templateVariant: integer("template_variant").default(0),
   formaat: text("formaat", {
-    enum: ["instagram", "linkedin", "instagram_story"],
+    enum: ["instagram", "instagram_square", "linkedin", "instagram_story"],
   }).notNull(),
   data: text("data").notNull(), // JSON with template-specific fields
   imagePath: text("image_path"),
@@ -884,6 +983,9 @@ export const gewoontes = sqliteTable("gewoontes", {
   icoon: text("icoon").notNull().default("Target"), // Lucide icon name
   frequentie: text("frequentie", { enum: ["dagelijks", "weekelijks"] }).default("dagelijks"),
   streefwaarde: text("streefwaarde"), // e.g. "30 min", "1 persoon"
+  doel: text("doel"), // What you want to achieve with this habit
+  waarom: text("waarom"), // Why this habit matters to you
+  verwachteTijd: text("verwachte_tijd"), // Expected time e.g. "15 min", "30 min"
   volgorde: integer("volgorde").default(0),
   isActief: integer("is_actief").default(1),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
@@ -929,6 +1031,9 @@ export const ideeen = sqliteTable("ideeen", {
   verdienmodel: text("verdienmodel"),
   isAiSuggestie: integer("is_ai_suggestie").default(0),
   gepromoveerd: integer("gepromoveerd").default(0),
+  impact: integer("impact"),
+  effort: integer("effort"),
+  revenuePotential: integer("revenue_potential"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
@@ -975,6 +1080,17 @@ export const concurrenten = sqliteTable("concurrenten", {
   linkedinUrl: text("linkedin_url"),
   instagramHandle: text("instagram_handle"),
   scanPaginas: text("scan_paginas").default('["diensten","over-ons","pricing","cases"]'),
+  beschrijving: text("beschrijving"),
+  diensten: text("diensten"), // JSON array
+  techStack: text("tech_stack"), // JSON array
+  prijzen: text("prijzen"),
+  teamGrootte: text("team_grootte"),
+  sterktes: text("sterktes"), // JSON array
+  zwaktes: text("zwaktes"), // JSON array
+  overlapScore: integer("overlap_score"),
+  overlapUitleg: text("overlap_uitleg"),
+  threatLevel: text("threat_level", { enum: ["laag", "medium", "hoog"] }),
+  threatUitleg: text("threat_uitleg"),
   notities: text("notities"),
   isActief: integer("is_actief").default(1),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
@@ -1008,3 +1124,101 @@ export const concurrentScans = sqliteTable("concurrent_scans", {
 }, (table) => [
   index("idx_scans_concurrent").on(table.concurrentId),
 ]);
+
+// ============ SALES ENGINE ============
+export const salesEngineScans = sqliteTable("sales_engine_scans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  leadId: integer("lead_id").references(() => leads.id),
+  websiteUrl: text("website_url").notNull(),
+  bedrijfsgrootte: text("bedrijfsgrootte"),
+  rol: text("rol"),
+  grootsteKnelpunt: text("grootste_knelpunt"),
+  huidigeTools: text("huidige_tools"),
+  opmerkingen: text("opmerkingen"),
+  scrapeResultaat: text("scrape_resultaat"),
+  aiAnalyse: text("ai_analyse"),
+  samenvatting: text("samenvatting"),
+  status: text("status", { enum: ["pending", "completed", "failed"] }).notNull().default("pending"),
+  foutmelding: text("foutmelding"),
+  automationReadinessScore: integer("automation_readiness_score"),
+  aanbevolenPakket: text("aanbevolen_pakket"),
+  batchId: text("batch_id"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+export const salesEngineKansen = sqliteTable("sales_engine_kansen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  scanId: integer("scan_id").references(() => salesEngineScans.id, { onDelete: "cascade" }),
+  titel: text("titel").notNull(),
+  beschrijving: text("beschrijving").notNull(),
+  categorie: text("categorie", { enum: ["lead_gen", "communicatie", "administratie", "data", "content", "workflow", "crm", "e-commerce", "marketing", "klantenservice", "facturatie", "planning"] }).notNull(),
+  impact: text("impact", { enum: ["hoog", "midden", "laag"] }).notNull(),
+  geschatteTijdsbesparing: text("geschatte_tijdsbesparing"),
+  geschatteKosten: text("geschatte_kosten"),
+  geschatteBesparing: text("geschatte_besparing"),
+  implementatieEffort: text("implementatie_effort"),
+  prioriteit: integer("prioriteit").notNull(),
+});
+
+// ============ OUTREACH ============
+export const outreachDomeinen = sqliteTable("outreach_domeinen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  domein: text("domein").notNull(),
+  emailAdres: text("email_adres").notNull(),
+  displayNaam: text("display_naam").notNull(),
+  sesConfigured: integer("ses_configured").default(0),
+  dagLimiet: integer("dag_limiet").default(50),
+  vandaagVerstuurd: integer("vandaag_verstuurd").default(0),
+  laatsteResetDatum: text("laatste_reset_datum"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const outreachSequenties = sqliteTable("outreach_sequenties", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  leadId: integer("lead_id").references(() => leads.id),
+  scanId: integer("scan_id").references(() => salesEngineScans.id),
+  domeinId: integer("domein_id").references(() => outreachDomeinen.id),
+  status: text("status", { enum: ["draft", "actief", "gepauzeerd", "voltooid", "gestopt"] }).notNull().default("draft"),
+  abVariant: text("ab_variant", { enum: ["a", "b"] }).default("a"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+export const outreachEmails = sqliteTable("outreach_emails", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sequentieId: integer("sequentie_id").notNull().references(() => outreachSequenties.id, { onDelete: "cascade" }),
+  stapNummer: integer("stap_nummer").notNull(),
+  onderwerp: text("onderwerp").notNull(),
+  inhoud: text("inhoud").notNull(),
+  geplandOp: text("gepland_op"),
+  verstuurdOp: text("verstuurd_op"),
+  geopendOp: text("geopend_op"),
+  gekliktOp: text("geklikt_op"),
+  beantwoordOp: text("beantwoord_op"),
+  bouncedOp: text("bounced_op"),
+  status: text("status", { enum: ["gepland", "verstuurd", "geopend", "geklikt", "beantwoord", "bounced", "geannuleerd"] }).notNull().default("gepland"),
+  trackingId: text("tracking_id").notNull(),
+  sesMessageId: text("ses_message_id"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ CONTRACTEN ============
+export const contracten = sqliteTable("contracten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  klantId: integer("klant_id").references(() => klanten.id),
+  titel: text("titel").notNull(),
+  type: text("type", { enum: ["samenwerkingsovereenkomst", "sla", "nda"] }).notNull(),
+  inhoud: text("inhoud").default(""),
+  status: text("status", { enum: ["concept", "verzonden", "ondertekend", "verlopen"] }).default("concept"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+export const outreachOptOuts = sqliteTable("outreach_opt_outs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});

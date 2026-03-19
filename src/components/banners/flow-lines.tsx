@@ -3,58 +3,34 @@ interface FlowLinesProps {
   height: number;
 }
 
-// Exact same wave formula as the dashboard's WavesBackground (waves-background.tsx)
-// 5 waves, evenly spread, with sine+sine+cos compound formula, t=0 (static)
+// Compound wave path — like the Lovable cover waves
 function buildWavePath(width: number, height: number, waveIndex: number): string {
-  const yBase = (height / 6) * (waveIndex + 1);
-  const amplitude = 18 + waveIndex * 4;
-  const frequency = 0.0015 + waveIndex * 0.0002;
-
-  // Phase offsets matching the dashboard (at t=0)
-  const offset1 = waveIndex * 0.8;
-  const offset2 = waveIndex * 1.2;
-  const offset3 = waveIndex * 0.5;
+  const yBase = (height / 7) * (waveIndex + 1.5);
+  const amplitude = 14 + waveIndex * 5;
+  const frequency = 0.0018 + waveIndex * 0.00015;
+  const phase1 = waveIndex * 0.9;
+  const phase2 = waveIndex * 1.4;
 
   const points: [number, number][] = [];
   for (let x = 0; x <= width; x += 4) {
     const y =
       yBase +
-      Math.sin(x * frequency + offset1) * amplitude +
-      Math.sin(x * frequency * 1.8 + offset2) * (amplitude * 0.35) +
-      Math.cos(x * 0.0008 + offset3) * 5;
+      Math.sin(x * frequency + phase1) * amplitude +
+      Math.sin(x * frequency * 1.6 + phase2) * (amplitude * 0.3);
     points.push([x, y]);
   }
 
   if (points.length === 0) return "";
 
-  let d = `M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)}`;
+  let d = `M${points[0][0].toFixed(1)},${points[0][1].toFixed(1)}`;
   for (let i = 1; i < points.length; i++) {
-    d += ` L${points[i][0].toFixed(2)},${points[i][1].toFixed(2)}`;
+    d += ` L${points[i][0].toFixed(1)},${points[i][1].toFixed(1)}`;
   }
   return d;
 }
 
-// Compute the Y-value of a wave at a given X position (for dot placement)
-function getWaveY(x: number, height: number, waveIndex: number): number {
-  const yBase = (height / 6) * (waveIndex + 1);
-  const amplitude = 18 + waveIndex * 4;
-  const frequency = 0.0015 + waveIndex * 0.0002;
-  const offset1 = waveIndex * 0.8;
-  const offset2 = waveIndex * 1.2;
-  const offset3 = waveIndex * 0.5;
-  return (
-    yBase +
-    Math.sin(x * frequency + offset1) * amplitude +
-    Math.sin(x * frequency * 1.8 + offset2) * (amplitude * 0.35) +
-    Math.cos(x * 0.0008 + offset3) * 5
-  );
-}
-
-// Fixed dot position offsets per wave (0.0–1.0 fraction of width)
-const DOT_POSITIONS = [0.18, 0.38, 0.55, 0.72, 0.88];
-
 export function FlowLines({ width, height }: FlowLinesProps) {
-  const waveOpacities = [0.08, 0.10, 0.08, 0.10, 0.08];
+  const waveCount = 5;
 
   return (
     <svg
@@ -63,37 +39,17 @@ export function FlowLines({ width, height }: FlowLinesProps) {
       height={height}
       viewBox={`0 0 ${width} ${height}`}
     >
-      <defs>
-        {/* Radial glow gradient for traveling dots */}
-        {[0, 1, 2, 3, 4].map((wi) => (
-          <radialGradient
-            key={wi}
-            id={`dot-glow-${wi}`}
-            cx="50%"
-            cy="50%"
-            r="50%"
-          >
-            <stop offset="0%" stopColor="#2DD4A8" stopOpacity="0.9" />
-            <stop offset="60%" stopColor="#2DD4A8" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#2DD4A8" stopOpacity="0" />
-          </radialGradient>
-        ))}
-      </defs>
-
-      {/* 5 waves using the exact dashboard formula */}
-      {[0, 1, 2, 3, 4].map((wi) => (
+      {Array.from({ length: waveCount }, (_, wi) => (
         <path
           key={wi}
           d={buildWavePath(width, height, wi)}
           fill="none"
           stroke="#2DD4A8"
-          strokeWidth="0.7"
-          opacity={waveOpacities[wi]}
+          strokeWidth="1"
+          opacity={0.08 + (wi % 2) * 0.03}
           strokeLinecap="round"
         />
       ))}
-
-      {/* No dots — clean lines only */}
     </svg>
   );
 }

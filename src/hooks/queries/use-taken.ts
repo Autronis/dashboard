@@ -4,9 +4,14 @@ export interface Taak {
   id: number;
   titel: string;
   omschrijving: string | null;
+  fase: string | null;
+  volgorde: number;
   status: string;
   deadline: string | null;
   prioriteit: string;
+  uitvoerder: string | null;
+  prompt: string | null;
+  projectMap: string | null;
   aangemaaktOp: string | null;
   projectId: number | null;
   projectNaam: string | null;
@@ -23,25 +28,45 @@ export interface TakenKPIs {
   verlopen: number;
 }
 
+export interface ProjectVoortgang {
+  projectId: number;
+  projectNaam: string;
+  totaal: number;
+  afgerond: number;
+  fases: { fase: string; totaal: number; afgerond: number }[];
+}
+
 interface TakenResponse {
   taken: Taak[];
   kpis: TakenKPIs;
+  projecten: ProjectVoortgang[];
 }
 
-async function fetchTaken(status: string, zoek: string): Promise<TakenResponse> {
+interface TakenFilters {
+  status?: string;
+  zoek?: string;
+  projectId?: string;
+  fase?: string;
+  prioriteit?: string;
+}
+
+async function fetchTaken(filters: TakenFilters): Promise<TakenResponse> {
   const params = new URLSearchParams();
-  if (status !== "alle") params.set("status", status);
-  if (zoek) params.set("zoek", zoek);
+  if (filters.status && filters.status !== "alle") params.set("status", filters.status);
+  if (filters.zoek) params.set("zoek", filters.zoek);
+  if (filters.projectId && filters.projectId !== "alle") params.set("projectId", filters.projectId);
+  if (filters.fase && filters.fase !== "alle") params.set("fase", filters.fase);
+  if (filters.prioriteit && filters.prioriteit !== "alle") params.set("prioriteit", filters.prioriteit);
 
   const res = await fetch(`/api/taken?${params}`);
   if (!res.ok) throw new Error("Kon taken niet laden");
   return res.json();
 }
 
-export function useTaken(status: string, zoek: string) {
+export function useTaken(filters: TakenFilters) {
   return useQuery({
-    queryKey: ["taken", status, zoek],
-    queryFn: () => fetchTaken(status, zoek),
+    queryKey: ["taken", filters],
+    queryFn: () => fetchTaken(filters),
     staleTime: 30_000,
   });
 }

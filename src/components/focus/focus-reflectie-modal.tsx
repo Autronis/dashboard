@@ -78,24 +78,48 @@ export function FocusReflectieModal() {
           />
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex flex-col gap-2">
+          <div className="flex gap-3">
+            <button
+              onClick={handleOverslaan}
+              disabled={isSaving}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors disabled:opacity-50"
+            >
+              Overslaan
+            </button>
+            <button
+              onClick={handleOpslaan}
+              disabled={isSaving}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-autronis-accent text-white font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+            >
+              {isSaving ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                "Opslaan"
+              )}
+            </button>
+          </div>
           <button
-            onClick={handleOverslaan}
+            onClick={async () => {
+              setIsSaving(true);
+              try {
+                await focus.stop(reflectie || undefined);
+                queryClient.invalidateQueries({ queryKey: ["focus-sessies"] });
+                queryClient.invalidateQueries({ queryKey: ["focus-statistieken"] });
+                setReflectie("");
+                // Direct opnieuw starten
+                focus.openSetup();
+              } catch {
+                addToast("Opslaan mislukt", "fout");
+              } finally {
+                setIsSaving(false);
+              }
+            }}
             disabled={isSaving}
-            className="flex-1 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors disabled:opacity-50"
+            className="w-full px-4 py-2.5 rounded-xl border border-autronis-accent/30 text-autronis-accent font-medium hover:bg-autronis-accent/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            Overslaan
-          </button>
-          <button
-            onClick={handleOpslaan}
-            disabled={isSaving}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-autronis-accent text-white font-medium hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
-          >
-            {isSaving ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              "Opslaan"
-            )}
+            <CheckCircle className="w-4 h-4" />
+            Nog een sessie starten
           </button>
         </div>
       </div>

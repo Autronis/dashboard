@@ -131,7 +131,7 @@ function ProjectCard({ project, onStartTimer }: { project: Project; onStartTimer
   const iconColor = getIconColor(project.status ?? "actief");
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-4 card-glow transition-colors hover:border-autronis-accent/30 group relative">
+    <Link href={`/projecten/${project.id}`} className="block bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-4 card-glow transition-colors hover:border-autronis-accent/30 group relative">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -140,7 +140,7 @@ function ProjectCard({ project, onStartTimer }: { project: Project; onStartTimer
           </div>
           <div className="min-w-0">
             <Link
-              href={`/klanten/${project.klantId}/projecten/${project.id}`}
+              href={`/projecten/${project.id}`}
               className="text-base font-semibold text-autronis-text-primary truncate block hover:text-autronis-accent transition-colors"
             >
               {project.naam}
@@ -219,14 +219,14 @@ function ProjectCard({ project, onStartTimer }: { project: Project; onStartTimer
           </button>
         )}
         <Link
-          href={`/klanten/${project.klantId}/projecten/${project.id}`}
+          href={`/projecten/${project.id}`}
           className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/40 transition-colors"
           title="Details"
         >
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
       </div>
-    </div>
+    </Link>
   );
 }
 

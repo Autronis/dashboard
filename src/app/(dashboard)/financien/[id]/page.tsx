@@ -18,6 +18,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Confetti } from "@/components/ui/confetti";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DocumentPreview } from "@/components/shared/document-preview";
 
 interface FactuurDetail {
   id: number;
@@ -331,99 +332,31 @@ export default function FactuurDetailPage() {
         </div>
 
         {/* Factuur preview */}
-        <div className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-10">
-            <div>
-              <h2 className="text-2xl font-bold text-[#128C7E]">Autronis</h2>
-              <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-                factuur@autronis.com
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-3xl font-bold text-[#128C7E]">FACTUUR</p>
-            </div>
-          </div>
-
-          {/* Info row */}
-          <div className="grid grid-cols-2 gap-8 mb-10">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Factuur aan</p>
-              <p className="text-sm text-gray-800 leading-relaxed">
-                {factuur.klantNaam}
-                {factuur.klantContactpersoon && <><br />{factuur.klantContactpersoon}</>}
-                {factuur.klantAdres && <><br />{factuur.klantAdres}</>}
-                {factuur.klantEmail && <><br />{factuur.klantEmail}</>}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Factuurnummer</p>
-              <p className="text-sm text-gray-800">{factuur.factuurnummer}</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Factuurdatum</p>
-              <p className="text-sm text-gray-800">{factuur.factuurdatum ? formatDatum(factuur.factuurdatum) : "\u2014"}</p>
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Vervaldatum</p>
-              <p className="text-sm text-gray-800">{factuur.vervaldatum ? formatDatum(factuur.vervaldatum) : "\u2014"}</p>
-            </div>
-          </div>
-
-          {/* Regels tabel */}
-          <table className="w-full mb-8">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Omschrijving</th>
-                <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">Aantal</th>
-                <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">Prijs</th>
-                <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">BTW %</th>
-                <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">Totaal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {regels.map((regel) => (
-                <tr key={regel.id} className="border-b border-gray-100">
-                  <td className="py-3 text-sm text-gray-800">{regel.omschrijving}</td>
-                  <td className="py-3 text-sm text-gray-800 text-center">{regel.aantal || 1}</td>
-                  <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.eenheidsprijs || 0)}</td>
-                  <td className="py-3 text-sm text-gray-800 text-center">{regel.btwPercentage ?? 21}%</td>
-                  <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.totaal || 0)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {/* Totalen */}
-          <div className="flex justify-end">
-            <div className="w-72 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotaal</span>
-                <span className="text-gray-800 tabular-nums">{formatBedrag(factuur.bedragExclBtw)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">BTW ({factuur.btwPercentage || 21}%)</span>
-                <span className="text-gray-800 tabular-nums">{formatBedrag(factuur.btwBedrag || 0)}</span>
-              </div>
-              <div className="border-t-2 border-gray-200 pt-2 flex justify-between">
-                <span className="text-lg font-bold text-gray-800">Totaal</span>
-                <span className="text-lg font-bold text-[#128C7E] tabular-nums">{formatBedrag(factuur.bedragInclBtw || 0)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Notities */}
-          {factuur.notities && (
-            <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Opmerkingen</p>
-              <p className="text-sm text-gray-600 leading-relaxed">{factuur.notities}</p>
-            </div>
-          )}
-
-          {/* Betaald info */}
-          {factuur.betaaldOp && (
-            <div className="mt-6 flex items-center gap-2 text-green-600">
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="text-sm font-medium">Betaald op {formatDatum(factuur.betaaldOp)}</span>
-            </div>
-          )}
-        </div>
+        <DocumentPreview
+          type="FACTUUR"
+          klant={{
+            bedrijfsnaam: factuur.klantNaam,
+            contactpersoon: factuur.klantContactpersoon,
+            adres: factuur.klantAdres,
+            email: factuur.klantEmail,
+          }}
+          nummer={factuur.factuurnummer}
+          datum={factuur.factuurdatum || ""}
+          vervaldatum={factuur.vervaldatum || undefined}
+          btwPercentage={factuur.btwPercentage || 21}
+          regels={regels.map((r) => ({
+            omschrijving: r.omschrijving,
+            aantal: r.aantal || 1,
+            eenheidsprijs: r.eenheidsprijs || 0,
+            btwPercentage: r.btwPercentage ?? 21,
+            totaal: r.totaal || 0,
+          }))}
+          subtotaal={factuur.bedragExclBtw}
+          btwBedrag={factuur.btwBedrag || 0}
+          totaal={factuur.bedragInclBtw || 0}
+          notities={factuur.notities}
+          betaaldOp={factuur.betaaldOp}
+        />
 
         {/* Delete dialog */}
         <ConfirmDialog

@@ -1,13 +1,13 @@
 "use client";
 
 import type { BannerFormaat, BannerIcon, BannerIllustration } from "@/types/content";
-import { BANNER_FORMAAT_SIZES } from "@/types/content";
+import { BANNER_FORMAAT_SIZES, BANNER_ILLUSTRATION_BACKGROUNDS } from "@/types/content";
 import { FlowLines } from "./flow-lines";
 import { BgIllustration } from "./bg-illustrations";
 import { CapsuleIcon } from "./capsule-icons";
 
-const BG = "#0B1A1F";
-const NEON = "#2DD4A8";
+const BG = "#0A1214";
+const NEON = "#17B8A5";
 const WHITE = "#F3F5F7";
 const GRAY = "#8B98A3";
 const FONT = "Inter, sans-serif";
@@ -21,6 +21,7 @@ interface BannerRendererProps {
   illustrationScale?: number;
   illustrationOffsetX?: number;
   illustrationOffsetY?: number;
+  aiBgUrl?: string;
 }
 
 export function BannerRenderer({
@@ -32,17 +33,26 @@ export function BannerRenderer({
   illustrationScale,
   illustrationOffsetX,
   illustrationOffsetY,
+  aiBgUrl,
 }: BannerRendererProps) {
   const { width, height } = BANNER_FORMAAT_SIZES[formaat];
 
-  const fontSize = Math.min(Math.round(40 * scale), Math.round(height * scale * 0.04));
-  const iconSize = Math.round(44 * scale);
+  // Priority: AI bg > pre-generated PNG > SVG fallback
+  const bgImageUrl = aiBgUrl || BANNER_ILLUSTRATION_BACKGROUNDS[illustration];
+
+  const fontSize = Math.min(Math.round(52 * scale), Math.round(height * scale * 0.05));
+  const iconSize = Math.round(56 * scale);
   const headerFontSize = Math.round(18 * scale);
   const footerFontSize = Math.round(14 * scale);
 
-  const paddingV = Math.round(24 * scale);
-  const paddingH = Math.round(48 * scale);
-  const capsuleGap = Math.round(18 * scale);
+  const paddingV = Math.round(32 * scale);
+  const paddingH = Math.round(64 * scale);
+  const capsuleGap = Math.round(22 * scale);
+
+  // For tall formats (4:5, story), shift capsule up so it sits in the
+  // center of the top square crop (grid/cover view)
+  const isVertical = height > width;
+  const capsuleTop = isVertical ? `${Math.round((width / height) * 50)}%` : "50%";
 
   return (
     <div
@@ -59,35 +69,52 @@ export function BannerRenderer({
       {/* 1. Flow lines */}
       <FlowLines width={width * scale} height={height * scale} />
 
-      {/* 2. Background illustration (SVG) */}
-      <BgIllustration
-        type={illustration}
-        width={width * scale}
-        height={height * scale}
-        scale={illustrationScale}
-        offsetX={illustrationOffsetX}
-        offsetY={illustrationOffsetY}
-      />
+      {/* 2. Background: PNG image (AI or pre-generated) or SVG fallback */}
+      {bgImageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={bgImageUrl}
+          alt=""
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: width * scale,
+            height: height * scale,
+            objectFit: "cover",
+            opacity: 0.7,
+          }}
+        />
+      ) : (
+        <BgIllustration
+          type={illustration}
+          width={width * scale}
+          height={height * scale}
+          scale={illustrationScale}
+          offsetX={illustrationOffsetX}
+          offsetY={illustrationOffsetY}
+        />
+      )}
 
-      {/* 3. Radial glow behind capsule */}
+      {/* 3. Radial glow behind capsule — strong bloom */}
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: capsuleTop,
           left: "50%",
-          width: width * scale * 0.9,
-          height: height * scale * 0.55,
-          background: "radial-gradient(ellipse at center, rgba(45,212,168,0.18) 0%, rgba(45,212,168,0.06) 40%, transparent 70%)",
+          width: width * scale * 1.1,
+          height: height * scale * 0.6,
+          background: "radial-gradient(ellipse at center, rgba(23,184,165,0.25) 0%, rgba(23,184,165,0.12) 30%, rgba(23,184,165,0.04) 55%, transparent 75%)",
           transform: "translate(-50%, -50%)",
           pointerEvents: "none",
         }}
       />
 
-      {/* 4. Neon capsule — vertically centered */}
+      {/* 4. Neon capsule — centered (shifted up for tall formats) */}
       <div
         style={{
           position: "absolute",
-          top: "50%",
+          top: capsuleTop,
           left: 0,
           right: 0,
           transform: "translateY(-50%)",
@@ -104,8 +131,8 @@ export function BannerRenderer({
             padding: `${paddingV}px ${paddingH}px`,
             borderRadius: "999px",
             border: `${Math.round(2 * scale)}px solid ${NEON}`,
-            background: "rgba(45,212,168,0.08)",
-            boxShadow: `0 0 ${Math.round(30 * scale)}px rgba(45,212,168,0.5), 0 0 ${Math.round(80 * scale)}px rgba(45,212,168,0.25), 0 0 ${Math.round(120 * scale)}px rgba(45,212,168,0.1)`,
+            background: "rgba(23,184,165,0.12)",
+            boxShadow: `0 0 ${Math.round(20 * scale)}px rgba(23,184,165,0.7), 0 0 ${Math.round(60 * scale)}px rgba(23,184,165,0.4), 0 0 ${Math.round(120 * scale)}px rgba(23,184,165,0.15), inset 0 0 ${Math.round(30 * scale)}px rgba(23,184,165,0.08)`,
           }}
         >
           <CapsuleIcon icon={icon} size={iconSize} />
@@ -115,7 +142,7 @@ export function BannerRenderer({
               fontSize,
               fontWeight: 800,
               color: NEON,
-              textShadow: `0 0 ${Math.round(10 * scale)}px rgba(45,212,168,0.5)`,
+              textShadow: `0 0 ${Math.round(8 * scale)}px rgba(23,184,165,0.8), 0 0 ${Math.round(20 * scale)}px rgba(23,184,165,0.4)`,
               letterSpacing: "0.01em",
               whiteSpace: "nowrap",
             }}
@@ -125,13 +152,15 @@ export function BannerRenderer({
         </div>
       </div>
 
-      {/* 5. Header top-left */}
+      {/* 5. Header top-center */}
       <div
         style={{
           position: "absolute",
           top: Math.round(36 * scale),
-          left: Math.round(44 * scale),
+          left: 0,
+          right: 0,
           display: "flex",
+          justifyContent: "center",
           alignItems: "center",
           gap: Math.round(10 * scale),
         }}

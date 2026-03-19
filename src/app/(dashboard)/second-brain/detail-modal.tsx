@@ -11,6 +11,9 @@ import {
   Image as ImageIcon,
   FileDown,
   Code,
+  CheckSquare,
+  PenTool,
+  BookMarked,
 } from "lucide-react";
 import {
   type SecondBrainItem,
@@ -112,6 +115,24 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
         onClose();
       },
     });
+  };
+
+  const handleMaakTaak = async () => {
+    try {
+      const res = await fetch("/api/taken", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titel: item.titel ?? "Taak vanuit Second Brain",
+          status: "open",
+          prioriteit: "normaal",
+        }),
+      });
+      if (!res.ok) throw new Error("Kon taak niet aanmaken");
+      addToast("Taak aangemaakt", "succes");
+    } catch {
+      addToast("Kon taak niet aanmaken", "fout");
+    }
   };
 
   return (
@@ -230,6 +251,37 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
                 placeholder="+ tag toevoegen"
                 className="bg-transparent text-autronis-text-secondary text-xs outline-none placeholder:text-autronis-text-secondary/50 min-w-[120px]"
               />
+            </div>
+          </div>
+
+          {/* Integration action buttons */}
+          <div className="mb-6">
+            <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wide mb-2">
+              Acties
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleMaakTaak}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/30 border border-autronis-border transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                Maak taak
+              </button>
+              <a
+                href={`/content/posts?onderwerp=${encodeURIComponent(item.titel ?? "")}`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/30 border border-autronis-border transition-colors"
+              >
+                <PenTool className="w-4 h-4" />
+                Maak content
+              </a>
+              <a
+                href={`/wiki?bron=second-brain&id=${item.id}`}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/30 border border-autronis-border transition-colors"
+              >
+                <BookMarked className="w-4 h-4" />
+                Maak wiki artikel
+              </a>
             </div>
           </div>
 

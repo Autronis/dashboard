@@ -7,6 +7,7 @@ import { Plus, Trash2, Eye, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { DocumentPreview } from "@/components/shared/document-preview";
 import { formatBedrag, formatDatum } from "@/lib/utils";
 
 interface Klant {
@@ -39,6 +40,7 @@ function FactuurPreview({
   btwBedrag,
   totaal,
   notities,
+  betalingstermijn,
 }: {
   klant: Klant | null;
   factuurdatum: string;
@@ -48,108 +50,22 @@ function FactuurPreview({
   btwBedrag: number;
   totaal: number;
   notities: string;
+  betalingstermijn: number;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-8 shadow-lg sticky top-8">
-      {/* Header */}
-      <div className="flex justify-between items-start mb-10">
-        <div>
-          <h2 className="text-2xl font-bold text-[#128C7E]">Autronis</h2>
-          <p className="text-sm text-gray-500 mt-1 leading-relaxed">
-            factuur@autronis.com
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-3xl font-bold text-[#128C7E]">FACTUUR</p>
-        </div>
-      </div>
-
-      {/* Info row */}
-      <div className="grid grid-cols-2 gap-8 mb-10">
-        <div>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Factuur aan</p>
-          <p className="text-sm text-gray-800 leading-relaxed">
-            {klant ? (
-              <>
-                {klant.bedrijfsnaam}
-                {klant.contactpersoon && <><br />{klant.contactpersoon}</>}
-                {klant.adres && <><br />{klant.adres}</>}
-                {klant.email && <><br />{klant.email}</>}
-              </>
-            ) : (
-              <span className="text-gray-400 italic">Selecteer een klant...</span>
-            )}
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Factuurnummer</p>
-          <p className="text-sm text-gray-400 italic">Wordt automatisch gegenereerd</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Factuurdatum</p>
-          <p className="text-sm text-gray-800">{factuurdatum ? formatDatum(factuurdatum) : "\u2014"}</p>
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 mt-4">Vervaldatum</p>
-          <p className="text-sm text-gray-800">{vervaldatum ? formatDatum(vervaldatum) : "\u2014"}</p>
-        </div>
-      </div>
-
-      {/* Regels tabel */}
-      <table className="w-full mb-8">
-        <thead>
-          <tr className="border-b-2 border-gray-200">
-            <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Omschrijving</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">Aantal</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Prijs</th>
-            <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-16">BTW %</th>
-            <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-24">Totaal</th>
-          </tr>
-        </thead>
-        <tbody>
-          {regels.map((regel, i) => (
-            <tr key={i} className="border-b border-gray-100">
-              <td className="py-3 text-sm text-gray-800">
-                {regel.omschrijving || <span className="text-gray-400 italic">...</span>}
-              </td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.aantal}</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.eenheidsprijs)}</td>
-              <td className="py-3 text-sm text-gray-800 text-center">{regel.btwPercentage}%</td>
-              <td className="py-3 text-sm text-gray-800 text-right tabular-nums">{formatBedrag(regel.aantal * regel.eenheidsprijs)}</td>
-            </tr>
-          ))}
-          {regels.length === 0 && (
-            <tr>
-              <td colSpan={5} className="py-6 text-sm text-gray-400 text-center italic">
-                Voeg een regel toe...
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      {/* Totalen */}
-      <div className="flex justify-end">
-        <div className="w-60 space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Subtotaal</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(subtotaal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">BTW</span>
-            <span className="text-gray-800 tabular-nums">{formatBedrag(btwBedrag)}</span>
-          </div>
-          <div className="border-t-2 border-gray-200 pt-2 flex justify-between">
-            <span className="text-lg font-bold text-gray-800">Totaal</span>
-            <span className="text-lg font-bold text-[#128C7E] tabular-nums">{formatBedrag(totaal)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Notities */}
-      {notities.trim() && (
-        <div className="mt-8 p-4 bg-gray-50 rounded-lg">
-          <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">Opmerkingen</p>
-          <p className="text-sm text-gray-600 leading-relaxed">{notities}</p>
-        </div>
-      )}
-    </div>
+    <DocumentPreview
+      type="FACTUUR"
+      klant={klant}
+      datum={factuurdatum}
+      vervaldatum={vervaldatum}
+      betalingstermijn={betalingstermijn}
+      regels={regels}
+      subtotaal={subtotaal}
+      btwBedrag={btwBedrag}
+      totaal={totaal}
+      notities={notities}
+      sticky
+    />
   );
 }
 
@@ -505,6 +421,7 @@ export default function NieuweFactuurPage() {
             klant={selectedKlant}
             factuurdatum={factuurdatum}
             vervaldatum={vervaldatum}
+            betalingstermijn={betalingstermijn}
             regels={regels}
             subtotaal={subtotaal}
             btwBedrag={btwBedrag}
@@ -522,6 +439,7 @@ export default function NieuweFactuurPage() {
               klant={selectedKlant}
               factuurdatum={factuurdatum}
               vervaldatum={vervaldatum}
+              betalingstermijn={betalingstermijn}
               regels={regels}
               subtotaal={subtotaal}
               btwBedrag={btwBedrag}

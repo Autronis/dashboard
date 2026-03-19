@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo, type DragEvent } from "react";
 import {
   Brain,
   FileText,
@@ -12,6 +12,9 @@ import {
   Paperclip,
   Send,
   Star,
+  BookOpen,
+  ArrowUpDown,
+  Upload,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +40,15 @@ const typeConfig = {
 } as const;
 
 type TypeKey = keyof typeof typeConfig;
+type SortMode = "nieuwste" | "meest-gebruikt" | "favorieten";
+
+function extractDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace("www.", "");
+  } catch {
+    return url;
+  }
+}
 
 export default function SecondBrainPage() {
   const { addToast } = useToast();
@@ -49,6 +61,9 @@ export default function SecondBrainPage() {
   const [favoriet, setFavoriet] = useState(false);
   const [selectedItem, setSelectedItem] = useState<SecondBrainItem | null>(null);
   const [nieuwInput, setNieuwInput] = useState("");
+  const [detectedType, setDetectedType] = useState<TypeKey | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("nieuwste");
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [needsRefetch, setNeedsRefetch] = useState(false);
 
@@ -77,15 +92,37 @@ export default function SecondBrainPage() {
     }
   }, [items, selectedItem]);
 
+  // Auto-detect type from input
+  useEffect(() => {
+    const input = nieuwInput.trim();
+    if (/^https?:\/\//.test(input)) {
+      setDetectedType("url");
+    } else if (input.startsWith("```")) {
+      setDetectedType("code");
+    } else {
+      setDetectedType(null);
+    }
+  }, [nieuwInput]);
+
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text/plain").trim();
+    if (/^https?:\/\//.test(text)) {
+      setDetectedType("url");
+    } else if (text.startsWith("```")) {
+      setDetectedType("code");
+    }
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const input = nieuwInput.trim();
     if (!input) return;
 
     const isUrl = /^https?:\/\//.test(input);
     const isCode = input.startsWith("```");
+    const resolvedType = isUrl ? "URL" : isCode ? "Code" : "Tekst";
 
     const onSuccess = () => {
-      addToast("Item opgeslagen", "succes");
+      addToast(`Opgeslagen als ${resolvedType}`, "succes");
       setNeedsRefetch(true);
     };
     const onError = () => addToast("Kon item niet opslaan", "fout");
@@ -99,13 +136,11 @@ export default function SecondBrainPage() {
     }
 
     setNieuwInput("");
+    setDetectedType(null);
   }, [nieuwInput, verwerkenMutation, createMutation, addToast]);
 
   const handleFileUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
+    (file: File) => {
       const formData = new FormData();
       formData.append("file", file);
 
@@ -124,13 +159,42 @@ export default function SecondBrainPage() {
         },
         onError: () => addToast("Kon bestand niet uploaden", "fout"),
       });
+    },
+    [verwerkenMutation, addToast]
+  );
 
-      // Reset input
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      handleFileUpload(file);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     },
-    [verwerkenMutation, addToast]
+    [handleFileUpload]
+  );
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        handleFileUpload(file);
+      }
+    },
+    [handleFileUpload]
   );
 
   const toggleFavoriet = useCallback(
@@ -140,19 +204,84 @@ export default function SecondBrainPage() {
     [updateMutation]
   );
 
-  // Collect unique tags from all items
-  const allTags = Array.from(
-    new Set(
-      items.flatMap((item) => {
-        if (!item.aiTags) return [];
-        try {
-          return JSON.parse(item.aiTags) as string[];
-        } catch {
-          return [];
-        }
-      })
-    )
+  // Collect unique tags with frequency from all items
+  const tagFrequency = useMemo(() => {
+    const freq = new Map<string, number>();
+    items.forEach((item) => {
+      if (!item.aiTags) return;
+      try {
+        const tags = JSON.parse(item.aiTags) as string[];
+        tags.forEach((tag) => freq.set(tag, (freq.get(tag) ?? 0) + 1));
+      } catch {
+        // skip
+      }
+    });
+    return freq;
+  }, [items]);
+
+  const allTags = useMemo(
+    () => Array.from(tagFrequency.entries()).sort((a, b) => b[1] - a[1]),
+    [tagFrequency]
   );
+
+  const maxTagFreq = allTags.length > 0 ? allTags[0][1] : 1;
+
+  // Sort items
+  const sortedItems = useMemo(() => {
+    const copy = [...items];
+    switch (sortMode) {
+      case "favorieten":
+        copy.sort((a, b) => b.isFavoriet - a.isFavoriet || new Date(b.aangemaaktOp).getTime() - new Date(a.aangemaaktOp).getTime());
+        break;
+      case "meest-gebruikt":
+        // Sort by number of tags (proxy for "most processed/used")
+        copy.sort((a, b) => {
+          const tagsA = a.aiTags ? (JSON.parse(a.aiTags) as string[]).length : 0;
+          const tagsB = b.aiTags ? (JSON.parse(b.aiTags) as string[]).length : 0;
+          return tagsB - tagsA || new Date(b.aangemaaktOp).getTime() - new Date(a.aangemaaktOp).getTime();
+        });
+        break;
+      default:
+        // nieuwste eerst — already sorted from API
+        break;
+    }
+    return copy;
+  }, [items, sortMode]);
+
+  // Daily review stats
+  const dailyReview = useMemo(() => {
+    const now = new Date();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+    const gisteren = items.filter(
+      (i) => i.aangemaaktOp.split("T")[0] === yesterdayStr
+    ).length;
+
+    const dezeWeekItems = items.filter(
+      (i) => new Date(i.aangemaaktOp) >= weekAgo
+    );
+
+    // Find top tag this week
+    const weekTags = new Map<string, number>();
+    dezeWeekItems.forEach((item) => {
+      if (!item.aiTags) return;
+      try {
+        const tags = JSON.parse(item.aiTags) as string[];
+        tags.forEach((t) => weekTags.set(t, (weekTags.get(t) ?? 0) + 1));
+      } catch {
+        // skip
+      }
+    });
+    const topTag = weekTags.size > 0
+      ? Array.from(weekTags.entries()).sort((a, b) => b[1] - a[1])[0][0]
+      : null;
+
+    return { gisteren, dezeWeek: dezeWeekItems.length, topTag };
+  }, [items]);
 
   // Most used type
   const meestGebruiktType =
@@ -179,9 +308,31 @@ export default function SecondBrainPage() {
           </div>
         </div>
 
+        {/* Daily Review Strip */}
+        {(dailyReview.gisteren > 0 || dailyReview.dezeWeek > 0) && (
+          <div className="bg-autronis-accent/5 border border-autronis-accent/15 rounded-2xl p-4 flex items-center gap-3">
+            <BookOpen className="w-5 h-5 text-autronis-accent shrink-0" />
+            <div className="text-sm text-autronis-text-secondary">
+              {dailyReview.gisteren > 0 && (
+                <span>
+                  Gisteren heb je <span className="text-autronis-text-primary font-medium">{dailyReview.gisteren} {dailyReview.gisteren === 1 ? "item" : "items"}</span> opgeslagen.{" "}
+                </span>
+              )}
+              {dailyReview.dezeWeek > 0 && (
+                <span>
+                  Deze week: <span className="text-autronis-text-primary font-medium">{dailyReview.dezeWeek} nieuwe {dailyReview.dezeWeek === 1 ? "item" : "items"}</span>
+                  {dailyReview.topTag && (
+                    <> over <span className="text-autronis-accent font-medium">{dailyReview.topTag}</span></>
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* KPI cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
               <Brain className="w-5 h-5 text-autronis-accent" />
             </div>
@@ -193,7 +344,7 @@ export default function SecondBrainPage() {
             </div>
           </div>
 
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
               <TrendingUp className="w-5 h-5 text-autronis-accent" />
             </div>
@@ -205,7 +356,7 @@ export default function SecondBrainPage() {
             </div>
           </div>
 
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
             <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
               <FileText className="w-5 h-5 text-autronis-accent" />
             </div>
@@ -216,37 +367,90 @@ export default function SecondBrainPage() {
           </div>
         </div>
 
-        {/* Quick-add bar */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 flex items-center gap-3">
-          <input
-            className="flex-1 bg-transparent text-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/50 outline-none"
-            placeholder="Typ, plak een URL, of sleep een bestand..."
-            value={nieuwInput}
-            onChange={(e) => setNieuwInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          />
-          <button
+        {/* Quick-add bar — larger & more prominent */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <textarea
+              className="flex-1 bg-transparent text-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/50 outline-none resize-none min-h-[52px]"
+              placeholder="Plak tekst, URL, of code snippet..."
+              rows={2}
+              value={nieuwInput}
+              onChange={(e) => setNieuwInput(e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+            />
+            <div className="flex items-center gap-2 pt-1">
+              {detectedType && (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
+                    detectedType === "url"
+                      ? "bg-purple-400/15 text-purple-400"
+                      : "bg-yellow-400/15 text-yellow-400"
+                  )}
+                >
+                  {detectedType === "url" ? (
+                    <>
+                      <Link2 className="w-3 h-3" />
+                      Opslaan als URL
+                    </>
+                  ) : (
+                    <>
+                      <Code className="w-3 h-3" />
+                      Opslaan als Code
+                    </>
+                  )}
+                </span>
+              )}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                type="button"
+                aria-label="Bestand uploaden"
+              >
+                <Paperclip className="w-5 h-5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" />
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!nieuwInput.trim()}
+                type="button"
+                aria-label="Opslaan"
+                className="disabled:opacity-40 transition-opacity"
+              >
+                <Send className="w-5 h-5 text-autronis-accent" />
+              </button>
+            </div>
+          </div>
+
+          {/* Drag-drop file upload zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            type="button"
-            aria-label="Bestand uploaden"
+            className={cn(
+              "border-2 border-dashed rounded-xl p-4 flex items-center justify-center gap-2 cursor-pointer transition-colors",
+              isDragging
+                ? "border-autronis-accent bg-autronis-accent/5"
+                : "border-autronis-border hover:border-autronis-text-secondary/40"
+            )}
           >
-            <Paperclip className="w-5 h-5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" />
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!nieuwInput.trim()}
-            type="button"
-            aria-label="Opslaan"
-            className="disabled:opacity-40 transition-opacity"
-          >
-            <Send className="w-5 h-5 text-autronis-accent" />
-          </button>
+            <Upload className="w-4 h-4 text-autronis-text-secondary" />
+            <span className="text-sm text-autronis-text-secondary">
+              Sleep een afbeelding of PDF hierheen, of klik om te uploaden
+            </span>
+          </div>
+
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*,.pdf"
             className="hidden"
-            onChange={handleFileUpload}
+            onChange={handleFileInputChange}
           />
         </div>
 
@@ -323,33 +527,56 @@ export default function SecondBrainPage() {
                 <Star className="w-3 h-3" />
                 Favorieten
               </button>
+
+              {/* Sort toggle */}
+              <div className="ml-auto flex items-center gap-1">
+                <ArrowUpDown className="w-3.5 h-3.5 text-autronis-text-secondary" />
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className="bg-transparent text-xs text-autronis-text-secondary outline-none cursor-pointer"
+                >
+                  <option value="nieuwste">Nieuwste eerst</option>
+                  <option value="meest-gebruikt">Meest gebruikt</option>
+                  <option value="favorieten">Favorieten eerst</option>
+                </select>
+              </div>
             </div>
 
-            {/* Tag pills */}
+            {/* Tag cloud */}
             {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 items-center">
                 {tagFilter && (
                   <button
                     onClick={() => setTagFilter("")}
                     className="px-2.5 py-0.5 rounded-full text-xs bg-autronis-border/50 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
                   >
-                    Wis tag ×
+                    Wis tag x
                   </button>
                 )}
-                {allTags.map((tag) => (
-                  <button
-                    key={tag}
-                    onClick={() => setTagFilter(tagFilter === tag ? "" : tag)}
-                    className={cn(
-                      "px-2.5 py-0.5 rounded-full text-xs transition-colors",
-                      tagFilter === tag
-                        ? "bg-autronis-accent text-white"
-                        : "bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
-                    )}
-                  >
-                    {tag}
-                  </button>
-                ))}
+                {allTags.map(([tag, freq]) => {
+                  const isTop = freq === maxTagFreq;
+                  const isActive = tagFilter === tag;
+                  // Scale font size by frequency: min 0.7rem, max 0.95rem
+                  const scale = 0.7 + (freq / maxTagFreq) * 0.25;
+                  return (
+                    <button
+                      key={tag}
+                      onClick={() => setTagFilter(tagFilter === tag ? "" : tag)}
+                      style={{ fontSize: `${scale}rem` }}
+                      className={cn(
+                        "px-2.5 py-0.5 rounded-full transition-colors font-medium",
+                        isActive
+                          ? "bg-autronis-accent text-white"
+                          : isTop
+                            ? "bg-autronis-accent/20 text-autronis-accent hover:bg-autronis-accent/30"
+                            : "bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
+                      )}
+                    >
+                      {tag}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -383,10 +610,10 @@ export default function SecondBrainPage() {
               />
             )}
 
-            {/* Feed items */}
-            {!isLoading && items.length > 0 && (
+            {/* Feed items — type-specific previews */}
+            {!isLoading && sortedItems.length > 0 && (
               <div className="space-y-3">
-                {items.map((item) => {
+                {sortedItems.map((item) => {
                   const cfg = typeConfig[item.type] ?? typeConfig.tekst;
                   const TypeIcon = cfg.icon;
                   let tags: string[] = [];
@@ -401,26 +628,103 @@ export default function SecondBrainPage() {
                   return (
                     <div
                       key={item.id}
-                      className="bg-autronis-card border border-autronis-border rounded-2xl p-5 hover:border-autronis-accent/30 transition-colors cursor-pointer"
+                      className="bg-autronis-card border border-autronis-border rounded-2xl p-5 hover:border-autronis-accent/30 transition-colors cursor-pointer card-glow"
                       onClick={() => setSelectedItem(item)}
                     >
                       <div className="flex items-start gap-3">
                         <TypeIcon className={cn("w-5 h-5 mt-0.5 shrink-0", cfg.color)} />
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-autronis-text-primary font-medium truncate">
-                            {item.titel ?? "Zonder titel"}
-                          </h3>
-                          {item.aiSamenvatting && (
-                            <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
-                              {item.aiSamenvatting}
-                            </p>
+                          {/* Type-specific preview */}
+                          {item.type === "url" && (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-autronis-text-primary font-medium truncate">
+                                  {item.titel ?? "Zonder titel"}
+                                </h3>
+                                {item.bronUrl && (
+                                  <span className="text-xs text-purple-400/70 shrink-0">
+                                    {extractDomain(item.bronUrl)}
+                                  </span>
+                                )}
+                              </div>
+                              {item.aiSamenvatting && (
+                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                  {item.aiSamenvatting}
+                                </p>
+                              )}
+                            </>
                           )}
+
+                          {item.type === "code" && (
+                            <>
+                              <h3 className="text-autronis-text-primary font-medium truncate">
+                                {item.titel ?? "Code snippet"}
+                              </h3>
+                              {item.inhoud && (
+                                <pre className="bg-slate-900 rounded-lg p-2.5 mt-1.5 overflow-hidden font-mono text-xs text-autronis-text-secondary line-clamp-3">
+                                  {item.inhoud.replace(/^```\w*\n?/, "").replace(/```$/, "").slice(0, 300)}
+                                </pre>
+                              )}
+                            </>
+                          )}
+
+                          {item.type === "tekst" && (
+                            <>
+                              <h3 className="text-autronis-text-primary font-medium truncate">
+                                {item.titel ?? "Zonder titel"}
+                              </h3>
+                              {item.inhoud && (
+                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                  {item.inhoud.slice(0, 200)}
+                                </p>
+                              )}
+                            </>
+                          )}
+
+                          {item.type === "afbeelding" && (
+                            <div className="flex items-start gap-3">
+                              <div className="flex-1 min-w-0">
+                                <h3 className="text-autronis-text-primary font-medium truncate">
+                                  {item.titel ?? "Afbeelding"}
+                                </h3>
+                                {item.aiSamenvatting && (
+                                  <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                    {item.aiSamenvatting}
+                                  </p>
+                                )}
+                              </div>
+                              {item.bestandPad && (
+                                <img
+                                  src={item.bestandPad}
+                                  alt={item.titel ?? "Afbeelding"}
+                                  className="w-16 h-16 rounded-lg object-cover shrink-0"
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {item.type === "pdf" && (
+                            <>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-autronis-text-primary font-medium truncate">
+                                  {item.titel ?? "PDF document"}
+                                </h3>
+                              </div>
+                              {item.aiSamenvatting && (
+                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                  {item.aiSamenvatting}
+                                </p>
+                              )}
+                            </>
+                          )}
+
+                          {/* Tags row */}
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
                             {tags.length > 0 ? (
                               tags.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="bg-autronis-accent/10 text-autronis-accent rounded-full px-2.5 py-0.5 text-xs"
+                                  className="bg-autronis-accent/10 text-autronis-accent rounded-full px-2 py-0.5 text-[11px]"
                                 >
                                   {tag}
                                 </span>
@@ -435,6 +739,8 @@ export default function SecondBrainPage() {
                             </span>
                           </div>
                         </div>
+
+                        {/* Favorite button */}
                         <button
                           type="button"
                           onClick={(e) => {

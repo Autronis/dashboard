@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { offertes, offerteRegels, facturen, factuurRegels } from "@/lib/db/schema";
+import { offertes, offerteRegels, facturen, factuurRegels, klanten, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc, like } from "drizzle-orm";
 
-// POST /api/offertes/[id]/converteer — Convert offerte to factuur
+// POST /api/offertes/[id]/converteer — Convert offerte to factuur + project
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,12 +24,41 @@ export async function POST(
 
     if (offerte.status !== "geaccepteerd") {
       return NextResponse.json(
-        { fout: "Alleen geaccepteerde offertes kunnen geconverteerd worden naar een factuur." },
+        { fout: "Alleen geaccepteerde offertes kunnen geconverteerd worden." },
         { status: 400 }
       );
     }
 
-    // Generate factuurnummer: AUT-YYYY-NNN
+    // 1. Activate klant if not already active
+    await db
+      .update(klanten)
+      .set({ isActief: 1, bijgewerktOp: new Date().toISOString() })
+      .where(eq(klanten.id, offerte.klantId!));
+
+    // 2. Create project based on offerte
+    const projectNaam = offerte.titel || `Project ${offerte.offertenummer}`;
+    const [nieuwProject] = await db
+      .insert(projecten)
+      .values({
+        klantId: offerte.klantId,
+        naam: projectNaam,
+        omschrijving: offerte.scope || offerte.deliverables || undefined,
+        status: "actief",
+        voortgangPercentage: 0,
+        geschatteUren: offerte.type === "per_uur" ? undefined : undefined,
+        deadline: offerte.tijdlijn || undefined,
+        isActief: 1,
+        aangemaaktDoor: gebruiker.id,
+      })
+      .returning();
+
+    // Update offerte with the new project ID
+    await db
+      .update(offertes)
+      .set({ projectId: nieuwProject.id })
+      .where(eq(offertes.id, Number(id)));
+
+    // 3. Generate factuurnummer: AUT-YYYY-NNN
     const jaar = new Date().getFullYear();
     const [laatsteFactuur] = await db
       .select({ factuurnummer: facturen.factuurnummer })
@@ -49,12 +78,12 @@ export async function POST(
     const vervalDatum = new Date();
     vervalDatum.setDate(vervalDatum.getDate() + 30);
 
-    // Create factuur
+    // 4. Create factuur in concept status
     const [nieuweFactuur] = await db
       .insert(facturen)
       .values({
         klantId: offerte.klantId,
-        projectId: offerte.projectId,
+        projectId: nieuwProject.id,
         factuurnummer,
         status: "concept",
         bedragExclBtw: offerte.bedragExclBtw || 0,
@@ -68,7 +97,7 @@ export async function POST(
       })
       .returning();
 
-    // Copy offerte regels to factuur regels
+    // 5. Copy offerte regels to factuur regels
     const regels = await db
       .select()
       .from(offerteRegels)
@@ -85,7 +114,14 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ factuurId: nieuweFactuur.id, factuurnummer }, { status: 201 });
+    return NextResponse.json(
+      {
+        projectId: nieuwProject.id,
+        factuurId: nieuweFactuur.id,
+        factuurnummer,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { meetings, taken, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
 
 interface Actiepunt {
   tekst: string;
@@ -15,31 +14,46 @@ interface AnalyseResultaat {
   actiepunten: Actiepunt[];
   besluiten: string[];
   openVragen: string[];
+  sentiment: string;
+  duurMinuten: number | null;
+  tags: string[];
 }
 
 async function analyseTranscript(
   transcript: string
 ): Promise<AnalyseResultaat> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    throw new Error("ANTHROPIC_API_KEY niet geconfigureerd");
+    throw new Error("OPENAI_API_KEY niet geconfigureerd");
   }
 
-  const client = new Anthropic({ apiKey });
-
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 2048,
-    messages: [
-      {
-        role: "user",
-        content: `Je bent een meeting-assistent voor Autronis, een AI- en automatiseringsbedrijf.
-Analyseer dit meeting-transcript en genereer:
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      max_tokens: 2048,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `Je bent een meeting-assistent voor Autronis, een AI- en automatiseringsbedrijf (Sem en Syb).
+Analyseer meeting-transcripten en genereer gestructureerde output in JSON.`,
+        },
+        {
+          role: "user",
+          content: `Analyseer dit meeting-transcript en genereer:
 
 1. samenvatting: 3-5 bullet points van de belangrijkste punten
-2. actiepunten: concrete taken met wie verantwoordelijk is (formaat: {"tekst": "...", "verantwoordelijke": "Sem"|"Syb"|"Klant"|"Onbekend"})
+2. actiepunten: concrete taken met wie verantwoordelijk is
 3. besluiten: wat is er besloten
 4. openVragen: wat moet nog uitgezocht/beantwoord worden
+5. sentiment: korte beschrijving van de stemming/toon van het gesprek
+6. duurMinuten: schat de duur in minuten op basis van de hoeveelheid content (null als niet te schatten)
+7. tags: relevante tags (bijv. ["sales", "technisch", "intern", "klantgesprek"])
 
 Transcript:
 ${transcript}
@@ -47,22 +61,34 @@ ${transcript}
 Antwoord als JSON:
 {
   "samenvatting": "bullet points als string",
-  "actiepunten": [{"tekst": "...", "verantwoordelijke": "..."}],
+  "actiepunten": [{"tekst": "...", "verantwoordelijke": "Sem"|"Syb"|"Klant"|"Onbekend"}],
   "besluiten": ["..."],
-  "openVragen": ["..."]
-}
-Alleen JSON, geen uitleg.`,
-      },
-    ],
+  "openVragen": ["..."],
+  "sentiment": "...",
+  "duurMinuten": null,
+  "tags": ["..."]
+}`,
+        },
+      ],
+    }),
   });
 
-  const textBlock = message.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text") {
-    throw new Error("Geen tekst ontvangen van Claude");
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(`OpenAI API fout: ${response.status} - ${errorBody}`);
   }
 
-  const parsed = JSON.parse(textBlock.text) as AnalyseResultaat;
-  return parsed;
+  const data = (await response.json()) as {
+    choices: Array<{ message: { content: string } }>;
+  };
+
+  const content = data.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("Geen response van OpenAI");
+  }
+
+  const cleaned = content.replace(/```json\n?|\n?```/g, "").trim();
+  return JSON.parse(cleaned) as AnalyseResultaat;
 }
 
 function createTakenFromActiepunten(
@@ -160,6 +186,9 @@ export async function POST(
         actiepunten: JSON.stringify(analyse.actiepunten),
         besluiten: JSON.stringify(analyse.besluiten),
         openVragen: JSON.stringify(analyse.openVragen),
+        sentiment: analyse.sentiment,
+        duurMinuten: analyse.duurMinuten,
+        tags: JSON.stringify(analyse.tags),
         status: "klaar",
       })
       .where(eq(meetings.id, meetingId))

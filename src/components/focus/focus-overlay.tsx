@@ -1,10 +1,73 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Pause, Play, Square, Target } from "lucide-react";
+import { Pause, Play, Square, Target, Volume2, VolumeX } from "lucide-react";
 import { useFocus } from "@/hooks/use-focus";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { cn } from "@/lib/utils";
+
+// Ambient sound via Web Audio API (brown noise)
+function useAmbientSound() {
+  const ctxRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const gainRef = useRef<GainNode | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const toggle = useCallback(() => {
+    if (isPlaying) {
+      // Stop
+      try {
+        sourceRef.current?.stop();
+        sourceRef.current = null;
+      } catch { /* already stopped */ }
+      setIsPlaying(false);
+      return;
+    }
+
+    // Start brown noise
+    try {
+      if (!ctxRef.current) ctxRef.current = new AudioContext();
+      const ctx = ctxRef.current;
+      if (ctx.state === "suspended") ctx.resume();
+
+      const bufferSize = ctx.sampleRate * 60; // 60 sec loop
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      let lastOut = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        data[i] = (lastOut + 0.02 * white) / 1.02;
+        lastOut = data[i];
+        data[i] *= 3.5; // volume boost
+      }
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+
+      const gain = ctx.createGain();
+      gain.gain.value = 0.15;
+
+      source.connect(gain);
+      gain.connect(ctx.destination);
+      source.start();
+
+      sourceRef.current = source;
+      gainRef.current = gain;
+      setIsPlaying(true);
+    } catch { /* Audio not supported */ }
+  }, [isPlaying]);
+
+  const cleanup = useCallback(() => {
+    try { sourceRef.current?.stop(); } catch { /* noop */ }
+    sourceRef.current = null;
+    setIsPlaying(false);
+  }, []);
+
+  return { isPlaying, toggle, cleanup };
+}
 
 function formatCountdown(seconden: number): string {
   const min = Math.floor(seconden / 60);
@@ -17,6 +80,14 @@ export function FocusOverlay() {
   const [showStopDialog, setShowStopDialog] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ambient = useAmbientSound();
+
+  // Cleanup ambient when overlay closes
+  useEffect(() => {
+    if (!focus.showOverlay || !focus.isActive) {
+      ambient.cleanup();
+    }
+  }, [focus.showOverlay, focus.isActive, ambient.cleanup]);
 
   // Tick interval
   useEffect(() => {
@@ -174,6 +245,19 @@ export function FocusOverlay() {
                     Pauze
                   </>
                 )}
+              </button>
+
+              <button
+                onClick={ambient.toggle}
+                className={cn(
+                  "flex items-center gap-2 px-5 py-3 rounded-xl border transition-colors",
+                  ambient.isPlaying
+                    ? "bg-autronis-accent/10 border-autronis-accent/30 text-autronis-accent"
+                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/50"
+                )}
+                title={ambient.isPlaying ? "Geluid uit" : "Ambient geluid"}
+              >
+                {ambient.isPlaying ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
               </button>
 
               <button

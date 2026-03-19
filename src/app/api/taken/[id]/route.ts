@@ -20,6 +20,11 @@ export async function PUT(
     if (body.status !== undefined) updateData.status = body.status;
     if (body.deadline !== undefined) updateData.deadline = body.deadline || null;
     if (body.prioriteit !== undefined) updateData.prioriteit = body.prioriteit;
+    if (body.fase !== undefined) updateData.fase = body.fase || null;
+    if (body.volgorde !== undefined) updateData.volgorde = body.volgorde;
+    if (body.uitvoerder !== undefined) updateData.uitvoerder = body.uitvoerder;
+    if (body.prompt !== undefined) updateData.prompt = body.prompt?.trim() || null;
+    if (body.projectMap !== undefined) updateData.projectMap = body.projectMap || null;
 
     const [bijgewerkt] = await db
       .update(taken)

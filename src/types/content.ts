@@ -50,13 +50,24 @@ export interface Scene {
 }
 
 export type VideoStatus = "script" | "rendering" | "klaar" | "fout";
+export type VideoFormaat = "square" | "reels" | "feed" | "youtube";
+
+export const VIDEO_FORMAAT_LABELS: Record<VideoFormaat, string> = {
+  square: "Vierkant (1:1)",
+  reels: "Reels (9:16)",
+  feed: "Feed (4:5)",
+  youtube: "YouTube (16:9)",
+};
 
 export interface ContentVideo {
   id: number;
   postId: number | null;
+  titel?: string | null;
+  templateId?: string | null;
   script: Scene[];
   status: VideoStatus;
   videoPath?: string | null;
+  formaat?: VideoFormaat | null;
   duurSeconden?: number | null;
   aangemaaktOp: string | null;
   // Joined from post
@@ -90,11 +101,12 @@ export interface ContentPost {
 
 // ============ BANNER TYPES ============
 
-export type BannerFormaat = "instagram" | "instagram_story" | "linkedin";
+export type BannerFormaat = "instagram" | "instagram_square" | "instagram_story" | "linkedin";
 export type BannerStatus = "concept" | "klaar" | "fout";
 
 export const BANNER_FORMAAT_SIZES: Record<BannerFormaat, { width: number; height: number; label: string }> = {
   instagram: { width: 1080, height: 1350, label: "Instagram (4:5)" },
+  instagram_square: { width: 1080, height: 1080, label: "Instagram (1:1)" },
   instagram_story: { width: 1080, height: 1920, label: "Instagram Story (9:16)" },
   linkedin: { width: 1200, height: 627, label: "LinkedIn (1200x627)" },
 };
@@ -131,17 +143,8 @@ export const BANNER_ILLUSTRATIONS = [
 ] as const;
 export type BannerIllustration = typeof BANNER_ILLUSTRATIONS[number];
 
-// Map illustration types to real PNG background images (from Lovable project)
-// Falls back to SVG illustration if no PNG available
-export const BANNER_ILLUSTRATION_BACKGROUNDS: Partial<Record<BannerIllustration, string>> = {
-  gear: "/banners/backgrounds/cover-process-automation.png",
-  brain: "/banners/backgrounds/cover-ai-agents.png",
-  chart: "/banners/backgrounds/cover-data-reporting.png",
-  nodes: "/banners/backgrounds/cover-systeemintegraties.png",
-  shield: "/banners/backgrounds/cover-veiligheid-data.png",
-  flow: "/banners/backgrounds/cover-hoe-wij-werken.png",
-  lightbulb: "/banners/backgrounds/cover-handmatig-werk.png",
-};
+// PNG backgrounds disabled — using clean SVG illustrations instead
+export const BANNER_ILLUSTRATION_BACKGROUNDS: Partial<Record<BannerIllustration, string>> = {};
 
 export const BANNER_ILLUSTRATION_LABELS: Record<BannerIllustration, string> = {
   gear: "Mechanisme",

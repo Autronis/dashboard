@@ -35,15 +35,15 @@ function buildSceneRanges(
 
 export const AutronisVideo: React.FC<VideoProps> = ({ scenes }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
 
   const ranges = buildSceneRanges(scenes, fps);
 
   return (
     <div
       style={{
-        width: 1080,
-        height: 1080,
+        width,
+        height,
         position: "relative",
         overflow: "hidden",
         fontFamily: "Inter, sans-serif",
@@ -84,8 +84,8 @@ export const AutronisVideo: React.FC<VideoProps> = ({ scenes }) => {
               position: "absolute",
               top: 0,
               left: 0,
-              width: 1080,
-              height: 1080,
+              width,
+              height,
               opacity: sceneOpacity,
             }}
           >

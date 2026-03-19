@@ -47,27 +47,27 @@ export function KPICard({
       transition={{ delay: index * 0.08, duration: 0.35, ease: "easeOut" }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className={cn(
-        "bg-gradient-to-br to-autronis-card border border-autronis-border rounded-xl p-6 card-glow relative overflow-hidden",
+        "bg-gradient-to-br to-autronis-card border border-autronis-border rounded-xl p-4 card-glow relative overflow-hidden",
         c.bg,
         className
       )}
     >
       {/* Icon top-left with glow */}
       {icon && (
-        <div className={cn("mb-3 icon-glow", c.text)}>
+        <div className={cn("mb-2 icon-glow", c.text)}>
           {icon}
         </div>
       )}
 
       {/* Label */}
-      <p className="text-sm font-medium text-autronis-text-secondary mb-1">{label}</p>
+      <p className="text-xs font-medium text-autronis-text-secondary mb-0.5">{label}</p>
 
       {/* Value */}
       <div className="flex items-end justify-between gap-2">
         <AnimatedNumber
           value={value}
           format={format}
-          className={cn("text-4xl font-bold tabular-nums", c.text)}
+          className={cn("text-2xl font-bold tabular-nums", c.text)}
         />
 
         {/* Trend indicator */}

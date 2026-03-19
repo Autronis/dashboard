@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Clock, Monitor, Users, Shield, Hash, Pause, TrendingUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, Brain, Zap } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSessies } from "@/hooks/queries/use-screen-time";
@@ -76,7 +76,7 @@ export default function TijdPage() {
         {activeTab === "tijdlijn" && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Actieve tijd */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-full bg-[#17B8A5]/15 flex items-center justify-center shrink-0">
                   <Clock className="w-4 h-4 text-autronis-accent" />
@@ -94,27 +94,8 @@ export default function TijdPage() {
               )}
             </div>
 
-            {/* Idle tijd */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-autronis-text-secondary/10 flex items-center justify-center shrink-0">
-                  <Pause className="w-4 h-4 text-autronis-text-secondary" />
-                </div>
-                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Idle tijd
-                </span>
-              </div>
-              {sessiesLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                  {formatTijd(stats?.totaalIdle ?? 0)}
-                </p>
-              )}
-            </div>
-
             {/* Productief % */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
                   <TrendingUp className="w-4 h-4 text-green-400" />
@@ -133,23 +114,58 @@ export default function TijdPage() {
               )}
             </div>
 
-            {/* Aantal sessies */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            {/* Deep Work — totale deep work tijd (sessies ≥25 min) */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-blue-500/15 flex items-center justify-center shrink-0">
-                  <Hash className="w-4 h-4 text-blue-400" />
+                <div className="w-9 h-9 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4 text-yellow-400" />
                 </div>
                 <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Sessies
+                  Deep work
                 </span>
               </div>
               {sessiesLoading ? (
-                <Skeleton className="h-8 w-12" />
+                <Skeleton className="h-8 w-24" />
               ) : (
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                  {stats?.aantalSessies ?? 0}
-                </p>
+                <div>
+                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
+                    {formatTijd((stats?.deepWorkMinuten ?? 0) * 60)}
+                  </p>
+                  <div className="w-full h-1 bg-autronis-border/30 rounded-full mt-2 overflow-hidden">
+                    <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${Math.min(100, ((stats?.deepWorkMinuten ?? 0) / (stats?.deepWorkTarget ?? 240)) * 100)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-autronis-text-secondary mt-1 tabular-nums">
+                    van {formatTijd((stats?.deepWorkTarget ?? 240) * 60)} doel
+                  </p>
+                </div>
               )}
+            </div>
+
+            {/* Flow Score */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-full bg-purple-500/15 flex items-center justify-center shrink-0">
+                  <Brain className="w-4 h-4 text-purple-400" />
+                </div>
+                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
+                  Flow Score
+                </span>
+              </div>
+              {sessiesLoading ? (
+                <Skeleton className="h-8 w-16" />
+              ) : (() => {
+                const score = stats?.focusScore ?? 0;
+                const color = score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-red-400";
+                const label = score >= 70 ? "Sterk" : score >= 40 ? "Kan beter" : "Zwak";
+                return (
+                  <div>
+                    <p className={`text-2xl font-bold tabular-nums ${color}`}>
+                      {score}<span className="text-sm font-medium text-autronis-text-secondary ml-1">/100</span>
+                    </p>
+                    <p className={`text-[10px] mt-1 font-medium ${color}`}>{label}</p>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -226,7 +242,7 @@ export default function TijdPage() {
         )}
 
         {/* Active tab content */}
-        {activeTab === "tijdlijn" && <TabTijdlijn datum={van} />}
+        {activeTab === "tijdlijn" && <TabTijdlijn datum={van} periode={periode} />}
         {activeTab === "registraties" && <TabRegistraties />}
         {activeTab === "team" && <TabTeam van={van} tot={tot} />}
         {activeTab === "regels" && <TabRegelsSuggesties />}

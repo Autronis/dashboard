@@ -1,5 +1,8 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import path from "path";
+import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
+
+const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
 
 Font.register({
   family: "Inter",
@@ -10,33 +13,63 @@ Font.register({
   ],
 });
 
+const TEAL = "#17B8A5";
+const DARK_BG = "#0E1719";
+const TEXT_PRIMARY = "#E8ECED";
+const TEXT_SECONDARY = "#8A9BA0";
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Inter",
     fontSize: 10,
-    padding: 50,
-    color: "#1F2529",
+    color: "#1F2937",
+    backgroundColor: "#FFFFFF",
   },
-  header: {
+  headerBand: {
+    backgroundColor: DARK_BG,
+    paddingHorizontal: 50,
+    paddingTop: 35,
+    paddingBottom: 30,
+  },
+  headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 40,
+    alignItems: "flex-start",
   },
   bedrijfsnaam: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 700,
-    color: "#128C7E",
+    color: TEAL,
+    letterSpacing: 1.5,
   },
-  bedrijfsInfo: {
+  tagline: {
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    letterSpacing: 0.8,
+    marginTop: 3,
+  },
+  headerRight: {
+    alignItems: "flex-end",
+  },
+  documentType: {
+    fontSize: 24,
+    fontWeight: 700,
+    color: TEXT_PRIMARY,
+    letterSpacing: 2,
+  },
+  factuurNummer: {
     fontSize: 9,
-    color: "#64748B",
-    lineHeight: 1.6,
+    color: TEXT_SECONDARY,
+    marginTop: 4,
   },
-  factuurTitel: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "#128C7E",
-    marginBottom: 20,
+  accentLine: {
+    height: 3,
+    backgroundColor: TEAL,
+  },
+  body: {
+    paddingHorizontal: 50,
+    paddingTop: 30,
+    paddingBottom: 20,
   },
   infoRow: {
     flexDirection: "row",
@@ -47,99 +80,141 @@ const styles = StyleSheet.create({
     width: "48%",
   },
   infoLabel: {
-    fontSize: 8,
-    color: "#94A3B8",
+    fontSize: 7,
+    fontWeight: 600,
+    color: TEAL,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 4,
+    letterSpacing: 1,
+    marginBottom: 6,
   },
   infoValue: {
     fontSize: 10,
-    lineHeight: 1.6,
+    lineHeight: 1.7,
+    color: "#374151",
   },
   table: {
-    marginTop: 10,
     marginBottom: 20,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: "#F1F5F9",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    padding: 8,
+    backgroundColor: DARK_BG,
+    padding: 10,
+    borderRadius: 4,
   },
   tableRow: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-    padding: 8,
+    borderBottomColor: "#F3F4F6",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
   },
-  colOmschrijving: { width: "40%" },
+  tableRowAlt: {
+    backgroundColor: "#F9FAFB",
+  },
+  colOmschrijving: { width: "42%" },
   colAantal: { width: "12%", textAlign: "center" },
-  colPrijs: { width: "18%", textAlign: "right" },
+  colPrijs: { width: "16%", textAlign: "right" },
   colBtw: { width: "12%", textAlign: "center" },
   colTotaal: { width: "18%", textAlign: "right" },
   headerText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 600,
-    color: "#64748B",
+    color: TEXT_PRIMARY,
     textTransform: "uppercase",
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+  },
+  regelText: {
+    fontSize: 9.5,
+    color: "#374151",
   },
   totalen: {
     alignItems: "flex-end",
     marginTop: 10,
-    marginBottom: 30,
+    marginBottom: 25,
   },
   totalenRij: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    width: 250,
-    paddingVertical: 4,
+    width: 260,
+    paddingVertical: 5,
   },
   totalenLabel: {
-    width: 130,
+    width: 140,
     textAlign: "right",
-    paddingRight: 15,
-    color: "#64748B",
+    paddingRight: 20,
+    color: "#6B7280",
+    fontSize: 10,
   },
   totalenWaarde: {
     width: 120,
     textAlign: "right",
+    fontSize: 10,
   },
   totalenGroot: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: 700,
-    color: "#128C7E",
+    color: TEAL,
   },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-    marginVertical: 20,
-  },
-  footer: {
-    marginTop: "auto",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    paddingTop: 15,
-  },
-  footerText: {
-    fontSize: 9,
-    color: "#64748B",
-    lineHeight: 1.6,
+  totalenDivider: {
+    borderTopWidth: 2,
+    borderTopColor: TEAL,
+    paddingTop: 8,
+    marginTop: 4,
   },
   notities: {
-    marginTop: 20,
-    padding: 12,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 4,
+    marginTop: 15,
+    padding: 14,
+    backgroundColor: "#F9FAFB",
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: TEAL,
   },
   notitiesLabel: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: 600,
-    color: "#64748B",
+    color: TEAL,
     textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  betaling: {
+    marginTop: 20,
+    padding: 14,
+    backgroundColor: "#F0FDFA",
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#CCFBF1",
+  },
+  betalingText: {
+    fontSize: 9,
+    color: "#0F766E",
+    lineHeight: 1.7,
+  },
+  footer: {
+    backgroundColor: DARK_BG,
+    paddingHorizontal: 50,
+    paddingVertical: 20,
+    marginTop: "auto",
+  },
+  footerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  footerCol: {
+    width: "30%",
+  },
+  footerLabel: {
+    fontSize: 6,
+    fontWeight: 600,
+    color: TEAL,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
     marginBottom: 4,
+  },
+  footerText: {
+    fontSize: 8,
+    color: TEXT_SECONDARY,
+    lineHeight: 1.6,
   },
 });
 
@@ -198,105 +273,139 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.bedrijfsnaam}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
-            <Text style={styles.bedrijfsInfo}>
-              {bedrijf.adres ? `${bedrijf.adres}\n` : ""}
-              {bedrijf.email ? `${bedrijf.email}\n` : ""}
-              {bedrijf.telefoon ? `${bedrijf.telefoon}\n` : ""}
-              {bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}\n` : ""}
-              {bedrijf.btwNummer ? `BTW: ${bedrijf.btwNummer}` : ""}
-            </Text>
-          </View>
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.factuurTitel}>FACTUUR</Text>
-          </View>
-        </View>
-
-        {/* Info row */}
-        <View style={styles.infoRow}>
-          <View style={styles.infoBlock}>
-            <Text style={styles.infoLabel}>Factuur aan</Text>
-            <Text style={styles.infoValue}>
-              {factuur.klantNaam}
-              {factuur.klantContactpersoon ? `\n${factuur.klantContactpersoon}` : ""}
-              {factuur.klantAdres ? `\n${factuur.klantAdres}` : ""}
-              {factuur.klantEmail ? `\n${factuur.klantEmail}` : ""}
-            </Text>
-          </View>
-          <View style={[styles.infoBlock, { alignItems: "flex-end" }]}>
-            <Text style={styles.infoLabel}>Factuurnummer</Text>
-            <Text style={styles.infoValue}>{factuur.factuurnummer}</Text>
-            <Text style={[styles.infoLabel, { marginTop: 10 }]}>Factuurdatum</Text>
-            <Text style={styles.infoValue}>
-              {factuur.factuurdatum ? formatDatumPDF(factuur.factuurdatum) : "—"}
-            </Text>
-            <Text style={[styles.infoLabel, { marginTop: 10 }]}>Vervaldatum</Text>
-            <Text style={styles.infoValue}>
-              {factuur.vervaldatum ? formatDatumPDF(factuur.vervaldatum) : "—"}
-            </Text>
-          </View>
-        </View>
-
-        {/* Table */}
-        <View style={styles.table}>
-          <View style={styles.tableHeader}>
-            <Text style={[styles.headerText, styles.colOmschrijving]}>Omschrijving</Text>
-            <Text style={[styles.headerText, styles.colAantal]}>Aantal</Text>
-            <Text style={[styles.headerText, styles.colPrijs]}>Prijs</Text>
-            <Text style={[styles.headerText, styles.colBtw]}>BTW %</Text>
-            <Text style={[styles.headerText, styles.colTotaal]}>Totaal</Text>
-          </View>
-          {regels.map((regel, i) => (
-            <View key={i} style={styles.tableRow}>
-              <Text style={styles.colOmschrijving}>{regel.omschrijving}</Text>
-              <Text style={styles.colAantal}>{regel.aantal || 1}</Text>
-              <Text style={styles.colPrijs}>{formatBedragPDF(regel.eenheidsprijs || 0)}</Text>
-              <Text style={styles.colBtw}>{regel.btwPercentage ?? 21}%</Text>
-              <Text style={styles.colTotaal}>{formatBedragPDF(regel.totaal || 0)}</Text>
+        {/* ===== DARK HEADER ===== */}
+        <View style={styles.headerBand}>
+          <View style={styles.headerContent}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Image src={LOGO_PATH} style={{ width: 36, height: 36 }} />
+              <View>
+                <Text style={styles.bedrijfsnaam}>
+                  {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}
+                </Text>
+                <Text style={styles.tagline}>AI & Automatisering</Text>
+              </View>
             </View>
-          ))}
+            <View style={styles.headerRight}>
+              <Text style={styles.documentType}>FACTUUR</Text>
+              <Text style={styles.factuurNummer}>{factuur.factuurnummer}</Text>
+            </View>
+          </View>
         </View>
 
-        {/* Totals */}
-        <View style={styles.totalen}>
-          <View style={styles.totalenRij}>
-            <Text style={styles.totalenLabel}>Subtotaal</Text>
-            <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.bedragExclBtw)}</Text>
+        <View style={styles.accentLine} />
+
+        {/* ===== BODY ===== */}
+        <View style={styles.body}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoBlock}>
+              <Text style={styles.infoLabel}>Factuur aan</Text>
+              <Text style={styles.infoValue}>
+                {factuur.klantNaam}
+                {factuur.klantContactpersoon ? `\nt.a.v. ${factuur.klantContactpersoon}` : ""}
+                {factuur.klantAdres ? `\n${factuur.klantAdres}` : ""}
+                {factuur.klantEmail ? `\n${factuur.klantEmail}` : ""}
+              </Text>
+            </View>
+            <View style={[styles.infoBlock, { alignItems: "flex-end" }]}>
+              <Text style={styles.infoLabel}>Factuurdatum</Text>
+              <Text style={styles.infoValue}>
+                {factuur.factuurdatum ? formatDatumPDF(factuur.factuurdatum) : "\u2014"}
+              </Text>
+              <Text style={[styles.infoLabel, { marginTop: 12 }]}>Vervaldatum</Text>
+              <Text style={styles.infoValue}>
+                {factuur.vervaldatum ? formatDatumPDF(factuur.vervaldatum) : "\u2014"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.totalenRij}>
-            <Text style={styles.totalenLabel}>BTW ({factuur.btwPercentage || 21}%)</Text>
-            <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.btwBedrag || 0)}</Text>
+
+          {/* Table */}
+          <View style={styles.table}>
+            <View style={styles.tableHeader}>
+              <Text style={[styles.headerText, styles.colOmschrijving]}>Omschrijving</Text>
+              <Text style={[styles.headerText, styles.colAantal]}>Aantal</Text>
+              <Text style={[styles.headerText, styles.colPrijs]}>Prijs</Text>
+              <Text style={[styles.headerText, styles.colBtw]}>BTW</Text>
+              <Text style={[styles.headerText, styles.colTotaal]}>Totaal</Text>
+            </View>
+            {regels.map((regel, i) => (
+              <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
+                <Text style={[styles.regelText, styles.colOmschrijving]}>{regel.omschrijving}</Text>
+                <Text style={[styles.regelText, styles.colAantal]}>{regel.aantal || 1}</Text>
+                <Text style={[styles.regelText, styles.colPrijs]}>{formatBedragPDF(regel.eenheidsprijs || 0)}</Text>
+                <Text style={[styles.regelText, styles.colBtw]}>{regel.btwPercentage ?? 21}%</Text>
+                <Text style={[styles.regelText, styles.colTotaal]}>{formatBedragPDF(regel.totaal || 0)}</Text>
+              </View>
+            ))}
           </View>
-          <View style={[styles.totalenRij, { borderTopWidth: 1, borderTopColor: "#E2E8F0", paddingTop: 8, marginTop: 4 }]}>
-            <Text style={[styles.totalenLabel, styles.totalenGroot]}>Totaal</Text>
-            <Text style={[styles.totalenWaarde, styles.totalenGroot]}>
-              {formatBedragPDF(factuur.bedragInclBtw || 0)}
+
+          {/* Totals */}
+          <View style={styles.totalen}>
+            <View style={styles.totalenRij}>
+              <Text style={styles.totalenLabel}>Subtotaal</Text>
+              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.bedragExclBtw)}</Text>
+            </View>
+            <View style={styles.totalenRij}>
+              <Text style={styles.totalenLabel}>BTW ({factuur.btwPercentage || 21}%)</Text>
+              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.btwBedrag || 0)}</Text>
+            </View>
+            <View style={[styles.totalenRij, styles.totalenDivider]}>
+              <Text style={[styles.totalenLabel, styles.totalenGroot]}>Totaal</Text>
+              <Text style={[styles.totalenWaarde, styles.totalenGroot]}>
+                {formatBedragPDF(factuur.bedragInclBtw || 0)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Notities */}
+          {factuur.notities && (
+            <View style={styles.notities}>
+              <Text style={styles.notitiesLabel}>Opmerkingen</Text>
+              <Text style={{ fontSize: 9, lineHeight: 1.7, color: "#374151" }}>
+                {factuur.notities}
+              </Text>
+            </View>
+          )}
+
+          {/* Betaalinstructies */}
+          <View style={styles.betaling}>
+            <Text style={styles.betalingText}>
+              {bedrijf.iban
+                ? `Gelieve te betalen op IBAN ${bedrijf.iban} t.n.v. ${bedrijf.bedrijfsnaam || "Autronis"}`
+                : ""}
+              {factuur.vervaldatum
+                ? `\nBetalingstermijn: voor ${formatDatumPDF(factuur.vervaldatum)}`
+                : ""}
+              {`\nO.v.v. ${factuur.factuurnummer}`}
             </Text>
           </View>
         </View>
 
-        {/* Notities */}
-        {factuur.notities && (
-          <View style={styles.notities}>
-            <Text style={styles.notitiesLabel}>Opmerkingen</Text>
-            <Text style={{ fontSize: 9, lineHeight: 1.6 }}>{factuur.notities}</Text>
-          </View>
-        )}
-
-        {/* Footer */}
+        {/* ===== DARK FOOTER ===== */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            {bedrijf.iban
-              ? `Gelieve te betalen op IBAN ${bedrijf.iban} t.n.v. ${bedrijf.bedrijfsnaam || "Autronis"}`
-              : ""}
-            {factuur.vervaldatum
-              ? `\nBetalingstermijn: ${factuur.vervaldatum ? `voor ${formatDatumPDF(factuur.vervaldatum)}` : ""}`
-              : ""}
-            {`\nO.v.v. ${factuur.factuurnummer}`}
-          </Text>
+          <View style={styles.footerContent}>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Contact</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.bedrijfsnaam || "Autronis"}
+                {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
+              </Text>
+            </View>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Bereikbaar</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.email || "zakelijk@autronis.com"}
+                {bedrijf.telefoon ? `\n${bedrijf.telefoon}` : ""}
+              </Text>
+            </View>
+            <View style={styles.footerCol}>
+              <Text style={styles.footerLabel}>Gegevens</Text>
+              <Text style={styles.footerText}>
+                {bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}` : ""}
+                {bedrijf.btwNummer ? `\nBTW: ${bedrijf.btwNummer}` : ""}
+                {bedrijf.iban ? `\nIBAN: ${bedrijf.iban}` : ""}
+              </Text>
+            </View>
+          </View>
         </View>
       </Page>
     </Document>

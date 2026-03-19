@@ -243,7 +243,7 @@ export default function InstellingenPage() {
               type="email"
               value={currentBedrijf.email}
               onChange={(e) => setBedrijf({ ...currentBedrijf, email: e.target.value })}
-              placeholder="factuur@autronis.com"
+              placeholder="zakelijk@autronis.com"
               className={inputClasses}
             />
           </div>

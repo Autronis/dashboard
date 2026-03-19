@@ -24,11 +24,38 @@ interface Concurrent {
   linkedinUrl: string | null;
   instagramHandle: string | null;
   scanPaginas: string | null;
+  beschrijving: string | null;
+  diensten: string | null; // JSON array
+  techStack: string | null; // JSON array
+  prijzen: string | null;
+  teamGrootte: string | null;
+  sterktes: string | null; // JSON array
+  zwaktes: string | null; // JSON array
+  overlapScore: number | null;
+  overlapUitleg: string | null;
+  threatLevel: string | null;
+  threatUitleg: string | null;
   notities: string | null;
   isActief: number | null;
   aangemaaktOp: string | null;
   bijgewerktOp: string | null;
   laatsteScan: ConcurrentScan | null;
+}
+
+interface ConcurrentAnalyse {
+  naam: string;
+  beschrijving: string;
+  diensten: string[];
+  techStack: string[];
+  prijzen: string | null;
+  teamGrootte: string | null;
+  sterktes: string[];
+  zwaktes: string[];
+  socialMedia: { linkedin: string | null; instagram: string | null };
+  overlapScore: number;
+  overlapUitleg: string;
+  threatLevel: string;
+  threatUitleg: string;
 }
 
 interface ConcurrentenData {
@@ -114,6 +141,17 @@ export function useCreateConcurrent() {
       linkedinUrl?: string;
       instagramHandle?: string;
       scanPaginas?: string[];
+      beschrijving?: string;
+      diensten?: string[];
+      techStack?: string[];
+      prijzen?: string;
+      teamGrootte?: string;
+      sterktes?: string[];
+      zwaktes?: string[];
+      overlapScore?: number;
+      overlapUitleg?: string;
+      threatLevel?: string;
+      threatUitleg?: string;
       notities?: string;
     }) => {
       const res = await fetch("/api/concurrenten", {
@@ -191,4 +229,21 @@ export function useStartScan() {
   });
 }
 
-export type { Concurrent, ConcurrentScan, ConcurrentenData, ConcurrentDetail, ScanStatus };
+export function useAnalyseConcurrent() {
+  return useMutation({
+    mutationFn: async (url: string): Promise<{ analyse: ConcurrentAnalyse }> => {
+      const res = await fetch("/api/concurrenten/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "Analyse mislukt");
+      }
+      return res.json();
+    },
+  });
+}
+
+export type { Concurrent, ConcurrentScan, ConcurrentenData, ConcurrentDetail, ScanStatus, ConcurrentAnalyse };

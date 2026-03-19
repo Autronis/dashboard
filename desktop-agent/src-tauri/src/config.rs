@@ -10,6 +10,12 @@ pub struct Config {
     pub sync_interval_secs: u64,
     pub excluded_apps: Vec<String>,
     pub tracking_enabled: bool,
+    #[serde(default = "default_dashboard_dir")]
+    pub dashboard_dir: String,
+}
+
+fn default_dashboard_dir() -> String {
+    r"C:\Users\semmi\OneDrive\Claude AI\Projects\autronis-dashboard".to_string()
 }
 
 impl Default for Config {
@@ -29,6 +35,7 @@ impl Default for Config {
                 "ShellExperienceHost".to_string(),
             ],
             tracking_enabled: true,
+            dashboard_dir: default_dashboard_dir(),
         }
     }
 }

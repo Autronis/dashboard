@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAutoSync } from "@/hooks/use-auto-sync";
 import {
   Euro,
   Clock,
@@ -33,6 +34,8 @@ import {
   FileDown,
   Code,
   Eye,
+  Bookmark,
+  ListChecks,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,14 +45,15 @@ import { useInzichten, type Inzicht } from "@/hooks/queries/use-inzichten";
 import { useBriefing, useGenereerBriefing, type Briefing } from "@/hooks/queries/use-briefing";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
-import { AnimatedNumber } from "@/components/ui/animated-number";
+
 import { KPICard } from "@/components/ui/kpi-card";
-import { Sparkline } from "@/components/ui/sparkline";
+
 import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { HabitWidget } from "@/components/gewoontes/habit-widget";
 import { FocusWidget } from "@/components/focus/focus-widget";
+import { ProjectVoortgangWidget } from "@/components/taken/project-voortgang-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
@@ -68,6 +72,12 @@ function getDatumString(): string {
     month: "long",
     year: "numeric",
   });
+}
+
+function trunceerNaarZinnen(tekst: string, max: number): string {
+  const zinnen = tekst.match(/[^.!?]+[.!?]+/g);
+  if (!zinnen || zinnen.length <= max) return tekst;
+  return zinnen.slice(0, max).join("").trim() + "...";
 }
 
 function deadlineKleur(deadline: string): string {
@@ -195,17 +205,17 @@ function DailyBriefing() {
   if (!briefing) return null;
 
   return (
-    <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 space-y-6 card-gradient">
+    <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-4 lg:p-5 space-y-3 card-gradient">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-5 h-5 text-autronis-accent" />
-            <h2 className="text-xl font-semibold text-white">Dagbriefing</h2>
+          <div className="flex items-center gap-2 mb-1">
+            <Sparkles className="w-4 h-4 text-autronis-accent" />
+            <h2 className="text-base font-semibold text-white">Dagbriefing</h2>
           </div>
           {briefing.samenvatting && (
-            <p className="text-base text-autronis-text-secondary leading-relaxed">
-              {briefing.samenvatting}
+            <p className="text-sm text-autronis-text-secondary leading-relaxed">
+              {trunceerNaarZinnen(briefing.samenvatting, 2)}
             </p>
           )}
         </div>
@@ -220,12 +230,12 @@ function DailyBriefing() {
       </div>
 
       {/* Content grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {/* Left column */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/* Agenda vandaag */}
-          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
-            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+          <div className="bg-autronis-bg/50 rounded-lg p-3">
+            <h3 className="text-xs font-semibold text-autronis-text-primary mb-2 flex items-center gap-1.5">
               <Calendar className="w-4 h-4 text-autronis-accent" />
               Agenda vandaag
             </h3>
@@ -252,16 +262,16 @@ function DailyBriefing() {
           </div>
 
           {/* Prioriteit taken */}
-          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
-            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-autronis-accent" />
+          <div className="bg-autronis-bg/50 rounded-lg p-3">
+            <h3 className="text-xs font-semibold text-autronis-text-primary mb-2 flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5 text-autronis-accent" />
               Prioriteit taken
             </h3>
             {briefing.takenPrioriteit.length === 0 ? (
               <p className="text-sm text-autronis-text-secondary">Geen openstaande taken</p>
             ) : (
               <div className="space-y-2">
-                {briefing.takenPrioriteit.map((taak) => {
+                {briefing.takenPrioriteit.slice(0, 3).map((taak) => {
                   const cfg = briefingPrioConfig[taak.prioriteit] || briefingPrioConfig.normaal;
                   return (
                     <Link
@@ -272,35 +282,42 @@ function DailyBriefing() {
                       <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", cfg.color, cfg.bg)}>
                         {taak.prioriteit}
                       </span>
-                      <span className="text-sm text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
+                      <span className="text-base text-autronis-text-primary truncate min-w-0 flex-1 group-hover:text-autronis-accent transition-colors">
                         {taak.titel}
                       </span>
                       {taak.projectNaam && (
-                        <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden sm:inline">
+                        <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden lg:inline max-w-[120px] truncate">
                           {taak.projectNaam}
                         </span>
                       )}
                     </Link>
                   );
                 })}
+                {briefing.takenPrioriteit.length > 3 && (
+                  <Link href="/taken" className="text-xs text-autronis-accent hover:underline">
+                    +{briefing.takenPrioriteit.length - 3} meer taken →
+                  </Link>
+                )}
               </div>
             )}
           </div>
         </div>
 
         {/* Right column */}
-        <div className="space-y-5">
+        <div className="space-y-3">
           {/* Project updates */}
-          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
-            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-autronis-accent" />
+          <div className="bg-autronis-bg/50 rounded-lg p-3">
+            <h3 className="text-xs font-semibold text-autronis-text-primary mb-2 flex items-center gap-1.5">
+              <TrendingUp className="w-3.5 h-3.5 text-autronis-accent" />
               Project updates
             </h3>
-            {briefing.projectUpdates.length === 0 ? (
+            {(() => {
+              const activeUpdates = briefing.projectUpdates.filter((p) => p.voortgang > 0);
+              return activeUpdates.length === 0 ? (
               <p className="text-sm text-autronis-text-secondary">Geen actieve projecten</p>
             ) : (
               <div className="space-y-3">
-                {briefing.projectUpdates.map((project, i) => (
+                {activeUpdates.slice(0, 4).map((project, i) => (
                   <div key={i}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-autronis-text-primary font-medium truncate">{project.naam}</span>
@@ -322,21 +339,27 @@ function DailyBriefing() {
                     </div>
                   </div>
                 ))}
+                {activeUpdates.length > 4 && (
+                  <Link href="/projecten" className="text-xs text-autronis-accent hover:underline">
+                    +{activeUpdates.length - 4} meer →
+                  </Link>
+                )}
               </div>
-            )}
+            );
+            })()}
           </div>
 
           {/* Quick wins */}
-          <div className="bg-autronis-bg/50 rounded-xl p-5 card-glow">
-            <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-              <Zap className="w-4 h-4 text-autronis-accent" />
+          <div className="bg-autronis-bg/50 rounded-lg p-3">
+            <h3 className="text-xs font-semibold text-autronis-text-primary mb-2 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-autronis-accent" />
               Quick wins
             </h3>
             {briefing.quickWins.length === 0 ? (
               <p className="text-sm text-autronis-text-secondary">Geen quick wins gevonden</p>
             ) : (
               <div className="space-y-2">
-                {briefing.quickWins.map((qw) => (
+                {briefing.quickWins.slice(0, 2).map((qw) => (
                   <Link
                     key={qw.id}
                     href="/taken"
@@ -371,9 +394,13 @@ function IdeeVanDeDag() {
   const aiIdeeenVandaag = ideeen.filter(
     (i: Idee) => i.isAiSuggestie === 1 && i.aangemaaktOp?.slice(0, 10) === vandaag
   );
+  // Pick best AI idea of today, or a stable "random" idea from backlog based on day-of-year
+  const dagIndex = Math.floor(Date.now() / 86400000);
   const beste = aiIdeeenVandaag.length > 0
     ? aiIdeeenVandaag.reduce((a: Idee, b: Idee) => ((a.aiScore ?? 0) >= (b.aiScore ?? 0) ? a : b))
-    : null;
+    : ideeen.length > 0
+      ? ideeen[dagIndex % ideeen.length]
+      : null;
 
   const handleGenereer = () => {
     genereer.mutate(undefined, {
@@ -468,7 +495,7 @@ const categorieLabels: Record<string, string> = {
 
 function RadarWidget() {
   const { data: items = [], isLoading } = useRadarItems({ minScore: 7 });
-  const topItems = items.slice(0, 5);
+  const topItems = items.slice(0, 3);
 
   if (isLoading) {
     return (
@@ -514,12 +541,9 @@ function RadarWidget() {
       ) : (
         <div className="space-y-3">
           {topItems.map((item) => (
-            <a
+            <div
               key={item.id}
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-autronis-bg/50 rounded-xl p-4 flex items-start gap-3 hover:bg-autronis-bg/80 transition-colors block group"
+              className="bg-autronis-bg/50 rounded-xl p-4 flex items-start gap-3 hover:bg-autronis-bg/80 transition-colors group"
             >
               <span
                 className={cn(
@@ -531,7 +555,12 @@ function RadarWidget() {
               >
                 {item.score}/10
               </span>
-              <div className="flex-1 min-w-0">
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 min-w-0"
+              >
                 <p className="text-sm font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors line-clamp-1">
                   {item.titel}
                   <ExternalLink className="w-3 h-3 inline ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -554,8 +583,18 @@ function RadarWidget() {
                     <span className="text-xs text-autronis-text-secondary/60">{item.bronNaam}</span>
                   )}
                 </div>
-              </div>
-            </a>
+              </a>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.writeText(item.url);
+                }}
+                className="flex-shrink-0 p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors opacity-0 group-hover:opacity-100"
+                title="Bewaar"
+              >
+                <Bookmark className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ))}
         </div>
       )}
@@ -564,6 +603,7 @@ function RadarWidget() {
 }
 
 export default function DashboardPage() {
+  useAutoSync();
   const { addToast } = useToast();
   const timer = useTimer();
   const queryClient = useQueryClient();
@@ -741,17 +781,17 @@ export default function DashboardPage() {
   };
 
   const { gebruiker, kpis, mijnTaken, deadlines, teamgenoot, projecten } = data;
-  const maxUrenDag = teamgenoot ? Math.max(...teamgenoot.urenPerDag, 1) : 1;
+
 
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
+      <div className="max-w-[1400px] mx-auto p-4 lg:p-5 space-y-3">
         {/* Begroeting */}
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
+          <h1 className="text-2xl font-bold text-white tracking-tight">
             {getBegroeting()}, {gebruiker.naam.split(" ")[0]}
           </h1>
-          <p className="text-base text-autronis-text-secondary mt-1 capitalize">
+          <p className="text-sm text-autronis-text-secondary capitalize">
             {getDatumString()}
           </p>
         </div>
@@ -780,58 +820,79 @@ export default function DashboardPage() {
           </Link>
         )}
 
-        {/* Dagbriefing + Gewoontes + Focus */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr_1fr] gap-6">
-          <DailyBriefing />
-          <HabitWidget />
-          <FocusWidget />
+        {/* Row 1: KPI's */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Link href="/financien" className="block">
+            <KPICard
+              label="Omzet deze maand"
+              value={kpis.omzetDezeMaand}
+              format={(n) => n === 0 ? "—" : formatBedrag(n)}
+              icon={<Euro className="w-5 h-5" />}
+              color="emerald"
+              index={0}
+              className={kpis.omzetDezeMaand === 0 ? "opacity-50" : ""}
+            />
+          </Link>
+          <Link href="/tijdregistratie" className="block">
+            <KPICard
+              label="Uren deze week"
+              value={kpis.urenDezeWeek.totaal}
+              format={(n) => n === 0 ? "—" : formatUren(Math.round(n))}
+              icon={<Clock className="w-5 h-5" />}
+              color="blue"
+              index={1}
+              className={kpis.urenDezeWeek.totaal === 0 ? "opacity-50" : ""}
+            />
+          </Link>
+          <Link href="/projecten" className="block">
+            <KPICard
+              label="Actieve projecten"
+              value={kpis.actieveProjecten}
+              format={(n) => n === 0 ? "—" : String(n)}
+              icon={<FolderKanban className="w-5 h-5" />}
+              color="purple"
+              index={2}
+              className={kpis.actieveProjecten === 0 ? "opacity-50" : ""}
+            />
+          </Link>
+          <Link href="/taken" className="block">
+            <KPICard
+              label="Taken vandaag"
+              value={mijnTaken.length}
+              format={(n) => n === 0 ? "—" : String(n)}
+              icon={<ListChecks className="w-5 h-5" />}
+              color="accent"
+              index={3}
+              className={mijnTaken.length === 0 ? "opacity-50" : ""}
+            />
+          </Link>
+          <Link href="/agenda" className="block">
+            <KPICard
+              label="Deadlines deze week"
+              value={kpis.deadlinesDezeWeek}
+              format={(n) => n === 0 ? "—" : String(n)}
+              icon={<AlertTriangle className="w-5 h-5" />}
+              color={kpis.deadlinesDezeWeek > 0 ? "red" : "accent"}
+              index={4}
+              className={kpis.deadlinesDezeWeek === 0 ? "opacity-50" : ""}
+            />
+          </Link>
         </div>
+
+        {/* Row 2: Briefing full width */}
+        <DailyBriefing />
 
         {/* Idee van de dag */}
         <IdeeVanDeDag />
 
-        {/* KPI balk */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-          <KPICard
-            label="Omzet deze maand"
-            value={kpis.omzetDezeMaand}
-            format={(n) => formatBedrag(n)}
-            icon={<Euro className="w-5 h-5" />}
-            color="emerald"
-            index={0}
-          />
-          <KPICard
-            label="Uren deze week"
-            value={kpis.urenDezeWeek.totaal}
-            format={(n) => formatUren(Math.round(n))}
-            icon={<Clock className="w-5 h-5" />}
-            color="blue"
-            index={1}
-          />
-          <KPICard
-            label="Actieve projecten"
-            value={kpis.actieveProjecten}
-            icon={<FolderKanban className="w-5 h-5" />}
-            color="purple"
-            index={2}
-          />
-          <KPICard
-            label="Deadlines deze week"
-            value={kpis.deadlinesDezeWeek}
-            icon={<AlertTriangle className="w-5 h-5" />}
-            color={kpis.deadlinesDezeWeek > 0 ? "red" : "accent"}
-            index={3}
-          />
-        </div>
-
         {/* Slimme inzichten */}
         {inzichten.length > 0 && (
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-autronis-accent" />
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+            <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-autronis-accent" />
               Slimme inzichten
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
               {inzichten.map((inzicht) => {
                 const config = inzichtConfig[inzicht.type];
                 const Icon = config.icon;
@@ -839,31 +900,31 @@ export default function DashboardPage() {
                   <div
                     key={inzicht.id}
                     className={cn(
-                      "rounded-xl p-4 border flex gap-3",
+                      "rounded-lg p-3 border flex gap-2",
                       config.bg,
                       config.border
                     )}
                   >
                     <div className={cn("mt-0.5 flex-shrink-0", config.color)}>
-                      <Icon className="w-5 h-5" />
+                      <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("text-sm font-semibold", config.color)}>
+                      <p className={cn("text-xs font-semibold", config.color)}>
                         {inzicht.titel}
                       </p>
-                      <p className="text-sm text-autronis-text-secondary mt-1 leading-relaxed">
+                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed line-clamp-2">
                         {inzicht.omschrijving}
                       </p>
                       {inzicht.actie && (
                         <Link
                           href={inzicht.actie.link}
                           className={cn(
-                            "inline-flex items-center gap-1 text-sm font-medium mt-2 transition-colors hover:underline",
+                            "inline-flex items-center gap-1 text-xs font-medium mt-1 transition-colors hover:underline",
                             config.color
                           )}
                         >
                           {inzicht.actie.label}
-                          <ArrowRight className="w-3.5 h-3.5" />
+                          <ArrowRight className="w-3 h-3" />
                         </Link>
                       )}
                     </div>
@@ -874,135 +935,53 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Twee-kolom layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-8">
-          {/* Links: Mijn werkplek */}
-          <div className="space-y-8">
-            {/* Snel starten / Actieve timer */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-              {timer.isRunning ? (
-                <>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
-                      <h2 className="text-xl font-semibold text-white">
-                        Timer loopt
-                      </h2>
-                    </div>
-                    <span className="text-3xl font-bold text-autronis-accent font-mono tabular-nums">
-                      {formatElapsed(timer.elapsed)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between bg-autronis-bg/50 rounded-xl p-4">
-                    <div>
-                      <p className="text-base font-medium text-autronis-text-primary">
-                        {timer.omschrijving || "Geen omschrijving"}
-                      </p>
-                      <p className="text-sm text-autronis-text-secondary mt-1">
-                        {projecten.find((p) => p.id === timer.projectId)?.naam || "Project"} — {projecten.find((p) => p.id === timer.projectId)?.klantNaam || ""}
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleStopTimer}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-semibold transition-colors btn-press"
-                    >
-                      <Square className="w-4 h-4" />
-                      Stop
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-autronis-accent" />
-                    Snel starten
-                  </h2>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <select
-                      value={timerProjectId}
-                      onChange={(e) => setTimerProjectId(e.target.value)}
-                      className="bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors sm:flex-1"
-                    >
-                      <option value="">Selecteer project...</option>
-                      {projecten.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.naam} — {p.klantNaam}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      value={timerOmschrijving}
-                      onChange={(e) => setTimerOmschrijving(e.target.value)}
-                      placeholder="Waar werk je aan?"
-                      className="bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors sm:flex-[1.5]"
-                      onKeyDown={(e) => e.key === "Enter" && handleStartTimer()}
-                    />
-                    <select
-                      value={timerCategorie}
-                      onChange={(e) => setTimerCategorie(e.target.value as TijdCategorie)}
-                      className="bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors sm:w-40"
-                    >
-                      <option value="development">Development</option>
-                      <option value="meeting">Meeting</option>
-                      <option value="administratie">Administratie</option>
-                      <option value="overig">Overig</option>
-                    </select>
-                    <button
-                      onClick={handleStartTimer}
-                      className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 whitespace-nowrap btn-press"
-                    >
-                      <Play className="w-4 h-4" />
-                      Start
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
+        {/* Main 2-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-3">
+          {/* Left column: Taken + Projecten + Documenten */}
+          <div className="space-y-3">
             {/* Mijn Taken */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
-                  <ListTodo className="w-5 h-5 text-autronis-accent" />
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-autronis-accent" />
                   Mijn taken
                 </h2>
-                <span className="text-sm text-autronis-accent font-medium">
+                <span className="text-xs text-autronis-accent font-medium">
                   {mijnTaken.length} open
                 </span>
               </div>
               {mijnTaken.length === 0 ? (
-                <p className="text-base text-autronis-text-secondary">
+                <p className="text-sm text-autronis-text-secondary">
                   Geen openstaande taken — lekker bezig!
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {mijnTaken.map((taak) => {
                     const prio = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
                     return (
                       <div
                         key={taak.id}
-                        className="bg-autronis-bg/50 rounded-xl p-4 flex items-center gap-4 group relative"
+                        className="bg-autronis-bg/50 rounded-lg p-3 flex items-center gap-3 group relative"
                       >
                         <button
                           onClick={() => handleTaakAfvinken(taak.id)}
                           className={cn(
-                            "w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-green-500/20",
+                            "w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-green-500/20",
                             prio.border
                           )}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-base font-medium text-autronis-text-primary truncate">
+                          <p className="text-sm font-medium text-autronis-text-primary truncate">
                             {taak.titel}
                           </p>
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-0.5">
                             {taak.projectNaam && (
-                              <span className="text-sm text-autronis-text-secondary">
+                              <span className="text-xs text-autronis-text-secondary">
                                 {taak.projectNaam}
                               </span>
                             )}
                             {taak.deadline && (
-                              <span className={cn("text-sm flex items-center gap-1", deadlineKleur(taak.deadline))}>
+                              <span className={cn("text-xs flex items-center gap-1", deadlineKleur(taak.deadline))}>
                                 · {deadlineLabel(taak.deadline)}
                               </span>
                             )}
@@ -1020,32 +999,32 @@ export default function DashboardPage() {
             </div>
 
             {/* Aankomende Deadlines */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h2 className="text-xl font-semibold text-white mb-5 flex items-center gap-2">
-                <CalendarDays className="w-5 h-5 text-autronis-accent" />
-                Aankomende deadlines
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+              <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-autronis-accent" />
+                Deadlines
               </h2>
               {deadlines.length === 0 ? (
-                <p className="text-base text-autronis-text-secondary">
+                <p className="text-sm text-autronis-text-secondary">
                   Geen projecten met deadlines.
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {deadlines.map((dl) => (
                     <Link
                       key={dl.projectId}
                       href={`/klanten/${dl.klantId}/projecten/${dl.projectId}`}
-                      className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4 hover:bg-autronis-bg/80 transition-colors block"
+                      className="bg-autronis-bg/50 rounded-lg p-3 flex items-center justify-between gap-3 hover:bg-autronis-bg/80 transition-colors block"
                     >
                       <div className="min-w-0">
-                        <p className="text-base font-medium text-autronis-text-primary truncate">
+                        <p className="text-sm font-medium text-autronis-text-primary truncate">
                           {dl.projectNaam}
                         </p>
-                        <p className="text-sm text-autronis-text-secondary mt-0.5">
+                        <p className="text-xs text-autronis-text-secondary">
                           {dl.klantNaam}
                         </p>
                       </div>
-                      <span className={cn("text-sm font-semibold flex-shrink-0", deadlineKleur(dl.deadline))}>
+                      <span className={cn("text-xs font-semibold flex-shrink-0", deadlineKleur(dl.deadline))}>
                         {deadlineLabel(dl.deadline)}
                       </span>
                     </Link>
@@ -1053,202 +1032,184 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
+            {/* Project voortgang widget - filter 100% */}
+            <ProjectVoortgangWidget />
+
+            {/* Documenten widget */}
+            <DocumentWidget />
           </div>
 
-          {/* Rechts: Teamgenoot status */}
-          <div className="space-y-8">
+          {/* Right column: Gewoontes + Focus + Team + Learning Radar + Second Brain */}
+          <div className="space-y-3">
+            <HabitWidget />
+            <FocusWidget />
+
+            {/* Teamgenoot status - compact when offline */}
             {teamgenoot ? (
-              <>
-                {/* Live status */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 rounded-full bg-autronis-accent flex items-center justify-center text-sm font-bold text-autronis-bg">
+              teamgenoot.actieveTimer ? (
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-autronis-accent flex items-center justify-center text-xs font-bold text-autronis-bg">
                       {teamgenoot.naam.slice(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-base font-semibold text-autronis-text-primary">
+                      <p className="text-sm font-semibold text-autronis-text-primary">
                         {teamgenoot.naam}
                       </p>
                       <div className="flex items-center gap-2">
-                        <div className={cn(
-                          "w-2 h-2 rounded-full",
-                          teamgenoot.actieveTimer ? "bg-green-500 status-pulse" : "bg-slate-500"
-                        )} />
-                        <span className={cn(
-                          "text-sm",
-                          teamgenoot.actieveTimer ? "text-green-400" : "text-autronis-text-secondary"
-                        )}>
-                          {teamgenoot.actieveTimer ? "Aan het werk" : "Offline"}
-                        </span>
+                        <div className="w-2 h-2 rounded-full bg-green-500 status-pulse" />
+                        <span className="text-xs text-green-400">Aan het werk</span>
                       </div>
                     </div>
                   </div>
-                  {teamgenoot.actieveTimer && (
-                    <div className="bg-autronis-bg/50 rounded-xl p-4 border-l-3 border-autronis-accent" style={{ borderLeftWidth: "3px" }}>
-                      <p className="text-xs text-autronis-text-secondary">Bezig met</p>
-                      <p className="text-base font-medium text-autronis-text-primary mt-1">
-                        {teamgenoot.actieveTimer.omschrijving || "Geen omschrijving"}
-                      </p>
-                      <p className="text-sm text-autronis-text-secondary mt-1">
-                        {teamgenoot.actieveTimer.projectNaam}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Week overzicht */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <h3 className="text-base font-semibold text-autronis-text-primary mb-4">
-                    {teamgenoot.naam.split(" ")[0]}&apos;s week
-                  </h3>
-                  <div className="flex items-end gap-2 h-20 mb-2">
-                    {["Ma", "Di", "Wo", "Do", "Vr"].map((dag, i) => {
-                      const minuten = teamgenoot.urenPerDag[i] || 0;
-                      const hoogte = maxUrenDag > 0 ? (minuten / maxUrenDag) * 100 : 0;
-                      return (
-                        <div key={dag} className="flex-1 flex flex-col items-center gap-1">
-                          <div className="w-full relative" style={{ height: "80px" }}>
-                            <motion.div
-                              className={cn(
-                                "absolute bottom-0 w-full rounded-t-md",
-                                minuten > 0 ? "bg-autronis-accent" : "bg-autronis-border"
-                              )}
-                              initial={{ height: 0 }}
-                              animate={{ height: `${Math.max(hoogte, 4)}%` }}
-                              transition={{ duration: 0.5, delay: i * 0.05, ease: "easeOut" }}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-between px-1">
-                    {["Ma", "Di", "Wo", "Do", "Vr"].map((dag) => (
-                      <span key={dag} className="text-xs text-autronis-text-secondary flex-1 text-center">
-                        {dag}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-2xl font-bold text-autronis-text-primary">
-                      {formatUren(teamgenoot.urenTotaal)}
+                  <div className="bg-autronis-bg/50 rounded-xl p-3 border-l-3 border-autronis-accent" style={{ borderLeftWidth: "3px" }}>
+                    <p className="text-xs text-autronis-text-secondary">Bezig met</p>
+                    <p className="text-sm font-medium text-autronis-text-primary mt-0.5">
+                      {teamgenoot.actieveTimer.omschrijving || "Geen omschrijving"}
                     </p>
-                    <p className="text-sm text-autronis-text-secondary">uren deze week</p>
+                    <p className="text-xs text-autronis-text-secondary mt-0.5">
+                      {teamgenoot.actieveTimer.projectNaam}
+                    </p>
                   </div>
                 </div>
+              ) : (
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl px-4 py-3 flex items-center gap-3 card-glow">
+                  <div className="w-6 h-6 rounded-full bg-autronis-border flex items-center justify-center text-[10px] font-bold text-autronis-text-secondary">
+                    {teamgenoot.naam.slice(0, 2).toUpperCase()}
+                  </div>
+                  <span className="text-sm text-autronis-text-secondary">
+                    {teamgenoot.naam.split(" ")[0]}: Offline
+                  </span>
+                </div>
+              )
+            ) : null}
 
-                {/* Taken */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-base font-semibold text-autronis-text-primary">
-                      {teamgenoot.naam.split(" ")[0]}&apos;s taken
-                    </h3>
-                    <span className="text-xs text-autronis-text-secondary">
-                      {teamgenoot.taken.length} open
-                    </span>
-                  </div>
-                  {teamgenoot.taken.length === 0 ? (
-                    <p className="text-sm text-autronis-text-secondary">Geen open taken.</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {teamgenoot.taken.map((taak) => (
-                        <div
-                          key={taak.id}
-                          className="bg-autronis-bg/50 rounded-lg p-3"
-                        >
-                          <p className="text-sm font-medium text-autronis-text-primary truncate">
-                            {taak.titel}
-                          </p>
-                          {taak.projectNaam && (
-                            <p className="text-xs text-autronis-text-secondary mt-1">
-                              {taak.projectNaam}
-                            </p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {/* Learning Radar */}
+            <RadarWidget />
+
+            {/* Second Brain Widget */}
+            <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-5 card-glow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-autronis-accent" />
+                  <h3 className="text-autronis-text-primary font-semibold">Second Brain</h3>
                 </div>
-              </>
-            ) : (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                <p className="text-base text-autronis-text-secondary">
-                  Geen teamgenoten gevonden.
-                </p>
+                <Link href="/second-brain" className="text-autronis-accent text-sm hover:text-autronis-accent-hover transition-colors">
+                  Bekijk alles →
+                </Link>
               </div>
+              {recentBrainItems && recentBrainItems.length > 0 ? (
+                <div className="space-y-2">
+                  {(() => {
+                    const seen = new Set<string>();
+                    return recentBrainItems.filter((item) => {
+                      const key = item.titel || item.id.toString();
+                      if (seen.has(key)) return false;
+                      seen.add(key);
+                      return true;
+                    }).map((item) => {
+                      const TypeIcon = secondBrainTypeIcons[item.type] ?? FileText;
+                      return (
+                        <Link key={item.id} href="/second-brain" className="flex items-center gap-3 group">
+                          <TypeIcon className="w-4 h-4 text-autronis-text-secondary" />
+                          <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate flex-1">
+                            {item.titel || "Zonder titel"}
+                          </span>
+                          <span className="text-xs text-autronis-text-secondary tabular-nums">
+                            {new Date(item.aangemaaktOp).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                          </span>
+                        </Link>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <Brain className="w-8 h-8 text-autronis-accent/30 mx-auto mb-2" />
+                  <p className="text-sm text-autronis-text-secondary mb-2">Nog geen items opgeslagen</p>
+                  <Link
+                    href="/second-brain"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent/10 hover:bg-autronis-accent/20 text-autronis-accent rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Brain className="w-3.5 h-3.5" />
+                    Begin hier
+                  </Link>
+                </div>
+              )}
+            </div>
+
+            {/* Concurrent updates widget */}
+            {concurrentData && concurrentData.highlights.length > 0 && (
+              <section className="rounded-2xl border border-autronis-border bg-autronis-card p-5">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="flex items-center gap-2 font-semibold text-sm">
+                    <Eye className="h-4 w-4 text-autronis-accent" />
+                    Concurrent updates
+                  </h3>
+                  <span className="rounded-full bg-autronis-accent/15 px-2.5 py-0.5 text-xs font-semibold text-autronis-accent">
+                    {concurrentData.wijzigingenDezeWeek} nieuw
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {concurrentData.highlights.map((h, i) => (
+                    <div key={i} className="flex items-start gap-2.5 text-sm">
+                      <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full",
+                        h.type === "kans" ? "bg-green-400" : "bg-autronis-accent")} />
+                      <span className="text-autronis-text-secondary">
+                        <strong className="text-autronis-text-primary">{h.concurrentNaam}</strong>{" "}
+                        {h.tekst}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/concurrenten" className="mt-3 block text-xs text-autronis-accent hover:underline">
+                  Bekijk alle concurrenten →
+                </Link>
+              </section>
             )}
           </div>
         </div>
 
-        {/* Learning Radar widget */}
-        <RadarWidget />
+        {/* Sticky Timer bar at bottom */}
+        <div className="h-16" /> {/* Spacer for sticky bar */}
+      </div>
 
-        {/* Documenten widget */}
-        <DocumentWidget />
-
-        {/* Concurrent updates widget */}
-        {concurrentData && concurrentData.highlights.length > 0 && (
-          <section className="rounded-2xl border border-autronis-border bg-autronis-card p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="flex items-center gap-2 font-semibold">
-                <Eye className="h-4 w-4 text-autronis-accent" />
-                Concurrent updates
-              </h3>
-              <span className="rounded-full bg-autronis-accent/15 px-2.5 py-0.5 text-xs font-semibold text-autronis-accent">
-                {concurrentData.wijzigingenDezeWeek} nieuw
-              </span>
-            </div>
-            <div className="space-y-3">
-              {concurrentData.highlights.map((h, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-sm">
-                  <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full",
-                    h.type === "kans" ? "bg-green-400" : "bg-autronis-accent")} />
-                  <span className="text-autronis-text-secondary">
-                    <strong className="text-autronis-text-primary">{h.concurrentNaam}</strong>{" "}
-                    {h.tekst}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <Link href="/concurrenten" className="mt-4 block text-xs text-autronis-accent hover:underline">
-              Bekijk alle concurrenten →
-            </Link>
-          </section>
-        )}
-
-        {/* Second Brain Widget */}
-        <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-autronis-accent" />
-              <h3 className="text-autronis-text-primary font-semibold">Second Brain</h3>
-            </div>
-            <Link href="/second-brain" className="text-autronis-accent text-sm hover:text-autronis-accent-hover transition-colors">
-              Bekijk alles →
-            </Link>
-          </div>
-          {recentBrainItems && recentBrainItems.length > 0 ? (
-            <div className="space-y-3">
-              {recentBrainItems.map((item) => {
-                const TypeIcon = secondBrainTypeIcons[item.type] ?? FileText;
-                return (
-                  <Link key={item.id} href="/second-brain" className="flex items-center gap-3 group">
-                    <TypeIcon className="w-4 h-4 text-autronis-text-secondary" />
-                    <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate flex-1">
-                      {item.titel || "Zonder titel"}
-                    </span>
-                    <span className="text-xs text-autronis-text-secondary tabular-nums">
-                      {new Date(item.aangemaaktOp).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                    </span>
-                  </Link>
-                );
-              })}
+      {/* Fixed timer bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 p-3">
+        <div className="max-w-[1400px] mx-auto">
+        <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 card-glow">
+          {timer.isRunning ? (
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+              <span className="text-sm text-autronis-text-primary font-medium">{timer.omschrijving || "Timer"}</span>
+              <span className="text-xs text-autronis-text-secondary">{projecten.find((p) => p.id === timer.projectId)?.naam || ""}</span>
+              <span className="text-lg font-bold text-autronis-accent font-mono tabular-nums ml-auto">{formatElapsed(timer.elapsed)}</span>
+              <button onClick={handleStopTimer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors btn-press">
+                <Square className="w-3 h-3" /> Stop
+              </button>
             </div>
           ) : (
-            <p className="text-autronis-text-secondary text-sm">Nog geen items opgeslagen</p>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Clock className="w-4 h-4 text-autronis-accent flex-shrink-0" />
+              <select value={timerProjectId} onChange={(e) => setTimerProjectId(e.target.value)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent flex-1 min-w-[160px] bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
+                <option value="">Project...</option>
+                {projecten.map((p) => <option key={p.id} value={p.id}>{p.naam} — {p.klantNaam}</option>)}
+              </select>
+              <input type="text" value={timerOmschrijving} onChange={(e) => setTimerOmschrijving(e.target.value)} placeholder="Waar werk je aan?" className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent flex-1 min-w-[140px]" onKeyDown={(e) => e.key === "Enter" && handleStartTimer()} />
+              <select value={timerCategorie} onChange={(e) => setTimerCategorie(e.target.value as TijdCategorie)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent w-auto bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
+                <option value="development">Development</option>
+                <option value="meeting">Meeting</option>
+                <option value="administratie">Administratie</option>
+                <option value="overig">Overig</option>
+              </select>
+              <button onClick={handleStartTimer} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors btn-press">
+                <Play className="w-3.5 h-3.5" /> Start
+              </button>
+            </div>
           )}
         </div>
-
+        </div>
       </div>
     </PageTransition>
   );

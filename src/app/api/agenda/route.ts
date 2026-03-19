@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { agendaItems, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, desc } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
+import { pushEventToGoogle } from "@/lib/google-calendar";
 
 // GET /api/agenda?van=2026-03-01&tot=2026-03-31
 export async function GET(req: NextRequest) {
@@ -69,6 +70,26 @@ export async function POST(req: NextRequest) {
         herinneringMinuten: body.herinneringMinuten ?? null,
       })
       .returning();
+
+    // Push to Google Calendar (fire-and-forget)
+    pushEventToGoogle(gebruiker.id, {
+      summary: body.titel.trim(),
+      description: body.omschrijving?.trim(),
+      start: body.startDatum,
+      end: body.eindDatum || undefined,
+      allDay: !!body.heleDag,
+    })
+      .then((event) => {
+        if (event?.id) {
+          db.update(agendaItems)
+            .set({ googleEventId: event.id })
+            .where(eq(agendaItems.id, nieuw.id))
+            .execute();
+        }
+      })
+      .catch(() => {
+        // Google sync failed silently — item is still saved locally
+      });
 
     return NextResponse.json({ item: nieuw }, { status: 201 });
   } catch (error) {

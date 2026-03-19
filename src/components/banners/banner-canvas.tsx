@@ -14,6 +14,7 @@ interface BannerCanvasProps {
   illustrationScale?: number;
   illustrationOffsetX?: number;
   illustrationOffsetY?: number;
+  aiBgUrl?: string;
 }
 
 export const BannerCanvas = forwardRef<HTMLDivElement, BannerCanvasProps>(
@@ -26,6 +27,7 @@ export const BannerCanvas = forwardRef<HTMLDivElement, BannerCanvasProps>(
     illustrationScale,
     illustrationOffsetX,
     illustrationOffsetY,
+    aiBgUrl,
   }, ref) {
     const { width, height } = BANNER_FORMAAT_SIZES[formaat];
     const scaledWidth = width * scale;
@@ -50,6 +52,7 @@ export const BannerCanvas = forwardRef<HTMLDivElement, BannerCanvasProps>(
           illustrationScale={illustrationScale}
           illustrationOffsetX={illustrationOffsetX}
           illustrationOffsetY={illustrationOffsetY}
+          aiBgUrl={aiBgUrl}
         />
       </div>
     );

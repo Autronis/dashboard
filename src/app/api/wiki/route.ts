@@ -15,10 +15,7 @@ export async function GET(req: NextRequest) {
     const conditions = [];
     if (categorie) {
       conditions.push(
-        eq(
-          wikiArtikelen.categorie,
-          categorie as "processen" | "klanten" | "technisch" | "templates" | "financien"
-        )
+        eq(wikiArtikelen.categorie, categorie as typeof wikiArtikelen.categorie.enumValues[number])
       );
     }
     if (zoek) {

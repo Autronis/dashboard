@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export interface AgendaItem {
   id: number;
@@ -35,5 +35,144 @@ export function useAgenda(jaar: number, maand: number) {
     queryKey: ["agenda", jaar, maand],
     queryFn: () => fetchAgenda(jaar, maand),
     staleTime: 30_000,
+  });
+}
+
+// ============ DEADLINES ============
+
+export interface DeadlineEvent {
+  id: string;
+  titel: string;
+  type: "taak" | "project" | "factuur";
+  datum: string;
+  klantNaam: string | null;
+  projectNaam: string | null;
+  linkHref: string;
+  bedrag: number | null;
+}
+
+async function fetchDeadlineEvents(jaar: number, maand: number): Promise<DeadlineEvent[]> {
+  const van = datumStr(maand === 0 ? jaar - 1 : jaar, maand === 0 ? 11 : maand - 1, 1);
+  const totJaar = maand === 11 ? jaar + 1 : jaar;
+  const totMaand = maand === 11 ? 0 : maand + 1;
+  const totDagen = new Date(totJaar, totMaand + 1, 0).getDate();
+  const tot = datumStr(totJaar, totMaand, totDagen);
+
+  const res = await fetch(`/api/agenda/deadlines?van=${van}&tot=${tot}`);
+  if (!res.ok) return [];
+  const json = await res.json() as { deadlines: DeadlineEvent[] };
+  return json.deadlines;
+}
+
+export function useDeadlineEvents(jaar: number, maand: number) {
+  return useQuery({
+    queryKey: ["deadline-events", jaar, maand],
+    queryFn: () => fetchDeadlineEvents(jaar, maand),
+    staleTime: 30_000,
+  });
+}
+
+// ============ EXTERNE KALENDERS ============
+
+export interface ExternAttendee {
+  naam: string | null;
+  email: string;
+}
+
+export interface ExternEvent {
+  id: string;
+  titel: string;
+  omschrijving: string | null;
+  startDatum: string;
+  eindDatum: string | null;
+  heleDag: boolean;
+  locatie: string | null;
+  meetingUrl: string | null;
+  organisator: string | null;
+  deelnemers: ExternAttendee[];
+  bron: string;
+  bronNaam: string;
+  kleur: string;
+}
+
+export interface ExterneKalender {
+  id: number;
+  naam: string;
+  url: string;
+  bron: string;
+  kleur: string | null;
+  isActief: number | null;
+  laatstGesyncOp: string | null;
+}
+
+async function fetchExterneEvents(jaar: number, maand: number): Promise<ExternEvent[]> {
+  const van = datumStr(maand === 0 ? jaar - 1 : jaar, maand === 0 ? 11 : maand - 1, 1);
+  const totJaar = maand === 11 ? jaar + 1 : jaar;
+  const totMaand = maand === 11 ? 0 : maand + 1;
+  const totDagen = new Date(totJaar, totMaand + 1, 0).getDate();
+  const tot = datumStr(totJaar, totMaand, totDagen);
+
+  const res = await fetch(`/api/agenda/sync?van=${van}&tot=${tot}`);
+  if (!res.ok) return [];
+  const json = await res.json() as { events: ExternEvent[] };
+  return json.events;
+}
+
+export function useExterneEvents(jaar: number, maand: number) {
+  return useQuery({
+    queryKey: ["externe-events", jaar, maand],
+    queryFn: () => fetchExterneEvents(jaar, maand),
+    staleTime: 60_000,
+  });
+}
+
+async function fetchKalenders(): Promise<ExterneKalender[]> {
+  const res = await fetch("/api/agenda/kalenders");
+  if (!res.ok) return [];
+  const json = await res.json() as { kalenders: ExterneKalender[] };
+  return json.kalenders;
+}
+
+export function useExterneKalenders() {
+  return useQuery({
+    queryKey: ["externe-kalenders"],
+    queryFn: fetchKalenders,
+    staleTime: 60_000,
+  });
+}
+
+export function useAddKalender() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { naam: string; url: string; bron: string; kleur?: string }) => {
+      const res = await fetch("/api/agenda/kalenders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const json = await res.json() as { fout?: string };
+        throw new Error(json.fout ?? "Toevoegen mislukt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["externe-kalenders"] });
+      queryClient.invalidateQueries({ queryKey: ["externe-events"] });
+    },
+  });
+}
+
+export function useDeleteKalender() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/agenda/kalenders/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Verwijderen mislukt");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["externe-kalenders"] });
+      queryClient.invalidateQueries({ queryKey: ["externe-events"] });
+    },
   });
 }

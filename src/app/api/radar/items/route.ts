@@ -14,11 +14,13 @@ export async function GET(req: NextRequest) {
     const minScore = searchParams.get("minScore");
     const bewaard = searchParams.get("bewaard");
     const bronId = searchParams.get("bronId");
+    const nietRelevant = searchParams.get("nietRelevant");
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
 
     const conditions = [];
 
     if (categorie) {
-      conditions.push(eq(radarItems.categorie, categorie as "tools" | "api_updates" | "trends" | "kansen" | "must_reads"));
+      conditions.push(eq(radarItems.categorie, categorie as "ai_tools" | "api_updates" | "automation" | "business" | "competitors" | "tutorials" | "trends" | "kansen" | "must_reads"));
     }
 
     if (minScore) {
@@ -33,6 +35,11 @@ export async function GET(req: NextRequest) {
       conditions.push(eq(radarItems.bronId, parseInt(bronId, 10)));
     }
 
+    // Default: hide niet-relevant items unless explicitly requested
+    if (nietRelevant !== "1") {
+      conditions.push(eq(radarItems.nietRelevant, 0));
+    }
+
     const items = db
       .select({
         id: radarItems.id,
@@ -45,8 +52,11 @@ export async function GET(req: NextRequest) {
         score: radarItems.score,
         scoreRedenering: radarItems.scoreRedenering,
         aiSamenvatting: radarItems.aiSamenvatting,
+        relevantie: radarItems.relevantie,
+        leesMinuten: radarItems.leesMinuten,
         categorie: radarItems.categorie,
         bewaard: radarItems.bewaard,
+        nietRelevant: radarItems.nietRelevant,
         aangemaaktOp: radarItems.aangemaaktOp,
         bronNaam: sql<string>`${radarBronnen.naam}`.as("bron_naam"),
       })
@@ -54,7 +64,7 @@ export async function GET(req: NextRequest) {
       .leftJoin(radarBronnen, eq(radarItems.bronId, radarBronnen.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(radarItems.gepubliceerdOp))
-      .limit(50)
+      .limit(limit)
       .all();
 
     return NextResponse.json({ items });

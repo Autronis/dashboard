@@ -18,6 +18,7 @@ import { FocusReflectieModal } from "@/components/focus/focus-reflectie-modal";
 import { AriWidget } from "@/components/ai/ari-widget";
 import { useFocus, loadFocusFromStorage } from "@/hooks/use-focus";
 import { cn } from "@/lib/utils";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import type { SessionGebruiker } from "@/types";
 
 interface AppShellProps {
@@ -69,7 +70,9 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
           "pb-20 md:pb-6"
         )}
       >
-        <div className="p-6">{children}</div>
+        <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
 
       {/* Mobile bottom nav */}

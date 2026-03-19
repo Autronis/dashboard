@@ -30,9 +30,11 @@ export async function PUT(
       );
     }
 
+    const { nietRelevant } = body;
     const updates: Record<string, string | number> = {};
     if (bewaard !== undefined) updates.bewaard = bewaard;
     if (categorie !== undefined) updates.categorie = categorie;
+    if (nietRelevant !== undefined) updates.nietRelevant = nietRelevant;
 
     db.update(radarItems)
       .set(updates)

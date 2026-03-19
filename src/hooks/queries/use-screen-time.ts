@@ -182,7 +182,19 @@ export function useCategoriseer() {
 
 // ============ SESSIES ============
 
-interface SessiesData {
+export interface FocusInzicht {
+  type: "positief" | "waarschuwing" | "tip" | "actie";
+  tekst: string;
+}
+
+export interface BesteFocusBlok {
+  beschrijving: string;
+  startTijd: string;
+  eindTijd: string;
+  duurMin: number;
+}
+
+export interface SessiesData {
   sessies: ScreenTimeSessie[];
   stats: {
     totaalActief: number;
@@ -192,8 +204,17 @@ interface SessiesData {
     focusScore: number;
     contextSwitches: number;
     langsteFocusMinuten: number;
+    deepWorkMinuten: number;
+    deepWorkTarget: number;
+    deepWorkSessies: number;
+    aantalFocusSessies: number;
+    gemSessieLengte: number;
+    afleidingMinuten: number;
+    besteFocusBlok: BesteFocusBlok | null;
     pauzes: Array<{ start: string; eind: string; duurMinuten: number }>;
     totaalPauzeMinuten: number;
+    inzichten: FocusInzicht[];
+    mogelijkOnnauwkeurig: boolean;
   };
 }
 
@@ -279,6 +300,39 @@ export function useGenereerSamenvatting() {
     },
     onSuccess: (_data, datum) => {
       queryClient.invalidateQueries({ queryKey: ["screen-time-samenvatting", datum] });
+    },
+  });
+}
+
+// ============ PERIODE SAMENVATTINGEN (week/maand) ============
+
+export interface PeriodeSamenvatting {
+  type: "week" | "maand";
+  periode: string;
+  van: string;
+  tot: string;
+  samenvattingKort: string;
+  samenvattingDetail: string;
+  totaalSeconden: number;
+  productiefPercentage: number;
+  aantalDagen: number;
+  topProject: string | null;
+}
+
+export function useGenereerPeriodeSamenvatting() {
+  return useMutation({
+    mutationFn: async (params: { datum: string; type: "week" | "maand" }): Promise<PeriodeSamenvatting> => {
+      const res = await fetch("/api/screen-time/samenvatting/periode", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "Fout bij genereren");
+      }
+      const data = await res.json();
+      return data.samenvatting;
     },
   });
 }

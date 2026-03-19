@@ -20,11 +20,23 @@ import {
   Link2,
   ExternalLink,
   Trash2,
+  Globe,
+  Building2,
+  Receipt,
+  FileCheck,
+  CalendarDays,
+  MessageSquare,
+  Sparkles,
+  CreditCard,
+  Timer,
+  Hash,
+  Loader2,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
+import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useKlantDetail, NotFoundError } from "@/hooks/queries/use-klant-detail";
+import type { TijdlijnItem } from "@/hooks/queries/use-klant-detail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KlantModal } from "../klant-modal";
@@ -64,6 +76,23 @@ const docTypeConfig: Record<string, { icon: typeof FileText; color: string }> = 
   overig: { icon: FileText, color: "text-slate-400" },
 };
 
+const factuurStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
+  concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
+  verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
+  betaald: { bg: "bg-green-500/15", text: "text-green-400", label: "Betaald" },
+  te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
+};
+
+const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string; bg: string }> = {
+  factuur: { icon: Receipt, color: "text-green-400", bg: "bg-green-500/10" },
+  offerte: { icon: FileCheck, color: "text-blue-400", bg: "bg-blue-500/10" },
+  meeting: { icon: CalendarDays, color: "text-purple-400", bg: "bg-purple-500/10" },
+  notitie: { icon: MessageSquare, color: "text-amber-400", bg: "bg-amber-500/10" },
+  tijdregistratie: { icon: Clock, color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
+};
+
+type Tab = "overzicht" | "tijdlijn" | "financieel" | "documenten";
+
 export default function KlantDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -79,6 +108,7 @@ export default function KlantDetailPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("overzicht");
 
   const archiveMutation = useMutation({
     mutationFn: async () => {
@@ -106,6 +136,28 @@ export default function KlantDetailPage() {
     },
     onError: () => {
       addToast("Kon document niet verwijderen", "fout");
+    },
+  });
+
+  const verrijkMutation = useMutation({
+    mutationFn: async (website?: string) => {
+      const res = await fetch(`/api/klanten/${id}/verrijk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ website }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "Verrijking mislukt");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      addToast("Klant verrijkt met AI", "succes");
+      queryClient.invalidateQueries({ queryKey: ["klant", id] });
+    },
+    onError: (err: Error) => {
+      addToast(err.message || "AI verrijking mislukt", "fout");
     },
   });
 
@@ -139,7 +191,18 @@ export default function KlantDetailPage() {
     );
   }
 
-  const { klant, projecten, notities, documenten, recenteTijdregistraties, kpis } = data;
+  const { klant, projecten, notities, documenten, recenteTijdregistraties, facturen, offertes, meetings, tijdlijn, kpis } = data;
+
+  // Parse JSON fields
+  const diensten: string[] = klant.diensten ? JSON.parse(klant.diensten) : [];
+  const techStack: string[] = klant.techStack ? JSON.parse(klant.techStack) : [];
+
+  const tabs: { key: Tab; label: string; count?: number }[] = [
+    { key: "overzicht", label: "Overzicht" },
+    { key: "tijdlijn", label: "Tijdlijn", count: tijdlijn.length },
+    { key: "financieel", label: "Financieel", count: facturen.length + offertes.length },
+    { key: "documenten", label: "Documenten", count: documenten.length },
+  ];
 
   return (
     <PageTransition>
@@ -154,14 +217,38 @@ export default function KlantDetailPage() {
             <ArrowLeft className="w-5 h-5" />
             Klanten
           </Link>
-          <h1 className="text-3xl font-bold text-white tracking-tight">
-            {klant.bedrijfsnaam}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-white tracking-tight">
+              {klant.bedrijfsnaam}
+            </h1>
+            {klant.isDemo ? (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium">
+                DEMO
+              </span>
+            ) : null}
+          </div>
+          {klant.branche && (
+            <span className="inline-block text-xs px-2.5 py-1 rounded-full bg-autronis-accent/10 text-autronis-accent font-medium">
+              {klant.branche}
+            </span>
+          )}
           {klant.notities && (
             <p className="text-base text-autronis-text-secondary">{klant.notities}</p>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={() => verrijkMutation.mutate(klant.website || undefined)}
+            disabled={verrijkMutation.isPending}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-semibold transition-colors"
+          >
+            {verrijkMutation.isPending ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Sparkles className="w-4 h-4" />
+            )}
+            {verrijkMutation.isPending ? "Verrijken..." : "Verrijk met AI"}
+          </button>
           <button
             onClick={() => setKlantModalOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
@@ -180,7 +267,7 @@ export default function KlantDetailPage() {
       </div>
 
       {/* KPI bar */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           {
             label: "Projecten",
@@ -199,6 +286,12 @@ export default function KlantDetailPage() {
             accent: true,
           },
           {
+            label: "Openstaand",
+            waarde: formatBedrag(kpis.openstaand),
+            icon: Receipt,
+            warn: kpis.openstaand > 0,
+          },
+          {
             label: "Uurtarief",
             waarde: formatBedrag(kpis.uurtarief),
             icon: TrendingUp,
@@ -207,327 +300,618 @@ export default function KlantDetailPage() {
         ].map((kpi) => (
           <div
             key={kpi.label}
-            className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow"
+            className="bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow"
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                <kpi.icon className="w-5 h-5 text-autronis-accent" />
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-autronis-accent/10 rounded-xl">
+                <kpi.icon className="w-4 h-4 text-autronis-accent" />
               </div>
             </div>
             <p className={cn(
-              "text-3xl font-bold",
-              kpi.accent ? "text-autronis-accent" : "text-autronis-text-primary"
+              "text-2xl font-bold tabular-nums",
+              kpi.warn ? "text-amber-400" : kpi.accent ? "text-autronis-accent" : "text-autronis-text-primary"
             )}>
               {kpi.waarde}
             </p>
-            <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
+            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
               {kpi.label}
             </p>
           </div>
         ))}
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Left column */}
-        <div className="space-y-8">
-          {/* Klantgegevens */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
-              Klantgegevens
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <div className="flex items-start gap-3">
-                <User className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Contactpersoon</p>
-                  <p className="text-base text-autronis-text-primary mt-0.5">
-                    {klant.contactpersoon || "\u2014"}
-                  </p>
+      {/* Tabs */}
+      <div className="flex gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              activeTab === tab.key
+                ? "bg-autronis-accent/15 text-autronis-accent"
+                : "text-autronis-text-secondary hover:text-autronis-text-primary"
+            )}
+          >
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <span className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-bg/50">
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === "overzicht" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Left column */}
+          <div className="space-y-8">
+            {/* Klantgegevens */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
+                Klantgegevens
+              </h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Contactpersoon</p>
+                    <p className="text-base text-autronis-text-primary mt-0.5">
+                      {klant.contactpersoon || "\u2014"}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">E-mail</p>
-                  {klant.email ? (
-                    <a
-                      href={`mailto:${klant.email}`}
-                      className="text-base text-autronis-accent hover:underline mt-0.5 block"
-                    >
-                      {klant.email}
-                    </a>
-                  ) : (
-                    <p className="text-base text-autronis-text-primary mt-0.5">\u2014</p>
-                  )}
+                <div className="flex items-start gap-3">
+                  <Mail className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">E-mail</p>
+                    {klant.email ? (
+                      <a href={`mailto:${klant.email}`} className="text-base text-autronis-accent hover:underline mt-0.5 block">
+                        {klant.email}
+                      </a>
+                    ) : (
+                      <p className="text-base text-autronis-text-primary mt-0.5">{"\u2014"}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Telefoon</p>
-                  {klant.telefoon ? (
-                    <a
-                      href={`tel:${klant.telefoon}`}
-                      className="text-base text-autronis-accent hover:underline mt-0.5 block"
-                    >
-                      {klant.telefoon}
-                    </a>
-                  ) : (
-                    <p className="text-base text-autronis-text-primary mt-0.5">\u2014</p>
-                  )}
+                <div className="flex items-start gap-3">
+                  <Phone className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Telefoon</p>
+                    {klant.telefoon ? (
+                      <a href={`tel:${klant.telefoon}`} className="text-base text-autronis-accent hover:underline mt-0.5 block">
+                        {klant.telefoon}
+                      </a>
+                    ) : (
+                      <p className="text-base text-autronis-text-primary mt-0.5">{"\u2014"}</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Adres</p>
-                  <p className="text-base text-autronis-text-primary mt-0.5">
-                    {klant.adres || "\u2014"}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Adres</p>
+                    <p className="text-base text-autronis-text-primary mt-0.5">
+                      {klant.adres || "\u2014"}
+                    </p>
+                  </div>
                 </div>
+                {klant.website && (
+                  <div className="flex items-start gap-3">
+                    <Globe className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Website</p>
+                      <a href={klant.website.startsWith("http") ? klant.website : `https://${klant.website}`} target="_blank" rel="noopener noreferrer" className="text-base text-autronis-accent hover:underline mt-0.5 block">
+                        {klant.website.replace(/^https?:\/\//, "")}
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {klant.kvkNummer && (
+                  <div className="flex items-start gap-3">
+                    <Hash className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">KvK nummer</p>
+                      <p className="text-base text-autronis-text-primary mt-0.5">{klant.kvkNummer}</p>
+                    </div>
+                  </div>
+                )}
+                {klant.btwNummer && (
+                  <div className="flex items-start gap-3">
+                    <Building2 className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">BTW nummer</p>
+                      <p className="text-base text-autronis-text-primary mt-0.5">{klant.btwNummer}</p>
+                    </div>
+                  </div>
+                )}
+                {klant.aantalMedewerkers && (
+                  <div className="flex items-start gap-3">
+                    <User className="w-5 h-5 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Medewerkers</p>
+                      <p className="text-base text-autronis-text-primary mt-0.5">{klant.aantalMedewerkers}</p>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {/* Diensten & Tech Stack from AI enrichment */}
+              {diensten.length > 0 && (
+                <div className="mt-5 pt-5 border-t border-autronis-border">
+                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Diensten</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {diensten.map((d) => (
+                      <span key={d} className="text-xs px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {techStack.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Tech Stack</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {techStack.map((t) => (
+                      <span key={t} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {klant.aiVerrijktOp && (
+                <p className="text-[10px] text-autronis-text-secondary/50 mt-4">
+                  AI-verrijkt op {formatDatum(klant.aiVerrijktOp)}
+                </p>
+              )}
+            </div>
+
+            {/* Notities & Afspraken */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
+                  Notities & Afspraken
+                </h2>
+                <button
+                  onClick={() => setNoteModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Notitie
+                </button>
+              </div>
+              {notities.length === 0 ? (
+                <p className="text-base text-autronis-text-secondary">
+                  Nog geen notities toegevoegd.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {notities.slice(0, 5).map((notitie) => {
+                    const config = notitieTypeConfig[notitie.type] || notitieTypeConfig.notitie;
+                    return (
+                      <div
+                        key={notitie.id}
+                        className={cn(
+                          "border-l-4 rounded-xl bg-autronis-bg/50 p-5",
+                          config.border
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", config.badge)}>
+                            {config.label}
+                          </span>
+                          <span className="text-sm text-autronis-text-secondary">
+                            {formatDatum(notitie.aangemaaktOp)}
+                          </span>
+                        </div>
+                        <p className="text-base text-autronis-text-primary leading-relaxed">
+                          {notitie.inhoud}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Documenten & Links */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-autronis-text-primary">
-                Documenten & Links
-              </h2>
-              <button
-                onClick={() => setDocumentModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Toevoegen
-              </button>
+          {/* Right column */}
+          <div className="space-y-8">
+            {/* Projecten */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
+                  Projecten
+                </h2>
+                <button
+                  onClick={() => setProjectModalOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Project
+                </button>
+              </div>
+              {projecten.length === 0 ? (
+                <p className="text-base text-autronis-text-secondary">
+                  Nog geen projecten.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {projecten.map((project) => {
+                    const status = statusConfig[project.status] || statusConfig.inactief;
+                    const voortgang = project.voortgangPercentage ?? 0;
+                    return (
+                      <Link
+                        key={project.id}
+                        href={`/klanten/${id}/projecten/${project.id}`}
+                        className="block bg-autronis-bg/50 rounded-xl p-5 space-y-3 hover:bg-autronis-bg/80 transition-colors"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="text-base font-semibold text-autronis-text-primary">
+                            {project.naam}
+                          </p>
+                          <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0", status.bg, status.text)}>
+                            {status.label}
+                          </span>
+                        </div>
+                        {project.omschrijving && (
+                          <p className="text-sm text-autronis-text-secondary line-clamp-2">
+                            {project.omschrijving}
+                          </p>
+                        )}
+                        {/* Progress bar */}
+                        <div className="w-full bg-autronis-border rounded-full h-2">
+                          <div
+                            className="bg-autronis-accent h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min(voortgang, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-sm text-autronis-text-secondary">
+                          <span>
+                            <Clock className="w-4 h-4 inline mr-1.5" />
+                            {project.geschatteUren != null
+                              ? `${formatUren(project.werkelijkeMinuten)} / ${formatUren(project.geschatteUren * 60)}`
+                              : formatUren(project.werkelijkeMinuten)}
+                          </span>
+                          {project.deadline && (
+                            <span>Deadline: {formatDatum(project.deadline)}</span>
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            {documenten.length === 0 ? (
-              <p className="text-base text-autronis-text-secondary">
-                Nog geen documenten of links toegevoegd.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {documenten.map((doc) => {
-                  const docConfig = docTypeConfig[doc.type] || docTypeConfig.overig;
-                  const DocIcon = docConfig.icon;
-                  return (
+
+            {/* Recente tijdregistraties */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
+                Recente tijdregistraties
+              </h2>
+              {recenteTijdregistraties.length === 0 ? (
+                <p className="text-base text-autronis-text-secondary">
+                  Geen recente tijdregistraties.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {recenteTijdregistraties.slice(0, 5).map((registratie) => (
                     <div
-                      key={doc.id}
-                      className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4 group"
+                      key={registratie.id}
+                      className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4"
                     >
-                      <div className="flex items-center gap-4 min-w-0 flex-1">
-                        <DocIcon className={cn("w-5 h-5 flex-shrink-0", docConfig.color)} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-base font-medium text-autronis-text-primary truncate">
-                            {doc.naam}
-                          </p>
-                          <p className="text-sm text-autronis-text-secondary mt-0.5">
-                            {doc.type.charAt(0).toUpperCase() + doc.type.slice(1)} \u2014 {formatDatum(doc.aangemaaktOp)}
-                          </p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base text-autronis-text-primary truncate">
+                          {registratie.omschrijving}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {registratie.projectNaam && (
+                            <span className="text-sm text-autronis-accent">
+                              {registratie.projectNaam}
+                            </span>
+                          )}
+                          <span className="text-sm text-autronis-text-secondary">
+                            {formatDatum(registratie.startTijd)}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {doc.url && (
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm text-autronis-accent hover:text-autronis-accent-hover transition-colors px-3 py-1.5 rounded-lg hover:bg-autronis-accent/10"
-                          >
-                            Openen
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteDocId(doc.id);
-                          }}
-                          className="p-2 text-autronis-text-secondary hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
+                      <span className="text-base font-bold text-autronis-text-primary flex-shrink-0 tabular-nums">
+                        {formatUren(registratie.duurMinuten)}
+                      </span>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Notities & Afspraken */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-autronis-text-primary">
-                Notities & Afspraken
-              </h2>
-              <button
-                onClick={() => setNoteModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Notitie
-              </button>
+                  ))}
+                </div>
+              )}
             </div>
-            {notities.length === 0 ? (
-              <p className="text-base text-autronis-text-secondary">
-                Nog geen notities toegevoegd.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {notities.map((notitie) => {
-                  const config = notitieTypeConfig[notitie.type] || notitieTypeConfig.notitie;
-                  return (
-                    <div
-                      key={notitie.id}
-                      className={cn(
-                        "border-l-4 rounded-xl bg-autronis-bg/50 p-5",
-                        config.border
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <span
-                          className={cn(
-                            "text-xs px-2.5 py-1 rounded-full font-semibold",
-                            config.badge
-                          )}
-                        >
-                          {config.label}
-                        </span>
-                        <span className="text-sm text-autronis-text-secondary">
-                          {formatDatum(notitie.aangemaaktOp)}
-                        </span>
-                      </div>
-                      <p className="text-base text-autronis-text-primary leading-relaxed">
-                        {notitie.inhoud}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         </div>
+      )}
 
-        {/* Right column */}
-        <div className="space-y-8">
-          {/* Projecten */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-semibold text-autronis-text-primary">
-                Projecten
-              </h2>
-              <button
-                onClick={() => setProjectModalOpen(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Project
-              </button>
-            </div>
-            {projecten.length === 0 ? (
-              <p className="text-base text-autronis-text-secondary">
-                Nog geen projecten.
-              </p>
-            ) : (
-              <div className="space-y-4">
-                {projecten.map((project) => {
-                  const status = statusConfig[project.status] || statusConfig.inactief;
-                  const voortgang = project.voortgangPercentage ?? 0;
+      {/* Timeline tab */}
+      {activeTab === "tijdlijn" && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+          <h2 className="text-lg font-semibold text-autronis-text-primary mb-6">
+            Interactie-tijdlijn
+          </h2>
+          {tijdlijn.length === 0 ? (
+            <p className="text-base text-autronis-text-secondary">
+              Nog geen interacties vastgelegd.
+            </p>
+          ) : (
+            <div className="relative">
+              {/* Timeline line */}
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-autronis-border" />
+              <div className="space-y-6">
+                {tijdlijn.map((item: TijdlijnItem) => {
+                  const config = tijdlijnTypeConfig[item.type] || tijdlijnTypeConfig.notitie;
+                  const Icon = config.icon;
                   return (
-                    <Link
-                      key={project.id}
-                      href={`/klanten/${id}/projecten/${project.id}`}
-                      className="block bg-autronis-bg/50 rounded-xl p-5 space-y-3 hover:bg-autronis-bg/80 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-base font-semibold text-autronis-text-primary">
-                          {project.naam}
-                        </p>
-                        <span
-                          className={cn(
-                            "text-xs px-2.5 py-1 rounded-full font-semibold flex-shrink-0",
-                            status.bg,
-                            status.text
-                          )}
-                        >
-                          {status.label}
-                        </span>
+                    <div key={item.id} className="relative pl-12">
+                      {/* Icon dot */}
+                      <div className={cn("absolute left-2.5 w-5 h-5 rounded-full flex items-center justify-center", config.bg)}>
+                        <Icon className={cn("w-3 h-3", config.color)} />
                       </div>
-                      {project.omschrijving && (
-                        <p className="text-sm text-autronis-text-secondary line-clamp-2">
-                          {project.omschrijving}
-                        </p>
-                      )}
-                      {/* Progress bar */}
-                      <div className="w-full bg-autronis-border rounded-full h-2">
-                        <div
-                          className="bg-autronis-accent h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(voortgang, 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex items-center justify-between text-sm text-autronis-text-secondary">
-                        <span>
-                          <Clock className="w-4 h-4 inline mr-1.5" />
-                          {project.geschatteUren != null
-                            ? `${formatUren(project.werkelijkeMinuten)} / ${formatUren(project.geschatteUren * 60)}`
-                            : formatUren(project.werkelijkeMinuten)}
-                        </span>
-                        {project.deadline && (
-                          <span>Deadline: {formatDatum(project.deadline)}</span>
+                      <div className="bg-autronis-bg/50 rounded-xl p-4">
+                        <div className="flex items-start justify-between gap-3 mb-1">
+                          <p className="text-sm font-semibold text-autronis-text-primary">
+                            {item.titel}
+                          </p>
+                          <span className="text-xs text-autronis-text-secondary flex-shrink-0">
+                            {item.datum ? formatDatum(item.datum) : ""}
+                          </span>
+                        </div>
+                        {item.details && (
+                          <p className="text-sm text-autronis-text-secondary">
+                            {item.details}
+                          </p>
                         )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Recente tijdregistraties */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
-              Recente tijdregistraties
-            </h2>
-            {recenteTijdregistraties.length === 0 ? (
-              <p className="text-base text-autronis-text-secondary">
-                Geen recente tijdregistraties.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {recenteTijdregistraties.slice(0, 5).map((registratie) => (
-                  <div
-                    key={registratie.id}
-                    className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base text-autronis-text-primary truncate">
-                        {registratie.omschrijving}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        {registratie.projectNaam && (
-                          <span className="text-sm text-autronis-accent">
-                            {registratie.projectNaam}
+                        {item.status && (
+                          <span className={cn(
+                            "inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mt-2",
+                            factuurStatusConfig[item.status]?.bg || "bg-slate-500/15",
+                            factuurStatusConfig[item.status]?.text || "text-slate-400"
+                          )}>
+                            {factuurStatusConfig[item.status]?.label || item.status}
                           </span>
                         )}
-                        <span className="text-sm text-autronis-text-secondary">
-                          {formatDatum(registratie.startTijd)}
-                        </span>
                       </div>
                     </div>
-                    <span className="text-base font-bold text-autronis-text-primary flex-shrink-0 tabular-nums">
-                      {formatUren(registratie.duurMinuten)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Financial tab */}
+      {activeTab === "financieel" && (
+        <div className="space-y-8">
+          {/* Financial KPIs */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-green-500/10">
+                  <Euro className="w-4 h-4 text-green-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-green-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
+              <p className="text-xs text-autronis-text-secondary mt-1">Totale omzet</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-amber-500/10">
+                  <Receipt className="w-4 h-4 text-amber-400" />
+                </div>
+              </div>
+              <p className={cn("text-2xl font-bold tabular-nums", kpis.openstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}>
+                {formatBedrag(kpis.openstaand)}
+              </p>
+              <p className="text-xs text-autronis-text-secondary mt-1">Openstaand</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-blue-500/10">
+                  <CreditCard className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(kpis.gemiddeldFactuurbedrag)}</p>
+              <p className="text-xs text-autronis-text-secondary mt-1">Gem. factuurbedrag</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-autronis-accent/10">
+                  <Timer className="w-4 h-4 text-autronis-accent" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
+                {kpis.gemiddeldeBetalingsDagen !== null ? `${kpis.gemiddeldeBetalingsDagen} dagen` : "\u2014"}
+              </p>
+              <p className="text-xs text-autronis-text-secondary mt-1">Gem. betaaltermijn</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Facturen */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
+                  Facturen ({facturen.length})
+                </h2>
+                <Link
+                  href={`/financien/nieuw?klant=${id}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Factuur
+                </Link>
+              </div>
+              {facturen.length === 0 ? (
+                <p className="text-base text-autronis-text-secondary">Nog geen facturen.</p>
+              ) : (
+                <div className="space-y-3">
+                  {facturen.slice(0, 10).map((factuur) => {
+                    const fConfig = factuurStatusConfig[factuur.status || "concept"] || factuurStatusConfig.concept;
+                    return (
+                      <Link
+                        key={factuur.id}
+                        href={`/financien/${factuur.id}`}
+                        className="flex items-center justify-between gap-3 bg-autronis-bg/50 rounded-xl p-4 hover:bg-autronis-bg/80 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-autronis-text-primary">{factuur.factuurnummer}</p>
+                          <p className="text-xs text-autronis-text-secondary mt-0.5">
+                            {factuur.factuurdatum ? formatDatumKort(factuur.factuurdatum) : "Geen datum"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", fConfig.bg, fConfig.text)}>
+                            {fConfig.label}
+                          </span>
+                          <span className="text-sm font-bold text-autronis-text-primary tabular-nums">
+                            {formatBedrag(factuur.bedragInclBtw || 0)}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Offertes */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
+                  Offertes ({offertes.length})
+                </h2>
+                <Link
+                  href={`/offertes/nieuw?klant=${id}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Offerte
+                </Link>
+              </div>
+              {offertes.length === 0 ? (
+                <p className="text-base text-autronis-text-secondary">Nog geen offertes.</p>
+              ) : (
+                <div className="space-y-3">
+                  {offertes.slice(0, 10).map((offerte) => {
+                    const oStatus = offerte.status || "concept";
+                    const statusColors: Record<string, string> = {
+                      concept: "bg-slate-500/15 text-slate-400",
+                      verzonden: "bg-blue-500/15 text-blue-400",
+                      geaccepteerd: "bg-green-500/15 text-green-400",
+                      verlopen: "bg-red-500/15 text-red-400",
+                      afgewezen: "bg-red-500/15 text-red-400",
+                    };
+                    return (
+                      <Link
+                        key={offerte.id}
+                        href={`/offertes/${offerte.id}`}
+                        className="flex items-center justify-between gap-3 bg-autronis-bg/50 rounded-xl p-4 hover:bg-autronis-bg/80 transition-colors"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-autronis-text-primary">
+                            {offerte.offertenummer}{offerte.titel ? `: ${offerte.titel}` : ""}
+                          </p>
+                          <p className="text-xs text-autronis-text-secondary mt-0.5">
+                            {offerte.datum ? formatDatumKort(offerte.datum) : "Geen datum"}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", statusColors[oStatus] || statusColors.concept)}>
+                            {oStatus.charAt(0).toUpperCase() + oStatus.slice(1)}
+                          </span>
+                          <span className="text-sm font-bold text-autronis-text-primary tabular-nums">
+                            {formatBedrag(offerte.bedragInclBtw || 0)}
+                          </span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Documents tab */}
+      {activeTab === "documenten" && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-semibold text-autronis-text-primary">
+              Documenten & Links
+            </h2>
+            <button
+              onClick={() => setDocumentModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Toevoegen
+            </button>
+          </div>
+          {documenten.length === 0 ? (
+            <p className="text-base text-autronis-text-secondary">
+              Nog geen documenten of links toegevoegd.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {documenten.map((doc) => {
+                const docConfig2 = docTypeConfig[doc.type] || docTypeConfig.overig;
+                const DocIcon = docConfig2.icon;
+                return (
+                  <div
+                    key={doc.id}
+                    className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4 group"
+                  >
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <DocIcon className={cn("w-5 h-5 flex-shrink-0", docConfig2.color)} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base font-medium text-autronis-text-primary truncate">
+                          {doc.naam}
+                        </p>
+                        <p className="text-sm text-autronis-text-secondary mt-0.5">
+                          {doc.type.charAt(0).toUpperCase() + doc.type.slice(1)} {"\u2014"} {formatDatum(doc.aangemaaktOp)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {doc.url && (
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm text-autronis-accent hover:text-autronis-accent-hover transition-colors px-3 py-1.5 rounded-lg hover:bg-autronis-accent/10"
+                        >
+                          Openen
+                          <ExternalLink className="w-4 h-4" />
+                        </a>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteDocId(doc.id);
+                        }}
+                        className="p-2 text-autronis-text-secondary hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modals */}
       <KlantModal

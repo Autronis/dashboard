@@ -71,7 +71,7 @@ function berekenBelasting2026(belastbaarInkomen: number): number {
 // GET /api/belasting/jaaroverzicht?jaar=2026
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { searchParams } = new URL(req.url);
     const jaarParam = searchParams.get("jaar");
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
@@ -164,12 +164,8 @@ export async function GET(req: NextRequest) {
 
     // === UREN ===
     const urenRecord = await db.select().from(urenCriterium).where(eq(urenCriterium.jaar, jaar)).limit(1).get();
-    let totaalUren = urenRecord?.behaaldUren ?? 0;
-    if (!urenRecord) {
-      // Screen time (zelfde sessie-merge logica als Tijd pagina)
-      const gebruiker = await requireAuth();
-      totaalUren = await berekenActieveUren(gebruiker.id, jaarStart, jaarEind);
-    }
+    // Altijd realtime berekenen vanuit screen time (zelfde logica als Tijd pagina)
+    const totaalUren = await berekenActieveUren(gebruiker.id, jaarStart, jaarEind);
     const urenVoldoet = totaalUren >= 1225;
 
     // === KILOMETERS ===

@@ -140,12 +140,9 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
             <ProjectIcon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <Link
-              href={`/projecten/${project.id}`}
-              className="text-base font-semibold text-autronis-text-primary truncate block hover:text-autronis-accent transition-colors"
-            >
+            <span className="text-base font-semibold text-autronis-text-primary truncate block group-hover:text-autronis-accent transition-colors">
               {project.naam}
-            </Link>
+            </span>
             <p className="text-xs text-autronis-text-secondary mt-0.5">{project.klantNaam}</p>
           </div>
         </div>

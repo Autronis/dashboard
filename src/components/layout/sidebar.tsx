@@ -10,7 +10,7 @@ import {
   CheckSquare, ChevronLeft, X, Landmark, Users2, FileText,
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
-  Rocket, ChevronDown, Mail,
+  Rocket, ChevronDown, Mail, Radio,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Tijd", icon: Clock, href: "/tijd" },
       { label: "Focus", icon: Focus, href: "/focus" },
       { label: "Meetings", icon: Mic, href: "/meetings" },
+      { label: "Ops Room", icon: Radio, href: "/ops-room" },
     ],
   },
   {
@@ -285,7 +286,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin pb-[env(safe-area-inset-bottom,16px)]">
+        <nav className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin pb-20 max-lg:pb-24">
           {navSections.map((entry, idx) => {
             if ("section" in entry) {
               return (

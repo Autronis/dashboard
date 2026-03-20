@@ -47,7 +47,7 @@ export function KPICard({
       transition={{ delay: index * 0.08, duration: 0.35, ease: "easeOut" }}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
       className={cn(
-        "bg-gradient-to-br to-autronis-card border border-autronis-border rounded-xl p-4 card-glow relative overflow-hidden",
+        "bg-gradient-to-br to-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 card-glow relative overflow-hidden",
         c.bg,
         className
       )}
@@ -67,7 +67,7 @@ export function KPICard({
         <AnimatedNumber
           value={value}
           format={format}
-          className={cn("text-2xl font-bold tabular-nums", c.text)}
+          className={cn("text-lg sm:text-2xl font-bold tabular-nums", c.text)}
         />
 
         {/* Trend indicator */}

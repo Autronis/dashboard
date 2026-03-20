@@ -785,10 +785,10 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-[1400px] mx-auto p-4 lg:p-5 space-y-3">
+      <div className="max-w-[1400px] mx-auto space-y-3">
         {/* Begroeting */}
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
             {getBegroeting()}, {gebruiker.naam.split(" ")[0]}
           </h1>
           <p className="text-sm text-autronis-text-secondary capitalize">
@@ -821,7 +821,7 @@ export default function DashboardPage() {
         )}
 
         {/* Row 1: KPI's */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           <Link href="/financien" className="block">
             <KPICard
               label="Omzet deze maand"
@@ -1171,41 +1171,47 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sticky Timer bar at bottom */}
-        <div className="h-16" /> {/* Spacer for sticky bar */}
+        {/* Spacer for sticky timer bar + mobile bottom nav */}
+        <div className="h-24 md:h-16" />
       </div>
 
-      {/* Fixed timer bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 p-3">
+      {/* Fixed timer bar — above bottom nav on mobile */}
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 p-2 sm:p-3">
         <div className="max-w-[1400px] mx-auto">
-        <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 card-glow">
+        <div className="bg-autronis-card border border-autronis-border rounded-xl p-2 sm:p-3 card-glow">
           {timer.isRunning ? (
-            <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-4">
               <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
-              <span className="text-sm text-autronis-text-primary font-medium">{timer.omschrijving || "Timer"}</span>
-              <span className="text-xs text-autronis-text-secondary">{projecten.find((p) => p.id === timer.projectId)?.naam || ""}</span>
-              <span className="text-lg font-bold text-autronis-accent font-mono tabular-nums ml-auto">{formatElapsed(timer.elapsed)}</span>
-              <button onClick={handleStopTimer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors btn-press">
+              <div className="flex-1 min-w-0">
+                <span className="text-sm text-autronis-text-primary font-medium truncate block">{timer.omschrijving || "Timer"}</span>
+                <span className="text-xs text-autronis-text-secondary hidden sm:inline">{projecten.find((p) => p.id === timer.projectId)?.naam || ""}</span>
+              </div>
+              <span className="text-base sm:text-lg font-bold text-autronis-accent font-mono tabular-nums">{formatElapsed(timer.elapsed)}</span>
+              <button onClick={handleStopTimer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors btn-press flex-shrink-0">
                 <Square className="w-3 h-3" /> Stop
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 flex-wrap">
-              <Clock className="w-4 h-4 text-autronis-accent flex-shrink-0" />
-              <select value={timerProjectId} onChange={(e) => setTimerProjectId(e.target.value)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent flex-1 min-w-[160px] bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
-                <option value="">Project...</option>
-                {projecten.map((p) => <option key={p.id} value={p.id}>{p.naam} — {p.klantNaam}</option>)}
-              </select>
-              <input type="text" value={timerOmschrijving} onChange={(e) => setTimerOmschrijving(e.target.value)} placeholder="Waar werk je aan?" className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent flex-1 min-w-[140px]" onKeyDown={(e) => e.key === "Enter" && handleStartTimer()} />
-              <select value={timerCategorie} onChange={(e) => setTimerCategorie(e.target.value as TijdCategorie)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent w-auto bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
-                <option value="development">Development</option>
-                <option value="meeting">Meeting</option>
-                <option value="administratie">Administratie</option>
-                <option value="overig">Overig</option>
-              </select>
-              <button onClick={handleStartTimer} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors btn-press">
-                <Play className="w-3.5 h-3.5" /> Start
-              </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <Clock className="w-4 h-4 text-autronis-accent flex-shrink-0 hidden sm:block" />
+                <select value={timerProjectId} onChange={(e) => setTimerProjectId(e.target.value)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent flex-1 min-w-0 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
+                  <option value="">Project...</option>
+                  {projecten.map((p) => <option key={p.id} value={p.id}>{p.naam} — {p.klantNaam}</option>)}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 flex-1">
+                <input type="text" value={timerOmschrijving} onChange={(e) => setTimerOmschrijving(e.target.value)} placeholder="Waar werk je aan?" className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent flex-1 min-w-0" onKeyDown={(e) => e.key === "Enter" && handleStartTimer()} />
+                <select value={timerCategorie} onChange={(e) => setTimerCategorie(e.target.value as TijdCategorie)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-2 pr-6 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent w-auto hidden sm:block bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
+                  <option value="development">Development</option>
+                  <option value="meeting">Meeting</option>
+                  <option value="administratie">Administratie</option>
+                  <option value="overig">Overig</option>
+                </select>
+                <button onClick={handleStartTimer} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors btn-press flex-shrink-0">
+                  <Play className="w-3.5 h-3.5" /> Start
+                </button>
+              </div>
             </div>
           )}
         </div>

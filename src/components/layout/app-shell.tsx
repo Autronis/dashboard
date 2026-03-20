@@ -69,7 +69,7 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
           "pb-20 md:pb-6"
         )}
       >
-        <div className="p-4 sm:p-6 max-w-[1400px] mx-auto">
+        <div className="p-3 sm:p-4 lg:p-6 max-w-[1400px] mx-auto">
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>

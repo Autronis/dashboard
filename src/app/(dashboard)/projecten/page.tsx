@@ -27,6 +27,7 @@ import { useProjecten } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
+import { openProjectInVSCode } from "@/lib/desktop-agent";
 
 // Auto-detect icon based on project name or tech stack
 function getProjectIcon(project: Project) {
@@ -126,7 +127,7 @@ function formatRelatief(datum: string | null): string {
   return formatDatum(datum);
 }
 
-function ProjectCard({ project, onStartTimer }: { project: Project; onStartTimer: (p: Project) => void }) {
+function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void }) {
   const ProjectIcon = getProjectIcon(project);
   const iconColor = getIconColor(project.status ?? "actief");
 
@@ -204,20 +205,13 @@ function ProjectCard({ project, onStartTimer }: { project: Project; onStartTimer
         >
           <Play className="w-3.5 h-3.5" />
         </button>
-        {project.omschrijving?.includes("Tech stack:") && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              // Open project dir in VS Code via vscode:// protocol
-              const dirName = project.naam.toLowerCase().replace(/\s+/g, "-");
-              window.open(`vscode://file/c:/Users/semmi/OneDrive/Claude AI/Projects/${dirName}`, "_blank");
-            }}
-            title="Open in VS Code"
-            className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-blue-400 hover:border-blue-400/40 transition-colors"
-          >
-            <Code2 className="w-3.5 h-3.5" />
-          </button>
-        )}
+        <button
+          onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }}
+          title="Open in VS Code + Claude"
+          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-blue-400 hover:border-blue-400/40 transition-colors"
+        >
+          <Code2 className="w-3.5 h-3.5" />
+        </button>
         <Link
           href={`/projecten/${project.id}`}
           className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/40 transition-colors"
@@ -264,6 +258,16 @@ export default function ProjectenPage() {
       setSyncing(false);
     }
   }, [addToast, refetch]);
+
+  const handleOpenVSCode = useCallback(async (project: Project) => {
+    const dirName = project.naam.toLowerCase().replace(/\s+/g, "-");
+    const result = await openProjectInVSCode(dirName);
+    if (result.succes) {
+      addToast(`VS Code + Claude geopend voor ${project.naam}`, "succes");
+    } else {
+      addToast(result.fout ?? "Kon project niet openen", "fout");
+    }
+  }, [addToast]);
 
   const handleStartTimer = useCallback(async (project: Project) => {
     if (timer.isRunning) {
@@ -426,6 +430,7 @@ export default function ProjectenPage() {
                 key={project.id}
                 project={project}
                 onStartTimer={handleStartTimer}
+                onOpenVSCode={handleOpenVSCode}
               />
             ))}
           </div>

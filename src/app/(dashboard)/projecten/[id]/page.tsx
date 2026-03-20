@@ -21,6 +21,7 @@ import {
 import { cn, formatDatum, formatUren } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
+import { openProjectInVSCode } from "@/lib/desktop-agent";
 
 // ============ Types ============
 
@@ -278,6 +279,7 @@ export default function ProjectDetailPage() {
   const [fases, setFases] = useState<Fase[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [openingVSCode, setOpeningVSCode] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -347,7 +349,18 @@ export default function ProjectDetailPage() {
 
   if (!project) return null;
 
-  const vscodePath = project.naam.toLowerCase().replace(/\s+/g, "-");
+  const projectDirName = project.naam.toLowerCase().replace(/\s+/g, "-");
+
+  const handleOpenVSCode = useCallback(async () => {
+    setOpeningVSCode(true);
+    const result = await openProjectInVSCode(projectDirName);
+    if (result.succes) {
+      addToast(`VS Code + Claude geopend voor ${project.naam}`, "succes");
+    } else {
+      addToast(result.fout ?? "Kon project niet openen", "fout");
+    }
+    setOpeningVSCode(false);
+  }, [projectDirName, project.naam, addToast]);
 
   return (
     <PageTransition>
@@ -475,13 +488,14 @@ export default function ProjectDetailPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <a
-            href={`vscode://file/c:/Users/semmi/OneDrive/Claude AI/Projects/${vscodePath}`}
-            className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors"
+          <button
+            onClick={handleOpenVSCode}
+            disabled={openingVSCode}
+            className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
           >
-            <Code2 className="w-4 h-4" />
-            Open in VS Code
-          </a>
+            <Code2 className={cn("w-4 h-4", openingVSCode && "animate-spin")} />
+            {openingVSCode ? "Openen..." : "Open in VS Code + Claude"}
+          </button>
           <button
             onClick={syncTaken}
             disabled={syncing}

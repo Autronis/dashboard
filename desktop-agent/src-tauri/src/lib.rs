@@ -1,4 +1,6 @@
 mod config;
+mod http_server;
+mod project_sync;
 mod storage;
 mod sync;
 mod tracker;
@@ -177,6 +179,7 @@ pub fn run() {
     let state_for_sync = Arc::clone(&state);
     let state_for_nextjs = Arc::clone(&state);
     let state_for_notifications = Arc::clone(&state);
+    let state_for_project_sync = Arc::clone(&state);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_autostart::init(
@@ -427,6 +430,37 @@ pub fn run() {
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+            });
+
+            // Local HTTP server for dashboard → VS Code integration
+            tauri::async_runtime::spawn(async move {
+                http_server::start_server().await;
+            });
+
+            // Project sync loop — scan local project dirs every 10 minutes
+            tauri::async_runtime::spawn({
+                let state = Arc::clone(&state_for_project_sync);
+                async move {
+                    // Wait 60 seconds before first sync
+                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+
+                    let mut interval = tokio::time::interval(
+                        std::time::Duration::from_secs(600) // Every 10 minutes
+                    );
+                    loop {
+                        interval.tick().await;
+
+                        let config = state.config.lock().unwrap().clone();
+                        if config.api_token.is_empty() {
+                            continue;
+                        }
+
+                        match project_sync::sync_projects(&config).await {
+                            Ok(msg) => eprintln!("[project-sync] {}", msg),
+                            Err(e) => eprintln!("[project-sync] Fout: {}", e),
                         }
                     }
                 }

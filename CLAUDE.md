@@ -1,9 +1,16 @@
 # Autronis Dashboard
 
 ## Status
-- **Status**: In development (alle pagina's functioneel, bedrijfsinstellingen moeten nog gevuld)
-- **Deployment platform**: Geen vercel.json gevonden — draait lokaal (Next.js dev server)
-- **URL**: Vraag aan Sem
+- **Status**: Live + in development
+- **Deployment platform**: Vercel (auto-deploy via GitHub)
+- **URL**: https://dashboard.autronis.nl
+- **Database**: Turso (libsql) — zowel lokaal als live dezelfde database
+
+## Deployment
+- Git post-commit hook pusht automatisch naar GitHub na elke commit
+- Vercel deployt automatisch na elke push naar main
+- **Na elke wijziging**: gewoon committen, de rest gaat automatisch
+- Nooit handmatig pushen of deployen nodig
 
 ## Tech Stack
 - **Framework**: Next.js 16.1.6 (App Router, Turbopack)

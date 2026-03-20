@@ -340,18 +340,17 @@ function DagTimeline({
                 borderLeft: `4px solid ${kleur}`,
               }}
             >
-              <div className="h-full flex flex-col justify-center px-3.5 min-w-0">
+              <div className="h-full flex flex-col justify-center px-2 sm:px-3.5 min-w-0">
                 {/* Row 1: Time + Description + Duration */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[11px] text-white/40 tabular-nums shrink-0 w-[90px]">{startTime}–{endTime}</span>
-                  <span className="text-[13px] font-semibold text-white truncate flex-1" title={beschrijving}>
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <span className="text-[10px] sm:text-[11px] text-white/40 tabular-nums shrink-0 w-[72px] sm:w-[90px]">{startTime}–{endTime}</span>
+                  <span className="text-[12px] sm:text-[13px] font-semibold text-white truncate flex-1" title={beschrijving}>
                     {beschrijving}
                   </span>
-                  <span className="text-xs text-white/50 tabular-nums shrink-0 pl-2">{formatTijd(duurMin * 60)}</span>
                 </div>
                 {/* Row 2: Category label (medium/long blocks only) */}
                 {showDetails && (
-                  <div className="flex items-center gap-2 mt-1 ml-[90px]">
+                  <div className="flex items-center gap-2 mt-1 ml-[72px] sm:ml-[90px]">
                     {showCategory && (
                       <span className="text-[10px] font-medium px-1.5 py-0.5 rounded" style={{ backgroundColor: `${kleur}40`, color: kleur }}>
                         {catLabel}

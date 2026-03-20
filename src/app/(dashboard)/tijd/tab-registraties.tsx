@@ -172,15 +172,36 @@ export function TabRegistraties() {
   return (
     <div className="space-y-6">
       {/* Action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-autronis-text-primary">Registraties</h2>
-          <span className="text-sm text-autronis-text-secondary">
-            {periodeLabels[periode]} — {formatUrenTotaal(totaalMinuten)} totaal
-          </span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold text-autronis-text-primary">Registraties</h2>
+            <span className="text-xs sm:text-sm text-autronis-text-secondary">
+              {periodeLabels[periode]} — {formatUrenTotaal(totaalMinuten)} totaal
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleExport}
+              className="p-2 bg-autronis-card border border-autronis-border rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+              title="Exporteer als CSV"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => {
+                setBewerkRegistratie(null);
+                setModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 bg-autronis-card border border-autronis-border text-autronis-text-primary px-3 py-2 rounded-lg text-sm font-medium hover:bg-autronis-border transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Handmatig</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Period filter */}
           <div className="flex bg-autronis-card border border-autronis-border rounded-lg overflow-hidden">
             {(["dag", "week", "maand"] as Periode[]).map((p) => (
@@ -191,7 +212,7 @@ export function TabRegistraties() {
                   setHuidigeDatum(new Date());
                 }}
                 className={cn(
-                  "px-4 py-2 text-sm font-medium transition-colors",
+                  "px-3 py-1.5 text-xs sm:text-sm font-medium transition-colors",
                   periode === p
                     ? "bg-autronis-accent text-autronis-bg"
                     : "text-autronis-text-secondary hover:text-autronis-text-primary"
@@ -206,43 +227,22 @@ export function TabRegistraties() {
           <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-lg overflow-hidden">
             <button
               onClick={() => setHuidigeDatum((d) => navigeerDatum(d, periode, -1))}
-              className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+              className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
               title="Vorige periode"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-sm text-autronis-text-secondary px-2 min-w-[120px] text-center">
+            <span className="text-xs sm:text-sm text-autronis-text-secondary px-1 sm:px-2 min-w-[90px] sm:min-w-[120px] text-center">
               {datumLabel(huidigeDatum, periode)}
             </span>
             <button
               onClick={() => setHuidigeDatum((d) => navigeerDatum(d, periode, 1))}
-              className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+              className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
               title="Volgende periode"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Export */}
-          <button
-            onClick={handleExport}
-            className="p-2.5 bg-autronis-card border border-autronis-border rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
-            title="Exporteer als CSV"
-          >
-            <Download className="w-5 h-5" />
-          </button>
-
-          {/* Manual entry */}
-          <button
-            onClick={() => {
-              setBewerkRegistratie(null);
-              setModalOpen(true);
-            }}
-            className="flex items-center gap-2 bg-autronis-card border border-autronis-border text-autronis-text-primary px-4 py-2 rounded-lg text-sm font-medium hover:bg-autronis-border transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Handmatig
-          </button>
         </div>
       </div>
 
@@ -332,14 +332,13 @@ export function TabRegistraties() {
                       <div
                         key={reg.id}
                         className={cn(
-                          "group bg-autronis-card border rounded-2xl px-5 py-4 flex items-center justify-between transition-all card-glow",
+                          "group bg-autronis-card border rounded-2xl px-3 sm:px-5 py-3 sm:py-4 transition-all card-glow",
                           isActief
                             ? "border-autronis-accent shadow-sm shadow-autronis-accent/10"
                             : "border-autronis-border hover:border-autronis-text-secondary/20"
                         )}
                       >
-                        {/* Left */}
-                        <div className="flex items-center gap-4 min-w-0 flex-1">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           {/* Status dot */}
                           <div
                             className={cn(
@@ -349,20 +348,39 @@ export function TabRegistraties() {
                                 : "bg-autronis-text-secondary/40"
                             )}
                           />
-                          <div className="min-w-0">
-                            <div className="text-base font-medium text-autronis-text-primary truncate">
-                              {reg.omschrijving ?? "(geen omschrijving)"}
+                          {/* Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm sm:text-base font-medium text-autronis-text-primary truncate">
+                                {reg.omschrijving ?? "(geen omschrijving)"}
+                              </span>
+                              <span
+                                className={cn(
+                                  "font-bold text-sm sm:text-base font-mono tabular-nums flex-shrink-0",
+                                  isActief ? "text-autronis-accent" : "text-autronis-text-primary"
+                                )}
+                              >
+                                {isActief ? (
+                                  <LiveDuur startTijd={reg.startTijd} />
+                                ) : (
+                                  formatDuurKort(duur)
+                                )}
+                              </span>
                             </div>
-                            <div className="text-sm text-autronis-text-secondary truncate mt-0.5">
-                              {reg.projectNaam} — {reg.klantNaam}
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <span className="text-xs sm:text-sm text-autronis-text-secondary truncate">
+                                {reg.projectNaam}
+                              </span>
+                              <CategorieBadge categorie={reg.categorie} />
+                              {!isActief && reg.eindTijd && (
+                                <span className="text-xs text-autronis-text-secondary tabular-nums ml-auto">
+                                  {formatTijdstip(reg.startTijd)}–{formatTijdstip(reg.eindTijd)}
+                                </span>
+                              )}
                             </div>
                           </div>
-                        </div>
-
-                        {/* Right */}
-                        <div className="flex items-center gap-4 flex-shrink-0 ml-4">
-                          {/* Action buttons (hover) */}
-                          <div className="hidden group-hover:flex items-center gap-1">
+                          {/* Action buttons (hover, desktop only) */}
+                          <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
                             {!isActief && (
                               <button
                                 onClick={() => handleHerhaal(reg)}
@@ -390,32 +408,6 @@ export function TabRegistraties() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-
-                          {/* Category badge */}
-                          <span className="hidden sm:inline-flex">
-                            <CategorieBadge categorie={reg.categorie} />
-                          </span>
-
-                          {/* Time range */}
-                          {!isActief && reg.eindTijd && (
-                            <span className="hidden sm:inline text-sm text-autronis-text-secondary tabular-nums">
-                              {formatTijdstip(reg.startTijd)} – {formatTijdstip(reg.eindTijd)}
-                            </span>
-                          )}
-
-                          {/* Duration */}
-                          <span
-                            className={cn(
-                              "font-bold text-base font-mono tabular-nums min-w-[55px] text-right",
-                              isActief ? "text-autronis-accent" : "text-autronis-text-primary"
-                            )}
-                          >
-                            {isActief ? (
-                              <LiveDuur startTijd={reg.startTijd} />
-                            ) : (
-                              formatDuurKort(duur)
-                            )}
-                          </span>
                         </div>
                       </div>
                     );

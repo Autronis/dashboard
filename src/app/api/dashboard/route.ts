@@ -6,6 +6,7 @@ import {
   klanten,
   tijdregistraties,
   taken,
+  screenTimeEntries,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, isNull, ne, desc } from "drizzle-orm";
@@ -70,7 +71,7 @@ export async function GET() {
       return sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0);
     }, 0);
 
-    // Uren deze week - eigen
+    // Uren deze week - eigen (tijdregistraties)
     const [eigenUren] = await db
       .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
       .from(tijdregistraties)
@@ -80,6 +81,19 @@ export async function GET() {
           gte(tijdregistraties.startTijd, week.van),
           lte(tijdregistraties.startTijd, week.tot),
           sql`${tijdregistraties.eindTijd} IS NOT NULL`
+        )
+      );
+
+    // Uren deze week - eigen (screen time, excl. inactief/afleiding)
+    const [eigenScreenTime] = await db
+      .select({ totaal: sql<number>`coalesce(sum(${screenTimeEntries.duurSeconden}), 0)` })
+      .from(screenTimeEntries)
+      .where(
+        and(
+          eq(screenTimeEntries.gebruikerId, gebruiker.id),
+          gte(screenTimeEntries.startTijd, week.van),
+          lte(screenTimeEntries.startTijd, week.tot),
+          sql`${screenTimeEntries.categorie} NOT IN ('inactief', 'afleiding')`
         )
       );
 
@@ -270,8 +284,8 @@ export async function GET() {
       kpis: {
         omzetDezeMaand: Math.round(omzetDezeMaand * 100) / 100,
         urenDezeWeek: {
-          totaal: (eigenUren?.totaal || 0) + teamgenootUren,
-          eigen: eigenUren?.totaal || 0,
+          totaal: (eigenUren?.totaal || 0) + teamgenootUren + Math.round((eigenScreenTime?.totaal || 0) / 60),
+          eigen: (eigenUren?.totaal || 0) + Math.round((eigenScreenTime?.totaal || 0) / 60),
           teamgenoot: teamgenootUren,
         },
         actieveProjecten: actieveProjectenCount?.count || 0,

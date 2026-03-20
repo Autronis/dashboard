@@ -489,7 +489,7 @@ export default function TakenPage() {
         </div>
 
         {/* KPI balk compact */}
-        <div className="grid grid-cols-5 gap-2">
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-5 sm:overflow-visible">
           {[
             { label: "Totaal", value: kpis.totaal, icon: ListTodo, color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
             { label: "Open", value: kpis.open, icon: Circle, color: "text-slate-400", bg: "bg-slate-500/10" },
@@ -499,7 +499,7 @@ export default function TakenPage() {
           ].map((kpi) => {
             const Icon = kpi.icon;
             return (
-              <div key={kpi.label} className="bg-autronis-card border border-autronis-border rounded-lg p-3 card-glow">
+              <div key={kpi.label} className="bg-autronis-card border border-autronis-border rounded-lg p-3 card-glow min-w-[100px] flex-shrink-0 sm:min-w-0 sm:flex-shrink">
                 <div className="flex items-center gap-1.5 mb-1">
                   <div className={cn("p-1 rounded", kpi.bg)}><Icon className={cn("w-3 h-3", kpi.color)} /></div>
                   <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">{kpi.label}</span>

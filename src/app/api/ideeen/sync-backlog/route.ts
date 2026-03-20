@@ -120,7 +120,7 @@ function parseBriefGoal(brief: string): string {
   return goalMatch ? goalMatch[1].trim() : brief.substring(0, 200);
 }
 
-function parseTodos(todoContent: string, projectId: number, userId: number): number {
+async function parseTodos(todoContent: string, projectId: number, userId: number): Promise<number> {
   const lines = todoContent.split("\n");
   let count = 0;
   for (const line of lines) {
@@ -267,7 +267,7 @@ export async function POST() {
 
       // Create taken from TODO.md
       if (todo) {
-        parseTodos(todo, project.id, gebruiker.id);
+        await parseTodos(todo, project.id, gebruiker.id);
       }
 
       // Create Notion plan document

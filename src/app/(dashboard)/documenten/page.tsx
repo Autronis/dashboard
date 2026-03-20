@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { DocumentList } from "@/components/documenten/document-list";
 import { DocumentModal } from "@/components/documenten/document-modal";
 import { Plus, Trash2, FolderSync } from "lucide-react";
+import { AiDocumentButton, AiDocumentPanel } from "@/components/documenten/ai-document-creator";
 import { cn } from "@/lib/utils";
 import type { DocumentType } from "@/types/documenten";
 import { DOCUMENT_SUBTYPE_CONFIG, SUBTYPE_TO_NOTION_TYPE } from "@/types/documenten";
@@ -29,6 +30,7 @@ export default function DocumentenPage() {
   const [initialType, setInitialType] = useState<DocumentType | undefined>();
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [autoPlanLoading, setAutoPlanLoading] = useState(false);
+  const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const searchParams = useSearchParams();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -99,14 +101,20 @@ export default function DocumentenPage() {
           <h1 className="text-3xl font-bold text-white tracking-tight">Documenten</h1>
           <p className="text-sm text-autronis-text-secondary mt-1">Alle documenten in Notion</p>
         </div>
-        <button
-          onClick={() => openModal()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg text-sm font-semibold hover:bg-autronis-accent-hover transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
-        >
-          <Plus className="w-4 h-4" />
-          Nieuw document
-        </button>
+        <div className="flex items-center gap-2">
+          <AiDocumentButton onClick={() => setAiPanelOpen(!aiPanelOpen)} />
+          <button
+            onClick={() => openModal()}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg text-sm font-semibold hover:bg-autronis-accent-hover transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
+          >
+            <Plus className="w-4 h-4" />
+            Nieuw document
+          </button>
+        </div>
       </div>
+
+      {/* AI Document Creator Panel */}
+      {aiPanelOpen && <AiDocumentPanel onClose={() => setAiPanelOpen(false)} />}
 
       {/* Snel aanmaken type knoppen */}
       <div className="flex flex-wrap gap-2">

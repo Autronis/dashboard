@@ -9,7 +9,7 @@ import { DocumentPreview } from "./document-preview";
 import { DocumentModal } from "./document-modal";
 import { DocumentKanban } from "./document-kanban";
 import { SavedFilters } from "./saved-filters";
-import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight, Pin, X, Clock, Archive, List, LayoutGrid } from "lucide-react";
+import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight, Pin, X, Clock, Archive, List, LayoutGrid, ChevronDown } from "lucide-react";
 
 export function DocumentList() {
   const [zoekterm, setZoekterm] = useState("");
@@ -24,6 +24,7 @@ export function DocumentList() {
   const [showArchived, setShowArchived] = useState(false);
   const [duplicateDoc, setDuplicateDoc] = useState<DocumentBase | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<DocumentType>>(new Set());
 
   const { data, isLoading, error } = useDocumenten(sortBy, cursor);
   const documenten = data?.documenten;
@@ -50,6 +51,25 @@ export function DocumentList() {
       if (aPinned !== bPinned) return aPinned - bPinned;
       return 0; // Server-side sort handles the rest
     });
+
+  const GROUP_ORDER: DocumentType[] = ["plan", "contract", "klantdocument", "intern", "notitie", "belangrijke-info"];
+
+  const grouped = gefilterd
+    ? GROUP_ORDER.map((type) => ({
+        type,
+        config: DOCUMENT_TYPE_CONFIG[type],
+        docs: gefilterd.filter((d: DocumentBase) => d.type === type),
+      })).filter((g) => g.docs.length > 0)
+    : [];
+
+  function toggleGroup(type: DocumentType) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(type)) next.delete(type);
+      else next.add(type);
+      return next;
+    });
+  }
 
   function handleArchive(doc: DocumentBase) {
     archiveDocument.mutate(
@@ -266,55 +286,73 @@ export function DocumentList() {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {gefilterd.map((doc: DocumentBase) => {
-            const config = DOCUMENT_TYPE_CONFIG[doc.type];
-            const pinned = isPinned(doc.notionId);
+        <div className="space-y-6">
+          {grouped.map(({ type, config, docs }) => {
+            const isCollapsed = collapsedGroups.has(type);
             return (
-              <div
-                key={doc.notionId}
-                onClick={() => !doc.isOptimistic && openPreview(doc)}
-                className={`rounded-xl bg-autronis-card border p-4 transition-colors group cursor-pointer card-glow ${pinned ? "border-amber-500/40" : "border-autronis-border"} ${doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/50"}`}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Color bar */}
-                  <div className="w-1 self-stretch rounded-full opacity-60" style={{ backgroundColor: config.color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-autronis-text-primary truncate">{doc.titel}</h3>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bgClass} ${config.textClass}`}>
-                        {config.label}
-                      </span>
-                      {doc.isOptimistic && <Loader2 className="w-3.5 h-3.5 animate-spin text-autronis-text-secondary" />}
-                    </div>
-                    {doc.samenvatting && (
-                      <p className="text-xs text-autronis-text-secondary line-clamp-1">{doc.samenvatting}</p>
-                    )}
-                    <div className="flex items-center gap-3 mt-2 text-xs text-autronis-text-secondary">
-                      {doc.klantNaam && <span>{doc.klantNaam}</span>}
-                      {doc.aangemaaktOp && <span>{new Date(doc.aangemaaktOp).toLocaleDateString("nl-NL")}</span>}
-                      <span>{doc.aangemaaktDoor}</span>
-                    </div>
+              <div key={type}>
+                <button
+                  onClick={() => toggleGroup(type)}
+                  className="flex items-center gap-2 w-full mb-3 group/header"
+                >
+                  <div className="w-1 h-5 rounded-full" style={{ backgroundColor: config.color }} />
+                  <span className="text-sm font-semibold text-autronis-text-primary">{config.emoji} {config.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bgClass} ${config.textClass}`}>
+                    {docs.length}
+                  </span>
+                  <div className="flex-1 h-px bg-autronis-border ml-2" />
+                  <ChevronDown className={`w-4 h-4 text-autronis-text-secondary transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                </button>
+                {!isCollapsed && (
+                  <div className="space-y-2">
+                    {docs.map((doc: DocumentBase) => {
+                      const pinned = isPinned(doc.notionId);
+                      return (
+                        <div
+                          key={doc.notionId}
+                          onClick={() => !doc.isOptimistic && openPreview(doc)}
+                          className={`rounded-xl bg-autronis-card border p-4 transition-colors group cursor-pointer card-glow ${pinned ? "border-amber-500/40" : "border-autronis-border"} ${doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/50"}`}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="w-1 self-stretch rounded-full opacity-60" style={{ backgroundColor: config.color }} />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h3 className="text-sm font-medium text-autronis-text-primary truncate">{doc.titel}</h3>
+                                {doc.isOptimistic && <Loader2 className="w-3.5 h-3.5 animate-spin text-autronis-text-secondary" />}
+                              </div>
+                              {doc.samenvatting && (
+                                <p className="text-xs text-autronis-text-secondary line-clamp-1">{doc.samenvatting}</p>
+                              )}
+                              <div className="flex items-center gap-3 mt-2 text-xs text-autronis-text-secondary">
+                                {doc.klantNaam && <span>{doc.klantNaam}</span>}
+                                {doc.aangemaaktOp && <span>{new Date(doc.aangemaaktOp).toLocaleDateString("nl-NL")}</span>}
+                                <span>{doc.aangemaaktDoor}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); togglePin(doc.notionId); }}
+                                className={`p-1.5 rounded-lg transition-colors ${pinned ? "text-amber-400" : "text-autronis-text-secondary opacity-0 group-hover:opacity-100"} hover:bg-autronis-border`}
+                                title={pinned ? "Losmaken" : "Vastzetten"}
+                              >
+                                <Pin className="w-4 h-4" />
+                              </button>
+                              <a
+                                href={doc.notionUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="p-1.5 rounded-lg text-autronis-text-secondary opacity-0 group-hover:opacity-100 hover:bg-autronis-border transition-colors"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); togglePin(doc.notionId); }}
-                      className={`p-1.5 rounded-lg transition-colors ${pinned ? "text-amber-400" : "text-autronis-text-secondary opacity-0 group-hover:opacity-100"} hover:bg-autronis-border`}
-                      title={pinned ? "Losmaken" : "Vastzetten"}
-                    >
-                      <Pin className="w-4 h-4" />
-                    </button>
-                    <a
-                      href={doc.notionUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1.5 rounded-lg text-autronis-text-secondary opacity-0 group-hover:opacity-100 hover:bg-autronis-border transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
+                )}
               </div>
             );
           })}

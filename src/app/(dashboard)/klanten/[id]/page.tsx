@@ -31,6 +31,9 @@ import {
   Timer,
   Hash,
   Loader2,
+  Share2,
+  Copy,
+  XCircle,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
@@ -92,6 +95,74 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
 };
 
 type Tab = "overzicht" | "tijdlijn" | "financieel" | "documenten";
+
+function PortalLinkButton({ klantId }: { klantId: number }) {
+  const { addToast } = useToast();
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [deactivating, setDeactivating] = useState(false);
+
+  async function handleGenerate() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/klanten/${klantId}/portal`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout);
+      setPortalLink(data.link);
+      await navigator.clipboard.writeText(data.link);
+      addToast("Portal link gekopieerd naar klembord!", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Kon link niet genereren", "fout");
+    }
+    setLoading(false);
+  }
+
+  async function handleDeactivate() {
+    setDeactivating(true);
+    try {
+      const res = await fetch(`/api/klanten/${klantId}/portal`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setPortalLink(null);
+      addToast("Portal link gedeactiveerd", "succes");
+    } catch {
+      addToast("Kon link niet deactiveren", "fout");
+    }
+    setDeactivating(false);
+  }
+
+  if (portalLink) {
+    return (
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => { navigator.clipboard.writeText(portalLink); addToast("Link gekopieerd!", "succes"); }}
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-accent/30 text-autronis-accent rounded-xl text-sm font-semibold transition-colors hover:bg-autronis-accent/10"
+        >
+          <Copy className="w-4 h-4" />
+          Kopieer portal link
+        </button>
+        <button
+          onClick={handleDeactivate}
+          disabled={deactivating}
+          className="p-2.5 bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-red-400 hover:border-red-400/30 rounded-xl transition-colors"
+          title="Portal deactiveren"
+        >
+          {deactivating ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleGenerate}
+      disabled={loading}
+      className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 rounded-xl text-sm font-semibold transition-colors"
+    >
+      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+      Portal link
+    </button>
+  );
+}
 
 export default function KlantDetailPage() {
   const params = useParams();
@@ -256,6 +327,7 @@ export default function KlantDetailPage() {
             <Pencil className="w-4 h-4" />
             Bewerken
           </button>
+          <PortalLinkButton klantId={Number(id)} />
           <button
             onClick={() => setArchiveDialogOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-secondary hover:text-red-400 rounded-xl text-sm font-semibold transition-colors"

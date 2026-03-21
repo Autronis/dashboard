@@ -94,62 +94,86 @@ function drawDesk(
   const deskW = 24 * s;
   const deskH = 5 * s;
 
-  // Labels pass
+  // Labels pass — 3-line format: Naam / Rol / → Project
   if (labelsOnly) {
     const labelX = x + 2 * s;
     const labelY2 = deskY + deskH + 4 * s;
-    const maxW = deskW + 2 * s;
+    const maxW = deskW + 4 * s;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(x, labelY2 - 2, maxW + 8, 40);
+    ctx.rect(x - 2, labelY2 - 2, maxW + 10, 50);
     ctx.clip();
 
-    // Name — bold white
-    ctx.font = "bold 14px Inter, system-ui, sans-serif";
-    let name = agent.naam;
-    while (ctx.measureText(name).width > maxW && name.length > 2) name = name.slice(0, -1);
-    const nameW = ctx.measureText(name).width;
-
-    // Rol tag (small, next to name)
     const rolLabels: Record<string, string> = {
       manager: "Manager", builder: "Builder", reviewer: "Reviewer",
-      architect: "Architect", assistant: "Assistent", automation: "Automation",
+      architect: "Architect", assistant: "Research & Docs", automation: "Automation",
     };
-    ctx.font = "10px Inter, system-ui, sans-serif";
     const rolText = rolLabels[agent.rol ?? "builder"] ?? "Builder";
-    const rolW = ctx.measureText(rolText).width;
 
-    // Background for name + rol
-    ctx.fillStyle = "#0a0f14ee";
-    ctx.fillRect(labelX - 3, labelY2, nameW + rolW + 18, 17);
+    // Background for all 3 lines
+    const bgH = agent.huidigeTaak ? 42 : 30;
+    ctx.fillStyle = "#0a0f14dd";
+    ctx.fillRect(labelX - 4, labelY2, maxW, bgH);
 
-    // Name
-    ctx.font = "bold 14px Inter, system-ui, sans-serif";
+    // Line 1: Name (13px bold white)
+    ctx.font = "bold 13px Inter, system-ui, sans-serif";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(name, labelX, labelY2 + 13);
+    let name = agent.naam;
+    while (ctx.measureText(name).width > maxW - 8 && name.length > 2) name = name.slice(0, -1);
+    ctx.fillText(name, labelX, labelY2 + 12);
 
-    // Rol tag
-    ctx.font = "10px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#8a9ba0";
-    ctx.fillText(rolText, labelX + nameW + 8, labelY2 + 12);
+    // Line 2: Rol (11px, grey)
+    ctx.font = "11px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#6b7b8b";
+    ctx.fillText(rolText, labelX, labelY2 + 24);
 
-    // Project — italic
+    // Line 3: → Project (11px, turquoise/project color)
     if (agent.huidigeTaak) {
-      ctx.font = "italic 12px Inter, system-ui, sans-serif";
+      ctx.font = "11px Inter, system-ui, sans-serif";
       let proj = agent.huidigeTaak.project;
-      while (ctx.measureText(proj).width > maxW && proj.length > 3) proj = proj.slice(0, -2) + ".";
-      const projW = ctx.measureText(proj).width;
-      ctx.fillStyle = "#0a0f14dd";
-      ctx.fillRect(labelX - 3, labelY2 + 18, projW + 8, 15);
-      ctx.fillStyle = `${projectColor}`;
-      ctx.fillText(proj, labelX, labelY2 + 30);
+      while (ctx.measureText("→ " + proj).width > maxW - 8 && proj.length > 3) proj = proj.slice(0, -2) + ".";
+      ctx.fillStyle = projectColor;
+      ctx.fillText("→ " + proj, labelX, labelY2 + 36);
+    }
+
+    // Status dot (right side of label)
+    const dotX = labelX + maxW - 10;
+    const dotY = labelY2 + 8;
+    if (isActive) {
+      ctx.fillStyle = "#4ade80"; // green = running
+      ctx.beginPath(); ctx.arc(dotX, dotY, 3, 0, Math.PI * 2); ctx.fill();
+    } else if (agent.status === "idle") {
+      ctx.fillStyle = "#f59e0b"; // yellow = idle
+      ctx.beginPath(); ctx.arc(dotX, dotY, 3, 0, Math.PI * 2); ctx.fill();
+    } else if (agent.status === "error") {
+      ctx.fillStyle = "#ef4444"; // red = error
+      ctx.beginPath(); ctx.arc(dotX, dotY, 3, 0, Math.PI * 2); ctx.fill();
     }
 
     ctx.restore();
     return;
   }
 
-  // Shadow under desk (for depth on iso floor)
+  // Leadership glow (subtle glow behind management desks)
+  const isLeadership = agent.rol === "manager" || agent.rol === "reviewer" || agent.rol === "architect";
+  if (isLeadership && isActive) {
+    const glowAlpha = 0.04 + Math.sin(tick * 0.1 + x * 0.01) * 0.02;
+    const grad = ctx.createRadialGradient(x + 14 * s, deskY, 0, x + 14 * s, deskY, 18 * s);
+    grad.addColorStop(0, `rgba(35, 198, 183, ${glowAlpha})`);
+    grad.addColorStop(1, "rgba(35, 198, 183, 0)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(x + 14 * s, deskY, 18 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Hover glow effect
+  if (isHovered) {
+    ctx.fillStyle = "#23C6B710";
+    ctx.fillRect(x, y - 2 * s, 28 * s, 30 * s);
+  }
+
+  // Shadow under desk
   ctx.fillStyle = "#00000018";
   ctx.beginPath();
   ctx.ellipse(x + 14 * s, deskY + deskH + 4 * s, 14 * s, 3 * s, 0, 0, Math.PI * 2);
@@ -179,12 +203,17 @@ function drawDesk(
   const monY = deskY - monH + 3 * s;
   ctx.fillStyle = "#1a1a25";
   ctx.fillRect(monX, monY, monW, monH);
-  ctx.fillStyle = isOffline ? "#080810" : "#0c0e14";
+  ctx.fillStyle = isOffline ? "#050508" : isActive ? "#0a0e16" : "#060810";
   ctx.fillRect(monX + s, monY + s, monW - 2 * s, monH - 2 * s);
   if (isActive) {
+    // Screen glow pulse
+    const screenGlow = 0.03 + Math.sin(tick * 0.3 + x * 0.01) * 0.02;
+    ctx.fillStyle = `rgba(35, 198, 183, ${screenGlow})`;
+    ctx.fillRect(monX + s, monY + s, monW - 2 * s, monH - 2 * s);
+    // Code lines
     for (let ln = 0; ln < 3; ln++) {
       const lw = 2 + ((tick + ln * 3) % 4);
-      const alpha = 0.1 + ((ln * 2 + tick) % 3) * 0.04;
+      const alpha = 0.12 + ((ln * 2 + tick) % 3) * 0.05;
       ctx.fillStyle = `#ffffff${Math.round(alpha * 255).toString(16).padStart(2, "0")}`;
       ctx.fillRect(monX + 2 * s, monY + (1.5 + ln * 1.5) * s, lw * s, s * 0.5);
     }

@@ -310,6 +310,7 @@ interface PixelOfficeProps {
 export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const tickRef = useRef(0);
   const lastTRef = useRef(0);
@@ -317,6 +318,8 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
   // Smooth position interpolation for agent movement
   const animPositions = useRef(new Map<string, { x: number; y: number }>());
+  // Track project card rectangles for hover detection
+  const projectCardRects = useRef<{ proj: string; x: number; y: number; w: number; h: number }[]>([]);
 
   const semAgent: Agent = useMemo(() => ({
     id: "sem", naam: "Sem", rol: "manager", status: "working",
@@ -524,67 +527,114 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(mX + 3 * S, mY + 6 * S, 2 * S, S);
     });
 
-    // === Command Center Screen (replaces meeting table) ===
-    const scrX = MEETING.x + 20;
-    const scrY = MEETING.y + 10;
-    const scrW = MEETING.w - 40;
-    const scrH = MEETING.h - 30;
+    // === Wall-mounted Command Screen (in-world, pixel-art style) ===
+    // Large screen mounted on left wall, same visual language as desk monitors
+    const scrX = MEETING.x + 8;
+    const scrY = MEETING.y;
+    const scrW = MEETING.w - 16;
+    const scrH = MEETING.h - 20;
+    const frameW = 4; // thick pixel frame like desk monitors
 
-    // Screen frame
+    // Glow behind screen (teal accent, on the wall)
+    const glowR = Math.max(scrW, scrH) * 0.7;
+    const wallGlowAlpha = 0.03 + Math.sin(tick * 0.08) * 0.015;
+    const wallGlow = ctx.createRadialGradient(scrX + scrW / 2, scrY + scrH / 2, 0, scrX + scrW / 2, scrY + scrH / 2, glowR);
+    wallGlow.addColorStop(0, `rgba(35, 198, 183, ${wallGlowAlpha})`);
+    wallGlow.addColorStop(1, "rgba(35, 198, 183, 0)");
+    ctx.fillStyle = wallGlow;
+    ctx.fillRect(scrX - glowR / 2, scrY - glowR / 3, scrW + glowR, scrH + glowR * 0.6);
+
+    // Frame (thick dark bezel, same as desk monitors #1a1a25)
     ctx.fillStyle = "#1a1a25";
-    ctx.beginPath(); ctx.roundRect(scrX, scrY, scrW, scrH, 6); ctx.fill();
-    // Screen
-    ctx.fillStyle = "#080c14";
-    ctx.beginPath(); ctx.roundRect(scrX + 3, scrY + 3, scrW - 6, scrH - 6, 4); ctx.fill();
-    // Screen glow
-    const scrGlow = 0.02 + Math.sin(tick * 0.1) * 0.01;
-    ctx.fillStyle = `rgba(35, 198, 183, ${scrGlow})`;
-    ctx.beginPath(); ctx.roundRect(scrX + 3, scrY + 3, scrW - 6, scrH - 6, 4); ctx.fill();
+    ctx.fillRect(scrX, scrY, scrW, scrH);
+    // Inner frame ridge
+    ctx.fillStyle = "#222235";
+    ctx.fillRect(scrX + 2, scrY + 2, scrW - 4, scrH - 4);
+    // Screen surface
+    ctx.fillStyle = "#080c12";
+    ctx.fillRect(scrX + frameW, scrY + frameW, scrW - frameW * 2, scrH - frameW * 2);
 
-    // KPIs on screen
+    // Subtle screen flicker
+    const flickAlpha = 0.01 + Math.sin(tick * 0.4) * 0.005;
+    ctx.fillStyle = `rgba(35, 198, 183, ${flickAlpha})`;
+    ctx.fillRect(scrX + frameW, scrY + frameW, scrW - frameW * 2, scrH - frameW * 2);
+
+    // Scanline effect (very subtle horizontal lines)
+    for (let sl = scrY + frameW; sl < scrY + scrH - frameW; sl += 3) {
+      ctx.fillStyle = "#00000008";
+      ctx.fillRect(scrX + frameW, sl, scrW - frameW * 2, 1);
+    }
+
+    // Content area
+    const cX = scrX + frameW + 8;
+    const cY = scrY + frameW + 6;
+    const cW = scrW - frameW * 2 - 16;
+
+    // Header
+    ctx.font = "bold 9px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#23C6B7";
+    ctx.fillText("COMMAND CENTER", cX, cY + 8);
+    // Thin line under header
+    ctx.fillStyle = "#23C6B720";
+    ctx.fillRect(cX, cY + 12, cW, 1);
+
+    // KPI row
     const activeCount = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
     const totalTasks = agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
-
-    ctx.font = "bold 8px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#23C6B7";
-    ctx.fillText("COMMAND CENTER", scrX + 10, scrY + 16);
-
-    ctx.font = "bold 16px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#4ade80";
-    ctx.fillText(`${activeCount}`, scrX + 14, scrY + 40);
-    ctx.font = "8px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#6b7b8b";
-    ctx.fillText("actief", scrX + 14, scrY + 50);
-
-    ctx.font = "bold 16px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#23C6B7";
-    ctx.fillText(`${totalTasks}`, scrX + 70, scrY + 40);
-    ctx.font = "8px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#6b7b8b";
-    ctx.fillText("taken", scrX + 70, scrY + 50);
-
-    ctx.font = "bold 16px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#f59e0b";
     const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
-    ctx.fillText(`\u20AC${totalCost.toFixed(0)}`, scrX + 120, scrY + 40);
-    ctx.font = "8px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#6b7b8b";
-    ctx.fillText("kosten", scrX + 120, scrY + 50);
 
-    // Status bars on screen
-    ctx.fillStyle = "#4ade8030";
-    ctx.fillRect(scrX + 14, scrY + 60, 40, 6);
-    ctx.fillStyle = "#23C6B730";
-    ctx.fillRect(scrX + 14, scrY + 70, 60, 6);
-    ctx.fillStyle = "#f59e0b30";
-    ctx.fillRect(scrX + 14, scrY + 80, 30, 6);
+    const kpiY = cY + 22;
+    const kpiW = Math.floor(cW / 3);
+    // Active agents
+    ctx.font = "bold 18px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#4ade80";
+    ctx.fillText(`${activeCount}`, cX + 4, kpiY + 16);
+    ctx.font = "7px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#4a5a6a";
+    ctx.fillText("ACTIEF", cX + 4, kpiY + 26);
+    // Tasks
+    ctx.font = "bold 18px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#23C6B7";
+    ctx.fillText(`${totalTasks}`, cX + kpiW + 4, kpiY + 16);
+    ctx.font = "7px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#4a5a6a";
+    ctx.fillText("TAKEN", cX + kpiW + 4, kpiY + 26);
+    // Cost
+    ctx.font = "bold 18px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#f59e0b";
+    ctx.fillText(`\u20AC${totalCost.toFixed(0)}`, cX + kpiW * 2 + 4, kpiY + 16);
+    ctx.font = "7px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#4a5a6a";
+    ctx.fillText("KOSTEN", cX + kpiW * 2 + 4, kpiY + 26);
 
-    // Stand
-    ctx.fillStyle = "#1a1a25";
-    ctx.fillRect(scrX + scrW / 2 - 10, scrY + scrH, 20, 4);
-    ctx.fillRect(scrX + scrW / 2 - 16, scrY + scrH + 4, 32, 3);
+    // Thin separator
+    ctx.fillStyle = "#23C6B710";
+    ctx.fillRect(cX, kpiY + 32, cW, 1);
 
-    // (old chair code removed)
+    // Project status bars (pixel-art style)
+    let projBarY = kpiY + 40;
+    agents.forEach((a) => {
+      if (!a.huidigeTaak || a.status === "idle" || a.status === "offline") return;
+      if (projBarY > scrY + scrH - frameW - 14) return;
+      const pColor = getProjectColor(a.huidigeTaak.project);
+      // Dot
+      ctx.fillStyle = pColor;
+      ctx.fillRect(cX + 2, projBarY, 3, 3);
+      // Name
+      ctx.font = "7px Inter, system-ui, sans-serif";
+      ctx.fillStyle = "#6b7b8b";
+      let pName = a.naam;
+      if (ctx.measureText(pName).width > cW - 20) pName = pName.slice(0, 6) + ".";
+      ctx.fillText(pName, cX + 8, projBarY + 3);
+      projBarY += 9;
+    });
+
+    // Wall mount brackets (pixel art)
+    ctx.fillStyle = "#2a2a3a";
+    ctx.fillRect(scrX - 3, scrY + 10, 3, 8);
+    ctx.fillRect(scrX - 3, scrY + scrH - 18, 3, 8);
+    ctx.fillRect(scrX + scrW, scrY + 10, 3, 8);
+    ctx.fillRect(scrX + scrW, scrY + scrH - 18, 3, 8);
 
     // === Slaapkamer (geen achtergrond — zelfde vloer) ===
 
@@ -607,23 +657,31 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S);
     });
 
-    // === Communication lines between agents on same project ===
+    // === System connections between agents ===
+    // Build project groups for connections
     const projectGroups: Record<string, { x: number; y: number; id: string }[]> = {};
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
       const agent = agents.find((a) => a.id === id);
       if (!agent || !agent.huidigeTaak || agent.status === "idle" || agent.status === "offline") return;
-      // Skip management/reviewers — only show lines between builders
-      if (agent.rol === "reviewer" || agent.rol === "manager" || agent.rol === "architect") return;
+      if (agent.rol === "manager") return;
       const proj = agent.huidigeTaak.project;
       if (!projectGroups[proj]) projectGroups[proj] = [];
-      projectGroups[proj].push({ x: pos.x + 14 * S, y: pos.y + 12 * S, id });
+      projectGroups[proj].push({ x: pos.x + 14 * S, y: pos.y + 14 * S, id });
     });
+
+    // Draw thin connections between related desks
     Object.entries(projectGroups).forEach(([proj, group]) => {
       if (group.length < 2) return;
       const color = getProjectColor(proj);
-      ctx.strokeStyle = `${color}30`;
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
+      // If a project is hovered in sidebar, highlight its connections, dim others
+      const isHighlighted = hoveredProject === proj;
+      const isDimmed = hoveredProject !== null && !isHighlighted;
+      const lineAlpha = isDimmed ? "08" : isHighlighted ? "50" : "20";
+      const dotAlpha = isDimmed ? "10" : isHighlighted ? "80" : "40";
+
+      ctx.strokeStyle = `${color}${lineAlpha}`;
+      ctx.lineWidth = isHighlighted ? 2 : 1;
+      ctx.setLineDash([3, 5]);
       for (let i = 0; i < group.length - 1; i++) {
         ctx.beginPath();
         ctx.moveTo(group[i].x, group[i].y);
@@ -631,14 +689,15 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.stroke();
       }
       ctx.setLineDash([]);
-      // Animated pulse dot along the line
-      if (group.length >= 2) {
-        const t = (tick * 0.05) % 1;
-        const px = group[0].x + (group[1].x - group[0].x) * t;
-        const py = group[0].y + (group[1].y - group[0].y) * t;
-        ctx.fillStyle = `${color}60`;
+
+      // Moving data dot
+      if (group.length >= 2 && !isDimmed) {
+        const t = (tick * 0.04) % 1;
+        const dotX = group[0].x + (group[1].x - group[0].x) * t;
+        const dotY = group[0].y + (group[1].y - group[0].y) * t;
+        ctx.fillStyle = `${color}${dotAlpha}`;
         ctx.beginPath();
-        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.arc(dotX, dotY, isHighlighted ? 3.5 : 2, 0, Math.PI * 2);
         ctx.fill();
       }
     });
@@ -699,9 +758,10 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillText("PROJECTEN", cardX + 6, cardY);
     cardY += 10;
 
+    const newCardRects: typeof projectCardRects.current = [];
     activeProjects.forEach(({ names, hasError }, proj) => {
       const color = getProjectColor(proj);
-      const isHoveredProj = false; // TODO: track hovered project
+      const isHoveredProj = hoveredProject === proj;
 
       // Card
       ctx.fillStyle = isHoveredProj ? "#0a0f14ee" : "#0a0f14aa";
@@ -727,8 +787,10 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.font = "9px Inter, system-ui, sans-serif";
       ctx.fillStyle = "#6b7b8b";
       ctx.fillText(names.slice(0, 3).join(", ") + (names.length > 3 ? ` +${names.length - 3}` : ""), cardX + 10, cardY + 26);
+      newCardRects.push({ proj, x: cardX, y: cardY, w: 162, h: 32 });
       cardY += 36;
     });
+    projectCardRects.current = newCardRects;
 
     // === Hover tooltip ===
     if (hovered) {

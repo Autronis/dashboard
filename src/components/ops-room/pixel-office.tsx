@@ -154,6 +154,9 @@ function drawDesk(
     return;
   }
 
+  // Dim desk if a project is hovered and this agent isn't on that project
+  // (passed via projectColor === "#3a4a55" as a proxy for "not highlighted")
+
   // Leadership glow (subtle glow behind management desks)
   const isLeadership = agent.rol === "manager" || agent.rol === "reviewer" || agent.rol === "architect";
   if (isLeadership && isActive) {
@@ -853,10 +856,25 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
   const handleMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const r = e.currentTarget.getBoundingClientRect();
-    setMouse({ x: e.clientX - r.left, y: e.clientY - r.top });
-    const a = findAgent(e.clientX - r.left, e.clientY - r.top);
+    const mx = e.clientX - r.left;
+    const my = e.clientY - r.top;
+    setMouse({ x: mx, y: my });
+    const a = findAgent(mx, my);
     setHovered(a?.id ?? null);
-    e.currentTarget.style.cursor = a ? "pointer" : "default";
+
+    // Check if hovering a project card
+    const cx = mx * (CANVAS_W / r.width);
+    const cy = my * (CANVAS_H / r.height);
+    let foundProj: string | null = null;
+    for (const card of projectCardRects.current) {
+      if (cx >= card.x && cx <= card.x + card.w && cy >= card.y && cy <= card.y + card.h) {
+        foundProj = card.proj;
+        break;
+      }
+    }
+    setHoveredProject(foundProj);
+
+    e.currentTarget.style.cursor = (a || foundProj) ? "pointer" : "default";
   }, [findAgent]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

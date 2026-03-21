@@ -57,8 +57,8 @@ const EMPTY_DESKS = [
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3;
 
-// Meeting table — right of builder desks
-const MEETING = { x: BUILDER_X + UNIT_W * 4 + 20, y: BUILDER_START_Y, w: 100, h: UNIT_H * 2 };
+// Command screen — wide, on back wall above Ari/Rodi area
+const MEETING = { x: 20, y: BUILDER_START_Y - 10, w: BUILDER_X - 40, h: 100 };
 
 // Slaapkamer — tight, just beds
 const COFFEE_Y = DESKS_BOTTOM + 4;

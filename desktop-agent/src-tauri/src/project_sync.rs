@@ -173,16 +173,28 @@ fn is_project_dir(dir: &Path) -> bool {
         || dir.join("package.json").exists()
 }
 
+use std::os::windows::process::CommandExt;
+
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+fn git_cmd(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
+    std::process::Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .creation_flags(CREATE_NO_WINDOW)
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .output()
+        .ok()
+}
+
 fn git_sync(dir: &Path) {
     if !dir.join(".git").exists() {
         return;
     }
 
     // Check if remote exists
-    let has_remote = std::process::Command::new("git")
-        .args(["remote", "get-url", "origin"])
-        .current_dir(dir)
-        .output()
+    let has_remote = git_cmd(dir, &["remote", "get-url", "origin"])
         .map(|o| o.status.success())
         .unwrap_or(false);
 
@@ -191,55 +203,37 @@ fn git_sync(dir: &Path) {
     }
 
     // Pull latest
-    let _ = std::process::Command::new("git")
-        .args(["pull", "--ff-only", "--quiet"])
-        .current_dir(dir)
-        .output();
+    git_cmd(dir, &["pull", "--ff-only", "--quiet"]);
 
     // Check for local changes
-    let status = std::process::Command::new("git")
-        .args(["status", "--porcelain"])
-        .current_dir(dir)
-        .output();
-
-    let has_changes = match &status {
-        Ok(o) => !o.stdout.is_empty(),
-        Err(_) => false,
-    };
+    let has_changes = git_cmd(dir, &["status", "--porcelain"])
+        .map(|o| !o.stdout.is_empty())
+        .unwrap_or(false);
 
     if !has_changes {
         return;
     }
 
     // Auto commit and push
-    let _ = std::process::Command::new("git")
-        .args(["add", "-A"])
-        .current_dir(dir)
-        .output();
+    git_cmd(dir, &["add", "-A"]);
 
     let dir_name = dir.file_name().unwrap_or_default().to_string_lossy();
     let msg = format!("Auto-sync: {}", dir_name);
-    let commit = std::process::Command::new("git")
-        .args(["commit", "-m", &msg, "--quiet"])
-        .current_dir(dir)
-        .output();
 
-    if let Ok(o) = commit {
-        if o.status.success() {
-            let push = std::process::Command::new("git")
-                .args(["push", "--quiet"])
-                .current_dir(dir)
-                .output();
-            match push {
-                Ok(p) if p.status.success() => {
-                    eprintln!("[project-sync] Auto-pushed {}", dir_name);
-                },
-                Ok(p) => {
-                    let stderr = String::from_utf8_lossy(&p.stderr);
-                    eprintln!("[project-sync] Push failed for {}: {}", dir_name, stderr.trim());
-                },
-                Err(e) => eprintln!("[project-sync] Push error for {}: {}", dir_name, e),
-            }
+    let committed = git_cmd(dir, &["commit", "-m", &msg, "--quiet"])
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    if committed {
+        match git_cmd(dir, &["push", "--quiet"]) {
+            Some(p) if p.status.success() => {
+                eprintln!("[project-sync] Auto-pushed {}", dir_name);
+            },
+            Some(p) => {
+                let stderr = String::from_utf8_lossy(&p.stderr);
+                eprintln!("[project-sync] Push failed for {}: {}", dir_name, stderr.trim());
+            },
+            None => eprintln!("[project-sync] Push error for {}", dir_name),
         }
     }
 }

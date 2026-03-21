@@ -57,8 +57,8 @@ const EMPTY_DESKS = [
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3;
 
-// Command screen — wide, on back wall above Ari/Rodi area
-const MEETING = { x: 20, y: BUILDER_START_Y - 10, w: BUILDER_X - 40, h: 100 };
+// Command screen — right side, next to desks
+const MEETING = { x: BUILDER_X + UNIT_W * 3 + 30, y: MGMT_Y + 20, w: CANVAS_W - (BUILDER_X + UNIT_W * 3 + 30) - 180, h: 90 };
 
 // Slaapkamer — tight, just beds
 const COFFEE_Y = DESKS_BOTTOM + 4;
@@ -458,6 +458,13 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.fillRect(gx, py + 4, 60 + (plankIdx % 40), 1);
       }
     }
+
+    // Floor lighting: brighter center, darker edges
+    const floorLight = ctx.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, 0, CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.5);
+    floorLight.addColorStop(0, "rgba(255,255,255,0.015)");
+    floorLight.addColorStop(1, "rgba(0,0,0,0.03)");
+    ctx.fillStyle = floorLight;
+    ctx.fillRect(0, WALL_H, CANVAS_W, CANVAS_H - WALL_H);
 
     // === Ambient particles (floating turquoise dots) ===
     for (let p = 0; p < 8; p++) {

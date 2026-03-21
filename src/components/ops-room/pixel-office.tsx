@@ -507,46 +507,67 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(mX + 3 * S, mY + 6 * S, 2 * S, S);
     });
 
-    // === Meeting table (vertical, 3D, no label) ===
-    const tblX = MEETING.x + 110, tblY = MEETING.y + 10;
-    const tblW = 100, tblH = MEETING.h - 20;
-    const tblD = 8;
-    // Shadow
-    ctx.fillStyle = "#00000018";
-    ctx.beginPath(); ctx.ellipse(tblX + tblW / 2, tblY + tblH + tblD + 5, tblW / 2 + 4, 5, 0, 0, Math.PI * 2); ctx.fill();
-    // Legs
-    ctx.fillStyle = "#3a2818";
-    ctx.fillRect(tblX + 6, tblY + tblH + tblD, 4, 7);
-    ctx.fillRect(tblX + tblW - 10, tblY + tblH + tblD, 4, 7);
-    // Front face
-    ctx.fillStyle = "#4a3828";
-    ctx.fillRect(tblX, tblY + tblH, tblW, tblD);
-    // Right side
-    ctx.fillStyle = "#3a2818";
-    ctx.fillRect(tblX + tblW, tblY + tblH - 2, 4, tblD + 2);
-    // Top surface
-    ctx.fillStyle = "#5c4a3a";
-    ctx.beginPath(); ctx.roundRect(tblX, tblY, tblW, tblH, 4); ctx.fill();
-    ctx.fillStyle = "#4a3828";
-    ctx.beginPath(); ctx.roundRect(tblX + 3, tblY + 3, tblW - 6, tblH - 6, 3); ctx.fill();
+    // === Command Center Screen (replaces meeting table) ===
+    const scrX = MEETING.x + 20;
+    const scrY = MEETING.y + 10;
+    const scrW = MEETING.w - 40;
+    const scrH = MEETING.h - 30;
 
-    // Chairs along left and right sides
-    const cs = 14, cd = 4;
-    const drawChair = (cx: number, cy: number, backDir: "left" | "right") => {
-      ctx.fillStyle = "#00000010";
-      ctx.beginPath(); ctx.ellipse(cx + cs / 2, cy + cs + cd + 2, cs / 2 + 1, 2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#2a2a38"; ctx.fillRect(cx, cy + cs, cs, cd);
-      ctx.fillStyle = "#3a3a48"; ctx.fillRect(cx, cy, cs, cs);
-      ctx.fillStyle = "#2a2a38";
-      if (backDir === "left") ctx.fillRect(cx - 5, cy, 5, cs);
-      else ctx.fillRect(cx + cs, cy, 5, cs);
-    };
-    const numChairs = Math.floor((tblH - 10) / 28);
-    const chairStep = (tblH - 10) / numChairs;
-    // Left side chairs
-    for (let i = 0; i < numChairs; i++) drawChair(tblX - cs - 6, tblY + 5 + i * chairStep, "left");
-    // Right side chairs
-    for (let i = 0; i < numChairs; i++) drawChair(tblX + tblW + 4, tblY + 5 + i * chairStep, "right");
+    // Screen frame
+    ctx.fillStyle = "#1a1a25";
+    ctx.beginPath(); ctx.roundRect(scrX, scrY, scrW, scrH, 6); ctx.fill();
+    // Screen
+    ctx.fillStyle = "#080c14";
+    ctx.beginPath(); ctx.roundRect(scrX + 3, scrY + 3, scrW - 6, scrH - 6, 4); ctx.fill();
+    // Screen glow
+    const scrGlow = 0.02 + Math.sin(tick * 0.1) * 0.01;
+    ctx.fillStyle = `rgba(35, 198, 183, ${scrGlow})`;
+    ctx.beginPath(); ctx.roundRect(scrX + 3, scrY + 3, scrW - 6, scrH - 6, 4); ctx.fill();
+
+    // KPIs on screen
+    const activeCount = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
+    const totalTasks = agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
+
+    ctx.font = "bold 8px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#23C6B7";
+    ctx.fillText("COMMAND CENTER", scrX + 10, scrY + 16);
+
+    ctx.font = "bold 16px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#4ade80";
+    ctx.fillText(`${activeCount}`, scrX + 14, scrY + 40);
+    ctx.font = "8px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#6b7b8b";
+    ctx.fillText("actief", scrX + 14, scrY + 50);
+
+    ctx.font = "bold 16px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#23C6B7";
+    ctx.fillText(`${totalTasks}`, scrX + 70, scrY + 40);
+    ctx.font = "8px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#6b7b8b";
+    ctx.fillText("taken", scrX + 70, scrY + 50);
+
+    ctx.font = "bold 16px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#f59e0b";
+    const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
+    ctx.fillText(`\u20AC${totalCost.toFixed(0)}`, scrX + 120, scrY + 40);
+    ctx.font = "8px Inter, system-ui, sans-serif";
+    ctx.fillStyle = "#6b7b8b";
+    ctx.fillText("kosten", scrX + 120, scrY + 50);
+
+    // Status bars on screen
+    ctx.fillStyle = "#4ade8030";
+    ctx.fillRect(scrX + 14, scrY + 60, 40, 6);
+    ctx.fillStyle = "#23C6B730";
+    ctx.fillRect(scrX + 14, scrY + 70, 60, 6);
+    ctx.fillStyle = "#f59e0b30";
+    ctx.fillRect(scrX + 14, scrY + 80, 30, 6);
+
+    // Stand
+    ctx.fillStyle = "#1a1a25";
+    ctx.fillRect(scrX + scrW / 2 - 10, scrY + scrH, 20, 4);
+    ctx.fillRect(scrX + scrW / 2 - 16, scrY + scrH + 4, 32, 3);
+
+    // (old chair code removed)
 
     // === Slaapkamer (geen achtergrond — zelfde vloer) ===
 

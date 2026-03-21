@@ -339,6 +339,19 @@ export default function ProjectDetailPage() {
       .trim() || null;
   }, [project?.omschrijving]);
 
+  const handleOpenVSCode = useCallback(async () => {
+    if (!project) return;
+    const dirName = project.naam.toLowerCase().replace(/\s+/g, "-");
+    setOpeningVSCode(true);
+    const result = await openProjectInVSCode(dirName);
+    if (result.succes) {
+      addToast(`VS Code + Claude geopend voor ${project.naam}`, "succes");
+    } else {
+      addToast(result.fout ?? "Kon project niet openen", "fout");
+    }
+    setOpeningVSCode(false);
+  }, [project, addToast]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -350,17 +363,6 @@ export default function ProjectDetailPage() {
   if (!project) return null;
 
   const projectDirName = project.naam.toLowerCase().replace(/\s+/g, "-");
-
-  const handleOpenVSCode = useCallback(async () => {
-    setOpeningVSCode(true);
-    const result = await openProjectInVSCode(projectDirName);
-    if (result.succes) {
-      addToast(`VS Code + Claude geopend voor ${project.naam}`, "succes");
-    } else {
-      addToast(result.fout ?? "Kon project niet openen", "fout");
-    }
-    setOpeningVSCode(false);
-  }, [projectDirName, project.naam, addToast]);
 
   return (
     <PageTransition>

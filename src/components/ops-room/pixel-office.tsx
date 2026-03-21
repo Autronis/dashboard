@@ -423,14 +423,31 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(CANVAS_W, gy); ctx.stroke();
     }
 
-    // Dark wood floor planks (on top of gradient)
+    // Floor with depth: lighting gradient + plank variation
     const plankH = 12;
     for (let py = WALL_H; py < CANVAS_H; py += plankH) {
-      const shade = py % (plankH * 2) === 0 ? "#0e1318" : "#0c1116";
-      ctx.fillStyle = shade;
+      // Depth: floor gets slightly lighter toward bottom (light from above fades)
+      const depthFactor = (py - WALL_H) / (CANVAS_H - WALL_H);
+      const baseR = 12 + depthFactor * 4;
+      const baseG = 16 + depthFactor * 5;
+      const baseB = 22 + depthFactor * 6;
+      // Alternate plank shades with slight random-feel variation
+      const plankIdx = Math.floor(py / plankH);
+      const variation = ((plankIdx * 7 + 13) % 5) - 2; // -2 to +2
+      const r = Math.round(baseR + variation);
+      const g = Math.round(baseG + variation);
+      const b = Math.round(baseB + variation);
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(0, py, CANVAS_W, plankH);
-      ctx.fillStyle = "#080c10";
+      // Gap line between planks
+      ctx.fillStyle = `rgb(${r - 4},${g - 4},${b - 4})`;
       ctx.fillRect(0, py, CANVAS_W, 1);
+      // Subtle grain streaks
+      if (plankIdx % 3 === 0) {
+        ctx.fillStyle = `rgba(255,255,255,0.008)`;
+        const gx = (plankIdx * 73) % CANVAS_W;
+        ctx.fillRect(gx, py + 4, 60 + (plankIdx % 40), 1);
+      }
     }
 
     // === Ambient particles (floating turquoise dots) ===

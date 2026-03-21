@@ -173,6 +173,77 @@ fn is_project_dir(dir: &Path) -> bool {
         || dir.join("package.json").exists()
 }
 
+fn git_sync(dir: &Path) {
+    if !dir.join(".git").exists() {
+        return;
+    }
+
+    // Check if remote exists
+    let has_remote = std::process::Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(dir)
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    if !has_remote {
+        return;
+    }
+
+    // Pull latest
+    let _ = std::process::Command::new("git")
+        .args(["pull", "--ff-only", "--quiet"])
+        .current_dir(dir)
+        .output();
+
+    // Check for local changes
+    let status = std::process::Command::new("git")
+        .args(["status", "--porcelain"])
+        .current_dir(dir)
+        .output();
+
+    let has_changes = match &status {
+        Ok(o) => !o.stdout.is_empty(),
+        Err(_) => false,
+    };
+
+    if !has_changes {
+        return;
+    }
+
+    // Auto commit and push
+    let _ = std::process::Command::new("git")
+        .args(["add", "-A"])
+        .current_dir(dir)
+        .output();
+
+    let dir_name = dir.file_name().unwrap_or_default().to_string_lossy();
+    let msg = format!("Auto-sync: {}", dir_name);
+    let commit = std::process::Command::new("git")
+        .args(["commit", "-m", &msg, "--quiet"])
+        .current_dir(dir)
+        .output();
+
+    if let Ok(o) = commit {
+        if o.status.success() {
+            let push = std::process::Command::new("git")
+                .args(["push", "--quiet"])
+                .current_dir(dir)
+                .output();
+            match push {
+                Ok(p) if p.status.success() => {
+                    eprintln!("[project-sync] Auto-pushed {}", dir_name);
+                },
+                Ok(p) => {
+                    let stderr = String::from_utf8_lossy(&p.stderr);
+                    eprintln!("[project-sync] Push failed for {}: {}", dir_name, stderr.trim());
+                },
+                Err(e) => eprintln!("[project-sync] Push error for {}: {}", dir_name, e),
+            }
+        }
+    }
+}
+
 fn scan_projects() -> Vec<AgentProject> {
     let projects_dir = PathBuf::from(PROJECTS_DIR);
     let entries = match fs::read_dir(&projects_dir) {
@@ -196,6 +267,9 @@ fn scan_projects() -> Vec<AgentProject> {
         if !path.is_dir() || !is_project_dir(&path) {
             continue;
         }
+
+        // Auto-sync with GitHub (pull + push)
+        git_sync(&path);
 
         let mut naam = dir_to_name(&dir_name);
         let mut omschrijving = String::new();

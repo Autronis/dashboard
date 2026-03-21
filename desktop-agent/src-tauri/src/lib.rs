@@ -444,11 +444,11 @@ pub fn run() {
             tauri::async_runtime::spawn({
                 let state = Arc::clone(&state_for_project_sync);
                 async move {
-                    // Wait 60 seconds before first sync
-                    tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                    // Wait 30 seconds before first sync
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
 
                     let mut interval = tokio::time::interval(
-                        std::time::Duration::from_secs(600) // Every 10 minutes
+                        std::time::Duration::from_secs(120) // Every 2 minutes
                     );
                     loop {
                         interval.tick().await;

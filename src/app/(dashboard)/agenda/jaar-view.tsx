@@ -37,18 +37,18 @@ export function JaarView({ jaar, onNavigeer, items, onMaandClick }: JaarViewProp
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-center gap-4 mb-6">
-        <button onClick={() => onNavigeer(-1)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
-          <ChevronLeft className="w-5 h-5" />
+      <div className="flex items-center justify-center gap-3 sm:gap-4 mb-4 sm:mb-6">
+        <button onClick={() => onNavigeer(-1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
-        <h2 className="text-xl font-bold text-autronis-text-primary tabular-nums">{jaar}</h2>
-        <button onClick={() => onNavigeer(1)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
-          <ChevronRight className="w-5 h-5" />
+        <h2 className="text-lg sm:text-xl font-bold text-autronis-text-primary tabular-nums">{jaar}</h2>
+        <button onClick={() => onNavigeer(1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
       {/* 12 maanden grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         {Array.from({ length: 12 }, (_, maand) => {
           const eersteDag = new Date(jaar, maand, 1);
           let startDag = eersteDag.getDay() - 1;
@@ -68,7 +68,7 @@ export function JaarView({ jaar, onNavigeer, items, onMaandClick }: JaarViewProp
               key={maand}
               onClick={() => onMaandClick?.(maand)}
               className={cn(
-                "bg-autronis-bg/30 border rounded-xl p-3 text-left hover:border-autronis-accent/40 transition-colors",
+                "bg-autronis-bg/30 border rounded-xl p-2 sm:p-3 text-left hover:border-autronis-accent/40 transition-colors",
                 isHuidigeMaand ? "border-autronis-accent/30" : "border-autronis-border/30"
               )}
             >

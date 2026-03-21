@@ -1217,6 +1217,38 @@ export const contracten = sqliteTable("contracten", {
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ AGENT ACTIVITEIT (OPS ROOM) ============
+export const agentActiviteit = sqliteTable("agent_activiteit", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  agentId: text("agent_id").notNull(),
+  agentType: text("agent_type", { enum: ["manager", "builder", "reviewer", "architect", "assistant", "automation"] }).notNull(),
+  project: text("project").notNull(),
+  laatsteActie: text("laatste_actie").notNull(),
+  details: text("details"),
+  status: text("status", { enum: ["actief", "inactief", "offline", "error"] }).notNull().default("actief"),
+  tokensGebruikt: integer("tokens_gebruikt").default(0),
+  team: text("team", { enum: ["sem", "syb"] }).notNull().default("sem"),
+  verdieping: integer("verdieping").notNull().default(1),
+  laatstGezien: text("laatst_gezien").default(sql`(datetime('now'))`),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => [
+  index("idx_agent_activiteit_agent_id").on(table.agentId),
+  index("idx_agent_activiteit_status").on(table.status),
+  index("idx_agent_activiteit_team").on(table.team),
+]);
+
+// ============ AGENT PROJECT KOPPELING ============
+export const agentProjecten = sqliteTable("agent_projecten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  agentId: text("agent_id").notNull(),
+  projectId: integer("project_id").references(() => projecten.id),
+  projectNaam: text("project_naam").notNull(),
+  specialisatie: text("specialisatie", { enum: ["frontend", "backend", "database", "automation", "styling", "architect", "reviewer", "documentation", "ops"] }).notNull(),
+  status: text("status", { enum: ["actief", "idle", "afgerond"] }).notNull().default("actief"),
+  toegewezenOp: text("toegewezen_op").default(sql`(datetime('now'))`),
+  afgerondOp: text("afgerond_op"),
+});
+
 export const outreachOptOuts = sqliteTable("outreach_opt_outs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),

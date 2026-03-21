@@ -185,15 +185,15 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <button onClick={() => onNavigeer(-1)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
-          <ChevronLeft className="w-5 h-5" />
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <button onClick={() => onNavigeer(-1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
-        <h2 className={cn("text-base font-semibold capitalize", isVandaag ? "text-autronis-accent" : "text-autronis-text-primary")}>
+        <h2 className={cn("text-sm sm:text-base font-semibold capitalize text-center", isVandaag ? "text-autronis-accent" : "text-autronis-text-primary")}>
           {dagLabel}
         </h2>
-        <button onClick={() => onNavigeer(1)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
-          <ChevronRight className="w-5 h-5" />
+        <button onClick={() => onNavigeer(1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
       </div>
 
@@ -218,8 +218,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
       )}
 
       {/* Tijdlijn */}
-      <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl">
-        <div className="relative" style={{ height: `${uren.length * UUR_HOOGTE}px` }}>
+      <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl overflow-x-auto">
+        <div className="relative" style={{ height: `${uren.length * UUR_HOOGTE}px`, minWidth: "280px" }}>
           {/* Uur lijnen */}
           {uren.map((uur) => (
             <div
@@ -228,8 +228,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
               className="absolute left-0 right-0 flex border-b border-autronis-border/15 cursor-pointer hover:bg-autronis-accent/[0.03] transition-colors"
               style={{ top: `${(uur - startUur) * UUR_HOOGTE}px`, height: `${UUR_HOOGTE}px` }}
             >
-              <div className="w-16 flex-shrink-0 flex items-start justify-end pr-3 pt-1.5">
-                <span className="text-xs text-autronis-text-secondary/60 tabular-nums font-medium">
+              <div className="w-12 sm:w-16 flex-shrink-0 flex items-start justify-end pr-2 sm:pr-3 pt-1.5">
+                <span className="text-[10px] sm:text-xs text-autronis-text-secondary/60 tabular-nums font-medium">
                   {String(uur).padStart(2, "0")}:00
                 </span>
               </div>
@@ -246,7 +246,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
             return (
               <div
                 key={`pauze-${i}`}
-                className="absolute left-16 right-3 rounded-lg bg-autronis-border/8 border border-dashed border-autronis-border/20 flex items-center justify-center gap-1.5 pointer-events-none z-[1]"
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg bg-autronis-border/8 border border-dashed border-autronis-border/20 flex items-center justify-center gap-1.5 pointer-events-none z-[1]"
                 style={{ top: `${top}px`, height: `${height}px` }}
               >
                 <Coffee className="w-3 h-3 text-autronis-text-secondary/40" />
@@ -284,13 +284,13 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
               <div
                 key={item.id}
                 onClick={() => !isExtern && onItemClick?.(item as AgendaItem)}
-                className="absolute left-16 right-3 rounded-xl px-3 py-2 border-l-[3px] cursor-pointer overflow-hidden transition-colors hover:brightness-110 z-[2]"
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-colors hover:brightness-110 z-[2]"
                 style={{ top: `${top}px`, height: `${height}px`, backgroundColor: colors.bg, borderLeftColor: colors.border }}
               >
-                <p className="text-sm font-semibold text-autronis-text-primary truncate">{item.titel}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <Clock className="w-3 h-3" style={{ color: colors.text }} />
-                  <span className="text-xs tabular-nums" style={{ color: colors.text }}>
+                <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{item.titel}</p>
+                <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: colors.text }} />
+                  <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
                     {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
                   </span>
                 </div>
@@ -300,7 +300,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
 
           {/* Nu-indicator */}
           {isVandaag && nuTop >= 0 && nuTop <= uren.length * UUR_HOOGTE && (
-            <div className="absolute left-14 right-0 flex items-center z-10 pointer-events-none" style={{ top: `${nuTop}px` }}>
+            <div className="absolute left-10 sm:left-14 right-0 flex items-center z-10 pointer-events-none" style={{ top: `${nuTop}px` }}>
               <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/30" />
               <div className="flex-1 h-[2px] bg-red-500/70" />
               <span className="text-[10px] font-bold text-red-400 bg-autronis-card/90 px-1.5 py-0.5 rounded ml-1">

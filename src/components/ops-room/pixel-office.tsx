@@ -110,9 +110,9 @@ function drawDesk(
     };
     const rolText = rolLabels[agent.rol ?? "builder"] ?? "Builder";
 
-    // Background for all 3 lines
+    // Background for all 3 lines (semi-transparent)
     const bgH = agent.huidigeTaak ? 42 : 30;
-    ctx.fillStyle = "#0a0f14dd";
+    ctx.fillStyle = "#0a0f1480";
     ctx.fillRect(labelX - 4, labelY2, maxW, bgH);
 
     // Line 1: Name (13px bold white)
@@ -558,26 +558,12 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillStyle = wallGlow;
     ctx.fillRect(scrX - glowR / 2, scrY - glowR / 3, scrW + glowR, scrH + glowR * 0.6);
 
-    // Frame (thick dark bezel, same as desk monitors #1a1a25)
-    ctx.fillStyle = "#1a1a25";
-    ctx.fillRect(scrX, scrY, scrW, scrH);
-    // Inner frame ridge
-    ctx.fillStyle = "#222235";
-    ctx.fillRect(scrX + 2, scrY + 2, scrW - 4, scrH - 4);
-    // Screen surface
-    ctx.fillStyle = "#080c12";
-    ctx.fillRect(scrX + fw, scrY + fw, scrW - fw * 2, scrH - fw * 2);
-
-    // Subtle screen flicker
-    const flickAlpha = 0.01 + Math.sin(tick * 0.4) * 0.005;
-    ctx.fillStyle = `rgba(35, 198, 183, ${flickAlpha})`;
-    ctx.fillRect(scrX + fw, scrY + fw, scrW - fw * 2, scrH - fw * 2);
-
-    // Scanline effect (very subtle horizontal lines)
-    for (let sl = scrY + fw; sl < scrY + scrH - fw; sl += 3) {
-      ctx.fillStyle = "#00000008";
-      ctx.fillRect(scrX + fw, sl, scrW - fw * 2, 1);
-    }
+    // No heavy black background — just a subtle teal border
+    ctx.strokeStyle = "#23C6B718";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(scrX, scrY, scrW, scrH, 6);
+    ctx.stroke();
 
     // 3 KPIs — centered, clean, no lists
     const activeCount = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
@@ -593,26 +579,29 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       { val: `\u20AC${totalCost.toFixed(0)}`, label: "KOSTEN", color: "#f59e0b" },
     ];
     kpis.forEach((kpi, ki) => {
-      const kx = scrX + fw + ki * kpiSec + kpiSec / 2;
-      // Value glow
-      ctx.font = "bold 30px Inter, system-ui, sans-serif";
-      ctx.fillStyle = `${kpi.color}30`;
-      ctx.textAlign = "center";
-      ctx.fillText(kpi.val, kx + 1, kpiCy + 6);
-      // Value
+      const kx = scrX + 8 + ki * kpiSec;
+      const ky = scrY + 10;
+      const kw = kpiSec - 8;
+      const kh = scrH - 20;
+      // Card background (same as project cards)
+      ctx.fillStyle = "#0a0f14aa";
+      ctx.beginPath();
+      ctx.roundRect(kx, ky, kw, kh, 4);
+      ctx.fill();
+      // Left color stripe
       ctx.fillStyle = kpi.color;
-      ctx.fillText(kpi.val, kx, kpiCy + 5);
+      ctx.fillRect(kx, ky + 4, 3, kh - 8);
+      // Value
+      ctx.font = "bold 28px Inter, system-ui, sans-serif";
+      ctx.fillStyle = kpi.color;
+      ctx.textAlign = "center";
+      ctx.fillText(kpi.val, kx + kw / 2, ky + kh / 2 + 6);
       // Label
-      ctx.font = "bold 9px Inter, system-ui, sans-serif";
+      ctx.font = "bold 8px Inter, system-ui, sans-serif";
       ctx.fillStyle = "#5a6a7a";
-      ctx.fillText(kpi.label, kx, kpiCy + 20);
+      ctx.fillText(kpi.label, kx + kw / 2, ky + kh / 2 + 20);
     });
     ctx.textAlign = "left";
-    // Separator dots between KPIs
-    for (let si = 1; si < 3; si++) {
-      ctx.fillStyle = "#23C6B712";
-      ctx.fillRect(scrX + fw + si * kpiSec, scrY + fw + 6, 1, scrH - fw * 2 - 12);
-    }
 
     // Wall mount brackets (pixel art)
     ctx.fillStyle = "#2a2a3a";

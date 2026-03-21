@@ -186,11 +186,14 @@ function drawDesk(
     ctx.fillText("→ open", x + 2 * s, y + 30 * s);
   }
 
-  // Shadow under desk
+  // Shadow + reflection under desk
   ctx.fillStyle = "#00000018";
   ctx.beginPath();
   ctx.ellipse(x + 14 * s, deskY + deskH + 4 * s, 14 * s, 3 * s, 0, 0, Math.PI * 2);
   ctx.fill();
+  // Subtle floor reflection (very dim mirror of desk edge)
+  ctx.fillStyle = "#ffffff03";
+  ctx.fillRect(x + 4 * s, deskY + deskH + 5 * s, deskW - 4 * s, 2);
 
   // Character sitting behind desk
   if (!isOffline && !isHovered) {
@@ -530,13 +533,12 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(mX + 3 * S, mY + 6 * S, 2 * S, S);
     });
 
-    // === Wall-mounted Command Screen (in-world, pixel-art style) ===
-    // Large screen mounted on left wall, same visual language as desk monitors
-    const scrX = MEETING.x + 8;
+    // === Wide Wall-mounted Command Screen ===
+    const scrX = MEETING.x;
     const scrY = MEETING.y;
-    const scrW = MEETING.w - 16;
-    const scrH = MEETING.h - 20;
-    const frameW = 4; // thick pixel frame like desk monitors
+    const scrW = MEETING.w;
+    const scrH = MEETING.h;
+    const fw = 5; // thick pixel frame like desk monitors
 
     // Glow behind screen (teal accent, on the wall)
     const glowR = Math.max(scrW, scrH) * 0.7;
@@ -555,82 +557,48 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillRect(scrX + 2, scrY + 2, scrW - 4, scrH - 4);
     // Screen surface
     ctx.fillStyle = "#080c12";
-    ctx.fillRect(scrX + frameW, scrY + frameW, scrW - frameW * 2, scrH - frameW * 2);
+    ctx.fillRect(scrX + fw, scrY + fw, scrW - fw * 2, scrH - fw * 2);
 
     // Subtle screen flicker
     const flickAlpha = 0.01 + Math.sin(tick * 0.4) * 0.005;
     ctx.fillStyle = `rgba(35, 198, 183, ${flickAlpha})`;
-    ctx.fillRect(scrX + frameW, scrY + frameW, scrW - frameW * 2, scrH - frameW * 2);
+    ctx.fillRect(scrX + fw, scrY + fw, scrW - fw * 2, scrH - fw * 2);
 
     // Scanline effect (very subtle horizontal lines)
-    for (let sl = scrY + frameW; sl < scrY + scrH - frameW; sl += 3) {
+    for (let sl = scrY + fw; sl < scrY + scrH - fw; sl += 3) {
       ctx.fillStyle = "#00000008";
-      ctx.fillRect(scrX + frameW, sl, scrW - frameW * 2, 1);
+      ctx.fillRect(scrX + fw, sl, scrW - fw * 2, 1);
     }
 
-    // Content area
-    const cX = scrX + frameW + 8;
-    const cY = scrY + frameW + 6;
-    const cW = scrW - frameW * 2 - 16;
-
-    // Header
-    ctx.font = "bold 9px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#23C6B7";
-    ctx.fillText("COMMAND CENTER", cX, cY + 8);
-    // Thin line under header
-    ctx.fillStyle = "#23C6B720";
-    ctx.fillRect(cX, cY + 12, cW, 1);
-
-    // KPI row
+    // 3 KPIs — centered, clean, no lists
     const activeCount = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
     const totalTasks = agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
     const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
+    const innerW = scrW - fw * 2;
+    const kpiSec = Math.floor(innerW / 3);
+    const kpiCy = scrY + scrH / 2;
 
-    const kpiY = cY + 22;
-    const kpiW = Math.floor(cW / 3);
-    // Active agents
-    ctx.font = "bold 18px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#4ade80";
-    ctx.fillText(`${activeCount}`, cX + 4, kpiY + 16);
-    ctx.font = "7px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#4a5a6a";
-    ctx.fillText("ACTIEF", cX + 4, kpiY + 26);
-    // Tasks
-    ctx.font = "bold 18px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#23C6B7";
-    ctx.fillText(`${totalTasks}`, cX + kpiW + 4, kpiY + 16);
-    ctx.font = "7px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#4a5a6a";
-    ctx.fillText("TAKEN", cX + kpiW + 4, kpiY + 26);
-    // Cost
-    ctx.font = "bold 18px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#f59e0b";
-    ctx.fillText(`\u20AC${totalCost.toFixed(0)}`, cX + kpiW * 2 + 4, kpiY + 16);
-    ctx.font = "7px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#4a5a6a";
-    ctx.fillText("KOSTEN", cX + kpiW * 2 + 4, kpiY + 26);
-
-    // Thin separator
-    ctx.fillStyle = "#23C6B710";
-    ctx.fillRect(cX, kpiY + 32, cW, 1);
-
-    // Project status bars (pixel-art style)
-    let projBarY = kpiY + 40;
-    agents.forEach((a) => {
-      if (!a.huidigeTaak || a.status === "idle" || a.status === "offline") return;
-      if (projBarY > scrY + scrH - frameW - 14) return;
-      const pColor = getProjectColor(a.huidigeTaak.project);
-      // Dot
-      ctx.fillStyle = pColor;
-      ctx.fillRect(cX + 2, projBarY, 3, 3);
-      // Name
-      ctx.font = "7px Inter, system-ui, sans-serif";
-      ctx.fillStyle = "#6b7b8b";
-      let pName = a.naam;
-      if (ctx.measureText(pName).width > cW - 20) pName = pName.slice(0, 6) + ".";
-      ctx.fillText(pName, cX + 8, projBarY + 3);
-      projBarY += 9;
+    const kpis = [
+      { val: `${activeCount}`, label: "ACTIEF", color: "#4ade80" },
+      { val: `${totalTasks}`, label: "TAKEN", color: "#23C6B7" },
+      { val: `\u20AC${totalCost.toFixed(0)}`, label: "KOSTEN", color: "#f59e0b" },
+    ];
+    kpis.forEach((kpi, ki) => {
+      const kx = scrX + fw + ki * kpiSec + kpiSec / 2;
+      ctx.font = "bold 24px Inter, system-ui, sans-serif";
+      ctx.fillStyle = kpi.color;
+      ctx.textAlign = "center";
+      ctx.fillText(kpi.val, kx, kpiCy + 4);
+      ctx.font = "bold 8px Inter, system-ui, sans-serif";
+      ctx.fillStyle = "#3a4a55";
+      ctx.fillText(kpi.label, kx, kpiCy + 16);
     });
+    ctx.textAlign = "left";
+    // Separator dots between KPIs
+    for (let si = 1; si < 3; si++) {
+      ctx.fillStyle = "#23C6B712";
+      ctx.fillRect(scrX + fw + si * kpiSec, scrY + fw + 6, 1, scrH - fw * 2 - 12);
+    }
 
     // Wall mount brackets (pixel art)
     ctx.fillStyle = "#2a2a3a";

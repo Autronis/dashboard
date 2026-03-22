@@ -123,6 +123,27 @@ export async function POST(
       // Notion sync mislukt — project is wel aangemaakt
     }
 
+    // 7. Ops Room orchestrator triggeren — Theo maakt een plan
+    try {
+      const beschrijving = idee.uitwerking || idee.omschrijving || idee.naam;
+      const opsCommand = `Nieuw project: ${idee.naam}. ${beschrijving}. Maak een plan en wijs builders toe.`;
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+      await fetch(`${baseUrl}/api/ops-room/orchestrate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-ops-token": process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026",
+        },
+        body: JSON.stringify({
+          opdracht: opsCommand,
+          projectId: project.id,
+          bron: "ideeen",
+        }),
+      });
+    } catch {
+      // Ops Room trigger mislukt — project is wel aangemaakt
+    }
+
     return NextResponse.json({ idee: bijgewerktIdee, project }, { status: 201 });
   } catch (error) {
     return NextResponse.json(

@@ -58,6 +58,7 @@ const EMPTY_DESKS = [
   { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
+  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 2 + UNIT_H + 10;
@@ -71,7 +72,7 @@ const COFFEE_X = 14;
 const COFFEE_W = CANVAS_W - 28;
 const STANDBY_COLS = 8; // max per row (leave room for decorations on right)
 const STANDBY_SPACING = Math.floor((COFFEE_W - 300) / STANDBY_COLS); // ~120px, leave 300px right for bonsai+table
-const STANDBY_ROW_H = 90; // vertical spacing between rows
+const STANDBY_ROW_H = 110; // vertical spacing between rows
 
 const COFFEE_SEATS: { x: number; y: number }[] = [];
 for (let r = 0; r < 3; r++) { // up to 3 rows = 30 agents

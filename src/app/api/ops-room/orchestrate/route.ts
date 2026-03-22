@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { opdracht } = body;
+    const { opdracht, projectId, bron } = body;
 
     if (!opdracht || typeof opdracht !== "string") {
       return NextResponse.json({ fout: "Opdracht is verplicht" }, { status: 400 });

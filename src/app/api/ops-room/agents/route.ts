@@ -76,9 +76,17 @@ export async function POST(req: NextRequest) {
         .where(eq(agentActiviteit.id, existing.id))
         .run();
     } else {
+      // Generate a unique id in case AUTOINCREMENT isn't working on remote DB
+      const maxIdResult = await db
+        .select({ maxId: sql<number>`COALESCE(MAX(${agentActiviteit.id}), 0)` })
+        .from(agentActiviteit)
+        .get();
+      const nextId = (maxIdResult?.maxId ?? 0) + 1;
+
       await db
         .insert(agentActiviteit)
         .values({
+          id: nextId,
           agentId,
           agentType,
           project,

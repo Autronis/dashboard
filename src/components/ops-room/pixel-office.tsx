@@ -279,24 +279,21 @@ function drawDesk(
     ctx.fill();
     ctx.fillStyle = "#3a3a44";
     ctx.fillRect(kbX + 7.4 * s, kbY + s * 0.1, s * 0.3, s * 0.5);
-    // Water bottle (left corner of desk, 3D)
-    const wbX = x + 3 * s;
-    const wbY = deskY - 2;
-    // Bottle body
-    ctx.fillStyle = "#87ceeb40";
-    ctx.fillRect(wbX, wbY - s * 2, s * 1.2, s * 3);
-    // Right side (3D)
-    ctx.fillStyle = "#6ab8d830";
-    ctx.fillRect(wbX + s * 1.2, wbY - s * 1.8, s * 0.4, s * 2.8);
-    // Water level
-    ctx.fillStyle = "#60b8e835";
-    ctx.fillRect(wbX + s * 0.1, wbY - s * 0.5, s * 1, s * 2);
-    // Cap
-    ctx.fillStyle = "#e8e8e8";
-    ctx.fillRect(wbX - s * 0.1, wbY - s * 2.4, s * 1.4, s * 0.5);
-    // Highlight
-    ctx.fillStyle = "#ffffff18";
-    ctx.fillRect(wbX + s * 0.2, wbY - s * 1.8, s * 0.3, s * 2);
+    // Water bottle (only on occupied desks)
+    if (!emptyDesk) {
+      const wbX = x + 3 * s;
+      const wbY = deskY - 2;
+      ctx.fillStyle = "#87ceeb40";
+      ctx.fillRect(wbX, wbY - s * 2, s * 1.2, s * 3);
+      ctx.fillStyle = "#6ab8d830";
+      ctx.fillRect(wbX + s * 1.2, wbY - s * 1.8, s * 0.4, s * 2.8);
+      ctx.fillStyle = "#60b8e835";
+      ctx.fillRect(wbX + s * 0.1, wbY - s * 0.5, s * 1, s * 2);
+      ctx.fillStyle = "#e8e8e8";
+      ctx.fillRect(wbX - s * 0.1, wbY - s * 2.4, s * 1.4, s * 0.5);
+      ctx.fillStyle = "#ffffff18";
+      ctx.fillRect(wbX + s * 0.2, wbY - s * 1.8, s * 0.3, s * 2);
+    }
   }
 
   // Empty chair (offline)

@@ -13,7 +13,7 @@ import type { Agent } from "./types";
 
 const S = 5;
 const CANVAS_W = 1500;
-const CANVAS_H = 730;
+const CANVAS_H = 760;
 const WALL_H = 40;
 
 const UNIT_W = 180;

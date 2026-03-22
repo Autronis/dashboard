@@ -435,9 +435,10 @@ function makeTheo(): CharacterDef {
 
 function makeJones(): CharacterDef {
   return makeHuman({
-    height: H_NORM, skin: "#f0c8a0", hair: "#5c3a1a",
-    shirt: "#22c55e", pants: "#3a3020",
-    eyeColor: "#553311", hat: "#5c3a1a",
+    height: H_NORM, skin: "#d4a870", hair: "#3a2010",
+    shirt: "#8B7355", pants: "#5c4a30", // khaki/brown explorer outfit
+    eyeColor: "#553311", hat: "#6b4226", // brown fedora (Indiana Jones)
+    stubble: true,
   });
 }
 

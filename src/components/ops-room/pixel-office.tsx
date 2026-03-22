@@ -118,25 +118,34 @@ function drawDesk(
     ctx.rect(x - 2, labelY2 - 2, maxW + 10, 50);
     ctx.clip();
 
-    const rolLabels: Record<string, string> = {
-      manager: "Manager", builder: "Builder", reviewer: "Reviewer",
-      architect: "Architect", assistant: "Research & Docs", automation: "Automation",
+    const rolLabels: Record<string, { label: string; icon: string; color: string }> = {
+      manager: { label: "Manager", icon: "♛", color: "#f59e0b" },
+      builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
+      reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
+      architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
+      assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
+      automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
     };
-    const rolText = rolLabels[agent.rol ?? "builder"] ?? "Builder";
+    const rol = rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder;
+
+    // Role icon
+    ctx.font = "bold 11px Inter, system-ui, sans-serif";
+    ctx.fillStyle = rol.color;
+    ctx.fillText(rol.icon, labelX, labelY2 + 10);
+    const iconW = ctx.measureText(rol.icon).width + 4;
 
     // Line 1: Name + rol on same line (compact)
     ctx.font = "bold 12px Inter, system-ui, sans-serif";
     ctx.fillStyle = "#ffffff";
     let name = agent.naam;
-    while (ctx.measureText(name).width > maxW * 0.5 && name.length > 2) name = name.slice(0, -1);
-    ctx.fillText(name, labelX, labelY2 + 10);
+    while (ctx.measureText(name).width > maxW * 0.4 && name.length > 2) name = name.slice(0, -1);
+    ctx.fillText(name, labelX + iconW, labelY2 + 10);
 
     // Rol inline after name (smaller, grey)
-    ctx.font = "bold 12px Inter, system-ui, sans-serif";
     const nmW = ctx.measureText(name).width;
     ctx.font = "10px Inter, system-ui, sans-serif";
     ctx.fillStyle = "#a0b0ba";
-    ctx.fillText(rolText, labelX + nmW + 4, labelY2 + 10);
+    ctx.fillText(rol.label, labelX + iconW + nmW + 4, labelY2 + 10);
 
     // Line 2: → Project (more spacing below)
     if (agent.huidigeTaak) {

@@ -592,12 +592,12 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const centerX = CANVAS_W / 2;
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
     // Hardcoded: each label Y = agent Y - 30
-    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 18);
+    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 6);
     ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 10);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 26);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -800,7 +800,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Plant under Sem's tags (below the label text, not on top of it)
     const plantSway1 = Math.sin(tick * 0.06) * 2;
-    drawPlant3D(SEM.x + 10, SEM.y + 32 * S, plantSway1);
+    drawPlant3D(SEM.x + 10, SEM.y + 38 * S, plantSway1);
 
     // Plant actual bottom-right corner of canvas
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;

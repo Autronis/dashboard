@@ -1,11 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrchestrator } from "./orchestrator-store";
 import { SPECIALIZATION_LABELS } from "./orchestrator-types";
 import type { AgentSpecialization } from "./orchestrator-types";
+
+interface DbCommand {
+  id: number;
+  opdracht: string;
+  status: string;
+  plan: { beschrijving: string; taken: { id: string; titel: string; beschrijving: string; agentId: string | null; specialisatie: string; bestanden: string[]; status: string }[] } | null;
+  bron: string;
+  feedback: string | null;
+  aangemaakt: string;
+}
 
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime();
@@ -16,13 +27,50 @@ function timeAgo(dateString: string): string {
 }
 
 export function ApprovalPanel() {
-  const { commands, approvals, approveApproval, rejectApproval } = useOrchestrator();
+  const { commands: localCommands, approvals, approveApproval, rejectApproval } = useOrchestrator();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [expanded, setExpanded] = useState(true);
+  const queryClient = useQueryClient();
 
+  // Poll database for commands (catches commands from API/Ideeën)
+  const { data: dbCommands } = useQuery<DbCommand[]>({
+    queryKey: ["orchestrator-commands"],
+    queryFn: async () => {
+      const res = await fetch("/api/ops-room/orchestrate", {
+        headers: { "x-ops-token": "autronis-ops-2026" },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.commands ?? [];
+    },
+    refetchInterval: 5000,
+  });
+
+  const handleDbApprove = useCallback(async (id: number) => {
+    await fetch("/api/ops-room/orchestrate", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+      body: JSON.stringify({ id, actie: "approve" }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["orchestrator-commands"] });
+  }, [queryClient]);
+
+  const handleDbReject = useCallback(async (id: number, fb: string) => {
+    await fetch("/api/ops-room/orchestrate", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+      body: JSON.stringify({ id, actie: "reject", feedback: fb }),
+    });
+    setRejectId(null);
+    setFeedback("");
+    queryClient.invalidateQueries({ queryKey: ["orchestrator-commands"] });
+  }, [queryClient]);
+
+  // Merge local Zustand commands with DB commands
   const pendingApprovals = approvals.filter((a) => a.status === "pending");
-  const activeCommands = commands.filter((c) => c.status !== "completed" && c.status !== "rejected");
+  const activeLocalCommands = localCommands.filter((c) => c.status !== "completed" && c.status !== "rejected");
+  const pendingDbCommands = (dbCommands ?? []).filter((c) => c.status === "awaiting_approval");
 
   const handleReject = (id: string) => {
     rejectApproval(id, feedback);
@@ -30,7 +78,7 @@ export function ApprovalPanel() {
     setFeedback("");
   };
 
-  if (pendingApprovals.length === 0 && activeCommands.length === 0) return null;
+  if (pendingApprovals.length === 0 && activeLocalCommands.length === 0 && pendingDbCommands.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-autronis-border/50 bg-autronis-card overflow-hidden">

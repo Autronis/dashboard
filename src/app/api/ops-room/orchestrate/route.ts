@@ -1,9 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { sql } from "drizzle-orm";
+import { db } from "@/lib/db";
 import { AGENT_SPECIALIZATIONS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
 import type { PlanTask } from "@/components/ops-room/orchestrator-types";
 
 const OPS_TOKEN = process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026";
+
+// Ensure table exists
+async function ensureTable() {
+  await db.run(sql`
+    CREATE TABLE IF NOT EXISTS orchestrator_commands (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      opdracht TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      plan_json TEXT,
+      bron TEXT DEFAULT 'ui',
+      project_id INTEGER,
+      feedback TEXT,
+      aangemaakt TEXT DEFAULT (datetime('now')),
+      bijgewerkt TEXT DEFAULT (datetime('now'))
+    )
+  `);
+}
 
 // Theo's system prompt — he is the manager who creates plans
 const THEO_SYSTEM_PROMPT = `Je bent Theo, de Manager van Autronis. Je beheert een team van AI agents die samenwerken aan softwareprojecten.
@@ -103,11 +122,17 @@ export async function POST(req: NextRequest) {
       bestanden: t.bestanden ?? [],
     }));
 
+    const planData = { beschrijving: plan.beschrijving, taken };
+
+    // Save to database
+    await ensureTable();
+    await db.run(sql`
+      INSERT INTO orchestrator_commands (opdracht, status, plan_json, bron, project_id, bijgewerkt)
+      VALUES (${opdracht}, 'awaiting_approval', ${JSON.stringify(planData)}, ${bron ?? "ui"}, ${projectId ?? null}, ${new Date().toISOString()})
+    `);
+
     return NextResponse.json({
-      plan: {
-        beschrijving: plan.beschrijving,
-        taken,
-      },
+      plan: planData,
       projectId: projectId ?? null,
       bron: bron ?? "ui",
     });
@@ -117,6 +142,60 @@ export async function POST(req: NextRequest) {
     if (msg.includes("credit balance") || msg.includes("billing")) {
       return NextResponse.json({ fout: "Anthropic API credits op. Vul credits aan op console.anthropic.com." }, { status: 402 });
     }
+    return NextResponse.json({ fout: msg }, { status: 500 });
+  }
+}
+
+// GET — fetch all commands with their plans
+export async function GET() {
+  try {
+    await ensureTable();
+    const commands = await db.all(sql`
+      SELECT id, opdracht, status, plan_json as planJson, bron, project_id as projectId,
+             feedback, aangemaakt, bijgewerkt
+      FROM orchestrator_commands
+      ORDER BY aangemaakt DESC
+      LIMIT 20
+    `);
+
+    const parsed = (commands as Record<string, unknown>[]).map((cmd) => ({
+      ...cmd,
+      plan: cmd.planJson ? JSON.parse(cmd.planJson as string) : null,
+    }));
+
+    return NextResponse.json({ commands: parsed });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Onbekend";
+    return NextResponse.json({ fout: msg }, { status: 500 });
+  }
+}
+
+// PATCH — approve or reject a command
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { id, actie, feedback } = body as { id: number; actie: "approve" | "reject"; feedback?: string };
+
+    if (!id || !actie) {
+      return NextResponse.json({ fout: "id en actie zijn verplicht" }, { status: 400 });
+    }
+
+    await ensureTable();
+    const now = new Date().toISOString();
+
+    if (actie === "approve") {
+      await db.run(sql`
+        UPDATE orchestrator_commands SET status = 'approved', bijgewerkt = ${now} WHERE id = ${id}
+      `);
+    } else {
+      await db.run(sql`
+        UPDATE orchestrator_commands SET status = 'rejected', feedback = ${feedback ?? null}, bijgewerkt = ${now} WHERE id = ${id}
+      `);
+    }
+
+    return NextResponse.json({ succes: true });
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : "Onbekend";
     return NextResponse.json({ fout: msg }, { status: 500 });
   }
 }

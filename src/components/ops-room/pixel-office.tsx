@@ -519,27 +519,82 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillStyle = "#1e2e3e";
     ctx.fillRect(0, WALL_H, CANVAS_W, 2);
 
-    // Windows with city lights (cyberpunk)
-    for (let i = 0; i < 7; i++) {
-      const wx = 60 + i * 200;
-      ctx.fillStyle = "#3a4a5a";
-      ctx.fillRect(wx, 4, 44, WALL_H - 8);
-      // Night sky through window
-      ctx.fillStyle = "#0a1020";
-      const pH = (WALL_H - 16) / 2;
-      ctx.fillRect(wx + 3, 7, 17, pH);
-      ctx.fillRect(wx + 24, 7, 17, pH);
-      ctx.fillRect(wx + 3, 7 + pH + 3, 17, pH);
-      ctx.fillRect(wx + 24, 7 + pH + 3, 17, pH);
-      // City lights (small colored dots)
-      const cityColors = ["#ef4444", "#f59e0b", "#23C6B7", "#3b82f6", "#ffffff", "#a855f7"];
-      for (let cl = 0; cl < 4; cl++) {
-        const clx = wx + 5 + ((i * 7 + cl * 11) % 34);
-        const cly = 9 + ((cl * 5 + i * 3) % (pH - 4));
-        const clAlpha = 0.3 + Math.sin(tick * 0.2 + i * 3 + cl * 5) * 0.2;
-        ctx.fillStyle = `${cityColors[(i + cl) % cityColors.length]}${Math.round(clAlpha * 255).toString(16).padStart(2, "0")}`;
-        ctx.fillRect(clx, cly, 1.5, 1.5);
+    // Windows — 5 wide rectangular windows with cross frames
+    const winCount = 5;
+    const winW = 80;
+    const winH = WALL_H - 12;
+    const winSpacing = (CANVAS_W - winCount * winW) / (winCount + 1);
+    for (let i = 0; i < winCount; i++) {
+      const wx = winSpacing + i * (winW + winSpacing);
+      const wy = 6;
+
+      // Outer frame (light grey)
+      ctx.fillStyle = "#5a6a7a";
+      ctx.fillRect(wx - 2, wy - 2, winW + 4, winH + 4);
+
+      // Night sky gradient
+      const skyGrad = ctx.createLinearGradient(wx, wy, wx, wy + winH);
+      skyGrad.addColorStop(0, "#060818");
+      skyGrad.addColorStop(0.5, "#0c1230");
+      skyGrad.addColorStop(1, "#1a1840");
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(wx, wy, winW, winH);
+
+      // Stars / city lights (twinkling)
+      const starPositions = [
+        [0.12, 0.2], [0.35, 0.15], [0.6, 0.3], [0.82, 0.12], [0.25, 0.55],
+        [0.7, 0.6], [0.45, 0.75], [0.15, 0.8], [0.9, 0.45], [0.5, 0.4],
+      ];
+      for (let si = 0; si < starPositions.length; si++) {
+        const [sx, sy] = starPositions[si];
+        const starAlpha = 0.3 + Math.sin(tick * 0.15 + i * 5 + si * 3.7) * 0.25;
+        const starSize = si < 3 ? 2 : 1.2;
+        const starColors = ["#ffffff", "#aaccff", "#ffddaa", "#aaddff", "#ff9966"];
+        ctx.fillStyle = `${starColors[si % starColors.length]}${Math.round(starAlpha * 255).toString(16).padStart(2, "0")}`;
+        ctx.fillRect(wx + sx * winW, wy + sy * winH, starSize, starSize);
       }
+
+      // Distant city skyline silhouette (bottom of window)
+      ctx.fillStyle = "#0a0a1a";
+      const bldgH = [8, 12, 6, 14, 9, 7, 11, 5, 10, 8];
+      for (let b = 0; b < 10; b++) {
+        const bx = wx + b * (winW / 10);
+        const bh = bldgH[(b + i * 3) % bldgH.length];
+        ctx.fillRect(bx, wy + winH - bh, winW / 10, bh);
+      }
+      // Tiny building windows (warm glow)
+      for (let b = 0; b < 6; b++) {
+        const blx = wx + 4 + ((i * 13 + b * 11) % (winW - 8));
+        const bly = wy + winH - 3 - ((b * 3 + i * 2) % 8);
+        const bla = 0.4 + Math.sin(tick * 0.1 + i * 4 + b * 7) * 0.3;
+        ctx.fillStyle = `rgba(255, 200, 100, ${bla})`;
+        ctx.fillRect(blx, bly, 2, 2);
+      }
+
+      // Cross frame (4 panes)
+      ctx.fillStyle = "#5a6a7a";
+      // Vertical divider
+      ctx.fillRect(wx + winW / 2 - 1.5, wy, 3, winH);
+      // Horizontal divider
+      ctx.fillRect(wx, wy + winH / 2 - 1.5, winW, 3);
+
+      // Inner frame highlight (subtle 3D)
+      ctx.fillStyle = "#7a8a9a30";
+      ctx.fillRect(wx, wy, winW, 1);
+      ctx.fillRect(wx, wy, 1, winH);
+
+      // Light fall from window onto floor
+      const lightGrad = ctx.createLinearGradient(wx + winW / 2, WALL_H, wx + winW / 2, WALL_H + 120);
+      lightGrad.addColorStop(0, "rgba(35, 198, 183, 0.04)");
+      lightGrad.addColorStop(1, "rgba(35, 198, 183, 0)");
+      ctx.fillStyle = lightGrad;
+      ctx.beginPath();
+      ctx.moveTo(wx - 10, WALL_H);
+      ctx.lineTo(wx + winW + 10, WALL_H);
+      ctx.lineTo(wx + winW + 30, WALL_H + 120);
+      ctx.lineTo(wx - 30, WALL_H + 120);
+      ctx.closePath();
+      ctx.fill();
     }
 
     // (geen separator — bedden staan op dezelfde vloer)

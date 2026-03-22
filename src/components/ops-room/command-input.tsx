@@ -22,7 +22,7 @@ export function CommandInput() {
   }, [value, isProcessing, submitCommand]);
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative flex items-center gap-2">
       <div className="flex-1 relative">
         <input
           type="text"
@@ -40,13 +40,29 @@ export function CommandInput() {
           </div>
         )}
       </div>
-      <button
-        onClick={handleSubmit}
-        disabled={!value.trim() || isProcessing}
-        className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-      </button>
+      {executingTaskId ? (
+        <button
+          onClick={killExecution}
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
+          title="Stop uitvoering"
+        >
+          <Square className="w-4 h-4" />
+        </button>
+      ) : (
+        <button
+          onClick={handleSubmit}
+          disabled={!value.trim() || isProcessing}
+          className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        >
+          {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+        </button>
+      )}
+      {error && (
+        <div className="absolute -bottom-8 left-0 flex items-center gap-1 text-red-400 text-[11px]">
+          <AlertCircle className="w-3 h-3" />
+          {error}
+        </div>
+      )}
     </div>
   );
 }

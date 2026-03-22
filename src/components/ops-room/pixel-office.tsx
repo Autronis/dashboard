@@ -537,14 +537,13 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "center";
     const centerX = CANVAS_W / 2;
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
-    ctx.fillText("DE BAAS", SEM.x + 14 * S, MGMT_Y - 6);
-    ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, MGMT_Y - 6);
-    // "DE STAF"
+    // All labels tight above their group (same style as DE ENGINEERS)
+    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y - 6);
+    ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y - 6);
     const ariY = BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10;
     ctx.fillText("DE STAF", centerX, ariY - 6);
-    // "DE ENGINEERS"
-    ctx.fillText("DE ENGINEERS", centerX, BUILDER_START_Y + UNIT_H - 6);
-    // "STAND-BY"
+    ctx.fillText("DE ENGINEERS", centerX, DESK_POSITIONS.wout.y - 6);
+    // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
     ctx.letterSpacing = "0px";

@@ -458,7 +458,7 @@ function makeJones(): CharacterDef {
 
 function makeWout(): CharacterDef {
   return makeHuman({
-    height: H_SMALL, skin: "#f0c8a0", hair: "#e8c840",
+    height: H_NORM, skin: "#f0c8a0", hair: "#e8c840",
     shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#4488cc", curlyHair: true,
   });

@@ -184,30 +184,25 @@ function drawDesk(
   ctx.fillStyle = "#ffffff03";
   ctx.fillRect(x + 4 * s, deskY + deskH + 5 * s, deskW - 4 * s, 2);
 
-  // Office chair (front of desk, behind character)
+  // Office chair (behind desk, where agent sits)
   if (!isOffline) {
-    const chairX = x + 8 * s;
-    const chairY = deskY + deskH + s;
+    const chairX = x + 7 * s;
+    const chairBotY = deskY - s; // just above desk top
+    // Backrest (behind character)
+    ctx.fillStyle = "#22222e";
+    ctx.fillRect(chairX + s, chairBotY - 10 * s, 8 * s, 4 * s);
+    ctx.fillStyle = "#2a2a36";
+    ctx.fillRect(chairX + 2 * s, chairBotY - 9 * s, 6 * s, 2 * s);
     // Seat
     ctx.fillStyle = "#1a1a24";
-    ctx.fillRect(chairX, chairY, 10 * s, 4 * s);
-    // Backrest
-    ctx.fillStyle = "#22222e";
-    ctx.fillRect(chairX + s, chairY - 5 * s, 8 * s, 5 * s);
-    ctx.fillStyle = "#2a2a36";
-    ctx.fillRect(chairX + 2 * s, chairY - 4 * s, 6 * s, 3 * s);
+    ctx.fillRect(chairX, chairBotY - 2 * s, 10 * s, 2 * s);
     // Armrests
     ctx.fillStyle = "#1a1a24";
-    ctx.fillRect(chairX - s, chairY - s, 2 * s, 3 * s);
-    ctx.fillRect(chairX + 9 * s, chairY - s, 2 * s, 3 * s);
+    ctx.fillRect(chairX - s, chairBotY - 4 * s, s, 3 * s);
+    ctx.fillRect(chairX + 10 * s, chairBotY - 4 * s, s, 3 * s);
     // Base pole
     ctx.fillStyle = "#151520";
-    ctx.fillRect(chairX + 4 * s, chairY + 4 * s, 2 * s, 2 * s);
-    // Wheels (5-star base)
-    ctx.fillStyle = "#111118";
-    ctx.fillRect(chairX + s, chairY + 6 * s, 8 * s, s);
-    ctx.fillRect(chairX, chairY + 6 * s, 2 * s, s);
-    ctx.fillRect(chairX + 8 * s, chairY + 6 * s, 2 * s, s);
+    ctx.fillRect(chairX + 4 * s, chairBotY, 2 * s, s);
   }
 
   // Character sitting behind desk
@@ -618,7 +613,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 70);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 90);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";

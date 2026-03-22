@@ -260,10 +260,10 @@ function makeHuman(opts: HumanOpts): CharacterDef {
     } else {
       fillR(s, r, bx, bx + bw, r === bodyStart + bodyH - 1 ? sd : shirt);
     }
-    // Arms — 3 rows from middle of body (long sleeves: shirt color, hands: skin on last row)
+    // Arms — long sleeves if tie (suit), otherwise short sleeves (skin)
     const armMid = bodyStart + Math.floor(bodyH / 2);
     if (r >= armMid - 1 && r <= armMid + 1) {
-      const armColor = r === armMid + 1 ? skin : shirt;
+      const armColor = opts.tie ? (r === armMid + 1 ? skin : shirt) : skin;
       s[r][bx - 1] = armColor;
       s[r][bx + bw] = armColor;
     }
@@ -449,7 +449,7 @@ function makeTheo(): CharacterDef {
 
 function makeJones(): CharacterDef {
   return makeHuman({
-    height: H_NORM, skin: "#d4a870", hair: "#3a2010",
+    height: H_TALL, skin: "#d4a870", hair: "#3a2010",
     shirt: "#8B7355", pants: "#5c4a30", // khaki/brown explorer outfit
     eyeColor: "#553311", hat: "#6b4226", // brown fedora (Indiana Jones)
     stubble: true,
@@ -474,16 +474,16 @@ function makeBas(): CharacterDef {
 
 function makeGabriel(): CharacterDef {
   return makeHuman({
-    height: H_NORM, skin: "#c8a070", hair: "#1a1210",
-    shirt: "#e8e8e8", pants: "#2a2a3a",
+    height: H_TALL, skin: "#a07848", hair: "#1a1210",
+    shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#331a0a",
   });
 }
 
 function makeTijmen(): CharacterDef {
   return makeHuman({
-    height: H_NORM, skin: "#f0c8a0", hair: "#c4601a",
-    shirt: "#888898", pants: "#2a2a3a",
+    height: H_TALL, skin: "#f0c8a0", hair: "#c4601a",
+    shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#4488cc", curlyHair: true,
   });
 }
@@ -491,7 +491,7 @@ function makeTijmen(): CharacterDef {
 function makePedro(): CharacterDef {
   return makeHuman({
     height: H_NORM, skin: "#e0b890", hair: "#888888",
-    shirt: "#888898", pants: "#2a2a3a",
+    shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#553311", mustache: true, hunched: true,
   });
 }
@@ -499,7 +499,7 @@ function makePedro(): CharacterDef {
 function makeVincent(): CharacterDef {
   return makeHuman({
     height: H_SMALL, skin: "#f0c8a0", hair: "#888888",
-    shirt: "#8b5cf6", pants: "#2a2a3a",
+    shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#4455aa", curlyHair: true, glasses: true, hunched: true,
   });
 }
@@ -555,7 +555,7 @@ function makeThijs(): CharacterDef {
 function makeLeonard(): CharacterDef {
   return makeHuman({
     height: H_NORM, skin: "#6b4226", hair: "#1a1210",
-    shirt: "#7f1d1d", pants: "#2a2a3a",
+    shirt: "#1a1a2a", pants: "#2a2a3a",
     eyeColor: "#331a0a",
   });
 }

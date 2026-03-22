@@ -209,6 +209,9 @@ function makeHuman(opts: HumanOpts): CharacterDef {
     s[faceR + 2][6] = darken(skin, 20);
     // Mouth
     s[faceR + 2][5] = "#a85050";
+  } else if (faceR + 1 < bodyStart) {
+    // Small characters: add mouth on same row as eyes
+    s[faceR + 1][6] = "#a85050";
   }
 
   // Beard/stubble/mustache
@@ -257,11 +260,12 @@ function makeHuman(opts: HumanOpts): CharacterDef {
     } else {
       fillR(s, r, bx, bx + bw, r === bodyStart + bodyH - 1 ? sd : shirt);
     }
-    // Arms/hands — 3 rows from middle of body
+    // Arms — 3 rows from middle of body (long sleeves: shirt color, hands: skin on last row)
     const armMid = bodyStart + Math.floor(bodyH / 2);
     if (r >= armMid - 1 && r <= armMid + 1) {
-      s[r][bx - 1] = skin;
-      s[r][bx + bw] = skin;
+      const armColor = r === armMid + 1 ? skin : shirt;
+      s[r][bx - 1] = armColor;
+      s[r][bx + bw] = armColor;
     }
   }
 
@@ -471,15 +475,15 @@ function makeBas(): CharacterDef {
 function makeGabriel(): CharacterDef {
   return makeHuman({
     height: H_NORM, skin: "#c8a070", hair: "#1a1210",
-    shirt: "#f97316", pants: "#2a2a3a",
+    shirt: "#e8e8e8", pants: "#2a2a3a",
     eyeColor: "#331a0a",
   });
 }
 
 function makeTijmen(): CharacterDef {
   return makeHuman({
-    height: H_TALL, skin: "#f0c8a0", hair: "#c4601a",
-    shirt: "#eab308", pants: "#2a2a3a",
+    height: H_NORM, skin: "#f0c8a0", hair: "#c4601a",
+    shirt: "#888898", pants: "#2a2a3a",
     eyeColor: "#4488cc", curlyHair: true,
   });
 }
@@ -487,7 +491,7 @@ function makeTijmen(): CharacterDef {
 function makePedro(): CharacterDef {
   return makeHuman({
     height: H_NORM, skin: "#e0b890", hair: "#888888",
-    shirt: "#ec4899", pants: "#2a2a3a",
+    shirt: "#888898", pants: "#2a2a3a",
     eyeColor: "#553311", mustache: true, hunched: true,
   });
 }
@@ -574,7 +578,7 @@ function makeSenna(): CharacterDef {
 
 function makeAri(): CharacterDef {
   return makeHuman({
-    height: H_NORM, skin: "#d4a070", hair: "#1a1210",
+    height: H_TALL, skin: "#d4a070", hair: "#1a1210",
     shirt: "#7dd3fc", pants: "#2a2a3a",
     eyeColor: "#331a0a",
     striped: "#ffffff", // Argentina: light blue + white stripes
@@ -753,17 +757,6 @@ export function drawSemDesk(
     ctx.fillRect(ccX + 0.5 * s, ccY - s + (tick % 3) * 0.2, 0.4 * s, 0.8 * s);
     ctx.fillRect(ccX + 1.2 * s, ccY - 1.3 * s + (tick % 4) * 0.15, 0.4 * s, 0.8 * s);
 
-  // Glass of water below coffee cup
-  const glX = x + 24 * s;
-  const glY = deskY - 4 * s;
-  ctx.fillStyle = "#88bbdd30";
-  ctx.fillRect(glX, glY, 2 * s, 3 * s);
-  ctx.fillStyle = "#4a99cc50";
-  ctx.fillRect(glX + 0.3 * s, glY + 1 * s, 1.4 * s, 1.8 * s);
-  ctx.fillStyle = "#aaddee40";
-  ctx.fillRect(glX, glY, 2 * s, 0.4 * s);
-  ctx.fillStyle = "#ffffff18";
-  ctx.fillRect(glX + 0.2 * s, glY + 0.5 * s, 0.4 * s, 2 * s);
   }
 
   // 3-line label: Sem / CEO / → Autronis

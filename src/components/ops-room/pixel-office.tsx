@@ -1285,11 +1285,16 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       if (ha && ha.agent.status !== "offline") {
         const { agent } = ha;
         const desk = DESK_POSITIONS[agent.id];
-        const rolLabels: Record<string, string> = {
-          manager: "Manager", builder: "Builder", reviewer: "Reviewer",
-          architect: "Architect", assistant: "Research & Docs", automation: "Automation",
+        const rolConfig: Record<string, { label: string; icon: string; color: string }> = {
+          manager: { label: "Manager", icon: "♛", color: "#f59e0b" },
+          builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
+          reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
+          architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
+          assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
+          automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
         };
-        const rolText = rolLabels[agent.rol] ?? "Builder";
+        const rolInfo = rolConfig[agent.rol] ?? rolConfig.builder;
+        const rolText = rolInfo.label;
         const proj = agent.huidigeTaak?.project ?? "Stand-by";
         const projColor = agent.huidigeTaak ? getProjectColor(proj) : "#8a9aaa";
         const cost = `\u20AC${agent.kosten.kostenVandaag.toFixed(2)}`;

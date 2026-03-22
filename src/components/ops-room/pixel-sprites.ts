@@ -778,11 +778,22 @@ export function drawSemDesk(
   // Label: Crown icon + Sem / CEO / → Autronis
   const labelX = x + 2 * s;
   const labelY = y + 27 * s;
-  // Crown icon
-  ctx.font = "bold 13px Inter, system-ui, sans-serif";
+  // Crown icon (custom drawn)
+  // Mini crown at label position
+  const crW = 14;
+  const crS = crW / 10;
   ctx.fillStyle = "#f59e0b";
-  ctx.fillText("♛", labelX, labelY);
-  const crownW = ctx.measureText("♛").width + 4;
+  ctx.fillRect(labelX, labelY - 3 * crS, crW, 3 * crS);
+  ctx.fillRect(labelX, labelY - 6 * crS, 2 * crS, 3 * crS);
+  ctx.fillRect(labelX + 4 * crS, labelY - 8 * crS, 2 * crS, 5 * crS);
+  ctx.fillRect(labelX + 8 * crS, labelY - 6 * crS, 2 * crS, 3 * crS);
+  ctx.fillStyle = "#ef4444";
+  ctx.fillRect(labelX + crS, labelY - 3 * crS, crS, crS);
+  ctx.fillStyle = "#3b82f6";
+  ctx.fillRect(labelX + 4.5 * crS, labelY - 3 * crS, crS, crS);
+  ctx.fillStyle = "#4ade80";
+  ctx.fillRect(labelX + 8 * crS, labelY - 3 * crS, crS, crS);
+  const crownW = crW + 4;
   // Name
   ctx.font = "bold 12px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#ffffff";

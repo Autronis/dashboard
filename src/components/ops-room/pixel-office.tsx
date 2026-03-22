@@ -88,6 +88,134 @@ const FRAME_MS = 1000 / 8;
 
 // ============ 2D DESK (proven working design + shadow for depth) ============
 
+// Custom pixel art role icons (drawn on canvas, not emoji)
+function drawRoleIcon(ctx: CanvasRenderingContext2D, role: string, agentId: string, ix: number, iy: number, size: number) {
+  const s = size / 10; // scale unit
+  const c = (clr: string) => { ctx.fillStyle = clr; };
+
+  if (agentId === "sem") {
+    // Crown — golden, 3 points
+    c("#f59e0b");
+    ctx.fillRect(ix, iy + 5 * s, 10 * s, 3 * s); // base
+    ctx.fillRect(ix + s, iy + 3 * s, 8 * s, 2 * s); // mid
+    ctx.fillRect(ix, iy + 2 * s, 2 * s, 3 * s); // left point
+    ctx.fillRect(ix + 4 * s, iy, 2 * s, 5 * s); // center point (tall)
+    ctx.fillRect(ix + 8 * s, iy + 2 * s, 2 * s, 3 * s); // right point
+    // Gems
+    c("#ef4444");
+    ctx.fillRect(ix + s, iy + 5 * s, s, s);
+    c("#3b82f6");
+    ctx.fillRect(ix + 4.5 * s, iy + 5 * s, s, s);
+    c("#4ade80");
+    ctx.fillRect(ix + 8 * s, iy + 5 * s, s, s);
+  } else if (role === "manager") {
+    // Target/crosshair — Theo steers the team
+    c("#f59e0b");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 5 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    c("#0d1117");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 5 * s, 2.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+    c("#f59e0b");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 5 * s, 1.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Cross lines
+    ctx.fillRect(ix + 4.5 * s, iy, s, 10 * s);
+    ctx.fillRect(ix, iy + 4.5 * s, 10 * s, s);
+  } else if (role === "reviewer") {
+    // Magnifying glass — Toby inspects code
+    c("#a855f7");
+    ctx.beginPath();
+    ctx.arc(ix + 4 * s, iy + 4 * s, 3.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+    c("#0d1117");
+    ctx.beginPath();
+    ctx.arc(ix + 4 * s, iy + 4 * s, 2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Lens reflection
+    c("#c084fc40");
+    ctx.beginPath();
+    ctx.arc(ix + 3 * s, iy + 3 * s, s, 0, Math.PI * 2);
+    ctx.fill();
+    // Handle
+    c("#a855f7");
+    ctx.save();
+    ctx.translate(ix + 6.5 * s, iy + 6.5 * s);
+    ctx.rotate(0.8);
+    ctx.fillRect(0, 0, 1.5 * s, 4 * s);
+    ctx.restore();
+  } else if (role === "architect") {
+    // Compass/protractor — Jones designs
+    c("#f59e0b");
+    // Triangle shape (like drafting)
+    ctx.beginPath();
+    ctx.moveTo(ix + 5 * s, iy);
+    ctx.lineTo(ix + 10 * s, iy + 9 * s);
+    ctx.lineTo(ix, iy + 9 * s);
+    ctx.closePath();
+    ctx.fill();
+    c("#0d1117");
+    ctx.beginPath();
+    ctx.moveTo(ix + 5 * s, iy + 3 * s);
+    ctx.lineTo(ix + 8 * s, iy + 8 * s);
+    ctx.lineTo(ix + 2 * s, iy + 8 * s);
+    ctx.closePath();
+    ctx.fill();
+  } else if (role === "assistant") {
+    // Satellite dish — Ari scans & researches
+    c("#23C6B7");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 3 * s, 4 * s, Math.PI, 0);
+    ctx.fill();
+    c("#0d1117");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 3 * s, 2.5 * s, Math.PI, 0);
+    ctx.fill();
+    // Pole
+    c("#23C6B7");
+    ctx.fillRect(ix + 4.5 * s, iy + 3 * s, s, 6 * s);
+    // Base
+    ctx.fillRect(ix + 2 * s, iy + 8 * s, 6 * s, 1.5 * s);
+    // Signal dot
+    c("#4ade80");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 2 * s, s, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (role === "automation") {
+    // Robot head — Rodi automates
+    c("#4ade80");
+    ctx.fillRect(ix + s, iy + 2 * s, 8 * s, 6 * s); // head
+    ctx.fillRect(ix + 3 * s, iy, 4 * s, 2 * s); // antenna base
+    ctx.fillRect(ix + 4.5 * s, iy - s, s, 2 * s); // antenna
+    // Eyes
+    c("#0d1117");
+    ctx.fillRect(ix + 2.5 * s, iy + 4 * s, 2 * s, 1.5 * s);
+    ctx.fillRect(ix + 5.5 * s, iy + 4 * s, 2 * s, 1.5 * s);
+    // Mouth
+    ctx.fillRect(ix + 3 * s, iy + 6.5 * s, 4 * s, s);
+    // Antenna light
+    c("#ff4444");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy - s, 0.8 * s, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Builder — lightning bolt
+    c("#3b82f6");
+    ctx.beginPath();
+    ctx.moveTo(ix + 6 * s, iy);
+    ctx.lineTo(ix + 2 * s, iy + 5 * s);
+    ctx.lineTo(ix + 5 * s, iy + 5 * s);
+    ctx.lineTo(ix + 4 * s, iy + 10 * s);
+    ctx.lineTo(ix + 8 * s, iy + 4 * s);
+    ctx.lineTo(ix + 5 * s, iy + 4 * s);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 function drawDesk(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
@@ -118,24 +246,22 @@ function drawDesk(
     ctx.rect(x - 2, labelY2 - 2, maxW + 10, 50);
     ctx.clip();
 
-    const rolLabels: Record<string, { label: string; icon: string; color: string }> = {
-      manager: { label: "Manager", icon: "🎯", color: "#f59e0b" },
-      builder: { label: "Builder", icon: "⚡", color: "#3b82f6" },
-      reviewer: { label: "Reviewer", icon: "🔍", color: "#a855f7" },
-      architect: { label: "Architect", icon: "🧭", color: "#f59e0b" },
-      assistant: { label: "Research & Docs", icon: "📡", color: "#23C6B7" },
-      automation: { label: "Automation", icon: "🤖", color: "#4ade80" },
+    const rolLabels: Record<string, { label: string; color: string }> = {
+      manager: { label: "Manager", color: "#f59e0b" },
+      builder: { label: "Builder", color: "#3b82f6" },
+      reviewer: { label: "Reviewer", color: "#a855f7" },
+      architect: { label: "Architect", color: "#f59e0b" },
+      assistant: { label: "Research & Docs", color: "#23C6B7" },
+      automation: { label: "Automation", color: "#4ade80" },
     };
     const isSem = agent.id === "sem";
     const rol = isSem
-      ? { label: "CEO", icon: "👑", color: "#f59e0b" }
+      ? { label: "CEO", color: "#f59e0b" }
       : (rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
 
-    // Role icon (large)
-    ctx.font = "18px Inter, system-ui, sans-serif";
-    ctx.fillStyle = rol.color;
-    ctx.fillText(rol.icon, labelX, labelY2 + 12);
-    const iconW = ctx.measureText(rol.icon).width + 3;
+    // Role icon (custom drawn)
+    drawRoleIcon(ctx, agent.rol ?? "builder", agent.id, labelX, labelY2 - 2, 14);
+    const iconW = 17;
 
     // Line 1: Name + rol on same line (compact)
     ctx.font = "bold 12px Inter, system-ui, sans-serif";
@@ -1253,27 +1379,16 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
       // Name below with role icon
       const charH = charDef.rows * S;
-      const sbRolIcons: Record<string, { icon: string; color: string }> = {
-        manager: { icon: "🎯", color: "#f59e0b" },
-        builder: { icon: "⚡", color: "#3b82f6" },
-        reviewer: { icon: "🔍", color: "#a855f7" },
-        architect: { icon: "🧭", color: "#f59e0b" },
-        assistant: { icon: "📡", color: "#23C6B7" },
-        automation: { icon: "🤖", color: "#4ade80" },
-      };
-      const sbRol = sbRolIcons[agent.rol] ?? sbRolIcons.builder;
-      ctx.font = "16px Inter, system-ui, sans-serif";
-      const sbIconW = ctx.measureText(sbRol.icon).width + 3;
+      const sbIconSize = 12;
+      const sbIconW = sbIconSize + 4;
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       const nw = ctx.measureText(agent.naam).width;
       ctx.fillStyle = "#0a0f14dd";
-      ctx.fillRect(ax - 2, ay + charH + 4, sbIconW + nw + 8, 15);
-      ctx.font = "16px Inter, system-ui, sans-serif";
-      ctx.fillStyle = sbRol.color;
-      ctx.fillText(sbRol.icon, ax + 2, ay + charH + 16);
+      ctx.fillRect(ax - 2, ay + charH + 4, sbIconW + nw + 8, 16);
+      drawRoleIcon(ctx, agent.rol, agent.id, ax + 2, ay + charH + 5, sbIconSize);
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       ctx.fillStyle = agent.avatar;
-      ctx.fillText(agent.naam, ax + 2 + sbIconW, ay + charH + 16);
+      ctx.fillText(agent.naam, ax + 2 + sbIconW, ay + charH + 17);
 
       if (selectedId === agent.id) {
         ctx.strokeStyle = "#23C6B7"; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
@@ -1288,19 +1403,11 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       if (ha && ha.agent.status !== "offline") {
         const { agent } = ha;
         const desk = DESK_POSITIONS[agent.id];
-        const rolConfig: Record<string, { label: string; icon: string; color: string }> = {
-          manager: { label: "Manager", icon: "⚜", color: "#f59e0b" },
-          builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
-          reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
-          architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
-          assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
-          automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
+        const rolTextMap: Record<string, string> = {
+          manager: "Manager", builder: "Builder", reviewer: "Reviewer",
+          architect: "Architect", assistant: "Research & Docs", automation: "Automation",
         };
-        const isSemTT = agent.id === "sem";
-        const rolInfo = isSemTT
-          ? { label: "CEO", icon: "♛", color: "#f59e0b" }
-          : (rolConfig[agent.rol] ?? rolConfig.builder);
-        const rolText = rolInfo.label;
+        const rolText = agent.id === "sem" ? "CEO" : (rolTextMap[agent.rol] ?? "Builder");
         const proj = agent.huidigeTaak?.project ?? "Stand-by";
         const projColor = agent.huidigeTaak ? getProjectColor(proj) : "#8a9aaa";
         const cost = `\u20AC${agent.kosten.kostenVandaag.toFixed(2)}`;
@@ -1328,11 +1435,9 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.fillStyle = projColor;
         ctx.fillRect(tx + 1, ty + 8, 3, th - 16);
 
-        // Role icon (large)
-        ctx.font = "bold 20px Inter, system-ui, sans-serif";
-        ctx.fillStyle = rolInfo.color;
-        ctx.fillText(rolInfo.icon, tx + 14, ty + 23);
-        const ttIconW = ctx.measureText(rolInfo.icon).width + 6;
+        // Role icon (custom drawn, large)
+        drawRoleIcon(ctx, agent.rol, agent.id, tx + 12, ty + 8, 18);
+        const ttIconW = 24;
 
         // Name (large, white, bold)
         ctx.font = "bold 16px Inter, system-ui, sans-serif";

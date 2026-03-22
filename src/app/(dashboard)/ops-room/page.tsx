@@ -175,21 +175,19 @@ export default function OpsRoomPage() {
             {/* Orchestrator panels below the office */}
             <ApprovalPanel />
             <LogPanel />
-            <div className={cn(
-              "grid gap-4",
-              selectedAgent ? "grid-cols-1 lg:grid-cols-[1fr_320px]" : "grid-cols-1"
-            )}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <ProjectPanel agents={agents} />
               <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
                 <TaskFeed entries={taskLog} isDemo={!isLive} onAgentClick={handleAgentClickFromFeed} />
               </div>
-              {selectedAgent && (
-                <AgentDetail
-                  agent={selectedAgent}
-                  recentTasks={recentTasksForAgent}
-                  onClose={handleClose}
-                />
-              )}
             </div>
+            {selectedAgent && (
+              <AgentDetail
+                agent={selectedAgent}
+                recentTasks={recentTasksForAgent}
+                onClose={handleClose}
+              />
+            )}
           </>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-5">

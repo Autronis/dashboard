@@ -1202,7 +1202,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         const tw = 280;
         const th = task ? 82 : 62;
         const ttX = (desk?.x ?? ha.x) + 2 * S;
-        const ttY = (desk?.y ?? ha.y) - th - 12;
+        const ttY = (desk?.y ?? ha.y) - th + 22;
         const tx = Math.max(10, Math.min(ttX, CANVAS_W - tw - 10));
         const ty = Math.max(10, ttY);
 
@@ -1298,19 +1298,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const a = findAgent(mx, my);
     setHovered(a?.id ?? null);
 
-    // Check if hovering a project card
-    const cx = mx * (CANVAS_W / r.width);
-    const cy = my * (CANVAS_H / r.height);
-    let foundProj: string | null = null;
-    for (const card of projectCardRects.current) {
-      if (cx >= card.x && cx <= card.x + card.w && cy >= card.y && cy <= card.y + card.h) {
-        foundProj = card.proj;
-        break;
-      }
-    }
-    setHoveredProject(foundProj);
-
-    e.currentTarget.style.cursor = (a || foundProj) ? "pointer" : "default";
+    e.currentTarget.style.cursor = a ? "pointer" : "default";
   }, [findAgent]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {

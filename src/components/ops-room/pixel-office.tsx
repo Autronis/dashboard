@@ -1322,10 +1322,16 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.fillStyle = projColor;
         ctx.fillRect(tx + 1, ty + 8, 3, th - 16);
 
+        // Role icon (large)
+        ctx.font = "bold 18px Inter, system-ui, sans-serif";
+        ctx.fillStyle = rolInfo.color;
+        ctx.fillText(rolInfo.icon, tx + 14, ty + 23);
+        const ttIconW = ctx.measureText(rolInfo.icon).width + 6;
+
         // Name (large, white, bold)
         ctx.font = "bold 16px Inter, system-ui, sans-serif";
         ctx.fillStyle = "#ffffff";
-        ctx.fillText(agent.naam, tx + 14, ty + 22);
+        ctx.fillText(agent.naam, tx + 14 + ttIconW, ty + 22);
 
         // Cost (right-aligned, amber)
         ctx.font = "bold 12px Inter, system-ui, sans-serif";

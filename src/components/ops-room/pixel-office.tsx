@@ -29,38 +29,40 @@ const BUILDER_X = 340;
 const BUILDER_START_Y = MGMT_Y + UNIT_H + 20;
 
 const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  // Management row — all 4 on one line
-  theo: { x: SEM.x + UNIT_W, y: MGMT_Y },
-  toby: { x: SEM.x + UNIT_W * 2, y: MGMT_Y },
-  jones: { x: SEM.x + UNIT_W * 3, y: MGMT_Y },
-  // Ari + Rodi under Sem (left column)
-  ari: { x: 20, y: BUILDER_START_Y },
-  rodi: { x: 20, y: BUILDER_START_Y + UNIT_H },
-  // Builders (shifted right)
-  wout: { x: BUILDER_X, y: BUILDER_START_Y },
-  bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
-  gabriel: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
-  tijmen: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
-  pedro: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
-  vincent: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
+  // Management — Sem col 1, Theo/Toby/Jones centered on 2/3/4
+  theo: { x: BUILDER_X + UNIT_W, y: MGMT_Y },
+  toby: { x: BUILDER_X + UNIT_W * 2, y: MGMT_Y },
+  jones: { x: BUILDER_X + UNIT_W * 3, y: MGMT_Y },
+  // Ari + Rodi — centered on row 1 (columns 2/3)
+  ari: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
+  rodi: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
+  // Builders row 2 (5 columns)
+  wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
+  bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
+  gabriel: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
+  tijmen: { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
+  pedro: { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H },
+  // Builders row 3
+  vincent: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
 // Empty desks
 const EMPTY_DESKS = [
-  // Column 4 (next to Gabriel/Vincent)
+  // Row 1: columns 1, 4, 5 (Ari/Rodi on 2/3)
+  { x: BUILDER_X, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
-  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
-  // Column 5 (extra row)
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H },
+  // Row 3: columns 2-5 (Vincent on 1)
+  { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
+  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
+  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
-const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3;
+const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
 
 // Command screen — right side, prominent
-const MEETING = { x: BUILDER_X + UNIT_W * 3 + 30, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 3 + 30) - 180, h: 110 };
+const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 5 + 20) - 180, h: 110 };
 
 // Slaapkamer — tight, just beds
 const COFFEE_Y = DESKS_BOTTOM + 4;

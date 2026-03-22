@@ -33,9 +33,9 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   theo: { x: BUILDER_X + UNIT_W, y: MGMT_Y },
   toby: { x: BUILDER_X + UNIT_W * 2, y: MGMT_Y },
   jones: { x: BUILDER_X + UNIT_W * 3, y: MGMT_Y },
-  // Ari + Rodi — centered on row 1 (columns 2/3)
-  ari: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
-  rodi: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
+  // Ari + Rodi — left column, vertically centered across 3 builder rows
+  ari: { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
+  rodi: { x: 20, y: BUILDER_START_Y + UNIT_H + Math.floor(UNIT_H / 2) + 10 },
   // Builders row 2 (5 columns)
   wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
   bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
@@ -48,8 +48,10 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
 
 // Empty desks
 const EMPTY_DESKS = [
-  // Row 1: columns 1, 4, 5 (Ari/Rodi on 2/3)
+  // Row 1: all 5 columns empty
   { x: BUILDER_X, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
   // Row 3: columns 2-5 (Vincent on 1)
@@ -65,7 +67,7 @@ const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
 const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 5 + 20) - 180, h: 110 };
 
 // Slaapkamer — tight, just beds
-const COFFEE_Y = DESKS_BOTTOM + 4;
+const COFFEE_Y = DESKS_BOTTOM + 30;
 const COFFEE_X = 14;
 const COFFEE_W = CANVAS_W - 28;
 const COFFEE_H = 80;

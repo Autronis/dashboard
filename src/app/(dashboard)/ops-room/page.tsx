@@ -22,6 +22,7 @@ import { OfficeViewSyb } from "@/components/ops-room/office-view-syb";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
 import { useOrchestrator } from "@/components/ops-room/orchestrator-store";
+import type { TaskLogEntry } from "@/components/ops-room";
 
 type ViewMode = "office" | "grid" | "list";
 type FloorMode = "v1" | "v2" | "both";
@@ -33,6 +34,44 @@ export default function OpsRoomPage() {
 
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
   const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
+  const orchestratorLogs = useOrchestrator((s) => s.logs);
+
+  // Convert orchestrator logs + live API data to TaskLogEntry format
+  const liveFeed: TaskLogEntry[] = useMemo(() => {
+    const entries: TaskLogEntry[] = [];
+    // Orchestrator logs → task feed entries
+    orchestratorLogs.forEach((log) => {
+      const agent = agents.find((a) => a.id === log.agentId);
+      entries.push({
+        id: log.id,
+        agentId: log.agentId,
+        agentNaam: agent?.naam ?? log.agentId,
+        type: log.type === "error" ? "error" : log.type === "task_complete" ? "voltooid" : "actie",
+        beschrijving: log.message,
+        project: agent?.huidigeTaak?.project ?? "Ops Room",
+        tijdstip: log.timestamp,
+      });
+    });
+    // Live agents → recent activity entries
+    if (liveAgents) {
+      liveAgents.forEach((a) => {
+        if (a.huidigeTaak && a.status === "working") {
+          entries.push({
+            id: `live-${a.id}`,
+            agentId: a.id,
+            agentNaam: a.naam,
+            type: "actie",
+            beschrijving: a.huidigeTaak.beschrijving,
+            project: a.huidigeTaak.project,
+            tijdstip: a.laatsteActiviteit,
+          });
+        }
+      });
+    }
+    // Sort by time, newest first
+    entries.sort((a, b) => new Date(b.tijdstip).getTime() - new Date(a.tijdstip).getTime());
+    return entries.length > 0 ? entries : taskLog; // fallback to mock if nothing
+  }, [orchestratorLogs, liveAgents, agents]);
 
   // Merge: mock roster as base, overlay live data
   // When live data exists: agents WITHOUT live activity → idle (stand-by)
@@ -197,7 +236,7 @@ export default function OpsRoomPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <ProjectPanel agents={agents} />
               <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                <TaskFeed entries={taskLog} isDemo={!isLive} onAgentClick={handleAgentClickFromFeed} />
+                <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
               </div>
             </div>
             {selectedAgent && (
@@ -250,7 +289,7 @@ export default function OpsRoomPage() {
                 />
               ) : (
                 <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                  <TaskFeed entries={taskLog} isDemo={!isLive} onAgentClick={handleAgentClickFromFeed} />
+                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
                 </div>
               )}
             </div>

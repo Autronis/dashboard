@@ -13,7 +13,7 @@ import type { Agent } from "./types";
 
 const S = 5;
 const CANVAS_W = 1500;
-const CANVAS_H = 940;
+const CANVAS_H = 1000;
 const WALL_H = 40;
 
 const UNIT_W = 200;
@@ -46,22 +46,14 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   vincent: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
-// Empty desks
+// Empty desks (only 3 "beschikbaar" spots for new agents)
 const EMPTY_DESKS = [
-  // Row 1: all 5 columns empty
-  { x: BUILDER_X, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  // Row 3: columns 2-5 (Vincent on 1)
   { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
-const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
+const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 2 + UNIT_H + 10;
 
 // Command screen — right side, prominent
 const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 5 + 20) - 180, h: 110 };
@@ -932,7 +924,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Bonsai tree: bottom-right corner on table
     const bsX = CANVAS_W - 90;
-    const bsY = COFFEE_Y + 5;
+    const bsY = CANVAS_H - 130;
     const bsSway = Math.sin(tick * 0.04 + 1.5) * 0.8;
 
     // Table under bonsai (wider)

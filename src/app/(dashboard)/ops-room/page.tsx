@@ -33,16 +33,26 @@ export default function OpsRoomPage() {
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
 
   // Merge: mock roster as base, overlay live data
+  // When live data exists: agents WITHOUT live activity → idle (stand-by)
   const agents = useMemo(() => {
     if (!liveAgents || liveAgents.length === 0) return mockAgents;
     const liveMap = new Map(liveAgents.map((a) => [a.id, a]));
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
-      if (!live) return mock;
+      if (!live) {
+        // No live data for this agent → idle, no active task, move to stand-by
+        return {
+          ...mock,
+          status: "idle" as const,
+          huidigeTaak: null,
+          terminal: [],
+          kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
+        };
+      }
       return {
         ...mock,
         status: live.status,
-        huidigeTaak: live.huidigeTaak ?? mock.huidigeTaak,
+        huidigeTaak: live.huidigeTaak,
         laatsteActiviteit: live.laatsteActiviteit,
         kosten: live.kosten.tokensVandaag > 0 ? live.kosten : mock.kosten,
         terminal: live.terminal.length > 0 ? live.terminal : mock.terminal,

@@ -365,18 +365,25 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     avatar: "#23C6B7", terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
   }), []);
 
+  // Check if we have any live data (if so, only active agents sit at desks)
+  const hasLiveData = agents.some((a) => a.status === "working" || a.status === "reviewing");
+
   const positions = useMemo(() => {
     const map = new Map<string, { x: number; y: number; agent: Agent }>();
     map.set("sem", { x: SEM.x, y: SEM.y, agent: semAgent });
     let ei = 0; // empty desk index
-    const stayAtDesk = new Set(["theo", "toby", "jones", "ari", "rodi"]);
+
+    // When live data is active: only working/reviewing agents sit at desks
+    // When no live data (demo mode): management stays at desk even when idle
+    const stayAtDesk = hasLiveData ? new Set<string>() : new Set(["theo", "toby", "jones", "ari", "rodi"]);
 
     // First pass: desk agents
     agents.forEach((a) => {
       const desk = DESK_POSITIONS[a.id];
-      if (desk && (a.status !== "idle" || stayAtDesk.has(a.id))) {
+      const isActive = a.status === "working" || a.status === "reviewing";
+      if (desk && (isActive || stayAtDesk.has(a.id))) {
         map.set(a.id, { x: desk.x, y: desk.y, agent: a });
-      } else if (!desk && a.status !== "idle" && a.status !== "offline" && ei < EMPTY_DESKS.length) {
+      } else if (!desk && isActive && ei < EMPTY_DESKS.length) {
         map.set(a.id, { x: EMPTY_DESKS[ei].x, y: EMPTY_DESKS[ei].y, agent: a });
         ei++;
       }
@@ -392,7 +399,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       if (seat) { map.set(a.id, { x: seat.x, y: seat.y, agent: a }); si++; }
     });
     return map;
-  }, [agents, semAgent]);
+  }, [agents, semAgent, hasLiveData]);
 
   const findAgent = useCallback((mx: number, my: number): Agent | null => {
     const c = canvasRef.current;
@@ -1201,14 +1208,13 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillRect(sbWrX + 11, sbCmY - sbWrH + 21, 3, 5);
 
     // === Idle agents (standing in a row) — same filter as positions map ===
+    const standingStaySet = hasLiveData ? new Set<string>() : new Set(["theo", "toby", "jones", "ari", "rodi"]);
     const standingAgents = agents.filter((a) => {
       if (a.status === "offline") return false;
-      // If they have a desk position AND should stay there, skip
       const desk = DESK_POSITIONS[a.id];
-      const staySet = new Set(["theo", "toby", "jones", "ari", "rodi"]);
-      if (desk && (a.status !== "idle" || staySet.has(a.id))) return false;
-      // If placed at empty desk (active unknown agent), skip
-      if (!desk && a.status !== "idle") return false;
+      const isActive = a.status === "working" || a.status === "reviewing";
+      if (desk && (isActive || standingStaySet.has(a.id))) return false;
+      if (!desk && isActive) return false;
       return true;
     });
     standingAgents.forEach((agent, i) => {

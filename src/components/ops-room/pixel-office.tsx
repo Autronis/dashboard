@@ -1066,20 +1066,24 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
 
-    // === Desks pass 1 — only draw agent at desk if they're in positions map ===
+    // === Desks pass 1 — only draw agent if active or always-at-desk ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
-      const placed = positions.get(id);
-      if (!placed) return; // agent is idle builder → skip, desk stays empty
-      const { agent } = placed;
+      const agent = agents.find((a) => a.id === id);
+      if (!agent) return;
+      const isActive = agent.status === "working" || agent.status === "reviewing";
+      const staysAtDesk = ALWAYS_AT_DESK.has(id);
+      if (!isActive && !staysAtDesk) return; // idle builder → empty desk
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, false, S);
     });
 
     // === Desks pass 2: labels ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
-      const placed = positions.get(id);
-      if (!placed) return;
-      const { agent } = placed;
+      const agent = agents.find((a) => a.id === id);
+      if (!agent) return;
+      const isActive = agent.status === "working" || agent.status === "reviewing";
+      const staysAtDesk = ALWAYS_AT_DESK.has(id);
+      if (!isActive && !staysAtDesk) return;
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S);
     });

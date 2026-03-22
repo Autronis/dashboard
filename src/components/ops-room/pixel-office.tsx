@@ -627,7 +627,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 140);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2 + UNIT_W / 2, DESK_POSITIONS.wout.y - 125);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -861,14 +861,14 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Plant 1: next to Sem's coffee table
     const p1TblX = wcX + tW + 10;
-    const p1TblY = tY - 10;
+    const p1TblY = tY + 5;
     drawPlantTable(p1TblX, p1TblY);
     const plantSway1 = Math.sin(tick * 0.06) * 2;
     drawPlant3D(p1TblX + 7, p1TblY - 49, plantSway1);
 
     // Plant 2: bottom-right corner on table (bigger)
     const p2X = CANVAS_W - 70;
-    const p2Y = COFFEE_Y + 30;
+    const p2Y = COFFEE_Y + 5;
     ctx.save();
     ctx.translate(p2X, p2Y);
     ctx.scale(1.4, 1.4);

@@ -70,8 +70,8 @@ const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - 
 const COFFEE_Y = DESKS_BOTTOM + 40;
 const COFFEE_X = 14;
 const COFFEE_W = CANVAS_W - 28;
-const STANDBY_COLS = 10; // max per row
-const STANDBY_SPACING = Math.floor(COFFEE_W / STANDBY_COLS); // ~147px
+const STANDBY_COLS = 8; // max per row (leave room for decorations on right)
+const STANDBY_SPACING = Math.floor((COFFEE_W - 300) / STANDBY_COLS); // ~120px, leave 300px right for bonsai+table
 const STANDBY_ROW_H = 90; // vertical spacing between rows
 
 const COFFEE_SEATS: { x: number; y: number }[] = [];
@@ -1066,24 +1066,29 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
 
-    // === Desks pass 1 — only draw agent if active or always-at-desk ===
+    // === Desks pass 1 — always draw desk, but agent only if active/management ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
       const agent = agents.find((a) => a.id === id);
       if (!agent) return;
       const isActive = agent.status === "working" || agent.status === "reviewing";
       const staysAtDesk = ALWAYS_AT_DESK.has(id);
-      if (!isActive && !staysAtDesk) return; // idle builder → empty desk
+      if (!isActive && !staysAtDesk) {
+        // Draw empty desk (agent is in stand-by) — use offline status so no character is drawn
+        const emptyAgent = { ...agent, status: "offline" as const, huidigeTaak: null };
+        drawDesk(ctx, pos.x, pos.y, emptyAgent, "#3a4a55", tick, false, false, false, S);
+        return;
+      }
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, false, S);
     });
 
-    // === Desks pass 2: labels ===
+    // === Desks pass 2: labels (only for occupied desks) ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
       const agent = agents.find((a) => a.id === id);
       if (!agent) return;
       const isActive = agent.status === "working" || agent.status === "reviewing";
       const staysAtDesk = ALWAYS_AT_DESK.has(id);
-      if (!isActive && !staysAtDesk) return;
+      if (!isActive && !staysAtDesk) return; // no label for empty desk
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S);
     });

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // Get the inserted command ID
     const inserted = await db.all(sql`
-      SELECT id FROM orchestrator_commands WHERE opdracht = ${opdracht} AND aangemaakt >= ${now} ORDER BY id DESC LIMIT 1
+      SELECT id FROM orchestrator_commands ORDER BY id DESC LIMIT 1
     `) as { id: number }[];
     const cmdId = inserted[0]?.id;
 

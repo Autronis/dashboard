@@ -70,7 +70,9 @@ export function ApprovalPanel() {
   // Merge local Zustand commands with DB commands
   const pendingApprovals = approvals.filter((a) => a.status === "pending");
   const activeLocalCommands = localCommands.filter((c) => c.status !== "completed" && c.status !== "rejected");
-  const pendingDbCommands = (dbCommands ?? []).filter((c) => c.status === "awaiting_approval");
+  const pendingDbCommands = (dbCommands ?? []).filter((c) =>
+    c.status === "awaiting_approval" || c.status === "planning" || c.status === "pending"
+  );
 
   const handleReject = (id: string) => {
     rejectApproval(id, feedback);

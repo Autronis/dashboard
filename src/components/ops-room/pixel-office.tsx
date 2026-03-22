@@ -119,14 +119,18 @@ function drawDesk(
     ctx.clip();
 
     const rolLabels: Record<string, { label: string; icon: string; color: string }> = {
-      manager: { label: "Manager", icon: "♛", color: "#f59e0b" },
+      manager: { label: "Manager", icon: "⚜", color: "#f59e0b" },
       builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
       reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
       architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
       assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
       automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
     };
-    const rol = rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder;
+    // Sem is the king
+    const isSem = agent.id === "sem";
+    const rol = isSem
+      ? { label: "CEO", icon: "♛", color: "#f59e0b" }
+      : (rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
 
     // Role icon
     ctx.font = "bold 11px Inter, system-ui, sans-serif";

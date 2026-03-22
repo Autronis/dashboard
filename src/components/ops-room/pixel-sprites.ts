@@ -734,7 +734,7 @@ export function drawSemDesk(
   // 3-line label: Sem / CEO / → Autronis
   const labelX = x + 2 * s;
   const labelY = y + 27 * s;
-  ctx.fillStyle = "#0a0f14dd";
+  ctx.fillStyle = "#0a0f1480";
   ctx.fillRect(labelX - 4, labelY - 14, 100, 42);
   // Line 1: Name
   ctx.font = "bold 13px Inter, system-ui, sans-serif";

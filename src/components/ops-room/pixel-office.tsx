@@ -110,10 +110,7 @@ function drawDesk(
     };
     const rolText = rolLabels[agent.rol ?? "builder"] ?? "Builder";
 
-    // Background for all 3 lines (semi-transparent)
-    const bgH = agent.huidigeTaak ? 42 : 30;
-    ctx.fillStyle = "#0a0f1480";
-    ctx.fillRect(labelX - 4, labelY2, maxW, bgH);
+    // No background — fully transparent labels
 
     // Line 1: Name (13px bold white)
     ctx.font = "bold 13px Inter, system-ui, sans-serif";

@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       : buildAgentPrompt(task.agentId ?? "wout", task, context);
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 8000,
       system: systemPrompt,
       messages: [

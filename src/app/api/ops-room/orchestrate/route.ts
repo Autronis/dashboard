@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     const client = new Anthropic({ apiKey });
 
     const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 4096,
       system: THEO_SYSTEM_PROMPT,
       messages: [
@@ -110,7 +110,11 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Onbekende fout";
-    return NextResponse.json({ fout: message }, { status: 500 });
+    const msg = error instanceof Error ? error.message : "Onbekende fout";
+    // Detect credit/billing errors
+    if (msg.includes("credit balance") || msg.includes("billing")) {
+      return NextResponse.json({ fout: "Anthropic API credits op. Vul credits aan op console.anthropic.com." }, { status: 402 });
+    }
+    return NextResponse.json({ fout: msg }, { status: 500 });
   }
 }

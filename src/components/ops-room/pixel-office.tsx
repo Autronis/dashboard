@@ -591,7 +591,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 50);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 70);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -796,9 +796,13 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const plantSway1 = Math.sin(tick * 0.06) * 2;
     drawPlant3D(SEM.x + 10, SEM.y + 38 * S, plantSway1);
 
-    // Plant actual bottom-right corner of canvas
+    // Plant actual bottom-right corner of canvas (bigger)
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;
-    drawPlant3D(CANVAS_W - 100, COFFEE_Y + 30, plantSway2);
+    ctx.save();
+    ctx.translate(CANVAS_W - 70, COFFEE_Y + 50);
+    ctx.scale(1.4, 1.4);
+    drawPlant3D(0, 0, plantSway2);
+    ctx.restore();
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
@@ -863,6 +867,31 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.fill();
       }
     });
+
+    // === Small 3D table in stand-by area (same style as Sem's side table) ===
+    const sbTX = COFFEE_X + 14;
+    const sbTW = 80;
+    const sbTH = 14;
+    const sbTD = 6;
+    const sbTY = COFFEE_Y + 6;
+    // Shadow
+    ctx.fillStyle = "#00000015";
+    ctx.beginPath();
+    ctx.ellipse(sbTX + sbTW / 2 - 4, sbTY + sbTH + sbTD + 8, sbTW / 2 + 4, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Table legs
+    ctx.fillStyle = "#3a2818";
+    ctx.fillRect(sbTX, sbTY + sbTH + sbTD, 3, 8);
+    ctx.fillRect(sbTX + sbTW - 6, sbTY + sbTH + sbTD, 3, 8);
+    // Front face
+    ctx.fillStyle = "#4a3828";
+    ctx.fillRect(sbTX - 2, sbTY + sbTH, sbTW, sbTD);
+    // Right side face
+    ctx.fillStyle = "#3a2818";
+    ctx.fillRect(sbTX + sbTW - 2, sbTY + sbTH - 1, 4, sbTD + 1);
+    // Top surface
+    ctx.fillStyle = "#5c4a3a";
+    ctx.fillRect(sbTX - 2, sbTY, sbTW, sbTH);
 
     // === Idle agents (standing in a row) — same filter as positions map ===
     const standingAgents = agents.filter((a) => {

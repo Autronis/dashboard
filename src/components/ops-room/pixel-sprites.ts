@@ -715,7 +715,7 @@ export function drawSemDesk(
   const glow = 0.6 + Math.sin(tick * 0.35) * 0.15;
   for (let m = 0; m < 2; m++) {
     const mx = x + (3 + m * 12) * s;
-    const my = deskY - 8 * s;
+    const my = deskY - 2 * s;
     ctx.fillStyle = "#2a2a3a";
     ctx.fillRect(mx, my, 10 * s, 7 * s);
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
@@ -728,9 +728,9 @@ export function drawSemDesk(
     ctx.fillRect(mx + 4 * s, my + 7 * s, 2 * s, s);
   }
 
-  // Keyboard
+  // Keyboard (behind monitors — further back on desk)
   ctx.fillStyle = tick % 4 < 2 ? "#555565" : "#444454";
-  ctx.fillRect(x + 6 * s, deskY + s, 12 * s, 3 * s);
+  ctx.fillRect(x + 6 * s, deskY - 6 * s, 12 * s, 3 * s);
 
   // 3-line label: Sem / CEO / → Autronis
   const labelX = x + 2 * s;

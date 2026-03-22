@@ -187,21 +187,21 @@ function drawDesk(
   // Office chair (behind desk, where agent sits)
   if (!isOffline) {
     const chairX = x + 7 * s;
-    const chairBotY = deskY - s; // just above desk top
-    // Backrest (behind character)
-    ctx.fillStyle = "#22222e";
+    const chairBotY = deskY - s;
+    // Backrest
+    ctx.fillStyle = "#353545";
     ctx.fillRect(chairX + s, chairBotY - 10 * s, 8 * s, 4 * s);
-    ctx.fillStyle = "#2a2a36";
+    ctx.fillStyle = "#404055";
     ctx.fillRect(chairX + 2 * s, chairBotY - 9 * s, 6 * s, 2 * s);
     // Seat
-    ctx.fillStyle = "#1a1a24";
+    ctx.fillStyle = "#303040";
     ctx.fillRect(chairX, chairBotY - 2 * s, 10 * s, 2 * s);
     // Armrests
-    ctx.fillStyle = "#1a1a24";
+    ctx.fillStyle = "#2a2a38";
     ctx.fillRect(chairX - s, chairBotY - 4 * s, s, 3 * s);
     ctx.fillRect(chairX + 10 * s, chairBotY - 4 * s, s, 3 * s);
     // Base pole
-    ctx.fillStyle = "#151520";
+    ctx.fillStyle = "#252530";
     ctx.fillRect(chairX + 4 * s, chairBotY, 2 * s, s);
   }
 
@@ -218,7 +218,7 @@ function drawDesk(
   ctx.fillRect(x + 2 * s, deskY, deskW, deskH);
   ctx.fillStyle = "#4a3828";
   ctx.fillRect(x + 2 * s, deskY + deskH, deskW, 2 * s);
-  ctx.fillStyle = "#3a2818";
+  ctx.fillStyle = "#5a4430";
   ctx.fillRect(x + 3 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 23 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
 
@@ -557,11 +557,25 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       // Desk surface
       ctx.fillStyle = "#4a3a2a";
       ctx.fillRect(ex + 2 * S, edY, edW, edH);
-      ctx.fillStyle = "#3a2818";
+      ctx.fillStyle = "#5a4430";
       ctx.fillRect(ex + 2 * S, edY + edH, edW, 2 * S);
-      ctx.fillStyle = "#2a1808";
+      ctx.fillStyle = "#5a4430";
       ctx.fillRect(ex + 3 * S, edY + edH + 2 * S, 2 * S, 2 * S);
       ctx.fillRect(ex + 23 * S, edY + edH + 2 * S, 2 * S, 2 * S);
+      // Chair at empty desk
+      const ecX = ex + 7 * S;
+      const ecBotY = edY - S;
+      ctx.fillStyle = "#353545";
+      ctx.fillRect(ecX + S, ecBotY - 10 * S, 8 * S, 4 * S);
+      ctx.fillStyle = "#404055";
+      ctx.fillRect(ecX + 2 * S, ecBotY - 9 * S, 6 * S, 2 * S);
+      ctx.fillStyle = "#303040";
+      ctx.fillRect(ecX, ecBotY - 2 * S, 10 * S, 2 * S);
+      ctx.fillStyle = "#2a2a38";
+      ctx.fillRect(ecX - S, ecBotY - 4 * S, S, 3 * S);
+      ctx.fillRect(ecX + 10 * S, ecBotY - 4 * S, S, 3 * S);
+      ctx.fillStyle = "#252530";
+      ctx.fillRect(ecX + 4 * S, ecBotY, 2 * S, S);
       // Monitor (off, smaller Sem-style)
       const emW = 7 * S;
       const emH = 5 * S;
@@ -611,7 +625,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
     ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
-    ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
+    ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";
     ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 90);
     // "STAND-BY" — with same gap above as other labels
@@ -634,14 +648,14 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.ellipse(wcX + tW / 2 - 4, tY + tH + tD + 8, tW / 2 + 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     // Table legs
-    ctx.fillStyle = "#3a2818";
+    ctx.fillStyle = "#5a4430";
     ctx.fillRect(wcX, tY + tH + tD, 3, 8);
     ctx.fillRect(wcX + tW - 6, tY + tH + tD, 3, 8);
     // Front face
     ctx.fillStyle = "#4a3828";
     ctx.fillRect(wcX - 2, tY + tH, tW, tD);
     // Right side face
-    ctx.fillStyle = "#3a2818";
+    ctx.fillStyle = "#5a4430";
     ctx.fillRect(wcX + tW - 2, tY + tH - 1, 4, tD + 1);
     // Top surface
     ctx.fillStyle = "#5c4a3a";
@@ -902,14 +916,14 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.ellipse(sbTX + sbTW / 2 - 4, sbTY + sbTH + sbTD + 8, sbTW / 2 + 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     // Table legs
-    ctx.fillStyle = "#3a2818";
+    ctx.fillStyle = "#5a4430";
     ctx.fillRect(sbTX, sbTY + sbTH + sbTD, 3, 8);
     ctx.fillRect(sbTX + sbTW - 6, sbTY + sbTH + sbTD, 3, 8);
     // Front face
     ctx.fillStyle = "#4a3828";
     ctx.fillRect(sbTX - 2, sbTY + sbTH, sbTW, sbTD);
     // Right side face
-    ctx.fillStyle = "#3a2818";
+    ctx.fillStyle = "#5a4430";
     ctx.fillRect(sbTX + sbTW - 2, sbTY + sbTH - 1, 4, sbTD + 1);
     // Top surface
     ctx.fillStyle = "#5c4a3a";

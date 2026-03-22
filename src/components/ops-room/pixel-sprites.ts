@@ -713,6 +713,22 @@ export function drawSemDesk(
   const deskY = y + 16 * s;
   const charH = charDef.rows * s;
   const charY = deskY - charH + 3 * s;
+
+  // Chair (behind desk, behind character)
+  const chX = x + 7 * s;
+  const chBotY = deskY - s;
+  ctx.fillStyle = "#353545";
+  ctx.fillRect(chX + s, chBotY - 10 * s, 8 * s, 4 * s);
+  ctx.fillStyle = "#404055";
+  ctx.fillRect(chX + 2 * s, chBotY - 9 * s, 6 * s, 2 * s);
+  ctx.fillStyle = "#303040";
+  ctx.fillRect(chX, chBotY - 2 * s, 10 * s, 2 * s);
+  ctx.fillStyle = "#2a2a38";
+  ctx.fillRect(chX - s, chBotY - 4 * s, s, 3 * s);
+  ctx.fillRect(chX + 10 * s, chBotY - 4 * s, s, 3 * s);
+  ctx.fillStyle = "#252530";
+  ctx.fillRect(chX + 4 * s, chBotY, 2 * s, s);
+
   drawSprite(ctx, charDef.sprite, x + 6 * s, charY, s);
 
   // L-desk

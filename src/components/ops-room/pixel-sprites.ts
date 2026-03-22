@@ -428,9 +428,9 @@ function makeSem(): CharacterDef {
 function makeTheo(): CharacterDef {
   return makeHuman({
     height: H_TALL, skin: "#f0c8a0", hair: "#4a3018",
-    shirt: "#dc2626", pants: "#2a2a3a",
+    shirt: "#2a2a35", pants: "#1a1a25",
     eyeColor: "#553311", curlyHair: true, beard: true, beardColor: "#888888",
-  }); // brown curls, grey beard, red shirt
+  }); // brown curls, grey beard, grey-black suit
 }
 
 function makeJones(): CharacterDef {
@@ -714,7 +714,7 @@ export function drawSemDesk(
   // Two wide monitors
   const glow = 0.6 + Math.sin(tick * 0.35) * 0.15;
   for (let m = 0; m < 2; m++) {
-    const mx = x + (1 + m * 14) * s;
+    const mx = x + (1 + m * 13) * s;
     const my = deskY - 2 * s;
     ctx.fillStyle = "#2a2a3a";
     ctx.fillRect(mx, my, 13 * s, 7 * s);
@@ -726,6 +726,43 @@ export function drawSemDesk(
     }
     ctx.fillStyle = "#2a2a3a";
     ctx.fillRect(mx + 5 * s, my + 7 * s, 3 * s, s);
+  }
+
+  // Glass of water on L-desk corner
+  const glX = x + 23 * s;
+  const glY = deskY - 5 * s;
+  // Glass body (transparent blue)
+  ctx.fillStyle = "#88bbdd30";
+  ctx.fillRect(glX, glY, 3 * s, 4 * s);
+  // Water inside
+  ctx.fillStyle = "#4a99cc50";
+  ctx.fillRect(glX + 0.3 * s, glY + 1.5 * s, 2.4 * s, 2.2 * s);
+  // Glass rim
+  ctx.fillStyle = "#aaddee40";
+  ctx.fillRect(glX, glY, 3 * s, 0.5 * s);
+  // Highlight
+  ctx.fillStyle = "#ffffff18";
+  ctx.fillRect(glX + 0.3 * s, glY + 0.5 * s, 0.5 * s, 3 * s);
+
+  // Coffee cup next to glass
+  const ccX = glX + 4 * s;
+  const ccY = deskY - 4.5 * s;
+  // Cup body (white/cream)
+  ctx.fillStyle = "#d0c8b8";
+  ctx.fillRect(ccX, ccY, 2.5 * s, 3.5 * s);
+  // Coffee inside
+  ctx.fillStyle = "#5c3a1a";
+  ctx.fillRect(ccX + 0.3 * s, ccY + 0.5 * s, 1.9 * s, 1.5 * s);
+  // Handle
+  ctx.fillStyle = "#d0c8b8";
+  ctx.fillRect(ccX + 2.5 * s, ccY + 0.8 * s, s, 2 * s);
+  ctx.fillStyle = "#0a0f14";
+  ctx.fillRect(ccX + 2.8 * s, ccY + 1.2 * s, 0.4 * s, 1.2 * s);
+  // Steam
+  if (tick % 8 < 5) {
+    ctx.fillStyle = "#ffffff12";
+    ctx.fillRect(ccX + 0.8 * s, ccY - 1.5 * s + (tick % 3) * 0.3, 0.5 * s, s);
+    ctx.fillRect(ccX + 1.5 * s, ccY - 2 * s + (tick % 4) * 0.2, 0.5 * s, s);
   }
 
   // 3-line label: Sem / CEO / → Autronis

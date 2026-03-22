@@ -1277,8 +1277,9 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
         const tw = 280;
         const th = task ? 82 : 62;
-        const agentY = desk?.y ?? ha.y;
-        const ttX = (desk?.x ?? ha.x) + 2 * S;
+        // Use actual position from positions map (not desk position — agent might be in stand-by)
+        const agentY = ha.y;
+        const ttX = ha.x + 2 * S;
         // If tooltip would go above canvas, show below agent instead
         const above = agentY - th + 22;
         const ttY = above < 20 ? agentY + 28 * S : above;

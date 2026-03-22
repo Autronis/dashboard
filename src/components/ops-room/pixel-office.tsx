@@ -13,11 +13,11 @@ import type { Agent } from "./types";
 
 const S = 5;
 const CANVAS_W = 1500;
-const CANVAS_H = 760;
+const CANVAS_H = 840;
 const WALL_H = 40;
 
-const UNIT_W = 180;
-const UNIT_H = 130;
+const UNIT_W = 200;
+const UNIT_H = 150;
 const GRID_X = 220;
 
 // === Management row — Sem, Theo, Toby, Jones all on one line ===
@@ -529,6 +529,26 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // (command center removed — metrics shown in command bar above)
 
     // === Slaapkamer (geen achtergrond — zelfde vloer) ===
+
+    // === Group labels ===
+    ctx.font = "bold 12px Inter, system-ui, sans-serif";
+    ctx.letterSpacing = "2px";
+    ctx.fillStyle = "#23C6B799";
+    // "DE BAAS" above Sem
+    ctx.fillText("DE BAAS", SEM.x + 20, MGMT_Y - 6);
+    // "HET BESTUUR" centered above Theo/Toby/Jones
+    const bestuurX = BUILDER_X + UNIT_W + (UNIT_W * 3) / 2;
+    ctx.textAlign = "center";
+    ctx.fillText("HET BESTUUR", bestuurX, MGMT_Y - 6);
+    // "DE STAF" centered above Ari/Rodi
+    ctx.fillText("DE STAF", 20 + 14 * S, BUILDER_START_Y + Math.floor(UNIT_H / 2) - 6);
+    // "DE ENGINEERS" centered above builders row
+    const engX = BUILDER_X + (UNIT_W * 5) / 2;
+    ctx.fillText("DE ENGINEERS", engX, BUILDER_START_Y + UNIT_H - 6);
+    // "STAND-BY" above idle agents
+    ctx.fillText("STAND-BY", CANVAS_W / 2, COFFEE_Y - 6);
+    ctx.textAlign = "left";
+    ctx.letterSpacing = "0px";
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);

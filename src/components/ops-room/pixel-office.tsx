@@ -201,37 +201,37 @@ function drawDesk(
   ctx.fillRect(x + 3 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 23 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
 
-  // Monitor — Sem-style (dark frame, turquoise glow, code lines)
-  const monW = 10 * s;
-  const monH = 7 * s;
-  const monX = x + 18 * s;
+  // Monitor — smaller version of Sem's style
+  const monW = 7 * s;
+  const monH = 5 * s;
+  const monX = x + 19 * s;
   const monY = deskY - monH + s * 3;
   const glow = 0.05 + Math.sin(tick * 0.3 + x * 0.01) * 0.03;
 
-  // Frame
+  // Frame (always visible)
   ctx.fillStyle = "#2a2a3a";
   ctx.fillRect(monX, monY, monW, monH);
 
   if (isOffline) {
     ctx.fillStyle = "#040406";
-    ctx.fillRect(monX + s, monY + s, 8 * s, 5 * s);
+    ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   } else if (isActive) {
     // Turquoise screen glow
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
-    ctx.fillRect(monX + s, monY + s, 8 * s, 5 * s);
+    ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
     // Code lines
     ctx.fillStyle = "#23C6B750";
     for (let ln = 0; ln < 2; ln++) {
-      ctx.fillRect(monX + 2 * s, monY + (2 + ln * 2) * s, (4 + (tick + ln) % 4) * s, s);
+      ctx.fillRect(monX + 2 * s, monY + (1.5 + ln * 1.5) * s, (3 + (tick + ln) % 3) * s, s * 0.7);
     }
   } else {
     ctx.fillStyle = "#050608";
-    ctx.fillRect(monX + s, monY + s, 8 * s, 5 * s);
+    ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   }
 
   // Stand
   ctx.fillStyle = "#2a2a3a";
-  ctx.fillRect(monX + 4 * s, monY + monH, 2 * s, s);
+  ctx.fillRect(monX + 3 * s, monY + monH, s, s);
 
   // Keyboard + mouse + water bottle
   if (!isOffline) {
@@ -540,19 +540,18 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillStyle = "#2a1808";
       ctx.fillRect(ex + 3 * S, edY + edH + 2 * S, 2 * S, 2 * S);
       ctx.fillRect(ex + 23 * S, edY + edH + 2 * S, 2 * S, 2 * S);
-      // Monitor (off, big, on desk front-right)
-      const emW = 40;
-      const emH = 28;
-      const emX = ex + 18 * S;
+      // Monitor (off, smaller Sem-style)
+      const emW = 7 * S;
+      const emH = 5 * S;
+      const emX = ex + 19 * S;
       const emY = edY - emH + S * 3;
-      ctx.fillStyle = "#1a1a25";
+      ctx.fillStyle = "#2a2a3a";
       ctx.fillRect(emX, emY, emW, emH);
       ctx.fillStyle = "#040406";
-      ctx.fillRect(emX + 2, emY + 2, emW - 4, emH - 4);
-      ctx.fillStyle = "#1a1a25";
-      ctx.fillRect(emX + emW / 2 - 2, emY + emH, 4, 4);
-      ctx.fillStyle = "#222230";
-      ctx.fillRect(emX + emW / 2 - 5, emY + emH + 4, 10, 2);
+      ctx.fillRect(emX + S, emY + S, 5 * S, 3 * S);
+      // Stand
+      ctx.fillStyle = "#2a2a3a";
+      ctx.fillRect(emX + 3 * S, emY + emH, S, S);
       // Keyboard on empty desk
       const ekbX = ex + 9 * S;
       const ekbY = edY + 2 * S;
@@ -587,7 +586,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const centerX = CANVAS_W / 2;
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
     // Hardcoded: each label Y = agent Y - 30
-    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 6);
+    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
     ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
@@ -799,7 +798,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Plant actual bottom-right corner of canvas
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;
-    drawPlant3D(CANVAS_W - 250, COFFEE_Y - 80, plantSway2);
+    drawPlant3D(CANVAS_W - 40, COFFEE_Y + 60, plantSway2);
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);

@@ -866,15 +866,134 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const plantSway1 = Math.sin(tick * 0.06) * 2;
     drawPlant3D(p1TblX + 7, p1TblY - 49, plantSway1);
 
-    // Plant 2: bottom-right corner on table (bigger)
-    const p2X = CANVAS_W - 70;
-    const p2Y = COFFEE_Y + 5;
-    ctx.save();
-    ctx.translate(p2X, p2Y);
-    ctx.scale(1.4, 1.4);
-    drawPlantTable(-2, 49);
-    drawPlant3D(5, 0, Math.sin(tick * 0.06 + 2.5) * 2);
-    ctx.restore();
+    // Bonsai tree: bottom-right corner on table
+    const bsX = CANVAS_W - 90;
+    const bsY = COFFEE_Y + 5;
+    const bsSway = Math.sin(tick * 0.04 + 1.5) * 0.8;
+
+    // Table under bonsai
+    drawPlantTable(bsX - 8, bsY + 52);
+
+    // --- Pot (dark square with brown soil) ---
+    // Pot body
+    ctx.fillStyle = "#2a2a3a";
+    ctx.fillRect(bsX - 6, bsY + 28, 48, 22);
+    // Pot right side (3D)
+    ctx.fillStyle = "#1e1e2e";
+    ctx.fillRect(bsX + 42, bsY + 30, 5, 20);
+    // Pot rim top
+    ctx.fillStyle = "#353548";
+    ctx.fillRect(bsX - 8, bsY + 26, 52, 4);
+    ctx.fillStyle = "#2a2a3a";
+    ctx.fillRect(bsX + 44, bsY + 27, 5, 3);
+    // Pot rim bottom detail
+    ctx.fillStyle = "#303042";
+    ctx.fillRect(bsX - 6, bsY + 44, 48, 3);
+    // Pot base
+    ctx.fillStyle = "#222235";
+    ctx.fillRect(bsX - 4, bsY + 48, 44, 4);
+    // Pot feet
+    ctx.fillStyle = "#1e1e2e";
+    ctx.fillRect(bsX - 2, bsY + 52, 6, 3);
+    ctx.fillRect(bsX + 32, bsY + 52, 6, 3);
+    // Soil (brown)
+    ctx.fillStyle = "#4a3020";
+    ctx.fillRect(bsX - 2, bsY + 30, 40, 4);
+    ctx.fillStyle = "#5a3828";
+    ctx.fillRect(bsX, bsY + 30, 12, 3);
+    ctx.fillRect(bsX + 22, bsY + 31, 14, 2);
+    // Pebbles/stones in soil
+    ctx.fillStyle = "#6a5040";
+    ctx.fillRect(bsX + 4, bsY + 30, 3, 2);
+    ctx.fillRect(bsX + 18, bsY + 31, 4, 2);
+    ctx.fillRect(bsX + 30, bsY + 30, 3, 2);
+    ctx.fillRect(bsX + 10, bsY + 32, 2, 1);
+    // Moss on soil
+    ctx.fillStyle = "#3a7a3a";
+    ctx.fillRect(bsX + 12, bsY + 30, 3, 2);
+    ctx.fillRect(bsX + 24, bsY + 31, 2, 1);
+    ctx.fillStyle = "#2a6828";
+    ctx.fillRect(bsX + 7, bsY + 31, 2, 1);
+    ctx.fillRect(bsX + 34, bsY + 30, 2, 2);
+
+    // --- Trunk (dark, twisted, detailed) ---
+    // Main trunk
+    ctx.fillStyle = "#2a1a2a";
+    ctx.fillRect(bsX + 15 + bsSway * 0.3, bsY + 8, 6, 24);
+    ctx.fillRect(bsX + 13 + bsSway * 0.4, bsY + 14, 4, 16);
+    ctx.fillRect(bsX + 21 + bsSway * 0.2, bsY + 16, 3, 14);
+    // Trunk curve/twist detail
+    ctx.fillStyle = "#3a2a3a";
+    ctx.fillRect(bsX + 16 + bsSway * 0.3, bsY + 10, 3, 5);
+    ctx.fillRect(bsX + 14 + bsSway * 0.4, bsY + 18, 2, 4);
+    ctx.fillRect(bsX + 19 + bsSway * 0.25, bsY + 22, 2, 6);
+    // Bark texture
+    ctx.fillStyle = "#1a0e1a";
+    ctx.fillRect(bsX + 17 + bsSway * 0.3, bsY + 13, 1, 3);
+    ctx.fillRect(bsX + 15 + bsSway * 0.4, bsY + 21, 1, 2);
+    ctx.fillRect(bsX + 20 + bsSway * 0.2, bsY + 25, 1, 3);
+    // Branch to right (thicker, with sub-branches)
+    ctx.fillStyle = "#2a1a2a";
+    ctx.fillRect(bsX + 22 + bsSway * 0.2, bsY + 10, 10, 3);
+    ctx.fillRect(bsX + 30 + bsSway * 0.15, bsY + 6, 3, 7);
+    ctx.fillRect(bsX + 26 + bsSway * 0.18, bsY + 7, 2, 4);
+    ctx.fillStyle = "#3a2a3a";
+    ctx.fillRect(bsX + 24 + bsSway * 0.2, bsY + 11, 3, 1);
+    // Branch to left (thicker, with sub-branches)
+    ctx.fillStyle = "#2a1a2a";
+    ctx.fillRect(bsX + 5 + bsSway * 0.5, bsY + 6, 11, 3);
+    ctx.fillRect(bsX + 3 + bsSway * 0.5, bsY + 3, 3, 6);
+    ctx.fillRect(bsX + 8 + bsSway * 0.45, bsY + 4, 2, 3);
+    ctx.fillStyle = "#3a2a3a";
+    ctx.fillRect(bsX + 7 + bsSway * 0.5, bsY + 7, 4, 1);
+    // Small branch up
+    ctx.fillStyle = "#2a1a2a";
+    ctx.fillRect(bsX + 17 + bsSway * 0.35, bsY + 5, 2, 5);
+
+    // --- Foliage (pink/purple bonsai canopy — more layers, more detail) ---
+    const drawCanopy = (cx: number, cy: number, w: number, h: number, clr: string) => {
+      ctx.fillStyle = clr;
+      ctx.beginPath();
+      ctx.ellipse(cx + bsSway * 0.6, cy, w, h, 0, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    // Deep shadow layer
+    drawCanopy(bsX + 18, bsY + 4, 16, 7, "#4a2a4a");
+    drawCanopy(bsX + 34, bsY + 8, 10, 5, "#4a2a4a");
+    drawCanopy(bsX + 4, bsY + 6, 10, 5, "#4a2a4a");
+    // Back layer (dark purple)
+    drawCanopy(bsX + 18, bsY + 2, 15, 6, "#6a3a6a");
+    drawCanopy(bsX + 33, bsY + 6, 10, 5, "#6a3a6a");
+    drawCanopy(bsX + 5, bsY + 4, 10, 5, "#6a3a6a");
+    drawCanopy(bsX + 12, bsY + 9, 8, 4, "#5a2a5a");
+    drawCanopy(bsX + 26, bsY + 11, 7, 3, "#5a2a5a");
+    // Mid layer (pink-purple)
+    drawCanopy(bsX + 20, bsY - 1, 13, 5, "#b06a9a");
+    drawCanopy(bsX + 35, bsY + 4, 8, 4, "#b06a9a");
+    drawCanopy(bsX + 3, bsY + 2, 8, 4, "#b06a9a");
+    drawCanopy(bsX + 14, bsY + 7, 9, 4, "#9a5a8a");
+    drawCanopy(bsX + 29, bsY + 9, 7, 3, "#9a5a8a");
+    drawCanopy(bsX + 8, bsY + 8, 6, 3, "#9a5a8a");
+    // Front layer (pink)
+    drawCanopy(bsX + 18, bsY - 4, 11, 4, "#d898b8");
+    drawCanopy(bsX + 33, bsY + 2, 7, 3, "#d898b8");
+    drawCanopy(bsX + 7, bsY, 7, 3, "#d898b8");
+    drawCanopy(bsX + 24, bsY - 2, 6, 3, "#d898b8");
+    // Highlight layer (lightest pink)
+    drawCanopy(bsX + 20, bsY - 7, 7, 3, "#e8b0cc");
+    drawCanopy(bsX + 31, bsY, 5, 2, "#e8b0cc");
+    drawCanopy(bsX + 9, bsY - 2, 5, 2, "#e8b0cc");
+    // Top highlights (brightest)
+    drawCanopy(bsX + 19, bsY - 9, 5, 2, "#f0c0dd");
+    drawCanopy(bsX + 28, bsY - 3, 3, 1.5, "#f0c0dd");
+    drawCanopy(bsX + 12, bsY - 4, 3, 1.5, "#f0c0dd");
+    // Green edge details (foliage underside)
+    ctx.fillStyle = "#2a6a3a50";
+    ctx.fillRect(bsX + 6 + bsSway * 0.5, bsY + 7, 5, 2);
+    ctx.fillRect(bsX + 28 + bsSway * 0.3, bsY + 10, 4, 2);
+    ctx.fillRect(bsX + 1 + bsSway * 0.5, bsY + 5, 3, 2);
+    ctx.fillRect(bsX + 36 + bsSway * 0.2, bsY + 7, 3, 1);
+    ctx.fillRect(bsX + 15 + bsSway * 0.4, bsY + 10, 4, 1);
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
@@ -945,7 +1064,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const sbTW = 80;
     const sbTH = 14;
     const sbTD = 6;
-    const sbTY = COFFEE_Y + 5;
+    const sbTY = COFFEE_Y + 50;
     // Shadow
     ctx.fillStyle = "#00000015";
     ctx.beginPath();

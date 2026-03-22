@@ -782,7 +782,7 @@ export function drawSemDesk(
   const crW = 16;
   const crSc = crW / 24;
   ctx.save();
-  ctx.translate(labelX, labelY - 14);
+  ctx.translate(labelX, labelY - 11);
   ctx.scale(crSc, crSc);
   ctx.strokeStyle = "#f59e0b";
   ctx.lineWidth = 2;

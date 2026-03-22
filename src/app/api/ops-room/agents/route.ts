@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { eq, desc, sql, and, lt } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { getIronSession, type SessionOptions } from "iron-session";
 import { db } from "@/lib/db";
-import { agentActiviteit } from "@/lib/db/schema";
 
 // Inline session config to avoid importing @/lib/auth (which imports cookies())
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "autronis-dashboard-2026-geheim-minimaal-32-tekens!!";

@@ -1,18 +1,24 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, AlertCircle, Square } from "lucide-react";
 import { useOrchestrator } from "./orchestrator-store";
 
 export function CommandInput() {
   const [value, setValue] = useState("");
-  const { submitCommand, isProcessing } = useOrchestrator();
+  const [error, setError] = useState<string | null>(null);
+  const { submitCommand, isProcessing, executingTaskId, killExecution } = useOrchestrator();
 
   const handleSubmit = useCallback(async () => {
     const trimmed = value.trim();
     if (!trimmed || isProcessing) return;
     setValue("");
-    await submitCommand(trimmed);
+    setError(null);
+    try {
+      await submitCommand(trimmed);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Opdracht mislukt");
+    }
   }, [value, isProcessing, submitCommand]);
 
   return (

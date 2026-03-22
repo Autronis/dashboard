@@ -34,6 +34,7 @@ interface OrchestratorState {
   costs: CostTracker;
   theoQueue: TheoQueueItem[];
   activeAgents: Set<string>; // agents currently executing tasks
+  abortController: AbortController | null;
 
   // Actions
   submitCommand: (opdracht: string) => Promise<void>;
@@ -42,6 +43,7 @@ interface OrchestratorState {
   rejectApproval: (id: string, feedback: string) => void;
   setActiveCommand: (id: string | null) => void;
   executePlan: (commandId: string) => Promise<void>;
+  killExecution: () => void;
 }
 
 let nextId = 1;
@@ -66,6 +68,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   costs: { totalTokens: 0, totalCost: 0 } as CostTracker,
   theoQueue: [],
   activeAgents: new Set<string>(),
+  abortController: null,
 
   submitCommand: async (opdracht: string) => {
     const cmdId = genId("cmd");
@@ -223,6 +226,9 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const cmd = state.commands.find((c) => c.id === commandId);
     if (!cmd?.plan || !cmd.plan.goedgekeurd) return;
 
+    const controller = new AbortController();
+    set({ abortController: controller });
+
     const tasks = cmd.plan.taken;
     const completedOutputs: string[] = [];
     const lockedFiles = new Set<string>(); // file locking
@@ -283,6 +289,8 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         // Execute task via Claude API
         const context = `Opdracht: ${cmd.opdracht}\nPlan: ${cmd.plan.beschrijving}\n\nEerdere output:\n${completedOutputs.join("\n---\n")}`;
 
+        if (controller.signal.aborted) break;
+
         const execRes = await fetch("/api/ops-room/execute", {
           method: "POST",
           headers: {
@@ -290,6 +298,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
             "x-ops-token": "autronis-ops-2026",
           },
           body: JSON.stringify({ task, context, mode: "execute" }),
+          signal: controller.signal,
         });
 
         if (!execRes.ok) throw new Error("Uitvoering mislukt");
@@ -333,6 +342,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
             "x-ops-token": "autronis-ops-2026",
           },
           body: JSON.stringify({ task, context: output, mode: "review" }),
+          signal: controller.signal,
         });
 
         let reviewResult: Record<string, unknown> | null = null;
@@ -429,8 +439,28 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
     set((s) => ({
       executingTaskId: null,
+      abortController: null,
+      activeAgents: new Set<string>(),
       commands: s.commands.map((c) =>
         c.id === commandId ? { ...c, status: allDone ? "completed" as const : "review" as const } : c
+      ),
+    }));
+  },
+
+  killExecution: () => {
+    const state = get();
+    if (state.abortController) {
+      state.abortController.abort();
+    }
+    playError();
+    addLog(set, "theo", "error", "Uitvoering handmatig gestopt door Sem!");
+    set((s) => ({
+      isProcessing: false,
+      executingTaskId: null,
+      abortController: null,
+      activeAgents: new Set<string>(),
+      commands: s.commands.map((c) =>
+        c.status === "in_progress" ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
       ),
     }));
   },

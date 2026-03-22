@@ -44,7 +44,11 @@ export default function OpsRoomPage() {
       if (!live) {
         // No live data — management stays active, builders go idle
         const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi"]);
-        if (alwaysActive.has(mock.id)) return mock; // keep mock data for management
+        if (alwaysActive.has(mock.id)) return mock;
+        // Check if orchestrator has this agent active (executing a task)
+        if (orchestratorAgents.has(mock.id)) {
+          return { ...mock, status: "working" as const };
+        }
         // Builders without live data → idle
         return {
           ...mock,
@@ -66,7 +70,7 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id));
     return [...merged, ...extraLive];
-  }, [liveAgents]);
+  }, [liveAgents, orchestratorAgents]);
   const isLive = liveAgents && liveAgents.length > 0;
 
   const handleSelectAgent = useCallback((agent: Agent) => {

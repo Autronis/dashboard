@@ -100,8 +100,74 @@ export function ApprovalPanel() {
 
       {expanded && (
         <div className="px-4 pb-4 space-y-3">
-          {/* Active commands with status */}
-          {activeCommands.map((cmd) => (
+          {/* DB commands awaiting approval */}
+          {pendingDbCommands.map((cmd) => (
+            <div key={`db-${cmd.id}`} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
+                {cmd.bron !== "ui" && (
+                  <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-semibold">
+                    {cmd.bron === "ideeen" ? "IDEEËN" : cmd.bron.toUpperCase()}
+                  </span>
+                )}
+                <span className="text-[9px] text-autronis-text-tertiary">{timeAgo(cmd.aangemaakt)}</span>
+              </div>
+              {cmd.plan && (
+                <div className="mb-3 space-y-1.5">
+                  <p className="text-[10px] text-autronis-text-secondary font-medium">{cmd.plan.beschrijving}</p>
+                  {cmd.plan.taken.map((task, ti) => (
+                    <div key={task.id ?? ti} className="flex items-start gap-2 p-2 rounded border bg-autronis-card/50 border-autronis-border/20">
+                      <span className="text-[9px] mt-0.5 font-bold text-autronis-text-tertiary">{ti + 1}.</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-autronis-text-primary font-medium">{task.titel}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {task.agentId && (
+                            <span className="flex items-center gap-0.5 text-[9px] text-autronis-accent">
+                              <User className="w-2.5 h-2.5" />{task.agentId}
+                            </span>
+                          )}
+                          <span className="text-[9px] text-autronis-text-tertiary">
+                            {SPECIALIZATION_LABELS[task.specialisatie as AgentSpecialization] ?? task.specialisatie}
+                          </span>
+                          {task.bestanden.length > 0 && (
+                            <span className="flex items-center gap-0.5 text-[9px] text-autronis-text-tertiary">
+                              <FileCode className="w-2.5 h-2.5" />{task.bestanden.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {rejectId === `db-${cmd.id}` ? (
+                <div className="space-y-2">
+                  <input type="text" value={feedback} onChange={(e) => setFeedback(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleDbReject(cmd.id, feedback)}
+                    placeholder="Feedback..." className="w-full px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border/50 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none" autoFocus />
+                  <div className="flex gap-2">
+                    <button onClick={() => handleDbReject(cmd.id, feedback)} className="px-3 py-1 rounded-lg bg-red-500/15 text-red-400 text-[11px] font-medium hover:bg-red-500/25">Afwijzen</button>
+                    <button onClick={() => { setRejectId(null); setFeedback(""); }} className="px-3 py-1 rounded-lg bg-autronis-border/30 text-autronis-text-tertiary text-[11px] hover:bg-autronis-border/50">Annuleer</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <button onClick={() => handleDbApprove(cmd.id)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/15 text-green-400 text-[11px] font-medium hover:bg-green-500/25 transition-colors">
+                    <Check className="w-3 h-3" />Goedkeuren
+                  </button>
+                  <button onClick={() => setRejectId(`db-${cmd.id}`)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-[11px] font-medium hover:bg-red-500/20 transition-colors">
+                    <X className="w-3 h-3" />Afwijzen
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Local Zustand commands with status */}
+          {activeLocalCommands.map((cmd) => (
             <div key={cmd.id} className="p-3 rounded-lg bg-autronis-bg border border-autronis-border/30">
               <p className="text-xs text-autronis-text-primary font-medium">{cmd.opdracht}</p>
               <div className="flex items-center gap-2 mt-1.5">

@@ -80,11 +80,14 @@ export default function OpsRoomPage() {
     const entries: TaskLogEntry[] = [];
     orchestratorLogs.forEach((log) => {
       const agent = agents.find((a) => a.id === log.agentId);
+      const status = log.type === "error" ? "fout" as const
+        : log.type === "task_complete" ? "afgerond" as const
+        : "bezig" as const;
       entries.push({
         id: log.id,
         agentId: log.agentId,
         agentNaam: agent?.naam ?? log.agentId,
-        type: log.type === "error" ? "error" : log.type === "task_complete" ? "voltooid" : "actie",
+        status,
         beschrijving: log.message,
         project: agent?.huidigeTaak?.project ?? "Ops Room",
         tijdstip: log.timestamp,
@@ -97,7 +100,7 @@ export default function OpsRoomPage() {
             id: `live-${a.id}`,
             agentId: a.id,
             agentNaam: a.naam,
-            type: "actie",
+            status: "bezig" as const,
             beschrijving: a.huidigeTaak.beschrijving,
             project: a.huidigeTaak.project,
             tijdstip: a.laatsteActiviteit,

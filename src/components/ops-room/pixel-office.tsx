@@ -46,8 +46,15 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   vincent: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
-// Empty desks (only 3 "beschikbaar" spots for new agents)
+// Empty desks
 const EMPTY_DESKS = [
+  // Row 1 (above builders)
+  { x: BUILDER_X, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
+  // Row 3 (next to Vincent)
   { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
@@ -924,7 +931,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Bonsai tree: bottom-right corner on table
     const bsX = CANVAS_W - 90;
-    const bsY = CANVAS_H - 130;
+    const bsY = CANVAS_H - 170;
     const bsSway = Math.sin(tick * 0.04 + 1.5) * 0.8;
 
     // Table under bonsai (wider)
@@ -1132,7 +1139,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const sbTW = 80;
     const sbTH = 14;
     const sbTD = 6;
-    const sbTY = CANVAS_H - 100;
+    const sbTY = CANVAS_H - 115;
     // Shadow
     ctx.fillStyle = "#00000015";
     ctx.beginPath();

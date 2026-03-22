@@ -226,7 +226,7 @@ function drawDesk(
   ctx.fillStyle = "#1a1a25";
   ctx.fillRect(monX + 3 * s, monY + monH, 2 * s, s);
 
-  // Keyboard
+  // Keyboard + mouse + water bottle
   if (!isOffline) {
     const kbX = x + 9 * s;
     const kbY = deskY + 2 * s;
@@ -235,6 +235,22 @@ function drawDesk(
     ctx.fillStyle = isActive && tick % 4 < 2 ? "#404050" : "#353545";
     ctx.fillRect(kbX + s * 0.3, kbY + s * 0.2, 5.4 * s, s * 0.4);
     ctx.fillRect(kbX + s * 0.3, kbY + s * 0.8, 5.4 * s, s * 0.4);
+    // Mouse (right of keyboard)
+    ctx.fillStyle = "#303038";
+    ctx.beginPath();
+    ctx.ellipse(kbX + 8 * s, kbY + s * 0.7, s * 0.8, s * 1.1, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#3a3a44";
+    ctx.fillRect(kbX + 7.4 * s, kbY + s * 0.1, s * 0.3, s * 0.5);
+    // Water bottle (left corner of desk)
+    const wbX = x + 3 * s;
+    const wbY = deskY - 1;
+    ctx.fillStyle = "#87ceeb50";
+    ctx.fillRect(wbX, wbY, s * 0.8, s * 2.5);
+    ctx.fillStyle = "#60b8e830";
+    ctx.fillRect(wbX, wbY + s * 0.8, s * 0.8, s * 1.5);
+    ctx.fillStyle = "#e0e0e0";
+    ctx.fillRect(wbX, wbY - s * 0.3, s * 0.8, s * 0.4);
   }
 
   // Empty chair (offline)
@@ -517,6 +533,19 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(mX + S, mY + S, 6 * S, 4 * S);
       ctx.fillStyle = "#1a1a25";
       ctx.fillRect(mX + 3 * S, mY + 6 * S, 2 * S, S);
+      // Keyboard on empty desk
+      const ekbX = ex + 9 * S;
+      const ekbY = edY + 2 * S;
+      ctx.fillStyle = "#252530";
+      ctx.fillRect(ekbX, ekbY, 6 * S, 1.5 * S);
+      ctx.fillStyle = "#353545";
+      ctx.fillRect(ekbX + S * 0.3, ekbY + S * 0.2, 5.4 * S, S * 0.4);
+      ctx.fillRect(ekbX + S * 0.3, ekbY + S * 0.8, 5.4 * S, S * 0.4);
+      // Mouse
+      ctx.fillStyle = "#303038";
+      ctx.beginPath();
+      ctx.ellipse(ekbX + 8 * S, ekbY + S * 0.7, S * 0.8, S * 1.1, 0, 0, Math.PI * 2);
+      ctx.fill();
     });
 
     // === Wide Wall-mounted Command Screen ===
@@ -744,13 +773,13 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(px + 18 + sw * 0.5, py - 6, 3, 1);
     };
 
-    // Plant under Sem's labels (below CEO/Autronis text)
+    // Plant under Sem's tags (below the label text, not on top of it)
     const plantSway1 = Math.sin(tick * 0.06) * 2;
-    drawPlant3D(SEM.x + 10, SEM.y + 24 * S, plantSway1);
+    drawPlant3D(SEM.x + 10, SEM.y + 28 * S, plantSway1);
 
-    // Plant bottom-right of office
+    // Plant actual bottom-right corner of canvas
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;
-    drawPlant3D(BUILDER_X + UNIT_W * 4 + 40, DESKS_BOTTOM - 60, plantSway2);
+    drawPlant3D(CANVAS_W - 250, COFFEE_Y - 80, plantSway2);
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);

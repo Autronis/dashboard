@@ -775,16 +775,24 @@ export function drawSemDesk(
 
   }
 
-  // 3-line label: Sem / CEO / → Autronis
+  // Label: Crown icon + Sem / CEO / → Autronis
   const labelX = x + 2 * s;
   const labelY = y + 27 * s;
-  // Compact label: Name + Rol on one line, project below
+  // Crown icon
+  ctx.font = "bold 13px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#f59e0b";
+  ctx.fillText("♛", labelX, labelY);
+  const crownW = ctx.measureText("♛").width + 4;
+  // Name
   ctx.font = "bold 12px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#ffffff";
-  ctx.fillText("Sem", labelX, labelY);
+  ctx.fillText("Sem", labelX + crownW, labelY);
+  const semNW = ctx.measureText("Sem").width;
+  // CEO label
   ctx.font = "10px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#a0b0ba";
-  ctx.fillText("CEO", labelX + 30, labelY);
+  ctx.fillText("CEO", labelX + crownW + semNW + 4, labelY);
+  // Project
   ctx.font = "10px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#23C6B7";
   ctx.fillText("→ Autronis", labelX, labelY + 16);

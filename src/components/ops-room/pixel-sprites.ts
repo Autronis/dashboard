@@ -711,26 +711,22 @@ export function drawSemDesk(
   ctx.fillRect(x + s, deskY + 7 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 25 * s, deskY + 7 * s, 2 * s, 2 * s);
 
-  // Two monitors
+  // Two wide monitors
   const glow = 0.6 + Math.sin(tick * 0.35) * 0.15;
   for (let m = 0; m < 2; m++) {
-    const mx = x + (3 + m * 12) * s;
+    const mx = x + (1 + m * 14) * s;
     const my = deskY - 2 * s;
     ctx.fillStyle = "#2a2a3a";
-    ctx.fillRect(mx, my, 10 * s, 7 * s);
+    ctx.fillRect(mx, my, 13 * s, 7 * s);
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
-    ctx.fillRect(mx + s, my + s, 8 * s, 5 * s);
+    ctx.fillRect(mx + s, my + s, 11 * s, 5 * s);
     ctx.fillStyle = "#23C6B750";
     for (let ln = 0; ln < 2; ln++) {
-      ctx.fillRect(mx + 2 * s, my + (2 + ln * 2) * s, (4 + (tick + ln) % 4) * s, s);
+      ctx.fillRect(mx + 2 * s, my + (2 + ln * 2) * s, (6 + (tick + ln) % 5) * s, s);
     }
     ctx.fillStyle = "#2a2a3a";
-    ctx.fillRect(mx + 4 * s, my + 7 * s, 2 * s, s);
+    ctx.fillRect(mx + 5 * s, my + 7 * s, 3 * s, s);
   }
-
-  // Keyboard (behind monitors — further back on desk)
-  ctx.fillStyle = tick % 4 < 2 ? "#555565" : "#444454";
-  ctx.fillRect(x + 6 * s, deskY - 6 * s, 12 * s, 3 * s);
 
   // 3-line label: Sem / CEO / → Autronis
   const labelX = x + 2 * s;

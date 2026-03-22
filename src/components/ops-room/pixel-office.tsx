@@ -184,6 +184,32 @@ function drawDesk(
   ctx.fillStyle = "#ffffff03";
   ctx.fillRect(x + 4 * s, deskY + deskH + 5 * s, deskW - 4 * s, 2);
 
+  // Office chair (front of desk, behind character)
+  if (!isOffline) {
+    const chairX = x + 8 * s;
+    const chairY = deskY + deskH + s;
+    // Seat
+    ctx.fillStyle = "#1a1a24";
+    ctx.fillRect(chairX, chairY, 10 * s, 4 * s);
+    // Backrest
+    ctx.fillStyle = "#22222e";
+    ctx.fillRect(chairX + s, chairY - 5 * s, 8 * s, 5 * s);
+    ctx.fillStyle = "#2a2a36";
+    ctx.fillRect(chairX + 2 * s, chairY - 4 * s, 6 * s, 3 * s);
+    // Armrests
+    ctx.fillStyle = "#1a1a24";
+    ctx.fillRect(chairX - s, chairY - s, 2 * s, 3 * s);
+    ctx.fillRect(chairX + 9 * s, chairY - s, 2 * s, 3 * s);
+    // Base pole
+    ctx.fillStyle = "#151520";
+    ctx.fillRect(chairX + 4 * s, chairY + 4 * s, 2 * s, 2 * s);
+    // Wheels (5-star base)
+    ctx.fillStyle = "#111118";
+    ctx.fillRect(chairX + s, chairY + 6 * s, 8 * s, s);
+    ctx.fillRect(chairX, chairY + 6 * s, 2 * s, s);
+    ctx.fillRect(chairX + 8 * s, chairY + 6 * s, 2 * s, s);
+  }
+
   // Character sitting behind desk
   if (!isOffline && !isHovered) {
     const charH = charDef.rows * s;
@@ -206,9 +232,9 @@ function drawDesk(
   const monH = 5 * s;
   const monX = x + 19 * s;
   const monY = deskY - monH + s * 3;
-  const glow = 0.05 + Math.sin(tick * 0.3 + x * 0.01) * 0.03;
+  const glow = 0.6 + Math.sin(tick * 0.35 + x * 0.01) * 0.15;
 
-  // Frame (always visible)
+  // Frame (always visible — dark border like Sem's)
   ctx.fillStyle = "#2a2a3a";
   ctx.fillRect(monX, monY, monW, monH);
 
@@ -216,16 +242,17 @@ function drawDesk(
     ctx.fillStyle = "#040406";
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   } else if (isActive) {
-    // Turquoise screen glow — exact same as Sem's monitors
+    // Turquoise screen glow — same glow strength as Sem's monitors
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
-    // Code lines — #23C6B750 like Sem's (hex alpha, no globalAlpha)
+    // Code lines — #23C6B750 like Sem's
     ctx.fillStyle = "#23C6B750";
     for (let ln = 0; ln < 2; ln++) {
       ctx.fillRect(monX + 1.5 * s, monY + (1.5 + ln * 1.5) * s, (3 + (tick + ln) % 3) * s, s);
     }
   } else {
-    ctx.fillStyle = "#050608";
+    // Idle but not offline — dim turquoise like a standby screen
+    ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.08})`;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   }
 
@@ -868,12 +895,12 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       }
     });
 
-    // === Small 3D table in stand-by area (same style as Sem's side table) ===
+    // === 3D table with coffee machine + water cooler in stand-by area ===
     const sbTX = COFFEE_X + 14;
     const sbTW = 80;
     const sbTH = 14;
     const sbTD = 6;
-    const sbTY = COFFEE_Y + 6;
+    const sbTY = COFFEE_Y - 20;
     // Shadow
     ctx.fillStyle = "#00000015";
     ctx.beginPath();
@@ -892,6 +919,65 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // Top surface
     ctx.fillStyle = "#5c4a3a";
     ctx.fillRect(sbTX - 2, sbTY, sbTW, sbTH);
+
+    // --- Coffee machine (left on table) ---
+    const sbCmX = sbTX;
+    const sbCmY = sbTY;
+    const sbCmW = 30;
+    const sbCmH = 38;
+    ctx.fillStyle = "#2a2a32";
+    ctx.fillRect(sbCmX, sbCmY - sbCmH, sbCmW, sbCmH);
+    ctx.fillStyle = "#222228";
+    ctx.fillRect(sbCmX + sbCmW, sbCmY - sbCmH + 3, 5, sbCmH - 3);
+    ctx.fillStyle = "#333340";
+    ctx.fillRect(sbCmX, sbCmY - sbCmH - 3, sbCmW, 4);
+    ctx.fillStyle = "#2a2a32";
+    ctx.fillRect(sbCmX + sbCmW, sbCmY - sbCmH - 1, 5, 4);
+    // Display
+    ctx.fillStyle = "#444450";
+    ctx.fillRect(sbCmX + 4, sbCmY - sbCmH + 8, 20, 6);
+    ctx.fillStyle = "#f59e0b50";
+    ctx.fillRect(sbCmX + 5, sbCmY - sbCmH + 9, 8, 4);
+    // Buttons
+    ctx.fillStyle = "#555560";
+    ctx.fillRect(sbCmX + 4, sbCmY - sbCmH + 17, 5, 4);
+    ctx.fillRect(sbCmX + 11, sbCmY - sbCmH + 17, 5, 4);
+    ctx.fillRect(sbCmX + 18, sbCmY - sbCmH + 17, 5, 4);
+    // Nozzle area
+    ctx.fillStyle = "#1a1a20";
+    ctx.fillRect(sbCmX + 5, sbCmY - 14, 18, 12);
+    // Cup
+    ctx.fillStyle = "#d0c8b8";
+    ctx.fillRect(sbCmX + 9, sbCmY - 8, 8, 7);
+    ctx.fillStyle = "#5c3a1a";
+    ctx.fillRect(sbCmX + 10, sbCmY - 7, 6, 4);
+    // Drip tray
+    ctx.fillStyle = "#3a3a42";
+    ctx.fillRect(sbCmX + 3, sbCmY - 2, 22, 2);
+
+    // --- Water cooler (right on table) ---
+    const sbWrX = sbTX + 42;
+    const sbWrW = 28;
+    const sbWrH = 32;
+    ctx.fillStyle = "#c8c8d0";
+    ctx.fillRect(sbWrX, sbCmY - sbWrH, sbWrW, sbWrH);
+    ctx.fillStyle = "#b0b0b8";
+    ctx.fillRect(sbWrX + sbWrW, sbCmY - sbWrH + 3, 5, sbWrH - 3);
+    ctx.fillStyle = "#d8d8e0";
+    ctx.fillRect(sbWrX, sbCmY - sbWrH - 3, sbWrW, 4);
+    ctx.fillStyle = "#c8c8d0";
+    ctx.fillRect(sbWrX + sbWrW, sbCmY - sbWrH - 1, 5, 4);
+    // Panel
+    ctx.fillStyle = "#8888a0";
+    ctx.fillRect(sbWrX + 4, sbCmY - sbWrH + 8, 18, 6);
+    ctx.fillStyle = "#4ade80";
+    ctx.fillRect(sbWrX + 5, sbCmY - sbWrH + 9, 4, 4);
+    ctx.fillStyle = "#3b82f6";
+    ctx.fillRect(sbWrX + 11, sbCmY - sbWrH + 9, 4, 4);
+    // Tap
+    ctx.fillStyle = "#999";
+    ctx.fillRect(sbWrX + 7, sbCmY - sbWrH + 18, 10, 3);
+    ctx.fillRect(sbWrX + 11, sbCmY - sbWrH + 21, 3, 5);
 
     // === Idle agents (standing in a row) — same filter as positions map ===
     const standingAgents = agents.filter((a) => {

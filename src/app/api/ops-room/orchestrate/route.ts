@@ -73,75 +73,85 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Opdracht is verplicht" }, { status: 400 });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ fout: "Anthropic API key niet geconfigureerd" }, { status: 500 });
-    }
-
-    const client = new Anthropic({ apiKey });
-
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      system: THEO_SYSTEM_PROMPT,
-      messages: [
-        {
-          role: "user",
-          content: `Sem geeft de volgende opdracht: "${opdracht}"\n\nMaak een uitvoeringsplan.`,
-        },
-      ],
-    });
-
-    const rawText = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
-      .map((block) => block.text)
-      .join("");
-
-    // Parse JSON from response
-    let plan: { beschrijving: string; taken: PlanTask[] };
-    try {
-      // Extract JSON from potential markdown code blocks
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Geen JSON gevonden in response");
-      plan = JSON.parse(jsonMatch[0]);
-    } catch {
-      return NextResponse.json({
-        fout: "Kon plan niet parsen",
-        raw: rawText,
-      }, { status: 500 });
-    }
-
-    // Add IDs to tasks
-    const taken = plan.taken.map((t, i) => ({
-      ...t,
-      id: `task-${Date.now()}-${i}`,
-      status: "queued" as const,
-      resultaat: null,
-      reviewStatus: null,
-      afhankelijkVan: t.afhankelijkVan ?? [],
-      bestanden: t.bestanden ?? [],
-    }));
-
-    const planData = { beschrijving: plan.beschrijving, taken };
-
-    // Save to database
+    // Always save command to DB first (so it shows up in ApprovalPanel even if plan fails)
     await ensureTable();
+    const now = new Date().toISOString();
     await db.run(sql`
       INSERT INTO orchestrator_commands (opdracht, status, plan_json, bron, project_id, bijgewerkt)
-      VALUES (${opdracht}, 'awaiting_approval', ${JSON.stringify(planData)}, ${bron ?? "ui"}, ${projectId ?? null}, ${new Date().toISOString()})
+      VALUES (${opdracht}, 'planning', ${null}, ${bron ?? "ui"}, ${projectId ?? null}, ${now})
     `);
+
+    // Get the inserted command ID
+    const inserted = await db.all(sql`
+      SELECT id FROM orchestrator_commands WHERE opdracht = ${opdracht} AND aangemaakt >= ${now} ORDER BY id DESC LIMIT 1
+    `) as { id: number }[];
+    const cmdId = inserted[0]?.id;
+
+    // Try to generate plan via Claude API
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      if (cmdId) await db.run(sql`UPDATE orchestrator_commands SET status = 'awaiting_approval', feedback = 'Plan kon niet gemaakt worden: API key niet geconfigureerd' WHERE id = ${cmdId}`);
+      return NextResponse.json({ fout: "Anthropic API key niet geconfigureerd", commandId: cmdId }, { status: 500 });
+    }
+
+    let planData: { beschrijving: string; taken: PlanTask[] } | null = null;
+
+    try {
+      const client = new Anthropic({ apiKey });
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4096,
+        system: THEO_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"\n\nMaak een uitvoeringsplan.` }],
+      });
+
+      const rawText = message.content
+        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .map((block) => block.text)
+        .join("");
+
+      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("Geen JSON gevonden in response");
+      const plan: { beschrijving: string; taken: PlanTask[] } = JSON.parse(jsonMatch[0]);
+
+      const taken = plan.taken.map((t, i) => ({
+        ...t,
+        id: `task-${Date.now()}-${i}`,
+        status: "queued" as const,
+        resultaat: null,
+        reviewStatus: null,
+        afhankelijkVan: t.afhankelijkVan ?? [],
+        bestanden: t.bestanden ?? [],
+      }));
+
+      planData = { beschrijving: plan.beschrijving, taken };
+
+      // Update command with plan
+      if (cmdId) {
+        await db.run(sql`
+          UPDATE orchestrator_commands SET status = 'awaiting_approval', plan_json = ${JSON.stringify(planData)}, bijgewerkt = ${new Date().toISOString()} WHERE id = ${cmdId}
+        `);
+      }
+    } catch (planError) {
+      const planMsg = planError instanceof Error ? planError.message : "Onbekend";
+      // Command stays in DB with "awaiting_approval" but no plan — user can still see it
+      if (cmdId) {
+        const isCredits = planMsg.includes("credit balance") || planMsg.includes("billing");
+        const errorNote = isCredits ? "API credits op — plan wordt gemaakt zodra credits zijn aangevuld" : `Plan maken mislukt: ${planMsg.slice(0, 100)}`;
+        await db.run(sql`
+          UPDATE orchestrator_commands SET status = 'awaiting_approval', feedback = ${errorNote}, bijgewerkt = ${new Date().toISOString()} WHERE id = ${cmdId}
+        `);
+      }
+    }
 
     return NextResponse.json({
       plan: planData,
+      commandId: cmdId,
       projectId: projectId ?? null,
       bron: bron ?? "ui",
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Onbekende fout";
-    // Detect credit/billing errors
-    if (msg.includes("credit balance") || msg.includes("billing")) {
-      return NextResponse.json({ fout: "Anthropic API credits op. Vul credits aan op console.anthropic.com." }, { status: 402 });
-    }
     return NextResponse.json({ fout: msg }, { status: 500 });
   }
 }

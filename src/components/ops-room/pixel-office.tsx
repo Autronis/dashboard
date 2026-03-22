@@ -98,6 +98,7 @@ function drawDesk(
   isHovered: boolean,
   labelsOnly: boolean,
   s: number,
+  emptyDesk: boolean = false,
 ) {
   const isActive = agent.status === "working" || agent.status === "reviewing";
   const isOffline = agent.status === "offline";
@@ -212,8 +213,8 @@ function drawDesk(
     ctx.fillRect(chairX + 4 * s, chairBotY, 2 * s, s);
   }
 
-  // Character sitting behind desk
-  if (!isOffline && !isHovered) {
+  // Character sitting behind desk (skip if empty desk — agent is in stand-by)
+  if (!isOffline && !isHovered && !emptyDesk) {
     const charH = charDef.rows * s;
     const sitY = deskY - charH + 4 * s;
     const bob = agent.status === "idle" ? Math.sin(tick * 0.25 + x) * 1.5 : 0;
@@ -1073,9 +1074,8 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const isActive = agent.status === "working" || agent.status === "reviewing";
       const staysAtDesk = ALWAYS_AT_DESK.has(id);
       if (!isActive && !staysAtDesk) {
-        // Draw empty desk (agent is in stand-by) — use offline status so no character is drawn
-        const emptyAgent = { ...agent, status: "offline" as const, huidigeTaak: null };
-        drawDesk(ctx, pos.x, pos.y, emptyAgent, "#3a4a55", tick, false, false, false, S);
+        // Draw empty desk (agent is in stand-by) — desk with furniture but no character
+        drawDesk(ctx, pos.x, pos.y, agent, "#3a4a55", tick, false, false, false, S, true);
         return;
       }
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";

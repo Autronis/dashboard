@@ -623,7 +623,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
     // Hardcoded: each label Y = agent Y - 30
     ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
-    ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2, DESK_POSITIONS.theo.y + 30);
+    ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + 70, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";
@@ -940,12 +940,12 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       }
     });
 
-    // === 3D table with coffee machine + water cooler in stand-by area ===
-    const sbTX = COFFEE_X + 14;
+    // === 3D table with coffee machine + water cooler next to bottom-right plant ===
+    const sbTX = CANVAS_W - 190;
     const sbTW = 80;
     const sbTH = 14;
     const sbTD = 6;
-    const sbTY = COFFEE_Y - 20;
+    const sbTY = COFFEE_Y + 5;
     // Shadow
     ctx.fillStyle = "#00000015";
     ctx.beginPath();

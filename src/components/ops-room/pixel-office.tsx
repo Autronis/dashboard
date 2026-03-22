@@ -546,66 +546,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const scrH = MEETING.h;
     const fw = 5; // thick pixel frame like desk monitors
 
-    // Glow behind screen (teal accent, on the wall)
-    const glowR = Math.max(scrW, scrH) * 0.7;
-    const wallGlowAlpha = 0.03 + Math.sin(tick * 0.08) * 0.015;
-    const wallGlow = ctx.createRadialGradient(scrX + scrW / 2, scrY + scrH / 2, 0, scrX + scrW / 2, scrY + scrH / 2, glowR);
-    wallGlow.addColorStop(0, `rgba(35, 198, 183, ${wallGlowAlpha})`);
-    wallGlow.addColorStop(1, "rgba(35, 198, 183, 0)");
-    ctx.fillStyle = wallGlow;
-    ctx.fillRect(scrX - glowR / 2, scrY - glowR / 3, scrW + glowR, scrH + glowR * 0.6);
-
-    // No heavy black background — just a subtle teal border
-    ctx.strokeStyle = "#23C6B718";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(scrX, scrY, scrW, scrH, 6);
-    ctx.stroke();
-
-    // 3 KPIs — centered, clean, no lists
-    const activeCount = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
-    const totalTasks = agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
-    const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
-    const innerW = scrW - fw * 2;
-    const kpiSec = Math.floor(innerW / 3);
-    const kpiCy = scrY + scrH / 2;
-
-    const kpis = [
-      { val: `${activeCount}`, label: "ACTIEF", color: "#4ade80" },
-      { val: `${totalTasks}`, label: "TAKEN", color: "#23C6B7" },
-      { val: `\u20AC${totalCost.toFixed(0)}`, label: "KOSTEN", color: "#f59e0b" },
-    ];
-    kpis.forEach((kpi, ki) => {
-      const kx = scrX + 8 + ki * kpiSec;
-      const ky = scrY + 10;
-      const kw = kpiSec - 8;
-      const kh = scrH - 20;
-      // Card background (same as project cards)
-      ctx.fillStyle = "#0a0f14aa";
-      ctx.beginPath();
-      ctx.roundRect(kx, ky, kw, kh, 4);
-      ctx.fill();
-      // Left color stripe
-      ctx.fillStyle = kpi.color;
-      ctx.fillRect(kx, ky + 4, 3, kh - 8);
-      // Value
-      ctx.font = "bold 28px Inter, system-ui, sans-serif";
-      ctx.fillStyle = kpi.color;
-      ctx.textAlign = "center";
-      ctx.fillText(kpi.val, kx + kw / 2, ky + kh / 2 + 6);
-      // Label
-      ctx.font = "bold 8px Inter, system-ui, sans-serif";
-      ctx.fillStyle = "#5a6a7a";
-      ctx.fillText(kpi.label, kx + kw / 2, ky + kh / 2 + 20);
-    });
-    ctx.textAlign = "left";
-
-    // Wall mount brackets (pixel art)
-    ctx.fillStyle = "#2a2a3a";
-    ctx.fillRect(scrX - 3, scrY + 10, 3, 8);
-    ctx.fillRect(scrX - 3, scrY + scrH - 18, 3, 8);
-    ctx.fillRect(scrX + scrW, scrY + 10, 3, 8);
-    ctx.fillRect(scrX + scrW, scrY + scrH - 18, 3, 8);
+    // (command center removed — metrics shown in command bar above)
 
     // === Slaapkamer (geen achtergrond — zelfde vloer) ===
 

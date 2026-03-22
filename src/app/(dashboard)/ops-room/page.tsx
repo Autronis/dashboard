@@ -78,25 +78,24 @@ export default function OpsRoomPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-4">
-        {/* ===== PRIMARY: Header + Command Bar ===== */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-autronis-accent/10">
-              <Radio className="w-4.5 h-4.5 text-autronis-accent" />
+      <div className="space-y-3">
+        {/* ===== COMPACT HEADER ===== */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: title + command input */}
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex items-center gap-2 shrink-0">
+              <Radio className="w-4 h-4 text-autronis-accent" />
+              <h1 className="text-base font-bold text-autronis-text-primary">Ops Room</h1>
+              {isLive && (
+                <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-green-500/15 text-green-400">
+                  <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                  LIVE
+                </span>
+              )}
+              {isLoading && <Loader2 className="w-3 h-3 text-autronis-text-tertiary animate-spin" />}
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-autronis-text-primary">Ops Room</h1>
-                {isLive && (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-green-500/15 text-green-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    LIVE
-                  </span>
-                )}
-                {isLoading && <Loader2 className="w-3.5 h-3.5 text-autronis-text-tertiary animate-spin" />}
-              </div>
-              <p className="text-xs text-autronis-text-tertiary">Command center</p>
+            <div className="flex-1 max-w-lg">
+              <CommandInput />
             </div>
           </div>
 
@@ -139,8 +138,6 @@ export default function OpsRoomPage() {
             </div>
           </div>
         </div>
-
-        <CommandInput />
 
         <CommandBar agents={agents} isLive={isLive} />
 

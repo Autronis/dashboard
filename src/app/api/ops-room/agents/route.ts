@@ -55,49 +55,34 @@ export async function POST(req: NextRequest) {
 
     const now = new Date().toISOString();
 
-    const existing = await db
-      .select({ id: agentActiviteit.id })
-      .from(agentActiviteit)
-      .where(eq(agentActiviteit.agentId, agentId))
-      .get();
+    // Use raw SQL to avoid Drizzle sending columns that don't exist on remote DB (team, verdieping)
+    const rows = await db.all(sql`
+      SELECT id FROM agent_activiteit WHERE agent_id = ${agentId} LIMIT 1
+    `);
+    const existing = (rows.length > 0 ? rows[0] : undefined) as { id: number } | undefined;
 
     if (existing) {
-      await db
-        .update(agentActiviteit)
-        .set({
-          laatsteActie: actie,
-          details: details ?? null,
-          status: agentStatus,
-          project,
-          tokensGebruikt: tokensGebruikt
-            ? sql`${agentActiviteit.tokensGebruikt} + ${tokensGebruikt}`
-            : undefined,
-          laatstGezien: now,
-        })
-        .where(eq(agentActiviteit.id, existing.id))
-        .run();
+      if (tokensGebruikt) {
+        await db.run(sql`
+          UPDATE agent_activiteit
+          SET laatste_actie = ${actie}, details = ${details ?? null}, status = ${agentStatus},
+              project = ${project}, tokens_gebruikt = tokens_gebruikt + ${tokensGebruikt},
+              laatst_gezien = ${now}
+          WHERE id = ${existing.id}
+        `);
+      } else {
+        await db.run(sql`
+          UPDATE agent_activiteit
+          SET laatste_actie = ${actie}, details = ${details ?? null}, status = ${agentStatus},
+              project = ${project}, laatst_gezien = ${now}
+          WHERE id = ${existing.id}
+        `);
+      }
     } else {
-      // Generate a unique id in case AUTOINCREMENT isn't working on remote DB
-      const maxIdResult = await db
-        .select({ maxId: sql<number>`COALESCE(MAX(${agentActiviteit.id}), 0)` })
-        .from(agentActiviteit)
-        .get();
-      const nextId = (maxIdResult?.maxId ?? 0) + 1;
-
-      await db
-        .insert(agentActiviteit)
-        .values({
-          id: nextId,
-          agentId,
-          agentType,
-          project,
-          laatsteActie: actie,
-          details: details ?? null,
-          status: agentStatus,
-          tokensGebruikt: tokensGebruikt ?? 0,
-          laatstGezien: now,
-        })
-        .run();
+      await db.run(sql`
+        INSERT INTO agent_activiteit (agent_id, agent_type, project, laatste_actie, details, status, tokens_gebruikt, laatst_gezien)
+        VALUES (${agentId}, ${agentType}, ${project}, ${actie}, ${details ?? null}, ${agentStatus}, ${tokensGebruikt ?? 0}, ${now})
+      `);
     }
 
     return NextResponse.json({ succes: true });

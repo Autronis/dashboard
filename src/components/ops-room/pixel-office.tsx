@@ -88,16 +88,45 @@ const FRAME_MS = 1000 / 8;
 
 // ============ 2D DESK (proven working design + shadow for depth) ============
 
-// Draw Lucide-style SVG icons on canvas using Path2D
-// These match the icons from agent-station.tsx: Crown, Hammer, Search, Compass, Bot, Cog
+// Lucide icon SVG paths (exact same as lucide-react) drawn on canvas
+const LUCIDE_PATHS: Record<string, string[]> = {
+  crown: [
+    "M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z",
+    "M5 21h14",
+  ],
+  hammer: [
+    "m15 12-8.373 8.373a1 1 0 1 1-3-3L12 9",
+    "m18 15 4-4",
+    "m21.5 11.5-1.914-1.914A2 2 0 0 1 19 8.172V7l-2.26-2.26a6 6 0 0 0-4.202-1.756L9 2.96l.92.82A6.18 6.18 0 0 1 12 8.4V10l2 2h1.172a2 2 0 0 1 1.414.586L18.5 14.5",
+  ],
+  search: [
+    "M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0-14 0",
+    "m21 21-4.3-4.3",
+  ],
+  compass: [
+    "M12 12m-10 0a10 10 0 1 0 20 0a10 10 0 1 0-20 0",
+    "M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49",
+  ],
+  bot: [
+    "M12 8V4H8",
+    "M2 14h2", "M20 14h2",
+    "M15 13a3 3 0 0 1 0 6H9a3 3 0 0 1 0-6z",
+    "M12 4a2 2 0 0 1 0 4",
+  ],
+  cog: [
+    "M12 20a8 8 0 1 0 0-16a8 8 0 0 0 0 16Z",
+    "M12 14a2 2 0 1 0 0-4a2 2 0 0 0 0 4Z",
+    "M12 2v2", "M12 22v-2", "m17 20.66-1-1.73", "M11 10.27L7 3.34",
+    "m20.66 17-1.73-1", "m3.34 7 1.73 1", "M14 12h8", "M2 12h2",
+    "m20.66 7-1.73 1", "m3.34 17 1.73-1", "m17 3.34-1 1.73", "m11 13.73-4 6.93",
+  ],
+};
+
 function drawRoleIcon(ctx: CanvasRenderingContext2D, role: string, agentId: string, ix: number, iy: number, size: number) {
-  const sc = size / 24; // Lucide icons are 24x24
+  const sc = size / 24;
   ctx.save();
   ctx.translate(ix, iy);
   ctx.scale(sc, sc);
-  ctx.lineWidth = 2 / sc;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
 
   const color = agentId === "sem" ? "#f59e0b"
     : role === "manager" ? "#f59e0b"
@@ -108,83 +137,23 @@ function drawRoleIcon(ctx: CanvasRenderingContext2D, role: string, agentId: stri
     : "#3b82f6";
 
   ctx.strokeStyle = color;
-  ctx.fillStyle = "transparent";
   ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.fillStyle = "none";
 
-  if (agentId === "sem") {
-    // Crown (same as Theo but with a filled gem)
-    ctx.beginPath();
-    ctx.moveTo(2, 17); ctx.lineTo(2, 4); ctx.lineTo(7, 8); ctx.lineTo(12, 2);
-    ctx.lineTo(17, 8); ctx.lineTo(22, 4); ctx.lineTo(22, 17);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.fillStyle = color + "30";
-    ctx.fill();
-    ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
-    // Gem
-    ctx.fillStyle = "#ef4444";
-    ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.fill();
-  } else if (role === "manager") {
-    // Crown
-    ctx.beginPath();
-    ctx.moveTo(2, 17); ctx.lineTo(2, 4); ctx.lineTo(7, 8); ctx.lineTo(12, 2);
-    ctx.lineTo(17, 8); ctx.lineTo(22, 4); ctx.lineTo(22, 17);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
-  } else if (role === "reviewer") {
-    // Search / magnifying glass
-    ctx.beginPath(); ctx.arc(11, 11, 7, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(16, 16); ctx.lineTo(22, 22); ctx.stroke();
-  } else if (role === "architect") {
-    // Compass
-    ctx.beginPath(); ctx.arc(12, 12, 10, 0, Math.PI * 2); ctx.stroke();
-    // Needle
-    ctx.beginPath();
-    ctx.moveTo(12, 2); ctx.lineTo(14, 12); ctx.lineTo(12, 22); ctx.lineTo(10, 12);
-    ctx.closePath();
-    ctx.fillStyle = color + "40";
-    ctx.fill();
-    ctx.stroke();
-    // Center
-    ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.stroke();
-  } else if (role === "assistant") {
-    // Bot
-    ctx.beginPath();
-    ctx.roundRect(4, 8, 16, 12, 2); ctx.stroke();
-    // Eyes
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(9, 14, 1.5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(15, 14, 1.5, 0, Math.PI * 2); ctx.fill();
-    // Antenna
-    ctx.beginPath(); ctx.moveTo(12, 8); ctx.lineTo(12, 4); ctx.stroke();
-    ctx.beginPath(); ctx.arc(12, 3, 1.5, 0, Math.PI * 2); ctx.stroke();
-    // Ears
-    ctx.beginPath(); ctx.moveTo(4, 13); ctx.lineTo(2, 13); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(20, 13); ctx.lineTo(22, 13); ctx.stroke();
-  } else if (role === "automation") {
-    // Cog / gear
-    ctx.beginPath(); ctx.arc(12, 12, 3, 0, Math.PI * 2); ctx.stroke();
-    // Teeth
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      const x1 = 12 + Math.cos(a) * 6;
-      const y1 = 12 + Math.sin(a) * 6;
-      const x2 = 12 + Math.cos(a) * 9;
-      const y2 = 12 + Math.sin(a) * 9;
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
-    ctx.beginPath(); ctx.arc(12, 12, 7, 0, Math.PI * 2); ctx.stroke();
-  } else {
-    // Hammer (builder)
-    ctx.beginPath();
-    ctx.moveTo(15, 12); ctx.lineTo(8, 19); ctx.stroke(); // handle
-    ctx.beginPath();
-    ctx.moveTo(9, 3); ctx.lineTo(19, 8); ctx.lineTo(16, 12); ctx.lineTo(6, 7);
-    ctx.closePath();
-    ctx.stroke();
-    ctx.fillStyle = color + "30";
-    ctx.fill();
+  const pathKey = agentId === "sem" ? "crown"
+    : role === "manager" ? "crown"
+    : role === "reviewer" ? "search"
+    : role === "architect" ? "compass"
+    : role === "assistant" ? "bot"
+    : role === "automation" ? "cog"
+    : "hammer";
+
+  const paths = LUCIDE_PATHS[pathKey] ?? LUCIDE_PATHS.hammer;
+  for (const d of paths) {
+    const p = new Path2D(d);
+    ctx.stroke(p);
   }
 
   ctx.restore();

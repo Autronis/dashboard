@@ -22,8 +22,15 @@ interface CommandBarProps {
 export function CommandBar({ agents, isLive = false }: CommandBarProps) {
   const active = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
   const errors = agents.filter((a) => a.status === "error").length;
-  const totalTasks = agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
-  const totalKosten = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
+  // Only count real completed tasks (agents with live data have tokensVandaag > 0)
+  const hasLive = agents.some((a) => a.kosten.tokensVandaag > 0 || a.status === "working");
+  const totalTasks = hasLive
+    ? agents.filter((a) => a.kosten.tokensVandaag > 0).reduce((sum, a) => sum + a.voltooideVandaag, 0)
+    : agents.reduce((sum, a) => sum + a.voltooideVandaag, 0);
+  // Only count costs from agents that are actually active (not mock data)
+  const totalKosten = agents
+    .filter((a) => a.status === "working" || a.status === "reviewing" || a.kosten.tokensVandaag > 0)
+    .reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
 
   // Determine health level
   let health: HealthLevel = "green";

@@ -1132,7 +1132,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const sbTW = 80;
     const sbTH = 14;
     const sbTD = 6;
-    const sbTY = COFFEE_Y + 59;
+    const sbTY = CANVAS_H - 100;
     // Shadow
     ctx.fillStyle = "#00000015";
     ctx.beginPath();

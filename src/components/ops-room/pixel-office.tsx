@@ -627,7 +627,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 90);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 115);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -828,16 +828,52 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillRect(px + 18 + sw * 0.5, py - 6, 3, 1);
     };
 
-    // Plant under Sem's tags (below the label text, not on top of it)
-    const plantSway1 = Math.sin(tick * 0.06) * 2;
-    drawPlant3D(SEM.x + 10, SEM.y + 38 * S, plantSway1);
+    // 3D plant table helper (with right side face, thicker top, visible legs)
+    const drawPlantTable = (tx: number, ty: number) => {
+      const tw = 44; const th = 10; const td = 6; const legH = 14;
+      // Shadow
+      ctx.fillStyle = "#00000012";
+      ctx.beginPath();
+      ctx.ellipse(tx + tw / 2, ty + th + td + legH + 4, tw / 2 + 3, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Legs (4 corners)
+      ctx.fillStyle = "#5a4430";
+      ctx.fillRect(tx + 3, ty + th + td, 3, legH);
+      ctx.fillRect(tx + tw - 6, ty + th + td, 3, legH);
+      ctx.fillRect(tx + 3, ty + th + td + legH - 2, 4, 2); // feet
+      ctx.fillRect(tx + tw - 7, ty + th + td + legH - 2, 4, 2);
+      // Front face
+      ctx.fillStyle = "#4a3828";
+      ctx.fillRect(tx, ty + th, tw, td);
+      // Right side face (3D depth)
+      ctx.fillStyle = "#3a2818";
+      ctx.fillRect(tx + tw, ty + th - 1, 5, td + 1);
+      // Top surface
+      ctx.fillStyle = "#5c4a3a";
+      ctx.fillRect(tx, ty, tw, th);
+      // Top right side (3D)
+      ctx.fillStyle = "#4a3828";
+      ctx.fillRect(tx + tw, ty + 2, 5, th - 2);
+      // Wood grain highlight
+      ctx.fillStyle = "#ffffff06";
+      ctx.fillRect(tx + 4, ty + 2, tw - 8, 2);
+    };
 
-    // Plant actual bottom-right corner of canvas (bigger)
-    const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;
+    // Plant 1: centered on table under Sem's tags
+    const p1TblX = SEM.x + 5;
+    const p1TblY = SEM.y + 34 * S + 49;
+    drawPlantTable(p1TblX, p1TblY);
+    const plantSway1 = Math.sin(tick * 0.06) * 2;
+    drawPlant3D(p1TblX + 7, SEM.y + 34 * S, plantSway1);
+
+    // Plant 2: bottom-right corner on table (bigger)
+    const p2X = CANVAS_W - 70;
+    const p2Y = COFFEE_Y + 30;
     ctx.save();
-    ctx.translate(CANVAS_W - 70, COFFEE_Y + 50);
+    ctx.translate(p2X, p2Y);
     ctx.scale(1.4, 1.4);
-    drawPlant3D(0, 0, plantSway2);
+    drawPlantTable(-2, 49);
+    drawPlant3D(5, 0, Math.sin(tick * 0.06 + 2.5) * 2);
     ctx.restore();
 
     // === Sem desk ===

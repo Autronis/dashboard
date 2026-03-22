@@ -201,11 +201,11 @@ function drawDesk(
   ctx.fillRect(x + 3 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 23 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
 
-  // Monitor — front-facing, at back of desk, right of center
-  const monW = 22;
-  const monH = 16;
-  const monX = x + 16 * s; // right of mouse/keyboard area
-  const monY = deskY - monH - 2; // sitting on back edge of desk
+  // Monitor — big, front-facing, ON the desk surface
+  const monW = 40;
+  const monH = 28;
+  const monX = x + 10 * s; // centered-right on desk
+  const monY = deskY - monH; // standing on top of desk
 
   // Bezel (dark frame)
   ctx.fillStyle = "#1a1a25";
@@ -545,11 +545,11 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.fillStyle = "#2a1808";
       ctx.fillRect(ex + 3 * S, edY + edH + 2 * S, 2 * S, 2 * S);
       ctx.fillRect(ex + 23 * S, edY + edH + 2 * S, 2 * S, 2 * S);
-      // Monitor (off, front-facing, back-right of desk)
-      const emW = 22;
-      const emH = 16;
-      const emX = ex + 16 * S;
-      const emY = edY - emH - 2;
+      // Monitor (off, big, on desk)
+      const emW = 40;
+      const emH = 28;
+      const emX = ex + 10 * S;
+      const emY = edY - emH;
       ctx.fillStyle = "#1a1a25";
       ctx.fillRect(emX, emY, emW, emH);
       ctx.fillStyle = "#040406";
@@ -592,7 +592,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const centerX = CANVAS_W / 2;
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
     // Hardcoded: each label Y = agent Y - 30
-    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 10);
+    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 18);
     ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 20, DESK_POSITIONS.ari.y - 30);

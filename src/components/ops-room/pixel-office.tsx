@@ -119,24 +119,23 @@ function drawDesk(
     ctx.clip();
 
     const rolLabels: Record<string, { label: string; icon: string; color: string }> = {
-      manager: { label: "Manager", icon: "⚜", color: "#f59e0b" },
-      builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
-      reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
-      architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
-      assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
-      automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
+      manager: { label: "Manager", icon: "🎯", color: "#f59e0b" },
+      builder: { label: "Builder", icon: "⚡", color: "#3b82f6" },
+      reviewer: { label: "Reviewer", icon: "🔍", color: "#a855f7" },
+      architect: { label: "Architect", icon: "🧭", color: "#f59e0b" },
+      assistant: { label: "Research & Docs", icon: "📡", color: "#23C6B7" },
+      automation: { label: "Automation", icon: "🤖", color: "#4ade80" },
     };
-    // Sem is the king
     const isSem = agent.id === "sem";
     const rol = isSem
-      ? { label: "CEO", icon: "♛", color: "#f59e0b" }
+      ? { label: "CEO", icon: "👑", color: "#f59e0b" }
       : (rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
 
-    // Role icon
-    ctx.font = "bold 11px Inter, system-ui, sans-serif";
+    // Role icon (large)
+    ctx.font = "18px Inter, system-ui, sans-serif";
     ctx.fillStyle = rol.color;
-    ctx.fillText(rol.icon, labelX, labelY2 + 10);
-    const iconW = ctx.measureText(rol.icon).width + 4;
+    ctx.fillText(rol.icon, labelX, labelY2 + 12);
+    const iconW = ctx.measureText(rol.icon).width + 3;
 
     // Line 1: Name + rol on same line (compact)
     ctx.font = "bold 12px Inter, system-ui, sans-serif";
@@ -1255,21 +1254,21 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       // Name below with role icon
       const charH = charDef.rows * S;
       const sbRolIcons: Record<string, { icon: string; color: string }> = {
-        manager: { icon: "♛", color: "#f59e0b" },
-        builder: { icon: "⚒", color: "#3b82f6" },
-        reviewer: { icon: "⊘", color: "#a855f7" },
-        architect: { icon: "❖", color: "#f59e0b" },
-        assistant: { icon: "◉", color: "#23C6B7" },
-        automation: { icon: "⚙", color: "#4ade80" },
+        manager: { icon: "🎯", color: "#f59e0b" },
+        builder: { icon: "⚡", color: "#3b82f6" },
+        reviewer: { icon: "🔍", color: "#a855f7" },
+        architect: { icon: "🧭", color: "#f59e0b" },
+        assistant: { icon: "📡", color: "#23C6B7" },
+        automation: { icon: "🤖", color: "#4ade80" },
       };
       const sbRol = sbRolIcons[agent.rol] ?? sbRolIcons.builder;
-      ctx.font = "bold 11px Inter, system-ui, sans-serif";
+      ctx.font = "16px Inter, system-ui, sans-serif";
       const sbIconW = ctx.measureText(sbRol.icon).width + 3;
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       const nw = ctx.measureText(agent.naam).width;
       ctx.fillStyle = "#0a0f14dd";
       ctx.fillRect(ax - 2, ay + charH + 4, sbIconW + nw + 8, 15);
-      ctx.font = "bold 11px Inter, system-ui, sans-serif";
+      ctx.font = "16px Inter, system-ui, sans-serif";
       ctx.fillStyle = sbRol.color;
       ctx.fillText(sbRol.icon, ax + 2, ay + charH + 16);
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
@@ -1290,14 +1289,17 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         const { agent } = ha;
         const desk = DESK_POSITIONS[agent.id];
         const rolConfig: Record<string, { label: string; icon: string; color: string }> = {
-          manager: { label: "Manager", icon: "♛", color: "#f59e0b" },
+          manager: { label: "Manager", icon: "⚜", color: "#f59e0b" },
           builder: { label: "Builder", icon: "⚒", color: "#3b82f6" },
           reviewer: { label: "Reviewer", icon: "⊘", color: "#a855f7" },
           architect: { label: "Architect", icon: "❖", color: "#f59e0b" },
           assistant: { label: "Research & Docs", icon: "◉", color: "#23C6B7" },
           automation: { label: "Automation", icon: "⚙", color: "#4ade80" },
         };
-        const rolInfo = rolConfig[agent.rol] ?? rolConfig.builder;
+        const isSemTT = agent.id === "sem";
+        const rolInfo = isSemTT
+          ? { label: "CEO", icon: "♛", color: "#f59e0b" }
+          : (rolConfig[agent.rol] ?? rolConfig.builder);
         const rolText = rolInfo.label;
         const proj = agent.huidigeTaak?.project ?? "Stand-by";
         const projColor = agent.huidigeTaak ? getProjectColor(proj) : "#8a9aaa";
@@ -1327,7 +1329,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         ctx.fillRect(tx + 1, ty + 8, 3, th - 16);
 
         // Role icon (large)
-        ctx.font = "bold 18px Inter, system-ui, sans-serif";
+        ctx.font = "bold 20px Inter, system-ui, sans-serif";
         ctx.fillStyle = rolInfo.color;
         ctx.fillText(rolInfo.icon, tx + 14, ty + 23);
         const ttIconW = ctx.measureText(rolInfo.icon).width + 6;

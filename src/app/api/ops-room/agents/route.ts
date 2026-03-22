@@ -130,38 +130,39 @@ export async function GET(req: NextRequest) {
     const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
     const thirtyMinAgo = new Date(now.getTime() - 30 * 60 * 1000).toISOString();
 
-    await db
-      .update(agentActiviteit)
-      .set({ status: "offline" })
-      .where(and(lt(agentActiviteit.laatstGezien, thirtyMinAgo), eq(agentActiviteit.status, "actief")))
-      .run();
-
-    await db
-      .update(agentActiviteit)
-      .set({ status: "offline" })
-      .where(and(lt(agentActiviteit.laatstGezien, thirtyMinAgo), eq(agentActiviteit.status, "inactief")))
-      .run();
-
-    await db
-      .update(agentActiviteit)
-      .set({ status: "inactief" })
-      .where(and(lt(agentActiviteit.laatstGezien, fiveMinAgo), eq(agentActiviteit.status, "actief")))
-      .run();
+    // Update stale agent statuses (use raw SQL to avoid column issues)
+    try {
+      await db.run(sql`UPDATE agent_activiteit SET status = 'offline' WHERE laatst_gezien < ${thirtyMinAgo} AND status = 'actief'`);
+      await db.run(sql`UPDATE agent_activiteit SET status = 'offline' WHERE laatst_gezien < ${thirtyMinAgo} AND status = 'inactief'`);
+      await db.run(sql`UPDATE agent_activiteit SET status = 'inactief' WHERE laatst_gezien < ${fiveMinAgo} AND status = 'actief'`);
+    } catch {
+      // Table might not exist yet — ignore
+    }
 
     const vandaag = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
 
-    // Team filter from query param
-    const teamParam = req.nextUrl.searchParams.get("team"); // "sem", "syb", or "all"
-    const teamFilter = teamParam === "sem" || teamParam === "syb"
-      ? sql`AND ${agentActiviteit.team} = ${teamParam}`
-      : sql``;
-
-    const agents = await db
-      .select()
-      .from(agentActiviteit)
-      .where(sql`(${agentActiviteit.aangemaaktOp} >= ${vandaag} OR ${agentActiviteit.status} IN ('actief', 'inactief')) ${teamFilter}`)
-      .orderBy(desc(agentActiviteit.laatstGezien))
-      .all();
+    // Use raw SQL to avoid issues with missing columns (team, verdieping) on older DBs
+    let agents: Record<string, unknown>[];
+    try {
+      agents = await db
+        .select()
+        .from(agentActiviteit)
+        .where(sql`(${agentActiviteit.aangemaaktOp} >= ${vandaag} OR ${agentActiviteit.status} IN ('actief', 'inactief'))`)
+        .orderBy(desc(agentActiviteit.laatstGezien))
+        .all();
+    } catch {
+      // Fallback: select only base columns if team/verdieping don't exist
+      const rows = await db.all(sql`
+        SELECT id, agent_id as agentId, agent_type as agentType, project,
+               laatste_actie as laatsteActie, details, status,
+               tokens_gebruikt as tokensGebruikt,
+               laatst_gezien as laatstGezien, aangemaakt_op as aangemaaktOp
+        FROM agent_activiteit
+        WHERE aangemaakt_op >= ${vandaag} OR status IN ('actief', 'inactief')
+        ORDER BY laatst_gezien DESC
+      `);
+      agents = rows as Record<string, unknown>[];
+    }
 
     // Screen-time: get recent activity for Sem and Syb
     let screenTime: { gebruiker: string; app: string; duur: number }[] = [];

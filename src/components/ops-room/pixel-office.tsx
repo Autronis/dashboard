@@ -216,13 +216,13 @@ function drawDesk(
     ctx.fillStyle = "#040406";
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   } else if (isActive) {
-    // Turquoise screen glow
+    // Turquoise screen glow — exact same as Sem's monitors
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
-    // Code lines
+    // Code lines — #23C6B750 like Sem's (hex alpha, no globalAlpha)
     ctx.fillStyle = "#23C6B750";
     for (let ln = 0; ln < 2; ln++) {
-      ctx.fillRect(monX + 2 * s, monY + (1.5 + ln * 1.5) * s, (3 + (tick + ln) % 3) * s, s * 0.7);
+      ctx.fillRect(monX + 1.5 * s, monY + (1.5 + ln * 1.5) * s, (3 + (tick + ln) % 3) * s, s);
     }
   } else {
     ctx.fillStyle = "#050608";
@@ -591,7 +591,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 26);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 50);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -798,7 +798,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Plant actual bottom-right corner of canvas
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;
-    drawPlant3D(CANVAS_W - 40, COFFEE_Y + 60, plantSway2);
+    drawPlant3D(CANVAS_W - 100, COFFEE_Y + 30, plantSway2);
 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);

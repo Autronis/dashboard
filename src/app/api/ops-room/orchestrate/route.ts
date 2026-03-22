@@ -108,6 +108,8 @@ export async function POST(req: NextRequest) {
         beschrijving: plan.beschrijving,
         taken,
       },
+      projectId: projectId ?? null,
+      bron: bron ?? "ui",
     });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Onbekende fout";

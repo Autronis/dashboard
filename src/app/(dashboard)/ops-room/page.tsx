@@ -40,7 +40,10 @@ export default function OpsRoomPage() {
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
       if (!live) {
-        // No live data for this agent → idle, no active task, move to stand-by
+        // No live data — management stays active, builders go idle
+        const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi"]);
+        if (alwaysActive.has(mock.id)) return mock; // keep mock data for management
+        // Builders without live data → idle
         return {
           ...mock,
           status: "idle" as const,

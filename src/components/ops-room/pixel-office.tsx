@@ -13,7 +13,7 @@ import type { Agent } from "./types";
 
 const S = 5;
 const CANVAS_W = 1500;
-const CANVAS_H = 840;
+const CANVAS_H = 940;
 const WALL_H = 40;
 
 const UNIT_W = 200;
@@ -66,15 +66,22 @@ const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
 // Command screen — right side, prominent
 const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 5 + 20) - 180, h: 110 };
 
-// Slaapkamer — tight, just beds
+// Stand-by area — full width, multi-row grid
 const COFFEE_Y = DESKS_BOTTOM + 40;
 const COFFEE_X = 14;
 const COFFEE_W = CANVAS_W - 28;
-const COFFEE_H = 80;
+const STANDBY_COLS = 10; // max per row
+const STANDBY_SPACING = Math.floor(COFFEE_W / STANDBY_COLS); // ~147px
+const STANDBY_ROW_H = 90; // vertical spacing between rows
 
 const COFFEE_SEATS: { x: number; y: number }[] = [];
-for (let c = 0; c < 14; c++) {
-  COFFEE_SEATS.push({ x: COFFEE_X + 14 + c * 104, y: COFFEE_Y + 30 });
+for (let r = 0; r < 3; r++) { // up to 3 rows = 30 agents
+  for (let c = 0; c < STANDBY_COLS; c++) {
+    COFFEE_SEATS.push({
+      x: COFFEE_X + 14 + c * STANDBY_SPACING,
+      y: COFFEE_Y + 30 + r * STANDBY_ROW_H,
+    });
+  }
 }
 
 const FRAME_MS = 1000 / 8;
@@ -1059,18 +1066,20 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // === Sem desk ===
     drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
 
-    // === Desks pass 1 ===
+    // === Desks pass 1 — only draw agent at desk if they're in positions map ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
-      const agent = agents.find((a) => a.id === id);
-      if (!agent) return;
+      const placed = positions.get(id);
+      if (!placed) return; // agent is idle builder → skip, desk stays empty
+      const { agent } = placed;
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, false, S);
     });
 
     // === Desks pass 2: labels ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
-      const agent = agents.find((a) => a.id === id);
-      if (!agent) return;
+      const placed = positions.get(id);
+      if (!placed) return;
+      const { agent } = placed;
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S);
     });

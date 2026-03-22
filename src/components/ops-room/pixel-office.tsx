@@ -94,20 +94,35 @@ function drawRoleIcon(ctx: CanvasRenderingContext2D, role: string, agentId: stri
   const c = (clr: string) => { ctx.fillStyle = clr; };
 
   if (agentId === "sem") {
-    // Crown — golden, 3 points
+    // Queen's crown — rounded arch with cross on top
     c("#f59e0b");
-    ctx.fillRect(ix, iy + 5 * s, 10 * s, 3 * s); // base
-    ctx.fillRect(ix + s, iy + 3 * s, 8 * s, 2 * s); // mid
-    ctx.fillRect(ix, iy + 2 * s, 2 * s, 3 * s); // left point
-    ctx.fillRect(ix + 4 * s, iy, 2 * s, 5 * s); // center point (tall)
-    ctx.fillRect(ix + 8 * s, iy + 2 * s, 2 * s, 3 * s); // right point
-    // Gems
+    // Base band
+    ctx.fillRect(ix, iy + 6 * s, 10 * s, 2.5 * s);
+    // Arch (rounded top)
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 4 * s, 5 * s, Math.PI, 0);
+    ctx.fill();
+    // Hollow inside arch
+    c("#0d1117");
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 4.5 * s, 3.2 * s, Math.PI, 0);
+    ctx.fill();
+    // Cross on top
+    c("#f59e0b");
+    ctx.fillRect(ix + 4 * s, iy - 2 * s, 2 * s, 3.5 * s);
+    ctx.fillRect(ix + 3 * s, iy - 0.5 * s, 4 * s, 1.5 * s);
+    // Orb under cross
     c("#ef4444");
-    ctx.fillRect(ix + s, iy + 5 * s, s, s);
+    ctx.beginPath();
+    ctx.arc(ix + 5 * s, iy + 1 * s, 1.2 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // Gems on band
     c("#3b82f6");
-    ctx.fillRect(ix + 4.5 * s, iy + 5 * s, s, s);
+    ctx.fillRect(ix + 2 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
     c("#4ade80");
-    ctx.fillRect(ix + 8 * s, iy + 5 * s, s, s);
+    ctx.fillRect(ix + 4.5 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
+    c("#ef4444");
+    ctx.fillRect(ix + 7 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
   } else if (role === "manager") {
     // Target/crosshair — Theo steers the team
     c("#f59e0b");

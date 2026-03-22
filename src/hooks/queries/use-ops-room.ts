@@ -77,7 +77,10 @@ function mapRowToAgent(row: AgentActiviteitRow): Agent {
 }
 
 async function fetchOpsRoom(): Promise<Agent[]> {
-  const res = await fetch("/api/ops-room/agents");
+  const res = await fetch("/api/ops-room/agents", {
+    credentials: "include",
+    headers: { "x-ops-token": "autronis-ops-2026" },
+  });
   if (!res.ok) throw new Error("Kon Ops Room data niet laden");
   const data = await res.json();
   return (data.agents as AgentActiviteitRow[]).map(mapRowToAgent);

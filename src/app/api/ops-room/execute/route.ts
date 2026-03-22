@@ -139,6 +139,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ result, tokens: message.usage });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Onbekend";
+    if (msg.includes("credit balance") || msg.includes("billing")) {
+      return NextResponse.json({ fout: "Anthropic API credits op. Vul credits aan op console.anthropic.com." }, { status: 402 });
+    }
     return NextResponse.json({ fout: msg }, { status: 500 });
   }
 }

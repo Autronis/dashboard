@@ -33,6 +33,7 @@ interface OrchestratorState {
   logs: LogEntry[];
   costs: CostTracker;
   theoQueue: TheoQueueItem[];
+  activeAgents: Set<string>; // agents currently executing tasks
 
   // Actions
   submitCommand: (opdracht: string) => Promise<void>;
@@ -64,6 +65,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   logs: [],
   costs: { totalTokens: 0, totalCost: 0 } as CostTracker,
   theoQueue: [],
+  activeAgents: new Set<string>(),
 
   submitCommand: async (opdracht: string) => {
     const cmdId = genId("cmd");
@@ -250,7 +252,15 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       // Lock files for this task
       task.bestanden.forEach((f) => lockedFiles.add(f));
-      addLog(set, task.agentId ?? "unknown", "task_start", `Start: ${task.titel}`);
+      const agentId = task.agentId ?? "unknown";
+      addLog(set, agentId, "task_start", `Start: ${task.titel}`);
+
+      // Activate agent in office
+      set((s) => {
+        const next = new Set(s.activeAgents);
+        next.add(agentId);
+        return { activeAgents: next };
+      });
 
       // Mark task as in_progress
       set((s) => ({
@@ -342,7 +352,13 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
           },
         }));
 
-        addLog(set, task.agentId ?? "unknown", "task_complete", `Klaar: ${task.titel} (${execTokens} tokens)`);
+        // Deactivate agent
+        set((s) => {
+          const next = new Set(s.activeAgents);
+          next.delete(agentId);
+          return { activeAgents: next };
+        });
+        addLog(set, agentId, "task_complete", `Klaar: ${task.titel} (${execTokens} tokens)`);
         playSuccess();
         if (reviewResult) {
           const approved = (reviewResult as Record<string, unknown>).goedgekeurd;
@@ -378,7 +394,12 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       } catch (error) {
         playError();
-        addLog(set, task.agentId ?? "unknown", "error", `Fout bij ${task.titel}: ${error instanceof Error ? error.message : "onbekend"}`);
+        set((s) => {
+          const next = new Set(s.activeAgents);
+          next.delete(agentId);
+          return { activeAgents: next };
+        });
+        addLog(set, agentId, "error", `Fout bij ${task.titel}: ${error instanceof Error ? error.message : "onbekend"}`);
         // Mark task as blocked
         set((s) => ({
           commands: s.commands.map((c) => {

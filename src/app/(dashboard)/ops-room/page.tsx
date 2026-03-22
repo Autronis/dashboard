@@ -21,6 +21,7 @@ import { ProjectPanel } from "@/components/ops-room/project-panel";
 import { OfficeViewSyb } from "@/components/ops-room/office-view-syb";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
+import { useOrchestrator } from "@/components/ops-room/orchestrator-store";
 
 type ViewMode = "office" | "grid" | "list";
 type FloorMode = "v1" | "v2" | "both";
@@ -31,6 +32,7 @@ export default function OpsRoomPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("office");
 
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
+  const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
 
   // Merge: mock roster as base, overlay live data
   // When live data exists: agents WITHOUT live activity → idle (stand-by)

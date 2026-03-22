@@ -22,7 +22,7 @@ const GRID_X = 220;
 
 // === Management row — Sem, Theo, Toby, Jones all on one line ===
 const MGMT_Y = WALL_H + 2;
-const SEM = { x: 20, y: MGMT_Y };
+const SEM = { x: 20, y: MGMT_Y + 16 };
 
 // Builders grid — shifted right, below management
 const BUILDER_X = 340;
@@ -205,7 +205,7 @@ function drawDesk(
   const monW = 40;
   const monH = 28;
   const monX = x + 18 * s; // right of keyboard+mouse area
-  const monY = deskY - monH + 3; // standing on desk surface, front area
+  const monY = deskY - monH + s * 3; // standing on desk, more toward front
 
   // Bezel (dark frame)
   ctx.fillStyle = "#1a1a25";
@@ -549,7 +549,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const emW = 40;
       const emH = 28;
       const emX = ex + 18 * S;
-      const emY = edY - emH + 3;
+      const emY = edY - emH + S * 3;
       ctx.fillStyle = "#1a1a25";
       ctx.fillRect(emX, emY, emW, emH);
       ctx.fillStyle = "#040406";
@@ -595,9 +595,9 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 18);
     ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + UNIT_W / 2, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
-    ctx.fillText("DE STAF", 20, DESK_POSITIONS.ari.y + 30);
+    ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 40);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 30);
+    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2, DESK_POSITIONS.wout.y - 10);
     // "STAND-BY" — with same gap above as other labels
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
@@ -800,7 +800,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // Plant under Sem's tags (below the label text, not on top of it)
     const plantSway1 = Math.sin(tick * 0.06) * 2;
-    drawPlant3D(SEM.x + 10, SEM.y + 28 * S, plantSway1);
+    drawPlant3D(SEM.x + 10, SEM.y + 32 * S, plantSway1);
 
     // Plant actual bottom-right corner of canvas
     const plantSway2 = Math.sin(tick * 0.06 + 2.5) * 2;

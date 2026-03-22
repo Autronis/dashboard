@@ -1248,14 +1248,29 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const bob = Math.sin(tick * 0.2 + i * 1.1) * 1;
       drawSprite(ctx, charDef.sprite, ax, ay + bob, S);
 
-      // Name below
+      // Name below with role icon
       const charH = charDef.rows * S;
+      const sbRolIcons: Record<string, { icon: string; color: string }> = {
+        manager: { icon: "♛", color: "#f59e0b" },
+        builder: { icon: "⚒", color: "#3b82f6" },
+        reviewer: { icon: "⊘", color: "#a855f7" },
+        architect: { icon: "❖", color: "#f59e0b" },
+        assistant: { icon: "◉", color: "#23C6B7" },
+        automation: { icon: "⚙", color: "#4ade80" },
+      };
+      const sbRol = sbRolIcons[agent.rol] ?? sbRolIcons.builder;
+      ctx.font = "bold 11px Inter, system-ui, sans-serif";
+      const sbIconW = ctx.measureText(sbRol.icon).width + 3;
       ctx.font = "bold 13px Inter, system-ui, sans-serif";
       const nw = ctx.measureText(agent.naam).width;
       ctx.fillStyle = "#0a0f14dd";
-      ctx.fillRect(ax - 2, ay + charH + 4, nw + 8, 15);
+      ctx.fillRect(ax - 2, ay + charH + 4, sbIconW + nw + 8, 15);
+      ctx.font = "bold 11px Inter, system-ui, sans-serif";
+      ctx.fillStyle = sbRol.color;
+      ctx.fillText(sbRol.icon, ax + 2, ay + charH + 16);
+      ctx.font = "bold 13px Inter, system-ui, sans-serif";
       ctx.fillStyle = agent.avatar;
-      ctx.fillText(agent.naam, ax + 2, ay + charH + 16);
+      ctx.fillText(agent.naam, ax + 2 + sbIconW, ay + charH + 16);
 
       if (selectedId === agent.id) {
         ctx.strokeStyle = "#23C6B7"; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);

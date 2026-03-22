@@ -778,33 +778,28 @@ export function drawSemDesk(
   // Label: Crown icon + Sem / CEO / → Autronis
   const labelX = x + 2 * s;
   const labelY = y + 27 * s;
-  // Queen crown icon (custom drawn — arch with cross)
-  const crW = 14;
-  const crS = crW / 10;
-  const crX = labelX;
-  const crY = labelY - 8 * crS;
-  ctx.fillStyle = "#f59e0b";
-  // Base band
-  ctx.fillRect(crX, crY + 6 * crS, crW, 2.5 * crS);
-  // Arch
+  // Crown icon (Lucide-style, stroked)
+  const crW = 16;
+  const crSc = crW / 24;
+  ctx.save();
+  ctx.translate(labelX, labelY - 14);
+  ctx.scale(crSc, crSc);
+  ctx.strokeStyle = "#f59e0b";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
   ctx.beginPath();
-  ctx.arc(crX + 5 * crS, crY + 4 * crS, 5 * crS, Math.PI, 0);
+  ctx.moveTo(2, 17); ctx.lineTo(2, 4); ctx.lineTo(7, 8); ctx.lineTo(12, 2);
+  ctx.lineTo(17, 8); ctx.lineTo(22, 4); ctx.lineTo(22, 17);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.fillStyle = "#f59e0b30";
   ctx.fill();
-  ctx.fillStyle = "#0d1117";
-  ctx.beginPath();
-  ctx.arc(crX + 5 * crS, crY + 4.5 * crS, 3.2 * crS, Math.PI, 0);
-  ctx.fill();
-  // Cross
-  ctx.fillStyle = "#f59e0b";
-  ctx.fillRect(crX + 4 * crS, crY - 2 * crS, 2 * crS, 3 * crS);
-  ctx.fillRect(crX + 3 * crS, crY - 0.5 * crS, 4 * crS, 1.2 * crS);
-  // Gems
-  ctx.fillStyle = "#3b82f6";
-  ctx.fillRect(crX + 2 * crS, crY + 6.5 * crS, crS, crS);
-  ctx.fillStyle = "#4ade80";
-  ctx.fillRect(crX + 4.5 * crS, crY + 6.5 * crS, crS, crS);
+  ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
+  // Gem
   ctx.fillStyle = "#ef4444";
-  ctx.fillRect(crX + 7 * crS, crY + 6.5 * crS, crS, crS);
+  ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
   const crownW = crW + 4;
   // Name
   ctx.font = "bold 12px Inter, system-ui, sans-serif";

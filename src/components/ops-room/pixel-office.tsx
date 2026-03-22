@@ -88,147 +88,106 @@ const FRAME_MS = 1000 / 8;
 
 // ============ 2D DESK (proven working design + shadow for depth) ============
 
-// Custom pixel art role icons (drawn on canvas, not emoji)
+// Draw Lucide-style SVG icons on canvas using Path2D
+// These match the icons from agent-station.tsx: Crown, Hammer, Search, Compass, Bot, Cog
 function drawRoleIcon(ctx: CanvasRenderingContext2D, role: string, agentId: string, ix: number, iy: number, size: number) {
-  const s = size / 10; // scale unit
-  const c = (clr: string) => { ctx.fillStyle = clr; };
+  const sc = size / 24; // Lucide icons are 24x24
+  ctx.save();
+  ctx.translate(ix, iy);
+  ctx.scale(sc, sc);
+  ctx.lineWidth = 2 / sc;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  const color = agentId === "sem" ? "#f59e0b"
+    : role === "manager" ? "#f59e0b"
+    : role === "reviewer" ? "#a855f7"
+    : role === "architect" ? "#f59e0b"
+    : role === "assistant" ? "#23C6B7"
+    : role === "automation" ? "#4ade80"
+    : "#3b82f6";
+
+  ctx.strokeStyle = color;
+  ctx.fillStyle = "transparent";
+  ctx.lineWidth = 2;
 
   if (agentId === "sem") {
-    // Queen's crown — rounded arch with cross on top
-    c("#f59e0b");
-    // Base band
-    ctx.fillRect(ix, iy + 6 * s, 10 * s, 2.5 * s);
-    // Arch (rounded top)
+    // Crown (same as Theo but with a filled gem)
     ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 4 * s, 5 * s, Math.PI, 0);
+    ctx.moveTo(2, 17); ctx.lineTo(2, 4); ctx.lineTo(7, 8); ctx.lineTo(12, 2);
+    ctx.lineTo(17, 8); ctx.lineTo(22, 4); ctx.lineTo(22, 17);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = color + "30";
     ctx.fill();
-    // Hollow inside arch
-    c("#0d1117");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 4.5 * s, 3.2 * s, Math.PI, 0);
-    ctx.fill();
-    // Cross on top
-    c("#f59e0b");
-    ctx.fillRect(ix + 4 * s, iy - 2 * s, 2 * s, 3.5 * s);
-    ctx.fillRect(ix + 3 * s, iy - 0.5 * s, 4 * s, 1.5 * s);
-    // Orb under cross
-    c("#ef4444");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 1 * s, 1.2 * s, 0, Math.PI * 2);
-    ctx.fill();
-    // Gems on band
-    c("#3b82f6");
-    ctx.fillRect(ix + 2 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
-    c("#4ade80");
-    ctx.fillRect(ix + 4.5 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
-    c("#ef4444");
-    ctx.fillRect(ix + 7 * s, iy + 6.5 * s, 1.2 * s, 1.2 * s);
+    ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
+    // Gem
+    ctx.fillStyle = "#ef4444";
+    ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.fill();
   } else if (role === "manager") {
-    // Target/crosshair — Theo steers the team
-    c("#f59e0b");
+    // Crown
     ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 5 * s, 4 * s, 0, Math.PI * 2);
-    ctx.fill();
-    c("#0d1117");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 5 * s, 2.5 * s, 0, Math.PI * 2);
-    ctx.fill();
-    c("#f59e0b");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 5 * s, 1.2 * s, 0, Math.PI * 2);
-    ctx.fill();
-    // Cross lines
-    ctx.fillRect(ix + 4.5 * s, iy, s, 10 * s);
-    ctx.fillRect(ix, iy + 4.5 * s, 10 * s, s);
+    ctx.moveTo(2, 17); ctx.lineTo(2, 4); ctx.lineTo(7, 8); ctx.lineTo(12, 2);
+    ctx.lineTo(17, 8); ctx.lineTo(22, 4); ctx.lineTo(22, 17);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
   } else if (role === "reviewer") {
-    // Magnifying glass — Toby inspects code
-    c("#a855f7");
-    ctx.beginPath();
-    ctx.arc(ix + 4 * s, iy + 4 * s, 3.5 * s, 0, Math.PI * 2);
-    ctx.fill();
-    c("#0d1117");
-    ctx.beginPath();
-    ctx.arc(ix + 4 * s, iy + 4 * s, 2 * s, 0, Math.PI * 2);
-    ctx.fill();
-    // Lens reflection
-    c("#c084fc40");
-    ctx.beginPath();
-    ctx.arc(ix + 3 * s, iy + 3 * s, s, 0, Math.PI * 2);
-    ctx.fill();
-    // Handle
-    c("#a855f7");
-    ctx.save();
-    ctx.translate(ix + 6.5 * s, iy + 6.5 * s);
-    ctx.rotate(0.8);
-    ctx.fillRect(0, 0, 1.5 * s, 4 * s);
-    ctx.restore();
+    // Search / magnifying glass
+    ctx.beginPath(); ctx.arc(11, 11, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(16, 16); ctx.lineTo(22, 22); ctx.stroke();
   } else if (role === "architect") {
-    // Compass/protractor — Jones designs
-    c("#f59e0b");
-    // Triangle shape (like drafting)
+    // Compass
+    ctx.beginPath(); ctx.arc(12, 12, 10, 0, Math.PI * 2); ctx.stroke();
+    // Needle
     ctx.beginPath();
-    ctx.moveTo(ix + 5 * s, iy);
-    ctx.lineTo(ix + 10 * s, iy + 9 * s);
-    ctx.lineTo(ix, iy + 9 * s);
+    ctx.moveTo(12, 2); ctx.lineTo(14, 12); ctx.lineTo(12, 22); ctx.lineTo(10, 12);
     ctx.closePath();
+    ctx.fillStyle = color + "40";
     ctx.fill();
-    c("#0d1117");
-    ctx.beginPath();
-    ctx.moveTo(ix + 5 * s, iy + 3 * s);
-    ctx.lineTo(ix + 8 * s, iy + 8 * s);
-    ctx.lineTo(ix + 2 * s, iy + 8 * s);
-    ctx.closePath();
-    ctx.fill();
+    ctx.stroke();
+    // Center
+    ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.stroke();
   } else if (role === "assistant") {
-    // Satellite dish — Ari scans & researches
-    c("#23C6B7");
+    // Bot
     ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 3 * s, 4 * s, Math.PI, 0);
-    ctx.fill();
-    c("#0d1117");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 3 * s, 2.5 * s, Math.PI, 0);
-    ctx.fill();
-    // Pole
-    c("#23C6B7");
-    ctx.fillRect(ix + 4.5 * s, iy + 3 * s, s, 6 * s);
-    // Base
-    ctx.fillRect(ix + 2 * s, iy + 8 * s, 6 * s, 1.5 * s);
-    // Signal dot
-    c("#4ade80");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy + 2 * s, s, 0, Math.PI * 2);
-    ctx.fill();
-  } else if (role === "automation") {
-    // Robot head — Rodi automates
-    c("#4ade80");
-    ctx.fillRect(ix + s, iy + 2 * s, 8 * s, 6 * s); // head
-    ctx.fillRect(ix + 3 * s, iy, 4 * s, 2 * s); // antenna base
-    ctx.fillRect(ix + 4.5 * s, iy - s, s, 2 * s); // antenna
+    ctx.roundRect(4, 8, 16, 12, 2); ctx.stroke();
     // Eyes
-    c("#0d1117");
-    ctx.fillRect(ix + 2.5 * s, iy + 4 * s, 2 * s, 1.5 * s);
-    ctx.fillRect(ix + 5.5 * s, iy + 4 * s, 2 * s, 1.5 * s);
-    // Mouth
-    ctx.fillRect(ix + 3 * s, iy + 6.5 * s, 4 * s, s);
-    // Antenna light
-    c("#ff4444");
-    ctx.beginPath();
-    ctx.arc(ix + 5 * s, iy - s, 0.8 * s, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(9, 14, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(15, 14, 1.5, 0, Math.PI * 2); ctx.fill();
+    // Antenna
+    ctx.beginPath(); ctx.moveTo(12, 8); ctx.lineTo(12, 4); ctx.stroke();
+    ctx.beginPath(); ctx.arc(12, 3, 1.5, 0, Math.PI * 2); ctx.stroke();
+    // Ears
+    ctx.beginPath(); ctx.moveTo(4, 13); ctx.lineTo(2, 13); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(20, 13); ctx.lineTo(22, 13); ctx.stroke();
+  } else if (role === "automation") {
+    // Cog / gear
+    ctx.beginPath(); ctx.arc(12, 12, 3, 0, Math.PI * 2); ctx.stroke();
+    // Teeth
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const x1 = 12 + Math.cos(a) * 6;
+      const y1 = 12 + Math.sin(a) * 6;
+      const x2 = 12 + Math.cos(a) * 9;
+      const y2 = 12 + Math.sin(a) * 9;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(12, 12, 7, 0, Math.PI * 2); ctx.stroke();
   } else {
-    // Builder — lightning bolt
-    c("#3b82f6");
+    // Hammer (builder)
     ctx.beginPath();
-    ctx.moveTo(ix + 6 * s, iy);
-    ctx.lineTo(ix + 2 * s, iy + 5 * s);
-    ctx.lineTo(ix + 5 * s, iy + 5 * s);
-    ctx.lineTo(ix + 4 * s, iy + 10 * s);
-    ctx.lineTo(ix + 8 * s, iy + 4 * s);
-    ctx.lineTo(ix + 5 * s, iy + 4 * s);
+    ctx.moveTo(15, 12); ctx.lineTo(8, 19); ctx.stroke(); // handle
+    ctx.beginPath();
+    ctx.moveTo(9, 3); ctx.lineTo(19, 8); ctx.lineTo(16, 12); ctx.lineTo(6, 7);
     ctx.closePath();
+    ctx.stroke();
+    ctx.fillStyle = color + "30";
     ctx.fill();
   }
+
+  ctx.restore();
 }
 
 function drawDesk(

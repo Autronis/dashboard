@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import { FolderOpen } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { FolderOpen, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
 import type { Agent } from "./types";
@@ -10,7 +12,27 @@ interface ProjectPanelProps {
   agents: Agent[];
 }
 
+interface DbProject {
+  id: number;
+  naam: string;
+}
+
 export function ProjectPanel({ agents }: ProjectPanelProps) {
+  // Fetch all projects from DB to match names to IDs
+  const { data: dbProjects } = useQuery<DbProject[]>({
+    queryKey: ["projecten-lookup"],
+    queryFn: async () => {
+      const res = await fetch("/api/projecten");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.projecten ?? data ?? []).map((p: Record<string, unknown>) => ({
+        id: p.id,
+        naam: p.naam,
+      }));
+    },
+    staleTime: 60_000,
+  });
+
   const activeProjects = useMemo(() => {
     const map = new Map<string, { names: string[]; hasError: boolean }>();
     agents.forEach((a) => {
@@ -24,6 +46,27 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     });
     return map;
   }, [agents]);
+
+  // Build a name→id lookup (case-insensitive, partial match)
+  const projectIdMap = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!dbProjects) return map;
+    for (const dbp of dbProjects) {
+      map.set(dbp.naam.toLowerCase(), dbp.id);
+    }
+    return map;
+  }, [dbProjects]);
+
+  function findProjectId(projectName: string): number | null {
+    const lower = projectName.toLowerCase();
+    // Exact match
+    if (projectIdMap.has(lower)) return projectIdMap.get(lower)!;
+    // Partial match (project name contains DB name or vice versa)
+    for (const [dbName, id] of projectIdMap) {
+      if (lower.includes(dbName) || dbName.includes(lower)) return id;
+    }
+    return null;
+  }
 
   if (activeProjects.size === 0) return null;
 
@@ -39,11 +82,9 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
       <div className="p-2 space-y-1">
         {Array.from(activeProjects.entries()).map(([proj, { names, hasError }]) => {
           const color = getProjectColor(proj);
-          return (
-            <div
-              key={proj}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-autronis-card-hover transition-colors"
-            >
+          const projectId = findProjectId(proj);
+          const content = (
+            <>
               <div
                 className="w-1 h-8 rounded-full shrink-0"
                 style={{ backgroundColor: color }}
@@ -63,6 +104,27 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
                   hasError ? "bg-red-400" : "bg-green-400 animate-pulse"
                 )}
               />
+            </>
+          );
+
+          if (projectId) {
+            return (
+              <Link
+                key={proj}
+                href={`/projecten/${projectId}`}
+                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-autronis-card-hover transition-colors group cursor-pointer"
+              >
+                {content}
+              </Link>
+            );
+          }
+
+          return (
+            <div
+              key={proj}
+              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-autronis-card-hover transition-colors"
+            >
+              {content}
             </div>
           );
         })}

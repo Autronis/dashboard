@@ -67,7 +67,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
             className={`fixed right-0 top-0 z-50 h-full bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto transition-all duration-300 ${fullscreen ? "w-full max-w-full" : "w-[400px] max-w-[90vw]"}`}
           >
             {/* Header */}

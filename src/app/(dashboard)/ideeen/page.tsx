@@ -152,6 +152,7 @@ export default function IdeeenPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
   const [scoringIdee, setScoringIdee] = useState<number | null>(null);
+  const [startModusOpen, setStartModusOpen] = useState(false);
 
   // Form state
   const [formNaam, setFormNaam] = useState("");
@@ -367,8 +368,22 @@ export default function IdeeenPage() {
 
   function handleStartProject() {
     if (!detailIdee) return;
-    startProjectMutation.mutate(detailIdee.id, {
-      onSuccess: (data) => { addToast(`Project "${data.project.naam}" aangemaakt`, "succes"); setDetailIdee(null); },
+    setStartModusOpen(true);
+  }
+
+  function handleStartWithModus(modus: "team" | "zelf") {
+    if (!detailIdee) return;
+    setStartModusOpen(false);
+    startProjectMutation.mutate({ id: detailIdee.id, modus }, {
+      onSuccess: (data) => {
+        addToast(`Project "${data.project.naam}" aangemaakt`, "succes");
+        setDetailIdee(null);
+        if (modus === "team") {
+          router.push("/ops-room");
+        } else {
+          router.push(`/projecten/${data.project.id}`);
+        }
+      },
       onError: (err) => addToast(err.message || "Kon project niet starten", "fout"),
     });
   }
@@ -1071,6 +1086,51 @@ export default function IdeeenPage() {
 
       <ConfirmDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} onBevestig={handleDelete}
         titel="Idee verwijderen?" bericht={`Weet je zeker dat je "${detailIdee?.naam}" wilt verwijderen?`} bevestigTekst="Verwijderen" variant="danger" />
+
+      {/* Start project keuze modal */}
+      {startModusOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setStartModusOpen(false)}>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-autronis-text-primary mb-1">Project starten</h3>
+            <p className="text-sm text-autronis-text-secondary mb-5">Hoe wil je &quot;{detailIdee?.naam}&quot; bouwen?</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => handleStartWithModus("team")}
+                disabled={startProjectMutation.isPending}
+                className="flex items-center gap-4 p-4 rounded-xl border border-autronis-border hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-autronis-accent/15 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 text-autronis-accent" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-autronis-text-primary">Team laten bouwen</p>
+                  <p className="text-xs text-autronis-text-tertiary">Ops Room maakt een plan en wijst agents toe</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-autronis-text-tertiary ml-auto shrink-0" />
+              </button>
+              <button
+                onClick={() => handleStartWithModus("zelf")}
+                disabled={startProjectMutation.isPending}
+                className="flex items-center gap-4 p-4 rounded-xl border border-autronis-border hover:border-amber-500/50 hover:bg-amber-500/5 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                  <User className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-autronis-text-primary">Zelf bouwen</p>
+                  <p className="text-xs text-autronis-text-tertiary">Geen Ops Room, direct aan de slag</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-autronis-text-tertiary ml-auto shrink-0" />
+              </button>
+            </div>
+            {startProjectMutation.isPending && (
+              <div className="flex items-center gap-2 mt-4 text-sm text-autronis-text-secondary">
+                <Loader2 className="w-4 h-4 animate-spin" />Project wordt aangemaakt...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
     </PageTransition>
   );

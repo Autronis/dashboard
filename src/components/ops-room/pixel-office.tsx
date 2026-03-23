@@ -561,11 +561,8 @@ function drawDesk(
   }
 
   if (isSelected) {
-    ctx.strokeStyle = "#23C6B7";
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 3]);
-    ctx.strokeRect(x, y - s, 28 * s, 28 * s);
-    ctx.setLineDash([]);
+    ctx.fillStyle = "#23C6B710";
+    ctx.beginPath(); ctx.roundRect(x - 2, y - s - 2, 28 * s + 4, 28 * s + 4, 6); ctx.fill();
   }
 }
 

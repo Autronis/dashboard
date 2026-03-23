@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Hammer, Search, Compass, Bot, Cog, Crown,
@@ -9,8 +10,29 @@ import {
 import { cn } from "@/lib/utils";
 import { MiniTerminal } from "./mini-terminal";
 import { getProjectColor } from "./project-colors";
+import { getCharacterDef, drawSprite } from "./pixel-sprites";
 import type { Agent, AgentRole } from "./types";
 import type { TaskLogEntry } from "./types";
+
+function AgentSprite({ agentId, size = 48 }: { agentId: string; size?: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const def = getCharacterDef(agentId);
+    const scale = Math.max(1, Math.floor(size / Math.max(def.cols, def.rows)));
+    canvas.width = size;
+    canvas.height = size;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, size, size);
+    const ox = Math.floor((size - def.cols * scale) / 2);
+    const oy = Math.max(0, Math.floor((size - def.rows * scale) / 2));
+    drawSprite(ctx, def.sprite, ox, oy, scale);
+  }, [agentId, size]);
+  return <canvas ref={ref} width={size} height={size} className="shrink-0" style={{ width: size, height: size, imageRendering: "pixelated" }} />;
+}
 
 const roleIcons: Record<AgentRole, typeof Bot> = {
   manager: Crown, builder: Hammer, reviewer: Search,
@@ -68,26 +90,40 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
           transition={{ duration: 0.2, ease: "easeOut" }}
           className="rounded-2xl border border-autronis-border bg-autronis-card p-4 flex flex-col gap-3"
         >
-          {/* Header */}
+          {/* Header with sprite */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div
-                className="flex items-center justify-center w-10 h-10 rounded-lg"
-                style={{ backgroundColor: `${agent.avatar}20` }}
-              >
-                {(() => {
-                  const Icon = roleIcons[agent.rol];
-                  return <Icon className={cn("w-5 h-5", roleColors[agent.rol])} />;
-                })()}
+              <div className="relative">
+                <div className="rounded-xl overflow-hidden border border-autronis-border/30 bg-autronis-bg p-1">
+                  <AgentSprite agentId={agent.id} size={44} />
+                </div>
+                <span className={cn(
+                  "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-autronis-card",
+                  agent.status === "working" ? "bg-green-400" :
+                  agent.status === "reviewing" ? "bg-purple-400" :
+                  agent.status === "error" ? "bg-red-400" :
+                  "bg-gray-400"
+                )} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold text-autronis-text-primary text-sm">{agent.naam}</h3>
-                  <span className={cn("text-[10px] font-medium", statusConfig[agent.status].color)}>
+                  <span className={cn(
+                    "text-[9px] font-semibold px-1.5 py-0.5 rounded-full",
+                    agent.status === "working" ? "bg-green-500/15 text-green-400" :
+                    agent.status === "reviewing" ? "bg-purple-500/15 text-purple-400" :
+                    agent.status === "error" ? "bg-red-500/15 text-red-400" :
+                    "bg-gray-500/15 text-gray-400"
+                  )}>
                     {statusConfig[agent.status].label}
                   </span>
                 </div>
                 <p className="text-[10px] text-autronis-text-tertiary">{roleLabels[agent.rol]}</p>
+                {agent.team && (
+                  <p className="text-[9px] text-autronis-text-tertiary mt-0.5">
+                    Team {agent.team === "sem" ? "Sem" : "Syb"}
+                  </p>
+                )}
               </div>
             </div>
             <button onClick={onClose}

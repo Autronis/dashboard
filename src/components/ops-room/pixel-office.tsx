@@ -595,7 +595,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
   const projectCardRects = useRef<{ proj: string; x: number; y: number; w: number; h: number }[]>([]);
 
   const semAgent: Agent = useMemo(() => ({
-    id: "sem", naam: "Sem", rol: "manager", status: "working",
+    id: "sem", naam: "Sem", rol: "manager", team: "sem", status: "working",
     huidigeTaak: { id: "ceo", beschrijving: "Alles overzien", project: "Autronis", startedAt: new Date().toISOString(), status: "bezig" },
     voltooideVandaag: 0, laatsteActiviteit: new Date().toISOString(),
     avatar: "#23C6B7", terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },

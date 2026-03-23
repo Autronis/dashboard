@@ -51,6 +51,7 @@ function mapRowToAgent(row: AgentActiviteitRow): Agent {
     id: row.agentId,
     naam: row.agentId.split("-")[0].charAt(0).toUpperCase() + row.agentId.split("-")[0].slice(1),
     rol: mapRole(row.agentType),
+    team: (row.agentId.endsWith("-syb") || ["autro", "daan", "finn", "leo"].includes(row.agentId)) ? "syb" as const : "sem" as const,
     status,
     huidigeTaak: status === "working" ? {
       id: `task-${row.id}`,

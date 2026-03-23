@@ -834,7 +834,7 @@ const SEM_DESK_LIGHT: SemDeskPalette = {
   chairBack: "#808898", chairBackLight: "#909aa8", chairSeat: "#707888",
   chairArm: "#687080", chairBase: "#606870",
   deskSurface: "#c8a878", deskFront: "#b89868", deskLegs: "#a88858",
-  monitorFrame: "#505868", labelColor: "#1a2535ee", labelSecondary: "#6a7a8a",
+  monitorFrame: "#505868", labelColor: "#1a2535ee", labelSecondary: "#4a5a68",
 };
 
 export function drawSemDesk(
@@ -935,18 +935,18 @@ export function drawSemDesk(
   ctx.restore();
   const crownW = crW + 4;
   // Name
-  ctx.font = "bold 12px Inter, system-ui, sans-serif";
+  ctx.font = "bold 14px Inter, system-ui, sans-serif";
   ctx.fillStyle = pal.labelColor;
   ctx.fillText(ceoName, labelX + crownW, labelY);
   const semNW = ctx.measureText(ceoName).width;
   // CEO label
-  ctx.font = "10px Inter, system-ui, sans-serif";
+  ctx.font = "bold 12px Inter, system-ui, sans-serif";
   ctx.fillStyle = pal.labelSecondary;
-  ctx.fillText("CEO", labelX + crownW + semNW + 4, labelY);
+  ctx.fillText("CEO", labelX + crownW + semNW + 5, labelY);
   // Project
-  ctx.font = "10px Inter, system-ui, sans-serif";
+  ctx.font = "11px Inter, system-ui, sans-serif";
   ctx.fillStyle = "#23C6B7";
-  ctx.fillText("→ Autronis", labelX, labelY + 16);
+  ctx.fillText("→ Autronis", labelX, labelY + 18);
 
   if (isSelected) {
     ctx.strokeStyle = "#23C6B7";

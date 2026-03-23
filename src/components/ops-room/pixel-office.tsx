@@ -1499,7 +1499,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
       // Label below — same style as desk labels (name + role + project)
       const charH = charDef.rows * S;
-      const sbIconSize = 14;
+      const sbIconSize = 16;
       const sbIconW = sbIconSize + 3;
       const labelY = ay + charH + 4;
 
@@ -1517,26 +1517,26 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       };
       const rolLabel = rolLabels[agent.rol]?.label ?? "Builder";
 
-      ctx.font = "bold 12px Inter, system-ui, sans-serif";
+      ctx.font = "bold 14px Inter, system-ui, sans-serif";
       ctx.fillStyle = pal.labelColor;
       let name = agent.naam;
-      ctx.fillText(name, ax + sbIconW, labelY + 10);
+      ctx.fillText(name, ax + sbIconW, labelY + 12);
 
       const nmW = ctx.measureText(name).width;
-      ctx.font = "10px Inter, system-ui, sans-serif";
-      ctx.fillStyle = isLight ? "#6a7a8a" : "#a0b0ba";
-      ctx.fillText(rolLabel, ax + sbIconW + nmW + 4, labelY + 10);
+      ctx.font = "bold 12px Inter, system-ui, sans-serif";
+      ctx.fillStyle = isLight ? "#4a5a68" : "#8a9aaa";
+      ctx.fillText(rolLabel, ax + sbIconW + nmW + 5, labelY + 12);
 
       // Project line (if active) or "Stand-by"
-      ctx.font = "10px Inter, system-ui, sans-serif";
+      ctx.font = "11px Inter, system-ui, sans-serif";
       if (agent.huidigeTaak) {
         const projColor = getProjectColor(agent.huidigeTaak.project);
         let proj = agent.huidigeTaak.project;
         ctx.fillStyle = projColor;
-        ctx.fillText("→ " + proj, ax, labelY + 24);
+        ctx.fillText("→ " + proj, ax, labelY + 26);
       } else {
-        ctx.fillStyle = isLight ? "#8a9aaa" : "#5a6a7a";
-        ctx.fillText("Stand-by", ax, labelY + 24);
+        ctx.fillStyle = isLight ? "#7a8a9a" : "#5a6a7a";
+        ctx.fillText("Stand-by", ax, labelY + 26);
       }
 
       if (selectedId === agent.id) {

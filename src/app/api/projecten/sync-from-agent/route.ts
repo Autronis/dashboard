@@ -175,6 +175,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Trigger Notion sync for projects that have a notionPageId (fire-and-forget)
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const opsToken = process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026";
+    for (const result of results) {
+      if (result.takenBijgewerkt > 0 || result.takenToegevoegd > 0) {
+        // Find the project and check for notionPageId
+        const proj = await db.select({ id: projecten.id, notionPageId: projecten.notionPageId })
+          .from(projecten).where(eq(projecten.naam, result.project)).get();
+        if (proj?.notionPageId) {
+          fetch(`${baseUrl}/api/projecten/${proj.id}/sync-notion`, {
+            method: "POST",
+            headers: { "x-ops-token": opsToken },
+          }).catch(() => {/* best effort */});
+        }
+      }
+    }
+
     return NextResponse.json({
       succes: true,
       resultaten: results,

@@ -195,13 +195,14 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   adam:    { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
-// Empty desks (row 1 above builders — for overflow active agents)
+// Empty desks (row 1 above builders + row 3 col 5 — for overflow active agents)
 const EMPTY_DESKS = [
   { x: BUILDER_X, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
+  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
@@ -517,15 +518,21 @@ function drawDesk(
     }
   }
 
-  // Empty chair (offline)
+  // Pushed-back chair (offline — chair is there but no one sitting)
   if (isOffline) {
-    ctx.fillStyle = "#3a3a4a";
-    ctx.save();
-    ctx.translate(x + 14 * s, deskY + 6 * s);
-    ctx.rotate(0.15);
-    ctx.fillRect(-3 * s, 0, 5 * s, 4 * s);
-    ctx.fillRect(-4 * s, -2 * s, 7 * s, 2 * s);
-    ctx.restore();
+    const ochX = x + 8 * s;
+    const ochY = deskY + 2 * s;
+    // Backrest
+    ctx.fillStyle = pal.chairBack;
+    ctx.fillRect(ochX + s, ochY, 8 * s, 4 * s);
+    ctx.fillStyle = pal.chairBackLight;
+    ctx.fillRect(ochX + 2 * s, ochY + s, 6 * s, 2 * s);
+    // Seat
+    ctx.fillStyle = pal.chairSeat;
+    ctx.fillRect(ochX, ochY + 4 * s, 10 * s, 2 * s);
+    // Base
+    ctx.fillStyle = pal.chairBase;
+    ctx.fillRect(ochX + 4 * s, ochY + 6 * s, 2 * s, s);
   }
 
   // Character standing (hovered)

@@ -241,36 +241,42 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const controller = new AbortController();
     set({ abortController: controller });
 
-    const tasks = cmd.plan.taken;
     const completedOutputs: string[] = [];
-    const lockedFiles = new Set<string>(); // file locking
+    const lockedFiles = new Set<string>();
+    const completedTaskIds = new Set<string>();
+    const failedTaskIds = new Set<string>();
+    const inFlightTaskIds = new Set<string>();
 
-    for (const task of tasks) {
-      // Check dependencies
-      const depsComplete = task.afhankelijkVan.every((depId) => {
-        const depTask = tasks.find((t) => t.id === depId);
-        return depTask?.status === "completed";
-      });
-      if (!depsComplete) continue;
+    // Helper: get fresh task list from store
+    function getFreshTasks(): PlanTask[] {
+      const c = get().commands.find((c) => c.id === commandId);
+      return c?.plan?.taken ?? [];
+    }
 
-      // File locking: check if any of this task's files are locked
-      const hasConflict = task.bestanden.some((f) => lockedFiles.has(f));
-      if (hasConflict) {
-        // Mark as blocked, will retry on next pass
-        set((s) => ({
-          commands: s.commands.map((c) => {
-            if (c.id !== commandId || !c.plan) return c;
-            return { ...c, plan: { ...c.plan, taken: c.plan.taken.map((t) =>
-              t.id === task.id ? { ...t, status: "blocked" as const } : t
-            )}};
-          }),
-        }));
-        continue;
-      }
+    // Helper: update a single task status in store
+    function updateTaskStatus(taskId: string, status: string, extra?: Record<string, unknown>) {
+      set((s) => ({
+        commands: s.commands.map((c) => {
+          if (c.id !== commandId || !c.plan) return c;
+          return {
+            ...c,
+            plan: {
+              ...c.plan,
+              taken: c.plan.taken.map((t) =>
+                t.id === taskId ? { ...t, status, ...extra } : t
+              ),
+            },
+          };
+        }),
+      }));
+    }
 
-      // Lock files for this task
-      task.bestanden.forEach((f) => lockedFiles.add(f));
+    // Execute a single task (returns promise)
+    async function executeTask(task: PlanTask): Promise<void> {
       const agentId = task.agentId ?? "unknown";
+      task.bestanden.forEach((f) => lockedFiles.add(f));
+      inFlightTaskIds.add(task.id);
+
       addLog(set, agentId, "task_start", `Start: ${task.titel}`);
 
       // Activate agent in office
@@ -281,27 +287,13 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       });
 
       // Mark task as in_progress
-      set((s) => ({
-        executingTaskId: task.id,
-        commands: s.commands.map((c) => {
-          if (c.id !== commandId || !c.plan) return c;
-          return {
-            ...c,
-            plan: {
-              ...c.plan,
-              taken: c.plan.taken.map((t) =>
-                t.id === task.id ? { ...t, status: "in_progress" as const } : t
-              ),
-            },
-          };
-        }),
-      }));
+      updateTaskStatus(task.id, "in_progress");
 
       try {
-        // Execute task via Claude API
-        const context = `Opdracht: ${cmd.opdracht}\nPlan: ${cmd.plan.beschrijving}\n\nEerdere output:\n${completedOutputs.join("\n---\n")}`;
+        const freshCmd = get().commands.find((c) => c.id === commandId);
+        const context = `Opdracht: ${freshCmd?.opdracht ?? ""}\nPlan: ${freshCmd?.plan?.beschrijving ?? ""}\n\nEerdere output:\n${completedOutputs.join("\n---\n")}`;
 
-        if (controller.signal.aborted) break;
+        if (controller.signal.aborted) throw new Error("Gestopt");
 
         const execRes = await fetch("/api/ops-room/execute", {
           method: "POST",
@@ -319,7 +311,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         // Write files if output contains bestanden
         const result = execData.result as Record<string, unknown>;
         if (result.bestanden && Array.isArray(result.bestanden)) {
-          addLog(set, task.agentId ?? "unknown", "info", `Schrijft ${(result.bestanden as unknown[]).length} bestanden...`);
+          addLog(set, agentId, "info", `Schrijft ${(result.bestanden as unknown[]).length} bestanden...`);
           await fetch("/api/ops-room/write-files", {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
@@ -327,25 +319,11 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
           });
         }
 
-        // Store result
         const output = JSON.stringify(result);
-        completedOutputs.push(`${task.agentId}: ${output.slice(0, 200)}`);
+        completedOutputs.push(`${agentId}: ${output.slice(0, 200)}`);
 
         // Review by Toby
-        set((s) => ({
-          commands: s.commands.map((c) => {
-            if (c.id !== commandId || !c.plan) return c;
-            return {
-              ...c,
-              plan: {
-                ...c.plan,
-                taken: c.plan.taken.map((t) =>
-                  t.id === task.id ? { ...t, status: "review" as const, resultaat: output } : t
-                ),
-              },
-            };
-          }),
-        }));
+        updateTaskStatus(task.id, "review", { resultaat: output });
 
         const reviewRes = await fetch("/api/ops-room/execute", {
           method: "POST",
@@ -365,21 +343,16 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         // Unlock files
         task.bestanden.forEach((f) => lockedFiles.delete(f));
+
         // Track tokens
         const execTokens = (execData.tokens?.input_tokens ?? 0) + (execData.tokens?.output_tokens ?? 0);
         set((s) => ({
           costs: {
             totalTokens: s.costs.totalTokens + execTokens,
-            totalCost: s.costs.totalCost + (execTokens / 1_000_000) * 15, // ~$15/M tokens blended
+            totalCost: s.costs.totalCost + (execTokens / 1_000_000) * 15,
           },
         }));
 
-        // Deactivate agent
-        set((s) => {
-          const next = new Set(s.activeAgents);
-          next.delete(agentId);
-          return { activeAgents: next };
-        });
         addLog(set, agentId, "task_complete", `Klaar: ${task.titel} (${execTokens} tokens)`);
         playSuccess();
         if (reviewResult) {
@@ -388,56 +361,90 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         }
 
         // Mark completed
+        completedTaskIds.add(task.id);
+        inFlightTaskIds.delete(task.id);
         set((s) => ({
           taskResults: [...s.taskResults, {
             taskId: task.id,
-            agentId: task.agentId ?? "unknown",
+            agentId,
             output: execData.result,
             reviewResult,
             tokensUsed: execTokens,
           }],
-          commands: s.commands.map((c) => {
-            if (c.id !== commandId || !c.plan) return c;
-            return {
-              ...c,
-              plan: {
-                ...c.plan,
-                taken: c.plan.taken.map((t) =>
-                  t.id === task.id ? {
-                    ...t,
-                    status: "completed" as const,
-                    reviewStatus: (reviewResult as Record<string, unknown>)?.goedgekeurd ? "approved" as const : "changes_requested" as const,
-                  } : t
-                ),
-              },
-            };
-          }),
         }));
+        updateTaskStatus(task.id, "completed", {
+          reviewStatus: (reviewResult as Record<string, unknown>)?.goedgekeurd ? "approved" : "changes_requested",
+        });
+
+        // Deactivate agent (only if no other in-flight task uses this agent)
+        const stillBusy = [...inFlightTaskIds].some((tid) => {
+          const t = getFreshTasks().find((tt) => tt.id === tid);
+          return t?.agentId === agentId;
+        });
+        if (!stillBusy) {
+          set((s) => {
+            const next = new Set(s.activeAgents);
+            next.delete(agentId);
+            return { activeAgents: next };
+          });
+        }
 
       } catch (error) {
         playError();
+        task.bestanden.forEach((f) => lockedFiles.delete(f));
+        inFlightTaskIds.delete(task.id);
+        failedTaskIds.add(task.id);
+
         set((s) => {
           const next = new Set(s.activeAgents);
           next.delete(agentId);
           return { activeAgents: next };
         });
         addLog(set, agentId, "error", `Fout bij ${task.titel}: ${error instanceof Error ? error.message : "onbekend"}`);
-        // Mark task as blocked
-        set((s) => ({
-          commands: s.commands.map((c) => {
-            if (c.id !== commandId || !c.plan) return c;
-            return {
-              ...c,
-              plan: {
-                ...c.plan,
-                taken: c.plan.taken.map((t) =>
-                  t.id === task.id ? { ...t, status: "blocked" as const } : t
-                ),
-              },
-            };
-          }),
-        }));
+        updateTaskStatus(task.id, "blocked");
       }
+    }
+
+    // === Scheduler loop: run tasks in parallel waves ===
+    let maxIterations = 50; // safety limit
+    while (maxIterations-- > 0) {
+      if (controller.signal.aborted) break;
+
+      const freshTasks = getFreshTasks();
+      const pendingTasks = freshTasks.filter((t) =>
+        !completedTaskIds.has(t.id) && !failedTaskIds.has(t.id) && !inFlightTaskIds.has(t.id)
+      );
+
+      if (pendingTasks.length === 0 && inFlightTaskIds.size === 0) break;
+      if (pendingTasks.length === 0 && inFlightTaskIds.size > 0) {
+        // Wait for in-flight tasks to finish
+        await new Promise((r) => setTimeout(r, 500));
+        continue;
+      }
+
+      // Find tasks whose dependencies are all completed
+      const readyTasks = pendingTasks.filter((task) =>
+        task.afhankelijkVan.every((depId) => completedTaskIds.has(depId))
+      );
+
+      // Filter out tasks with file conflicts
+      const launchable = readyTasks.filter((task) =>
+        !task.bestanden.some((f) => lockedFiles.has(f))
+      );
+
+      if (launchable.length === 0) {
+        if (inFlightTaskIds.size > 0) {
+          // Wait for in-flight tasks to free up dependencies/files
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
+        // No tasks can run and nothing in-flight — deadlock or all blocked
+        break;
+      }
+
+      // Launch all launchable tasks in parallel
+      const promises = launchable.map((task) => executeTask(task));
+      await Promise.allSettled(promises);
     }
 
     // All tasks done — mark command as completed or review

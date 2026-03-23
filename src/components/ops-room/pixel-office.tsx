@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback, useState, useMemo } from "react";
+import { useTheme } from "next-themes";
 import {
   drawSprite,
   drawSemDesk,
@@ -8,6 +9,138 @@ import {
 } from "./pixel-sprites";
 import { getProjectColor } from "./project-colors";
 import type { Agent } from "./types";
+
+// ============ THEME PALETTES ============
+interface OfficePalette {
+  bgGradTop: string;
+  bgGradBot: string;
+  gridColor: string;
+  floorTones: { r: number; g: number; b: number }[];
+  floorGapDarken: number;
+  floorGrainColor: string;
+  floorLightCenter: string;
+  floorLightEdge: string;
+  particleColor: string;
+  particleAlphaBase: number;
+  wallGradTop: string;
+  wallGradBot: string;
+  wallEdge: string;
+  windowFrame: string;
+  windowFrameHighlight: string;
+  skyGradTop: string;
+  skyGradMid: string;
+  skyGradBot: string;
+  starColors: string[];
+  cityBg: string;
+  cityWindowColor: string;
+  windowLightColor: string;
+  deskSurface: string;
+  deskFront: string;
+  deskLegs: string;
+  chairBack: string;
+  chairBackLight: string;
+  chairSeat: string;
+  chairArm: string;
+  chairBase: string;
+  monitorFrame: string;
+  monitorScreen: string;
+  keyboardBase: string;
+  keyboardKeys: string;
+  mouseColor: string;
+  labelColor: string;
+  shadowColor: string;
+  emptyDeskShadow: string;
+}
+
+const DARK_PALETTE: OfficePalette = {
+  bgGradTop: "#0a0f1a",
+  bgGradBot: "#0a1a1f",
+  gridColor: "#23C6B706",
+  floorTones: [
+    { r: 30, g: 22, b: 14 },
+    { r: 36, g: 26, b: 16 },
+    { r: 32, g: 24, b: 15 },
+  ],
+  floorGapDarken: 10,
+  floorGrainColor: "rgba(255,240,220,0.015)",
+  floorLightCenter: "rgba(255,255,255,0.015)",
+  floorLightEdge: "rgba(0,0,0,0.03)",
+  particleColor: "35, 198, 183",
+  particleAlphaBase: 0.03,
+  wallGradTop: "#1a2535",
+  wallGradBot: "#2a3a4a",
+  wallEdge: "#1e2e3e",
+  windowFrame: "#5a6a7a",
+  windowFrameHighlight: "#7a8a9a30",
+  skyGradTop: "#060818",
+  skyGradMid: "#0c1230",
+  skyGradBot: "#1a1840",
+  starColors: ["#ffffff", "#aaccff", "#ffddaa", "#aaddff", "#ff9966"],
+  cityBg: "#0a0a1a",
+  cityWindowColor: "rgba(255, 200, 100,",
+  windowLightColor: "rgba(35, 198, 183,",
+  deskSurface: "#4a3a2a",
+  deskFront: "#5a4430",
+  deskLegs: "#5a4430",
+  chairBack: "#353545",
+  chairBackLight: "#404055",
+  chairSeat: "#303040",
+  chairArm: "#2a2a38",
+  chairBase: "#252530",
+  monitorFrame: "#2a2a3a",
+  monitorScreen: "#040406",
+  keyboardBase: "#252530",
+  keyboardKeys: "#353545",
+  mouseColor: "#303038",
+  labelColor: "#ffffffcc",
+  shadowColor: "#00000010",
+  emptyDeskShadow: "#00000010",
+};
+
+const LIGHT_PALETTE: OfficePalette = {
+  bgGradTop: "#e8f4f8",
+  bgGradBot: "#dceef2",
+  gridColor: "#17B8A508",
+  floorTones: [
+    { r: 210, g: 190, b: 160 },  // light oak
+    { r: 220, g: 198, b: 168 },  // birch
+    { r: 215, g: 194, b: 164 },  // maple
+  ],
+  floorGapDarken: 15,
+  floorGrainColor: "rgba(255,255,255,0.08)",
+  floorLightCenter: "rgba(255,255,255,0.05)",
+  floorLightEdge: "rgba(0,0,0,0.01)",
+  particleColor: "15, 140, 130",
+  particleAlphaBase: 0.08,
+  wallGradTop: "#c8dae8",
+  wallGradBot: "#b8ccd8",
+  wallEdge: "#a0b4c0",
+  windowFrame: "#8a9aaa",
+  windowFrameHighlight: "#ffffff40",
+  skyGradTop: "#87ceeb",
+  skyGradMid: "#a8d8ea",
+  skyGradBot: "#cce5f0",
+  starColors: ["#ffffff", "#f0f0f0", "#e0e8f0", "#d0dce5", "#ffffff"],  // clouds
+  cityBg: "#b0c8d8",
+  cityWindowColor: "rgba(255, 255, 255,",
+  windowLightColor: "rgba(15, 140, 130,",
+  deskSurface: "#c8a878",
+  deskFront: "#b89868",
+  deskLegs: "#b89868",
+  chairBack: "#808898",
+  chairBackLight: "#909aa8",
+  chairSeat: "#707888",
+  chairArm: "#687080",
+  chairBase: "#606870",
+  monitorFrame: "#505868",
+  monitorScreen: "#1a1e28",
+  keyboardBase: "#606870",
+  keyboardKeys: "#808898",
+  mouseColor: "#707880",
+  labelColor: "#1a2535ee",
+  shadowColor: "#00000008",
+  emptyDeskShadow: "#00000008",
+};
 
 // ============ LAYOUT ============
 
@@ -442,6 +575,10 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
   const tickRef = useRef(0);
   const lastTRef = useRef(0);
   const rafRef = useRef(0);
+
+  const { resolvedTheme } = useTheme();
+  const paletteRef = useRef<OfficePalette>(DARK_PALETTE);
+  paletteRef.current = resolvedTheme === "light" ? LIGHT_PALETTE : DARK_PALETTE;
 
   // Smooth position interpolation for agent movement
   const animPositions = useRef(new Map<string, { x: number; y: number }>());

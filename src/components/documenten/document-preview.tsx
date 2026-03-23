@@ -136,6 +136,49 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 )}
               </div>
 
+              {/* Document inhoud */}
+              <div>
+                <button
+                  onClick={() => setShowContent(!showContent)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-autronis-accent hover:text-autronis-accent-hover transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Inhoud bekijken
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showContent ? "" : "-rotate-90"}`} />
+                </button>
+
+                {showContent && (
+                  <div className="mt-3 rounded-xl bg-autronis-bg border border-autronis-border p-4 overflow-y-auto max-h-[50vh]">
+                    {contentLoading ? (
+                      <div className="flex items-center gap-2 text-xs text-autronis-text-secondary py-4 justify-center">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Inhoud laden...
+                      </div>
+                    ) : contentHtml ? (
+                      <div
+                        className="prose prose-sm max-w-none
+                          [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-autronis-text-primary [&_h1]:mt-4 [&_h1]:mb-2
+                          [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-autronis-text-primary [&_h2]:mt-3 [&_h2]:mb-1.5
+                          [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-autronis-text-primary [&_h3]:mt-2.5 [&_h3]:mb-1
+                          [&_p]:text-xs [&_p]:text-autronis-text-secondary [&_p]:leading-relaxed [&_p]:mb-1.5
+                          [&_ul]:text-xs [&_ul]:text-autronis-text-secondary [&_ul]:pl-4 [&_ul]:list-disc [&_ul]:mb-2
+                          [&_ol]:text-xs [&_ol]:text-autronis-text-secondary [&_ol]:pl-4 [&_ol]:list-decimal [&_ol]:mb-2
+                          [&_li]:mb-0.5 [&_li]:leading-relaxed
+                          [&_pre]:bg-autronis-card [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:overflow-x-auto [&_pre]:mb-2
+                          [&_code]:text-autronis-accent [&_code]:text-xs
+                          [&_blockquote]:border-l-2 [&_blockquote]:border-autronis-accent/30 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-autronis-text-secondary
+                          [&_strong]:text-autronis-text-primary [&_strong]:font-semibold
+                          [&_hr]:border-autronis-border [&_hr]:my-3
+                          [&_a]:text-autronis-accent [&_a]:underline"
+                        dangerouslySetInnerHTML={{ __html: contentHtml }}
+                      />
+                    ) : (
+                      <p className="text-xs text-autronis-text-secondary text-center py-4">Geen inhoud beschikbaar</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* AI Verbeteren */}
               {doc.samenvatting && (
                 <div>

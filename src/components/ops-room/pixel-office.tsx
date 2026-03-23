@@ -195,16 +195,13 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   adam:    { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
-// Empty desks
+// Empty desks (row 1 above builders — for overflow active agents)
 const EMPTY_DESKS = [
-  // Row 1 (above builders)
   { x: BUILDER_X, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  // Row 3 (5th column)
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;

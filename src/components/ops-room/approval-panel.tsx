@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode } from "lucide-react";
+import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode, Loader2, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrchestrator } from "./orchestrator-store";
 import { SPECIALIZATION_LABELS } from "./orchestrator-types";
@@ -73,6 +73,9 @@ export function ApprovalPanel() {
   const pendingDbCommands = (dbCommands ?? []).filter((c) =>
     c.status === "awaiting_approval" || c.status === "planning" || c.status === "pending"
   );
+  const activeDbCommands = (dbCommands ?? []).filter((c) =>
+    c.status === "approved" || c.status === "in_progress"
+  );
 
   const handleReject = (id: string) => {
     rejectApproval(id, feedback);
@@ -80,7 +83,7 @@ export function ApprovalPanel() {
     setFeedback("");
   };
 
-  if (pendingApprovals.length === 0 && activeLocalCommands.length === 0 && pendingDbCommands.length === 0) return null;
+  if (pendingApprovals.length === 0 && activeLocalCommands.length === 0 && pendingDbCommands.length === 0 && activeDbCommands.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-autronis-border/50 bg-autronis-card overflow-hidden">

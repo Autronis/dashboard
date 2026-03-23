@@ -575,9 +575,10 @@ interface PixelOfficeProps {
   agents: Agent[];
   selectedId: string | null;
   onSelect: (agent: Agent) => void;
+  ceo?: { id: string; naam: string; avatar: string };
 }
 
-export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) {
+export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
@@ -595,12 +596,16 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
   // Track project card rectangles for hover detection
   const projectCardRects = useRef<{ proj: string; x: number; y: number; w: number; h: number }[]>([]);
 
-  const semAgent: Agent = useMemo(() => ({
-    id: "sem", naam: "Sem", rol: "manager", team: "sem", status: "working",
+  const ceoId = ceo?.id ?? "sem";
+  const ceoNaam = ceo?.naam ?? "Sem";
+  const ceoAvatar = ceo?.avatar ?? "#23C6B7";
+
+  const ceoAgent: Agent = useMemo(() => ({
+    id: ceoId, naam: ceoNaam, rol: "manager", team: ceoId === "syb" ? "syb" as const : "sem" as const, status: "working",
     huidigeTaak: { id: "ceo", beschrijving: "Alles overzien", project: "Autronis", startedAt: new Date().toISOString(), status: "bezig" },
     voltooideVandaag: 0, laatsteActiviteit: new Date().toISOString(),
-    avatar: "#23C6B7", terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
-  }), []);
+    avatar: ceoAvatar, terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
+  }), [ceoId, ceoNaam, ceoAvatar]);
 
   // Management always stays at desk, builders only when active
   const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi", "brent", "autro", "daan", "leo", "ari-syb"]);
@@ -1085,25 +1090,25 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.ellipse(px + 18, py + 50, 20, 5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 3D Pot — dark box with front face, right side, top
+      // 3D Pot — theme-aware
       // Front face
-      ctx.fillStyle = "#2a2a35";
+      ctx.fillStyle = isLight ? "#8a7060" : "#2a2a35";
       ctx.fillRect(px, py + 24, 30, 22);
       // Right side (3D depth)
-      ctx.fillStyle = "#1e1e28";
+      ctx.fillStyle = isLight ? "#7a6050" : "#1e1e28";
       ctx.fillRect(px + 30, py + 26, 6, 20);
       // Top rim
-      ctx.fillStyle = "#3a3a48";
+      ctx.fillStyle = isLight ? "#9a8070" : "#3a3a48";
       ctx.fillRect(px - 2, py + 21, 34, 4);
-      ctx.fillStyle = "#2a2a35";
+      ctx.fillStyle = isLight ? "#8a7060" : "#2a2a35";
       ctx.fillRect(px + 32, py + 23, 6, 3);
       // Bottom base
-      ctx.fillStyle = "#222230";
+      ctx.fillStyle = isLight ? "#6a5545" : "#222230";
       ctx.fillRect(px + 2, py + 46, 28, 3);
       // Dirt/soil visible at top
-      ctx.fillStyle = "#4a3828";
+      ctx.fillStyle = isLight ? "#6a5038" : "#4a3828";
       ctx.fillRect(px + 2, py + 24, 26, 3);
-      ctx.fillStyle = "#5a4430";
+      ctx.fillStyle = isLight ? "#7a6040" : "#5a4430";
       ctx.fillRect(px + 4, py + 24, 10, 2);
 
       // Stems (multiple)
@@ -1194,32 +1199,32 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const bsTblX = bsX + 18 - bsTblW / 2; // center under pot
     drawPlantTable(bsTblX, bsY + 52, 56);
 
-    // --- Pot (dark square with brown soil) ---
+    // --- Pot (theme-aware ceramic with brown soil) ---
     // Pot body
-    ctx.fillStyle = "#2a2a3a";
+    ctx.fillStyle = isLight ? "#8a7060" : "#2a2a3a";
     ctx.fillRect(bsX - 6, bsY + 28, 48, 22);
     // Pot right side (3D)
-    ctx.fillStyle = "#1e1e2e";
+    ctx.fillStyle = isLight ? "#7a6050" : "#1e1e2e";
     ctx.fillRect(bsX + 42, bsY + 30, 5, 20);
     // Pot rim top
-    ctx.fillStyle = "#353548";
+    ctx.fillStyle = isLight ? "#9a8070" : "#353548";
     ctx.fillRect(bsX - 8, bsY + 26, 52, 4);
-    ctx.fillStyle = "#2a2a3a";
+    ctx.fillStyle = isLight ? "#8a7060" : "#2a2a3a";
     ctx.fillRect(bsX + 44, bsY + 27, 5, 3);
     // Pot rim bottom detail
-    ctx.fillStyle = "#303042";
+    ctx.fillStyle = isLight ? "#7a6858" : "#303042";
     ctx.fillRect(bsX - 6, bsY + 44, 48, 3);
     // Pot base
-    ctx.fillStyle = "#222235";
+    ctx.fillStyle = isLight ? "#6a5545" : "#222235";
     ctx.fillRect(bsX - 4, bsY + 48, 44, 4);
     // Pot feet
-    ctx.fillStyle = "#1e1e2e";
+    ctx.fillStyle = isLight ? "#7a6050" : "#1e1e2e";
     ctx.fillRect(bsX - 2, bsY + 52, 6, 3);
     ctx.fillRect(bsX + 32, bsY + 52, 6, 3);
     // Soil (brown)
-    ctx.fillStyle = "#4a3020";
+    ctx.fillStyle = isLight ? "#6a5038" : "#4a3020";
     ctx.fillRect(bsX - 2, bsY + 30, 40, 4);
-    ctx.fillStyle = "#5a3828";
+    ctx.fillStyle = isLight ? "#7a6040" : "#5a3828";
     ctx.fillRect(bsX, bsY + 30, 12, 3);
     ctx.fillRect(bsX + 22, bsY + 31, 14, 2);
     // Pebbles/stones in soil
@@ -1396,22 +1401,22 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const sbTD = 6;
     const sbTY = CANVAS_H - 115;
     // Shadow
-    ctx.fillStyle = "#00000015";
+    ctx.fillStyle = pal.emptyDeskShadow;
     ctx.beginPath();
     ctx.ellipse(sbTX + sbTW / 2 - 4, sbTY + sbTH + sbTD + 8, sbTW / 2 + 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     // Table legs
-    ctx.fillStyle = "#5a4430";
+    ctx.fillStyle = pal.deskFront;
     ctx.fillRect(sbTX, sbTY + sbTH + sbTD, 3, 8);
     ctx.fillRect(sbTX + sbTW - 6, sbTY + sbTH + sbTD, 3, 8);
     // Front face
-    ctx.fillStyle = "#4a3828";
+    ctx.fillStyle = pal.deskFront;
     ctx.fillRect(sbTX - 2, sbTY + sbTH, sbTW, sbTD);
     // Right side face
-    ctx.fillStyle = "#5a4430";
+    ctx.fillStyle = pal.deskLegs;
     ctx.fillRect(sbTX + sbTW - 2, sbTY + sbTH - 1, 4, sbTD + 1);
     // Top surface
-    ctx.fillStyle = "#5c4a3a";
+    ctx.fillStyle = pal.deskSurface;
     ctx.fillRect(sbTX - 2, sbTY, sbTW, sbTH);
 
     // --- Coffee machine (left on table) ---
@@ -1643,7 +1648,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       }
     }
 
-    ctx.fillStyle = "#3a4a5510"; ctx.font = "bold 18px monospace";
+    ctx.fillStyle = isLight ? "#5a6a7a18" : "#3a4a5510"; ctx.font = "bold 18px monospace";
     ctx.fillText("AUTRONIS HQ", CANVAS_W - 200, CANVAS_H - 16);
 
     tickRef.current++;

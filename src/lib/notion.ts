@@ -445,6 +445,24 @@ function blockToHtml(block: NotionBlock): string {
   }
 }
 
+export async function replaceNotionPageContent(pageId: string, markdownContent: string): Promise<void> {
+  // Delete all existing blocks
+  const existing = await withRetry(() => notion.blocks.children.list({ block_id: pageId, page_size: 100 }));
+  for (const block of existing.results) {
+    await withRetry(() => notion.blocks.delete({ block_id: (block as { id: string }).id }));
+  }
+
+  // Convert markdown to Notion blocks and append in batches of 100
+  const newBlocks = contentToBlocks(markdownContent);
+  for (let i = 0; i < newBlocks.length; i += 100) {
+    const batch = newBlocks.slice(i, i + 100);
+    await withRetry(() => notion.blocks.children.append({
+      block_id: pageId,
+      children: batch as Parameters<typeof notion.blocks.children.append>[0]["children"],
+    }));
+  }
+}
+
 export async function fetchNotionPageContent(pageId: string): Promise<string> {
   const blocks = await withRetry(() => notion.blocks.children.list({ block_id: pageId, page_size: 100 }));
 

@@ -266,7 +266,8 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                         })
                           .then((r) => r.json())
                           .then((data) => {
-                            setAiChatMessages((prev) => [...prev, { role: "ai", text: data.antwoord || data.fout || "Geen antwoord" }]);
+                            setAiChatMessages((prev) => [...prev, { role: "ai", text: data.antwoord || data.fout || "Document bijgewerkt" }]);
+                            if (data.updatedHtml) setContentHtml(data.updatedHtml);
                           })
                           .catch(() => {
                             setAiChatMessages((prev) => [...prev, { role: "ai", text: "Er ging iets mis. Probeer het opnieuw." }]);

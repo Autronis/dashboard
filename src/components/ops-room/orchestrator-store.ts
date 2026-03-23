@@ -193,6 +193,18 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       }));
 
       playApproval();
+
+      // Immediately activate ALL agents from the plan in the office
+      const cmd = get().commands.find((c) => c.id === approval.commandId);
+      if (cmd?.plan) {
+        const planAgents = new Set(cmd.plan.taken.map((t) => t.agentId).filter(Boolean) as string[]);
+        set((s) => {
+          const next = new Set(s.activeAgents);
+          planAgents.forEach((a) => next.add(a));
+          return { activeAgents: next };
+        });
+      }
+
       // Start executing the plan
       get().executePlan(approval.commandId);
     }

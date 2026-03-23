@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Radio, LayoutGrid, List, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -36,6 +37,29 @@ export default function OpsRoomPage() {
   const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
   const orchestratorLogs = useOrchestrator((s) => s.logs);
 
+  // Poll DB for active commands → extract working agent IDs (survives refresh)
+  const { data: dbCommands } = useQuery({
+    queryKey: ["orchestrator-commands-agents"],
+    queryFn: async () => {
+      const res = await fetch("/api/ops-room/orchestrate", {
+        headers: { "x-ops-token": "autronis-ops-2026" },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.commands ?? []) as { status: string; plan: { taken: { agentId: string | null }[] } | null }[];
+    },
+    refetchInterval: 5000,
+  });
+  const dbActiveAgents = useMemo(() => {
+    const ids = new Set<string>();
+    (dbCommands ?? []).forEach((cmd) => {
+      if ((cmd.status === "approved" || cmd.status === "in_progress") && cmd.plan) {
+        cmd.plan.taken.forEach((t) => { if (t.agentId) ids.add(t.agentId); });
+      }
+    });
+    return ids;
+  }, [dbCommands]);
+
   // Merge: mock roster as base, overlay live data
   // When live data exists: agents WITHOUT live activity → idle (stand-by)
   const agents = useMemo(() => {
@@ -47,8 +71,8 @@ export default function OpsRoomPage() {
         // No live data — management stays active, builders go idle
         const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi"]);
         if (alwaysActive.has(mock.id)) return mock;
-        // Check if orchestrator has this agent active (executing a task)
-        if (orchestratorAgents.has(mock.id)) {
+        // Check if orchestrator or DB has this agent active
+        if (orchestratorAgents.has(mock.id) || dbActiveAgents.has(mock.id)) {
           return { ...mock, status: "working" as const };
         }
         // Builders without live data → idle
@@ -72,7 +96,7 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id));
     return [...merged, ...extraLive];
-  }, [liveAgents, orchestratorAgents]);
+  }, [liveAgents, orchestratorAgents, dbActiveAgents]);
   const isLive = liveAgents && liveAgents.length > 0;
 
   // Convert orchestrator logs + live API data to TaskLogEntry format

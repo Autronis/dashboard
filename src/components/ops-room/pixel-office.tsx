@@ -612,7 +612,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
   const positions = useMemo(() => {
     const map = new Map<string, { x: number; y: number; agent: Agent }>();
-    map.set("sem", { x: SEM.x, y: SEM.y, agent: semAgent });
+    map.set(ceoId, { x: SEM.x, y: SEM.y, agent: ceoAgent });
     let ei = 0; // empty desk index
 
     // First pass: desk agents
@@ -638,7 +638,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       if (seat) { map.set(a.id, { x: seat.x, y: seat.y, agent: a }); si++; }
     });
     return map;
-  }, [agents, semAgent]);
+  }, [agents, ceoAgent]);
 
   const findAgent = useCallback((mx: number, my: number): Agent | null => {
     const c = canvasRef.current;
@@ -1321,7 +1321,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
     ctx.fillRect(bsX + 15 + bsSway * 0.4, bsY + 10, 4, 1);
 
     // === Sem desk ===
-    drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S, isLight);
+    drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === ceoId, S, isLight, ceoId, ceoNaam);
 
     // === Desks pass 1 — always draw desk, but agent only if active/management ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
@@ -1557,7 +1557,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
           manager: "Manager", builder: "Builder", reviewer: "Reviewer",
           architect: "Architect", assistant: "Research & Docs", automation: "Automation",
         };
-        const rolText = agent.id === "sem" ? "CEO" : (rolTextMap[agent.rol] ?? "Builder");
+        const rolText = agent.id === ceoId ? "CEO" : (rolTextMap[agent.rol] ?? "Builder");
         const proj = agent.huidigeTaak?.project ?? "Stand-by";
         const projColor = agent.huidigeTaak ? getProjectColor(proj) : "#8a9aaa";
         const cost = `\u20AC${agent.kosten.kostenVandaag.toFixed(2)}`;

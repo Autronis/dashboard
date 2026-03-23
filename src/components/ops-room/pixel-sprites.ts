@@ -68,6 +68,8 @@ export function getCharacterDef(agentId: string): CharacterDef {
     case "rodi": return makeRodi();
     case "brent": return makeBrent();
 
+    case "syb": return makeSyb();
+
     // ===== TEAM SYB =====
     case "autro": return makeAutro();
     case "daan": return makeDaan();
@@ -446,6 +448,15 @@ function makeSem(): CharacterDef {
     shirt: "#1a1a2a", pants: "#1a1a2a", // black suit
     eyeColor: "#4488cc", curlyHair: true, stubble: true, mustache: true,
     tie: "#e0e0e0",
+  });
+}
+
+function makeSyb(): CharacterDef {
+  return makeHuman({
+    height: H_TALL, skin: "#f0c8a0", hair: "#6a4a20",
+    shirt: "#2a2a3a", pants: "#1a1a2a", // dark suit
+    eyeColor: "#553311", stubble: true,
+    tie: "#a855f7", // purple tie — Syb's signature color
   });
 }
 
@@ -831,9 +842,10 @@ export function drawSemDesk(
   x: number, y: number,
   tick: number, isSelected: boolean, s: number = 4,
   isLight: boolean = false,
+  ceoId: string = "sem", ceoName: string = "Sem",
 ) {
   const pal = isLight ? SEM_DESK_LIGHT : SEM_DESK_DARK;
-  const charDef = getCharacterDef("sem");
+  const charDef = getCharacterDef(ceoId);
   const deskY = y + 16 * s;
   const charH = charDef.rows * s;
   const charY = deskY - charH + 3 * s;
@@ -925,8 +937,8 @@ export function drawSemDesk(
   // Name
   ctx.font = "bold 12px Inter, system-ui, sans-serif";
   ctx.fillStyle = pal.labelColor;
-  ctx.fillText("Sem", labelX + crownW, labelY);
-  const semNW = ctx.measureText("Sem").width;
+  ctx.fillText(ceoName, labelX + crownW, labelY);
+  const semNW = ctx.measureText(ceoName).width;
   // CEO label
   ctx.font = "10px Inter, system-ui, sans-serif";
   ctx.fillStyle = pal.labelSecondary;

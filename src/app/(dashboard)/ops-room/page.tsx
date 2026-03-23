@@ -268,6 +268,7 @@ export default function OpsRoomPage() {
                   agents={agents.filter((a) => a.team === "syb")}
                   selectedId={selectedAgent?.id ?? null}
                   onSelect={handleSelectAgent}
+                  ceo={{ id: "syb", naam: "Syb", avatar: "#a855f7" }}
                 />
               </div>
             )}

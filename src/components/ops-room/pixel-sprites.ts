@@ -447,7 +447,7 @@ function makeSem(): CharacterDef {
     height: H_TALL, skin: "#f0c8a0", hair: "#3a2010",
     shirt: "#1a1a2a", pants: "#1a1a2a", // black suit
     eyeColor: "#4488cc", curlyHair: true, stubble: true, mustache: true,
-    tie: "#e0e0e0",
+    tie: "#23C6B7",
   });
 }
 

@@ -330,10 +330,10 @@ function drawDesk(
   if (labelsOnly) {
     const labelX = x + 2 * s;
     const labelY2 = deskY + deskH + 5 * s;
-    const maxW = deskW + 4 * s;
+    const maxW = deskW + 12 * s;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(x - 2, labelY2 - 2, maxW + 10, 50);
+    ctx.rect(x - 4, labelY2 - 4, maxW + 20, 56);
     ctx.clip();
 
     const rolLabels: Record<string, { label: string; color: string }> = {
@@ -350,29 +350,28 @@ function drawDesk(
       : (rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
 
     // Role icon (custom drawn)
-    drawRoleIcon(ctx, agent.rol ?? "builder", agent.id, labelX, labelY2 - 2, 14);
-    const iconW = 17;
+    drawRoleIcon(ctx, agent.rol ?? "builder", agent.id, labelX, labelY2 - 2, 16);
+    const iconW = 19;
 
-    // Line 1: Name + rol on same line (compact)
-    ctx.font = "bold 12px Inter, system-ui, sans-serif";
+    // Line 1: Name + rol on same line
+    ctx.font = "bold 14px Inter, system-ui, sans-serif";
     ctx.fillStyle = pal.labelColor;
     let name = agent.naam;
-    while (ctx.measureText(name).width > maxW * 0.4 && name.length > 2) name = name.slice(0, -1);
-    ctx.fillText(name, labelX + iconW, labelY2 + 10);
+    ctx.fillText(name, labelX + iconW, labelY2 + 12);
 
-    // Rol inline after name (smaller, grey — darker in light mode)
+    // Rol inline after name
     const nmW = ctx.measureText(name).width;
-    ctx.font = "10px Inter, system-ui, sans-serif";
-    ctx.fillStyle = pal === LIGHT_PALETTE ? "#5a6a78" : "#a0b0ba";
-    ctx.fillText(rol.label, labelX + iconW + nmW + 4, labelY2 + 10);
+    ctx.font = "bold 12px Inter, system-ui, sans-serif";
+    ctx.fillStyle = pal === LIGHT_PALETTE ? "#4a5a68" : "#8a9aaa";
+    ctx.fillText(rol.label, labelX + iconW + nmW + 5, labelY2 + 12);
 
-    // Line 2: → Project (more spacing below)
+    // Line 2: → Project
     if (agent.huidigeTaak) {
-      ctx.font = "10px Inter, system-ui, sans-serif";
+      ctx.font = "11px Inter, system-ui, sans-serif";
       let proj = agent.huidigeTaak.project;
       while (ctx.measureText("→ " + proj).width > maxW && proj.length > 3) proj = proj.slice(0, -2) + ".";
       ctx.fillStyle = projectColor;
-      ctx.fillText("→ " + proj, labelX, labelY2 + 26);
+      ctx.fillText("→ " + proj, labelX, labelY2 + 28);
     }
 
     ctx.restore();

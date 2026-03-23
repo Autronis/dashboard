@@ -66,6 +66,7 @@ export function getCharacterDef(agentId: string): CharacterDef {
     // ===== SUPPORT =====
     case "ari": return makeAri();
     case "rodi": return makeRodi();
+    case "brent": return makeBrent();
 
     default: return makeGeneric();
   }
@@ -592,6 +593,15 @@ function makeRodi(): CharacterDef {
     shirt: "#2563eb", pants: "#1e40af",
     eyeColor: "#331a0a", stubble: true,
     striped: "#dc2626", // red stripes on blue
+  });
+}
+
+function makeBrent(): CharacterDef {
+  // Blonde guy with glasses, amber/gold shirt — intake interviewer
+  return makeHuman({
+    height: H_NORM, skin: "#f0c8a0", hair: "#e8c840",
+    shirt: "#f59e0b", pants: "#2a2a3a",
+    eyeColor: "#3366aa", glasses: true,
   });
 }
 

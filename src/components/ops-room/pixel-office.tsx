@@ -33,9 +33,10 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   theo: { x: BUILDER_X + UNIT_W, y: MGMT_Y },
   toby: { x: BUILDER_X + UNIT_W * 2, y: MGMT_Y },
   jones: { x: BUILDER_X + UNIT_W * 3, y: MGMT_Y },
-  // Ari + Rodi — left column, vertically centered across 3 builder rows
+  // Ari + Rodi + Brent — left column, staf
   ari: { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
   rodi: { x: 20, y: BUILDER_START_Y + UNIT_H + Math.floor(UNIT_H / 2) + 10 },
+  brent: { x: 20, y: BUILDER_START_Y + UNIT_H * 2 + Math.floor(UNIT_H / 2) + 10 },
   // Builders row 2 (5 columns)
   wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
   bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
@@ -452,7 +453,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
   }), []);
 
   // Management always stays at desk, builders only when active
-  const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi"]);
+  const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi", "brent"]);
 
   const positions = useMemo(() => {
     const map = new Map<string, { x: number; y: number; agent: Agent }>();

@@ -239,6 +239,21 @@ const rodi: Agent = {
   kosten: { tokensVandaag: 4200, kostenVandaag: 0.06, tokensHuidigeTaak: 800 },
 };
 
+const brent: Agent = {
+  id: "brent",
+  naam: "Brent",
+  rol: "assistant",
+  status: "idle",
+  huidigeTaak: null,
+  voltooideVandaag: 0,
+  laatsteActiviteit: ago(60),
+  avatar: "#f59e0b",
+  terminal: [
+    { id: "br1", tekst: "Intake flow gereed — wacht op opdrachten", type: "info", tijdstip: ago(60) },
+  ],
+  kosten: noKosten,
+};
+
 // ============ EXPORTS ============
 
 export const agents: Agent[] = [
@@ -249,7 +264,7 @@ export const agents: Agent[] = [
   // Completed project builder (koffiehoek)
   object51,
   // Support
-  ari, rodi,
+  ari, rodi, brent,
   // Available pool (koffiehoek)
   ...availableBuilders,
 ];

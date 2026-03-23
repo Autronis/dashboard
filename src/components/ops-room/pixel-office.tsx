@@ -316,6 +316,7 @@ function drawDesk(
   labelsOnly: boolean,
   s: number,
   emptyDesk: boolean = false,
+  pal: OfficePalette = DARK_PALETTE,
 ) {
   const isActive = agent.status === "working" || agent.status === "reviewing";
   const isOffline = agent.status === "offline";
@@ -354,7 +355,7 @@ function drawDesk(
 
     // Line 1: Name + rol on same line (compact)
     ctx.font = "bold 12px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#ffffff";
+    ctx.fillStyle = pal.labelColor;
     let name = agent.naam;
     while (ctx.measureText(name).width > maxW * 0.4 && name.length > 2) name = name.slice(0, -1);
     ctx.fillText(name, labelX + iconW, labelY2 + 10);
@@ -411,12 +412,12 @@ function drawDesk(
   }
 
   // Shadow + reflection under desk
-  ctx.fillStyle = "#00000018";
+  ctx.fillStyle = pal.shadowColor;
   ctx.beginPath();
   ctx.ellipse(x + 14 * s, deskY + deskH + 4 * s, 14 * s, 3 * s, 0, 0, Math.PI * 2);
   ctx.fill();
-  // Subtle floor reflection (very dim mirror of desk edge)
-  ctx.fillStyle = "#ffffff03";
+  // Subtle floor reflection
+  ctx.fillStyle = pal === LIGHT_PALETTE ? "#ffffff06" : "#ffffff03";
   ctx.fillRect(x + 4 * s, deskY + deskH + 5 * s, deskW - 4 * s, 2);
 
   // Office chair (behind desk, where agent sits)
@@ -424,19 +425,19 @@ function drawDesk(
     const chairX = x + 7 * s;
     const chairBotY = deskY - s;
     // Backrest
-    ctx.fillStyle = "#353545";
+    ctx.fillStyle = pal.chairBack;
     ctx.fillRect(chairX + s, chairBotY - 10 * s, 8 * s, 4 * s);
-    ctx.fillStyle = "#404055";
+    ctx.fillStyle = pal.chairBackLight;
     ctx.fillRect(chairX + 2 * s, chairBotY - 9 * s, 6 * s, 2 * s);
     // Seat
-    ctx.fillStyle = "#303040";
+    ctx.fillStyle = pal.chairSeat;
     ctx.fillRect(chairX, chairBotY - 2 * s, 10 * s, 2 * s);
     // Armrests
-    ctx.fillStyle = "#2a2a38";
+    ctx.fillStyle = pal.chairArm;
     ctx.fillRect(chairX - s, chairBotY - 4 * s, s, 3 * s);
     ctx.fillRect(chairX + 10 * s, chairBotY - 4 * s, s, 3 * s);
     // Base pole
-    ctx.fillStyle = "#252530";
+    ctx.fillStyle = pal.chairBase;
     ctx.fillRect(chairX + 4 * s, chairBotY, 2 * s, s);
   }
 
@@ -449,11 +450,11 @@ function drawDesk(
   }
 
   // Desk surface
-  ctx.fillStyle = "#5c4a3a";
+  ctx.fillStyle = pal.deskSurface;
   ctx.fillRect(x + 2 * s, deskY, deskW, deskH);
-  ctx.fillStyle = "#4a3828";
+  ctx.fillStyle = pal.deskFront;
   ctx.fillRect(x + 2 * s, deskY + deskH, deskW, 2 * s);
-  ctx.fillStyle = "#5a4430";
+  ctx.fillStyle = pal.deskLegs;
   ctx.fillRect(x + 3 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 23 * s, deskY + deskH + 2 * s, 2 * s, 2 * s);
 
@@ -464,12 +465,12 @@ function drawDesk(
   const monY = deskY - monH + s * 3;
   const glow = 0.6 + Math.sin(tick * 0.35 + x * 0.01) * 0.15;
 
-  // Frame (always visible — dark border like Sem's)
-  ctx.fillStyle = "#2a2a3a";
+  // Frame (always visible)
+  ctx.fillStyle = pal.monitorFrame;
   ctx.fillRect(monX, monY, monW, monH);
 
   if (isOffline) {
-    ctx.fillStyle = "#040406";
+    ctx.fillStyle = pal.monitorScreen;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   } else if (isActive) {
     // Turquoise screen glow — same glow strength as Sem's monitors
@@ -487,24 +488,24 @@ function drawDesk(
   }
 
   // Stand
-  ctx.fillStyle = "#2a2a3a";
+  ctx.fillStyle = pal.monitorFrame;
   ctx.fillRect(monX + 3 * s, monY + monH, s, s);
 
   // Keyboard + mouse + water bottle
   if (!isOffline) {
     const kbX = x + 9 * s;
     const kbY = deskY + 2 * s;
-    ctx.fillStyle = "#252530";
+    ctx.fillStyle = pal.keyboardBase;
     ctx.fillRect(kbX, kbY, 6 * s, 1.5 * s);
-    ctx.fillStyle = isActive && tick % 4 < 2 ? "#404050" : "#353545";
+    ctx.fillStyle = isActive && tick % 4 < 2 ? pal.chairBackLight : pal.keyboardKeys;
     ctx.fillRect(kbX + s * 0.3, kbY + s * 0.2, 5.4 * s, s * 0.4);
     ctx.fillRect(kbX + s * 0.3, kbY + s * 0.8, 5.4 * s, s * 0.4);
     // Mouse (right of keyboard)
-    ctx.fillStyle = "#303038";
+    ctx.fillStyle = pal.mouseColor;
     ctx.beginPath();
     ctx.ellipse(kbX + 8 * s, kbY + s * 0.7, s * 0.8, s * 1.1, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = "#3a3a44";
+    ctx.fillStyle = pal.chairSeat;
     ctx.fillRect(kbX + 7.4 * s, kbY + s * 0.1, s * 0.3, s * 0.5);
     // Water bottle (only on occupied desks)
     if (!emptyDesk) {
@@ -1325,11 +1326,11 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const staysAtDesk = ALWAYS_AT_DESK.has(id);
       if (!isActive && !staysAtDesk) {
         // Draw empty desk (agent is in stand-by) — desk with furniture but no character
-        drawDesk(ctx, pos.x, pos.y, agent, "#3a4a55", tick, false, false, false, S, true);
+        drawDesk(ctx, pos.x, pos.y, agent, "#3a4a55", tick, false, false, false, S, true, pal);
         return;
       }
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
-      drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, false, S);
+      drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, false, S, false, pal);
     });
 
     // === Desks pass 2: labels (only for occupied desks) ===
@@ -1340,7 +1341,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const staysAtDesk = ALWAYS_AT_DESK.has(id);
       if (!isActive && !staysAtDesk) return; // no label for empty desk
       const pc = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : "#3a4a55";
-      drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S);
+      drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S, false, pal);
     });
 
     // === System connections between agents ===

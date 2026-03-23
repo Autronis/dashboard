@@ -560,10 +560,6 @@ function drawDesk(
     }
   }
 
-  if (isSelected) {
-    ctx.fillStyle = "#23C6B710";
-    ctx.beginPath(); ctx.roundRect(x - 2, y - s - 2, 28 * s + 4, 28 * s + 4, 6); ctx.fill();
-  }
 }
 
 // ============ COMPONENT ============
@@ -1679,13 +1675,6 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
         ctx.fillText("Stand-by", ax, labelY + 26);
       }
 
-      // Subtle glow under selected agent (no dashed border)
-      if (selectedId === agent.id) {
-        ctx.fillStyle = "#23C6B710";
-        ctx.beginPath();
-        ctx.roundRect(ax - 8, ay - 8, charDef.cols * S + 16, charH + 42, 8);
-        ctx.fill();
-      }
     });
 
     // === Hover tooltip (premium glassmorphism card) ===
@@ -1938,7 +1927,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
   // Expose spawnConfetti for external triggers
   const triggerConfetti = useCallback(() => {
-    spawnConfetti(CANVAS_W / 2, CANVAS_H / 2, 60);
+    spawnConfetti(CANVAS_W / 2, CANVAS_H * 0.65, 60);
   }, []);
 
   // Listen for confetti events from orchestrator

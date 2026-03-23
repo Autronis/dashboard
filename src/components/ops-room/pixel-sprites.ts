@@ -797,13 +797,6 @@ export function drawDeskUnit(
   ctx.fillStyle = agent.avatar;
   ctx.fillText(agent.naam, x + 2 * s, y + 26 * s);
 
-  // Selection
-  if (isSelected) {
-    ctx.strokeStyle = "#23C6B7";
-    ctx.lineWidth = 2;
-    ctx.fillStyle = "#23C6B710";
-    ctx.beginPath(); ctx.roundRect(x - 2, y - 2 * s - 2, 30 * s + 4, 30 * s + 4, 6); ctx.fill();
-  }
 }
 
 // ============ SEM L-DESK ============

@@ -107,7 +107,7 @@ export default function OpsRoomPage() {
       };
     });
     const mockIds = new Set(mockAgents.map((a) => a.id));
-    const extraLive = liveAgents.filter((a) => !mockIds.has(a.id));
+    const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
     return [...merged, ...extraLive];
   }, [liveAgents, orchestratorAgents, dbActiveAgents]);
   const isLive = liveAgents && liveAgents.length > 0;

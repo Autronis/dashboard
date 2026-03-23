@@ -1827,9 +1827,12 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
   const handleContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const r = e.currentTarget.getBoundingClientRect();
-    const a = findAgent(e.clientX - r.left, e.clientY - r.top);
+    const mx = e.clientX - r.left;
+    const my = e.clientY - r.top;
+    const a = findAgent(mx, my);
     if (a) {
-      setContextMenu({ x: e.clientX - r.left, y: e.clientY - r.top, agent: a });
+      // Store pixel position relative to container (not canvas internal coords)
+      setContextMenu({ x: mx, y: my, agent: a });
     } else {
       setContextMenu(null);
     }
@@ -1867,8 +1870,8 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
           className="absolute z-50 min-w-[160px] rounded-xl border shadow-2xl overflow-hidden backdrop-blur-sm
             border-autronis-border/50 bg-autronis-card/95"
           style={{
-            left: `${(contextMenu.x / CANVAS_W) * 100}%`,
-            top: `${(contextMenu.y / CANVAS_H) * 100}%`,
+            left: `${contextMenu.x}px`,
+            top: `${contextMenu.y}px`,
           }}
         >
           <div className="px-3 py-2 border-b border-autronis-border/30">

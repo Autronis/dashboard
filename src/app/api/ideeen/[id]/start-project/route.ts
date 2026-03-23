@@ -13,12 +13,14 @@ const PROJECTS_BASE = "c:/Users/semmi/OneDrive/Claude AI/Projects";
 
 // POST /api/ideeen/[id]/start-project — idee omzetten naar project
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const gebruiker = await requireAuth();
     const { id } = await params;
+    const body = await req.json().catch(() => ({}));
+    const modus: "team" | "zelf" = body.modus === "zelf" ? "zelf" : "team";
 
     // 1. Idee ophalen
     const idee = await db
@@ -137,28 +139,30 @@ export async function POST(
       await db.update(projecten).set({ projectDir }).where(eq(projecten.id, project.id));
     }
 
-    // 7. Ops Room orchestrator triggeren — Theo maakt een plan
-    try {
-      const beschrijving = idee.uitwerking || idee.omschrijving || idee.naam;
-      const opsCommand = `Nieuw project: ${idee.naam}. ${beschrijving}. Maak een plan en wijs builders toe.`;
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-      await fetch(`${baseUrl}/api/ops-room/orchestrate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-ops-token": process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026",
-        },
-        body: JSON.stringify({
-          opdracht: opsCommand,
-          projectId: project.id,
-          bron: "ideeen",
-        }),
-      });
-    } catch {
-      // Ops Room trigger mislukt — project is wel aangemaakt
+    // 7. Ops Room orchestrator triggeren — alleen bij modus "team"
+    if (modus === "team") {
+      try {
+        const beschrijving = idee.uitwerking || idee.omschrijving || idee.naam;
+        const opsCommand = `Nieuw project: ${idee.naam}. ${beschrijving}. Maak een plan en wijs builders toe.`;
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        await fetch(`${baseUrl}/api/ops-room/orchestrate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-ops-token": process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026",
+          },
+          body: JSON.stringify({
+            opdracht: opsCommand,
+            projectId: project.id,
+            bron: "ideeen",
+          }),
+        });
+      } catch {
+        // Ops Room trigger mislukt — project is wel aangemaakt
+      }
     }
 
-    return NextResponse.json({ idee: bijgewerktIdee, project }, { status: 201 });
+    return NextResponse.json({ idee: bijgewerktIdee, project, modus }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

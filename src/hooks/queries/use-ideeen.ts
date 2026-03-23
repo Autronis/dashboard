@@ -149,15 +149,17 @@ export function useStartProject() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({ id, modus }: { id: number; modus: "team" | "zelf" }) => {
       const res = await fetch(`/api/ideeen/${id}/start-project`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modus }),
       });
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.fout || "Kon project niet starten");
       }
-      return res.json() as Promise<{ project: { id: number; naam: string } }>;
+      return res.json() as Promise<{ project: { id: number; naam: string }; modus: "team" | "zelf" }>;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ideeen"] });

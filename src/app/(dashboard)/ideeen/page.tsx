@@ -31,6 +31,7 @@ import {
   PenLine,
   ChevronDown,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -125,6 +126,7 @@ function scoreKleur(score: number | null): string {
 
 export default function IdeeenPage() {
   const { addToast } = useToast();
+  const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<"alle" | "ai">("alle");
   const [filterStatus, setFilterStatus] = useState("");

@@ -28,15 +28,18 @@ const SEM = { x: 20, y: MGMT_Y + 16 };
 const BUILDER_X = 340;
 const BUILDER_START_Y = MGMT_Y + UNIT_H + 20;
 
+// Center 4 management desks above 5 builder columns
+const MGMT_OFFSET = Math.floor(UNIT_W / 2); // 100px offset to center 4 over 5
+
 const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  // Management — Sem col 1, Theo/Toby/Jones centered on 2/3/4
-  theo: { x: BUILDER_X + UNIT_W, y: MGMT_Y },
-  toby: { x: BUILDER_X + UNIT_W * 2, y: MGMT_Y },
-  jones: { x: BUILDER_X + UNIT_W * 3, y: MGMT_Y },
-  // Ari + Rodi + Brent — left column, staf
+  // Het Bestuur — Theo, Toby, Jones, Brent centered above builders
+  theo:  { x: BUILDER_X + MGMT_OFFSET, y: MGMT_Y },
+  toby:  { x: BUILDER_X + MGMT_OFFSET + UNIT_W, y: MGMT_Y },
+  jones: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 2, y: MGMT_Y },
+  brent: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 3, y: MGMT_Y },
+  // Ari + Rodi — left column, staf
   ari: { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
   rodi: { x: 20, y: BUILDER_START_Y + UNIT_H + Math.floor(UNIT_H / 2) + 10 },
-  brent: { x: 20, y: BUILDER_START_Y + UNIT_H * 2 + Math.floor(UNIT_H / 2) + 10 },
   // Builders row 2 (5 columns)
   wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
   bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
@@ -58,11 +61,9 @@ const EMPTY_DESKS = [
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  // Row 3 (remaining empty desk)
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
-const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 2 + UNIT_H + 10;
+const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
 
 // Command screen — right side, prominent
 const MEETING = { x: BUILDER_X + UNIT_W * 5 + 20, y: MGMT_Y + 10, w: CANVAS_W - (BUILDER_X + UNIT_W * 5 + 20) - 180, h: 110 };
@@ -769,7 +770,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // "DE BAAS" + "HET BESTUUR" on same line (management row)
     // Hardcoded: each label Y = agent Y - 30
     ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
-    ctx.fillText("HET BESTUUR", BUILDER_X + UNIT_W * 2 + 70, DESK_POSITIONS.theo.y + 30);
+    ctx.fillText("HET BESTUUR", BUILDER_X + MGMT_OFFSET + UNIT_W * 2 - 30, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
     ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";

@@ -15,10 +15,11 @@ const SEM_DESK = { x: 40, y: 25 };
 
 // Fixed desk positions by agent ID
 const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  // Management row
-  theo:    { x: 300, y: 25 },
-  toby:    { x: 500, y: 25 },
-  jones:   { x: 700, y: 25 },
+  // Het Bestuur — centered above builders
+  theo:    { x: 200, y: 25 },
+  toby:    { x: 400, y: 25 },
+  jones:   { x: 600, y: 25 },
+  brent:   { x: 800, y: 25 },
 
   // Builder row 1
   wout:    { x: 300, y: 165 },
@@ -38,7 +39,6 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   // Support row
   ari:     { x: 300, y: 585 },
   rodi:    { x: 500, y: 585 },
-  brent:   { x: 700, y: 585 },
 };
 
 const MEETING_ROOM = { x: 30, y: 165, w: 220, h: 180 };

@@ -437,7 +437,7 @@ export default function IdeeenPage() {
         await handleDaanSynth(idee, "");
       }
     } catch {
-      addToast("DAAN kon niet bereikt worden", "fout");
+      addToast("Brent kon niet bereikt worden", "fout");
       setDaanStap("input");
     } finally {
       setDaanLoading(false);
@@ -502,7 +502,7 @@ export default function IdeeenPage() {
               { role: "daan", text: `Idee "${data.naam}" is aangemaakt! Je vindt het in je backlog.` },
             ]);
             setDaanStap("klaar");
-            addToast(`Idee "${data.naam}" aangemaakt via DAAN`, "succes");
+            addToast(`Idee "${data.naam}" aangemaakt via Brent`, "succes");
           },
           onError: () => {
             setDaanMessages((prev) => [...prev, { role: "daan", text: "Kon het idee niet opslaan." }]);
@@ -713,7 +713,7 @@ export default function IdeeenPage() {
                 >
                   <Bot className="w-4 h-4 text-autronis-accent" />
                   <div className="text-left">
-                    <p className="font-semibold">Spar met DAAN</p>
+                    <p className="font-semibold">Spar met Brent</p>
                     <p className="text-xs text-autronis-text-secondary">AI helpt je idee uitwerken</p>
                   </div>
                 </button>
@@ -959,8 +959,8 @@ export default function IdeeenPage() {
                   <Bot className="w-5 h-5 text-autronis-accent" />
                 </div>
                 <div>
-                  <h3 className="text-base font-semibold text-autronis-text-primary">Spar met DAAN</h3>
-                  <p className="text-xs text-autronis-text-secondary">Beschrijf je idee en DAAN helpt het uitwerken</p>
+                  <h3 className="text-base font-semibold text-autronis-text-primary">Spar met Brent</h3>
+                  <p className="text-xs text-autronis-text-secondary">Beschrijf je idee en Brent helpt het uitwerken</p>
                 </div>
               </div>
               <button onClick={resetDaan} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors">
@@ -973,7 +973,7 @@ export default function IdeeenPage() {
               {daanMessages.length === 0 && (
                 <div className="text-center py-8">
                   <MessageCircle className="w-10 h-10 text-autronis-accent/30 mx-auto mb-3" />
-                  <p className="text-sm text-autronis-text-secondary">Beschrijf kort je idee en DAAN stelt slimme vragen om het concreet te maken.</p>
+                  <p className="text-sm text-autronis-text-secondary">Beschrijf kort je idee en Brent stelt slimme vragen om het concreet te maken.</p>
                 </div>
               )}
               {daanMessages.map((msg, i) => (

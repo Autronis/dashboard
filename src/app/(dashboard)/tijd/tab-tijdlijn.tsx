@@ -343,7 +343,7 @@ function DagTimeline({
               <div className="h-full flex flex-col justify-center px-2 sm:px-3.5 min-w-0">
                 {/* Row 1: Time + Description + Duration */}
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                  <span className="text-[10px] sm:text-[11px] text-white/40 tabular-nums shrink-0 w-[72px] sm:w-[90px]">{startTime}–{endTime}</span>
+                  <span className="text-[10px] sm:text-[11px] text-autronis-text-secondary tabular-nums shrink-0 w-[72px] sm:w-[90px]">{startTime}–{endTime}</span>
                   <span className="text-[12px] sm:text-[13px] font-semibold text-autronis-text-primary truncate flex-1" title={beschrijving}>
                     {beschrijving}
                   </span>

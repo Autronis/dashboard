@@ -578,11 +578,20 @@ interface PixelOfficeProps {
   ceo?: { id: string; naam: string; avatar: string };
 }
 
+// Confetti particle
+interface Particle {
+  x: number; y: number; vx: number; vy: number;
+  color: string; size: number; life: number; maxLife: number;
+  type: "confetti" | "pulse" | "spark";
+  rotation: number; rotSpeed: number;
+}
+
 export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; agent: Agent } | null>(null);
   const tickRef = useRef(0);
   const lastTRef = useRef(0);
   const rafRef = useRef(0);
@@ -595,6 +604,40 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
   const animPositions = useRef(new Map<string, { x: number; y: number }>());
   // Track project card rectangles for hover detection
   const projectCardRects = useRef<{ proj: string; x: number; y: number; w: number; h: number }[]>([]);
+
+  // Particle system for confetti, git pulses, etc.
+  const particles = useRef<Particle[]>([]);
+  const celebratedProjects = useRef(new Set<string>());
+
+  // Git pulse tracker — flash on agent desk when they have recent activity
+  const lastActivityRef = useRef(new Map<string, string>());
+
+  function spawnConfetti(cx: number, cy: number, count = 40) {
+    const colors = ["#4ade80", "#f59e0b", "#3b82f6", "#ec4899", "#a855f7", "#23C6B7", "#ef4444"];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+      const speed = 2 + Math.random() * 4;
+      particles.current.push({
+        x: cx, y: cy,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 3 + Math.random() * 4,
+        life: 0, maxLife: 60 + Math.random() * 40,
+        type: "confetti",
+        rotation: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.3,
+      });
+    }
+  }
+
+  function spawnGitPulse(cx: number, cy: number) {
+    particles.current.push({
+      x: cx, y: cy, vx: 0, vy: -0.5,
+      color: "#4ade80", size: 8, life: 0, maxLife: 30,
+      type: "pulse", rotation: 0, rotSpeed: 0,
+    });
+  }
 
   const ceoId = ceo?.id ?? "sem";
   const ceoNaam = ceo?.naam ?? "Sem";

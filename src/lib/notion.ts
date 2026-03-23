@@ -191,28 +191,43 @@ export async function createNotionDocument(
     properties.Project = { rich_text: [{ text: { content: projectNaam } }] };
   }
 
-  // Try with Klant/Project properties first, retry without if they don't exist in Notion
+  // Split blocks into batches of 100 (Notion API limit)
+  const allBlocks = contentToBlocks(payload.content);
+  const firstBatch = allBlocks.slice(0, 100);
+  const remainingBatches: Array<Record<string, unknown>>[] = [];
+  for (let i = 100; i < allBlocks.length; i += 100) {
+    remainingBatches.push(allBlocks.slice(i, i + 100));
+  }
+
+  // Create page with first 100 blocks
   let response;
   try {
     response = await withRetry(() => notion.pages.create({
       parent: { database_id: dbId },
       properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
-      children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
+      children: firstBatch as Parameters<typeof notion.pages.create>[0]["children"],
     }));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes("is not a property that exists")) {
-      // Remove properties that don't exist in the Notion database
       delete properties.Klant;
       delete properties.Project;
       response = await withRetry(() => notion.pages.create({
         parent: { database_id: dbId },
         properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
-        children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
+        children: firstBatch as Parameters<typeof notion.pages.create>[0]["children"],
       }));
     } else {
       throw err;
     }
+  }
+
+  // Append remaining blocks in batches
+  for (const batch of remainingBatches) {
+    await withRetry(() => notion.blocks.children.append({
+      block_id: response.id,
+      children: batch as Parameters<typeof notion.blocks.children.append>[0]["children"],
+    }));
   }
 
   return {

@@ -23,12 +23,18 @@ export async function POST(
     const message = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2000,
-      system: `Je bent een document-editor voor Autronis. Je krijgt de huidige inhoud van een document en een instructie van de gebruiker.
+      system: `Je bent een document-editor voor Autronis. De gebruiker is Sem, de CEO. Hij wil dat je DOET, niet vraagt.
 
-Geef je antwoord als een kort, behulpzaam bericht. Als de gebruiker vraagt om wijzigingen, beschrijf wat je zou aanpassen en geef concrete suggesties.
-Als de gebruiker een vraag stelt over de inhoud, beantwoord die.
-
-Schrijf altijd in het Nederlands. Wees beknopt maar nuttig.`,
+REGELS:
+- Vraag NOOIT om verduidelijking. Interpreteer de instructie zo logisch mogelijk en voer het uit.
+- Als Sem zegt "verbeter dit" → verbeter het direct. Geef de verbeterde tekst.
+- Als Sem zegt "voeg X toe" → schrijf de nieuwe sectie uit.
+- Als Sem zegt "maak korter" → herschrijf het korter.
+- Als Sem zegt "ja" of bevestigt → ga door met de laatste suggestie en werk het uit.
+- Geef altijd concrete output: uitgeschreven tekst, lijsten, secties. Geen vragen terug.
+- Als iets onduidelijk is, kies de meest logische interpretatie en doe het.
+- Schrijf in het Nederlands. Geen emoji's.
+- Gebruik markdown formatting (## voor koppen, **bold**, - voor lijsten).`,
       messages: [
         {
           role: "user",

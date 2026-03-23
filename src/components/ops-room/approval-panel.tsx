@@ -87,9 +87,10 @@ function TaskList({ tasks }: { tasks: DbCommand["plan"] extends infer T ? T exte
 }
 
 export function ApprovalPanel() {
-  const { commands: localCommands, approvals, approveApproval, rejectApproval } = useOrchestrator();
+  const { commands: localCommands, approvals, approveApproval, rejectApproval, answerIntake } = useOrchestrator();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [intakeAnswers, setIntakeAnswers] = useState<Record<string, string[]>>({});
   const [expanded, setExpanded] = useState(true);
   const queryClient = useQueryClient();
 

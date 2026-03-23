@@ -46,6 +46,7 @@ interface OrchestratorState {
   setActiveCommand: (id: string | null) => void;
   executePlan: (commandId: string) => Promise<void>;
   killExecution: (commandId?: string) => void;
+  _planCommand: (cmdId: string, opdracht: string) => Promise<void>;
 }
 
 let nextId = 1;
@@ -151,6 +152,168 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     await get()._planCommand(commandId, enrichedOpdracht);
   },
 
+  // Internal: plan a command (called after intake or directly)
+  _planCommand: async (cmdId: string, opdracht: string) => {
+    set((s) => ({
+      commands: s.commands.map((c) => c.id === cmdId ? { ...c, status: "planning" as const } : c),
+    }));
+    addLog(set, "jones", "info", "Plan wordt opgesteld...");
+
+    try {
+      const res = await fetch("/api/ops-room/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opdracht }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout ?? "Plan maken mislukt");
+      }
+
+      const data = await res.json();
+      const plan: Plan = {
+        id: genId("plan"),
+        commandId: cmdId,
+        beschrijving: data.plan.beschrijving,
+        taken: data.plan.taken as PlanTask[],
+        goedgekeurd: null,
+        goedgekeurdOp: null,
+      };
+
+      const dbCommandId = data.commandId as number | null;
+      set((s) => ({
+        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, dbId: dbCommandId, status: "awaiting_approval" as const } : c),
+        isProcessing: false,
+      }));
+
+      addLog(set, "jones", "task_complete", `Plan klaar: ${plan.beschrijving.slice(0, 60)}`);
+
+      // === DETERMINE PERMISSION LEVEL ===
+      const hasDbChanges = plan.taken.some((t: PlanTask) => t.bestanden.some((f: string) => f.includes("schema") || f.includes("migration")));
+      const hasDeployOrPush = opdracht.toLowerCase().includes("deploy") || opdracht.toLowerCase().includes("push");
+      const hasCredentials = opdracht.toLowerCase().includes("credential") || opdracht.toLowerCase().includes("secret") || opdracht.toLowerCase().includes(".env");
+      const permLevel: PermissionLevel = (hasDbChanges || hasDeployOrPush || hasCredentials) ? "red" : "yellow";
+
+      // === AUTO-APPROVE LOGIC ===
+      if (permLevel === "green") {
+        // GREEN → direct execute, no approval needed
+        addLog(set, "theo", "info", `Auto-goedgekeurd (groen) — direct starten`);
+        playApproval();
+
+        set((s) => ({
+          commands: s.commands.map((c) => {
+            if (c.id !== cmdId) return c;
+            return { ...c, status: "in_progress" as const, plan: c.plan ? { ...c.plan, goedgekeurd: true, goedgekeurdOp: new Date().toISOString() } : c.plan };
+          }),
+        }));
+
+        // Activate agents
+        const freshCmd = get().commands.find((c) => c.id === cmdId);
+        if (freshCmd?.plan) {
+          const planAgents = new Set(freshCmd.plan.taken.map((t) => t.agentId).filter(Boolean) as string[]);
+          set((s) => {
+            const next = new Set(s.activeAgents);
+            planAgents.forEach((a) => next.add(a));
+            return { activeAgents: next };
+          });
+        }
+
+        // Sync DB
+        if (dbCommandId) {
+          fetch("/api/ops-room/orchestrate", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ id: dbCommandId, actie: "approve" }),
+          }).catch(() => {});
+        }
+
+        get().executePlan(cmdId);
+        return;
+      }
+
+      if (permLevel === "yellow") {
+        // YELLOW → notify + auto-execute after 10 seconds
+        addLog(set, "theo", "approval", `Plan wacht op goedkeuring (10s auto-approve) — ${plan.taken.length} taken`);
+        playNotification();
+
+        const approval: ApprovalRequest = {
+          id: genId("apr"),
+          type: "plan",
+          permissie: "yellow",
+          titel: `Plan: ${opdracht.slice(0, 50)}${opdracht.length > 50 ? "..." : ""}`,
+          beschrijving: `${plan.beschrijving}\n\n${plan.taken.length} taken gepland voor ${new Set(plan.taken.map((t: PlanTask) => t.agentId)).size} agents.`,
+          commandId: cmdId,
+          taskId: null,
+          agentId: "theo",
+          status: "pending",
+          feedback: null,
+          aangemaakt: new Date().toISOString(),
+        };
+
+        set((s) => ({
+          approvals: [approval, ...s.approvals],
+        }));
+
+        // Auto-approve after 10 seconds unless manually rejected
+        const timer = setTimeout(() => {
+          const currentApproval = get().approvals.find((a) => a.id === approval.id);
+          if (currentApproval?.status === "pending") {
+            addLog(set, "theo", "info", "Auto-goedgekeurd na 10 seconden");
+            get().approveApproval(approval.id);
+
+            // Also approve in DB
+            if (dbCommandId) {
+              fetch("/api/ops-room/orchestrate", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+                body: JSON.stringify({ id: dbCommandId, actie: "approve" }),
+              }).catch(() => {});
+            }
+          }
+          get().autoApproveTimers.delete(approval.id);
+        }, 10_000);
+
+        set((s) => {
+          const next = new Map(s.autoApproveTimers);
+          next.set(approval.id, timer);
+          return { autoApproveTimers: next };
+        });
+
+        return;
+      }
+
+      // RED → manual approval required (as before)
+      addLog(set, "theo", "approval", `Plan wacht op HANDMATIGE goedkeuring van Sem (${plan.taken.length} taken)`);
+      playNotification();
+
+      const approval: ApprovalRequest = {
+        id: genId("apr"),
+        type: "plan",
+        permissie: "red",
+        titel: `Plan: ${opdracht.slice(0, 50)}${opdracht.length > 50 ? "..." : ""}`,
+        beschrijving: `${plan.beschrijving}\n\n${plan.taken.length} taken gepland voor ${new Set(plan.taken.map((t: PlanTask) => t.agentId)).size} agents.`,
+        commandId: cmdId,
+        taskId: null,
+        agentId: "theo",
+        status: "pending",
+        feedback: null,
+        aangemaakt: new Date().toISOString(),
+      };
+
+      set((s) => ({
+        approvals: [approval, ...s.approvals],
+      }));
+
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Onbekend";
+      set((s) => ({
+        commands: s.commands.map((c) => c.id === cmdId ? { ...c, status: "rejected" as const, feedback: msg } : c),
+        isProcessing: false,
+      }));
+    }
+  },
+
   updateCommandStatus: (id, status) => {
     set((s) => ({
       commands: s.commands.map((c) => c.id === id ? { ...c, status } : c),
@@ -230,7 +393,11 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     if (!cmd?.plan || !cmd.plan.goedgekeurd) return;
 
     const controller = new AbortController();
-    set({ abortController: controller });
+    set((s) => {
+      const next = new Map(s.abortControllers);
+      next.set(commandId, controller);
+      return { abortControllers: next };
+    });
 
     const completedOutputs: string[] = [];
     const lockedFiles = new Set<string>();
@@ -478,31 +645,59 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       }).catch(() => {});
     }
 
-    set((s) => ({
-      executingTaskId: null,
-      abortController: null,
-      activeAgents: new Set<string>(),
-      commands: s.commands.map((c) =>
-        c.id === commandId ? { ...c, status: allDone ? "completed" as const : "review" as const } : c
-      ),
-    }));
+    set((s) => {
+      const nextControllers = new Map(s.abortControllers);
+      nextControllers.delete(commandId);
+      // Only clear agents that aren't used by OTHER in-progress commands
+      const otherActiveAgents = new Set<string>();
+      s.commands.forEach((c) => {
+        if (c.id !== commandId && c.status === "in_progress" && c.plan) {
+          c.plan.taken.forEach((t) => { if (t.agentId && t.status === "in_progress") otherActiveAgents.add(t.agentId); });
+        }
+      });
+      return {
+        executingTaskId: null,
+        abortControllers: nextControllers,
+        activeAgents: otherActiveAgents,
+        commands: s.commands.map((c) =>
+          c.id === commandId ? { ...c, status: allDone ? "completed" as const : "review" as const } : c
+        ),
+      };
+    });
   },
 
-  killExecution: () => {
+  killExecution: (commandId?: string) => {
     const state = get();
-    if (state.abortController) {
-      state.abortController.abort();
+    if (commandId) {
+      // Kill specific command
+      const controller = state.abortControllers.get(commandId);
+      if (controller) controller.abort();
+      playError();
+      addLog(set, "theo", "error", "Uitvoering handmatig gestopt door Sem!");
+      set((s) => {
+        const nextControllers = new Map(s.abortControllers);
+        nextControllers.delete(commandId);
+        return {
+          abortControllers: nextControllers,
+          commands: s.commands.map((c) =>
+            c.id === commandId ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
+          ),
+        };
+      });
+    } else {
+      // Kill ALL executions
+      state.abortControllers.forEach((c) => c.abort());
+      playError();
+      addLog(set, "theo", "error", "Alle uitvoeringen gestopt door Sem!");
+      set((s) => ({
+        isProcessing: false,
+        executingTaskId: null,
+        abortControllers: new Map(),
+        activeAgents: new Set<string>(),
+        commands: s.commands.map((c) =>
+          c.status === "in_progress" ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
+        ),
+      }));
     }
-    playError();
-    addLog(set, "theo", "error", "Uitvoering handmatig gestopt door Sem!");
-    set((s) => ({
-      isProcessing: false,
-      executingTaskId: null,
-      abortController: null,
-      activeAgents: new Set<string>(),
-      commands: s.commands.map((c) =>
-        c.status === "in_progress" ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
-      ),
-    }));
   },
 }));

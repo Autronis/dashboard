@@ -67,10 +67,56 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { opdracht, projectId, bron } = body;
+    const { opdracht, projectId, bron, mode } = body;
 
     if (!opdracht || typeof opdracht !== "string") {
       return NextResponse.json({ fout: "Opdracht is verplicht" }, { status: 400 });
+    }
+
+    // === DAAN INTAKE MODE ===
+    // Quick check if the command is clear enough to create a plan
+    if (mode === "intake") {
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return NextResponse.json({ needsIntake: false });
+
+      try {
+        const client = new Anthropic({ apiKey });
+        const msg = await client.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 500,
+          system: `Je bent DAAN, de intake agent bij Autronis. Je beoordeelt of een opdracht van Sem duidelijk genoeg is om door te geven aan het development team.
+
+Een opdracht is HELDER als:
+- Het duidelijk is WAT er gebouwd/gewijzigd moet worden
+- Het duidelijk is WAAR het moet (welk onderdeel/pagina)
+- Er genoeg context is om te starten
+
+Een opdracht is VAAG als:
+- Het onduidelijk is wat Sem precies wil
+- Er meerdere interpretaties mogelijk zijn
+- Cruciale details ontbreken (welke pagina, welk component, welke data)
+
+Reageer ALLEEN met JSON:
+{
+  "helder": true/false,
+  "vragen": ["vraag 1", "vraag 2"]  // alleen als helder=false, max 3 vragen
+}`,
+          messages: [{ role: "user", content: `Opdracht: "${opdracht}"` }],
+        });
+
+        const rawText = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+          return NextResponse.json({
+            needsIntake: !result.helder,
+            vragen: result.vragen ?? [],
+          });
+        }
+      } catch {
+        // If intake check fails, just proceed
+      }
+      return NextResponse.json({ needsIntake: false });
     }
 
     // Always save command to DB first (so it shows up in ApprovalPanel even if plan fails)

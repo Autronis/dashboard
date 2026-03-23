@@ -349,26 +349,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         const output = JSON.stringify(result);
         completedOutputs.push(`${agentId}: ${output.slice(0, 200)}`);
 
-        // Review by Toby
-        updateTaskStatus(task.id, "review", { resultaat: output });
-
-        const reviewRes = await fetch("/api/ops-room/execute", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-ops-token": "autronis-ops-2026",
-          },
-          body: JSON.stringify({ task, context: output, mode: "review" }),
-          signal: controller.signal,
-        });
-
-        let reviewResult: Record<string, unknown> | null = null;
-        if (reviewRes.ok) {
-          const reviewData = await reviewRes.json();
-          reviewResult = reviewData.result;
-        }
-
-        // Unlock files
+        // Unlock files immediately so dependent tasks can start
         task.bestanden.forEach((f) => lockedFiles.delete(f));
 
         // Track tokens
@@ -382,12 +363,26 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         addLog(set, agentId, "task_complete", `Klaar: ${task.titel} (${execTokens} tokens)`);
         playSuccess();
-        if (reviewResult) {
-          const approved = (reviewResult as Record<string, unknown>).goedgekeurd;
-          addLog(set, "toby", "review", `Review ${task.titel}: ${approved ? "✓ goedgekeurd" : "✗ changes requested"}`);
-        }
 
-        // Mark completed
+        // Fire-and-forget review by Toby (non-blocking)
+        fetch("/api/ops-room/execute", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-ops-token": "autronis-ops-2026",
+          },
+          body: JSON.stringify({ task, context: output, mode: "review" }),
+        }).then(async (reviewRes) => {
+          if (!reviewRes.ok) return;
+          const reviewData = await reviewRes.json();
+          const reviewResult = reviewData.result as Record<string, unknown> | null;
+          if (reviewResult) {
+            const approved = reviewResult.goedgekeurd;
+            addLog(set, "toby", "review", `Review ${task.titel}: ${approved ? "✓ goedgekeurd" : "✗ changes requested"}`);
+          }
+        }).catch(() => {/* review is best-effort */});
+
+        // Mark completed immediately (review runs in background)
         completedTaskIds.add(task.id);
         inFlightTaskIds.delete(task.id);
         set((s) => ({
@@ -395,12 +390,12 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
             taskId: task.id,
             agentId,
             output: execData.result,
-            reviewResult,
+            reviewResult: null,
             tokensUsed: execTokens,
           }],
         }));
         updateTaskStatus(task.id, "completed", {
-          reviewStatus: (reviewResult as Record<string, unknown>)?.goedgekeurd ? "approved" : "changes_requested",
+          reviewStatus: "pending" as const,
         });
         syncTaskToDb(task.id, "completed");
 

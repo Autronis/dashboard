@@ -1709,11 +1709,100 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       }
     }
 
+    // === CONFETTI TRIGGER: check for 100% projects ===
+    const projectProgress = new Map<string, number>();
+    agents.forEach((a) => {
+      if (a.huidigeTaak) {
+        const proj = a.huidigeTaak.project;
+        if (!projectProgress.has(proj)) projectProgress.set(proj, 0);
+      }
+    });
+    // Simple heuristic: if all agents on a project are idle and project was active, it might be done
+    // Real trigger: check when orchestrator command completes with allDone
+
+    // === GIT PULSE: detect new activity on agents ===
+    agents.forEach((a) => {
+      if (a.status === "working" && a.terminal.length > 0) {
+        const lastTerm = a.terminal[a.terminal.length - 1];
+        const prevActivity = lastActivityRef.current.get(a.id);
+        if (prevActivity !== lastTerm.id) {
+          lastActivityRef.current.set(a.id, lastTerm.id);
+          const pos = positions.get(a.id);
+          if (pos && prevActivity) { // skip first detection
+            spawnGitPulse(pos.x + 50, pos.y + 10);
+          }
+        }
+      }
+    });
+
+    // === UPDATE & RENDER PARTICLES ===
+    const aliveParticles: Particle[] = [];
+    for (const p of particles.current) {
+      p.life++;
+      if (p.life >= p.maxLife) continue;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.rotation += p.rotSpeed;
+      const alpha = 1 - p.life / p.maxLife;
+
+      if (p.type === "confetti") {
+        p.vy += 0.08; // gravity
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        ctx.fillStyle = p.color + Math.round(alpha * 255).toString(16).padStart(2, "0");
+        ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+        ctx.restore();
+      } else if (p.type === "pulse") {
+        const r = p.size * (1 + p.life / p.maxLife);
+        ctx.fillStyle = p.color + Math.round(alpha * 100).toString(16).padStart(2, "0");
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      aliveParticles.push(p);
+    }
+    particles.current = aliveParticles;
+
+    // === DAY/NIGHT CYCLE: subtle overlay based on time of day ===
+    const hour = new Date().getHours();
+    if (!isLight) {
+      if (hour >= 22 || hour < 6) {
+        // Late night — dim the office
+        ctx.fillStyle = "#00001520";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      } else if (hour >= 18) {
+        // Evening — warm tint
+        ctx.fillStyle = "#1a0a0008";
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+    }
+
+    // === COST ALARM: red pulse border when daily costs exceed threshold ===
+    const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);
+    if (totalCost > 5) {
+      const pulseAlpha = Math.sin(tick * 0.1) * 0.15 + 0.15;
+      ctx.strokeStyle = `rgba(239, 68, 68, ${pulseAlpha})`;
+      ctx.lineWidth = 4;
+      ctx.strokeRect(2, 2, CANVAS_W - 4, CANVAS_H - 4);
+    }
+
+    // === DEADLINE INDICATOR: show countdown in corner for projects with deadline ===
+    // (driven by external data — placeholder for future integration)
+
     ctx.fillStyle = isLight ? "#5a6a7a18" : "#3a4a5510"; ctx.font = "bold 18px monospace";
     ctx.fillText("AUTRONIS HQ", CANVAS_W - 200, CANVAS_H - 16);
 
     tickRef.current++;
   }, [agents, positions, selectedId, hovered, mouse]);
+
+  // Listen for confetti events from orchestrator
+  useEffect(() => {
+    const handler = () => triggerConfetti();
+    window.addEventListener("ops-confetti", handler);
+    return () => window.removeEventListener("ops-confetti", handler);
+  }, [triggerConfetti]);
 
   useEffect(() => {
     const loop = (t: number) => {
@@ -1736,13 +1825,30 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
   }, [findAgent]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    setContextMenu(null);
     const r = e.currentTarget.getBoundingClientRect();
     const a = findAgent(e.clientX - r.left, e.clientY - r.top);
     if (a) onSelect(a);
   }, [findAgent, onSelect]);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    const a = findAgent(e.clientX - r.left, e.clientY - r.top);
+    if (a) {
+      setContextMenu({ x: e.clientX - r.left, y: e.clientY - r.top, agent: a });
+    } else {
+      setContextMenu(null);
+    }
+  }, [findAgent]);
+
+  // Expose spawnConfetti for external triggers
+  const triggerConfetti = useCallback(() => {
+    spawnConfetti(CANVAS_W / 2, CANVAS_H / 3, 60);
+  }, []);
+
   return (
-    <div className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden">
+    <div className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative">
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
@@ -1750,9 +1856,64 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
         className="w-full"
         style={{  }}
         onMouseMove={handleMove}
-        onMouseLeave={() => setHovered(null)}
+        onMouseLeave={() => { setHovered(null); setContextMenu(null); }}
         onClick={handleClick}
+        onContextMenu={handleContextMenu}
       />
+
+      {/* Context menu overlay */}
+      {contextMenu && (
+        <div
+          className="absolute z-50 min-w-[160px] rounded-xl border shadow-2xl overflow-hidden backdrop-blur-sm
+            border-autronis-border/50 bg-autronis-card/95"
+          style={{
+            left: `${(contextMenu.x / CANVAS_W) * 100}%`,
+            top: `${(contextMenu.y / CANVAS_H) * 100}%`,
+          }}
+        >
+          <div className="px-3 py-2 border-b border-autronis-border/30">
+            <p className="text-[11px] font-bold text-autronis-text-primary">{contextMenu.agent.naam}</p>
+            <p className="text-[9px] text-autronis-text-tertiary">{contextMenu.agent.rol}</p>
+          </div>
+          <div className="py-1">
+            <button
+              onClick={() => { onSelect(contextMenu.agent); setContextMenu(null); }}
+              className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
+            >
+              Details bekijken
+            </button>
+            {contextMenu.agent.status === "working" && (
+              <button
+                onClick={() => {
+                  // Trigger confetti on this agent's position
+                  const pos = positions.get(contextMenu.agent.id);
+                  if (pos) spawnConfetti(pos.x + 40, pos.y + 20, 25);
+                  setContextMenu(null);
+                }}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
+              >
+                Confetti gooien
+              </button>
+            )}
+            {contextMenu.agent.huidigeTaak && (
+              <button
+                onClick={() => { setContextMenu(null); }}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
+              >
+                Naar project →
+              </button>
+            )}
+            {contextMenu.agent.status === "working" && (
+              <button
+                onClick={() => { setContextMenu(null); }}
+                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                Agent stoppen
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

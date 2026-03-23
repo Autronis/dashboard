@@ -820,6 +820,10 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     if (allDone) {
       addLog(set, "theo", "task_complete", `Opdracht volledig afgerond! Agents gaan naar stand-by.`);
       playSuccess();
+      // Trigger confetti in the office
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ops-confetti"));
+      }
 
       // === AUTO-PR: commit, push, create PR ===
       const finalCmd = get().commands.find((c) => c.id === commandId);

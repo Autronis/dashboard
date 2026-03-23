@@ -46,7 +46,7 @@ export default function OpsRoomPage() {
       });
       if (!res.ok) return [];
       const data = await res.json();
-      return (data.commands ?? []) as { status: string; plan: { taken: { agentId: string | null }[] } | null }[];
+      return (data.commands ?? []) as { opdracht: string; status: string; plan: { taken: { agentId: string | null; titel: string }[] } | null }[];
     },
     refetchInterval: 5000,
   });

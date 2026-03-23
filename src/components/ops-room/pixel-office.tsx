@@ -1583,10 +1583,12 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
         ctx.fillText("Stand-by", ax, labelY + 26);
       }
 
+      // Subtle glow under selected agent (no dashed border)
       if (selectedId === agent.id) {
-        ctx.strokeStyle = "#23C6B7"; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
-        ctx.strokeRect(ax - 6, ay - 6, charDef.cols * S + 12, charH + 38);
-        ctx.setLineDash([]);
+        ctx.fillStyle = "#23C6B710";
+        ctx.beginPath();
+        ctx.roundRect(ax - 8, ay - 8, charDef.cols * S + 16, charH + 42, 8);
+        ctx.fill();
       }
     });
 
@@ -1840,7 +1842,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
   // Expose spawnConfetti for external triggers
   const triggerConfetti = useCallback(() => {
-    spawnConfetti(CANVAS_W / 2, CANVAS_H / 3, 60);
+    spawnConfetti(CANVAS_W / 2, CANVAS_H / 2, 60);
   }, []);
 
   // Listen for confetti events from orchestrator
@@ -1870,53 +1872,83 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       {/* Context menu overlay */}
       {contextMenu && (
         <div
-          className="absolute z-50 min-w-[160px] rounded-xl border shadow-2xl overflow-hidden backdrop-blur-sm
-            border-autronis-border/50 bg-autronis-card/95"
+          className="absolute z-50 min-w-[180px] rounded-xl shadow-2xl overflow-hidden backdrop-blur-md
+            border border-white/10 dark:border-white/5
+            bg-white/90 dark:bg-[#0d1117]/95"
           style={{
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y}px`,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-3 py-2 border-b border-autronis-border/30">
-            <p className="text-[11px] font-bold text-autronis-text-primary">{contextMenu.agent.naam}</p>
-            <p className="text-[9px] text-autronis-text-tertiary">{contextMenu.agent.rol}</p>
+          {/* Header */}
+          <div className="px-3 py-2.5 border-b border-black/5 dark:border-white/5 flex items-center gap-2.5">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black text-white"
+              style={{ backgroundColor: contextMenu.agent.avatar }}
+            >
+              {contextMenu.agent.naam[0]}
+            </div>
+            <div>
+              <p className="text-[12px] font-bold text-gray-900 dark:text-white leading-tight">{contextMenu.agent.naam}</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{contextMenu.agent.rol}</p>
+            </div>
           </div>
+
+          {/* Actions */}
           <div className="py-1">
             <button
               onClick={() => { onSelect(contextMenu.agent); setContextMenu(null); }}
-              className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
+              className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
+                hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
             >
+              <span className="w-4 text-center text-[13px]">👤</span>
               Details bekijken
             </button>
-            {contextMenu.agent.status === "working" && (
-              <button
-                onClick={() => {
-                  // Trigger confetti on this agent's position
-                  const pos = positions.get(contextMenu.agent.id);
-                  if (pos) spawnConfetti(pos.x + 40, pos.y + 20, 25);
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
-              >
-                Confetti gooien
-              </button>
-            )}
+
+            <button
+              onClick={() => {
+                const pos = positions.get(contextMenu.agent.id);
+                if (pos) spawnConfetti(pos.x + 40, pos.y + 20, 30);
+                setContextMenu(null);
+              }}
+              className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
+                hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
+            >
+              <span className="w-4 text-center text-[13px]">🎉</span>
+              Confetti gooien
+            </button>
+
             {contextMenu.agent.huidigeTaak && (
               <button
-                onClick={() => { setContextMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-autronis-text-secondary hover:bg-autronis-card-hover hover:text-autronis-text-primary transition-colors"
+                onClick={() => {
+                  const proj = contextMenu.agent.huidigeTaak?.project;
+                  if (proj) {
+                    // Navigate to project page — find project ID
+                    window.location.href = `/projecten?zoek=${encodeURIComponent(proj)}`;
+                  }
+                  setContextMenu(null);
+                }}
+                className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
+                  hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
               >
-                Naar project →
+                <span className="w-4 text-center text-[13px]">📂</span>
+                Naar project
               </button>
             )}
+
             {contextMenu.agent.status === "working" && (
-              <button
-                onClick={() => { setContextMenu(null); }}
-                className="w-full text-left px-3 py-1.5 text-[11px] text-red-400 hover:bg-red-500/10 transition-colors"
-              >
-                Agent stoppen
-              </button>
+              <>
+                <div className="mx-3 my-1 border-t border-black/5 dark:border-white/5" />
+                <button
+                  onClick={() => { setContextMenu(null); }}
+                  className="w-full text-left px-3 py-2 text-[11px] text-red-500 dark:text-red-400
+                    hover:bg-red-500/5 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
+                >
+                  <span className="w-4 text-center text-[13px]">⛔</span>
+                  Agent stoppen
+                </button>
+              </>
             )}
           </div>
         </div>

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DocumentBase, DOCUMENT_TYPE_CONFIG } from "@/types/documenten";
 import { useImproveDocument } from "@/hooks/queries/use-documenten";
 import { IMPROVE_MODE_LABELS, type ImproveMode } from "@/lib/ai/documenten-types";
-import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw, ChevronDown, FileText } from "lucide-react";
+import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw, ChevronDown, FileText, Maximize2, Minimize2 } from "lucide-react";
 
 interface DocumentPreviewProps {
   document: DocumentBase | null;
@@ -22,6 +22,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   const [contentHtml, setContentHtml] = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const improveDocument = useImproveDocument();
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !doc) { setContentHtml(null); setShowContent(false); return; }
+    if (!open || !doc) { setContentHtml(null); setShowContent(false); setFullscreen(false); return; }
     setContentLoading(true);
     fetch(`/api/documenten/${doc.notionId}/content`)
       .then((r) => r.json())
@@ -67,7 +68,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed right-0 top-0 z-50 h-full w-[400px] max-w-[90vw] bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto"
+            className={`fixed right-0 top-0 z-50 h-full bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto transition-all duration-300 ${fullscreen ? "w-full max-w-full" : "w-[400px] max-w-[90vw]"}`}
           >
             {/* Header */}
             <div className="sticky top-0 bg-autronis-card border-b border-autronis-border px-6 py-4 flex items-center justify-between">
@@ -75,13 +76,18 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
                 <span className={`text-xs font-medium ${config.textClass}`}>{config.label}</span>
               </div>
-              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setFullscreen(!fullscreen)} className="p-1.5 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-colors" title={fullscreen ? "Verkleinen" : "Volledig scherm"}>
+                  {fullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+                <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
-            <div className="px-6 py-5 space-y-6">
+            <div className={`py-5 space-y-6 ${fullscreen ? "px-8 max-w-4xl mx-auto" : "px-6"}`}>
               {/* Title */}
               <h2 className="text-lg font-semibold text-autronis-text-primary">{doc.titel}</h2>
 
@@ -143,12 +149,12 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                   className="flex items-center gap-1.5 text-xs font-medium text-autronis-accent hover:text-autronis-accent-hover transition-colors"
                 >
                   <FileText className="w-3.5 h-3.5" />
-                  Inhoud bekijken
-                  <ChevronDown className={`w-3 h-3 transition-transform ${showContent ? "" : "-rotate-90"}`} />
+                  Inhoud {showContent || fullscreen ? "verbergen" : "bekijken"}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showContent || fullscreen ? "" : "-rotate-90"}`} />
                 </button>
 
-                {showContent && (
-                  <div className="mt-3 rounded-xl bg-autronis-bg border border-autronis-border p-4 overflow-y-auto max-h-[50vh]">
+                {(showContent || fullscreen) && (
+                  <div className={`mt-3 rounded-xl bg-autronis-bg border border-autronis-border p-4 overflow-y-auto ${fullscreen ? "max-h-none" : "max-h-[50vh]"}`}>
                     {contentLoading ? (
                       <div className="flex items-center gap-2 text-xs text-autronis-text-secondary py-4 justify-center">
                         <Loader2 className="w-4 h-4 animate-spin" />

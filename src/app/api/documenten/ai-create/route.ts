@@ -91,13 +91,21 @@ Schrijf altijd in het Nederlands.`,
 
     const responseText = message.content[0].type === "text" ? message.content[0].text : "";
 
+    if (!responseText) {
+      return NextResponse.json({ fout: "Geen response van AI ontvangen. Probeer het opnieuw." }, { status: 500 });
+    }
+
     let parsed: AiCreateResult;
     try {
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("Geen JSON gevonden in AI response");
+      if (!jsonMatch) throw new Error("Geen JSON gevonden");
       parsed = JSON.parse(jsonMatch[0]) as AiCreateResult;
-    } catch {
-      return NextResponse.json({ fout: "AI kon geen geldig document genereren. Probeer het opnieuw." }, { status: 500 });
+      if (!parsed.titel || !parsed.content || !parsed.type) {
+        throw new Error("Onvolledige JSON: titel, content of type ontbreekt");
+      }
+    } catch (parseErr) {
+      const msg = parseErr instanceof Error ? parseErr.message : "Parse error";
+      return NextResponse.json({ fout: `AI kon geen geldig document genereren (${msg}). Probeer het opnieuw.` }, { status: 500 });
     }
 
     // Resolve klant/project namen
@@ -163,8 +171,13 @@ Schrijf altijd in het Nederlands.`,
     if (error instanceof Error && error.message === "Niet geauthenticeerd") {
       return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
     }
+    const errMsg = error instanceof Error ? error.message : String(error);
+    // Surface Anthropic API errors clearly
+    if (errMsg.includes("credit balance") || errMsg.includes("billing")) {
+      return NextResponse.json({ fout: "Anthropic API credits zijn op. Vul credits aan op console.anthropic.com." }, { status: 402 });
+    }
     return NextResponse.json(
-      { fout: error instanceof Error ? error.message : "Kon AI document niet aanmaken" },
+      { fout: `Fout: ${errMsg}` },
       { status: 500 }
     );
   }

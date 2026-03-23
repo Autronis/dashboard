@@ -180,14 +180,20 @@ export async function GET() {
   }
 }
 
-// PATCH — approve or reject a command
+// PATCH — approve, reject, or update task status
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, actie, feedback } = body as { id: number; actie: "approve" | "reject"; feedback?: string };
+    const { id, actie, feedback, taskUpdates, commandStatus } = body as {
+      id: number;
+      actie?: "approve" | "reject";
+      feedback?: string;
+      taskUpdates?: { taskId: string; status: string }[];
+      commandStatus?: string;
+    };
 
-    if (!id || !actie) {
-      return NextResponse.json({ fout: "id en actie zijn verplicht" }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
     }
 
     await ensureTable();
@@ -197,9 +203,37 @@ export async function PATCH(req: NextRequest) {
       await db.run(sql`
         UPDATE orchestrator_commands SET status = 'approved', bijgewerkt = ${now} WHERE id = ${id}
       `);
-    } else {
+    } else if (actie === "reject") {
       await db.run(sql`
         UPDATE orchestrator_commands SET status = 'rejected', feedback = ${feedback ?? null}, bijgewerkt = ${now} WHERE id = ${id}
+      `);
+    }
+
+    // Update individual task statuses within the plan JSON
+    if (taskUpdates && taskUpdates.length > 0) {
+      const row = await db.get<{ plan_json: string }>(sql`
+        SELECT plan_json FROM orchestrator_commands WHERE id = ${id}
+      `);
+      if (row?.plan_json) {
+        const plan = JSON.parse(row.plan_json);
+        if (plan.taken && Array.isArray(plan.taken)) {
+          for (const update of taskUpdates) {
+            const task = plan.taken.find((t: { id: string }) => t.id === update.taskId);
+            if (task) task.status = update.status;
+          }
+          const newStatus = commandStatus ?? (
+            plan.taken.every((t: { status: string }) => t.status === "completed") ? "completed" : "in_progress"
+          );
+          await db.run(sql`
+            UPDATE orchestrator_commands
+            SET plan_json = ${JSON.stringify(plan)}, status = ${newStatus}, bijgewerkt = ${now}
+            WHERE id = ${id}
+          `);
+        }
+      }
+    } else if (commandStatus) {
+      await db.run(sql`
+        UPDATE orchestrator_commands SET status = ${commandStatus}, bijgewerkt = ${now} WHERE id = ${id}
       `);
     }
 

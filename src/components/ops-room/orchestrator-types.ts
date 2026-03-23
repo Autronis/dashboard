@@ -22,6 +22,7 @@ export interface TheoQueueItem {
 
 export interface Command {
   id: string;
+  dbId: number | null;         // database ID for persistent sync
   opdracht: string;           // what Sem typed
   status: CommandStatus;
   plan: Plan | null;           // Jones' plan (after architecture phase)

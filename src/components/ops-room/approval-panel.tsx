@@ -171,6 +171,89 @@ export function ApprovalPanel() {
             </div>
           ))}
 
+          {/* Active DB commands — progress tracker */}
+          {activeDbCommands.map((cmd) => {
+            const tasks = cmd.plan?.taken ?? [];
+            const done = tasks.filter((t) => t.status === "completed").length;
+            const running = tasks.filter((t) => t.status === "in_progress" || t.status === "review").length;
+            const total = tasks.length;
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            return (
+              <div key={`active-${cmd.id}`} className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader2 className="w-3 h-3 text-green-400 animate-spin" />
+                  <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">
+                    {done}/{total} taken
+                  </span>
+                  <span className="text-[9px] text-autronis-text-tertiary">{timeAgo(cmd.aangemaakt)}</span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1.5 rounded-full bg-autronis-border/30 mb-3 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-green-400 transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+
+                {/* Task list with status */}
+                {tasks.length > 0 && (
+                  <div className="space-y-1.5">
+                    {tasks.map((task, i) => (
+                      <div key={task.id ?? i} className={cn(
+                        "flex items-start gap-2 p-2 rounded border",
+                        task.status === "completed" && "bg-green-500/5 border-green-500/20",
+                        task.status === "in_progress" && "bg-blue-500/5 border-blue-500/20",
+                        task.status === "review" && "bg-purple-500/5 border-purple-500/20",
+                        task.status === "blocked" && "bg-red-500/5 border-red-500/20",
+                        (!task.status || task.status === "queued" || task.status === "assigned") && "bg-autronis-card/50 border-autronis-border/20",
+                      )}>
+                        <span className={cn(
+                          "text-[9px] mt-0.5 font-bold",
+                          task.status === "completed" ? "text-green-400" :
+                          task.status === "in_progress" ? "text-blue-400" :
+                          task.status === "review" ? "text-purple-400" :
+                          task.status === "blocked" ? "text-red-400" :
+                          "text-autronis-text-tertiary"
+                        )}>
+                          {task.status === "completed" ? "✓" :
+                           task.status === "in_progress" ? "▶" :
+                           task.status === "review" ? "⟳" :
+                           task.status === "blocked" ? "✗" :
+                           `${i + 1}.`}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn(
+                            "text-[11px] font-medium",
+                            task.status === "completed" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary"
+                          )}>{task.titel}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            {task.agentId && (
+                              <span className={cn(
+                                "flex items-center gap-0.5 text-[9px]",
+                                task.status === "in_progress" ? "text-blue-400" :
+                                task.status === "review" ? "text-purple-400" :
+                                "text-autronis-accent"
+                              )}>
+                                <User className="w-2.5 h-2.5" />{task.agentId}
+                                {task.status === "in_progress" && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
+                              </span>
+                            )}
+                            <span className="text-[9px] text-autronis-text-tertiary">
+                              {SPECIALIZATION_LABELS[task.specialisatie as AgentSpecialization] ?? task.specialisatie}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
           {/* Local Zustand commands with status */}
           {activeLocalCommands.map((cmd) => (
             <div key={cmd.id} className="p-3 rounded-lg bg-autronis-bg border border-autronis-border/30">

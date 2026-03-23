@@ -74,6 +74,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const cmdId = genId("cmd");
     const command: Command = {
       id: cmdId,
+      dbId: null,
       opdracht,
       status: "pending",
       plan: null,
@@ -118,8 +119,9 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       };
 
       // Update command with plan, set to awaiting_approval
+      const dbCommandId = data.commandId as number | null;
       set((s) => ({
-        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, status: "awaiting_approval" as const } : c),
+        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, dbId: dbCommandId, status: "awaiting_approval" as const } : c),
         isProcessing: false,
       }));
 

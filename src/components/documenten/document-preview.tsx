@@ -169,7 +169,9 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                           [&_blockquote]:border-l-2 [&_blockquote]:border-autronis-accent/30 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-autronis-text-secondary
                           [&_strong]:text-autronis-text-primary [&_strong]:font-semibold
                           [&_hr]:border-autronis-border [&_hr]:my-3
-                          [&_a]:text-autronis-accent [&_a]:underline"
+                          [&_a]:text-autronis-accent [&_a]:underline
+                          [&_.todo-list]:list-none [&_.todo-list]:pl-0
+                          [&_.callout]:bg-autronis-accent/5 [&_.callout]:border-l-2 [&_.callout]:border-autronis-accent/30 [&_.callout]:pl-3 [&_.callout]:py-1 [&_.callout]:rounded [&_.callout]:text-xs [&_.callout]:mb-2"
                         dangerouslySetInnerHTML={{ __html: contentHtml }}
                       />
                     ) : (

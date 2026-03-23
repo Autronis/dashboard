@@ -400,7 +400,10 @@ function richTextToHtml(richText: NotionRichText[]): string {
 
 function blockToHtml(block: NotionBlock): string {
   const type = block.type;
-  const data = block[type] as { rich_text?: NotionRichText[]; language?: string };
+  const data = block[type] as { rich_text?: NotionRichText[]; language?: string; checked?: boolean };
+
+  if (type === "divider") return `<hr />`;
+
   const rt = data?.rich_text;
   if (!rt) return "";
 
@@ -412,9 +415,16 @@ function blockToHtml(block: NotionBlock): string {
     case "heading_3": return `<h3>${html}</h3>`;
     case "bulleted_list_item": return `<li>${html}</li>`;
     case "numbered_list_item": return `<li>${html}</li>`;
+    case "to_do": {
+      const checked = data.checked === true;
+      const icon = checked ? "✅" : "⬜";
+      const cls = checked ? ' style="text-decoration:line-through;opacity:0.6"' : "";
+      return `<li${cls}>${icon} ${html}</li>`;
+    }
     case "code": return `<pre><code>${html}</code></pre>`;
     case "quote": return `<blockquote>${html}</blockquote>`;
-    case "divider": return `<hr />`;
+    case "toggle": return `<details><summary>${html}</summary></details>`;
+    case "callout": return `<div class="callout">${html}</div>`;
     case "paragraph":
     default: return html ? `<p>${html}</p>` : "";
   }
@@ -426,21 +436,26 @@ export async function fetchNotionPageContent(pageId: string): Promise<string> {
   let html = "";
   let inBulletList = false;
   let inNumberedList = false;
+  let inTodoList = false;
 
   for (const block of blocks.results as NotionBlock[]) {
     const isBullet = block.type === "bulleted_list_item";
     const isNumbered = block.type === "numbered_list_item";
+    const isTodo = block.type === "to_do";
 
     if (!isBullet && inBulletList) { html += "</ul>"; inBulletList = false; }
     if (!isNumbered && inNumberedList) { html += "</ol>"; inNumberedList = false; }
+    if (!isTodo && inTodoList) { html += "</ul>"; inTodoList = false; }
     if (isBullet && !inBulletList) { html += "<ul>"; inBulletList = true; }
     if (isNumbered && !inNumberedList) { html += "<ol>"; inNumberedList = true; }
+    if (isTodo && !inTodoList) { html += '<ul class="todo-list">'; inTodoList = true; }
 
     html += blockToHtml(block);
   }
 
   if (inBulletList) html += "</ul>";
   if (inNumberedList) html += "</ol>";
+  if (inTodoList) html += "</ul>";
 
   return html;
 }

@@ -354,7 +354,7 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="text-lg font-semibold text-white">{gewoonte ? "Gewoonte bewerken" : "Nieuwe gewoonte"}</h3>
+          <h3 className="text-lg font-semibold text-autronis-text-primary">{gewoonte ? "Gewoonte bewerken" : "Nieuwe gewoonte"}</h3>
           <button onClick={onClose} className="text-autronis-text-secondary hover:text-white transition-colors"><X className="w-5 h-5" /></button>
         </div>
         <div className="space-y-4">
@@ -601,7 +601,7 @@ export default function GewoontesPagina() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Gewoontes</h1>
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Gewoontes</h1>
             <p className="text-base text-autronis-text-secondary mt-1">
               {totaal > 0 ? `${voltooid}/${totaal} vandaag` : "Bouw consistente gewoontes op"}
             </p>
@@ -624,7 +624,7 @@ export default function GewoontesPagina() {
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                   </div>
                 </div>
-                <p className="text-3xl font-bold text-white tabular-nums">{voltooid}/{totaal}</p>
+                <p className="text-3xl font-bold text-autronis-text-primary tabular-nums">{voltooid}/{totaal}</p>
                 <p className="text-xs text-autronis-text-secondary mt-1">
                   {allesGedaan ? "Alles gedaan!" : "Vandaag"}
                 </p>
@@ -635,7 +635,7 @@ export default function GewoontesPagina() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-blue-500/10"><TrendingUp className="w-4 h-4 text-blue-400" /></div>
                 </div>
-                <p className="text-2xl font-bold text-white tabular-nums">{weekRate}%</p>
+                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{weekRate}%</p>
                 <p className="text-xs text-autronis-text-secondary mt-1">Week</p>
                 {weekUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
@@ -649,7 +649,7 @@ export default function GewoontesPagina() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-purple-500/10"><Calendar className="w-4 h-4 text-purple-400" /></div>
                 </div>
-                <p className="text-2xl font-bold text-white tabular-nums">{maandRate}%</p>
+                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{maandRate}%</p>
                 <p className="text-xs text-autronis-text-secondary mt-1">Maand</p>
                 {maandUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
@@ -683,7 +683,7 @@ export default function GewoontesPagina() {
             {/* ─── BADGES — top for motivation ─── */}
             {badgeVoortgang.length > 0 && (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-yellow-400" />
                   Badges
                   <span className="text-xs text-autronis-text-secondary ml-1">{badgeVoortgang.filter((b) => b.behaald).length}/{badgeVoortgang.length}</span>
@@ -746,7 +746,7 @@ export default function GewoontesPagina() {
             {vandaagFocus.length > 0 && (
               <div className="bg-gradient-to-r from-autronis-accent/5 to-autronis-card border border-autronis-accent/20 rounded-2xl p-6 lg:p-7 card-glow">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <h2 className="text-xl font-semibold text-autronis-text-primary flex items-center gap-2">
                     <Rocket className="w-5 h-5 text-autronis-accent" />
                     Doe dit nu
                   </h2>
@@ -794,7 +794,7 @@ export default function GewoontesPagina() {
             <div className={cn("rounded-2xl border p-6 lg:p-7 card-glow",
               allesGedaan ? "bg-emerald-500/5 border-emerald-500/20" : "bg-autronis-card border-autronis-border")}>
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                <h2 className="text-xl font-semibold text-autronis-text-primary flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-autronis-accent" />
                   Vandaag
                 </h2>
@@ -894,7 +894,7 @@ export default function GewoontesPagina() {
             {/* ─── 3. HABIT INTELLIGENCE — Pattern insights ─── */}
             {inzichten.length > 0 && (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
                   <Brain className="w-5 h-5 text-purple-400" />
                   Gewoonte-intelligentie
                 </h2>
@@ -920,7 +920,7 @@ export default function GewoontesPagina() {
 
             {/* ─── 4. Combined Heatmap ─── */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-autronis-accent" />
                 Activiteit
               </h2>
@@ -931,7 +931,7 @@ export default function GewoontesPagina() {
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
               <button onClick={() => setShowStats(!showStats)}
                 className="flex items-center justify-between w-full mb-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
                   <Trophy className="w-5 h-5 text-autronis-accent" />
                   Statistieken per gewoonte
                 </h2>
@@ -1020,7 +1020,7 @@ export default function GewoontesPagina() {
               className="flex items-center justify-between w-full">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-autronis-accent" />
-                <h2 className="text-lg font-semibold text-white">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
                   {totaal === 0 ? "Aanbevolen gewoontes" : "Meer gewoontes toevoegen"}
                 </h2>
                 <span className="text-xs text-autronis-text-secondary">{suggesties.length} beschikbaar</span>
@@ -1070,7 +1070,7 @@ export default function GewoontesPagina() {
             <div className="inline-flex p-4 bg-autronis-accent/10 rounded-2xl mb-4">
               <Target className="w-10 h-10 text-autronis-accent" />
             </div>
-            <h2 className="text-xl font-bold text-white mb-2">Geen gewoontes</h2>
+            <h2 className="text-xl font-bold text-autronis-text-primary mb-2">Geen gewoontes</h2>
             <p className="text-autronis-text-secondary mb-6">Voeg je eerste gewoonte toe om te beginnen.</p>
             <button onClick={() => setModalOpen(true)}
               className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors btn-press">

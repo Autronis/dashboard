@@ -289,7 +289,7 @@ export default function KlantDetailPage() {
             Klanten
           </Link>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">
               {klant.bedrijfsnaam}
             </h1>
             {klant.isDemo ? (

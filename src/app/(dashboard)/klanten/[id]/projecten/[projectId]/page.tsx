@@ -259,7 +259,7 @@ export default function ProjectDetailPage() {
             {klantNaam}
           </Link>
           <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">
               {project.naam}
             </h1>
             <span className={cn("text-xs px-3 py-1.5 rounded-full font-semibold", status.bg, status.text)}>

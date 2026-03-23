@@ -134,7 +134,7 @@ export default function KennisbankPage() {
     <div className="p-6 space-y-10">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Kennisbank</h1>
+        <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Kennisbank</h1>
         <p className="text-autronis-text-secondary mt-1">
           Autronis profiel en inzichten voor content generatie.
         </p>

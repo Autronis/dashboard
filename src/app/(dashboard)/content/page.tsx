@@ -301,7 +301,7 @@ export default function ContentPage() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Content Engine</h1>
+          <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Content Engine</h1>
           <p className="text-autronis-text-secondary mt-1">
             Beheer je kennisbank en genereer social media content voor Autronis.
           </p>

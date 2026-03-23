@@ -400,7 +400,7 @@ export default function VideosPage() {
     <PageTransition>
     <div className="p-6 space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Video&apos;s</h1>
+        <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Video&apos;s</h1>
         <p className="text-autronis-text-secondary mt-1">
           Genereer en beheer Autronis video&apos;s
         </p>

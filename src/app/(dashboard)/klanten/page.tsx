@@ -264,7 +264,7 @@ export default function KlantenPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Klanten</h1>
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Klanten</h1>
             <span className="text-sm text-autronis-text-secondary">
               {kpis?.actieveKlanten ?? 0} actieve klanten
             </span>
@@ -287,7 +287,7 @@ export default function KlantenPage() {
                   <Users className="w-4 h-4 text-autronis-accent" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-white tabular-nums">{kpis.actieveKlanten}</p>
+              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{kpis.actieveKlanten}</p>
               <p className="text-xs text-autronis-text-secondary mt-1">Actieve klanten</p>
             </div>
 

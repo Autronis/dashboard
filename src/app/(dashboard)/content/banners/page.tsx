@@ -400,7 +400,7 @@ export default function BannersPage() {
     <div className="p-6 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Banner Generator</h1>
+        <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Banner Generator</h1>
         <p className="text-autronis-text-secondary mt-1">
           Typ een onderwerp en genereer een neon capsule banner voor LinkedIn of Instagram.
         </p>

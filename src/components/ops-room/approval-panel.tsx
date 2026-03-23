@@ -167,9 +167,10 @@ export function ApprovalPanel() {
   const activeCommands = mergedCommands.filter((c) =>
     c.status === "approved" || c.status === "in_progress"
   );
+  const tenMinAgo = Date.now() - 10 * 60 * 1000;
   const recentlyCompleted = mergedCommands.filter((c) =>
-    c.status === "completed"
-  ).slice(0, 3); // Show last 3 completed
+    c.status === "completed" && new Date(c.aangemaakt).getTime() > tenMinAgo
+  ).slice(0, 3);
 
   // Zustand-only pending approvals (for the approve/reject buttons — these trigger executePlan)
   const pendingApprovalItems = approvals.filter((a) => a.status === "pending");

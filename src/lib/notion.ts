@@ -65,14 +65,113 @@ function buildProperties(payload: DocumentPayload, samenvatting: string, aangema
   return base;
 }
 
+function parseInlineRichText(text: string): Array<Record<string, unknown>> {
+  const segments: Array<Record<string, unknown>> = [];
+  const regex = /(\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|~~(.+?)~~)/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: "text", text: { content: text.slice(lastIndex, match.index) } });
+    }
+    if (match[2]) {
+      segments.push({ type: "text", text: { content: match[2] }, annotations: { bold: true, italic: true } });
+    } else if (match[3]) {
+      segments.push({ type: "text", text: { content: match[3] }, annotations: { bold: true } });
+    } else if (match[4]) {
+      segments.push({ type: "text", text: { content: match[4] }, annotations: { italic: true } });
+    } else if (match[5]) {
+      segments.push({ type: "text", text: { content: match[5] }, annotations: { code: true } });
+    } else if (match[6]) {
+      segments.push({ type: "text", text: { content: match[6] }, annotations: { strikethrough: true } });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    segments.push({ type: "text", text: { content: text.slice(lastIndex) } });
+  }
+
+  return segments.length > 0 ? segments : [{ type: "text", text: { content: text } }];
+}
+
 function contentToBlocks(content: string): Array<Record<string, unknown>> {
-  return content.split("\n\n").map((paragraph) => ({
-    object: "block",
-    type: "paragraph",
-    paragraph: {
-      rich_text: [{ type: "text", text: { content: paragraph } }],
-    },
-  }));
+  const lines = content.split("\n");
+  const blocks: Array<Record<string, unknown>> = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Skip empty lines
+    if (line.trim() === "") continue;
+
+    // Headings
+    const h3Match = line.match(/^###\s+(.+)/);
+    if (h3Match) {
+      blocks.push({ object: "block", type: "heading_3", heading_3: { rich_text: parseInlineRichText(h3Match[1]) } });
+      continue;
+    }
+    const h2Match = line.match(/^##\s+(.+)/);
+    if (h2Match) {
+      blocks.push({ object: "block", type: "heading_2", heading_2: { rich_text: parseInlineRichText(h2Match[1]) } });
+      continue;
+    }
+    const h1Match = line.match(/^#\s+(.+)/);
+    if (h1Match) {
+      blocks.push({ object: "block", type: "heading_1", heading_1: { rich_text: parseInlineRichText(h1Match[1]) } });
+      continue;
+    }
+
+    // Bulleted list
+    const bulletMatch = line.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      blocks.push({ object: "block", type: "bulleted_list_item", bulleted_list_item: { rich_text: parseInlineRichText(bulletMatch[1]) } });
+      continue;
+    }
+
+    // Numbered list
+    const numberedMatch = line.match(/^\d+\.\s+(.+)/);
+    if (numberedMatch) {
+      blocks.push({ object: "block", type: "numbered_list_item", numbered_list_item: { rich_text: parseInlineRichText(numberedMatch[1]) } });
+      continue;
+    }
+
+    // Code block (``` ... ```)
+    if (line.trim().startsWith("```")) {
+      const codeLines: string[] = [];
+      const langMatch = line.trim().match(/^```(\w*)/);
+      const language = langMatch?.[1] || "plain text";
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      blocks.push({
+        object: "block", type: "code",
+        code: { rich_text: [{ type: "text", text: { content: codeLines.join("\n") } }], language },
+      });
+      continue;
+    }
+
+    // Divider
+    if (line.trim() === "---" || line.trim() === "***") {
+      blocks.push({ object: "block", type: "divider", divider: {} });
+      continue;
+    }
+
+    // Quote
+    const quoteMatch = line.match(/^>\s+(.+)/);
+    if (quoteMatch) {
+      blocks.push({ object: "block", type: "quote", quote: { rich_text: parseInlineRichText(quoteMatch[1]) } });
+      continue;
+    }
+
+    // Regular paragraph
+    blocks.push({ object: "block", type: "paragraph", paragraph: { rich_text: parseInlineRichText(line) } });
+  }
+
+  return blocks;
 }
 
 export async function createNotionDocument(

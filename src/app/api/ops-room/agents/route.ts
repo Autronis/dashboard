@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { agentId, agentType, project, actie, details, status, tokensGebruikt } = body;
+    const { agentId, agentType, project, actie, details, status, tokensGebruikt, team } = body;
 
     if (!agentId || !agentType || !project || !actie) {
       return NextResponse.json(

@@ -33,6 +33,7 @@ const toby: Agent = {
   id: "toby",
   naam: "Toby",
   rol: "reviewer",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-toby", beschrijving: "Code review: Ops Room components", project: "Autronis Dashboard", startedAt: ago(8), status: "bezig" },
   voltooideVandaag: 6,
@@ -50,6 +51,7 @@ const jones: Agent = {
   id: "jones",
   naam: "Jones",
   rol: "architect",
+  team: "sem",
   status: "idle",
   huidigeTaak: null,
   voltooideVandaag: 1,
@@ -68,6 +70,7 @@ const wout: Agent = {
   id: "wout",
   naam: "Wout",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-wout", beschrijving: "Ops Room kantoor-view bouwen", project: "Autronis Dashboard", startedAt: ago(45), status: "bezig" },
   voltooideVandaag: 9,
@@ -85,6 +88,7 @@ const bas: Agent = {
   id: "bas",
   naam: "Bas",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-bas", beschrijving: "Lead scoring algorithm", project: "Sales Engine", startedAt: ago(32), status: "bezig" },
   voltooideVandaag: 5,
@@ -101,6 +105,7 @@ const gabriel: Agent = {
   id: "gabriel",
   naam: "Gabriel",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-gab", beschrijving: "Portfolio rebalancing engine", project: "Investment Engine", startedAt: ago(60), status: "bezig" },
   voltooideVandaag: 4,
@@ -117,6 +122,7 @@ const object51: Agent = {
   id: "object51",
   naam: "Object 51",
   rol: "builder",
+  team: "sem",
   status: "idle",
   huidigeTaak: null,
   voltooideVandaag: 8,
@@ -133,6 +139,7 @@ const tijmen: Agent = {
   id: "tijmen",
   naam: "Tijmen",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-tij", beschrijving: "RSS feed parser bouwen", project: "Learning Radar", startedAt: ago(20), status: "bezig" },
   voltooideVandaag: 3,
@@ -149,6 +156,7 @@ const pedro: Agent = {
   id: "pedro",
   naam: "Pedro",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-ped", beschrijving: "Hero section redesign", project: "Autronis Website", startedAt: ago(15), status: "bezig" },
   voltooideVandaag: 2,
@@ -165,6 +173,7 @@ const vincent: Agent = {
   id: "vincent",
   naam: "Vincent",
   rol: "builder",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-vin", beschrijving: "Kantoor SVG avatars", project: "Agent Office / Ops Room", startedAt: ago(10), status: "bezig" },
   voltooideVandaag: 6,
@@ -210,6 +219,7 @@ const ari: Agent = {
   id: "ari",
   naam: "Ari",
   rol: "assistant",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-ari", beschrijving: "Klantrapport genereren", project: "Documenten", startedAt: ago(5), status: "bezig" },
   voltooideVandaag: 14,
@@ -227,6 +237,7 @@ const rodi: Agent = {
   id: "rodi",
   naam: "Rodi",
   rol: "automation",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-rodi", beschrijving: "Dagelijkse data sync", project: "Systeem", startedAt: ago(10), status: "bezig" },
   voltooideVandaag: 28,
@@ -244,6 +255,7 @@ const brent: Agent = {
   id: "brent",
   naam: "Brent",
   rol: "assistant",
+  team: "sem",
   status: "idle",
   huidigeTaak: null,
   voltooideVandaag: 0,
@@ -255,9 +267,32 @@ const brent: Agent = {
   kosten: noKosten,
 };
 
+// ============ TEAM SYB ============
+
+function sybAgent(id: string, naam: string, rol: AgentRole, color: string): Agent {
+  return {
+    id, naam, rol, team: "syb", status: "idle", huidigeTaak: null,
+    voltooideVandaag: 0, laatsteActiviteit: ago(120), avatar: color,
+    terminal: [], kosten: noKosten,
+  };
+}
+
+type AgentRole = Agent["rol"];
+
+const sybAgents: Agent[] = [
+  sybAgent("autro", "AUTRO", "manager", "#ff6b35"),
+  sybAgent("daan", "DAAN", "assistant", "#fbbf24"),
+  sybAgent("finn", "FINN", "builder", "#38bdf8"),
+  sybAgent("wout-syb", "WOUT", "builder", "#818cf8"),
+  sybAgent("ari-syb", "ARI", "assistant", "#34d399"),
+  sybAgent("bas-syb", "BAS", "builder", "#fb923c"),
+  sybAgent("leo", "LEO", "reviewer", "#a78bfa"),
+  sybAgent("gabriel-syb", "GABRIEL", "builder", "#94a3b8"),
+];
+
 // ============ EXPORTS ============
 
-export const agents: Agent[] = [
+export const semAgents: Agent[] = [
   // Management (always visible, fixed desks)
   theo, toby, jones,
   // Active builders (at their project desks)
@@ -269,6 +304,11 @@ export const agents: Agent[] = [
   // Available pool (koffiehoek)
   ...availableBuilders,
 ];
+
+export { sybAgents };
+
+// Combined roster (backwards compat)
+export const agents: Agent[] = [...semAgents, ...sybAgents];
 
 export const taskLog: TaskLogEntry[] = [
   { id: "log1", agentId: "wout", agentNaam: "Wout", beschrijving: "Office-view component gebouwd", project: "Autronis Dashboard", tijdstip: ago(5), status: "afgerond" },

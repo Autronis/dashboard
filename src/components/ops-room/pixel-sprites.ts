@@ -68,6 +68,16 @@ export function getCharacterDef(agentId: string): CharacterDef {
     case "rodi": return makeRodi();
     case "brent": return makeBrent();
 
+    // ===== TEAM SYB =====
+    case "autro": return makeAutro();
+    case "daan": return makeDaan();
+    case "finn": return makeFinn();
+    case "wout-syb": return makeWoutSyb();
+    case "ari-syb": return makeAriSyb();
+    case "bas-syb": return makeBasSyb();
+    case "leo": return makeLeo();
+    case "gabriel-syb": return makeGabrielSyb();
+
     default: return makeGeneric();
   }
 }
@@ -602,6 +612,80 @@ function makeBrent(): CharacterDef {
     height: H_NORM, skin: "#f0c8a0", hair: "#e8c840",
     shirt: "#f59e0b", pants: "#2a2a3a",
     eyeColor: "#3366aa", glasses: true,
+  });
+}
+
+// ============ TEAM SYB SPRITES ============
+
+function makeAutro(): CharacterDef {
+  // AUTRO — orchestrator, orange/red shirt, dark hair, confident
+  return makeHuman({
+    height: H_TALL, skin: "#d4a070", hair: "#1a1a1a",
+    shirt: "#ff6b35", pants: "#1e1e2e",
+    eyeColor: "#331a0a", headset: true,
+  });
+}
+
+function makeDaan(): CharacterDef {
+  // DAAN — interviewer, golden yellow shirt, brown hair
+  return makeHuman({
+    height: H_NORM, skin: "#f0c8a0", hair: "#6b4423",
+    shirt: "#fbbf24", pants: "#2a2a3a",
+    eyeColor: "#445522", glasses: true,
+  });
+}
+
+function makeFinn(): CharacterDef {
+  // FINN — frontend builder, sky blue shirt, light hair
+  return makeHuman({
+    height: H_NORM, skin: "#f5d0b0", hair: "#c4a060",
+    shirt: "#38bdf8", pants: "#1e293b",
+    eyeColor: "#3366aa",
+  });
+}
+
+function makeWoutSyb(): CharacterDef {
+  // WOUT (Syb) — n8n builder, purple shirt
+  return makeHuman({
+    height: H_NORM, skin: "#e8b888", hair: "#3a2818",
+    shirt: "#818cf8", pants: "#2a2a3a",
+    eyeColor: "#331a0a", stubble: true,
+  });
+}
+
+function makeAriSyb(): CharacterDef {
+  // ARI (Syb) — researcher, green shirt
+  return makeHuman({
+    height: H_SMALL, skin: "#d4a070", hair: "#2a1a0a",
+    shirt: "#34d399", pants: "#e8e8ee",
+    eyeColor: "#331a0a",
+  });
+}
+
+function makeBasSyb(): CharacterDef {
+  // BAS (Syb) — prompt engineer, orange shirt
+  return makeHuman({
+    height: H_NORM, skin: "#f0c8a0", hair: "#8b4513",
+    shirt: "#fb923c", pants: "#1e293b",
+    eyeColor: "#445522", curlyHair: true,
+  });
+}
+
+function makeLeo(): CharacterDef {
+  // LEO — QA/tester, purple shirt, glasses
+  return makeHuman({
+    height: H_TALL, skin: "#e0b890", hair: "#1a1a2a",
+    shirt: "#a78bfa", pants: "#2a2a3a",
+    eyeColor: "#222244", glasses: true,
+  });
+}
+
+function makeGabrielSyb(): CharacterDef {
+  // GABRIEL (Syb) — logger/docs, slate shirt
+  return makeHuman({
+    height: H_NORM, skin: "#d4a070", hair: "#2a2a2a",
+    shirt: "#94a3b8", pants: "#1e293b",
+    eyeColor: "#331a0a",
   });
 }
 

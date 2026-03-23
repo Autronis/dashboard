@@ -72,6 +72,9 @@
 
 /* Card gradient */
 .card-gradient {
+  background: linear-gradient(135deg, var(--card) 0%, var(--card-hover) 100%);
+}
+.dark .card-gradient {
   background: linear-gradient(135deg, var(--card) 0%, #0F2830 100%);
 }
 
@@ -82,7 +85,10 @@
 }
 .card-glow:hover {
   transform: translateY(-1px) scale(1.005);
-  border-color: rgba(35,198,183,0.25);
+  border-color: var(--border-hover);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.06), 0 0 0 1px var(--border-hover), 0 4px 16px rgba(0,0,0,0.05);
+}
+.dark .card-glow:hover {
   box-shadow: 0 8px 32px rgba(35,198,183,0.06), 0 0 0 1px rgba(35,198,183,0.08), 0 4px 16px rgba(0,0,0,0.15);
 }
 
@@ -119,13 +125,19 @@
 /* Thin scrollbar */
 .scrollbar-thin::-webkit-scrollbar { width: 4px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+.dark .scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
 
 /* Glassmorphism for modals/dropdowns only */
 .glass-modal {
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid var(--border);
+}
+.dark .glass-modal {
   background: rgba(11,26,31,0.85);
   border: 1px solid rgba(255,255,255,0.08);
 }
@@ -194,9 +206,15 @@ body {
 
 /* Table styling */
 .table-row-hover:hover {
+  background: rgba(0,0,0,0.02);
+}
+.dark .table-row-hover:hover {
   background: rgba(255,255,255,0.03);
 }
 .table-row-alt:nth-child(even) {
+  background: rgba(0,0,0,0.01);
+}
+.dark .table-row-alt:nth-child(even) {
   background: rgba(255,255,255,0.01);
 }
 .table-header-sticky {
@@ -204,8 +222,11 @@ body {
   top: 0;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  background: rgba(11,26,31,0.9);
+  background: rgba(255,255,255,0.9);
   z-index: 10;
+}
+.dark .table-header-sticky {
+  background: rgba(11,26,31,0.9);
 }
 
 /* Safe area for mobile */

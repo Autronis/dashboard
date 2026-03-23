@@ -211,7 +211,7 @@ function DailyBriefing() {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="w-4 h-4 text-autronis-accent" />
-            <h2 className="text-base font-semibold text-white">Dagbriefing</h2>
+            <h2 className="text-base font-semibold text-autronis-text-primary">Dagbriefing</h2>
           </div>
           {briefing.samenvatting && (
             <p className="text-sm text-autronis-text-secondary leading-relaxed">
@@ -504,7 +504,7 @@ function RadarWidget() {
           <div className="p-2 bg-autronis-accent/10 rounded-xl">
             <Radar className="w-5 h-5 text-autronis-accent" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Learning Radar</h2>
+          <h2 className="text-xl font-semibold text-autronis-text-primary">Learning Radar</h2>
         </div>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -522,7 +522,7 @@ function RadarWidget() {
           <div className="p-2 bg-autronis-accent/10 rounded-xl">
             <Radar className="w-5 h-5 text-autronis-accent" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Learning Radar</h2>
+          <h2 className="text-xl font-semibold text-autronis-text-primary">Learning Radar</h2>
           <span className="text-sm text-autronis-text-secondary">({items.length} items)</span>
         </div>
         <Link
@@ -788,7 +788,7 @@ export default function DashboardPage() {
       <div className="max-w-[1400px] mx-auto space-y-3">
         {/* Begroeting */}
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-bold text-autronis-text-primary tracking-tight">
             {getBegroeting()}, {gebruiker.naam.split(" ")[0]}
           </h1>
           <p className="text-sm text-autronis-text-secondary capitalize">
@@ -888,7 +888,7 @@ export default function DashboardPage() {
         {/* Slimme inzichten */}
         {inzichten.length > 0 && (
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
-            <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+            <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-autronis-accent" />
               Slimme inzichten
             </h2>
@@ -942,7 +942,7 @@ export default function DashboardPage() {
             {/* Mijn Taken */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-semibold text-white flex items-center gap-2">
+                <h2 className="text-base font-semibold text-autronis-text-primary flex items-center gap-2">
                   <ListTodo className="w-4 h-4 text-autronis-accent" />
                   Mijn taken
                 </h2>
@@ -1000,7 +1000,7 @@ export default function DashboardPage() {
 
             {/* Aankomende Deadlines */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
-              <h2 className="text-base font-semibold text-white mb-3 flex items-center gap-2">
+              <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-autronis-accent" />
                 Deadlines
               </h2>
@@ -1187,7 +1187,7 @@ export default function DashboardPage() {
                 <span className="text-xs text-autronis-text-secondary hidden sm:inline">{projecten.find((p) => p.id === timer.projectId)?.naam || ""}</span>
               </div>
               <span className="text-base sm:text-lg font-bold text-autronis-accent font-mono tabular-nums">{formatElapsed(timer.elapsed)}</span>
-              <button onClick={handleStopTimer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-semibold transition-colors btn-press flex-shrink-0">
+              <button onClick={handleStopTimer} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500 hover:bg-red-600 text-autronis-text-primary rounded-lg text-xs font-semibold transition-colors btn-press flex-shrink-0">
                 <Square className="w-3 h-3" /> Stop
               </button>
             </div>

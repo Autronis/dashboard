@@ -170,10 +170,19 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   toby:  { x: BUILDER_X + MGMT_OFFSET + UNIT_W, y: MGMT_Y },
   jones: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 2, y: MGMT_Y },
   brent: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 3, y: MGMT_Y },
-  // Ari + Rodi — left column, staf
+  // Staf — left column
   ari: { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
   rodi: { x: 20, y: BUILDER_START_Y + UNIT_H + Math.floor(UNIT_H / 2) + 10 },
-  // Builders row 2 (5 columns)
+  // Team Syb — same layout, used on V2 floor
+  autro:         { x: BUILDER_X + MGMT_OFFSET, y: MGMT_Y },
+  daan:          { x: BUILDER_X + MGMT_OFFSET + UNIT_W, y: MGMT_Y },
+  leo:           { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 2, y: MGMT_Y },
+  finn:          { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
+  "wout-syb":    { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
+  "bas-syb":     { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
+  "gabriel-syb": { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
+  "ari-syb":     { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
+  // Builders row 2 — Team Sem (5 columns)
   wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
   bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
   gabriel: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
@@ -593,7 +602,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
   }), []);
 
   // Management always stays at desk, builders only when active
-  const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi", "brent"]);
+  const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi", "brent", "autro", "daan", "leo", "ari-syb"]);
 
   const positions = useMemo(() => {
     const map = new Map<string, { x: number; y: number; agent: Agent }>();
@@ -676,15 +685,16 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.imageSmoothingEnabled = false;
     const tick = tickRef.current;
 
-    // === Gradient background (dark → teal) ===
+    // === Gradient background ===
+    const pal = paletteRef.current;
     const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
-    bgGrad.addColorStop(0, "#0a0f1a");
-    bgGrad.addColorStop(1, "#0a1a1f");
+    bgGrad.addColorStop(0, pal.bgGradTop);
+    bgGrad.addColorStop(1, pal.bgGradBot);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
     // Subtle moving grid (matrix/cyber effect)
-    ctx.strokeStyle = "#23C6B706";
+    ctx.strokeStyle = pal.gridColor;
     ctx.lineWidth = 0.5;
     const gridOffset = (tick * 0.3) % 40;
     for (let gx = -40; gx < CANVAS_W + 40; gx += 40) {
@@ -694,48 +704,42 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(CANVAS_W, gy); ctx.stroke();
     }
 
-    // Warm wooden floor (brown/honey tones)
+    // Wooden floor
     const plankH = 12;
     for (let py = WALL_H; py < CANVAS_H; py += plankH) {
       const plankIdx = Math.floor(py / plankH);
-      // 3 wood tones: dark oak, medium walnut, honey
-      const tones = [
-        { r: 30, g: 22, b: 14 },  // dark oak
-        { r: 36, g: 26, b: 16 },  // walnut
-        { r: 32, g: 24, b: 15 },  // chestnut
-      ];
-      const tone = tones[plankIdx % 3];
-      // Subtle per-plank variation
+      const tone = pal.floorTones[plankIdx % 3];
       const v = ((plankIdx * 7 + 13) % 7) - 3;
       const r = tone.r + v;
       const g = tone.g + v;
       const b = tone.b + v;
       ctx.fillStyle = `rgb(${r},${g},${b})`;
       ctx.fillRect(0, py, CANVAS_W, plankH);
-      // Gap line (darker)
-      ctx.fillStyle = `rgb(${r - 10},${g - 8},${b - 6})`;
+      // Gap line
+      const gd = pal.floorGapDarken;
+      ctx.fillStyle = `rgb(${r - gd},${g - gd + 2},${b - gd + 4})`;
       ctx.fillRect(0, py, CANVAS_W, 1);
-      // Wood grain (subtle lighter streak)
+      // Wood grain
       if (plankIdx % 2 === 0) {
-        ctx.fillStyle = `rgba(255,240,220,0.015)`;
+        ctx.fillStyle = pal.floorGrainColor;
         const gx = (plankIdx * 73) % CANVAS_W;
         ctx.fillRect(gx, py + 4, 70 + (plankIdx % 50), 1);
       }
     }
 
-    // Floor lighting: brighter center, darker edges
+    // Floor lighting
     const floorLight = ctx.createRadialGradient(CANVAS_W / 2, CANVAS_H / 2, 0, CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.5);
-    floorLight.addColorStop(0, "rgba(255,255,255,0.015)");
-    floorLight.addColorStop(1, "rgba(0,0,0,0.03)");
+    floorLight.addColorStop(0, pal.floorLightCenter);
+    floorLight.addColorStop(1, pal.floorLightEdge);
     ctx.fillStyle = floorLight;
     ctx.fillRect(0, WALL_H, CANVAS_W, CANVAS_H - WALL_H);
 
-    // === Ambient particles (floating turquoise dots) ===
+    // === Ambient particles ===
     for (let p = 0; p < 8; p++) {
       const px = ((tick * 0.3 + p * 187) % CANVAS_W);
       const py2 = WALL_H + 50 + ((tick * 0.15 + p * 97) % (CANVAS_H - WALL_H - 80));
-      const alpha = 0.03 + Math.sin(tick * 0.1 + p * 2) * 0.02;
-      ctx.fillStyle = `rgba(35, 198, 183, ${alpha})`;
+      const alpha = pal.particleAlphaBase + Math.sin(tick * 0.1 + p * 2) * 0.02;
+      ctx.fillStyle = `rgba(${pal.particleColor}, ${alpha})`;
       ctx.beginPath();
       ctx.arc(px, py2, 1.5, 0, Math.PI * 2);
       ctx.fill();
@@ -743,11 +747,11 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // === Wall ===
     const wallGrad = ctx.createLinearGradient(0, 0, 0, WALL_H);
-    wallGrad.addColorStop(0, "#1a2535");
-    wallGrad.addColorStop(1, "#2a3a4a");
+    wallGrad.addColorStop(0, pal.wallGradTop);
+    wallGrad.addColorStop(1, pal.wallGradBot);
     ctx.fillStyle = wallGrad;
     ctx.fillRect(0, 0, CANVAS_W, WALL_H);
-    ctx.fillStyle = "#1e2e3e";
+    ctx.fillStyle = pal.wallEdge;
     ctx.fillRect(0, WALL_H, CANVAS_W, 2);
 
     // Windows — 5 wide rectangular windows with cross frames
@@ -759,65 +763,92 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const wx = winSpacing + i * (winW + winSpacing);
       const wy = 6;
 
-      // Outer frame (light grey)
-      ctx.fillStyle = "#5a6a7a";
+      // Outer frame
+      ctx.fillStyle = pal.windowFrame;
       ctx.fillRect(wx - 2, wy - 2, winW + 4, winH + 4);
 
-      // Night sky gradient
+      // Sky gradient
       const skyGrad = ctx.createLinearGradient(wx, wy, wx, wy + winH);
-      skyGrad.addColorStop(0, "#060818");
-      skyGrad.addColorStop(0.5, "#0c1230");
-      skyGrad.addColorStop(1, "#1a1840");
+      skyGrad.addColorStop(0, pal.skyGradTop);
+      skyGrad.addColorStop(0.5, pal.skyGradMid);
+      skyGrad.addColorStop(1, pal.skyGradBot);
       ctx.fillStyle = skyGrad;
       ctx.fillRect(wx, wy, winW, winH);
 
-      // Stars / city lights (twinkling)
+      // Stars (dark) / Clouds (light)
       const starPositions = [
         [0.12, 0.2], [0.35, 0.15], [0.6, 0.3], [0.82, 0.12], [0.25, 0.55],
         [0.7, 0.6], [0.45, 0.75], [0.15, 0.8], [0.9, 0.45], [0.5, 0.4],
       ];
-      for (let si = 0; si < starPositions.length; si++) {
-        const [sx, sy] = starPositions[si];
-        const starAlpha = 0.3 + Math.sin(tick * 0.15 + i * 5 + si * 3.7) * 0.25;
-        const starSize = si < 3 ? 2 : 1.2;
-        const starColors = ["#ffffff", "#aaccff", "#ffddaa", "#aaddff", "#ff9966"];
-        ctx.fillStyle = `${starColors[si % starColors.length]}${Math.round(starAlpha * 255).toString(16).padStart(2, "0")}`;
-        ctx.fillRect(wx + sx * winW, wy + sy * winH, starSize, starSize);
+      const isLight = pal === LIGHT_PALETTE;
+      if (isLight) {
+        // Draw fluffy clouds
+        for (let ci = 0; ci < 3; ci++) {
+          const cx = wx + ((ci * 30 + tick * 0.05 + i * 20) % (winW + 10)) - 5;
+          const cy = wy + 6 + ci * 7;
+          ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(tick * 0.03 + ci) * 0.15})`;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, 12 + ci * 2, 4 + ci, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.ellipse(cx + 8, cy - 2, 8, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else {
+        for (let si = 0; si < starPositions.length; si++) {
+          const [sx, sy] = starPositions[si];
+          const starAlpha = 0.3 + Math.sin(tick * 0.15 + i * 5 + si * 3.7) * 0.25;
+          const starSize = si < 3 ? 2 : 1.2;
+          ctx.fillStyle = `${pal.starColors[si % pal.starColors.length]}${Math.round(starAlpha * 255).toString(16).padStart(2, "0")}`;
+          ctx.fillRect(wx + sx * winW, wy + sy * winH, starSize, starSize);
+        }
       }
 
       // Distant city skyline silhouette (bottom of window)
-      ctx.fillStyle = "#0a0a1a";
-      const bldgH = [8, 12, 6, 14, 9, 7, 11, 5, 10, 8];
-      for (let b = 0; b < 10; b++) {
-        const bx = wx + b * (winW / 10);
-        const bh = bldgH[(b + i * 3) % bldgH.length];
-        ctx.fillRect(bx, wy + winH - bh, winW / 10, bh);
-      }
-      // Tiny building windows (warm glow)
-      for (let b = 0; b < 6; b++) {
-        const blx = wx + 4 + ((i * 13 + b * 11) % (winW - 8));
-        const bly = wy + winH - 3 - ((b * 3 + i * 2) % 8);
-        const bla = 0.4 + Math.sin(tick * 0.1 + i * 4 + b * 7) * 0.3;
-        ctx.fillStyle = `rgba(255, 200, 100, ${bla})`;
-        ctx.fillRect(blx, bly, 2, 2);
+      if (!isLight) {
+        ctx.fillStyle = pal.cityBg;
+        const bldgH = [8, 12, 6, 14, 9, 7, 11, 5, 10, 8];
+        for (let b = 0; b < 10; b++) {
+          const bx = wx + b * (winW / 10);
+          const bh = bldgH[(b + i * 3) % bldgH.length];
+          ctx.fillRect(bx, wy + winH - bh, winW / 10, bh);
+        }
+        // Tiny building windows (warm glow)
+        for (let b = 0; b < 6; b++) {
+          const blx = wx + 4 + ((i * 13 + b * 11) % (winW - 8));
+          const bly = wy + winH - 3 - ((b * 3 + i * 2) % 8);
+          const bla = 0.4 + Math.sin(tick * 0.1 + i * 4 + b * 7) * 0.3;
+          ctx.fillStyle = `${pal.cityWindowColor} ${bla})`;
+          ctx.fillRect(blx, bly, 2, 2);
+        }
+      } else {
+        // Light mode: distant green hills/trees
+        ctx.fillStyle = "#8cc088";
+        const hillH = [4, 6, 3, 7, 5, 4, 6, 3, 5, 4];
+        for (let b = 0; b < 10; b++) {
+          const bx = wx + b * (winW / 10);
+          const bh = hillH[(b + i * 3) % hillH.length];
+          ctx.beginPath();
+          ctx.ellipse(bx + winW / 20, wy + winH - bh / 2, winW / 10, bh, 0, Math.PI, 0);
+          ctx.fill();
+        }
       }
 
       // Cross frame (4 panes)
-      ctx.fillStyle = "#5a6a7a";
-      // Vertical divider
+      ctx.fillStyle = pal.windowFrame;
       ctx.fillRect(wx + winW / 2 - 1.5, wy, 3, winH);
-      // Horizontal divider
       ctx.fillRect(wx, wy + winH / 2 - 1.5, winW, 3);
 
       // Inner frame highlight (subtle 3D)
-      ctx.fillStyle = "#7a8a9a30";
+      ctx.fillStyle = pal.windowFrameHighlight;
       ctx.fillRect(wx, wy, winW, 1);
       ctx.fillRect(wx, wy, 1, winH);
 
       // Light fall from window onto floor
       const lightGrad = ctx.createLinearGradient(wx + winW / 2, WALL_H, wx + winW / 2, WALL_H + 120);
-      lightGrad.addColorStop(0, "rgba(35, 198, 183, 0.04)");
-      lightGrad.addColorStop(1, "rgba(35, 198, 183, 0)");
+      const lightAlpha = isLight ? 0.06 : 0.04;
+      lightGrad.addColorStop(0, `${pal.windowLightColor} ${lightAlpha})`);
+      lightGrad.addColorStop(1, `${pal.windowLightColor} 0)`);
       ctx.fillStyle = lightGrad;
       ctx.beginPath();
       ctx.moveTo(wx - 10, WALL_H);
@@ -836,54 +867,54 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const edW = 24 * S;
       const edH = 5 * S;
       // Shadow
-      ctx.fillStyle = "#00000010";
+      ctx.fillStyle = pal.emptyDeskShadow;
       ctx.beginPath();
       ctx.ellipse(ex + 14 * S, edY + edH + 4 * S, 14 * S, 3 * S, 0, 0, Math.PI * 2);
       ctx.fill();
       // Desk surface
-      ctx.fillStyle = "#4a3a2a";
+      ctx.fillStyle = pal.deskSurface;
       ctx.fillRect(ex + 2 * S, edY, edW, edH);
-      ctx.fillStyle = "#5a4430";
+      ctx.fillStyle = pal.deskFront;
       ctx.fillRect(ex + 2 * S, edY + edH, edW, 2 * S);
-      ctx.fillStyle = "#5a4430";
+      ctx.fillStyle = pal.deskLegs;
       ctx.fillRect(ex + 3 * S, edY + edH + 2 * S, 2 * S, 2 * S);
       ctx.fillRect(ex + 23 * S, edY + edH + 2 * S, 2 * S, 2 * S);
       // Chair at empty desk
       const ecX = ex + 7 * S;
       const ecBotY = edY - S;
-      ctx.fillStyle = "#353545";
+      ctx.fillStyle = pal.chairBack;
       ctx.fillRect(ecX + S, ecBotY - 10 * S, 8 * S, 4 * S);
-      ctx.fillStyle = "#404055";
+      ctx.fillStyle = pal.chairBackLight;
       ctx.fillRect(ecX + 2 * S, ecBotY - 9 * S, 6 * S, 2 * S);
-      ctx.fillStyle = "#303040";
+      ctx.fillStyle = pal.chairSeat;
       ctx.fillRect(ecX, ecBotY - 2 * S, 10 * S, 2 * S);
-      ctx.fillStyle = "#2a2a38";
+      ctx.fillStyle = pal.chairArm;
       ctx.fillRect(ecX - S, ecBotY - 4 * S, S, 3 * S);
       ctx.fillRect(ecX + 10 * S, ecBotY - 4 * S, S, 3 * S);
-      ctx.fillStyle = "#252530";
+      ctx.fillStyle = pal.chairBase;
       ctx.fillRect(ecX + 4 * S, ecBotY, 2 * S, S);
-      // Monitor (off, smaller Sem-style)
+      // Monitor (off)
       const emW = 7 * S;
       const emH = 5 * S;
       const emX = ex + 19 * S;
       const emY = edY - emH + S * 3;
-      ctx.fillStyle = "#2a2a3a";
+      ctx.fillStyle = pal.monitorFrame;
       ctx.fillRect(emX, emY, emW, emH);
-      ctx.fillStyle = "#040406";
+      ctx.fillStyle = pal.monitorScreen;
       ctx.fillRect(emX + S, emY + S, 5 * S, 3 * S);
       // Stand
-      ctx.fillStyle = "#2a2a3a";
+      ctx.fillStyle = pal.monitorFrame;
       ctx.fillRect(emX + 3 * S, emY + emH, S, S);
       // Keyboard on empty desk
       const ekbX = ex + 9 * S;
       const ekbY = edY + 2 * S;
-      ctx.fillStyle = "#252530";
+      ctx.fillStyle = pal.keyboardBase;
       ctx.fillRect(ekbX, ekbY, 6 * S, 1.5 * S);
-      ctx.fillStyle = "#353545";
+      ctx.fillStyle = pal.keyboardKeys;
       ctx.fillRect(ekbX + S * 0.3, ekbY + S * 0.2, 5.4 * S, S * 0.4);
       ctx.fillRect(ekbX + S * 0.3, ekbY + S * 0.8, 5.4 * S, S * 0.4);
       // Mouse
-      ctx.fillStyle = "#303038";
+      ctx.fillStyle = pal.mouseColor;
       ctx.beginPath();
       ctx.ellipse(ekbX + 8 * S, ekbY + S * 0.7, S * 0.8, S * 1.1, 0, 0, Math.PI * 2);
       ctx.fill();
@@ -903,7 +934,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     // === Group labels — all centered over full canvas width, like STAND-BY ===
     ctx.font = "bold italic 13px Inter, system-ui, sans-serif";
     ctx.letterSpacing = "3px";
-    ctx.fillStyle = "#ffffffcc";
+    ctx.fillStyle = pal.labelColor;
     ctx.textAlign = "center";
     const centerX = CANVAS_W / 2;
     // "DE BAAS" + "HET BESTUUR" on same line (management row)

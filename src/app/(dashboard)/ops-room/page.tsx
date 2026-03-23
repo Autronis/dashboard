@@ -253,7 +253,7 @@ export default function OpsRoomPage() {
                   <p className="text-[10px] font-semibold text-autronis-accent uppercase tracking-wider mb-1">Team Sem — Verdieping 1</p>
                 )}
                 <PixelOffice
-                  agents={agents}
+                  agents={agents.filter((a) => a.team === "sem")}
                   selectedId={selectedAgent?.id ?? null}
                   onSelect={handleSelectAgent}
                 />
@@ -264,7 +264,11 @@ export default function OpsRoomPage() {
                 {floor === "both" && (
                   <p className="text-[10px] font-semibold text-purple-400 uppercase tracking-wider mb-1 mt-4">Team Syb — Verdieping 2</p>
                 )}
-                <OfficeViewSyb />
+                <PixelOffice
+                  agents={agents.filter((a) => a.team === "syb")}
+                  selectedId={selectedAgent?.id ?? null}
+                  onSelect={handleSelectAgent}
+                />
               </div>
             )}
             {/* Orchestrator panels below the office */}

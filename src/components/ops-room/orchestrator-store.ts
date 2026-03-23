@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Command, Plan, PlanTask, ApprovalRequest, CommandStatus, TheoQueueItem, PermissionLevel, TaskStatus } from "./orchestrator-types";
+import type { Command, Plan, PlanTask, ApprovalRequest, CommandStatus, TheoQueueItem, PermissionLevel, TaskStatus, DaanMode } from "./orchestrator-types";
 import { playNotification, playSuccess, playError, playApproval } from "./sounds";
 
 interface TaskResult {
@@ -40,6 +40,7 @@ interface OrchestratorState {
   // Actions
   submitCommand: (opdracht: string) => Promise<void>;
   answerIntake: (commandId: string, antwoorden: string[]) => Promise<void>;
+  answerIdee: (commandId: string, antwoorden: string[]) => Promise<void>;
   updateCommandStatus: (id: string, status: CommandStatus) => void;
   approveApproval: (id: string) => void;
   rejectApproval: (id: string, feedback: string) => void;
@@ -86,6 +87,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       feedback: null,
       intakeVragen: null,
       intakeAntwoorden: null,
+      daanMode: null,
     };
 
     set((s) => ({
@@ -97,7 +99,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     addLog(set, "theo", "info", `Opdracht ontvangen: "${opdracht.slice(0, 60)}"`);
 
     // === DAAN INTAKE CHECK ===
-    // Quick check if the command is clear enough to plan
+    // Quick check: is this an idea or a task? Is it clear enough?
     try {
       const intakeRes = await fetch("/api/ops-room/orchestrate", {
         method: "POST",
@@ -107,6 +109,24 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       if (intakeRes.ok) {
         const intakeData = await intakeRes.json();
+        const daanMode = (intakeData.mode ?? "taak") as DaanMode;
+
+        if (daanMode === "idee") {
+          // DAAN recognized this as an idea — switch to idea sparring
+          addLog(set, "daan", "info", `Idee herkend — spar-vragen worden gesteld`);
+          set((s) => ({
+            commands: s.commands.map((c) => c.id === cmdId ? {
+              ...c,
+              status: "intake_idee" as const,
+              daanMode: "idee",
+              intakeVragen: intakeData.vragen as string[],
+            } : c),
+            isProcessing: false,
+          }));
+          playNotification();
+          return; // Wait for answerIdee()
+        }
+
         if (intakeData.needsIntake && intakeData.vragen?.length > 0) {
           // DAAN needs more info — pause and ask questions
           addLog(set, "daan", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
@@ -114,6 +134,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
             commands: s.commands.map((c) => c.id === cmdId ? {
               ...c,
               status: "intake" as const,
+              daanMode: "taak",
               intakeVragen: intakeData.vragen as string[],
             } : c),
             isProcessing: false,

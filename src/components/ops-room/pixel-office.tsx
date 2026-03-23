@@ -1316,7 +1316,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     ctx.fillRect(bsX + 15 + bsSway * 0.4, bsY + 10, 4, 1);
 
     // === Sem desk ===
-    drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S);
+    drawSemDesk(ctx, SEM.x, SEM.y, tick, selectedId === "sem", S, isLight);
 
     // === Desks pass 1 — always draw desk, but agent only if active/management ===
     Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {

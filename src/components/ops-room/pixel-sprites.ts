@@ -798,11 +798,41 @@ export function drawDeskUnit(
 
 // ============ SEM L-DESK ============
 
+export interface SemDeskPalette {
+  chairBack: string;
+  chairBackLight: string;
+  chairSeat: string;
+  chairArm: string;
+  chairBase: string;
+  deskSurface: string;
+  deskFront: string;
+  deskLegs: string;
+  monitorFrame: string;
+  labelColor: string;
+  labelSecondary: string;
+}
+
+const SEM_DESK_DARK: SemDeskPalette = {
+  chairBack: "#353545", chairBackLight: "#404055", chairSeat: "#303040",
+  chairArm: "#2a2a38", chairBase: "#252530",
+  deskSurface: "#5c4a3a", deskFront: "#4a3828", deskLegs: "#3a2818",
+  monitorFrame: "#2a2a3a", labelColor: "#ffffff", labelSecondary: "#a0b0ba",
+};
+
+const SEM_DESK_LIGHT: SemDeskPalette = {
+  chairBack: "#808898", chairBackLight: "#909aa8", chairSeat: "#707888",
+  chairArm: "#687080", chairBase: "#606870",
+  deskSurface: "#c8a878", deskFront: "#b89868", deskLegs: "#a88858",
+  monitorFrame: "#505868", labelColor: "#1a2535ee", labelSecondary: "#6a7a8a",
+};
+
 export function drawSemDesk(
   ctx: CanvasRenderingContext2D,
   x: number, y: number,
   tick: number, isSelected: boolean, s: number = 4,
+  isLight: boolean = false,
 ) {
+  const pal = isLight ? SEM_DESK_LIGHT : SEM_DESK_DARK;
   const charDef = getCharacterDef("sem");
   const deskY = y + 16 * s;
   const charH = charDef.rows * s;
@@ -811,27 +841,27 @@ export function drawSemDesk(
   // Chair (behind desk, behind character)
   const chX = x + 7 * s;
   const chBotY = deskY - s;
-  ctx.fillStyle = "#353545";
+  ctx.fillStyle = pal.chairBack;
   ctx.fillRect(chX + s, chBotY - 10 * s, 8 * s, 4 * s);
-  ctx.fillStyle = "#404055";
+  ctx.fillStyle = pal.chairBackLight;
   ctx.fillRect(chX + 2 * s, chBotY - 9 * s, 6 * s, 2 * s);
-  ctx.fillStyle = "#303040";
+  ctx.fillStyle = pal.chairSeat;
   ctx.fillRect(chX, chBotY - 2 * s, 10 * s, 2 * s);
-  ctx.fillStyle = "#2a2a38";
+  ctx.fillStyle = pal.chairArm;
   ctx.fillRect(chX - s, chBotY - 4 * s, s, 3 * s);
   ctx.fillRect(chX + 10 * s, chBotY - 4 * s, s, 3 * s);
-  ctx.fillStyle = "#252530";
+  ctx.fillStyle = pal.chairBase;
   ctx.fillRect(chX + 4 * s, chBotY, 2 * s, s);
 
   drawSprite(ctx, charDef.sprite, x + 6 * s, charY, s);
 
   // L-desk
-  ctx.fillStyle = "#5c4a3a";
+  ctx.fillStyle = pal.deskSurface;
   ctx.fillRect(x, deskY, 28 * s, 5 * s);
   ctx.fillRect(x + 22 * s, deskY - 7 * s, 6 * s, 12 * s);
-  ctx.fillStyle = "#4a3828";
+  ctx.fillStyle = pal.deskFront;
   ctx.fillRect(x, deskY + 5 * s, 28 * s, 2 * s);
-  ctx.fillStyle = "#3a2818";
+  ctx.fillStyle = pal.deskLegs;
   ctx.fillRect(x + s, deskY + 7 * s, 2 * s, 2 * s);
   ctx.fillRect(x + 25 * s, deskY + 7 * s, 2 * s, 2 * s);
 
@@ -840,7 +870,7 @@ export function drawSemDesk(
   for (let m = 0; m < 2; m++) {
     const mx = x + (1 + m * 13) * s;
     const my = deskY - 2 * s;
-    ctx.fillStyle = "#2a2a3a";
+    ctx.fillStyle = pal.monitorFrame;
     ctx.fillRect(mx, my, 13 * s, 7 * s);
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
     ctx.fillRect(mx + s, my + s, 11 * s, 5 * s);
@@ -848,7 +878,7 @@ export function drawSemDesk(
     for (let ln = 0; ln < 2; ln++) {
       ctx.fillRect(mx + 2 * s, my + (2 + ln * 2) * s, (6 + (tick + ln) % 5) * s, s);
     }
-    ctx.fillStyle = "#2a2a3a";
+    ctx.fillStyle = pal.monitorFrame;
     ctx.fillRect(mx + 5 * s, my + 7 * s, 3 * s, s);
   }
 
@@ -863,16 +893,14 @@ export function drawSemDesk(
   ctx.fillRect(ccX + 2 * s, ccY + 0.5 * s, 0.6 * s, 1.5 * s);
   // Steam
   if (tick % 8 < 5) {
-    ctx.fillStyle = "#ffffff12";
+    ctx.fillStyle = isLight ? "#00000008" : "#ffffff12";
     ctx.fillRect(ccX + 0.5 * s, ccY - s + (tick % 3) * 0.2, 0.4 * s, 0.8 * s);
     ctx.fillRect(ccX + 1.2 * s, ccY - 1.3 * s + (tick % 4) * 0.15, 0.4 * s, 0.8 * s);
-
   }
 
   // Label: Crown icon + Sem / CEO / → Autronis
   const labelX = x + 2 * s;
   const labelY = y + 27 * s;
-  // Crown icon (Lucide-style, stroked)
   const crW = 16;
   const crSc = crW / 24;
   ctx.save();
@@ -890,19 +918,18 @@ export function drawSemDesk(
   ctx.fillStyle = "#f59e0b30";
   ctx.fill();
   ctx.beginPath(); ctx.moveTo(2, 20); ctx.lineTo(22, 20); ctx.stroke();
-  // Gem
   ctx.fillStyle = "#ef4444";
   ctx.beginPath(); ctx.arc(12, 12, 2, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
   const crownW = crW + 4;
   // Name
   ctx.font = "bold 12px Inter, system-ui, sans-serif";
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = pal.labelColor;
   ctx.fillText("Sem", labelX + crownW, labelY);
   const semNW = ctx.measureText("Sem").width;
   // CEO label
   ctx.font = "10px Inter, system-ui, sans-serif";
-  ctx.fillStyle = "#a0b0ba";
+  ctx.fillStyle = pal.labelSecondary;
   ctx.fillText("CEO", labelX + crownW + semNW + 4, labelY);
   // Project
   ctx.font = "10px Inter, system-ui, sans-serif";

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { Client } from "@notionhq/client";
+import Anthropic from "@anthropic-ai/sdk";
 import { db } from "@/lib/db";
 import { projecten } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -108,10 +109,10 @@ export async function POST(
       }
     }
 
-    // 4. Sync: update existing, add new
+    // 4. Sync: update existing, collect new tasks
     let updated = 0;
     let added = 0;
-    const newBlocks: Parameters<typeof notion.blocks.children.append>[0]["children"] = [];
+    const newTasks: TodoTask[] = [];
     let lastFase = "";
 
     for (const task of taken) {
@@ -119,7 +120,6 @@ export async function POST(
       const existing = existingTodos.get(key);
 
       if (existing) {
-        // Update checked status if changed
         if (existing.checked !== task.done) {
           await notion.blocks.update({
             block_id: existing.id,
@@ -128,29 +128,68 @@ export async function POST(
           updated++;
         }
       } else {
-        // Add fase heading if new fase
-        if (task.fase !== lastFase) {
-          newBlocks.push({
-            object: "block",
-            type: "heading_3",
-            heading_3: {
-              rich_text: [{ type: "text", text: { content: task.fase } }],
-            },
-          });
-          lastFase = task.fase;
-        }
-
-        // Add new task
-        newBlocks.push({
-          object: "block",
-          type: "to_do",
-          to_do: {
-            rich_text: [{ type: "text", text: { content: task.titel } }],
-            checked: task.done,
-          },
-        });
+        newTasks.push(task);
         added++;
       }
+    }
+
+    // 4b. Generate descriptions for new tasks via Claude Haiku
+    const descriptions = new Map<string, string>();
+    if (newTasks.length > 0 && process.env.ANTHROPIC_API_KEY) {
+      try {
+        const anthropic = new Anthropic();
+        const taskList = newTasks.map((t) => `- ${t.titel} (fase: ${t.fase})`).join("\n");
+        const msg = await anthropic.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 1024,
+          messages: [{
+            role: "user",
+            content: `Je bent een project-assistent voor "${project.naam}". Geef per taak een korte beschrijving (1 zin, max 15 woorden, Nederlands). Antwoord als JSON object met taak-titel als key en beschrijving als value.\n\nTaken:\n${taskList}`,
+          }],
+        });
+        const text = msg.content[0].type === "text" ? msg.content[0].text : "";
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]) as Record<string, string>;
+          for (const [key, val] of Object.entries(parsed)) {
+            descriptions.set(key.toLowerCase().trim(), val);
+          }
+        }
+      } catch {
+        // If AI call fails, continue without descriptions
+      }
+    }
+
+    // 4c. Build Notion blocks for new tasks
+    const newBlocks: Parameters<typeof notion.blocks.children.append>[0]["children"] = [];
+    for (const task of newTasks) {
+      if (task.fase !== lastFase) {
+        newBlocks.push({
+          object: "block",
+          type: "heading_3",
+          heading_3: {
+            rich_text: [{ type: "text", text: { content: task.fase } }],
+          },
+        });
+        lastFase = task.fase;
+      }
+
+      const desc = descriptions.get(task.titel.toLowerCase().trim());
+      const richText: Array<{ type: "text"; text: { content: string }; annotations?: { color: "gray" } }> = [
+        { type: "text", text: { content: task.titel } },
+      ];
+      if (desc) {
+        richText.push({ type: "text", text: { content: ` — ${desc}` }, annotations: { color: "gray" } });
+      }
+
+      newBlocks.push({
+        object: "block",
+        type: "to_do",
+        to_do: {
+          rich_text: richText,
+          checked: task.done,
+        },
+      });
     }
 
     // Append new blocks

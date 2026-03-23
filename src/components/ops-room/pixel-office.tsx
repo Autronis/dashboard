@@ -578,6 +578,105 @@ interface PixelOfficeProps {
   ceo?: { id: string; naam: string; avatar: string };
 }
 
+// ============ SPRITE AVATAR (inline mini canvas) ============
+
+function SpriteIcon({ agentId, size = 32 }: { agentId: string; size?: number }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const def = getCharacterDef(agentId);
+    const scale = Math.max(1, Math.floor(size / Math.max(def.cols, def.rows)));
+    canvas.width = size;
+    canvas.height = size;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, size, size);
+    const ox = Math.floor((size - def.cols * scale) / 2);
+    const oy = Math.max(0, Math.floor((size - def.rows * scale) / 2));
+    drawSprite(ctx, def.sprite, ox, oy, scale);
+  }, [agentId, size]);
+
+  return <canvas ref={ref} width={size} height={size} className="shrink-0" style={{ width: size, height: size, imageRendering: "pixelated" }} />;
+}
+
+// ============ CONTEXT MENU ============
+
+function ContextMenuOverlay({ agent, x, y, onClose, onSelect, onConfetti }: {
+  agent: Agent; x: number; y: number;
+  onClose: () => void; onSelect: (a: Agent) => void; onConfetti: () => void;
+}) {
+  const proj = agent.huidigeTaak?.project;
+  const statusColor = agent.status === "working" ? "bg-green-400" : agent.status === "reviewing" ? "bg-purple-400" : "bg-gray-400";
+
+  return (
+    <div
+      className="absolute z-50 w-[200px] rounded-xl overflow-hidden
+        shadow-[0_8px_30px_rgba(0,0,0,0.3)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)]
+        border border-autronis-border/30
+        bg-white dark:bg-[#111827]"
+      style={{ left: x, top: y }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Header with sprite */}
+      <div className="px-3 py-3 flex items-center gap-3 border-b border-gray-100 dark:border-white/5">
+        <div className="relative">
+          <SpriteIcon agentId={agent.id} size={36} />
+          <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-[#111827] ${statusColor}`} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[13px] font-bold text-gray-900 dark:text-gray-100 leading-tight truncate">{agent.naam}</p>
+          <p className="text-[10px] text-gray-400 capitalize">{agent.rol}</p>
+        </div>
+      </div>
+
+      {/* Menu items */}
+      <div className="py-1">
+        <MenuItem label="Details bekijken" icon="user" onClick={() => onSelect(agent)} />
+        <MenuItem label="Confetti gooien" icon="party" onClick={onConfetti} />
+        {proj && <MenuItem label={`Naar ${proj.length > 18 ? proj.slice(0, 17) + "..." : proj}`} icon="folder" onClick={() => {
+          window.location.href = `/projecten?zoek=${encodeURIComponent(proj)}`;
+          onClose();
+        }} />}
+        {agent.status === "working" && (
+          <>
+            <div className="mx-3 my-0.5 border-t border-gray-100 dark:border-white/5" />
+            <MenuItem label="Agent stoppen" icon="stop" danger onClick={onClose} />
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MenuItem({ label, icon, onClick, danger = false }: {
+  label: string; icon: "user" | "party" | "folder" | "stop"; onClick: () => void; danger?: boolean;
+}) {
+  // Simple SVG icons (no lucide dependency needed)
+  const icons: Record<string, React.ReactNode> = {
+    user: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>,
+    party: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 3l3.057-3 11.943 12-3.057 3M9 13l-6 6M5 12l1.5-1.5M14 7l1.5-1.5" /><circle cx="19" cy="5" r="2" /><circle cx="7" cy="19" r="2" /></svg>,
+    folder: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>,
+    stop: <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>,
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2.5 transition-colors ${
+        danger
+          ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+          : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 hover:text-gray-900 dark:hover:text-white"
+      }`}
+    >
+      <span className="w-4 flex items-center justify-center opacity-60">{icons[icon]}</span>
+      {label}
+    </button>
+  );
+}
+
 // Confetti particle
 interface Particle {
   x: number; y: number; vx: number; vy: number;
@@ -1869,90 +1968,19 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
         onContextMenu={handleContextMenu}
       />
 
-      {/* Context menu overlay */}
-      {contextMenu && (
-        <div
-          className="absolute z-50 min-w-[180px] rounded-xl shadow-2xl overflow-hidden backdrop-blur-md
-            border border-white/10 dark:border-white/5
-            bg-white/90 dark:bg-[#0d1117]/95"
-          style={{
-            left: `${contextMenu.x}px`,
-            top: `${contextMenu.y}px`,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="px-3 py-2.5 border-b border-black/5 dark:border-white/5 flex items-center gap-2.5">
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black text-white"
-              style={{ backgroundColor: contextMenu.agent.avatar }}
-            >
-              {contextMenu.agent.naam[0]}
-            </div>
-            <div>
-              <p className="text-[12px] font-bold text-gray-900 dark:text-white leading-tight">{contextMenu.agent.naam}</p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize">{contextMenu.agent.rol}</p>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="py-1">
-            <button
-              onClick={() => { onSelect(contextMenu.agent); setContextMenu(null); }}
-              className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
-                hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
-            >
-              <span className="w-4 text-center text-[13px]">👤</span>
-              Details bekijken
-            </button>
-
-            <button
-              onClick={() => {
-                const pos = positions.get(contextMenu.agent.id);
-                if (pos) spawnConfetti(pos.x + 40, pos.y + 20, 30);
-                setContextMenu(null);
-              }}
-              className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
-                hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
-            >
-              <span className="w-4 text-center text-[13px]">🎉</span>
-              Confetti gooien
-            </button>
-
-            {contextMenu.agent.huidigeTaak && (
-              <button
-                onClick={() => {
-                  const proj = contextMenu.agent.huidigeTaak?.project;
-                  if (proj) {
-                    // Navigate to project page — find project ID
-                    window.location.href = `/projecten?zoek=${encodeURIComponent(proj)}`;
-                  }
-                  setContextMenu(null);
-                }}
-                className="w-full text-left px-3 py-2 text-[11px] text-gray-700 dark:text-gray-300
-                  hover:bg-black/5 dark:hover:bg-white/5 transition-colors flex items-center gap-2"
-              >
-                <span className="w-4 text-center text-[13px]">📂</span>
-                Naar project
-              </button>
-            )}
-
-            {contextMenu.agent.status === "working" && (
-              <>
-                <div className="mx-3 my-1 border-t border-black/5 dark:border-white/5" />
-                <button
-                  onClick={() => { setContextMenu(null); }}
-                  className="w-full text-left px-3 py-2 text-[11px] text-red-500 dark:text-red-400
-                    hover:bg-red-500/5 dark:hover:bg-red-500/10 transition-colors flex items-center gap-2"
-                >
-                  <span className="w-4 text-center text-[13px]">⛔</span>
-                  Agent stoppen
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* Context menu */}
+      {contextMenu && <ContextMenuOverlay
+        agent={contextMenu.agent}
+        x={contextMenu.x}
+        y={contextMenu.y}
+        onClose={() => setContextMenu(null)}
+        onSelect={(a) => { onSelect(a); setContextMenu(null); }}
+        onConfetti={() => {
+          const pos = positions.get(contextMenu.agent.id);
+          if (pos) spawnConfetti(pos.x + 40, pos.y + 20, 30);
+          setContextMenu(null);
+        }}
+      />}
     </div>
   );
 }

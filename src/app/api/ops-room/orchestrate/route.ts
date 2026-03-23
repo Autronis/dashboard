@@ -206,13 +206,25 @@ Reageer ALLEEN met JSON:
       ? `\n\nBELANGRIJK: De volgende agents zijn BEZIG met een andere taak en mogen NIET worden toegewezen: ${busyAgentIds.join(", ")}. Kies andere agents met dezelfde specialisatie.`
       : "";
 
+    // Check cross-team file locks
+    let lockedFilesNote = "";
+    try {
+      const lockRows = await db.all(sql`
+        SELECT bestand_pad, team, agent_id FROM file_locks WHERE verlopen_op >= datetime('now')
+      `) as { bestand_pad: string; team: string; agent_id: string }[];
+      if (lockRows.length > 0) {
+        const lockedList = lockRows.map((r) => `${r.bestand_pad} (team ${r.team}, agent ${r.agent_id})`).join(", ");
+        lockedFilesNote = `\n\nLET OP: De volgende bestanden zijn GELOCKED door een ander team en mogen niet geraakt worden: ${lockedList}. Kies andere bestanden of wacht.`;
+      }
+    } catch { /* table might not exist */ }
+
     try {
       const client = new Anthropic({ apiKey });
       const message = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: THEO_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"${busyNote}\n\nMaak een uitvoeringsplan.` }],
+        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"${busyNote}${lockedFilesNote}\n\nMaak een uitvoeringsplan.` }],
       });
 
       const rawText = message.content

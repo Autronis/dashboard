@@ -617,6 +617,25 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       task.bestanden.forEach((f) => lockedFiles.add(f));
       inFlightTaskIds.add(task.id);
 
+      // Cross-team file locking
+      if (task.bestanden.length > 0) {
+        try {
+          const lockRes = await fetch("/api/ops-room/locks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ bestanden: task.bestanden, team: "sem", agentId, commandId }),
+          });
+          if (lockRes.ok) {
+            const lockData = await lockRes.json();
+            if (!lockData.succes && lockData.conflicts?.length > 0) {
+              const conflict = lockData.conflicts[0];
+              addLog(set, agentId, "info", `Wacht op team ${conflict.team} — ${conflict.agentId} werkt aan ${conflict.pad}`);
+              // Don't block — just warn. Local file locking handles same-team conflicts.
+            }
+          }
+        } catch { /* lock service unavailable — proceed */ }
+      }
+
       addLog(set, agentId, "task_start", `Start: ${task.titel}`);
 
       // Activate agent in office
@@ -665,6 +684,15 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         // Unlock files immediately so dependent tasks can start
         task.bestanden.forEach((f) => lockedFiles.delete(f));
+
+        // Release cross-team locks
+        if (task.bestanden.length > 0) {
+          fetch("/api/ops-room/locks", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ bestanden: task.bestanden, team: "sem" }),
+          }).catch(() => {});
+        }
 
         // Track tokens
         const execTokens = (execData.tokens?.input_tokens ?? 0) + (execData.tokens?.output_tokens ?? 0);

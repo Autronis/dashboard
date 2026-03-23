@@ -687,6 +687,7 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
 
     // === Gradient background ===
     const pal = paletteRef.current;
+    const isLight = pal === LIGHT_PALETTE;
     const bgGrad = ctx.createLinearGradient(0, 0, 0, CANVAS_H);
     bgGrad.addColorStop(0, pal.bgGradTop);
     bgGrad.addColorStop(1, pal.bgGradBot);
@@ -780,7 +781,6 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
         [0.12, 0.2], [0.35, 0.15], [0.6, 0.3], [0.82, 0.12], [0.25, 0.55],
         [0.7, 0.6], [0.45, 0.75], [0.15, 0.8], [0.9, 0.45], [0.5, 0.4],
       ];
-      const isLight = pal === LIGHT_PALETTE;
       if (isLight) {
         // Draw fluffy clouds
         for (let ci = 0; ci < 3; ci++) {
@@ -960,25 +960,25 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const tD = 6;
     const tY = wcY + 40;
     // Shadow
-    ctx.fillStyle = "#00000015";
+    ctx.fillStyle = pal.emptyDeskShadow;
     ctx.beginPath();
     ctx.ellipse(wcX + tW / 2 - 4, tY + tH + tD + 8, tW / 2 + 4, 4, 0, 0, Math.PI * 2);
     ctx.fill();
     // Table legs
-    ctx.fillStyle = "#5a4430";
+    ctx.fillStyle = pal.deskFront;
     ctx.fillRect(wcX, tY + tH + tD, 3, 8);
     ctx.fillRect(wcX + tW - 6, tY + tH + tD, 3, 8);
     // Front face
-    ctx.fillStyle = "#4a3828";
+    ctx.fillStyle = pal.deskFront;
     ctx.fillRect(wcX - 2, tY + tH, tW, tD);
     // Right side face
-    ctx.fillStyle = "#5a4430";
+    ctx.fillStyle = pal.deskLegs;
     ctx.fillRect(wcX + tW - 2, tY + tH - 1, 4, tD + 1);
     // Top surface
-    ctx.fillStyle = "#5c4a3a";
+    ctx.fillStyle = pal.deskSurface;
     ctx.fillRect(wcX - 2, tY, tW, tH);
     // Reflection
-    ctx.fillStyle = "#ffffff03";
+    ctx.fillStyle = isLight ? "#ffffff08" : "#ffffff03";
     ctx.fillRect(wcX, tY + tH + tD + 1, tW - 4, 2);
 
     // --- Coffee machine (left, bigger, dark) ---
@@ -1149,30 +1149,30 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
     const drawPlantTable = (tx: number, ty: number, tw: number = 44) => {
       const th = 10; const td = 6; const legH = 14;
       // Shadow
-      ctx.fillStyle = "#00000012";
+      ctx.fillStyle = pal.emptyDeskShadow;
       ctx.beginPath();
       ctx.ellipse(tx + tw / 2, ty + th + td + legH + 4, tw / 2 + 3, 4, 0, 0, Math.PI * 2);
       ctx.fill();
       // Legs (4 corners)
-      ctx.fillStyle = "#5a4430";
+      ctx.fillStyle = pal.deskFront;
       ctx.fillRect(tx + 3, ty + th + td, 3, legH);
       ctx.fillRect(tx + tw - 6, ty + th + td, 3, legH);
       ctx.fillRect(tx + 3, ty + th + td + legH - 2, 4, 2); // feet
       ctx.fillRect(tx + tw - 7, ty + th + td + legH - 2, 4, 2);
       // Front face
-      ctx.fillStyle = "#4a3828";
+      ctx.fillStyle = pal.deskFront;
       ctx.fillRect(tx, ty + th, tw, td);
       // Right side face (3D depth)
-      ctx.fillStyle = "#3a2818";
+      ctx.fillStyle = pal.deskLegs;
       ctx.fillRect(tx + tw, ty + th - 1, 5, td + 1);
       // Top surface
-      ctx.fillStyle = "#5c4a3a";
+      ctx.fillStyle = pal.deskSurface;
       ctx.fillRect(tx, ty, tw, th);
       // Top right side (3D)
-      ctx.fillStyle = "#4a3828";
+      ctx.fillStyle = pal.deskFront;
       ctx.fillRect(tx + tw, ty + 2, 5, th - 2);
       // Wood grain highlight
-      ctx.fillStyle = "#ffffff06";
+      ctx.fillStyle = isLight ? "#ffffff10" : "#ffffff06";
       ctx.fillRect(tx + 4, ty + 2, tw - 8, 2);
     };
 

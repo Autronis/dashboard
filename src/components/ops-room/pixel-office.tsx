@@ -468,21 +468,18 @@ function drawDesk(
   ctx.fillStyle = pal.monitorFrame;
   ctx.fillRect(monX, monY, monW, monH);
 
-  if (isOffline) {
-    ctx.fillStyle = pal.monitorScreen;
-    ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
-  } else if (isActive) {
-    // Turquoise screen glow — same glow strength as Sem's monitors
+  if (isActive && !emptyDesk) {
+    // Turquoise screen glow — active agent working
     ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.25})`;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
-    // Code lines — #23C6B750 like Sem's (clamped to screen area)
+    // Code lines
     ctx.fillStyle = "#23C6B750";
     for (let ln = 0; ln < 2; ln++) {
       ctx.fillRect(monX + 1.5 * s, monY + (1.5 + ln * 1.5) * s, (2 + (tick + ln) % 3) * s, s);
     }
   } else {
-    // Idle but not offline — dim turquoise like a standby screen
-    ctx.fillStyle = `rgba(35, 198, 183, ${glow * 0.08})`;
+    // Off — dark screen for idle, offline, and empty desks
+    ctx.fillStyle = pal.monitorScreen;
     ctx.fillRect(monX + s, monY + s, 5 * s, 3 * s);
   }
 

@@ -8,6 +8,7 @@ export { IsometricGrid } from "./isometric-grid";
 export { OfficeView } from "./office-view";
 export { PixelOffice } from "./pixel-office";
 export { CommandBar } from "./command-bar";
+export { Leaderboard } from "./leaderboard";
 export { getProjectColor, PROJECT_COLORS } from "./project-colors";
 export { agents, taskLog } from "./mock-data";
 export type { Agent, AgentTask, TaskLogEntry, AgentStatus, AgentRole, TerminalLine, AgentKosten, ToolType } from "./types";

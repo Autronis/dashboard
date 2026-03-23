@@ -19,6 +19,7 @@ import { CommandInput } from "@/components/ops-room/command-input";
 import { ApprovalPanel } from "@/components/ops-room/approval-panel";
 import { LogPanel } from "@/components/ops-room/log-panel";
 import { ProjectPanel } from "@/components/ops-room/project-panel";
+import { Leaderboard } from "@/components/ops-room/leaderboard";
 import { OfficeViewSyb } from "@/components/ops-room/office-view-syb";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
@@ -276,7 +277,10 @@ export default function OpsRoomPage() {
             <ApprovalPanel />
             <LogPanel />
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <ProjectPanel agents={agents} />
+              <div className="space-y-4">
+                <ProjectPanel agents={agents} />
+                <Leaderboard agents={agents} />
+              </div>
               <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
                 <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
               </div>

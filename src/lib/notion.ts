@@ -92,11 +92,29 @@ export async function createNotionDocument(
     properties.Project = { rich_text: [{ text: { content: projectNaam } }] };
   }
 
-  const response = await withRetry(() => notion.pages.create({
-    parent: { database_id: dbId },
-    properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
-    children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
-  }));
+  // Try with Klant/Project properties first, retry without if they don't exist in Notion
+  let response;
+  try {
+    response = await withRetry(() => notion.pages.create({
+      parent: { database_id: dbId },
+      properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
+      children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
+    }));
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("is not a property that exists")) {
+      // Remove properties that don't exist in the Notion database
+      delete properties.Klant;
+      delete properties.Project;
+      response = await withRetry(() => notion.pages.create({
+        parent: { database_id: dbId },
+        properties: properties as Parameters<typeof notion.pages.create>[0]["properties"],
+        children: contentToBlocks(payload.content) as Parameters<typeof notion.pages.create>[0]["children"],
+      }));
+    } else {
+      throw err;
+    }
+  }
 
   return {
     notionId: response.id,

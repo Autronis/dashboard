@@ -276,6 +276,26 @@ async function fetchFromDatabase(
   };
 }
 
+// Fetch all documents of a single type (no pagination limit)
+export async function fetchDocumentenByType(type: DocumentType): Promise<DocumentBase[]> {
+  const envKey = DOCUMENT_TYPE_NOTION_DB_KEYS[type];
+  const dbId = process.env[envKey];
+  if (!dbId) return [];
+
+  const allDocs: DocumentBase[] = [];
+  let cursor: string | undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const result = await fetchFromDatabase(type, dbId, { pageSize: 100, cursor });
+    allDocs.push(...result.docs);
+    cursor = result.nextCursor;
+    hasMore = result.hasMore;
+  }
+
+  return allDocs;
+}
+
 // Paginated fetch — fetches from all 6 databases with a per-db page size
 export async function fetchAllDocuments(options?: {
   pageSize?: number;

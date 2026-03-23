@@ -42,7 +42,7 @@ export function CommandInput() {
       </div>
       {executingTaskId ? (
         <button
-          onClick={killExecution}
+          onClick={() => killExecution()}
           className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors"
           title="Stop uitvoering"
         >

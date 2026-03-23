@@ -193,7 +193,12 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       const hasDbChanges = plan.taken.some((t: PlanTask) => t.bestanden.some((f: string) => f.includes("schema") || f.includes("migration")));
       const hasDeployOrPush = opdracht.toLowerCase().includes("deploy") || opdracht.toLowerCase().includes("push");
       const hasCredentials = opdracht.toLowerCase().includes("credential") || opdracht.toLowerCase().includes("secret") || opdracht.toLowerCase().includes(".env");
-      const permLevel: PermissionLevel = (hasDbChanges || hasDeployOrPush || hasCredentials) ? "red" : "yellow";
+      const hasNewFiles = plan.taken.some((t: PlanTask) => t.bestanden.length > 2);
+      const permLevel: PermissionLevel = (hasDbChanges || hasDeployOrPush || hasCredentials)
+        ? "red"
+        : hasNewFiles
+          ? "yellow"
+          : "green";
 
       // === AUTO-APPROVE LOGIC ===
       if (permLevel === "green") {

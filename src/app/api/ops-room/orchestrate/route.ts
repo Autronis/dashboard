@@ -74,33 +74,42 @@ export async function POST(req: NextRequest) {
     }
 
     // === DAAN INTAKE MODE ===
-    // Quick check if the command is clear enough to create a plan
+    // Quick check: is this an idea or a task? Is it clear enough?
     if (mode === "intake") {
       const apiKey = process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) return NextResponse.json({ needsIntake: false });
+      if (!apiKey) return NextResponse.json({ needsIntake: false, mode: "taak" });
 
       try {
         const client = new Anthropic({ apiKey });
         const msg = await client.messages.create({
           model: "claude-haiku-4-5-20251001",
-          max_tokens: 500,
-          system: `Je bent DAAN, de intake agent bij Autronis. Je beoordeelt of een opdracht van Sem duidelijk genoeg is om door te geven aan het development team.
+          max_tokens: 600,
+          system: `Je bent DAAN, de intake agent bij Autronis. Je beoordeelt opdrachten van Sem (de CEO).
 
-Een opdracht is HELDER als:
-- Het duidelijk is WAT er gebouwd/gewijzigd moet worden
-- Het duidelijk is WAAR het moet (welk onderdeel/pagina)
-- Er genoeg context is om te starten
+STAP 1 — Bepaal of dit een IDEE of een TAAK is:
+- IDEE: Sem brainstormt, denkt hardop na, begint met "idee:", "wat als", "misschien kunnen we", of beschrijft iets abstracts/toekomstigs
+- TAAK: Sem wil dat er nu iets gebouwd, gefixt, of gewijzigd wordt in de codebase
 
-Een opdracht is VAAG als:
-- Het onduidelijk is wat Sem precies wil
-- Er meerdere interpretaties mogelijk zijn
-- Cruciale details ontbreken (welke pagina, welk component, welke data)
+STAP 2 — Als het een TAAK is, bepaal of het helder genoeg is:
+- HELDER: duidelijk WAT, WAAR, en genoeg context om te starten
+- VAAG: meerdere interpretaties, cruciale details ontbreken
+
+STAP 3 — Als het een IDEE is, stel spar-vragen:
+- "Voor wie is dit bedoeld?"
+- "Welk probleem lost dit op?"
+- "Hoe zou het werken in de basis?"
+- Max 3 vragen, gericht op het concretiseren van het idee
 
 Reageer ALLEEN met JSON:
 {
+  "mode": "idee" | "taak",
   "helder": true/false,
-  "vragen": ["vraag 1", "vraag 2"]  // alleen als helder=false, max 3 vragen
-}`,
+  "vragen": ["vraag 1", "vraag 2"]
+}
+
+Bij mode "idee": helder is altijd false, vragen zijn spar-vragen.
+Bij mode "taak" + helder: geen vragen nodig.
+Bij mode "taak" + niet helder: verduidelijkingsvragen.`,
           messages: [{ role: "user", content: `Opdracht: "${opdracht}"` }],
         });
 
@@ -108,15 +117,53 @@ Reageer ALLEEN met JSON:
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const result = JSON.parse(jsonMatch[0]);
+          const isIdee = result.mode === "idee" || opdracht.toLowerCase().startsWith("idee:");
           return NextResponse.json({
-            needsIntake: !result.helder,
+            mode: isIdee ? "idee" : "taak",
+            needsIntake: isIdee || !result.helder,
             vragen: result.vragen ?? [],
           });
         }
       } catch {
-        // If intake check fails, just proceed
+        // If intake check fails, just proceed as task
       }
-      return NextResponse.json({ needsIntake: false });
+      return NextResponse.json({ needsIntake: false, mode: "taak" });
+    }
+
+    // === DAAN IDEE SYNTHESE ===
+    // Synthesize idea from Q&A into a structured idea
+    if (mode === "idee_synth") {
+      const { context } = body;
+      const apiKey = process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) return NextResponse.json({ fout: "API key niet geconfigureerd" }, { status: 500 });
+
+      try {
+        const client = new Anthropic({ apiKey });
+        const msg = await client.messages.create({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 800,
+          system: `Je bent DAAN, de intake agent bij Autronis. Je maakt een gestructureerd idee aan op basis van Sem's input en antwoorden op spar-vragen.
+
+Reageer ALLEEN met JSON:
+{
+  "naam": "Korte pakkende naam (max 5 woorden)",
+  "omschrijving": "1-2 zinnen wat het is",
+  "uitwerking": "3-5 zinnen uitgebreidere beschrijving met aanpak",
+  "categorie": "feature" | "tool" | "verbetering" | "experiment" | "integratie",
+  "prioriteit": "laag" | "normaal" | "hoog"
+}`,
+          messages: [{ role: "user", content: `Origineel idee: "${opdracht}"\n\nSpar-sessie:\n${context}` }],
+        });
+
+        const rawText = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) throw new Error("Geen JSON in response");
+        const result = JSON.parse(jsonMatch[0]);
+        return NextResponse.json(result);
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : "Onbekend";
+        return NextResponse.json({ fout: msg }, { status: 500 });
+      }
     }
 
     // Always save command to DB first (so it shows up in ApprovalPanel even if plan fails)

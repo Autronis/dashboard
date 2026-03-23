@@ -173,6 +173,83 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     await get()._planCommand(commandId, enrichedOpdracht);
   },
 
+  // Called when user answers DAAN's idea sparring questions
+  answerIdee: async (commandId: string, antwoorden: string[]) => {
+    const cmd = get().commands.find((c) => c.id === commandId);
+    if (!cmd || cmd.status !== "intake_idee") return;
+
+    set((s) => ({
+      commands: s.commands.map((c) => c.id === commandId ? {
+        ...c,
+        intakeAntwoorden: antwoorden,
+        status: "planning" as const, // temporary — will switch to completed
+      } : c),
+      isProcessing: true,
+    }));
+
+    addLog(set, "daan", "info", "Idee wordt uitgewerkt...");
+
+    // Build context from Q&A
+    const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `${q}: ${antwoorden[i] ?? "—"}`).join("\n");
+
+    try {
+      // Ask DAAN to synthesize the idea
+      const synthRes = await fetch("/api/ops-room/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          opdracht: cmd.opdracht,
+          mode: "idee_synth",
+          context: qaContext,
+        }),
+      });
+
+      if (!synthRes.ok) throw new Error("Idee uitwerken mislukt");
+      const synthData = await synthRes.json();
+
+      // Save the idea to /api/ideeen
+      const ideeRes = await fetch("/api/ideeen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          naam: synthData.naam,
+          omschrijving: synthData.omschrijving,
+          uitwerking: synthData.uitwerking,
+          categorie: synthData.categorie ?? "feature",
+          prioriteit: synthData.prioriteit ?? "normaal",
+          status: "uitgewerkt",
+        }),
+      });
+
+      if (!ideeRes.ok) throw new Error("Idee opslaan mislukt");
+
+      addLog(set, "daan", "task_complete", `Idee aangemaakt: "${synthData.naam}"`);
+      playSuccess();
+
+      set((s) => ({
+        commands: s.commands.map((c) => c.id === commandId ? {
+          ...c,
+          status: "completed" as const,
+          feedback: `Idee "${synthData.naam}" opgeslagen → /ideeen`,
+        } : c),
+        isProcessing: false,
+      }));
+
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Onbekend";
+      addLog(set, "daan", "error", `Fout: ${msg}`);
+      playError();
+      set((s) => ({
+        commands: s.commands.map((c) => c.id === commandId ? {
+          ...c,
+          status: "rejected" as const,
+          feedback: msg,
+        } : c),
+        isProcessing: false,
+      }));
+    }
+  },
+
   // Internal: plan a command (called after intake or directly)
   _planCommand: async (cmdId: string, opdracht: string) => {
     set((s) => ({

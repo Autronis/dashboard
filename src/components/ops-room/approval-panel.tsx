@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode, Loader2, CheckCircle2, MessageCircleQuestion, Timer } from "lucide-react";
+import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode, Loader2, CheckCircle2, MessageCircleQuestion, Timer, Lightbulb } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrchestrator } from "./orchestrator-store";
 import { SPECIALIZATION_LABELS } from "./orchestrator-types";
@@ -87,7 +87,7 @@ function TaskList({ tasks }: { tasks: DbCommand["plan"] extends infer T ? T exte
 }
 
 export function ApprovalPanel() {
-  const { commands: localCommands, approvals, approveApproval, rejectApproval, answerIntake } = useOrchestrator();
+  const { commands: localCommands, approvals, approveApproval, rejectApproval, answerIntake, answerIdee } = useOrchestrator();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [intakeAnswers, setIntakeAnswers] = useState<Record<string, string[]>>({});
@@ -178,6 +178,7 @@ export function ApprovalPanel() {
 
   // Intake commands (DAAN needs answers)
   const intakeCommands = localCommands.filter((c) => c.status === "intake" && c.intakeVragen?.length);
+  const ideeCommands = localCommands.filter((c) => c.status === "intake_idee" && c.intakeVragen?.length);
 
   const handleReject = (id: string) => {
     rejectApproval(id, feedback);
@@ -185,7 +186,7 @@ export function ApprovalPanel() {
     setFeedback("");
   };
 
-  const totalVisible = pendingCommands.length + activeCommands.length + recentlyCompleted.length + pendingApprovalItems.length + intakeCommands.length;
+  const totalVisible = pendingCommands.length + activeCommands.length + recentlyCompleted.length + pendingApprovalItems.length + intakeCommands.length + ideeCommands.length;
   if (totalVisible === 0) return null;
 
   return (
@@ -258,6 +259,55 @@ export function ApprovalPanel() {
                   className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/15 text-blue-400 text-[11px] font-medium hover:bg-blue-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Check className="w-3 h-3" />Beantwoorden & doorgaan
+                </button>
+              </div>
+            );
+          })}
+
+          {/* === DAAN IDEE INTAKE — idea sparring === */}
+          {ideeCommands.map((cmd) => {
+            const answers = intakeAnswers[cmd.id] ?? (cmd.intakeVragen ?? []).map(() => "");
+            return (
+              <div key={`idee-${cmd.id}`} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Lightbulb className="w-3.5 h-3.5 text-amber-400" />
+                  <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 font-medium">
+                    DAAN idee-modus
+                  </span>
+                </div>
+                <p className="text-[10px] text-autronis-text-secondary mb-3">
+                  DAAN wil even sparren over dit idee:
+                </p>
+                <div className="space-y-2 mb-3">
+                  {(cmd.intakeVragen ?? []).map((vraag, i) => (
+                    <div key={i}>
+                      <p className="text-[11px] text-autronis-text-primary font-medium mb-1">{vraag}</p>
+                      <input
+                        type="text"
+                        value={answers[i] ?? ""}
+                        onChange={(e) => {
+                          const next = [...answers];
+                          next[i] = e.target.value;
+                          setIntakeAnswers((prev) => ({ ...prev, [cmd.id]: next }));
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && answers.every((a) => a.trim())) {
+                            answerIdee(cmd.id, answers);
+                          }
+                        }}
+                        placeholder="Antwoord..."
+                        className="w-full px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border/50 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-amber-500/50"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => answerIdee(cmd.id, answers)}
+                  disabled={!answers.every((a) => a.trim())}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-400 text-[11px] font-medium hover:bg-amber-500/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Lightbulb className="w-3 h-3" />Idee uitwerken & opslaan
                 </button>
               </div>
             );

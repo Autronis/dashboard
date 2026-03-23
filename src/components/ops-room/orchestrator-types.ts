@@ -1,6 +1,6 @@
 // Orchestrator engine types — manages agent workflow
 
-export type CommandStatus = "pending" | "planning" | "awaiting_approval" | "approved" | "in_progress" | "review" | "completed" | "rejected";
+export type CommandStatus = "pending" | "intake" | "planning" | "awaiting_approval" | "approved" | "in_progress" | "review" | "completed" | "rejected";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "review" | "completed" | "blocked";
 
@@ -28,6 +28,8 @@ export interface Command {
   plan: Plan | null;           // Jones' plan (after architecture phase)
   aangemaakt: string;          // ISO timestamp
   feedback: string | null;     // Sem's feedback on rejection
+  intakeVragen: string[] | null; // DAAN's follow-up questions if opdracht is vague
+  intakeAntwoorden: string[] | null; // User's answers to intake questions
 }
 
 export interface Plan {

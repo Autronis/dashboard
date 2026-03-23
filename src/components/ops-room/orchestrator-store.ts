@@ -34,16 +34,18 @@ interface OrchestratorState {
   costs: CostTracker;
   theoQueue: TheoQueueItem[];
   activeAgents: Set<string>; // agents currently executing tasks
-  abortController: AbortController | null;
+  abortControllers: Map<string, AbortController>; // per-command abort controllers
+  autoApproveTimers: Map<string, ReturnType<typeof setTimeout>>; // yellow auto-approve timers
 
   // Actions
   submitCommand: (opdracht: string) => Promise<void>;
+  answerIntake: (commandId: string, antwoorden: string[]) => Promise<void>;
   updateCommandStatus: (id: string, status: CommandStatus) => void;
   approveApproval: (id: string) => void;
   rejectApproval: (id: string, feedback: string) => void;
   setActiveCommand: (id: string | null) => void;
   executePlan: (commandId: string) => Promise<void>;
-  killExecution: () => void;
+  killExecution: (commandId?: string) => void;
 }
 
 let nextId = 1;
@@ -68,7 +70,8 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   costs: { totalTokens: 0, totalCost: 0 } as CostTracker,
   theoQueue: [],
   activeAgents: new Set<string>(),
-  abortController: null,
+  abortControllers: new Map<string, AbortController>(),
+  autoApproveTimers: new Map<string, ReturnType<typeof setTimeout>>(),
 
   submitCommand: async (opdracht: string) => {
     const cmdId = genId("cmd");
@@ -80,6 +83,8 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       plan: null,
       aangemaakt: new Date().toISOString(),
       feedback: null,
+      intakeVragen: null,
+      intakeAntwoorden: null,
     };
 
     set((s) => ({
@@ -88,78 +93,62 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       isProcessing: true,
     }));
 
-    // Update to "planning" — Theo sends to Jones
     addLog(set, "theo", "info", `Opdracht ontvangen: "${opdracht.slice(0, 60)}"`);
-    set((s) => ({
-      commands: s.commands.map((c) => c.id === cmdId ? { ...c, status: "planning" as const } : c),
-    }));
-    addLog(set, "jones", "info", "Plan wordt opgesteld...");
 
+    // === DAAN INTAKE CHECK ===
+    // Quick check if the command is clear enough to plan
     try {
-      // Call Theo's API to create a plan
-      const res = await fetch("/api/ops-room/orchestrate", {
+      const intakeRes = await fetch("/api/ops-room/orchestrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opdracht }),
+        body: JSON.stringify({ opdracht, mode: "intake" }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.fout ?? "Plan maken mislukt");
+      if (intakeRes.ok) {
+        const intakeData = await intakeRes.json();
+        if (intakeData.needsIntake && intakeData.vragen?.length > 0) {
+          // DAAN needs more info — pause and ask questions
+          addLog(set, "daan", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
+          set((s) => ({
+            commands: s.commands.map((c) => c.id === cmdId ? {
+              ...c,
+              status: "intake" as const,
+              intakeVragen: intakeData.vragen as string[],
+            } : c),
+            isProcessing: false,
+          }));
+          playNotification();
+          return; // Wait for answerIntake()
+        }
       }
-
-      const data = await res.json();
-      const plan: Plan = {
-        id: genId("plan"),
-        commandId: cmdId,
-        beschrijving: data.plan.beschrijving,
-        taken: data.plan.taken as PlanTask[],
-        goedgekeurd: null,
-        goedgekeurdOp: null,
-      };
-
-      // Update command with plan, set to awaiting_approval
-      const dbCommandId = data.commandId as number | null;
-      set((s) => ({
-        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, dbId: dbCommandId, status: "awaiting_approval" as const } : c),
-        isProcessing: false,
-      }));
-
-      addLog(set, "jones", "task_complete", `Plan klaar: ${plan.beschrijving.slice(0, 60)}`);
-      addLog(set, "theo", "approval", `Plan wacht op goedkeuring van Sem (${plan.taken.length} taken)`);
-      playNotification();
-
-      // Create approval request for Sem
-      // Determine permission level based on what the plan involves
-      const hasDbChanges = plan.taken.some((t: PlanTask) => t.bestanden.some((f: string) => f.includes("schema") || f.includes("migration")));
-      const hasDeployOrPush = opdracht.toLowerCase().includes("deploy") || opdracht.toLowerCase().includes("push");
-      const permLevel: PermissionLevel = hasDbChanges || hasDeployOrPush ? "red" : "yellow";
-
-      const approval: ApprovalRequest = {
-        id: genId("apr"),
-        type: "plan",
-        permissie: permLevel,
-        titel: `Plan: ${opdracht.slice(0, 50)}${opdracht.length > 50 ? "..." : ""}`,
-        beschrijving: `${plan.beschrijving}\n\n${plan.taken.length} taken gepland voor ${new Set(plan.taken.map((t: PlanTask) => t.agentId)).size} agents.`,
-        commandId: cmdId,
-        taskId: null,
-        agentId: "theo",
-        status: "pending",
-        feedback: null,
-        aangemaakt: new Date().toISOString(),
-      };
-
-      set((s) => ({
-        approvals: [approval, ...s.approvals],
-      }));
-
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Onbekend";
-      set((s) => ({
-        commands: s.commands.map((c) => c.id === cmdId ? { ...c, status: "rejected" as const, feedback: msg } : c),
-        isProcessing: false,
-      }));
+    } catch {
+      // Intake check failed — proceed with planning anyway
     }
+
+    // === PLANNING ===
+    await get()._planCommand(cmdId, opdracht);
+  },
+
+  // Called when user answers DAAN's intake questions
+  answerIntake: async (commandId: string, antwoorden: string[]) => {
+    const cmd = get().commands.find((c) => c.id === commandId);
+    if (!cmd || cmd.status !== "intake") return;
+
+    set((s) => ({
+      commands: s.commands.map((c) => c.id === commandId ? {
+        ...c,
+        intakeAntwoorden: antwoorden,
+        status: "planning" as const,
+      } : c),
+      isProcessing: true,
+    }));
+
+    // Build enriched command from original + Q&A
+    const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `V: ${q}\nA: ${antwoorden[i] ?? "—"}`).join("\n");
+    const enrichedOpdracht = `${cmd.opdracht}\n\nExtra context:\n${qaContext}`;
+
+    addLog(set, "daan", "task_complete", "Intake afgerond, door naar planning");
+    await get()._planCommand(commandId, enrichedOpdracht);
   },
 
   updateCommandStatus: (id, status) => {

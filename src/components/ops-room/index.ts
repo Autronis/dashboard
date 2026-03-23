@@ -10,4 +10,4 @@ export { PixelOffice } from "./pixel-office";
 export { CommandBar } from "./command-bar";
 export { getProjectColor, PROJECT_COLORS } from "./project-colors";
 export { agents, taskLog } from "./mock-data";
-export type { Agent, AgentTask, TaskLogEntry, AgentStatus, AgentRole, TerminalLine, AgentKosten } from "./types";
+export type { Agent, AgentTask, TaskLogEntry, AgentStatus, AgentRole, TerminalLine, AgentKosten, ToolType } from "./types";

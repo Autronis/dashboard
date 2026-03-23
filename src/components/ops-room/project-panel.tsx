@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { FolderOpen, ExternalLink } from "lucide-react";
+import { FolderOpen, FileCode, Terminal, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
 import type { Agent } from "./types";
@@ -15,10 +15,21 @@ interface ProjectPanelProps {
 interface DbProject {
   id: number;
   naam: string;
+  status: string;
+  voortgangPercentage: number | null;
 }
 
+const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+  actief: { bg: "bg-green-500/15", text: "text-green-400", label: "Actief" },
+  in_progress: { bg: "bg-amber-500/15", text: "text-amber-400", label: "In progress" },
+  concept: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Concept" },
+  afgerond: { bg: "bg-gray-500/15", text: "text-gray-400", label: "Afgerond" },
+  gepauzeerd: { bg: "bg-gray-500/15", text: "text-gray-500", label: "Gepauzeerd" },
+};
+
 export function ProjectPanel({ agents }: ProjectPanelProps) {
-  // Fetch all projects from DB to match names to IDs
+  const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+
   const { data: dbProjects } = useQuery<DbProject[]>({
     queryKey: ["projecten-lookup"],
     queryFn: async () => {
@@ -28,31 +39,35 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
       return (data.projecten ?? data ?? []).map((p: Record<string, unknown>) => ({
         id: p.id,
         naam: p.naam,
+        status: p.status ?? "actief",
+        voortgangPercentage: p.voortgangPercentage ?? null,
       }));
     },
     staleTime: 60_000,
   });
 
   const activeProjects = useMemo(() => {
-    const map = new Map<string, { names: string[]; hasError: boolean }>();
+    const map = new Map<string, { agents: Agent[]; hasError: boolean; files: string[] }>();
     agents.forEach((a) => {
       if (a.huidigeTaak) {
         const proj = a.huidigeTaak.project;
-        if (!map.has(proj)) map.set(proj, { names: [], hasError: false });
+        if (!map.has(proj)) map.set(proj, { agents: [], hasError: false, files: [] });
         const entry = map.get(proj)!;
-        entry.names.push(a.naam);
+        entry.agents.push(a);
         if (a.status === "error") entry.hasError = true;
+        // Extract file references from beschrijving
+        const fileMatch = a.huidigeTaak.beschrijving.match(/[\w-]+\.(tsx?|jsx?|css|json|md)/g);
+        if (fileMatch) entry.files.push(...fileMatch);
       }
     });
     return map;
   }, [agents]);
 
-  // Build a name→id lookup (case-insensitive, partial match)
   const projectIdMap = useMemo(() => {
-    const map = new Map<string, number>();
+    const map = new Map<string, DbProject>();
     if (!dbProjects) return map;
     for (const dbp of dbProjects) {
-      map.set(dbp.naam.toLowerCase(), dbp.id);
+      map.set(dbp.naam.toLowerCase(), dbp);
     }
     return map;
   }, [dbProjects]);
@@ -61,19 +76,16 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     return s.toLowerCase().replace(/[^a-z0-9]/g, "");
   }
 
-  function findProjectId(projectName: string): number | null {
+  function findDbProject(projectName: string): DbProject | null {
     const lower = projectName.toLowerCase();
-    // Exact match
     if (projectIdMap.has(lower)) return projectIdMap.get(lower)!;
-    // Partial match (project name contains DB name or vice versa)
-    for (const [dbName, id] of projectIdMap) {
-      if (lower.includes(dbName) || dbName.includes(lower)) return id;
+    for (const [dbName, proj] of projectIdMap) {
+      if (lower.includes(dbName) || dbName.includes(lower)) return proj;
     }
-    // Normalized match (strip all non-alphanumeric chars)
     const norm = normalizeForMatch(projectName);
-    for (const [dbName, id] of projectIdMap) {
-      if (normalizeForMatch(dbName) === norm) return id;
-      if (norm.includes(normalizeForMatch(dbName)) || normalizeForMatch(dbName).includes(norm)) return id;
+    for (const [dbName, proj] of projectIdMap) {
+      if (normalizeForMatch(dbName) === norm) return proj;
+      if (norm.includes(normalizeForMatch(dbName)) || normalizeForMatch(dbName).includes(norm)) return proj;
     }
     return null;
   }
@@ -89,40 +101,127 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
           {activeProjects.size}
         </span>
       </div>
-      <div className="p-2 space-y-1">
-        {Array.from(activeProjects.entries()).map(([proj, { names, hasError }]) => {
+      <div className="p-3 space-y-2">
+        {Array.from(activeProjects.entries()).map(([proj, { agents: projAgents, hasError, files }]) => {
           const color = getProjectColor(proj);
-          const projectId = findProjectId(proj);
+          const dbProject = findDbProject(proj);
+          const voortgang = dbProject?.voortgangPercentage ?? null;
+          const status = dbProject?.status ?? "actief";
+          const statusStyle = STATUS_COLORS[status] ?? STATUS_COLORS.actief;
+          const isHovered = hoveredProject === proj;
+          const uniqueFiles = [...new Set(files)].slice(0, 4);
+
           const content = (
-            <>
-              <div
-                className="w-1 h-8 rounded-full shrink-0"
-                style={{ backgroundColor: color }}
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-autronis-text-primary truncate">
-                  {proj}
-                </p>
-                <p className="text-[10px] text-autronis-text-tertiary truncate">
-                  {names.slice(0, 3).join(", ")}
-                  {names.length > 3 ? ` +${names.length - 3}` : ""}
-                </p>
+            <div className="relative">
+              <div className="flex items-center gap-3">
+                {/* Color bar */}
+                <div
+                  className="w-1.5 self-stretch rounded-full shrink-0 transition-all"
+                  style={{
+                    backgroundColor: color,
+                    boxShadow: isHovered ? `0 0 8px ${color}60` : "none",
+                  }}
+                />
+
+                <div className="flex-1 min-w-0">
+                  {/* Project name + status */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="text-xs font-semibold text-autronis-text-primary truncate">
+                      {proj}
+                    </p>
+                    <span className={cn("px-1.5 py-0.5 rounded text-[9px] font-semibold shrink-0", statusStyle.bg, statusStyle.text)}>
+                      {statusStyle.label}
+                    </span>
+                    {hasError && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-red-500/15 text-red-400 shrink-0">
+                        Error
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Progress bar */}
+                  {voortgang !== null && (
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex-1 h-1.5 rounded-full bg-autronis-border/30 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${voortgang}%`,
+                            backgroundColor: voortgang === 100 ? "#4ade80" : color,
+                          }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold tabular-nums" style={{ color }}>
+                        {voortgang}%
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Agent avatars + names */}
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex -space-x-1.5">
+                      {projAgents.slice(0, 5).map((agent) => (
+                        <div
+                          key={agent.id}
+                          className="w-5 h-5 rounded-full border-2 border-autronis-card flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: agent.avatar }}
+                          title={agent.naam}
+                        >
+                          {agent.naam[0]}
+                        </div>
+                      ))}
+                      {projAgents.length > 5 && (
+                        <div className="w-5 h-5 rounded-full border-2 border-autronis-card bg-autronis-border/50 flex items-center justify-center text-[8px] font-bold text-autronis-text-tertiary shrink-0">
+                          +{projAgents.length - 5}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-autronis-text-tertiary truncate">
+                      {projAgents.slice(0, 3).map(a => a.naam).join(", ")}
+                      {projAgents.length > 3 ? ` +${projAgents.length - 3}` : ""}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Activity dot */}
+                <span
+                  className={cn(
+                    "w-2.5 h-2.5 rounded-full shrink-0 transition-all",
+                    hasError ? "bg-red-400" : "bg-green-400 animate-pulse"
+                  )}
+                />
               </div>
-              <span
-                className={cn(
-                  "w-2 h-2 rounded-full shrink-0",
-                  hasError ? "bg-red-400" : "bg-green-400 animate-pulse"
-                )}
-              />
-            </>
+
+              {/* Hover tooltip: affected files */}
+              {isHovered && uniqueFiles.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-autronis-border/20">
+                  <p className="text-[9px] text-autronis-text-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <FileCode className="w-2.5 h-2.5" />
+                    Bestanden
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {uniqueFiles.map((file) => (
+                      <span
+                        key={file}
+                        className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-autronis-border/20 text-autronis-text-secondary"
+                      >
+                        {file}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           );
 
-          if (projectId) {
+          if (dbProject?.id) {
             return (
               <Link
                 key={proj}
-                href={`/projecten/${projectId}`}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-autronis-card-hover transition-colors group cursor-pointer"
+                href={`/projecten/${dbProject.id}`}
+                className="block px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all group cursor-pointer"
+                onMouseEnter={() => setHoveredProject(proj)}
+                onMouseLeave={() => setHoveredProject(null)}
               >
                 {content}
               </Link>
@@ -132,7 +231,9 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
           return (
             <div
               key={proj}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-autronis-card-hover transition-colors"
+              className="px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all"
+              onMouseEnter={() => setHoveredProject(proj)}
+              onMouseLeave={() => setHoveredProject(null)}
             >
               {content}
             </div>

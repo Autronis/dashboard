@@ -39,6 +39,8 @@ export interface Agent {
   kosten: AgentKosten;
 }
 
+export type ToolType = "edit" | "read" | "bash" | "write" | "grep" | "error" | "other";
+
 export interface TaskLogEntry {
   id: string;
   agentId: string;
@@ -47,4 +49,5 @@ export interface TaskLogEntry {
   project: string;
   tijdstip: string;
   status: "afgerond" | "bezig" | "fout";
+  toolType?: ToolType;
 }

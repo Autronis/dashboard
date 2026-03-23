@@ -539,6 +539,30 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const failedTaskIds = new Set<string>();
     const inFlightTaskIds = new Set<string>();
 
+    // === AUTO-BRANCHING: create branch before execution ===
+    const slug = cmd.opdracht
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    const branchName = `sem/${slug}`;
+
+    try {
+      const branchRes = await fetch("/api/ops-room/git", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+        body: JSON.stringify({ actie: "create-branch", branch: branchName }),
+      });
+      if (branchRes.ok) {
+        addLog(set, "theo", "info", `Branch aangemaakt: ${branchName}`);
+        set((s) => ({
+          commands: s.commands.map((c) => c.id === commandId ? { ...c, branch: branchName } : c),
+        }));
+      }
+    } catch {
+      addLog(set, "theo", "error", "Branch aanmaken mislukt — wordt op huidige branch geschreven");
+    }
+
     // Helper: sync task status to DB (fire-and-forget)
     const dbId = cmd.dbId;
     function syncTaskToDb(taskId: string, status: string, commandStatus?: string) {
@@ -768,6 +792,57 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     if (allDone) {
       addLog(set, "theo", "task_complete", `Opdracht volledig afgerond! Agents gaan naar stand-by.`);
       playSuccess();
+
+      // === AUTO-PR: commit, push, create PR ===
+      const finalCmd = get().commands.find((c) => c.id === commandId);
+      const cmdBranch = finalCmd?.branch;
+      if (cmdBranch) {
+        try {
+          // Commit all changes
+          const commitMsg = `feat: ${cmd.opdracht.slice(0, 70)}`;
+          await fetch("/api/ops-room/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ actie: "commit", message: commitMsg }),
+          });
+
+          // Push branch
+          await fetch("/api/ops-room/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ actie: "push", branch: cmdBranch }),
+          });
+
+          // Create PR
+          const takenLijst = (finalCmd?.plan?.taken ?? []).map((t) => `- [x] ${t.titel} (${t.agentId})`).join("\n");
+          const prBody = `## ${finalCmd?.plan?.beschrijving ?? ""}\n\n### Taken\n${takenLijst}\n\n---\nAutomatisch aangemaakt door Ops Room`;
+          const prRes = await fetch("/api/ops-room/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({
+              actie: "create-pr",
+              branch: cmdBranch,
+              title: cmd.opdracht.slice(0, 70),
+              beschrijving: prBody,
+            }),
+          });
+
+          if (prRes.ok) {
+            const prData = await prRes.json();
+            addLog(set, "theo", "task_complete", `PR aangemaakt: ${prData.prUrl ?? cmdBranch}`);
+          }
+
+          // Switch back to main
+          await fetch("/api/ops-room/git", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ actie: "cleanup" }),
+          });
+
+        } catch (gitError) {
+          addLog(set, "theo", "error", `Git/PR fout: ${gitError instanceof Error ? gitError.message : "onbekend"}`);
+        }
+      }
     }
 
     // Sync final status to DB

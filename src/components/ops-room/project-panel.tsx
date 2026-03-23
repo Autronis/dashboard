@@ -57,6 +57,10 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     return map;
   }, [dbProjects]);
 
+  function normalizeForMatch(s: string): string {
+    return s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
   function findProjectId(projectName: string): number | null {
     const lower = projectName.toLowerCase();
     // Exact match
@@ -64,6 +68,12 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     // Partial match (project name contains DB name or vice versa)
     for (const [dbName, id] of projectIdMap) {
       if (lower.includes(dbName) || dbName.includes(lower)) return id;
+    }
+    // Normalized match (strip all non-alphanumeric chars)
+    const norm = normalizeForMatch(projectName);
+    for (const [dbName, id] of projectIdMap) {
+      if (normalizeForMatch(dbName) === norm) return id;
+      if (norm.includes(normalizeForMatch(dbName)) || normalizeForMatch(dbName).includes(norm)) return id;
     }
     return null;
   }

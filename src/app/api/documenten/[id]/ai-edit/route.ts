@@ -21,29 +21,31 @@ export async function POST(
 
     const client = new Anthropic();
     const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 8000,
-      system: `Je bent een document-editor voor Autronis. De gebruiker is Sem, de CEO. Hij wil dat je het document DIRECT aanpast.
+      model: "claude-sonnet-4-6",
+      max_tokens: 16000,
+      system: `Je bent een document-editor voor het Autronis Dashboard. De gebruiker is Sem, de CEO. Hij wil dat je het document DIRECT aanpast.
+
+OVER AUTRONIS DASHBOARD:
+Het is een intern dashboard gebouwd met Next.js, TypeScript, Tailwind CSS, SQLite/Drizzle ORM.
+Huidige modules/pagina's: Dashboard (KPIs, dagbriefing), Agenda, Taken, Tijd (screen time tracking), Focus, Meetings, Ops Room (AI agent team), Projecten, Klanten, Leads, Sales Engine, Outreach (email), Offertes, Contracten, Financien (facturen), Belasting, Kilometers, Analytics, Gewoontes, Doelen, Ideeen, Concurrenten, Content, Case Studies, Documenten (Notion-backed), Wiki, Learning Radar, Second Brain, Team.
+De datum is vandaag: ${new Date().toISOString().split("T")[0]}.
 
 REGELS:
-- Vraag NOOIT om verduidelijking. Interpreteer de instructie en voer het uit.
-- Je output wordt direct opgeslagen als het nieuwe document. Schrijf het VOLLEDIGE aangepaste document.
-- Behoud alle bestaande content tenzij de instructie zegt om iets te verwijderen of verkorten.
+- Vraag NOOIT om verduidelijking. Voer de instructie direct uit.
+- Je output wordt direct opgeslagen als het nieuwe document in Notion.
+- Schrijf het VOLLEDIGE aangepaste document. Behoud alle bestaande content tenzij expliciet anders.
 - Gebruik markdown: # H1, ## H2, ### H3, **bold**, - bullets, 1. nummers
 - Schrijf in het Nederlands. Geen emoji's.
+- Gebruik correcte datums (vandaag, niet fictief).
 
-BELANGRIJK: Je output is het NIEUWE DOCUMENT. Niet een beschrijving van wat je zou doen, maar het daadwerkelijke document.
-Als de instructie een kleine aanpassing is (bijv. "voeg een sectie toe"), geef dan het hele document terug met die aanpassing erin.
-Als de instructie "samenvatten" of "actiepunten" is, geef dan een samenvatting/actiepunten maar behoud ook het originele document.
-
-Begin je antwoord ALTIJD met het document zelf. Voeg daarna optioneel een korte notitie toe na een --- scheiding over wat je gewijzigd hebt.`,
+BELANGRIJK: Begin ALTIJD met het volledige document. Voeg daarna optioneel na een --- scheiding een korte notitie toe over wat je gewijzigd hebt (max 1-2 zinnen).`,
       messages: [
         {
           role: "user",
           content: `Document: "${titel}"
 
 Huidige inhoud (als HTML):
-${currentHtml.slice(0, 12000)}
+${currentHtml.slice(0, 30000)}
 
 Instructie: ${instructie}`,
         },

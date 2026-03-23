@@ -1547,84 +1547,102 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       }
     });
 
-    // === Hover tooltip (clean, white text, no border) ===
+    // === Hover tooltip (premium glassmorphism card) ===
     if (hovered) {
       const ha = positions.get(hovered);
       if (ha && ha.agent.status !== "offline") {
         const { agent } = ha;
-        const desk = DESK_POSITIONS[agent.id];
         const rolTextMap: Record<string, string> = {
           manager: "Manager", builder: "Builder", reviewer: "Reviewer",
           architect: "Architect", assistant: "Research & Docs", automation: "Automation",
         };
         const rolText = agent.id === ceoId ? "CEO" : (rolTextMap[agent.rol] ?? "Builder");
         const proj = agent.huidigeTaak?.project ?? "Stand-by";
-        const projColor = agent.huidigeTaak ? getProjectColor(proj) : "#8a9aaa";
+        const projColor = agent.huidigeTaak ? getProjectColor(proj) : (isLight ? "#64748b" : "#8a9aaa");
         const cost = `\u20AC${agent.kosten.kostenVandaag.toFixed(2)}`;
         const task = agent.huidigeTaak?.beschrijving ?? "";
         const taskDisplay = task.length > 35 ? task.slice(0, 34) + "..." : task;
 
-        const tw = 280;
-        const th = task ? 82 : 62;
-        // Use actual position from positions map (not desk position — agent might be in stand-by)
+        const tw = 290;
+        const th = task ? 88 : 66;
         const agentY = ha.y;
         const ttX = ha.x + 2 * S;
-        // If tooltip would go above canvas, show below agent instead
         const above = agentY - th + 22;
         const ttY = above < 20 ? agentY + 28 * S : above;
         const tx = Math.max(10, Math.min(ttX, CANVAS_W - tw - 10));
         const ty = Math.max(10, ttY);
+        const r = 12;
 
-        // Background with subtle shadow
-        ctx.fillStyle = "#00000030";
-        ctx.beginPath(); ctx.roundRect(tx + 3, ty + 3, tw, th, 10); ctx.fill();
-        ctx.fillStyle = "#0d1117f0";
-        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, 10); ctx.fill();
+        // Shadow (layered for depth)
+        ctx.fillStyle = isLight ? "#00000012" : "#00000040";
+        ctx.beginPath(); ctx.roundRect(tx + 2, ty + 4, tw, th, r); ctx.fill();
+        ctx.fillStyle = isLight ? "#00000008" : "#00000025";
+        ctx.beginPath(); ctx.roundRect(tx + 1, ty + 2, tw, th, r); ctx.fill();
 
-        // Left accent bar
+        // Card background
+        ctx.fillStyle = isLight ? "#fffffff2" : "#0d1117f0";
+        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, r); ctx.fill();
+
+        // Subtle border
+        ctx.strokeStyle = isLight ? "#e2e8f020" : "#ffffff10";
+        ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.roundRect(tx, ty, tw, th, r); ctx.stroke();
+
+        // Top highlight line (glassmorphism)
+        const grad = ctx.createLinearGradient(tx, ty, tx + tw, ty);
+        grad.addColorStop(0, isLight ? "#00000000" : "#ffffff00");
+        grad.addColorStop(0.3, isLight ? "#00000008" : "#ffffff08");
+        grad.addColorStop(0.7, isLight ? "#00000008" : "#ffffff08");
+        grad.addColorStop(1, isLight ? "#00000000" : "#ffffff00");
+        ctx.fillStyle = grad;
+        ctx.fillRect(tx + 20, ty, tw - 40, 1);
+
+        // Left accent bar (rounded)
         ctx.fillStyle = projColor;
-        ctx.fillRect(tx + 1, ty + 8, 3, th - 16);
+        ctx.beginPath(); ctx.roundRect(tx + 6, ty + 10, 3, th - 20, 2); ctx.fill();
 
-        // Role icon (custom drawn, large)
-        drawRoleIcon(ctx, agent.rol, agent.id, tx + 12, ty + 8, 18);
-        const ttIconW = 24;
+        // Role icon
+        drawRoleIcon(ctx, agent.rol, agent.id, tx + 16, ty + 10, 18);
 
-        // Name (large, white, bold)
-        ctx.font = "bold 16px Inter, system-ui, sans-serif";
-        ctx.fillStyle = "#ffffff";
-        ctx.fillText(agent.naam, tx + 14 + ttIconW, ty + 22);
+        // Name
+        ctx.font = "bold 15px Inter, system-ui, sans-serif";
+        ctx.fillStyle = isLight ? "#0f172a" : "#f1f5f9";
+        ctx.fillText(agent.naam, tx + 40, ty + 24);
 
-        // Cost (right-aligned, amber)
-        ctx.font = "bold 12px Inter, system-ui, sans-serif";
-        ctx.fillStyle = "#f59e0b";
+        // Cost badge (pill shape)
+        ctx.font = "bold 11px Inter, system-ui, sans-serif";
         const costW = ctx.measureText(cost).width;
-        ctx.fillText(cost, tx + tw - costW - 14, ty + 22);
+        const pillX = tx + tw - costW - 24;
+        const pillY = ty + 12;
+        ctx.fillStyle = isLight ? "#fef3c710" : "#f59e0b15";
+        ctx.beginPath(); ctx.roundRect(pillX - 4, pillY - 2, costW + 16, 16, 8); ctx.fill();
+        ctx.fillStyle = isLight ? "#b45309" : "#fbbf24";
+        ctx.fillText(cost, pillX + 4, pillY + 11);
 
-        // Role
+        // Role + status dot
         ctx.font = "11px Inter, system-ui, sans-serif";
-        ctx.fillStyle = "#8a9aaa";
-        ctx.fillText(rolText, tx + 14, ty + 38);
+        ctx.fillStyle = isLight ? "#64748b" : "#8a9aaa";
+        ctx.fillText(rolText, tx + 16, ty + 40);
 
-        // Status dot
         const statusColor = agent.status === "working" ? "#4ade80" :
           agent.status === "reviewing" ? "#a855f7" :
-          agent.status === "error" ? "#ef4444" : "#6b7280";
+          agent.status === "error" ? "#ef4444" : (isLight ? "#94a3b8" : "#6b7280");
         ctx.fillStyle = statusColor;
         ctx.beginPath();
         const rolW = ctx.measureText(rolText).width;
-        ctx.arc(tx + 14 + rolW + 8, ty + 35, 3, 0, Math.PI * 2);
+        ctx.arc(tx + 16 + rolW + 8, ty + 37, 3, 0, Math.PI * 2);
         ctx.fill();
 
-        // Project
+        // Project name
         ctx.font = "bold 11px Inter, system-ui, sans-serif";
         ctx.fillStyle = projColor;
-        ctx.fillText(proj, tx + 14, ty + 54);
+        ctx.fillText(proj, tx + 16, ty + 56);
 
         // Task description
         if (taskDisplay) {
           ctx.font = "10px Inter, system-ui, sans-serif";
-          ctx.fillStyle = "#6b7b8b";
-          ctx.fillText(taskDisplay, tx + 14, ty + 70);
+          ctx.fillStyle = isLight ? "#94a3b8" : "#6b7b8b";
+          ctx.fillText(taskDisplay, tx + 16, ty + 72);
         }
       }
     }

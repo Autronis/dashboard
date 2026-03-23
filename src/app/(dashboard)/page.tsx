@@ -1130,6 +1130,9 @@ export default function DashboardPage() {
               )
             ) : null}
 
+            {/* Idee van de dag — compact */}
+            <IdeeVanDeDag />
+
             {/* Learning Radar */}
             <RadarWidget />
 

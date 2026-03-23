@@ -33,6 +33,7 @@ export interface Command {
   intakeVragen: string[] | null; // DAAN's follow-up questions if opdracht is vague
   intakeAntwoorden: string[] | null; // User's answers to intake questions
   daanMode: DaanMode | null; // null = not yet determined, "taak" = task intake, "idee" = idea sparring
+  branch: string | null; // git branch for this command's changes
 }
 
 export interface Plan {

@@ -292,7 +292,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
     const hasSyb = entries.some((e) => e.gebruikerId === 2);
 
     if (hasZiek) return "bg-red-500/20 text-red-400";
-    if (hasSem && hasSyb) return "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-white";
+    if (hasSem && hasSyb) return "bg-gradient-to-r from-blue-500/20 to-purple-500/20 text-autronis-text-primary";
     if (hasSem) return "bg-blue-500/20 text-blue-400";
     if (hasSyb) return "bg-purple-500/20 text-purple-400";
     return "bg-blue-500/20 text-blue-400";

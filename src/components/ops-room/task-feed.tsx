@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { CheckCircle2, Loader2, AlertCircle, Code2, Bot, Cog, Pencil, Eye, Terminal, FileSearch, FileOutput } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
+import { PixelAvatar } from "./pixel-avatar";
 import type { TaskLogEntry, ToolType } from "./types";
 
 function timeAgo(dateString: string): string {
@@ -194,17 +195,14 @@ export function TaskFeed({ entries, isDemo = true, onAgentClick }: TaskFeedProps
                     onClick={() => onAgentClick?.(group.agent.id)}
                     className="flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-colors cursor-pointer"
                   >
-                    {/* Agent avatar */}
-                    <div className="shrink-0 mt-0.5">
-                      <div
-                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-                        style={{
-                          backgroundColor: firstEntry.status === "fout" ? "#ef4444" : projectColor,
-                          boxShadow: `0 0 8px ${firstEntry.status === "fout" ? "#ef444440" : `${projectColor}30`}`,
-                        }}
-                      >
-                        {group.agent.naam[0]}
-                      </div>
+                    {/* Agent pixel avatar */}
+                    <div
+                      className="shrink-0 mt-0.5 rounded border border-autronis-border/30 bg-autronis-card overflow-hidden"
+                      style={{
+                        boxShadow: `0 0 6px ${firstEntry.status === "fout" ? "#ef444440" : `${projectColor}25`}`,
+                      }}
+                    >
+                      <PixelAvatar agentId={group.agent.id} size={28} />
                     </div>
 
                     {/* Content */}

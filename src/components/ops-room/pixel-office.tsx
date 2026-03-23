@@ -360,10 +360,10 @@ function drawDesk(
     while (ctx.measureText(name).width > maxW * 0.4 && name.length > 2) name = name.slice(0, -1);
     ctx.fillText(name, labelX + iconW, labelY2 + 10);
 
-    // Rol inline after name (smaller, grey)
+    // Rol inline after name (smaller, grey — darker in light mode)
     const nmW = ctx.measureText(name).width;
     ctx.font = "10px Inter, system-ui, sans-serif";
-    ctx.fillStyle = "#a0b0ba";
+    ctx.fillStyle = pal === LIGHT_PALETTE ? "#5a6a78" : "#a0b0ba";
     ctx.fillText(rol.label, labelX + iconW + nmW + 4, labelY2 + 10);
 
     // Line 2: → Project (more spacing below)

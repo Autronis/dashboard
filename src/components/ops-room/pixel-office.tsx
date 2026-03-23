@@ -1797,13 +1797,6 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
     tickRef.current++;
   }, [agents, positions, selectedId, hovered, mouse]);
 
-  // Listen for confetti events from orchestrator
-  useEffect(() => {
-    const handler = () => triggerConfetti();
-    window.addEventListener("ops-confetti", handler);
-    return () => window.removeEventListener("ops-confetti", handler);
-  }, [triggerConfetti]);
-
   useEffect(() => {
     const loop = (t: number) => {
       if (t - lastTRef.current >= FRAME_MS) { lastTRef.current = t; draw(); }
@@ -1846,6 +1839,13 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
   const triggerConfetti = useCallback(() => {
     spawnConfetti(CANVAS_W / 2, CANVAS_H / 3, 60);
   }, []);
+
+  // Listen for confetti events from orchestrator
+  useEffect(() => {
+    const handler = () => triggerConfetti();
+    window.addEventListener("ops-confetti", handler);
+    return () => window.removeEventListener("ops-confetti", handler);
+  }, [triggerConfetti]);
 
   return (
     <div className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative">

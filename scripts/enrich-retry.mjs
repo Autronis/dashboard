@@ -185,12 +185,9 @@ function buildBlocks(enriched) {
 }
 
 const projects = [
-  { id: "325bd171-7d1d-81ad-9d5e-e300e1c08785", naam: "Case Study Generator", dir: "case-study-generator", status: "Afgerond" },
-  { id: "328bd171-7d1d-8195-878e-d76033b79f55", naam: "Agent Office / Ops Room", dir: "agent-office--ops-room", status: "In Development" },
-  { id: "328bd171-7d1d-817f-a6b0-f863765386b5", naam: "Sales Engine", dir: "sales-engine", status: "In Development" },
-  { id: "328bd171-7d1d-81cc-8db4-ccbc3035b738", naam: "Investment Engine", dir: "investment-engine", status: "In Development" },
-  { id: "328bd171-7d1d-8187-8634-fb4debc6059b", naam: "Autronis Dashboard", dir: "autronis-dashboard", status: "In Development" },
-  { id: "325bd171-7d1d-81c8-8061-c9a9fcbc3754", naam: "Learning Radar", dir: "learning-radar", status: "In Development" },
+  { id: '328bd171-7d1d-8195-878e-d76033b79f55', naam: 'Agent Office / Ops Room', dir: 'agent-office--ops-room', status: 'In Development' },
+  { id: '328bd171-7d1d-81cc-8db4-ccbc3035b738', naam: 'Investment Engine', dir: 'investment-engine', status: 'In Development' },
+  { id: '328bd171-7d1d-8187-8634-fb4debc6059b', naam: 'Autronis Dashboard', dir: 'autronis-dashboard', status: 'In Development' },
 ];
 
 async function run() {

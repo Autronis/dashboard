@@ -1,25 +1,36 @@
-import type { Config } from "tailwindcss";
+import type { Config } from 'tailwindcss';
 
 const config: Config = {
-  // "class" strategy: dark mode is activated by adding the `dark` class to <html>
-  darkMode: "class",
+  // 'class' strategie: dark mode wordt geactiveerd via een .dark klasse op <html>
+  // Dit is vereist voor next-themes compatibiliteit
+  darkMode: 'class',
+
   content: [
-    "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
+    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+
   theme: {
     extend: {
       colors: {
-        // Semantic tokens backed by CSS variables (use with opacity modifier)
-        bg: "rgb(var(--color-bg) / <alpha-value>)",
-        surface: "rgb(var(--color-surface) / <alpha-value>)",
-        border: "rgb(var(--color-border) / <alpha-value>)",
-        "text-primary": "rgb(var(--color-text-primary) / <alpha-value>)",
-        "text-muted": "rgb(var(--color-text-muted) / <alpha-value>)",
+        // Optioneel: CSS-variabele tokens beschikbaar maken als Tailwind kleuren
+        nav: {
+          bg: 'var(--color-nav-bg)',
+          border: 'var(--color-nav-border)',
+          text: 'var(--color-nav-text)',
+          muted: 'var(--color-nav-text-muted)',
+        },
+        sidebar: {
+          bg: 'var(--color-sidebar-bg)',
+          border: 'var(--color-sidebar-border)',
+          activeBg: 'var(--color-sidebar-active-bg)',
+          activeText: 'var(--color-sidebar-active-text)',
+        },
       },
     },
   },
+
   plugins: [],
 };
 

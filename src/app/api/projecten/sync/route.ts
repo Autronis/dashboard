@@ -40,7 +40,7 @@ const DIR_TO_PROJECT: Record<string, string> = {
 };
 
 // Directories to skip during sync
-const SKIP_DIRS = new Set(["autronis-website"]);
+const SKIP_DIRS = new Set(["autronis-website", "ai-audit-tool", "workflow-as-a-service"]);
 
 function parseTodoMd(content: string): ParsedTask[] {
   const lines = content.split("\n");

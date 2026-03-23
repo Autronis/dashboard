@@ -93,8 +93,8 @@ function NavItem({ item, isCollapsed, isActive }: { item: NavLink; isCollapsed: 
       className={cn(
         "flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group relative",
         isActive
-          ? "bg-autronis-accent/10 text-white font-semibold"
-          : "text-autronis-text-secondary hover:bg-white/5 hover:text-autronis-text-primary"
+          ? "bg-autronis-accent/10 text-autronis-text-primary font-semibold"
+          : "text-autronis-text-secondary hover:bg-autronis-border/30 hover:text-autronis-text-primary"
       )}
       title={isCollapsed ? item.label : undefined}
     >
@@ -103,7 +103,7 @@ function NavItem({ item, isCollapsed, isActive }: { item: NavLink; isCollapsed: 
       )}
       <Icon className={cn(
         "w-[18px] h-[18px] transition-colors flex-shrink-0",
-        isActive ? "text-autronis-accent" : "text-slate-400 group-hover:text-slate-300"
+        isActive ? "text-autronis-accent" : "text-autronis-text-secondary group-hover:text-autronis-text-primary"
       )} />
       {!isCollapsed && (
         <span className="text-[13px] truncate">{item.label}</span>
@@ -208,7 +208,7 @@ function CollapsibleSection({
             "text-[9px] tabular-nums px-1.5 py-0.5 rounded-full transition-colors",
             hasActiveChild
               ? "bg-autronis-accent/15 text-autronis-accent/70"
-              : "bg-white/5 text-autronis-text-secondary/40"
+              : "bg-autronis-border/30 text-autronis-text-secondary/40"
           )}>
             {items.length}
           </span>
@@ -261,25 +261,25 @@ export function Sidebar() {
         animate={{ width: isCollapsed ? 72 : 256 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className={cn(
-          "fixed top-0 left-0 h-full z-30 flex flex-col bg-[#0c1215]/95 backdrop-blur-xl border-r border-white/[0.06]",
+          "fixed top-0 left-0 h-full z-30 flex flex-col bg-autronis-card/95 backdrop-blur-xl border-r border-autronis-border",
           "max-lg:-translate-x-full max-lg:w-64 max-lg:transition-transform max-lg:duration-300",
           isOpen && "max-lg:translate-x-0"
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 h-16 border-b border-white/[0.06] flex-shrink-0 pt-[env(safe-area-inset-top)]">
+        <div className="flex items-center justify-between px-4 h-16 border-b border-autronis-border flex-shrink-0 pt-[env(safe-area-inset-top)]">
           <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image src="/logo.png" alt="Autronis" width={34} height={34} className="h-8 w-auto" priority />
             {!isCollapsed && (
-              <span className="text-lg font-bold text-white tracking-tight">Autronis</span>
+              <span className="text-lg font-bold text-autronis-text-primary tracking-tight">Autronis</span>
             )}
           </Link>
-          <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/5 text-autronis-text-secondary lg:hidden ml-auto">
+          <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-autronis-border/30 text-autronis-text-secondary lg:hidden ml-auto">
             <X className="w-5 h-5" />
           </button>
           <button
             onClick={() => setCollapsed(!isCollapsed)}
-            className={cn("hidden lg:flex p-1 rounded-lg hover:bg-white/5 text-autronis-text-secondary transition-transform duration-300", isCollapsed ? "ml-auto rotate-180" : "ml-auto")}
+            className={cn("hidden lg:flex p-1 rounded-lg hover:bg-autronis-border/30 text-autronis-text-secondary transition-transform duration-300", isCollapsed ? "ml-auto rotate-180" : "ml-auto")}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
@@ -307,8 +307,8 @@ export function Sidebar() {
 
         {/* Keyboard shortcut hint (desktop only) */}
         {!isCollapsed && (
-          <div className="hidden lg:block border-t border-white/[0.06] p-3">
-            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] text-autronis-text-secondary/40">
+          <div className="hidden lg:block border-t border-autronis-border p-3">
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-autronis-border/20 text-autronis-text-secondary/40">
               <span className="text-[10px]">⌘K zoeken</span>
             </div>
           </div>

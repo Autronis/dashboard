@@ -51,13 +51,15 @@ export default function OpsRoomPage() {
     refetchInterval: 5000,
   });
   const dbActiveAgents = useMemo(() => {
-    const ids = new Set<string>();
+    const map = new Map<string, { titel: string; opdracht: string }>();
     (dbCommands ?? []).forEach((cmd) => {
       if ((cmd.status === "approved" || cmd.status === "in_progress") && cmd.plan) {
-        cmd.plan.taken.forEach((t) => { if (t.agentId) ids.add(t.agentId); });
+        cmd.plan.taken.forEach((t) => {
+          if (t.agentId) map.set(t.agentId, { titel: t.titel, opdracht: cmd.opdracht });
+        });
       }
     });
-    return ids;
+    return map;
   }, [dbCommands]);
 
   // Merge: mock roster as base, overlay live data
@@ -73,7 +75,18 @@ export default function OpsRoomPage() {
         if (alwaysActive.has(mock.id)) return mock;
         // Check if orchestrator or DB has this agent active
         if (orchestratorAgents.has(mock.id) || dbActiveAgents.has(mock.id)) {
-          return { ...mock, status: "working" as const };
+          const dbTask = dbActiveAgents.get(mock.id);
+          return {
+            ...mock,
+            status: "working" as const,
+            huidigeTaak: dbTask ? {
+              id: `db-${mock.id}`,
+              beschrijving: dbTask.titel,
+              project: dbTask.opdracht.slice(0, 40),
+              startedAt: new Date().toISOString(),
+              status: "bezig" as const,
+            } : mock.huidigeTaak,
+          };
         }
         // Builders without live data → idle
         return {

@@ -198,7 +198,29 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border-b border-autronis-border">
                   <Bot className="w-4 h-4 text-autronis-accent" />
                   <span className="text-xs font-semibold text-autronis-text-primary">AI Assistent</span>
-                  <span className="text-[10px] text-autronis-text-secondary">— stel vragen of geef instructies</span>
+                </div>
+
+                {/* Shortcuts */}
+                <div className="flex flex-wrap gap-1.5 px-3 py-2 border-b border-autronis-border">
+                  {[
+                    { label: "Samenvatten", prompt: "Geef een korte samenvatting van dit document in 3-4 zinnen" },
+                    { label: "Verbeterpunten", prompt: "Wat zijn de belangrijkste verbeterpunten voor dit document?" },
+                    { label: "Korter maken", prompt: "Hoe kan ik dit document korter en bondiger maken?" },
+                    { label: "Aanvullen", prompt: "Welke belangrijke onderdelen ontbreken nog in dit document?" },
+                    { label: "Verduidelijken", prompt: "Welke delen zijn onduidelijk en hoe kan ik ze verbeteren?" },
+                    { label: "Actiepunten", prompt: "Haal alle actiepunten en to-do items uit dit document" },
+                  ].map((shortcut) => (
+                    <button
+                      key={shortcut.label}
+                      onClick={() => {
+                        setAiChatInput(shortcut.prompt);
+                      }}
+                      disabled={aiChatLoading}
+                      className="px-2.5 py-1 rounded-lg text-[11px] bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-colors disabled:opacity-50"
+                    >
+                      {shortcut.label}
+                    </button>
+                  ))}
                 </div>
 
                 {aiChatMessages.length > 0 && (

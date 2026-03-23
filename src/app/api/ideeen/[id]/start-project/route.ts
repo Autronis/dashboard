@@ -107,20 +107,34 @@ export async function POST(
       // Directory aanmaken mislukt — project is wel aangemaakt in DB
     }
 
-    // 6. Plan in Notion aanmaken
+    // 6. Plan in Notion aanmaken + notionId opslaan
     try {
       const briefContent = await readFile(path.join(projectDir, "PROJECT_BRIEF.md"), "utf-8").catch(() => null);
       const todoContent = await readFile(path.join(projectDir, "TODO.md"), "utf-8").catch(() => null);
 
-      await createEnrichedNotionPlan({
+      const notionResult = await createEnrichedNotionPlan({
         projectNaam: idee.naam,
         briefContent: briefContent,
         todoContent: todoContent,
         status: "In Development",
         klantNaam: "Autronis (intern)",
       });
+
+      // Save notionId + projectDir on the project record
+      if (notionResult?.notionId) {
+        await db.update(projecten).set({
+          notionPageId: notionResult.notionId,
+          notionUrl: notionResult.notionUrl,
+          projectDir,
+        }).where(eq(projecten.id, project.id));
+      }
     } catch {
       // Notion sync mislukt — project is wel aangemaakt
+    }
+
+    // Save projectDir even if Notion failed
+    if (!project.projectDir) {
+      await db.update(projecten).set({ projectDir }).where(eq(projecten.id, project.id));
     }
 
     // 7. Ops Room orchestrator triggeren — Theo maakt een plan

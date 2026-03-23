@@ -255,11 +255,19 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
 
               {/* Actions */}
               <div className="space-y-2 pt-2">
+                <button
+                  onClick={() => { setFullscreen(true); setShowContent(true); }}
+                  className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-autronis-accent text-white text-sm font-medium hover:bg-autronis-accent-hover transition-colors"
+                >
+                  <Maximize2 className="w-4 h-4" />
+                  Volledig scherm lezen
+                </button>
+
                 <a
                   href={doc.notionUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg bg-autronis-accent text-white text-sm font-medium hover:bg-autronis-accent-hover transition-colors"
+                  className="flex items-center gap-2 w-full px-4 py-2.5 rounded-lg border border-autronis-border text-sm text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
                   Openen in Notion

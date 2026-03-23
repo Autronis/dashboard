@@ -149,7 +149,7 @@ Reageer ALLEEN met JSON:
   "naam": "Korte pakkende naam (max 5 woorden)",
   "omschrijving": "1-2 zinnen wat het is",
   "uitwerking": "3-5 zinnen uitgebreidere beschrijving met aanpak",
-  "categorie": "feature" | "tool" | "verbetering" | "experiment" | "integratie",
+  "categorie": "dashboard" | "klant_verkoop" | "intern" | "dev_tools" | "content_media" | "geld_groei" | "experimenteel" | "website",
   "prioriteit": "laag" | "normaal" | "hoog"
 }`,
           messages: [{ role: "user", content: `Origineel idee: "${opdracht}"\n\nSpar-sessie:\n${context}` }],

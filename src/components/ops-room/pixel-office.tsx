@@ -1493,22 +1493,51 @@ export function PixelOffice({ agents, selectedId, onSelect }: PixelOfficeProps) 
       const bob = Math.sin(tick * 0.2 + i * 1.1) * 1;
       drawSprite(ctx, charDef.sprite, ax, ay + bob, S);
 
-      // Name below with role icon
+      // Label below — same style as desk labels (name + role + project)
       const charH = charDef.rows * S;
-      const sbIconSize = 12;
-      const sbIconW = sbIconSize + 4;
-      ctx.font = "bold 13px Inter, system-ui, sans-serif";
-      const nw = ctx.measureText(agent.naam).width;
-      ctx.fillStyle = "#0a0f14dd";
-      ctx.fillRect(ax - 2, ay + charH + 4, sbIconW + nw + 8, 16);
-      drawRoleIcon(ctx, agent.rol, agent.id, ax + 2, ay + charH + 5, sbIconSize);
-      ctx.font = "bold 13px Inter, system-ui, sans-serif";
-      ctx.fillStyle = agent.avatar;
-      ctx.fillText(agent.naam, ax + 2 + sbIconW, ay + charH + 17);
+      const sbIconSize = 14;
+      const sbIconW = sbIconSize + 3;
+      const labelY = ay + charH + 4;
+
+      // Role icon
+      drawRoleIcon(ctx, agent.rol, agent.id, ax, labelY - 2, sbIconSize);
+
+      // Name + role inline
+      const rolLabels: Record<string, { label: string }> = {
+        manager: { label: "Manager" },
+        builder: { label: "Builder" },
+        reviewer: { label: "Reviewer" },
+        architect: { label: "Architect" },
+        assistant: { label: "Research & Docs" },
+        automation: { label: "Automation" },
+      };
+      const rolLabel = rolLabels[agent.rol]?.label ?? "Builder";
+
+      ctx.font = "bold 12px Inter, system-ui, sans-serif";
+      ctx.fillStyle = pal.labelColor;
+      let name = agent.naam;
+      ctx.fillText(name, ax + sbIconW, labelY + 10);
+
+      const nmW = ctx.measureText(name).width;
+      ctx.font = "10px Inter, system-ui, sans-serif";
+      ctx.fillStyle = isLight ? "#6a7a8a" : "#a0b0ba";
+      ctx.fillText(rolLabel, ax + sbIconW + nmW + 4, labelY + 10);
+
+      // Project line (if active) or "Stand-by"
+      ctx.font = "10px Inter, system-ui, sans-serif";
+      if (agent.huidigeTaak) {
+        const projColor = getProjectColor(agent.huidigeTaak.project);
+        let proj = agent.huidigeTaak.project;
+        ctx.fillStyle = projColor;
+        ctx.fillText("→ " + proj, ax, labelY + 24);
+      } else {
+        ctx.fillStyle = isLight ? "#8a9aaa" : "#5a6a7a";
+        ctx.fillText("Stand-by", ax, labelY + 24);
+      }
 
       if (selectedId === agent.id) {
         ctx.strokeStyle = "#23C6B7"; ctx.lineWidth = 2; ctx.setLineDash([4, 3]);
-        ctx.strokeRect(ax - 6, ay - 6, charDef.cols * S + 12, charH + 28);
+        ctx.strokeRect(ax - 6, ay - 6, charDef.cols * S + 12, charH + 38);
         ctx.setLineDash([]);
       }
     });

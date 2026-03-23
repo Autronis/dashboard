@@ -3,9 +3,10 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
-import { FolderOpen, FileCode, Terminal, GitBranch } from "lucide-react";
+import { FolderOpen, FileCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
+import { PixelAvatar } from "./pixel-avatar";
 import type { Agent } from "./types";
 
 interface ProjectPanelProps {
@@ -157,21 +158,20 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
                     </div>
                   )}
 
-                  {/* Agent avatars + names */}
+                  {/* Agent pixel avatars + names */}
                   <div className="flex items-center gap-1.5">
-                    <div className="flex -space-x-1.5">
+                    <div className="flex -space-x-1">
                       {projAgents.slice(0, 5).map((agent) => (
                         <div
                           key={agent.id}
-                          className="w-5 h-5 rounded-full border-2 border-autronis-card flex items-center justify-center text-[8px] font-bold text-white shrink-0"
-                          style={{ backgroundColor: agent.avatar }}
+                          className="shrink-0 border border-autronis-border/30 rounded bg-autronis-card"
                           title={agent.naam}
                         >
-                          {agent.naam[0]}
+                          <PixelAvatar agentId={agent.id} size={20} />
                         </div>
                       ))}
                       {projAgents.length > 5 && (
-                        <div className="w-5 h-5 rounded-full border-2 border-autronis-card bg-autronis-border/50 flex items-center justify-center text-[8px] font-bold text-autronis-text-tertiary shrink-0">
+                        <div className="w-5 h-5 rounded border border-autronis-border/30 bg-autronis-card flex items-center justify-center text-[8px] font-bold text-autronis-text-tertiary shrink-0">
                           +{projAgents.length - 5}
                         </div>
                       )}

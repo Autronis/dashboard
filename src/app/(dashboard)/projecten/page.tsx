@@ -333,7 +333,7 @@ export default function ProjectenPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Projecten</h1>
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Projecten</h1>
             <p className="text-autronis-text-secondary mt-1">
               {kpis.actief} actief &middot; {kpis.takenOpen} open taken &middot; {Math.round(kpis.totaleUren / 60)}u totaal
             </p>
@@ -351,7 +351,7 @@ export default function ProjectenPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Totaal", value: kpis.totaal, icon: FolderKanban, color: "text-white", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
+            { label: "Totaal", value: kpis.totaal, icon: FolderKanban, color: "text-autronis-text-primary", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
             { label: "Actief", value: kpis.actief, icon: Loader2, color: "text-blue-400", iconBg: "bg-blue-500/10 text-blue-400" },
             { label: "Taken open", value: kpis.takenOpen, icon: ListTodo, color: "text-amber-400", iconBg: "bg-amber-500/10 text-amber-400" },
             { label: "Totale uren", value: `${Math.round(kpis.totaleUren / 60)}u`, icon: Clock, color: "text-autronis-accent", iconBg: "bg-autronis-accent/10 text-autronis-accent" },

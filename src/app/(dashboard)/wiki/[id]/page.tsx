@@ -189,7 +189,7 @@ export default function WikiArtikelPage() {
                   {cat.label}
                 </span>
               </div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">
+              <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">
                 {artikel.titel}
               </h1>
             </div>

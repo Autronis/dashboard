@@ -540,7 +540,7 @@ export default function IdeeenPage() {
     <PageTransition>
     <div className="max-w-[1400px] mx-auto p-4 lg:p-8 space-y-8">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Ideeën</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-autronis-text-primary tracking-tight">Ideeën</h1>
         <p className="text-sm sm:text-base text-autronis-text-secondary mt-1">Van idee naar executie</p>
       </div>
 

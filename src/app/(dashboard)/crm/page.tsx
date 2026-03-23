@@ -498,7 +498,7 @@ export default function CrmPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">CRM / Leads</h1>
+          <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">CRM / Leads</h1>
           <p className="text-base text-autronis-text-secondary mt-1">
             {kpis.totaal} leads in pipeline
           </p>

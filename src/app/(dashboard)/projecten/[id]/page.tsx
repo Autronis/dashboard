@@ -381,7 +381,7 @@ export default function ProjectDetailPage() {
           <div className="flex items-start justify-between gap-6">
             <div className="flex-1 space-y-3">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-3xl font-bold text-white tracking-tight">{project.naam}</h1>
+                <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">{project.naam}</h1>
                 <StatusBadge status={project.status ?? "actief"} />
               </div>
               {project.klantNaam && (
@@ -467,7 +467,7 @@ export default function ProjectDetailPage() {
 
         {/* Fases overzicht */}
         <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-semibold text-autronis-text-primary">
             Fases & Taken
             <span className="text-autronis-text-secondary font-normal text-sm ml-2">
               ({fases.length} {fases.length === 1 ? "fase" : "fases"})

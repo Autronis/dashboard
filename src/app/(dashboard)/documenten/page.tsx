@@ -98,7 +98,7 @@ export default function DocumentenPage() {
     <div className="p-3 sm:p-6 lg:p-8 max-w-6xl mx-auto space-y-4 sm:space-y-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Documenten</h1>
+          <h1 className="text-xl sm:text-3xl font-bold text-autronis-text-primary tracking-tight">Documenten</h1>
           <p className="text-xs sm:text-sm text-autronis-text-secondary mt-1">Alle documenten in Notion</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">

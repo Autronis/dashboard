@@ -1450,7 +1450,7 @@ export default function AgendaPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold text-autronis-text-primary">
                 {selectedItem ? "Item bewerken" : "Nieuw agenda-item"}
               </h3>
               <div className="flex items-center gap-2">
@@ -1643,7 +1643,7 @@ function KalenderSettingsModal({ kalenders, onClose }: { kalenders: ExterneKalen
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={onClose}>
       <div className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-autronis-border">
-          <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
             <Link2 className="w-5 h-5 text-autronis-accent" />
             Externe kalenders
           </h2>

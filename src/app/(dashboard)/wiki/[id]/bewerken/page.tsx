@@ -154,7 +154,7 @@ export default function BewerkenWikiArtikelPage() {
         />
 
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-white tracking-tight">Artikel bewerken</h1>
+          <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Artikel bewerken</h1>
           <button
             onClick={handleOpslaan}
             disabled={saving}

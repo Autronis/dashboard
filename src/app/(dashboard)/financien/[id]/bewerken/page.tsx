@@ -205,7 +205,7 @@ export default function FactuurBewerkenPage() {
           <ArrowLeft className="w-5 h-5" />
           Terug naar factuur
         </Link>
-        <h1 className="text-3xl font-bold text-white tracking-tight">
+        <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">
           Factuur {factuurnummer} bewerken
         </h1>
       </div>

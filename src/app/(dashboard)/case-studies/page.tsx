@@ -390,10 +390,10 @@ export default function CaseStudiesPage() {
   // ============ STYLES ============
 
   const inputClass =
-    "w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-white placeholder:text-autronis-text-tertiary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-all";
+    "w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-all";
   const labelClass = "text-sm font-semibold text-autronis-accent uppercase tracking-wider";
   const selectClass =
-    "w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-all appearance-none cursor-pointer";
+    "w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-all appearance-none cursor-pointer";
   const actionBtnClass =
     "inline-flex items-center gap-2 rounded-lg bg-white/5 border border-autronis-border px-3.5 py-2 text-xs font-semibold text-autronis-text-secondary hover:text-white hover:bg-white/10 transition-colors";
   const accentBtnClass =
@@ -418,7 +418,7 @@ export default function CaseStudiesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">Case Studies</h1>
+            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Case Studies</h1>
             <p className="text-autronis-text-secondary mt-1">
               Genereer en beheer case studies voor klanten.
             </p>
@@ -461,7 +461,7 @@ export default function CaseStudiesPage() {
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-white">
+                <span className="text-sm font-semibold text-autronis-text-primary">
                   {serverOnline
                     ? "Online"
                     : serverOnline === false
@@ -521,7 +521,7 @@ export default function CaseStudiesPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8">
             <div className="w-full max-w-4xl rounded-2xl border border-autronis-border bg-autronis-card p-6 space-y-4 max-h-[80vh] flex flex-col">
               <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg font-bold text-autronis-text-primary">
                   Case Study Bewerken — {editSlug}
                 </h2>
                 <button
@@ -534,7 +534,7 @@ export default function CaseStudiesPage() {
               <textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-white font-mono resize-none focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                className="flex-1 w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-autronis-text-primary font-mono resize-none focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
               />
               <div className="flex gap-3 justify-end">
                 <button
@@ -579,7 +579,7 @@ export default function CaseStudiesPage() {
             {filteredExisting.length === 0 && existing.length === 0 ? (
               <div className="rounded-xl border border-autronis-border bg-autronis-card p-12 text-center card-glow">
                 <Video className="h-12 w-12 text-autronis-text-tertiary mx-auto mb-4" />
-                <p className="text-lg font-semibold text-white mb-2">Nog geen case studies</p>
+                <p className="text-lg font-semibold text-autronis-text-primary mb-2">Nog geen case studies</p>
                 <p className="text-sm text-autronis-text-secondary mb-6">
                   Maak je eerste case study aan via het formulier.
                 </p>
@@ -612,7 +612,7 @@ export default function CaseStudiesPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <h3 className="text-base font-bold text-white truncate">{cs.titel}</h3>
+                            <h3 className="text-base font-bold text-autronis-text-primary truncate">{cs.titel}</h3>
                             <p className="text-sm text-autronis-text-secondary truncate mt-0.5">
                               {cs.subtitel}
                             </p>
@@ -964,7 +964,7 @@ export default function CaseStudiesPage() {
                   <p className="text-xs font-semibold text-autronis-accent uppercase tracking-wider">
                     Case Study Preview
                   </p>
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold text-autronis-text-primary">
                     {formState.klantnaam || "Klantnaam"}
                     {formState.klantBranche && (
                       <span className="text-autronis-text-secondary font-normal">
@@ -986,7 +986,7 @@ export default function CaseStudiesPage() {
                     <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider">
                       Het probleem
                     </h3>
-                    <p className="text-white">{formState.probleem}</p>
+                    <p className="text-autronis-text-primary">{formState.probleem}</p>
                     {formState.probleemMetricWaarde && (
                       <div className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-sm text-red-400">
                         <XCircle className="h-4 w-4" />
@@ -1005,7 +1005,7 @@ export default function CaseStudiesPage() {
                     <h3 className="text-sm font-semibold text-autronis-accent uppercase tracking-wider">
                       De oplossing
                     </h3>
-                    <p className="text-white">{formState.oplossing}</p>
+                    <p className="text-autronis-text-primary">{formState.oplossing}</p>
                   </div>
                 )}
 
@@ -1024,7 +1024,7 @@ export default function CaseStudiesPage() {
                               {i + 1}
                             </span>
                             <div>
-                              <p className="text-sm font-semibold text-white">{stap.titel}</p>
+                              <p className="text-sm font-semibold text-autronis-text-primary">{stap.titel}</p>
                               {stap.beschrijving && (
                                 <p className="text-xs text-autronis-text-secondary">
                                   {stap.beschrijving}
@@ -1113,7 +1113,7 @@ export default function CaseStudiesPage() {
                         Succesvol gegenereerd
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-white">{result.titel}</h3>
+                    <h3 className="text-lg font-bold text-autronis-text-primary">{result.titel}</h3>
                     <p className="text-sm text-autronis-text-secondary mt-0.5">
                       Voiceover: {result.voiceoverDuur}s &middot; Slug: {result.slug}
                     </p>

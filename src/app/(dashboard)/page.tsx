@@ -886,12 +886,10 @@ export default function DashboardPage() {
               <Zap className="w-5 h-5 text-autronis-accent" />
               <h2 className="text-base font-bold text-autronis-text-primary">Wat moet je nu doen?</h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+            <div className="grid grid-cols-3 gap-2 mb-3">
               {(() => {
                 const critical = mijnTaken.filter((t) => t.prioriteit === "hoog");
                 const normal = mijnTaken.filter((t) => t.prioriteit !== "hoog");
-                const projectenZonderUren = projecten.filter((p) => p.urenDezeMaand === 0 && p.status === "actief");
-                const teFactureren = kpis.openstaandBedrag ?? 0;
                 return (<>
                   <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
                     <p className={cn("text-xl font-bold tabular-nums", critical.length > 0 ? "text-red-400" : "text-autronis-text-secondary")}>{critical.length}</p>
@@ -900,10 +898,6 @@ export default function DashboardPage() {
                   <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
                     <p className="text-xl font-bold text-amber-400 tabular-nums">{normal.length}</p>
                     <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Overig open</p>
-                  </div>
-                  <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
-                    <p className={cn("text-xl font-bold tabular-nums", projectenZonderUren.length > 0 ? "text-orange-400" : "text-autronis-text-secondary")}>{projectenZonderUren.length}</p>
-                    <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Zonder uren</p>
                   </div>
                   <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
                     <p className={cn("text-xl font-bold tabular-nums", kpis.deadlinesDezeWeek > 0 ? "text-red-400" : "text-autronis-text-secondary")}>{kpis.deadlinesDezeWeek}</p>

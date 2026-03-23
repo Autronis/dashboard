@@ -88,6 +88,7 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 30 }}
           transition={{ duration: 0.2, ease: "easeOut" }}
+          data-agent-detail
           className="rounded-2xl border border-autronis-border bg-autronis-card p-4 flex flex-col gap-3"
         >
           {/* Header with sprite */}

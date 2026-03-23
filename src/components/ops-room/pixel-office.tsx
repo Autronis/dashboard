@@ -627,7 +627,13 @@ function ContextMenuOverlay({ agent, x, y, onClose, onSelect, onConfetti }: {
 
       {/* Menu items */}
       <div className="py-1">
-        <MenuItem label="Details bekijken" icon="user" onClick={() => onSelect(agent)} />
+        <MenuItem label="Details bekijken" icon="user" onClick={() => {
+          onSelect(agent);
+          // Scroll to agent detail panel
+          setTimeout(() => {
+            document.querySelector("[data-agent-detail]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 100);
+        }} />
         <MenuItem label="Confetti gooien" icon="party" onClick={onConfetti} />
         {proj && <MenuItem label={`Naar ${proj.length > 18 ? proj.slice(0, 17) + "..." : proj}`} icon="folder" onClick={() => {
           window.location.href = `/projecten?zoek=${encodeURIComponent(proj)}`;

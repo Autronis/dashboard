@@ -46,6 +46,7 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   vincent: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H * 2 },
   noah:    { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
   nikkie:  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
+  adam:    { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
 // Empty desks
@@ -56,8 +57,7 @@ const EMPTY_DESKS = [
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  // Row 3 (remaining empty desks)
-  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
+  // Row 3 (remaining empty desk)
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 

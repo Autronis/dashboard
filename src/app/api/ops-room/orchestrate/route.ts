@@ -96,13 +96,30 @@ export async function POST(req: NextRequest) {
 
     let planData: { beschrijving: string; taken: PlanTask[] } | null = null;
 
+    // Check which agents are already busy (live sessions)
+    let busyAgentIds: string[] = [];
+    try {
+      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const busyRows = await db.all(sql`
+        SELECT agent_id FROM agent_activiteit
+        WHERE status = 'actief' AND laatst_gezien >= ${fiveMinAgo}
+      `) as { agent_id: string }[];
+      busyAgentIds = busyRows.map((r) => r.agent_id);
+    } catch {
+      // Table might not exist yet
+    }
+
+    const busyNote = busyAgentIds.length > 0
+      ? `\n\nBELANGRIJK: De volgende agents zijn BEZIG met een andere taak en mogen NIET worden toegewezen: ${busyAgentIds.join(", ")}. Kies andere agents met dezelfde specialisatie.`
+      : "";
+
     try {
       const client = new Anthropic({ apiKey });
       const message = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: THEO_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"\n\nMaak een uitvoeringsplan.` }],
+        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"${busyNote}\n\nMaak een uitvoeringsplan.` }],
       });
 
       const rawText = message.content

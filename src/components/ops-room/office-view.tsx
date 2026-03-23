@@ -30,9 +30,13 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   pedro:   { x: 500, y: 305 },
   vincent: { x: 700, y: 305 },
 
+  // Builder row 3
+  noah:    { x: 300, y: 445 },
+  nikkie:  { x: 500, y: 445 },
+
   // Support row
-  ari:     { x: 300, y: 445 },
-  rodi:    { x: 500, y: 445 },
+  ari:     { x: 700, y: 445 },
+  rodi:    { x: 300, y: 585 },
 };
 
 const MEETING_ROOM = { x: 30, y: 165, w: 220, h: 180 };

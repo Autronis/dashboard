@@ -9,7 +9,16 @@ import { DocumentPreview } from "./document-preview";
 import { DocumentModal } from "./document-modal";
 import { DocumentKanban } from "./document-kanban";
 import { SavedFilters } from "./saved-filters";
-import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight, Pin, X, Clock, Archive, List, LayoutGrid, ChevronDown } from "lucide-react";
+import { FileText, ExternalLink, Search, ArrowUpDown, Loader2, ChevronLeft, ChevronRight, Pin, X, Clock, Archive, List, LayoutGrid, ChevronDown, FolderOpen, BookOpen, AlertTriangle, ClipboardList, Lightbulb, type LucideIcon } from "lucide-react";
+
+const TYPE_ICONS: Record<DocumentType, LucideIcon> = {
+  plan: ClipboardList,
+  contract: FileText,
+  klantdocument: FolderOpen,
+  intern: BookOpen,
+  notitie: Lightbulb,
+  "belangrijke-info": AlertTriangle,
+};
 
 export function DocumentList() {
   const [zoekterm, setZoekterm] = useState("");
@@ -24,7 +33,7 @@ export function DocumentList() {
   const [showArchived, setShowArchived] = useState(false);
   const [duplicateDoc, setDuplicateDoc] = useState<DocumentBase | null>(null);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<DocumentType>>(new Set());
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<DocumentType>>(new Set(["plan", "contract", "klantdocument", "intern", "notitie", "belangrijke-info"] as DocumentType[]));
 
   const { data, isLoading, error } = useDocumenten(sortBy, cursor);
   const documenten = data?.documenten;
@@ -296,7 +305,10 @@ export function DocumentList() {
                   className="flex items-center gap-2 w-full mb-3 group/header"
                 >
                   <div className="w-1 h-5 rounded-full" style={{ backgroundColor: config.color }} />
-                  <span className="text-sm font-semibold text-autronis-text-primary">{config.emoji} {config.label}</span>
+                  <span className="text-sm font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                    {(() => { const Icon = TYPE_ICONS[type]; return Icon ? <Icon className="w-4 h-4" style={{ color: config.color }} /> : null; })()}
+                    {config.label}
+                  </span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${config.bgClass} ${config.textClass}`}>
                     {docs.length}
                   </span>

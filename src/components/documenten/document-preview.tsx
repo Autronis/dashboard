@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DocumentBase, DOCUMENT_TYPE_CONFIG } from "@/types/documenten";
 import { useImproveDocument } from "@/hooks/queries/use-documenten";
@@ -26,7 +26,78 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   const [aiChatInput, setAiChatInput] = useState("");
   const [aiChatMessages, setAiChatMessages] = useState<Array<{ role: "user" | "ai"; text: string }>>([]);
   const [aiChatLoading, setAiChatLoading] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<number | null>(null);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const improveDocument = useImproveDocument();
+
+  // Send AI edit as background job
+  const sendAiEdit = useCallback((input: string) => {
+    if (!doc || !input.trim()) return;
+    setAiChatInput("");
+    setAiChatMessages((prev) => [...prev, { role: "user", text: input }]);
+    setAiChatLoading(true);
+
+    fetch(`/api/documenten/${doc.notionId}/ai-edit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ instructie: input, titel: doc.titel }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.jobId) {
+          setActiveJobId(data.jobId);
+        } else {
+          setAiChatMessages((prev) => [...prev, { role: "ai", text: data.fout || "Fout bij starten" }]);
+          setAiChatLoading(false);
+        }
+      })
+      .catch(() => {
+        setAiChatMessages((prev) => [...prev, { role: "ai", text: "Kon AI niet bereiken" }]);
+        setAiChatLoading(false);
+      });
+  }, [doc]);
+
+  // Poll for job completion
+  useEffect(() => {
+    if (!activeJobId || !doc) return;
+
+    pollingRef.current = setInterval(() => {
+      fetch(`/api/documenten/${doc.notionId}/ai-edit?jobId=${activeJobId}`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.status === "klaar") {
+            setAiChatMessages((prev) => [...prev, { role: "ai", text: data.antwoord || "Document bijgewerkt" }]);
+            if (data.updatedHtml) setContentHtml(data.updatedHtml);
+            setAiChatLoading(false);
+            setActiveJobId(null);
+          } else if (data.status === "fout") {
+            setAiChatMessages((prev) => [...prev, { role: "ai", text: `Fout: ${data.fout}` }]);
+            setAiChatLoading(false);
+            setActiveJobId(null);
+          }
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, [activeJobId, doc]);
+
+  // Check for running job when opening a document
+  useEffect(() => {
+    if (!open || !doc) return;
+    fetch(`/api/documenten/${doc.notionId}/ai-edit`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.status === "bezig") {
+          setAiChatMessages((prev) => [...prev, { role: "user", text: data.instructie }, { role: "ai", text: "Bezig met bewerken..." }]);
+          setAiChatLoading(true);
+          setActiveJobId(data.jobId);
+        }
+      })
+      .catch(() => {});
+  }, [open, doc]);
 
   useEffect(() => {
     if (!open) return;
@@ -38,7 +109,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   }, [open, onClose]);
 
   useEffect(() => {
-    if (!open || !doc) { setContentHtml(null); setShowContent(false); setFullscreen(false); setAiChatMessages([]); setAiChatInput(""); return; }
+    if (!open || !doc) { setContentHtml(null); setShowContent(false); setFullscreen(false); setAiChatMessages([]); setAiChatInput(""); setActiveJobId(null); if (pollingRef.current) clearInterval(pollingRef.current); return; }
     setContentLoading(true);
     fetch(`/api/documenten/${doc.notionId}/content`)
       .then((r) => r.json())
@@ -255,51 +326,15 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey && aiChatInput.trim() && !aiChatLoading) {
                         e.preventDefault();
-                        const input = aiChatInput.trim();
-                        setAiChatInput("");
-                        setAiChatMessages((prev) => [...prev, { role: "user", text: input }]);
-                        setAiChatLoading(true);
-                        fetch(`/api/documenten/${doc.notionId}/ai-edit`, {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ instructie: input, titel: doc.titel }),
-                        })
-                          .then((r) => r.json())
-                          .then((data) => {
-                            setAiChatMessages((prev) => [...prev, { role: "ai", text: data.antwoord || data.fout || "Document bijgewerkt" }]);
-                            if (data.updatedHtml) setContentHtml(data.updatedHtml);
-                          })
-                          .catch(() => {
-                            setAiChatMessages((prev) => [...prev, { role: "ai", text: "Er ging iets mis. Probeer het opnieuw." }]);
-                          })
-                          .finally(() => setAiChatLoading(false));
+                        sendAiEdit(aiChatInput.trim());
                       }
                     }}
-                    placeholder="Vraag iets of geef een instructie..."
+                    placeholder={aiChatLoading ? "AI is bezig met bewerken..." : "Vraag iets of geef een instructie..."}
                     disabled={aiChatLoading}
                     className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 disabled:opacity-50"
                   />
                   <button
-                    onClick={() => {
-                      if (!aiChatInput.trim() || aiChatLoading) return;
-                      const input = aiChatInput.trim();
-                      setAiChatInput("");
-                      setAiChatMessages((prev) => [...prev, { role: "user", text: input }]);
-                      setAiChatLoading(true);
-                      fetch(`/api/documenten/${doc.notionId}/ai-edit`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ instructie: input, titel: doc.titel }),
-                      })
-                        .then((r) => r.json())
-                        .then((data) => {
-                          setAiChatMessages((prev) => [...prev, { role: "ai", text: data.antwoord || data.fout || "Geen antwoord" }]);
-                        })
-                        .catch(() => {
-                          setAiChatMessages((prev) => [...prev, { role: "ai", text: "Er ging iets mis. Probeer het opnieuw." }]);
-                        })
-                        .finally(() => setAiChatLoading(false));
-                    }}
+                    onClick={() => sendAiEdit(aiChatInput.trim())}
                     disabled={aiChatLoading || !aiChatInput.trim()}
                     className="p-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white rounded-lg transition-colors disabled:opacity-50"
                   >

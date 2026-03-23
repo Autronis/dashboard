@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { fetchNotionPageContent, replaceNotionPageContent } from "@/lib/notion";
 import Anthropic from "@anthropic-ai/sdk";
+import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
 
+// POST — Start a background AI edit job
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -16,8 +19,96 @@ export async function POST(
       return NextResponse.json({ fout: "Instructie is verplicht" }, { status: 400 });
     }
 
-    // Fetch current content from Notion
-    const currentHtml = await fetchNotionPageContent(id);
+    // Create job in DB
+    const now = new Date().toISOString();
+    await db.run(sql`
+      INSERT INTO document_jobs (notion_id, titel, instructie, status, aangemaakt, bijgewerkt)
+      VALUES (${id}, ${titel}, ${instructie}, 'bezig', ${now}, ${now})
+    `);
+    const job = await db.all(sql`SELECT id FROM document_jobs ORDER BY id DESC LIMIT 1`) as { id: number }[];
+    const jobId = job[0]?.id;
+
+    // Run the AI edit in the background (don't await)
+    runAiEdit(jobId, id, titel, instructie).catch(() => {});
+
+    return NextResponse.json({ jobId });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Niet geauthenticeerd") {
+      return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
+    }
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "AI edit mislukt" },
+      { status: 500 }
+    );
+  }
+}
+
+// GET — Check job status
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const { id } = await params;
+    const jobIdParam = request.nextUrl.searchParams.get("jobId");
+
+    if (jobIdParam) {
+      // Get specific job
+      const jobs = await db.all(sql`
+        SELECT id, status, antwoord, fout FROM document_jobs WHERE id = ${Number(jobIdParam)}
+      `) as { id: number; status: string; antwoord: string | null; fout: string | null }[];
+      const job = jobs[0];
+      if (!job) return NextResponse.json({ fout: "Job niet gevonden" }, { status: 404 });
+
+      let updatedHtml: string | undefined;
+      if (job.status === "klaar") {
+        updatedHtml = await fetchNotionPageContent(id);
+      }
+
+      return NextResponse.json({
+        status: job.status,
+        antwoord: job.antwoord,
+        fout: job.fout,
+        updatedHtml,
+      });
+    }
+
+    // Get latest job for this document
+    const jobs = await db.all(sql`
+      SELECT id, status, antwoord, fout, instructie FROM document_jobs
+      WHERE notion_id = ${id}
+      ORDER BY id DESC LIMIT 1
+    `) as { id: number; status: string; antwoord: string | null; fout: string | null; instructie: string }[];
+
+    if (!jobs.length) return NextResponse.json({ status: "geen" });
+
+    const job = jobs[0];
+    let updatedHtml: string | undefined;
+    if (job.status === "klaar") {
+      updatedHtml = await fetchNotionPageContent(id);
+    }
+
+    return NextResponse.json({
+      jobId: job.id,
+      status: job.status,
+      antwoord: job.antwoord,
+      fout: job.fout,
+      instructie: job.instructie,
+      updatedHtml,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Niet geauthenticeerd") {
+      return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
+    }
+    return NextResponse.json({ fout: "Kon status niet ophalen" }, { status: 500 });
+  }
+}
+
+// Background AI edit function
+async function runAiEdit(jobId: number, notionId: string, titel: string, instructie: string) {
+  try {
+    const currentHtml = await fetchNotionPageContent(notionId);
 
     const client = new Anthropic();
     const message = await client.messages.create({
@@ -53,29 +144,25 @@ Instructie: ${instructie}`,
     });
 
     const responseText = message.content[0].type === "text" ? message.content[0].text : "";
-
-    // Split response: document content vs change note
     const parts = responseText.split(/\n---\n/);
     const newContent = parts[0].trim();
     const changeNote = parts[1]?.trim() || "Document bijgewerkt";
 
-    // Write the new content back to Notion
-    await replaceNotionPageContent(id, newContent);
+    // Write to Notion
+    await replaceNotionPageContent(notionId, newContent);
 
-    // Re-fetch the updated HTML for the preview
-    const updatedHtml = await fetchNotionPageContent(id);
-
-    return NextResponse.json({
-      antwoord: changeNote,
-      updatedHtml,
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === "Niet geauthenticeerd") {
-      return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
-    }
-    return NextResponse.json(
-      { fout: error instanceof Error ? error.message : "AI edit mislukt" },
-      { status: 500 }
-    );
+    // Update job as done
+    const now = new Date().toISOString();
+    await db.run(sql`
+      UPDATE document_jobs SET status = 'klaar', antwoord = ${changeNote}, bijgewerkt = ${now}
+      WHERE id = ${jobId}
+    `);
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    const now = new Date().toISOString();
+    await db.run(sql`
+      UPDATE document_jobs SET status = 'fout', fout = ${errMsg}, bijgewerkt = ${now}
+      WHERE id = ${jobId}
+    `);
   }
 }

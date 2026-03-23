@@ -38,6 +38,7 @@ const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
   // Support row
   ari:     { x: 300, y: 585 },
   rodi:    { x: 500, y: 585 },
+  brent:   { x: 700, y: 585 },
 };
 
 const MEETING_ROOM = { x: 30, y: 165, w: 220, h: 180 };

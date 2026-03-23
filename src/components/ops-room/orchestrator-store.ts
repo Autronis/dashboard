@@ -112,8 +112,14 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         const daanMode = (intakeData.mode ?? "taak") as DaanMode;
 
         if (daanMode === "idee") {
-          // DAAN recognized this as an idea — switch to idea sparring
-          addLog(set, "daan", "info", `Idee herkend — spar-vragen worden gesteld`);
+          // Brent recognized this as an idea — switch to idea sparring
+          addLog(set, "brent", "info", `Idee herkend — spar-vragen worden gesteld`);
+          // Activate Brent in the office
+          set((s) => {
+            const next = new Set(s.activeAgents);
+            next.add("brent");
+            return { activeAgents: next };
+          });
           set((s) => ({
             commands: s.commands.map((c) => c.id === cmdId ? {
               ...c,
@@ -128,8 +134,14 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         }
 
         if (intakeData.needsIntake && intakeData.vragen?.length > 0) {
-          // DAAN needs more info — pause and ask questions
-          addLog(set, "daan", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
+          // Brent needs more info — pause and ask questions
+          addLog(set, "brent", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
+          // Activate Brent in the office
+          set((s) => {
+            const next = new Set(s.activeAgents);
+            next.add("brent");
+            return { activeAgents: next };
+          });
           set((s) => ({
             commands: s.commands.map((c) => c.id === cmdId ? {
               ...c,
@@ -169,7 +181,13 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `V: ${q}\nA: ${antwoorden[i] ?? "—"}`).join("\n");
     const enrichedOpdracht = `${cmd.opdracht}\n\nExtra context:\n${qaContext}`;
 
-    addLog(set, "daan", "task_complete", "Intake afgerond, door naar planning");
+    addLog(set, "brent", "task_complete", "Intake afgerond, door naar planning");
+    // Deactivate Brent
+    set((s) => {
+      const next = new Set(s.activeAgents);
+      next.delete("brent");
+      return { activeAgents: next };
+    });
     await get()._planCommand(commandId, enrichedOpdracht);
   },
 
@@ -187,7 +205,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       isProcessing: true,
     }));
 
-    addLog(set, "daan", "info", "Idee wordt uitgewerkt...");
+    addLog(set, "brent", "info", "Idee wordt uitgewerkt...");
 
     // Build context from Q&A
     const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `${q}: ${antwoorden[i] ?? "—"}`).join("\n");
@@ -223,8 +241,14 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       if (!ideeRes.ok) throw new Error("Idee opslaan mislukt");
 
-      addLog(set, "daan", "task_complete", `Idee aangemaakt: "${synthData.naam}"`);
+      addLog(set, "brent", "task_complete", `Idee aangemaakt: "${synthData.naam}"`);
       playSuccess();
+      // Deactivate Brent
+      set((s) => {
+        const next = new Set(s.activeAgents);
+        next.delete("brent");
+        return { activeAgents: next };
+      });
 
       set((s) => ({
         commands: s.commands.map((c) => c.id === commandId ? {
@@ -237,8 +261,14 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Onbekend";
-      addLog(set, "daan", "error", `Fout: ${msg}`);
+      addLog(set, "brent", "error", `Fout: ${msg}`);
       playError();
+      // Deactivate Brent
+      set((s) => {
+        const next = new Set(s.activeAgents);
+        next.delete("brent");
+        return { activeAgents: next };
+      });
       set((s) => ({
         commands: s.commands.map((c) => c.id === commandId ? {
           ...c,

@@ -71,7 +71,7 @@ export default function OpsRoomPage() {
       const live = liveMap.get(mock.id);
       if (!live) {
         // No live data — management stays active, builders go idle
-        const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi"]);
+        const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi", "brent"]);
         if (alwaysActive.has(mock.id)) return mock;
         // Check if orchestrator or DB has this agent active
         if (orchestratorAgents.has(mock.id) || dbActiveAgents.has(mock.id)) {

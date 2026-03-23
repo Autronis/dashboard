@@ -12,6 +12,7 @@ const AGENT_NAMES: Record<string, string> = {
   ari: "Ari", rodi: "Rodi", adam: "Adam", noah: "Noah",
   jack: "Jack", nikkie: "Nikkie", xia: "Xia", thijs: "Thijs",
   leonard: "Leonard", rijk: "Rijk", coen: "Coen", senna: "Senna",
+  brent: "Brent",
 };
 
 function buildAgentPrompt(agentId: string, task: PlanTask, context: string): string {

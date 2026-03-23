@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { DocumentList } from "@/components/documenten/document-list";
 import { DocumentModal } from "@/components/documenten/document-modal";
-import { Plus, Trash2, FolderSync, FileText, DollarSign, Phone, BookOpen, BarChart2, ClipboardList, StickyNote, AlertTriangle, type LucideIcon } from "lucide-react";
+import { Plus, Trash2, FolderSync, FileText, DollarSign, Phone, BookOpen, BarChart2, ClipboardList, StickyNote, AlertTriangle, ScanSearch, Loader2, X, type LucideIcon } from "lucide-react";
 import { AiDocumentButton, AiDocumentPanel } from "@/components/documenten/ai-document-creator";
 import { cn } from "@/lib/utils";
 import type { DocumentType } from "@/types/documenten";
@@ -30,6 +30,9 @@ export default function DocumentenPage() {
   const [initialType, setInitialType] = useState<DocumentType | undefined>();
   const [cleanupLoading, setCleanupLoading] = useState(false);
   const [autoPlanLoading, setAutoPlanLoading] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanResults, setScanResults] = useState<Array<{ notionId: string; titel: string }> | null>(null);
+  const [archiveLoading, setArchiveLoading] = useState(false);
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const searchParams = useSearchParams();
   const { addToast } = useToast();
@@ -66,6 +69,45 @@ export default function DocumentenPage() {
       addToast(err instanceof Error ? err.message : "Opschonen mislukt", "fout");
     } finally {
       setCleanupLoading(false);
+    }
+  }, [addToast, queryClient]);
+
+  const handleScanOnnodig = useCallback(async () => {
+    setScanLoading(true);
+    try {
+      const res = await fetch("/api/documenten/scan-onnodig", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout ?? "Scan mislukt");
+      if (data.onnodig.length === 0) {
+        addToast("Geen onnodige documenten gevonden", "succes");
+        setScanResults(null);
+      } else {
+        setScanResults(data.onnodig);
+      }
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Scan mislukt", "fout");
+    } finally {
+      setScanLoading(false);
+    }
+  }, [addToast]);
+
+  const handleArchiveOnnodig = useCallback(async (notionIds: string[]) => {
+    setArchiveLoading(true);
+    try {
+      const res = await fetch("/api/documenten/scan-onnodig", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notionIds }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout ?? "Verwijderen mislukt");
+      addToast(`${data.gearchiveerd} document${data.gearchiveerd === 1 ? "" : "en"} gearchiveerd`, "succes");
+      setScanResults(null);
+      queryClient.invalidateQueries({ queryKey: ["documenten"] });
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Verwijderen mislukt", "fout");
+    } finally {
+      setArchiveLoading(false);
     }
   }, [addToast, queryClient]);
 
@@ -156,7 +198,54 @@ export default function DocumentenPage() {
           <FolderSync className={cn("w-3.5 h-3.5", autoPlanLoading && "animate-spin")} />
           {autoPlanLoading ? "Aanmaken..." : "Missende plannen aanmaken"}
         </button>
+        <button
+          onClick={handleScanOnnodig}
+          disabled={scanLoading}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-autronis-border hover:border-amber-500/30 text-autronis-text-secondary hover:text-amber-400 disabled:opacity-50"
+        >
+          {scanLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ScanSearch className="w-3.5 h-3.5" />}
+          {scanLoading ? "Scannen..." : "Scan onnodige docs"}
+        </button>
       </div>
+
+      {/* Scan results */}
+      {scanResults && scanResults.length > 0 && (
+        <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ScanSearch className="w-4 h-4 text-amber-400" />
+              <span className="text-sm font-semibold text-autronis-text-primary">
+                {scanResults.length} document{scanResults.length === 1 ? "" : "en"} zonder actief project
+              </span>
+            </div>
+            <button onClick={() => setScanResults(null)} className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="space-y-1.5">
+            {scanResults.map((doc) => (
+              <div key={doc.notionId} className="flex items-center justify-between px-3 py-2 bg-autronis-card border border-autronis-border rounded-xl text-sm">
+                <span className="text-autronis-text-primary truncate">{doc.titel}</span>
+                <button
+                  onClick={() => handleArchiveOnnodig([doc.notionId])}
+                  disabled={archiveLoading}
+                  className="text-xs text-red-400 hover:text-red-300 font-medium shrink-0 ml-3 disabled:opacity-50"
+                >
+                  Archiveer
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => handleArchiveOnnodig(scanResults.map((d) => d.notionId))}
+            disabled={archiveLoading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+          >
+            {archiveLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+            {archiveLoading ? "Archiveren..." : `Alle ${scanResults.length} archiveren`}
+          </button>
+        </div>
+      )}
 
       <DocumentList />
 

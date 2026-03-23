@@ -61,6 +61,8 @@ const EMPTY_DESKS = [
   { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
   { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
+  // Row 3 (5th column)
+  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
 ];
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;

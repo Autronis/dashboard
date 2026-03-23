@@ -6,7 +6,7 @@ export type DaanMode = "taak" | "idee";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "review" | "completed" | "blocked";
 
-export type AgentSpecialization = "frontend" | "backend" | "database" | "automation" | "styling" | "architect" | "reviewer" | "documentation" | "ops" | "research" | "experimental";
+export type AgentSpecialization = "frontend" | "backend" | "database" | "automation" | "styling" | "architect" | "reviewer" | "documentation" | "ops" | "research" | "experimental" | "interviewer";
 
 // Permission levels for approval flow
 // green: Theo decides autonomously (task distribution, code patterns)
@@ -99,6 +99,7 @@ export const AGENT_SPECIALIZATIONS: Record<string, AgentSpecialization> = {
   // Support
   ari: "research",
   rodi: "automation",
+  brent: "interviewer",
 };
 
 export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {
@@ -113,4 +114,5 @@ export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {
   reviewer: "Reviewer",
   documentation: "Documentatie",
   ops: "DevOps",
+  interviewer: "Intake & Interviews",
 };

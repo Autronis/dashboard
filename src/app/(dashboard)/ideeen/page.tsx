@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import {
   Lightbulb,
   Plus,
@@ -25,6 +25,11 @@ import {
   CheckCircle2,
   XCircle,
   Filter,
+  MessageCircle,
+  Send,
+  Bot,
+  PenLine,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -154,6 +159,38 @@ export default function IdeeenPage() {
   const [formPrioriteit, setFormPrioriteit] = useState("normaal");
   const [formOmschrijving, setFormOmschrijving] = useState("");
   const [formUitwerking, setFormUitwerking] = useState("");
+
+  // DAAN spar state
+  const [nieuwKeuzeOpen, setNieuwKeuzeOpen] = useState(false);
+  const [daanOpen, setDaanOpen] = useState(false);
+  const [daanInput, setDaanInput] = useState("");
+  const [daanMessages, setDaanMessages] = useState<Array<{ role: "user" | "daan"; text: string }>>([]);
+  const [daanVragen, setDaanVragen] = useState<string[]>([]);
+  const [daanVraagIndex, setDaanVraagIndex] = useState(0);
+  const [daanOrigineelIdee, setDaanOrigineelIdee] = useState("");
+  const [daanLoading, setDaanLoading] = useState(false);
+  const [daanStap, setDaanStap] = useState<"input" | "vragen" | "klaar">("input");
+  const daanChatRef = useRef<HTMLDivElement>(null);
+  const keuzeRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!nieuwKeuzeOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (keuzeRef.current && !keuzeRef.current.contains(e.target as Node)) {
+        setNieuwKeuzeOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [nieuwKeuzeOpen]);
+
+  // Auto-scroll DAAN chat
+  useEffect(() => {
+    if (daanChatRef.current) {
+      daanChatRef.current.scrollTop = daanChatRef.current.scrollHeight;
+    }
+  }, [daanMessages, daanVraagIndex]);
 
   // Scoring form
   const [scoreImpact, setScoreImpact] = useState(5);
@@ -364,6 +401,130 @@ export default function IdeeenPage() {
     });
   }
 
+  // === DAAN SPAR HANDLERS ===
+
+  const handleDaanStart = useCallback(async () => {
+    if (!daanInput.trim()) return;
+    const idee = daanInput.trim();
+    setDaanOrigineelIdee(idee);
+    setDaanMessages([{ role: "user", text: idee }]);
+    setDaanLoading(true);
+    setDaanInput("");
+
+    try {
+      const res = await fetch("/api/ops-room/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opdracht: idee, mode: "intake" }),
+      });
+      const data = await res.json();
+
+      if (data.mode === "idee" && data.vragen?.length > 0) {
+        setDaanVragen(data.vragen);
+        setDaanVraagIndex(0);
+        setDaanStap("vragen");
+        setDaanMessages((prev) => [
+          ...prev,
+          { role: "daan", text: `Leuk idee! Laat me een paar vragen stellen om het concreter te maken.` },
+          { role: "daan", text: data.vragen[0] },
+        ]);
+      } else {
+        // Not an idea or no questions — just create directly
+        setDaanMessages((prev) => [
+          ...prev,
+          { role: "daan", text: "Dit klinkt als een concrete taak. Ik maak het direct aan als idee." },
+        ]);
+        await handleDaanSynth(idee, "");
+      }
+    } catch {
+      addToast("DAAN kon niet bereikt worden", "fout");
+      setDaanStap("input");
+    } finally {
+      setDaanLoading(false);
+    }
+  }, [daanInput, addToast]);
+
+  const handleDaanAntwoord = useCallback(async () => {
+    if (!daanInput.trim()) return;
+    const antwoord = daanInput.trim();
+    setDaanInput("");
+    setDaanMessages((prev) => [...prev, { role: "user", text: antwoord }]);
+
+    const nextIndex = daanVraagIndex + 1;
+    if (nextIndex < daanVragen.length) {
+      // More questions
+      setDaanVraagIndex(nextIndex);
+      setDaanMessages((prev) => [...prev, { role: "daan", text: daanVragen[nextIndex] }]);
+    } else {
+      // All answered — synthesize
+      setDaanLoading(true);
+      setDaanMessages((prev) => [...prev, { role: "daan", text: "Top, ik werk je idee uit..." }]);
+
+      const context = daanMessages
+        .filter((m) => m.role === "daan" || m.role === "user")
+        .concat([{ role: "user", text: antwoord }])
+        .slice(1) // skip original idea message
+        .map((m) => `${m.role === "daan" ? "DAAN" : "Sem"}: ${m.text}`)
+        .join("\n");
+
+      await handleDaanSynth(daanOrigineelIdee, context);
+      setDaanLoading(false);
+    }
+  }, [daanInput, daanVraagIndex, daanVragen, daanMessages, daanOrigineelIdee]);
+
+  const handleDaanSynth = useCallback(async (opdracht: string, context: string) => {
+    try {
+      const res = await fetch("/api/ops-room/orchestrate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opdracht, context, mode: "idee_synth" }),
+      });
+      const data = await res.json();
+
+      if (data.fout) {
+        setDaanMessages((prev) => [...prev, { role: "daan", text: `Fout: ${data.fout}` }]);
+        return;
+      }
+
+      // Create the idea
+      createMutation.mutate(
+        {
+          naam: data.naam,
+          categorie: data.categorie || null,
+          omschrijving: data.omschrijving || null,
+          uitwerking: data.uitwerking || null,
+          prioriteit: data.prioriteit || "normaal",
+        },
+        {
+          onSuccess: () => {
+            setDaanMessages((prev) => [
+              ...prev,
+              { role: "daan", text: `Idee "${data.naam}" is aangemaakt! Je vindt het in je backlog.` },
+            ]);
+            setDaanStap("klaar");
+            addToast(`Idee "${data.naam}" aangemaakt via DAAN`, "succes");
+          },
+          onError: () => {
+            setDaanMessages((prev) => [...prev, { role: "daan", text: "Kon het idee niet opslaan." }]);
+          },
+        }
+      );
+    } catch {
+      setDaanMessages((prev) => [...prev, { role: "daan", text: "Er ging iets mis bij het uitwerken." }]);
+    }
+  }, [createMutation, addToast]);
+
+  function resetDaan() {
+    setDaanOpen(false);
+    setDaanInput("");
+    setDaanMessages([]);
+    setDaanVragen([]);
+    setDaanVraagIndex(0);
+    setDaanOrigineelIdee("");
+    setDaanStap("input");
+    setDaanLoading(false);
+  }
+
   const inputClasses = "w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors";
   const selectClasses = "bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors";
 
@@ -539,9 +700,37 @@ export default function IdeeenPage() {
           <button onClick={handleSyncBacklog} disabled={syncBacklogMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
             {syncBacklogMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}Sync backlog
           </button>
-          <button onClick={openNieuwForm} className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press">
-            <Plus className="w-4 h-4" />Nieuw idee
-          </button>
+          <div className="relative" ref={keuzeRef}>
+            <button onClick={() => setNieuwKeuzeOpen(!nieuwKeuzeOpen)} className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press">
+              <Plus className="w-4 h-4" />Nieuw idee
+              <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", nieuwKeuzeOpen && "rotate-180")} />
+            </button>
+            {nieuwKeuzeOpen && (
+              <div className="absolute right-0 top-full mt-2 w-56 bg-autronis-card border border-autronis-border rounded-xl shadow-2xl overflow-hidden z-50">
+                <button
+                  onClick={() => { setNieuwKeuzeOpen(false); setDaanOpen(true); setDaanStap("input"); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-autronis-text-primary hover:bg-autronis-accent/10 transition-colors"
+                >
+                  <Bot className="w-4 h-4 text-autronis-accent" />
+                  <div className="text-left">
+                    <p className="font-semibold">Spar met DAAN</p>
+                    <p className="text-xs text-autronis-text-secondary">AI helpt je idee uitwerken</p>
+                  </div>
+                </button>
+                <div className="border-t border-autronis-border" />
+                <button
+                  onClick={() => { setNieuwKeuzeOpen(false); openNieuwForm(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-autronis-text-primary hover:bg-autronis-accent/10 transition-colors"
+                >
+                  <PenLine className="w-4 h-4 text-autronis-text-secondary" />
+                  <div className="text-left">
+                    <p className="font-semibold">Handmatig invullen</p>
+                    <p className="text-xs text-autronis-text-secondary">Zelf alle velden invullen</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Cards grid */}
@@ -752,6 +941,98 @@ export default function IdeeenPage() {
               <button onClick={() => setDeleteDialogOpen(true)} className="inline-flex items-center gap-2 px-4 py-2.5 text-red-400 hover:bg-red-500/10 rounded-xl text-sm font-medium transition-colors"><Trash2 className="w-4 h-4" />Verwijderen</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* DAAN Spar Modal */}
+      {daanOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-autronis-card border border-autronis-accent/30 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[80vh]"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-autronis-border">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-autronis-accent/10 rounded-xl">
+                  <Bot className="w-5 h-5 text-autronis-accent" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-autronis-text-primary">Spar met DAAN</h3>
+                  <p className="text-xs text-autronis-text-secondary">Beschrijf je idee en DAAN helpt het uitwerken</p>
+                </div>
+              </div>
+              <button onClick={resetDaan} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Chat area */}
+            <div ref={daanChatRef} className="flex-1 overflow-y-auto p-5 space-y-3 min-h-[200px]">
+              {daanMessages.length === 0 && (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-10 h-10 text-autronis-accent/30 mx-auto mb-3" />
+                  <p className="text-sm text-autronis-text-secondary">Beschrijf kort je idee en DAAN stelt slimme vragen om het concreet te maken.</p>
+                </div>
+              )}
+              {daanMessages.map((msg, i) => (
+                <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                  <div className={cn(
+                    "max-w-[85%] px-4 py-2.5 rounded-2xl text-sm",
+                    msg.role === "user"
+                      ? "bg-autronis-accent text-autronis-bg rounded-br-md"
+                      : "bg-autronis-bg border border-autronis-border text-autronis-text-primary rounded-bl-md"
+                  )}>
+                    {msg.role === "daan" && <Bot className="w-3.5 h-3.5 text-autronis-accent inline mr-1.5 -mt-0.5" />}
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {daanLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-autronis-bg border border-autronis-border rounded-2xl rounded-bl-md px-4 py-2.5">
+                    <Loader2 className="w-4 h-4 text-autronis-accent animate-spin" />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Input area */}
+            <div className="p-4 border-t border-autronis-border">
+              {daanStap === "klaar" ? (
+                <button onClick={resetDaan} className="w-full px-4 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors">
+                  Sluiten
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={daanInput}
+                    onChange={(e) => setDaanInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        if (daanStap === "input") handleDaanStart();
+                        else if (daanStap === "vragen") handleDaanAntwoord();
+                      }
+                    }}
+                    placeholder={daanStap === "input" ? "Beschrijf je idee..." : "Typ je antwoord..."}
+                    disabled={daanLoading}
+                    className="flex-1 bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors disabled:opacity-50"
+                    autoFocus
+                  />
+                  <button
+                    onClick={daanStap === "input" ? handleDaanStart : handleDaanAntwoord}
+                    disabled={daanLoading || !daanInput.trim()}
+                    className="p-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </div>
       )}
 

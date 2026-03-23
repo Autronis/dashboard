@@ -19,6 +19,21 @@ export async function POST(
       return NextResponse.json({ fout: "Instructie is verplicht" }, { status: 400 });
     }
 
+    // Ensure table exists
+    await db.run(sql`
+      CREATE TABLE IF NOT EXISTS document_jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        notion_id TEXT NOT NULL,
+        titel TEXT NOT NULL,
+        instructie TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        antwoord TEXT,
+        fout TEXT,
+        aangemaakt TEXT DEFAULT (datetime('now')),
+        bijgewerkt TEXT DEFAULT (datetime('now'))
+      )
+    `);
+
     // Create job in DB
     const now = new Date().toISOString();
     await db.run(sql`

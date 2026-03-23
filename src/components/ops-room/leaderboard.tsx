@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import { Trophy, Flame, Zap, Crown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getCharacterDef, drawSprite } from "./pixel-sprites";
 import type { Agent } from "./types";
 
 interface LeaderboardProps {
@@ -11,6 +12,42 @@ interface LeaderboardProps {
 
 const MEDAL_COLORS = ["#fbbf24", "#94a3b8", "#cd7f32"]; // gold, silver, bronze
 const MEDAL_LABELS = ["1e", "2e", "3e"];
+
+function SpriteAvatar({ agentId, size = 28 }: { agentId: string; size?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const charDef = getCharacterDef(agentId);
+    const scale = Math.floor(size / Math.max(charDef.cols, charDef.rows));
+    const spriteW = charDef.cols * scale;
+    const spriteH = charDef.rows * scale;
+
+    canvas.width = size;
+    canvas.height = size;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, size, size);
+
+    // Center the sprite
+    const offsetX = Math.floor((size - spriteW) / 2);
+    const offsetY = Math.floor((size - spriteH) / 2);
+    drawSprite(ctx, charDef.sprite, offsetX, Math.max(0, offsetY), scale);
+  }, [agentId, size]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      className="shrink-0 rounded-md"
+      style={{ width: size, height: size, imageRendering: "pixelated" }}
+    />
+  );
+}
 
 export function Leaderboard({ agents }: LeaderboardProps) {
   const rankings = useMemo(() => {
@@ -71,13 +108,8 @@ export function Leaderboard({ agents }: LeaderboardProps) {
                 {i < 3 ? MEDAL_LABELS[i] : i + 1}
               </div>
 
-              {/* Avatar + Name */}
-              <div
-                className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0"
-                style={{ backgroundColor: agent.avatar }}
-              >
-                {agent.naam[0]}
-              </div>
+              {/* Sprite Avatar */}
+              <SpriteAvatar agentId={agent.id} size={28} />
               <div className="flex-1 min-w-0">
                 <p className={cn(
                   "text-xs font-semibold truncate",

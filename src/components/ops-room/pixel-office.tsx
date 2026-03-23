@@ -1851,7 +1851,10 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
   }, [triggerConfetti]);
 
   return (
-    <div className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative">
+    <div
+      className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative"
+      onClick={() => { if (contextMenu) setContextMenu(null); }}
+    >
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
@@ -1859,7 +1862,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
         className="w-full"
         style={{  }}
         onMouseMove={handleMove}
-        onMouseLeave={() => { setHovered(null); setContextMenu(null); }}
+        onMouseLeave={() => { setHovered(null); }}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
       />
@@ -1873,6 +1876,7 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
             left: `${contextMenu.x}px`,
             top: `${contextMenu.y}px`,
           }}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="px-3 py-2 border-b border-autronis-border/30">
             <p className="text-[11px] font-bold text-autronis-text-primary">{contextMenu.agent.naam}</p>

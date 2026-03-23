@@ -15,6 +15,7 @@ const theo: Agent = {
   id: "theo",
   naam: "Theo",
   rol: "manager",
+  team: "sem",
   status: "working",
   huidigeTaak: { id: "t-theo", beschrijving: "Team overzicht bewaken", project: "Alle projecten", startedAt: ago(120), status: "bezig" },
   voltooideVandaag: 5,
@@ -179,9 +180,9 @@ const vincent: Agent = {
 
 // --- Available Builders (koffiehoek) ---
 
-function idleBuilder(id: string, naam: string, color: string, tasksToday: number): Agent {
+function idleBuilder(id: string, naam: string, color: string, tasksToday: number, team: "sem" | "syb" = "sem"): Agent {
   return {
-    id, naam, rol: "builder", status: "idle", huidigeTaak: null,
+    id, naam, rol: "builder", team, status: "idle", huidigeTaak: null,
     voltooideVandaag: tasksToday,
     laatsteActiviteit: ago(60 + Math.floor(Math.random() * 120)),
     avatar: color,

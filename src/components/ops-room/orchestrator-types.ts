@@ -6,7 +6,9 @@ export type DaanMode = "taak" | "idee";
 
 export type TaskStatus = "queued" | "assigned" | "in_progress" | "review" | "completed" | "blocked";
 
-export type AgentSpecialization = "frontend" | "backend" | "database" | "automation" | "styling" | "architect" | "reviewer" | "documentation" | "ops" | "research" | "experimental" | "interviewer";
+export type AgentSpecialization = "frontend" | "backend" | "database" | "automation" | "styling" | "architect" | "reviewer" | "documentation" | "ops" | "research" | "experimental" | "interviewer" | "orchestrator" | "prompts";
+
+export type AgentTeam = "sem" | "syb";
 
 // Permission levels for approval flow
 // green: Theo decides autonomously (task distribution, code patterns)
@@ -97,10 +99,20 @@ export const AGENT_SPECIALIZATIONS: Record<string, AgentSpecialization> = {
   toby: "reviewer",
   // Special
   object51: "experimental",
-  // Support
+  // Support (Team Sem)
   ari: "research",
   rodi: "automation",
   brent: "interviewer",
+  // Team Syb
+  autro: "orchestrator",
+  daan: "interviewer",
+  // Note: coen already exists in Team Sem pool
+  finn: "frontend",
+  "wout-syb": "automation",
+  "ari-syb": "research",
+  "bas-syb": "prompts",
+  leo: "reviewer",
+  "gabriel-syb": "documentation",
 };
 
 export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {
@@ -116,4 +128,6 @@ export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {
   documentation: "Documentatie",
   ops: "DevOps",
   interviewer: "Intake & Interviews",
+  orchestrator: "Orchestrator",
+  prompts: "Prompt Engineering",
 };

@@ -23,11 +23,14 @@ export interface AgentTask {
   status: "bezig" | "afgerond" | "fout";
 }
 
+export type AgentTeam = "sem" | "syb";
+
 export interface Agent {
   id: string;
   naam: string;
   rol: AgentRole;
   status: AgentStatus;
+  team: AgentTeam;
   huidigeTaak: AgentTask | null;
   voltooideVandaag: number;
   laatsteActiviteit: string;

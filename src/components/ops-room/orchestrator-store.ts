@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Command, Plan, PlanTask, ApprovalRequest, CommandStatus, TheoQueueItem, PermissionLevel } from "./orchestrator-types";
+import type { Command, Plan, PlanTask, ApprovalRequest, CommandStatus, TheoQueueItem, PermissionLevel, TaskStatus } from "./orchestrator-types";
 import { playNotification, playSuccess, playError, playApproval } from "./sounds";
 
 interface TaskResult {
@@ -254,7 +254,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     }
 
     // Helper: update a single task status in store
-    function updateTaskStatus(taskId: string, status: string, extra?: Record<string, unknown>) {
+    function updateTaskStatus(taskId: string, status: TaskStatus, extra?: Record<string, unknown>) {
       set((s) => ({
         commands: s.commands.map((c) => {
           if (c.id !== commandId || !c.plan) return c;

@@ -931,66 +931,33 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Row 2: Briefing full width */}
-        <DailyBriefing />
-
-        {/* Idee van de dag */}
-        <IdeeVanDeDag />
-
-        {/* Slimme inzichten */}
-        {inzichten.length > 0 && (
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
-            <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-autronis-accent" />
-              Slimme inzichten
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
-              {inzichten.map((inzicht) => {
-                const config = inzichtConfig[inzicht.type];
-                const Icon = config.icon;
-                return (
-                  <div
-                    key={inzicht.id}
-                    className={cn(
-                      "rounded-lg p-3 border flex gap-2",
-                      config.bg,
-                      config.border
-                    )}
-                  >
-                    <div className={cn("mt-0.5 flex-shrink-0", config.color)}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-xs font-semibold", config.color)}>
-                        {inzicht.titel}
-                      </p>
-                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed line-clamp-2">
-                        {inzicht.omschrijving}
-                      </p>
-                      {inzicht.actie && (
-                        <Link
-                          href={inzicht.actie.link}
-                          className={cn(
-                            "inline-flex items-center gap-1 text-xs font-medium mt-1 transition-colors hover:underline",
-                            config.color
-                          )}
-                        >
-                          {inzicht.actie.label}
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Main 2-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[3fr_2fr] gap-3">
-          {/* Left column: Taken + Projecten + Documenten */}
+        <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3">
+          {/* Left column: Projecten + Taken + Briefing + Deadlines + Docs */}
           <div className="space-y-3">
+            {/* Compact project overzicht */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-2">
+                  <FolderKanban className="w-4 h-4 text-autronis-accent" />
+                  Projecten
+                </h2>
+                <Link href="/projecten" className="text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium">
+                  Bekijk alles <ArrowRight className="w-3 h-3 inline" />
+                </Link>
+              </div>
+              <div className="space-y-1.5">
+                {projecten.slice(0, 5).map((p) => (
+                  <Link key={p.id} href={`/projecten/${p.id}`} className="flex items-center gap-3 px-2.5 py-2 rounded-lg hover:bg-autronis-bg/50 transition-colors group">
+                    <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent truncate flex-1">{p.naam}</span>
+                    <span className="text-xs text-autronis-text-secondary shrink-0">{p.klantNaam}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            {/* Dagbriefing — compact */}
+            <DailyBriefing />
             {/* Mijn Taken */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
               <div className="flex items-center justify-between mb-3">
@@ -1092,8 +1059,37 @@ export default function DashboardPage() {
             <DocumentWidget />
           </div>
 
-          {/* Right column: Alerts + Team + Focus + Gewoontes + Learning + Second Brain */}
+          {/* Right column: Inzichten + Team + Idee + Focus + Gewoontes + Learning + Brain */}
           <div className="space-y-3">
+            {/* Slimme inzichten */}
+            {inzichten.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+                <h2 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-autronis-accent" />
+                  Inzichten
+                </h2>
+                <div className="space-y-1.5">
+                  {inzichten.map((inzicht) => {
+                    const config = inzichtConfig[inzicht.type];
+                    const Icon = config.icon;
+                    return (
+                      <div key={inzicht.id} className={cn("rounded-lg p-2.5 border flex gap-2", config.bg, config.border)}>
+                        <Icon className={cn("w-3.5 h-3.5 mt-0.5 flex-shrink-0", config.color)} />
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-xs font-semibold leading-tight", config.color)}>{inzicht.titel}</p>
+                          {inzicht.actie && (
+                            <Link href={inzicht.actie.link} className={cn("inline-flex items-center gap-1 text-[11px] font-medium mt-0.5 hover:underline", config.color)}>
+                              {inzicht.actie.label} <ArrowRight className="w-2.5 h-2.5" />
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Teamgenoot status - compact when offline */}
             {teamgenoot ? (
               teamgenoot.actieveTimer ? (

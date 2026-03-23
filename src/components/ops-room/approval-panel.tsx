@@ -93,10 +93,18 @@ export function ApprovalPanel() {
       >
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4 text-amber-400" />
-          <span className="text-sm font-semibold text-autronis-text-primary">Goedkeuring</span>
+          <span className="text-sm font-semibold text-autronis-text-primary">
+            {activeDbCommands.length > 0 || activeLocalCommands.some((c) => c.status === "in_progress")
+              ? "Opdrachten" : "Goedkeuring"}
+          </span>
           {pendingApprovals.length > 0 && (
             <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-400">
               {pendingApprovals.length}
+            </span>
+          )}
+          {activeDbCommands.length > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-green-500/20 text-green-400">
+              {activeDbCommands.length} actief
             </span>
           )}
         </div>

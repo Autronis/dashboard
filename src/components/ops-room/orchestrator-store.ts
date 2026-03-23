@@ -249,6 +249,30 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const failedTaskIds = new Set<string>();
     const inFlightTaskIds = new Set<string>();
 
+    // Helper: sync task status to DB (fire-and-forget)
+    const dbId = cmd.dbId;
+    function syncTaskToDb(taskId: string, status: string, commandStatus?: string) {
+      if (!dbId) return;
+      fetch("/api/ops-room/orchestrate", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+        body: JSON.stringify({
+          id: dbId,
+          taskUpdates: [{ taskId, status }],
+          commandStatus,
+        }),
+      }).catch(() => {/* best effort */});
+    }
+
+    // Mark command as in_progress in DB
+    if (dbId) {
+      fetch("/api/ops-room/orchestrate", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+        body: JSON.stringify({ id: dbId, commandStatus: "in_progress" }),
+      }).catch(() => {});
+    }
+
     // Helper: get fresh task list from store
     function getFreshTasks(): PlanTask[] {
       const c = get().commands.find((c) => c.id === commandId);
@@ -290,6 +314,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       // Mark task as in_progress
       updateTaskStatus(task.id, "in_progress");
+      syncTaskToDb(task.id, "in_progress");
 
       try {
         const freshCmd = get().commands.find((c) => c.id === commandId);
@@ -377,6 +402,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         updateTaskStatus(task.id, "completed", {
           reviewStatus: (reviewResult as Record<string, unknown>)?.goedgekeurd ? "approved" : "changes_requested",
         });
+        syncTaskToDb(task.id, "completed");
 
         // Deactivate agent (only if no other in-flight task uses this agent)
         const stillBusy = [...inFlightTaskIds].some((tid) => {
@@ -404,6 +430,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         });
         addLog(set, agentId, "error", `Fout bij ${task.titel}: ${error instanceof Error ? error.message : "onbekend"}`);
         updateTaskStatus(task.id, "blocked");
+        syncTaskToDb(task.id, "blocked");
       }
     }
 
@@ -456,6 +483,15 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     if (allDone) {
       addLog(set, "theo", "task_complete", `Opdracht volledig afgerond! Agents gaan naar stand-by.`);
       playSuccess();
+    }
+
+    // Sync final status to DB
+    if (dbId) {
+      fetch("/api/ops-room/orchestrate", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+        body: JSON.stringify({ id: dbId, commandStatus: allDone ? "completed" : "review" }),
+      }).catch(() => {});
     }
 
     set((s) => ({

@@ -485,8 +485,8 @@ function drawDesk(
   ctx.fillStyle = pal.monitorFrame;
   ctx.fillRect(monX + 3 * s, monY + monH, s, s);
 
-  // Keyboard + mouse + water bottle
-  if (!isOffline) {
+  // Keyboard + mouse + water bottle (always shown)
+  {
     const kbX = x + 9 * s;
     const kbY = deskY + 2 * s;
     ctx.fillStyle = pal.keyboardBase;
@@ -518,21 +518,21 @@ function drawDesk(
     }
   }
 
-  // Pushed-back chair (offline — chair is there but no one sitting)
+  // Pushed-back chair (offline — same position as normal chair, behind desk)
   if (isOffline) {
-    const ochX = x + 8 * s;
-    const ochY = deskY + 2 * s;
-    // Backrest
+    const chairX = x + 7 * s;
+    const chairBotY = deskY - s;
     ctx.fillStyle = pal.chairBack;
-    ctx.fillRect(ochX + s, ochY, 8 * s, 4 * s);
+    ctx.fillRect(chairX + s, chairBotY - 10 * s, 8 * s, 4 * s);
     ctx.fillStyle = pal.chairBackLight;
-    ctx.fillRect(ochX + 2 * s, ochY + s, 6 * s, 2 * s);
-    // Seat
+    ctx.fillRect(chairX + 2 * s, chairBotY - 9 * s, 6 * s, 2 * s);
     ctx.fillStyle = pal.chairSeat;
-    ctx.fillRect(ochX, ochY + 4 * s, 10 * s, 2 * s);
-    // Base
+    ctx.fillRect(chairX, chairBotY - 2 * s, 10 * s, 2 * s);
+    ctx.fillStyle = pal.chairArm;
+    ctx.fillRect(chairX - s, chairBotY - 4 * s, s, 3 * s);
+    ctx.fillRect(chairX + 10 * s, chairBotY - 4 * s, s, 3 * s);
     ctx.fillStyle = pal.chairBase;
-    ctx.fillRect(ochX + 4 * s, ochY + 6 * s, 2 * s, s);
+    ctx.fillRect(chairX + 4 * s, chairBotY, 2 * s, s);
   }
 
   // Character standing (hovered)

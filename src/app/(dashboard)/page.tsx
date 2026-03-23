@@ -879,6 +879,64 @@ export default function DashboardPage() {
           </Link>
         </div>
 
+        {/* Focus Card — Wat moet je nu doen? */}
+        {mijnTaken.length > 0 && (
+          <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-4 lg:p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-5 h-5 text-autronis-accent" />
+              <h2 className="text-base font-bold text-autronis-text-primary">Wat moet je nu doen?</h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              {(() => {
+                const critical = mijnTaken.filter((t) => t.prioriteit === "hoog");
+                const normal = mijnTaken.filter((t) => t.prioriteit !== "hoog");
+                const projectenZonderUren = projecten.filter((p) => p.urenDezeMaand === 0 && p.status === "actief");
+                const teFactureren = kpis.openstaandBedrag ?? 0;
+                return (<>
+                  <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
+                    <p className={cn("text-xl font-bold tabular-nums", critical.length > 0 ? "text-red-400" : "text-autronis-text-secondary")}>{critical.length}</p>
+                    <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Urgent</p>
+                  </div>
+                  <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-amber-400 tabular-nums">{normal.length}</p>
+                    <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Overig open</p>
+                  </div>
+                  <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
+                    <p className={cn("text-xl font-bold tabular-nums", projectenZonderUren.length > 0 ? "text-orange-400" : "text-autronis-text-secondary")}>{projectenZonderUren.length}</p>
+                    <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Zonder uren</p>
+                  </div>
+                  <div className="bg-autronis-bg/60 rounded-xl p-3 text-center">
+                    <p className={cn("text-xl font-bold tabular-nums", kpis.deadlinesDezeWeek > 0 ? "text-red-400" : "text-autronis-text-secondary")}>{kpis.deadlinesDezeWeek}</p>
+                    <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Deadlines</p>
+                  </div>
+                </>);
+              })()}
+            </div>
+            {/* Top 3 taken met actie */}
+            <div className="space-y-1.5">
+              {mijnTaken.slice(0, 3).map((taak) => {
+                const prio = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
+                return (
+                  <div key={taak.id} className="flex items-center gap-3 bg-autronis-bg/40 rounded-lg px-3 py-2">
+                    <button
+                      onClick={() => handleTaakAfvinken(taak.id)}
+                      className={cn("w-4 h-4 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-green-500/20", prio.border)}
+                    />
+                    <span className="text-sm text-autronis-text-primary truncate flex-1">{taak.titel}</span>
+                    {taak.projectNaam && <span className="text-xs text-autronis-text-secondary hidden sm:block">{taak.projectNaam}</span>}
+                    <Link href="/taken" className="text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium shrink-0">Start</Link>
+                  </div>
+                );
+              })}
+              {mijnTaken.length > 3 && (
+                <Link href="/taken" className="flex items-center gap-1 text-xs text-autronis-accent font-medium pt-1 hover:text-autronis-accent-hover">
+                  +{mijnTaken.length - 3} meer taken <ArrowRight className="w-3 h-3" />
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Row 2: Briefing full width */}
         <DailyBriefing />
 
@@ -1040,11 +1098,8 @@ export default function DashboardPage() {
             <DocumentWidget />
           </div>
 
-          {/* Right column: Gewoontes + Focus + Team + Learning Radar + Second Brain */}
+          {/* Right column: Alerts + Team + Focus + Gewoontes + Learning + Second Brain */}
           <div className="space-y-3">
-            <HabitWidget />
-            <FocusWidget />
-
             {/* Teamgenoot status - compact when offline */}
             {teamgenoot ? (
               teamgenoot.actieveTimer ? (
@@ -1138,6 +1193,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+
+            <FocusWidget />
+            <HabitWidget />
 
             {/* Concurrent updates widget */}
             {concurrentData && concurrentData.highlights.length > 0 && (

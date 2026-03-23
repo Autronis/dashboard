@@ -464,7 +464,21 @@ export async function replaceNotionPageContent(pageId: string, markdownContent: 
 }
 
 export async function fetchNotionPageContent(pageId: string): Promise<string> {
-  const blocks = await withRetry(() => notion.blocks.children.list({ block_id: pageId, page_size: 100 }));
+  // Fetch all blocks with pagination
+  const allBlocks: NotionBlock[] = [];
+  let cursor: string | undefined;
+  let hasMore = true;
+  while (hasMore) {
+    const response = await withRetry(() => notion.blocks.children.list({
+      block_id: pageId,
+      page_size: 100,
+      ...(cursor ? { start_cursor: cursor } : {}),
+    }));
+    allBlocks.push(...(response.results as NotionBlock[]));
+    cursor = response.next_cursor ?? undefined;
+    hasMore = response.has_more;
+  }
+  const blocks = { results: allBlocks };
 
   let html = "";
   let inBulletList = false;

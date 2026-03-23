@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { DocumentBase, DOCUMENT_TYPE_CONFIG } from "@/types/documenten";
 import { useImproveDocument } from "@/hooks/queries/use-documenten";
 import { IMPROVE_MODE_LABELS, type ImproveMode } from "@/lib/ai/documenten-types";
-import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw } from "lucide-react";
+import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw, ChevronDown, FileText } from "lucide-react";
 
 interface DocumentPreviewProps {
   document: DocumentBase | null;
@@ -19,6 +19,9 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   const panelRef = useRef<HTMLDivElement>(null);
   const [showImprove, setShowImprove] = useState(false);
   const [improveResult, setImproveResult] = useState<{ original: string; improved: string } | null>(null);
+  const [contentHtml, setContentHtml] = useState<string | null>(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [showContent, setShowContent] = useState(false);
   const improveDocument = useImproveDocument();
 
   useEffect(() => {
@@ -29,6 +32,16 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
     globalThis.document.addEventListener("keydown", handleEsc);
     return () => globalThis.document.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open || !doc) { setContentHtml(null); setShowContent(false); return; }
+    setContentLoading(true);
+    fetch(`/api/documenten/${doc.notionId}/content`)
+      .then((r) => r.json())
+      .then((data) => { if (data.content) setContentHtml(data.content); })
+      .catch(() => {})
+      .finally(() => setContentLoading(false));
+  }, [open, doc]);
 
   if (!doc) return null;
 

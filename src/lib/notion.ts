@@ -375,6 +375,76 @@ function getSortFn(sort?: SortOption): (a: DocumentBase, b: DocumentBase) => num
   }
 }
 
+interface NotionRichText {
+  plain_text: string;
+  annotations?: { bold?: boolean; italic?: boolean; code?: boolean; strikethrough?: boolean; underline?: boolean };
+  href?: string | null;
+}
+
+interface NotionBlock {
+  type: string;
+  [key: string]: unknown;
+}
+
+function richTextToHtml(richText: NotionRichText[]): string {
+  return richText.map((t) => {
+    let text = t.plain_text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    if (t.annotations?.bold) text = `<strong>${text}</strong>`;
+    if (t.annotations?.italic) text = `<em>${text}</em>`;
+    if (t.annotations?.code) text = `<code>${text}</code>`;
+    if (t.annotations?.strikethrough) text = `<s>${text}</s>`;
+    if (t.href) text = `<a href="${t.href}" target="_blank" rel="noopener">${text}</a>`;
+    return text;
+  }).join("");
+}
+
+function blockToHtml(block: NotionBlock): string {
+  const type = block.type;
+  const data = block[type] as { rich_text?: NotionRichText[]; language?: string };
+  const rt = data?.rich_text;
+  if (!rt) return "";
+
+  const html = richTextToHtml(rt);
+
+  switch (type) {
+    case "heading_1": return `<h1>${html}</h1>`;
+    case "heading_2": return `<h2>${html}</h2>`;
+    case "heading_3": return `<h3>${html}</h3>`;
+    case "bulleted_list_item": return `<li>${html}</li>`;
+    case "numbered_list_item": return `<li>${html}</li>`;
+    case "code": return `<pre><code>${html}</code></pre>`;
+    case "quote": return `<blockquote>${html}</blockquote>`;
+    case "divider": return `<hr />`;
+    case "paragraph":
+    default: return html ? `<p>${html}</p>` : "";
+  }
+}
+
+export async function fetchNotionPageContent(pageId: string): Promise<string> {
+  const blocks = await withRetry(() => notion.blocks.children.list({ block_id: pageId, page_size: 100 }));
+
+  let html = "";
+  let inBulletList = false;
+  let inNumberedList = false;
+
+  for (const block of blocks.results as NotionBlock[]) {
+    const isBullet = block.type === "bulleted_list_item";
+    const isNumbered = block.type === "numbered_list_item";
+
+    if (!isBullet && inBulletList) { html += "</ul>"; inBulletList = false; }
+    if (!isNumbered && inNumberedList) { html += "</ol>"; inNumberedList = false; }
+    if (isBullet && !inBulletList) { html += "<ul>"; inBulletList = true; }
+    if (isNumbered && !inNumberedList) { html += "<ol>"; inNumberedList = true; }
+
+    html += blockToHtml(block);
+  }
+
+  if (inBulletList) html += "</ul>";
+  if (inNumberedList) html += "</ol>";
+
+  return html;
+}
+
 export async function archiveNotionDocument(notionId: string, archived: boolean): Promise<void> {
   await withRetry(() => notion.pages.update({
     page_id: notionId,

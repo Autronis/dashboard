@@ -2,20 +2,115 @@
 
 import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode, Loader2, CheckCircle2, MessageCircleQuestion, Timer, Lightbulb } from "lucide-react";
+import { Check, X, Clock, ChevronDown, ChevronUp, User, FileCode, Loader2, CheckCircle2, MessageCircleQuestion, Timer, Lightbulb, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOrchestrator } from "./orchestrator-store";
 import { SPECIALIZATION_LABELS } from "./orchestrator-types";
 import type { AgentSpecialization } from "./orchestrator-types";
 
+interface DbTask {
+  id: string;
+  titel: string;
+  beschrijving: string;
+  agentId: string | null;
+  specialisatie: string;
+  bestanden: string[];
+  status: string;
+  afhankelijkVan?: string[];
+}
+
 interface DbCommand {
   id: number;
   opdracht: string;
   status: string;
-  plan: { beschrijving: string; taken: { id: string; titel: string; beschrijving: string; agentId: string | null; specialisatie: string; bestanden: string[]; status: string }[] } | null;
+  plan: { beschrijving: string; taken: DbTask[] } | null;
   bron: string;
   feedback: string | null;
   aangemaakt: string;
+}
+
+// Toby score progress ring
+function ScoreRing({ score }: { score: number }) {
+  const R = 10;
+  const circ = 2 * Math.PI * R;
+  const fill = (score / 10) * circ;
+  const color = score >= 8 ? "#4ade80" : score >= 6 ? "#fb923c" : "#f87171";
+  return (
+    <span className="relative inline-flex items-center justify-center w-6 h-6 shrink-0" title={`Toby score: ${score}/10`}>
+      <svg width={24} height={24} viewBox="0 0 24 24" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={12} cy={12} r={R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={3} />
+        <circle cx={12} cy={12} r={R} fill="none" stroke={color} strokeWidth={3}
+          strokeDasharray={`${fill} ${circ - fill}`} strokeLinecap="round" />
+      </svg>
+      <span className="absolute text-[7px] font-bold" style={{ color }}>{score}</span>
+    </span>
+  );
+}
+
+// Dependency graph view
+function DependencyGraph({ tasks }: { tasks: DbTask[] }) {
+  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+  const levels = new Map<string, number>();
+
+  function getLevel(id: string, depth = 0): number {
+    if (depth > 10) return 0; // prevent infinite loops
+    if (levels.has(id)) return levels.get(id)!;
+    const task = taskMap.get(id);
+    const deps = task?.afhankelijkVan ?? [];
+    if (deps.length === 0) { levels.set(id, 0); return 0; }
+    const maxDep = Math.max(...deps.map((d) => getLevel(d, depth + 1)));
+    levels.set(id, maxDep + 1);
+    return maxDep + 1;
+  }
+
+  tasks.forEach((t) => getLevel(t.id));
+  const maxLevel = Math.max(0, ...Array.from(levels.values()));
+
+  const byLevel: Map<number, DbTask[]> = new Map();
+  tasks.forEach((t) => {
+    const lvl = levels.get(t.id) ?? 0;
+    if (!byLevel.has(lvl)) byLevel.set(lvl, []);
+    byLevel.get(lvl)!.push(t);
+  });
+
+  return (
+    <div className="overflow-x-auto pb-1">
+      <div className="flex gap-3 min-w-max">
+        {Array.from({ length: maxLevel + 1 }, (_, lvl) => (
+          <div key={lvl} className="flex flex-col gap-1.5">
+            <div className="text-[8px] text-autronis-text-tertiary text-center px-1">
+              {lvl === 0 ? "Start" : `Stap ${lvl + 1}`}
+            </div>
+            {(byLevel.get(lvl) ?? []).map((task) => (
+              <div
+                key={task.id}
+                className={cn(
+                  "px-2 py-1.5 rounded-lg border text-[10px] w-[110px]",
+                  task.status === "completed" && "bg-green-500/10 border-green-500/25 text-green-400",
+                  task.status === "in_progress" && "bg-blue-500/10 border-blue-500/25 text-blue-400",
+                  task.status === "review" && "bg-purple-500/10 border-purple-500/25 text-purple-400",
+                  task.status === "blocked" && "bg-red-500/10 border-red-500/25 text-red-400",
+                  (!task.status || task.status === "queued" || task.status === "assigned") && "bg-autronis-bg border-autronis-border/25 text-autronis-text-secondary",
+                )}
+              >
+                <p className="truncate font-medium leading-tight">{task.titel}</p>
+                {task.agentId && (
+                  <p className="text-[8px] opacity-60 mt-0.5 truncate">{task.agentId}</p>
+                )}
+                {(task.afhankelijkVan ?? []).length > 0 && (
+                  <p className="text-[8px] opacity-40 mt-0.5">← {(task.afhankelijkVan ?? []).length} dep</p>
+                )}
+              </div>
+            ))}
+            {/* Arrow between columns */}
+            {lvl < maxLevel && (
+              <div className="flex items-center justify-center text-autronis-text-tertiary text-xs opacity-30 mt-1">→</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function timeAgo(dateString: string): string {
@@ -27,72 +122,91 @@ function timeAgo(dateString: string): string {
 }
 
 // Shared task list renderer
-function TaskList({ tasks }: { tasks: DbCommand["plan"] extends infer T ? T extends { taken: infer U } ? U : never : never }) {
+function TaskList({ tasks, taskScores }: {
+  tasks: DbTask[];
+  taskScores?: Map<string, number>; // taskId → Toby score
+}) {
   return (
     <div className="space-y-1.5">
-      {tasks.map((task, i) => (
-        <div key={task.id ?? i} className={cn(
-          "flex items-start gap-2 p-2 rounded border",
-          task.status === "completed" && "bg-green-500/5 border-green-500/20",
-          task.status === "in_progress" && "bg-blue-500/5 border-blue-500/20",
-          task.status === "review" && "bg-purple-500/5 border-purple-500/20",
-          task.status === "blocked" && "bg-red-500/5 border-red-500/20",
-          (!task.status || task.status === "queued" || task.status === "assigned") && "bg-autronis-card/50 border-autronis-border/20",
-        )}>
-          <span className={cn(
-            "text-[9px] mt-0.5 font-bold",
-            task.status === "completed" ? "text-green-400" :
-            task.status === "in_progress" ? "text-blue-400" :
-            task.status === "review" ? "text-purple-400" :
-            task.status === "blocked" ? "text-red-400" :
-            "text-autronis-text-tertiary"
+      {tasks.map((task, i) => {
+        const score = taskScores?.get(task.id);
+        return (
+          <div key={task.id ?? i} className={cn(
+            "flex items-start gap-2 p-2 rounded border",
+            task.status === "completed" && "bg-green-500/5 border-green-500/20",
+            task.status === "in_progress" && "bg-blue-500/5 border-blue-500/20",
+            task.status === "review" && "bg-purple-500/5 border-purple-500/20",
+            task.status === "blocked" && "bg-red-500/5 border-red-500/20",
+            (!task.status || task.status === "queued" || task.status === "assigned") && "bg-autronis-card/50 border-autronis-border/20",
           )}>
-            {task.status === "completed" ? "\u2713" :
-             task.status === "in_progress" ? "\u25B6" :
-             task.status === "review" ? "\u27F3" :
-             task.status === "blocked" ? "\u2717" :
-             `${i + 1}.`}
-          </span>
-          <div className="flex-1 min-w-0">
-            <p className={cn(
-              "text-[11px] font-medium",
-              task.status === "completed" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary"
-            )}>{task.titel}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              {task.agentId && (
-                <span className={cn(
-                  "flex items-center gap-0.5 text-[9px]",
-                  task.status === "in_progress" ? "text-blue-400" :
-                  task.status === "review" ? "text-purple-400" :
-                  "text-autronis-accent"
-                )}>
-                  <User className="w-2.5 h-2.5" />{task.agentId}
-                  {task.status === "in_progress" && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
+            <span className={cn(
+              "text-[9px] mt-0.5 font-bold shrink-0",
+              task.status === "completed" ? "text-green-400" :
+              task.status === "in_progress" ? "text-blue-400" :
+              task.status === "review" ? "text-purple-400" :
+              task.status === "blocked" ? "text-red-400" :
+              "text-autronis-text-tertiary"
+            )}>
+              {task.status === "completed" ? "\u2713" :
+               task.status === "in_progress" ? "\u25B6" :
+               task.status === "review" ? "\u27F3" :
+               task.status === "blocked" ? "\u2717" :
+               `${i + 1}.`}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className={cn(
+                "text-[11px] font-medium",
+                task.status === "completed" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary"
+              )}>{task.titel}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {task.agentId && (
+                  <span className={cn(
+                    "flex items-center gap-0.5 text-[9px]",
+                    task.status === "in_progress" ? "text-blue-400" :
+                    task.status === "review" ? "text-purple-400" :
+                    "text-autronis-accent"
+                  )}>
+                    <User className="w-2.5 h-2.5" />{task.agentId}
+                    {task.status === "in_progress" && <Loader2 className="w-2.5 h-2.5 animate-spin ml-0.5" />}
+                  </span>
+                )}
+                <span className="text-[9px] text-autronis-text-tertiary">
+                  {SPECIALIZATION_LABELS[task.specialisatie as AgentSpecialization] ?? task.specialisatie}
                 </span>
-              )}
-              <span className="text-[9px] text-autronis-text-tertiary">
-                {SPECIALIZATION_LABELS[task.specialisatie as AgentSpecialization] ?? task.specialisatie}
-              </span>
-              {task.bestanden.length > 0 && (
-                <span className="flex items-center gap-0.5 text-[9px] text-autronis-text-tertiary">
-                  <FileCode className="w-2.5 h-2.5" />{task.bestanden.length}
-                </span>
-              )}
+                {task.bestanden.length > 0 && (
+                  <span className="flex items-center gap-0.5 text-[9px] text-autronis-text-tertiary">
+                    <FileCode className="w-2.5 h-2.5" />{task.bestanden.length}
+                  </span>
+                )}
+              </div>
             </div>
+            {/* Toby score ring — shown when review is done */}
+            {score !== undefined && <ScoreRing score={score} />}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
 export function ApprovalPanel() {
-  const { commands: localCommands, approvals, approveApproval, rejectApproval, answerIntake, answerIdee } = useOrchestrator();
+  const { commands: localCommands, approvals, approveApproval, rejectApproval, answerIntake, answerIdee, taskResults } = useOrchestrator();
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState("");
   const [intakeAnswers, setIntakeAnswers] = useState<Record<string, string[]>>({});
   const [expanded, setExpanded] = useState(true);
+  const [graphView, setGraphView] = useState<Record<number, boolean>>({});
   const queryClient = useQueryClient();
+
+  // Build a map of taskId → Toby score from taskResults
+  const taskScoreMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const result of taskResults) {
+      const score = (result.reviewResult as { score?: number } | null)?.score;
+      if (score !== undefined) map.set(result.taskId, score);
+    }
+    return map;
+  }, [taskResults]);
 
   // Poll database — single source of truth
   const { data: dbCommands } = useQuery<DbCommand[]>({
@@ -333,7 +447,7 @@ export function ApprovalPanel() {
                 <div className="w-full h-1.5 rounded-full bg-autronis-border/30 mb-3 overflow-hidden">
                   <div className="h-full rounded-full bg-green-400 transition-all duration-500" style={{ width: `${pct}%` }} />
                 </div>
-                {tasks.length > 0 && <TaskList tasks={tasks} />}
+                {tasks.length > 0 && <TaskList tasks={tasks} taskScores={taskScoreMap} />}
               </div>
             );
           })}
@@ -345,11 +459,13 @@ export function ApprovalPanel() {
               const zustandCmd = localCommands.find((c) => c.dbId === cmd.id);
               return zustandCmd && a.commandId === zustandCmd.id;
             });
+            const isGraphView = graphView[cmd.id] ?? false;
+            const hasDeps = (cmd.plan?.taken ?? []).some((t) => (t.afhankelijkVan ?? []).length > 0);
 
             return (
               <div key={`pending-${cmd.id}`} className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
                   <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
                   {cmd.bron !== "ui" && (
                     <span className="text-[8px] px-1.5 py-0.5 rounded bg-blue-500/15 text-blue-400 font-semibold">
@@ -361,8 +477,27 @@ export function ApprovalPanel() {
 
                 {cmd.plan && (
                   <div className="mb-3">
-                    <p className="text-[10px] text-autronis-text-secondary font-medium mb-1.5">{cmd.plan.beschrijving}</p>
-                    <TaskList tasks={cmd.plan.taken} />
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <p className="text-[10px] text-autronis-text-secondary font-medium flex-1">{cmd.plan.beschrijving}</p>
+                      {hasDeps && (
+                        <button
+                          onClick={() => setGraphView((prev) => ({ ...prev, [cmd.id]: !prev[cmd.id] }))}
+                          className={cn(
+                            "flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded transition-colors",
+                            isGraphView
+                              ? "bg-autronis-accent/20 text-autronis-accent"
+                              : "bg-autronis-border/20 text-autronis-text-tertiary hover:text-autronis-text-secondary"
+                          )}
+                        >
+                          <GitBranch className="w-2.5 h-2.5" />
+                          {isGraphView ? "Lijst" : "Graph"}
+                        </button>
+                      )}
+                    </div>
+                    {isGraphView
+                      ? <DependencyGraph tasks={cmd.plan.taken} />
+                      : <TaskList tasks={cmd.plan.taken} />
+                    }
                   </div>
                 )}
 

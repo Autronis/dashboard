@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Confetti } from "@/components/ui/confetti";
 import {
@@ -1686,6 +1686,101 @@ export default function BelastingPage() {
         {/* ===== TAB: OPTIMALISATIE ===== */}
         {activeTab === "optimalisatie" && (
           <div className="space-y-6">
+            {/* Personal checklist */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center gap-3 mb-5">
+                <ShieldCheck className="w-5 h-5 text-autronis-accent" />
+                <div>
+                  <h2 className="text-xl font-bold text-autronis-text-primary">Jouw optimalisatie-check</h2>
+                  <p className="text-xs text-autronis-text-secondary mt-0.5">Op basis van jouw werkelijke cijfers {jaar}</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {[
+                  {
+                    ok: urenCriterium?.voldoet ?? false,
+                    label: "Zelfstandigenaftrek",
+                    desc: urenCriterium?.voldoet
+                      ? `Behaald — €3.750 aftrek`
+                      : `Nog ${urenCriterium ? Math.ceil(urenCriterium.doelUren - urenCriterium.behaaldUren) : 1225} uur nodig`,
+                    icon: Timer,
+                  },
+                  {
+                    ok: urenCriterium?.mkbVrijstelling ? urenCriterium.mkbVrijstelling > 0 : false,
+                    label: "MKB-winstvrijstelling (13,31%)",
+                    desc: (urenCriterium?.mkbVrijstelling ?? 0) > 0
+                      ? `Actief — bespaar op belastingdruk`
+                      : `Haal het urencriterium voor 13,31% vrijstelling`,
+                    icon: ShieldCheck,
+                  },
+                  {
+                    ok: totaalInvestering >= 2801,
+                    label: "Kleinschaligheidsinvesteringsaftrek (KIA)",
+                    desc: totaalInvestering >= 2801
+                      ? `${formatBedrag(berekenKIA(totaalInvestering))} aftrek op ${formatBedrag(totaalInvestering)} investeringen`
+                      : kiaKans !== null
+                      ? `Investeer nog ${formatBedrag(kiaKans)} om in aanmerking te komen voor 28% KIA`
+                      : `Nog geen investeringen geregistreerd`,
+                    icon: Package,
+                    highlight: kiaKans !== null && kiaKans < 500,
+                  },
+                  {
+                    ok: (wvData?.kmAftrek ?? 0) > 0,
+                    label: "Kilometervergoeeding (€0,23/km)",
+                    desc: (wvData?.kmAftrek ?? 0) > 0
+                      ? `${formatBedrag(wvData!.kmAftrek)} geclaimd`
+                      : `Registreer zakelijke kilometers voor aftrek`,
+                    icon: Car,
+                  },
+                  {
+                    ok: (wvData?.afschrijvingen ?? 0) > 0,
+                    label: "Afschrijvingen",
+                    desc: (wvData?.afschrijvingen ?? 0) > 0
+                      ? `${formatBedrag(wvData!.afschrijvingen)} afgetrokken dit jaar`
+                      : `Voeg investeringen toe om afschrijvingen te activeren`,
+                    icon: TrendingDown,
+                  },
+                  {
+                    ok: totaalGereserveerd >= geschatteBelasting * 0.9,
+                    label: "Belastingreservering",
+                    desc: totaalGereserveerd >= geschatteBelasting * 0.9
+                      ? `${formatBedrag(totaalGereserveerd)} gereserveerd — op schema`
+                      : `${formatBedrag(Math.max(0, geschatteBelasting - totaalGereserveerd))} tekort`,
+                    icon: PiggyBank,
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <div
+                      key={item.label}
+                      className={cn(
+                        "flex items-start gap-3 p-4 rounded-xl border transition-colors",
+                        item.ok ? "border-green-500/20 bg-green-500/5" : "border-autronis-border/50 bg-autronis-bg/20",
+                        item.highlight ? "border-yellow-500/30 bg-yellow-500/5" : ""
+                      )}
+                    >
+                      <div className={cn("p-1.5 rounded-lg flex-shrink-0", item.ok ? "bg-green-500/15" : item.highlight ? "bg-yellow-500/15" : "bg-autronis-bg")}>
+                        <Icon className={cn("w-4 h-4", item.ok ? "text-green-400" : item.highlight ? "text-yellow-400" : "text-autronis-text-secondary")} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-medium", item.ok ? "text-autronis-text-primary" : "text-autronis-text-secondary")}>{item.label}</p>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">{item.desc}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        {item.ok ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-400" />
+                        ) : item.highlight ? (
+                          <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                        ) : (
+                          <Square className="w-5 h-5 text-autronis-text-secondary/40" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Kosten & Aftrek tips */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <div className="flex items-center gap-3 mb-5">
@@ -1888,6 +1983,8 @@ export default function BelastingPage() {
           </div>
         )}
       </div>
+
+      <Confetti active={showConfetti} />
 
       {/* ===== MODALS ===== */}
 

@@ -38,7 +38,10 @@ export async function POST(req: NextRequest) {
         const pct = kr.doelwaarde > 0 ? Math.round(((kr.huidigeWaarde ?? 0) / kr.doelwaarde) * 100) : 0;
         return `  - ${kr.titel}: ${pct}% (${kr.huidigeWaarde ?? 0}/${kr.doelwaarde} ${kr.eenheid ?? ""})`;
       }).join("\n");
-      return `Doel: "${doel.titel}" (status: ${doel.status ?? "actief"}, voortgang: ${doel.voortgang ?? 0}%)\n${krLines}`;
+      const gemVoortgang = krs.length > 0
+        ? Math.round(krs.reduce((s, kr) => s + (kr.doelwaarde > 0 ? ((kr.huidigeWaarde ?? 0) / kr.doelwaarde) * 100 : 0), 0) / krs.length)
+        : 0;
+      return `Doel: "${doel.titel}" (status: ${doel.status ?? "actief"}, voortgang: ${gemVoortgang}%)\n${krLines}`;
     }).join("\n\n");
 
     const result = await aiComplete({

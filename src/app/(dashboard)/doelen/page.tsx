@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Target,
   Plus,
@@ -23,6 +24,8 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  Share2,
+  Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag } from "@/lib/utils";
@@ -34,6 +37,8 @@ import {
   useCheckIns,
   useCreateCheckIn,
   useSuggestKrs,
+  useCheckInSamenvatting,
+  useKwartaalReflectie,
   type Doel,
   type KeyResult,
   type GebruikerOptie,
@@ -189,6 +194,7 @@ function emptyKr(): KeyResult {
 export default function DoelenPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const currentQuarter = Math.ceil((new Date().getMonth() + 1) / 3);
   const [kwartaal, setKwartaal] = useState(currentQuarter);
@@ -230,8 +236,12 @@ export default function DoelenPage() {
   const [jaaroverzichtData, setJaaroverzichtData] = useState<Record<number, Doel[]>>({});
   const [jaaroverzichtLoading, setJaaroverzichtLoading] = useState(false);
 
-  // AI suggestions
-  const suggestMutation = useSuggestKrs();
+  // AI
+  const suggestMutation = useSuggestKrs(kwartaal, jaar);
+  const checkInSamenvatting = useCheckInSamenvatting();
+  const kwartaalReflectieMutation = useKwartaalReflectie();
+  const [checkInSamenvattingTekst, setCheckInSamenvattingTekst] = useState<string | null>(null);
+  const [reflectieTekst, setReflectieTekst] = useState<string | null>(null);
 
   const invalidateDoelen = () => queryClient.invalidateQueries({ queryKey: ["doelen"] });
 
@@ -323,13 +333,31 @@ export default function DoelenPage() {
   // Check-in
   function handleCheckIn() {
     if (!checkInDoelId) return;
+    const doel = doelen.find((d) => d.id === checkInDoelId);
     createCheckIn.mutate({
       objectiveId: checkInDoelId,
       voortgang: checkInVoortgang,
       blocker: checkInBlocker || undefined,
       volgendeStap: checkInVolgendeStap || undefined,
     }, {
-      onSuccess: () => { addToast("Check-in opgeslagen", "succes"); setCheckInDoelId(null); setCheckInBlocker(""); setCheckInVolgendeStap(""); },
+      onSuccess: () => {
+        addToast("Check-in opgeslagen", "succes");
+        setCheckInDoelId(null);
+        setCheckInBlocker("");
+        setCheckInVolgendeStap("");
+        // Fetch AI samenvatting
+        if (doel) {
+          setCheckInSamenvattingTekst(null);
+          checkInSamenvatting.mutate({
+            doelTitel: doel.titel,
+            voortgang: checkInVoortgang,
+            vorigeVoortgang: doel.voortgang,
+            wekenOver,
+            blocker: checkInBlocker || undefined,
+            volgendeStap: checkInVolgendeStap || undefined,
+          }, { onSuccess: (tekst) => setCheckInSamenvattingTekst(tekst) });
+        }
+      },
       onError: () => { addToast("Check-in mislukt", "fout"); },
     });
   }
@@ -407,6 +435,16 @@ export default function DoelenPage() {
             <p className="text-base text-autronis-text-secondary mt-1">Objectives & Key Results per kwartaal</p>
           </div>
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const tekst = `Autronis Q${kwartaal} ${jaar} voortgang: ${doelen.length} doelen, gem. ${doelen.length > 0 ? Math.round(doelen.reduce((s, d) => s + d.voortgang, 0) / doelen.length) : 0}%`;
+                navigator.clipboard.writeText(tekst).then(() => addToast("Voortgang gekopieerd", "succes"));
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-xl transition-colors"
+              title="Deel voortgang"
+            >
+              <Share2 className="w-4 h-4" />Deel
+            </button>
             <button onClick={loadJaaroverzicht} className="px-4 py-2.5 text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-xl transition-colors">Jaaroverzicht</button>
             <button onClick={openNieuw} className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20">
               <Plus className="w-4 h-4" />Nieuw doel
@@ -418,7 +456,12 @@ export default function DoelenPage() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
             {[1, 2, 3, 4].map((q) => (
-              <button key={q} onClick={() => setKwartaal(q)} className={cn("px-4 py-2 text-sm font-medium rounded-lg transition-colors", kwartaal === q ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>Q{q}</button>
+              <motion.button
+                key={q}
+                onClick={() => { setKwartaal(q); setReflectieTekst(null); }}
+                className={cn("px-4 py-2 text-sm font-medium rounded-lg transition-colors relative", kwartaal === q ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}
+                whileTap={{ scale: 0.95 }}
+              >Q{q}</motion.button>
             ))}
           </div>
           <div className="flex items-center gap-2">
@@ -426,7 +469,53 @@ export default function DoelenPage() {
             <span className="px-4 py-2 text-sm font-bold text-autronis-bg bg-autronis-accent rounded-lg">{jaar}</span>
             <button onClick={() => setJaar(jaar + 1)} className="px-3 py-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-lg transition-colors">{jaar + 1}</button>
           </div>
+          {doelen.length > 0 && (
+            <button
+              onClick={() => {
+                setReflectieTekst(null);
+                kwartaalReflectieMutation.mutate({ kwartaal, jaar }, { onSuccess: (t) => setReflectieTekst(t) });
+              }}
+              disabled={kwartaalReflectieMutation.isPending}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-autronis-text-secondary hover:text-autronis-accent bg-autronis-card border border-autronis-border rounded-xl transition-colors disabled:opacity-50"
+            >
+              {kwartaalReflectieMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+              Reflectie
+            </button>
+          )}
         </div>
+
+        {/* AI Kwartaalreflectie */}
+        <AnimatePresence>
+          {reflectieTekst && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              className="bg-autronis-card border border-autronis-accent/30 rounded-2xl p-5"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-autronis-accent" />
+                  <span className="text-sm font-semibold text-autronis-text-primary">Kwartaalreflectie Q{kwartaal} {jaar}</span>
+                </div>
+                <button onClick={() => setReflectieTekst(null)} className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><X className="w-4 h-4" /></button>
+              </div>
+              <p className="text-sm text-autronis-text-secondary whitespace-pre-line">{reflectieTekst}</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* AI Check-in samenvatting */}
+        <AnimatePresence>
+          {checkInSamenvattingTekst && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+              className="bg-autronis-card border border-green-500/30 rounded-2xl p-4 flex items-center justify-between gap-3"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <p className="text-sm text-autronis-text-primary">{checkInSamenvattingTekst}</p>
+              </div>
+              <button onClick={() => setCheckInSamenvattingTekst(null)} className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* === KWARTAAL SUMMARY with confidence === */}
         {doelen.length > 0 && (() => {
@@ -598,8 +687,11 @@ export default function DoelenPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex-shrink-0">
-                      <ProgressRing percentage={doel.voortgang} size={88} strokeWidth={7} color={voortgangKleur(doel.voortgang)} />
+                    <div className="flex-shrink-0 relative">
+                      <ProgressRing key={`${doel.id}-${kwartaal}-${jaar}`} percentage={doel.voortgang} size={88} strokeWidth={7} color={voortgangKleur(doel.voortgang)} />
+                      {doelStatus.label === "Op schema" && (
+                        <span className="absolute inset-0 rounded-full animate-ping opacity-20" style={{ boxShadow: "0 0 0 4px #22c55e" }} />
+                      )}
                     </div>
                   </div>
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties, facturen, offertes, notities as notitiesTabel } from "@/lib/db/schema";
+import { klanten, projecten, tijdregistraties, facturen, offertes, notities as notitiesTabel, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql, and } from "drizzle-orm";
 

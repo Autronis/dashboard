@@ -67,6 +67,61 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Health status intelligence
+type HealthStatus = "on-track" | "risico" | "achter";
+
+function getProjectHealth(project: Project): { status: HealthStatus; reden: string } {
+  const now = new Date();
+  const openTaken = project.takenTotaal - project.takenAfgerond;
+
+  // Check deadline proximity
+  if (project.deadline) {
+    const deadline = new Date(project.deadline);
+    const dagenTotDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (dagenTotDeadline < 0 && openTaken > 0) {
+      return { status: "achter", reden: `Deadline ${Math.abs(dagenTotDeadline)}d geleden verlopen` };
+    }
+    if (dagenTotDeadline <= 7 && openTaken > 3) {
+      return { status: "risico", reden: `${openTaken} taken open, deadline over ${dagenTotDeadline}d` };
+    }
+  }
+
+  // Check inactivity
+  if (project.laatsteActiviteit && project.status === "actief") {
+    const laatste = new Date(project.laatsteActiviteit.includes("T") ? project.laatsteActiviteit : project.laatsteActiviteit.replace(" ", "T") + "Z");
+    const dagenInactief = Math.floor((now.getTime() - laatste.getTime()) / (1000 * 60 * 60 * 24));
+    if (dagenInactief >= 7) {
+      return { status: "risico", reden: `${dagenInactief} dagen geen activiteit` };
+    }
+  }
+
+  // Check progress vs expected
+  if (project.takenVoortgang < 20 && openTaken > 10 && project.status === "actief") {
+    return { status: "risico", reden: `${openTaken} taken open, ${project.takenVoortgang}% af` };
+  }
+
+  return { status: "on-track", reden: project.takenDezeWeek > 0 ? `${project.takenDezeWeek} taken deze week` : "Op schema" };
+}
+
+const healthConfig: Record<HealthStatus, { color: string; bg: string; label: string; icon: typeof CheckCircle2 }> = {
+  "on-track": { color: "text-green-400", bg: "bg-green-500/10", label: "On track", icon: CheckCircle2 },
+  "risico": { color: "text-amber-400", bg: "bg-amber-500/10", label: "Risico", icon: AlertTriangle },
+  "achter": { color: "text-red-400", bg: "bg-red-500/10", label: "Achter", icon: AlertCircle },
+};
+
+function HealthBadge({ project }: { project: Project }) {
+  const health = getProjectHealth(project);
+  const cfg = healthConfig[health.status];
+  const Icon = cfg.icon;
+
+  return (
+    <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", cfg.bg, cfg.color)} title={health.reden}>
+      <Icon className="w-2.5 h-2.5" />
+      {cfg.label}
+    </div>
+  );
+}
+
 function ProgressBar({ percentage }: { percentage: number }) {
   return (
     <div className="w-full h-1.5 bg-autronis-border rounded-full overflow-hidden">
@@ -148,9 +203,12 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
             <p className="text-xs text-autronis-text-secondary mt-0.5">{project.klantNaam}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Sparkline data={project.sparkline} className="opacity-50 group-hover:opacity-100 transition-opacity" />
-          <StatusBadge status={project.status ?? "actief"} />
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="flex items-center gap-2">
+            <Sparkline data={project.sparkline} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+            <StatusBadge status={project.status ?? "actief"} />
+          </div>
+          {project.status === "actief" && <HealthBadge project={project} />}
         </div>
       </div>
 
@@ -182,17 +240,30 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
         )}
       </div>
 
-      {/* Activity + week stats */}
+      {/* Activity + health hint */}
       <div className="flex items-center justify-between">
         <p className="text-[10px] text-autronis-text-secondary/60">
           {project.takenDezeWeek > 0 ? (
             <span className="text-autronis-accent font-medium">
               {project.takenDezeWeek} taken deze week afgerond
             </span>
-          ) : (
+          ) : project.laatsteActiviteit ? (
             <>Laatste activiteit: {formatRelatief(project.laatsteActiviteit)}</>
+          ) : (
+            "Nog geen activiteit"
           )}
         </p>
+        {(() => {
+          const health = getProjectHealth(project);
+          if (health.status !== "on-track") {
+            return (
+              <span className={cn("text-[10px] font-medium", health.status === "achter" ? "text-red-400" : "text-amber-400")}>
+                {health.reden}
+              </span>
+            );
+          }
+          return null;
+        })()}
       </div>
 
       {/* Quick actions - visible on hover */}

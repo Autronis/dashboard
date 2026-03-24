@@ -21,12 +21,12 @@ interface NavSection { section: string; items: NavLink[] }
 const navSections: (NavLink | NavSection)[] = [
   // Top-level (always visible)
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
+  { label: "Agenda", icon: Calendar, href: "/agenda" },
 
-  // Grouped sections
+  // Workflow-based sections
   {
-    section: "Werk",
+    section: "Operatie",
     items: [
       { label: "Tijd", icon: Clock, href: "/tijd" },
       { label: "Focus", icon: Focus, href: "/focus" },
@@ -35,11 +35,11 @@ const navSections: (NavLink | NavSection)[] = [
     ],
   },
   {
-    section: "Klanten & Sales",
+    section: "Sales & Klanten",
     items: [
-      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
-      { label: "Klanten", icon: Users, href: "/klanten" },
       { label: "Leads", icon: Zap, href: "/leads" },
+      { label: "Klanten", icon: Users, href: "/klanten" },
+      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
       { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Offertes", icon: FileText, href: "/offertes" },
@@ -47,7 +47,7 @@ const navSections: (NavLink | NavSection)[] = [
     ],
   },
   {
-    section: "Financieel",
+    section: "Finance",
     items: [
       { label: "Financiën", icon: Euro, href: "/financien" },
       { label: "Belasting", icon: Landmark, href: "/belasting" },
@@ -55,17 +55,15 @@ const navSections: (NavLink | NavSection)[] = [
     ],
   },
   {
-    section: "Groei",
+    section: "Insights & Groei",
     items: [
       { label: "Analytics", icon: BarChart3, href: "/analytics" },
-      { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
       { label: "Doelen", icon: Crosshair, href: "/doelen" },
-      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-      { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
+      { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
     ],
   },
   {
-    section: "Content & Kennis",
+    section: "Kennis & Content",
     items: [
       { label: "Content", icon: Megaphone, href: "/content" },
       { label: "Case Studies", icon: Video, href: "/case-studies" },
@@ -76,8 +74,10 @@ const navSections: (NavLink | NavSection)[] = [
     ],
   },
   {
-    section: "Team",
+    section: "Overig",
     items: [
+      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+      { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
       { label: "Team", icon: Users2, href: "/team" },
     ],
   },

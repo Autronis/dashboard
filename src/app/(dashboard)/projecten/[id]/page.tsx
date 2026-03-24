@@ -17,6 +17,10 @@ import {
   Pause,
   RefreshCw,
   Sparkles,
+  AlertTriangle,
+  AlertCircle,
+  Play,
+  Zap,
 } from "lucide-react";
 import { cn, formatDatum, formatUren } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -139,34 +143,42 @@ function TaakStatusIcon({ status }: { status: string }) {
 function FaseSection({ fase }: { fase: Fase }) {
   const [open, setOpen] = useState(fase.afgerond < fase.totaal);
   const percentage = fase.totaal > 0 ? Math.round((fase.afgerond / fase.totaal) * 100) : 0;
+  const isComplete = percentage >= 100;
+  const isNotStarted = fase.afgerond === 0 && fase.totaal > 0;
+  const hogePrio = fase.taken.filter((t) => t.prioriteit === "hoog" && t.status !== "afgerond").length;
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden card-glow">
+    <div className={cn("bg-autronis-card border rounded-2xl overflow-hidden card-glow", isComplete ? "border-green-500/20" : isNotStarted ? "border-autronis-border/50 opacity-80" : "border-autronis-border")}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-autronis-border/20 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors"
       >
         <div className="flex items-center gap-3">
           {open ? (
-            <ChevronDown className="w-5 h-5 text-autronis-text-secondary" />
+            <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />
           ) : (
-            <ChevronRight className="w-5 h-5 text-autronis-text-secondary" />
+            <ChevronRight className="w-4 h-4 text-autronis-text-secondary" />
           )}
           <div>
-            <h3 className="text-base font-semibold text-autronis-text-primary">{fase.naam}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className={cn("text-sm font-semibold", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.naam}</h3>
+              {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+              {isNotStarted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-border text-autronis-text-secondary font-medium">Niet gestart</span>}
+              {hogePrio > 0 && !isComplete && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 font-medium">{hogePrio} hoog</span>}
+            </div>
             <p className="text-xs text-autronis-text-secondary mt-0.5">
-              {fase.afgerond}/{fase.totaal} taken afgerond
+              {fase.afgerond}/{fase.totaal} taken
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span className={cn(
             "text-sm font-bold tabular-nums",
-            percentage >= 100 ? "text-green-400" : "text-autronis-text-primary"
+            isComplete ? "text-green-400" : "text-autronis-text-primary"
           )}>
             {percentage}%
           </span>
-          <div className="w-24">
+          <div className="w-20">
             <ProgressBar percentage={percentage} />
           </div>
         </div>
@@ -174,40 +186,45 @@ function FaseSection({ fase }: { fase: Fase }) {
 
       {open && (
         <div className="border-t border-autronis-border">
-          {fase.taken.map((taak) => (
-            <div
-              key={taak.id}
-              className={cn(
-                "flex items-center gap-3 px-5 py-3 border-b border-autronis-border/50 last:border-b-0 transition-colors",
-                taak.status === "afgerond" ? "opacity-60" : "hover:bg-autronis-border/10"
-              )}
-            >
-              <TaakStatusIcon status={taak.status} />
-              <span className={cn(
-                "flex-1 text-sm",
-                taak.status === "afgerond"
-                  ? "text-autronis-text-secondary line-through"
-                  : "text-autronis-text-primary"
-              )}>
-                {taak.titel}
-              </span>
-              {taak.uitvoerder === "claude" && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-medium">
-                  Claude
+          {fase.taken.map((taak) => {
+            const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/30" : "border-l-transparent";
+            const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
+            return (
+              <div
+                key={taak.id}
+                className={cn(
+                  "flex items-center gap-2.5 px-4 py-2 border-b border-autronis-border/30 last:border-b-0 border-l-[3px] transition-colors",
+                  prioColor,
+                  taak.status === "afgerond" ? "opacity-50" : "hover:bg-autronis-border/10"
+                )}
+              >
+                <TaakStatusIcon status={taak.status} />
+                <span className={cn(
+                  "flex-1 text-xs",
+                  taak.status === "afgerond"
+                    ? "text-autronis-text-secondary line-through"
+                    : "text-autronis-text-primary"
+                )}>
+                  {taak.titel}
                 </span>
-              )}
-              {taak.prioriteit === "hoog" && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">
-                  Hoog
-                </span>
-              )}
-              {taak.deadline && (
-                <span className="text-[10px] text-autronis-text-secondary/60">
-                  {formatDatum(taak.deadline)}
-                </span>
-              )}
-            </div>
-          ))}
+                {taak.status === "bezig" && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-medium">Bezig</span>
+                )}
+                {taak.uitvoerder === "claude" && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-medium">Claude</span>
+                )}
+                {taak.prioriteit === "hoog" && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">Hoog</span>
+                )}
+                {taak.deadline && (
+                  <span className={cn("text-[10px] tabular-nums", isVerlopen ? "text-red-400 font-medium" : "text-autronis-text-secondary/60")}>
+                    {isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}
+                    {formatDatum(taak.deadline)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -247,6 +264,150 @@ function generateSamenvatting(project: ProjectDetail, fases: Fase[]): string {
   }
 
   return parts.join(" ");
+}
+
+// ============ Project Health ============
+
+type HealthStatus = "on-track" | "risico" | "achter";
+
+function getDetailHealth(project: ProjectDetail, fases: Fase[]): { status: HealthStatus; reden: string; acties: string[] } {
+  const openTaken = project.totaalTaken - project.afgerondTaken;
+  const acties: string[] = [];
+
+  // Deadline check
+  let deadlineStatus: HealthStatus = "on-track";
+  if (project.deadline) {
+    const deadline = new Date(project.deadline);
+    const now = new Date();
+    const dagenTot = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    if (dagenTot < 0 && openTaken > 0) {
+      deadlineStatus = "achter";
+      acties.push(`Deadline ${Math.abs(dagenTot)} dagen geleden verlopen`);
+    } else if (dagenTot <= 7 && openTaken > 3) {
+      deadlineStatus = "risico";
+      acties.push(`Deadline over ${dagenTot} dagen, ${openTaken} taken open`);
+    }
+  }
+
+  // Fases check
+  const nietGestarteFases = fases.filter((f) => f.afgerond === 0 && f.totaal > 0);
+  const activeFases = fases.filter((f) => f.afgerond > 0 && f.afgerond < f.totaal);
+
+  if (nietGestarteFases.length > 0) {
+    acties.push(`${nietGestarteFases.map((f) => f.naam).join(", ")} nog niet gestart`);
+  }
+
+  // High priority tasks
+  const hogePrioriteitOpen = fases.flatMap((f) => f.taken).filter((t) => t.prioriteit === "hoog" && t.status !== "afgerond");
+  if (hogePrioriteitOpen.length > 0) {
+    acties.push(`${hogePrioriteitOpen.length} hoge prioriteit ${hogePrioriteitOpen.length === 1 ? "taak" : "taken"} open`);
+  }
+
+  // Inactivity
+  if (project.bijgewerktOp) {
+    const laatste = new Date(project.bijgewerktOp.includes("T") ? project.bijgewerktOp : project.bijgewerktOp.replace(" ", "T") + "Z");
+    const dagenInactief = Math.floor((new Date().getTime() - laatste.getTime()) / (1000 * 60 * 60 * 24));
+    if (dagenInactief >= 7 && project.status === "actief") {
+      acties.push(`${dagenInactief} dagen geen activiteit`);
+      if (deadlineStatus === "on-track") deadlineStatus = "risico";
+    }
+  }
+
+  const status = deadlineStatus;
+  const reden = status === "on-track"
+    ? `${project.voortgang}% af · ${activeFases.length > 0 ? activeFases[0].naam + " bezig" : "Op schema"}`
+    : acties[0] || "Aandacht nodig";
+
+  return { status, reden, acties };
+}
+
+function StatusIntelligence({ project, fases }: { project: ProjectDetail; fases: Fase[] }) {
+  const health = getDetailHealth(project, fases);
+  const cfg = {
+    "on-track": { color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20", label: "On track", icon: CheckCircle2 },
+    "risico": { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", label: "Risico", icon: AlertTriangle },
+    "achter": { color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", label: "Achter", icon: AlertCircle },
+  }[health.status];
+  const Icon = cfg.icon;
+
+  return (
+    <div className={cn("rounded-xl border p-4", cfg.border, cfg.bg)}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={cn("w-4 h-4", cfg.color)} />
+        <span className={cn("text-sm font-bold", cfg.color)}>{cfg.label}</span>
+        <span className="text-xs text-autronis-text-secondary ml-1">{health.reden}</span>
+      </div>
+      {health.acties.length > 0 && health.status !== "on-track" && (
+        <ul className="mt-2 space-y-1">
+          {health.acties.map((actie, i) => (
+            <li key={i} className="text-xs text-autronis-text-secondary flex items-center gap-1.5">
+              <span className={cn("w-1 h-1 rounded-full flex-shrink-0", cfg.color.replace("text-", "bg-"))} />
+              {actie}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function WatNuBlok({ fases }: { fases: Fase[] }) {
+  // Get top open tasks sorted by priority
+  const alleTaken = fases.flatMap((f) => f.taken.map((t) => ({ ...t, fase: f.naam })));
+  const openTaken = alleTaken
+    .filter((t) => t.status !== "afgerond")
+    .sort((a, b) => {
+      const prio: Record<string, number> = { hoog: 0, normaal: 1, laag: 2 };
+      const pa = prio[a.prioriteit] ?? 1;
+      const pb = prio[b.prioriteit] ?? 1;
+      if (pa !== pb) return pa - pb;
+      if (a.status === "bezig" && b.status !== "bezig") return -1;
+      if (b.status === "bezig" && a.status !== "bezig") return 1;
+      return 0;
+    })
+    .slice(0, 5);
+
+  const bezigTaken = openTaken.filter((t) => t.status === "bezig");
+  const nietGestarteFases = fases.filter((f) => f.afgerond === 0 && f.totaal > 0);
+
+  if (openTaken.length === 0) return null;
+
+  return (
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+      <div className="flex items-center gap-2 mb-3">
+        <Zap className="w-4 h-4 text-autronis-accent" />
+        <h2 className="text-sm font-semibold text-autronis-text-primary">Wat nu?</h2>
+        <span className="text-[11px] text-autronis-text-secondary ml-auto">{openTaken.length} acties</span>
+      </div>
+
+      <div className="space-y-1.5">
+        {openTaken.map((taak) => {
+          const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/50" : "border-l-slate-500/30";
+          return (
+            <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-2 bg-autronis-bg/40 rounded-lg border-l-[3px]", prioColor)}>
+              <TaakStatusIcon status={taak.status} />
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                <p className="text-[10px] text-autronis-text-secondary">{taak.fase}</p>
+              </div>
+              {taak.uitvoerder === "claude" && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-medium">Claude</span>}
+              {taak.prioriteit === "hoog" && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">Hoog</span>}
+              {taak.status === "bezig" && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-medium">Bezig</span>}
+            </div>
+          );
+        })}
+      </div>
+
+      {nietGestarteFases.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-autronis-border/50">
+          <p className="text-[11px] text-amber-400 font-medium">
+            <AlertTriangle className="w-3 h-3 inline mr-1" />
+            Nog niet gestart: {nietGestarteFases.map((f) => f.naam).join(", ")}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ============ Extract tech stack from omschrijving ============
@@ -420,6 +581,16 @@ export default function ProjectDetailPage() {
             </div>
 
             <VoortgangRing percentage={project.voortgang} size={90} />
+          </div>
+        </div>
+
+        {/* Status Intelligence + Wat Nu */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-1">
+            <StatusIntelligence project={project} fases={fases} />
+          </div>
+          <div className="lg:col-span-2">
+            <WatNuBlok fases={fases} />
           </div>
         </div>
 

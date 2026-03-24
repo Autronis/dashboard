@@ -263,6 +263,7 @@ export async function GET(req: NextRequest) {
       let pId: number | null = null;
       let pNaam: string | null = null;
       let kNaam: string | null = null;
+      let projectCandidate: { id: number; naam: string | null; klant: string | null; cat: string } | null = null;
 
       for (const e of slot) {
         catSec[e.categorie ?? "overig"] = (catSec[e.categorie ?? "overig"] || 0) + e.duurSeconden;
@@ -271,14 +272,23 @@ export async function GET(req: NextRequest) {
           const prefix = /^[A-Z]{3,}USD.*[▲▼]/.test(e.vensterTitel) ? e.vensterTitel.slice(0, 10) : e.vensterTitel.slice(0, 50);
           if (!seen.has(prefix)) { seen.add(prefix); titles.push(e.vensterTitel); }
         }
-        if (!pId && e.projectId) { pId = e.projectId; pNaam = e.projectNaam; kNaam = e.klantNaam; }
+        // Only inherit project from entries that match the dominant category
+        if (!pId && e.projectId) {
+          // Store candidate — we'll verify after determining dominant category
+          if (!projectCandidate) projectCandidate = { id: e.projectId, naam: e.projectNaam, klant: e.klantNaam, cat: e.categorie ?? "overig" };
+        }
       }
 
       const cat = Object.entries(catSec).sort(([, a], [, b]) => b - a)[0][0];
       const topApps = Object.entries(appSec).filter(([a]) => a !== "Inactief").sort(([, a], [, b]) => b - a).slice(0, 4);
       const dominantApp = topApps[0]?.[0] ?? "";
 
-      // If no project from DB entries, try to match from window titles
+      // Only use DB project if it came from an entry matching the dominant category
+      if (projectCandidate && projectCandidate.cat === cat) {
+        pId = projectCandidate.id; pNaam = projectCandidate.naam; kNaam = projectCandidate.klant;
+      }
+
+      // If still no project, try to match from window titles (only for code editors)
       if (!pId) {
         const matched = matchProject(titles, dominantApp);
         if (matched) { pId = matched.id; pNaam = matched.naam; kNaam = matched.klantNaam; }

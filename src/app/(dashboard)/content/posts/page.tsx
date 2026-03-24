@@ -10,12 +10,21 @@ import {
   ThumbsDown,
   Pencil,
   Trash2,
+  CheckSquare,
+  Square,
+  XCircle,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useContentPosts, useGenerateBatch, useUpdatePost, useDeletePost } from "@/hooks/queries/use-content";
 import { useToast } from "@/hooks/use-toast";
 import { Modal } from "@/components/ui/modal";
 import type { ContentPost, ContentStatus, ContentPlatform, ContentFormat } from "@/types/content";
 import { PageTransition } from "@/components/ui/page-transition";
+
+const CHAR_LIMIT: Record<ContentPlatform, number> = {
+  linkedin: 3000,
+  instagram: 2200,
+};
 
 // ============ BADGE HELPERS ============
 
@@ -106,9 +115,12 @@ function AfwijsModal({ open, onClose, onConfirm, loading }: AfwijsModalProps) {
 
 interface PostCardProps {
   post: ContentPost;
+  selected?: boolean;
+  onToggleSelect?: (id: number) => void;
+  selectMode?: boolean;
 }
 
-function PostCard({ post }: PostCardProps) {
+function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps) {
   const { addToast } = useToast();
   const updatePost = useUpdatePost();
   const deletePost = useDeletePost();
@@ -120,6 +132,9 @@ function PostCard({ post }: PostCardProps) {
 
   const activeInhoud = post.bewerkteInhoud ?? post.inhoud;
   const preview = activeInhoud.length > 200 ? activeInhoud.slice(0, 200) + "..." : activeInhoud;
+  const charLimit = CHAR_LIMIT[post.platform];
+  const charCount = editText.length;
+  const charOver = charCount > charLimit;
 
   const statusBadge = STATUS_BADGE[post.status];
   const formatBadge = FORMAT_BADGE[post.format] ?? { label: post.format, className: "bg-gray-500/15 text-gray-400" };
@@ -153,7 +168,8 @@ function PostCard({ post }: PostCardProps) {
       : tekst;
     await navigator.clipboard.writeText(withHashtags);
     setCopied(true);
-    addToast("Gekopieerd naar klembord", "succes");
+    const platformLabel = post.platform === "linkedin" ? "LinkedIn" : "Instagram";
+    addToast(`Gekopieerd voor ${platformLabel}`, "succes");
     setTimeout(() => setCopied(false), 2000);
   }
 
@@ -161,10 +177,28 @@ function PostCard({ post }: PostCardProps) {
 
   return (
     <>
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex flex-col gap-4 card-glow transition-all hover:border-autronis-border/80">
+      <div
+        className={cn(
+          "bg-autronis-card border rounded-2xl p-5 flex flex-col gap-4 card-glow transition-all",
+          selected ? "border-autronis-accent/50 ring-1 ring-autronis-accent/20" : "border-autronis-border hover:border-autronis-border/80",
+          selectMode && "cursor-pointer"
+        )}
+        onClick={selectMode && onToggleSelect ? () => onToggleSelect(post.id) : undefined}
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
+            {selectMode && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleSelect?.(post.id); }}
+                className="text-autronis-text-secondary"
+              >
+                {selected
+                  ? <CheckSquare className="w-4 h-4 text-autronis-accent" />
+                  : <Square className="w-4 h-4" />
+                }
+              </button>
+            )}
             <PlatformBadge platform={post.platform} />
             <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${formatBadge.className}`}>
               {formatBadge.label}
@@ -173,27 +207,43 @@ function PostCard({ post }: PostCardProps) {
               {statusBadge.label}
             </span>
           </div>
-          <button
-            onClick={handleDelete}
-            disabled={isBusy}
-            className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 flex-shrink-0"
-            title="Verwijderen"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+          {!selectMode && (
+            <button
+              onClick={handleDelete}
+              disabled={isBusy}
+              className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50 flex-shrink-0"
+              title="Verwijderen"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Title */}
         <h3 className="text-sm font-semibold text-autronis-text-primary">{post.titel}</h3>
 
+        {/* Rejection reason */}
+        {post.status === "afgewezen" && post.afwijsReden && (
+          <div className="flex items-start gap-2 bg-red-500/5 border border-red-500/15 rounded-xl px-3 py-2">
+            <XCircle className="w-3.5 h-3.5 text-red-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-300/80">{post.afwijsReden}</p>
+          </div>
+        )}
+
         {/* Content */}
         {editMode ? (
-          <textarea
-            value={editText}
-            onChange={(e) => setEditText(e.target.value)}
-            rows={8}
-            className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary resize-none focus:outline-none focus:border-autronis-accent"
-          />
+          <div className="space-y-1.5">
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={8}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary resize-none focus:outline-none focus:border-autronis-accent"
+            />
+            <div className={cn("text-right text-xs tabular-nums", charOver ? "text-red-400" : "text-autronis-text-secondary")}>
+              {charCount.toLocaleString("nl-NL")} / {charLimit.toLocaleString("nl-NL")}
+              {charOver && <span className="ml-1 font-semibold">({charCount - charLimit} te lang)</span>}
+            </div>
+          </div>
         ) : (
           <p className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-line">
             {preview}
@@ -215,62 +265,66 @@ function PostCard({ post }: PostCardProps) {
         )}
 
         {/* Actions */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-autronis-border">
-          {editMode ? (
-            <>
-              <button
-                onClick={handleSaveEdit}
-                disabled={isBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-accent text-white hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
-              >
-                {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                Opslaan
-              </button>
-              <button
-                onClick={() => { setEditMode(false); setEditText(post.bewerkteInhoud ?? post.inhoud); }}
-                disabled={isBusy}
-                className="px-3 py-1.5 text-xs font-medium rounded-xl border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
-              >
-                Annuleren
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                onClick={handleGoedkeuren}
-                disabled={isBusy || post.status === "goedgekeurd"}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors disabled:opacity-50"
-              >
-                <ThumbsUp className="w-3.5 h-3.5" />
-                Goedkeuren
-              </button>
-              <button
-                onClick={() => setEditMode(true)}
-                disabled={isBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors disabled:opacity-50"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Bewerken
-              </button>
-              <button
-                onClick={() => setAfwijsOpen(true)}
-                disabled={isBusy || post.status === "afgewezen"}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50"
-              >
-                <ThumbsDown className="w-3.5 h-3.5" />
-                Afwijzen
-              </button>
-              <button
-                onClick={handleCopy}
-                disabled={isBusy}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors disabled:opacity-50 ml-auto"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? "Gekopieerd" : "Kopieer"}
-              </button>
-            </>
-          )}
-        </div>
+        {!selectMode && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-autronis-border">
+            {editMode ? (
+              <>
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={isBusy || charOver}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-accent text-white hover:bg-autronis-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {isBusy ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                  Opslaan
+                </button>
+                <button
+                  onClick={() => { setEditMode(false); setEditText(post.bewerkteInhoud ?? post.inhoud); }}
+                  disabled={isBusy}
+                  className="px-3 py-1.5 text-xs font-medium rounded-xl border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                >
+                  Annuleren
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleGoedkeuren}
+                  disabled={isBusy || post.status === "goedgekeurd"}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors disabled:opacity-50"
+                >
+                  <ThumbsUp className="w-3.5 h-3.5" />
+                  Goedkeuren
+                </button>
+                <button
+                  onClick={() => setEditMode(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors disabled:opacity-50"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  Bewerken
+                </button>
+                <button
+                  onClick={() => setAfwijsOpen(true)}
+                  disabled={isBusy || post.status === "afgewezen"}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors disabled:opacity-50"
+                >
+                  <ThumbsDown className="w-3.5 h-3.5" />
+                  Afwijzen
+                </button>
+                <button
+                  onClick={handleCopy}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors disabled:opacity-50 ml-auto"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied
+                    ? `Gekopieerd voor ${post.platform === "linkedin" ? "LinkedIn" : "Instagram"}`
+                    : "Kopieer"}
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <AfwijsModal

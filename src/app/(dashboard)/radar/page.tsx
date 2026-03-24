@@ -1064,6 +1064,19 @@ export default function RadarPage() {
     [alleItems, minScore]
   );
 
+  // Relevantie-hint: detecteer vaak weggegooide categorieën
+  const [relevantieHint, setRelevantieHint] = useState<{
+    cat: string;
+    label: string;
+    count: number;
+  } | null>(null);
+  const [hintDismissed, setHintDismissed] = useState(false);
+
+  useEffect(() => {
+    const hint = getTopDismissedCategory();
+    setRelevantieHint(hint);
+  }, [dismissingIds]);
+
   // ---- Handlers ----
 
   function handleFetch() {
@@ -1089,6 +1102,10 @@ export default function RadarPage() {
   }
 
   function handleNietRelevant(id: number) {
+    // Track dismiss per categorie voor relevantie-hints
+    const item = items.find((i) => i.id === id);
+    if (item?.categorie) trackDismiss(item.categorie);
+
     setDismissingIds((prev) => new Set([...prev, id]));
     markNietRelevant.mutate(id, {
       onError: () => {
@@ -1100,6 +1117,43 @@ export default function RadarPage() {
         addToast("Kon item niet markeren", "fout");
       },
     });
+  }
+
+  async function handleLeesLater(item: RadarItem) {
+    try {
+      const res = await fetch("/api/radar/lees-later", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id }),
+      });
+      const data = (await res.json()) as { succes?: boolean; fout?: string };
+      if (!res.ok) throw new Error(data.fout ?? "Fout");
+      addToast("Herinnering aangemaakt voor morgen 09:00", "succes");
+    } catch {
+      addToast("Kon herinnering niet aanmaken", "fout");
+    }
+  }
+
+  async function handleDeelInzicht(item: RadarItem) {
+    try {
+      const res = await fetch("/api/radar/deel-inzicht", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ itemId: item.id }),
+      });
+      const data = (await res.json()) as { succes?: boolean; fout?: string };
+      if (!res.ok) throw new Error(data.fout ?? "Fout");
+      addToast("Toegevoegd aan Content Engine kennisbank", "succes");
+    } catch {
+      addToast("Kon inzicht niet delen", "fout");
+    }
+  }
+
+  function handleDismissHint() {
+    if (relevantieHint) {
+      clearDismissCount(relevantieHint.cat);
+      setHintDismissed(true);
+    }
   }
 
   function handleOpen(id: number) {
@@ -1371,6 +1425,41 @@ export default function RadarPage() {
               </div>
             </div>
 
+            {/* Relevantie-hint */}
+            {relevantieHint && !hintDismissed && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-3 bg-amber-500/8 border border-amber-500/20 rounded-xl px-5 py-3"
+              >
+                <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <p className="text-sm text-autronis-text-primary flex-1">
+                  Je markeert veel <span className="font-semibold text-amber-400">{relevantieHint.label}</span> als
+                  niet-relevant ({relevantieHint.count}x). Wil je deze categorie uitzetten?
+                </p>
+                <button
+                  onClick={() => {
+                    setCategorie("");
+                    setMinScore(5);
+                    handleDismissHint();
+                    addToast(
+                      `Tip: filter op categorie en zet de min. score hoger om ${relevantieHint.label} te verbergen`,
+                      "succes"
+                    );
+                  }}
+                  className="px-3 py-1.5 bg-amber-500/15 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/25 transition-colors flex-shrink-0"
+                >
+                  Begrepen
+                </button>
+                <button
+                  onClick={handleDismissHint}
+                  className="p-1 text-autronis-text-secondary/50 hover:text-autronis-text-secondary transition-colors flex-shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            )}
+
             {/* Must-reads sectie */}
             <MustReadsSection
               items={mustReadItems}
@@ -1378,6 +1467,8 @@ export default function RadarPage() {
               onToggleBewaard={handleToggleBewaard}
               onNietRelevant={handleNietRelevant}
               onVraagClaude={setVraagItem}
+              onLeesLater={handleLeesLater}
+              onDeelInzicht={handleDeelInzicht}
               isToggling={toggleBewaard.isPending}
               openedIds={openedIds}
               onOpen={handleOpen}
@@ -1408,6 +1499,8 @@ export default function RadarPage() {
                       onToggleBewaard={handleToggleBewaard}
                       onNietRelevant={handleNietRelevant}
                       onVraagClaude={setVraagItem}
+                      onLeesLater={handleLeesLater}
+                      onDeelInzicht={handleDeelInzicht}
                       isToggling={toggleBewaard.isPending}
                       isOpened={openedIds.has(item.id)}
                       onOpen={handleOpen}
@@ -1444,6 +1537,8 @@ export default function RadarPage() {
                       onToggleBewaard={handleToggleBewaard}
                       onNietRelevant={handleNietRelevant}
                       onVraagClaude={setVraagItem}
+                      onLeesLater={handleLeesLater}
+                      onDeelInzicht={handleDeelInzicht}
                       isToggling={toggleBewaard.isPending}
                       isOpened={openedIds.has(item.id)}
                       onOpen={handleOpen}

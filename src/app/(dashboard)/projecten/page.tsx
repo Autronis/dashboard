@@ -20,6 +20,8 @@ import {
   Zap,
   TrendingUp,
   BarChart3,
+  AlertTriangle,
+  AlertCircle,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";

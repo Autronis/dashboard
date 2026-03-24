@@ -521,7 +521,7 @@ function makePedro(): CharacterDef {
 function makeVincent(): CharacterDef {
   return makeHuman({
     height: H_SMALL, skin: "#f0c8a0", hair: "#888888",
-    shirt: "#1a1a2a", pants: "#2a2a3a",
+    shirt: "#dc2626", pants: "#2a2a3a",
     eyeColor: "#4455aa", curlyHair: true, glasses: true, hunched: true,
   });
 }

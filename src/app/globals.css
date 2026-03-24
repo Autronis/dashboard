@@ -231,6 +231,111 @@ body {
   }
 }
 
+/* ── Taken page animations ── */
+
+/* Start button shimmer */
+@keyframes btn-shimmer {
+  0% { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(220%) skewX(-15deg); }
+}
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 40%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.22), transparent);
+  animation: btn-shimmer 2.2s ease-in-out infinite;
+  animation-delay: 0.8s;
+  pointer-events: none;
+}
+
+/* Claude badge shimmer */
+@keyframes badge-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.badge-claude-shimmer {
+  background: linear-gradient(90deg,
+    rgba(168,85,247,0.12) 0%,
+    rgba(168,85,247,0.28) 40%,
+    rgba(192,132,252,0.22) 50%,
+    rgba(168,85,247,0.28) 60%,
+    rgba(168,85,247,0.12) 100%
+  );
+  background-size: 200% auto;
+  animation: badge-shimmer 2.8s linear infinite;
+}
+
+/* Verlopen deadline shake (one-shot on mount) */
+@keyframes deadline-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-3px); }
+  40%       { transform: translateX(3px); }
+  60%       { transform: translateX(-2px); }
+  80%       { transform: translateX(2px); }
+}
+.deadline-shake {
+  animation: deadline-shake 0.45s ease-in-out 0.4s both;
+}
+
+/* Urgent task border glow pulse */
+@keyframes glow-pulse-red {
+  0%, 100% { box-shadow: inset 3px 0 0 rgba(239,68,68,0.5); }
+  50%       { box-shadow: inset 3px 0 0 rgba(239,68,68,0.9), 0 0 14px 2px rgba(239,68,68,0.12); }
+}
+.urgent-pulse {
+  animation: glow-pulse-red 2s ease-in-out infinite;
+}
+
+/* Yellow glow for normaal prio */
+@keyframes glow-pulse-yellow {
+  0%, 100% { box-shadow: inset 3px 0 0 rgba(234,179,8,0.35); }
+  50%       { box-shadow: inset 3px 0 0 rgba(234,179,8,0.7), 0 0 10px 1px rgba(234,179,8,0.08); }
+}
+.normaal-pulse {
+  animation: glow-pulse-yellow 3s ease-in-out infinite;
+}
+
+/* Hover slide-in background from left */
+.hover-slide-bg {
+  position: relative;
+  overflow: hidden;
+}
+.hover-slide-bg::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, rgba(23,184,165,0.04) 0%, transparent 100%);
+  transition: left 0.18s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+.hover-slide-bg:hover::before {
+  left: 0;
+}
+
+/* Ripple on buttons */
+@keyframes ripple-expand {
+  to { transform: scale(4); opacity: 0; }
+}
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-container .ripple-dot {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  animation: ripple-expand 0.55s linear;
+  background-color: rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
 /* Table styling */
 .table-row-hover:hover {
   background: rgba(0,0,0,0.02);

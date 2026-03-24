@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import {
   CheckCircle2, Circle, Clock, AlertTriangle, ListTodo, Loader2,
@@ -87,11 +88,43 @@ function groepeerTaken(taken: Taak[]): GegroepeerdeData[] {
 // ─── Copy Prompt ───
 function CopyPromptButton({ prompt }: { prompt: string }) {
   const { addToast } = useToast();
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(prompt);
+    addToast("Prompt gekopieerd", "succes");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
+  };
   return (
-    <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(prompt); addToast("Prompt gekopieerd", "succes"); }}
-      className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Kopieer prompt">
-      <Copy className="w-3.5 h-3.5" />
-    </button>
+    <div className="relative">
+      <button onClick={handleCopy} className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Kopieer prompt">
+        <AnimatePresence mode="wait" initial={false}>
+          {copied ? (
+            <motion.span key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+            </motion.span>
+          ) : (
+            <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
+              <Copy className="w-3.5 h-3.5" />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </button>
+      <AnimatePresence>
+        {copied && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-autronis-card border border-autronis-border rounded-md text-[10px] text-green-400 whitespace-nowrap pointer-events-none z-10"
+          >
+            Gekopieerd!
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -119,6 +152,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
       </div>
       <div className={cn(
         "flex items-center gap-3 px-4 py-3 bg-autronis-bg/60 rounded-xl border-l-[3px] transition-colors mb-2",
+        eersteTaak.prioriteit === "hoog" ? "urgent-pulse" : "",
         prioriteitConfig[eersteTaak.prioriteit]?.borderColor ?? "border-l-yellow-500/50"
       )}>
         <button onClick={() => onStatusToggle(eersteTaak)}
@@ -137,7 +171,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
           <CalendarPlus className="w-4 h-4" />
         </button>
         <button onClick={() => onStartTimer(eersteTaak)}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-bold hover:bg-autronis-accent-hover transition-colors flex-shrink-0">
+          className="btn-shimmer flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-bold hover:bg-autronis-accent-hover transition-colors flex-shrink-0">
           <Play className="w-3.5 h-3.5" /> Start
         </button>
         <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
@@ -149,26 +183,36 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
       {/* Overige taken compact — max 2 meer zichtbaar */}
       {taken.length > 1 && (
         <div className="space-y-0.5">
-          {visibleTaken.map((taak) => {
+          <AnimatePresence initial={false}>
+          {visibleTaken.map((taak, i) => {
             const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
             const sc = statusConfig[taak.status] || statusConfig.open;
             const StatusIcon = sc.icon;
             return (
-              <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-1.5 bg-autronis-bg/20 rounded-lg border-l-[2px] transition-colors hover:bg-autronis-bg/40 group", pc.borderColor)}>
-                <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)}>
-                  <StatusIcon className={cn("w-3 h-3", taak.status === "bezig" && "animate-spin")} />
-                </button>
-                <p className="flex-1 text-[11px] text-autronis-text-primary truncate">{taak.titel}</p>
-                <span className="text-[10px] text-autronis-text-secondary truncate max-w-16">{taak.projectNaam}</span>
-                {taak.uitvoerder === "claude" && <Bot className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />}
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                  <button onClick={() => onPlanTaak(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan"><CalendarPlus className="w-3 h-3" /></button>
-                  <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start"><Timer className="w-3 h-3" /></button>
-                  <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
+              <motion.div
+                key={taak.id}
+                initial={{ opacity: 0, height: 0, y: -4 }}
+                animate={{ opacity: 1, height: "auto", y: 0 }}
+                exit={{ opacity: 0, height: 0, y: -4 }}
+                transition={{ duration: 0.2, delay: i * 0.04 }}
+              >
+                <div className={cn("flex items-center gap-2.5 px-3 py-1.5 bg-autronis-bg/20 rounded-lg border-l-[2px] transition-colors hover:bg-autronis-bg/40 group", pc.borderColor)}>
+                  <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)}>
+                    <StatusIcon className={cn("w-3 h-3", taak.status === "bezig" && "animate-spin")} />
+                  </button>
+                  <p className="flex-1 text-[11px] text-autronis-text-primary truncate">{taak.titel}</p>
+                  <span className="text-[10px] text-autronis-text-secondary truncate max-w-16">{taak.projectNaam}</span>
+                  {taak.uitvoerder === "claude" && <Bot className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />}
+                  <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <button onClick={() => onPlanTaak(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan"><CalendarPlus className="w-3 h-3" /></button>
+                    <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start"><Timer className="w-3 h-3" /></button>
+                    <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
           {!showAll && hiddenCount > 0 && (
             <button onClick={() => setShowAll(true)} className="w-full text-center py-1 text-[11px] text-autronis-text-secondary hover:text-autronis-accent transition-colors">
               +{hiddenCount} meer
@@ -837,8 +881,19 @@ export default function TakenPage() {
                                       const isClaude = taak.uitvoerder === "claude";
 
                                       return (
-                                        <div key={taak.id} draggable onDragStart={(e) => { e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
-                                          className={cn("bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing group", taak.status === "afgerond" && "opacity-40", pc.borderColor)}>
+                                        <motion.div
+                                          key={taak.id}
+                                          initial={{ opacity: 0, x: -6 }}
+                                          animate={{ opacity: taak.status === "afgerond" ? 0.4 : 1, x: 0 }}
+                                          transition={{ duration: 0.18, delay: Math.min(fase.taken.indexOf(taak) * 0.03, 0.3) }}
+                                          draggable
+                                          onDragStart={(e) => { e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
+                                          className={cn(
+                                            "hover-slide-bg bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing group",
+                                            taak.prioriteit === "hoog" ? "urgent-pulse" : taak.prioriteit === "normaal" ? "normaal-pulse" : "",
+                                            pc.borderColor
+                                          )}
+                                        >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>

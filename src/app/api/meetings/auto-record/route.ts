@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import { createRecallBot, isRecallConfigured } from "@/lib/recall";
@@ -13,8 +13,16 @@ async function ensureColumn() {
 }
 
 // POST /api/meetings/auto-record — Check upcoming meetings and dispatch bots
-// Called by cron or manually
-export async function POST() {
+// Called by Vercel cron (every minute) or manually
+export async function POST(request: NextRequest) {
+  // Verify Vercel cron secret (if configured)
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ fout: "Niet geautoriseerd" }, { status: 401 });
+    }
+  }
   try {
     if (!isRecallConfigured()) {
       return NextResponse.json({ fout: "Recall niet geconfigureerd" }, { status: 500 });

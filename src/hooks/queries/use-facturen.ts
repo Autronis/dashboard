@@ -170,4 +170,28 @@ export function useScanBon() {
   });
 }
 
+export function useHerinneringenPreview() {
+  return useQuery({
+    queryKey: ["facturen", "herinneringen-preview"],
+    queryFn: async (): Promise<{ aantal: number; facturen: Array<{ id: number; factuurnummer: string; bedragInclBtw: number | null; vervaldatum: string | null; klantNaam: string | null }> }> => {
+      const res = await fetch("/api/facturen/herinneringen");
+      if (!res.ok) throw new Error("Preview mislukt");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function usePeriodiekePreview() {
+  return useQuery({
+    queryKey: ["facturen", "periodiek-preview"],
+    queryFn: async (): Promise<{ aantal: number; facturen: Array<{ factuurnummer: string }> }> => {
+      const res = await fetch("/api/facturen/periodiek");
+      if (!res.ok) throw new Error("Preview mislukt");
+      return res.json();
+    },
+    staleTime: 60_000,
+  });
+}
+
 export type { Factuur, FactuurKPIs, OuderdomData, OuderdomBucket };

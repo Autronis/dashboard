@@ -41,6 +41,8 @@ import {
   useOuderdomsanalyse,
   useVerstuurHerinneringen,
   useGenereerPeriodiek,
+  useHerinneringenPreview,
+  usePeriodiekePreview,
   type Factuur,
 } from "@/hooks/queries/use-facturen";
 
@@ -62,6 +64,9 @@ const TABS: { key: Tab; label: string; icon: typeof Euro }[] = [
   { key: "liquiditeit", label: "Liquiditeit", icon: BarChart3 },
 ];
 
+type SortCol = "factuurnummer" | "klantNaam" | "factuurdatum" | "bedragInclBtw" | "status";
+type SortDir = "asc" | "desc";
+
 export default function FinancienPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
@@ -70,14 +75,37 @@ export default function FinancienPage() {
   const [zoek, setZoek] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
+  const [sortCol, setSortCol] = useState<SortCol>("factuurdatum");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [betaaldFlashId, setBetaaldFlashId] = useState<number | null>(null);
+  const [herinneringPreviewOpen, setHerinneringPreviewOpen] = useState(false);
+  const [periodiekPreviewOpen, setPeriodiekPreviewOpen] = useState(false);
 
   const { data: facturenData, isLoading: loading } = useFacturen(statusFilter, zoek);
   const facturen = facturenData?.facturen ?? [];
   const kpis = facturenData?.kpis ?? { openstaand: 0, betaaldDezeMaand: 0, teLaat: 0, totaal: 0 };
 
   const { data: ouderdomData } = useOuderdomsanalyse();
+  const { data: herinneringPreview } = useHerinneringenPreview();
+  const { data: periodiekPreview } = usePeriodiekePreview();
   const herinneringenMutation = useVerstuurHerinneringen();
   const periodiekMutation = useGenereerPeriodiek();
+
+  // Computed: verwachte inkomsten binnen 14 dagen
+  const verwachtBinnen14Dagen = facturen
+    .filter((f) => {
+      if (f.status !== "verzonden" || !f.vervaldatum) return false;
+      const days = Math.ceil((new Date(f.vervaldatum).getTime() - Date.now()) / 86400000);
+      return days >= 0 && days <= 14;
+    })
+    .reduce((sum, f) => sum + (f.bedragInclBtw || 0), 0);
+
+  // Cashflow warning: oldest overdue klant
+  const cashflowWaarschuwing = (() => {
+    if (!ouderdomData?.perKlant?.length) return null;
+    const ernstig = ouderdomData.perKlant.find((k) => k.oudste > 30);
+    return ernstig || null;
+  })();
 
   const invalidateFacturen = () => queryClient.invalidateQueries({ queryKey: ["facturen"] });
 
@@ -85,6 +113,40 @@ export default function FinancienPage() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [statusFilter, zoek]);
+
+  const handleSortCol = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortCol(col);
+      setSortDir(col === "factuurdatum" || col === "bedragInclBtw" ? "desc" : "asc");
+    }
+  };
+
+  const sortedFacturen = [...facturen].sort((a, b) => {
+    const mul = sortDir === "asc" ? 1 : -1;
+    if (sortCol === "bedragInclBtw") return mul * ((a.bedragInclBtw ?? 0) - (b.bedragInclBtw ?? 0));
+    if (sortCol === "factuurdatum") return mul * ((a.factuurdatum ?? "").localeCompare(b.factuurdatum ?? ""));
+    if (sortCol === "klantNaam") return mul * a.klantNaam.localeCompare(b.klantNaam, "nl");
+    if (sortCol === "status") return mul * (getEffectiveStatus(a).localeCompare(getEffectiveStatus(b)));
+    return mul * a.factuurnummer.localeCompare(b.factuurnummer);
+  });
+
+  const inlineBetaaldMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/facturen/${id}/betaald`, { method: "PUT" });
+      if (!res.ok) throw new Error();
+    },
+    onMutate: (id) => setBetaaldFlashId(id),
+    onSuccess: () => {
+      setTimeout(() => setBetaaldFlashId(null), 800);
+      invalidateFacturen();
+    },
+    onError: () => {
+      setBetaaldFlashId(null);
+      addToast("Kon factuur niet bijwerken", "fout");
+    },
+  });
 
   // Mark overdue invoices visually
   const getEffectiveStatus = (f: Factuur): string => {

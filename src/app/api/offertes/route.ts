@@ -81,7 +81,8 @@ export async function GET(req: NextRequest) {
     const statusCounts: Record<string, number> = {};
 
     for (const o of alleOffertes) {
-      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
+      const st = o.status ?? "concept";
+      statusCounts[st] = (statusCounts[st] || 0) + 1;
       if (o.status === "concept" || o.status === "verzonden") {
         openstaandCount++;
         openstaandWaarde += o.bedragInclBtw || 0;

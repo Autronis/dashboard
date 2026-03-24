@@ -4,6 +4,29 @@ import { facturen, factuurRegels } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, like, desc } from "drizzle-orm";
 
+// GET /api/facturen/periodiek — preview: hoeveel periodieke facturen staan klaar
+export async function GET() {
+  try {
+    await requireAuth();
+    const terugkerend = await db
+      .select({ id: facturen.id, factuurnummer: facturen.factuurnummer, betaaldOp: facturen.betaaldOp, terugkeerInterval: facturen.terugkeerInterval, klantId: facturen.klantId })
+      .from(facturen)
+      .where(and(eq(facturen.isTerugkerend, 1), eq(facturen.status, "betaald"), eq(facturen.isActief, 1)))
+      .all();
+
+    const klaar = terugkerend.filter((f) => {
+      if (!f.betaaldOp) return false;
+      const interval = f.terugkeerInterval === "wekelijks" ? 7 : 30;
+      const daysSince = Math.floor((Date.now() - new Date(f.betaaldOp).getTime()) / 86400000);
+      return daysSince >= interval;
+    });
+
+    return NextResponse.json({ aantal: klaar.length, facturen: klaar.map((f) => ({ factuurnummer: f.factuurnummer })) });
+  } catch {
+    return NextResponse.json({ fout: "Preview mislukt" }, { status: 500 });
+  }
+}
+
 // POST /api/facturen/periodiek — genereer nieuwe facturen voor terugkerende betaalde facturen
 export async function POST() {
   try {

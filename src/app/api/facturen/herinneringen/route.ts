@@ -5,6 +5,29 @@ import { requireAuth } from "@/lib/auth";
 import { eq, and, lte } from "drizzle-orm";
 import { Resend } from "resend";
 
+// GET /api/facturen/herinneringen — preview: welke herinneringen zouden worden verstuurd
+export async function GET() {
+  try {
+    await requireAuth();
+    const nu = new Date().toISOString().split("T")[0];
+    const overdueFacturen = await db
+      .select({
+        id: facturen.id,
+        factuurnummer: facturen.factuurnummer,
+        bedragInclBtw: facturen.bedragInclBtw,
+        vervaldatum: facturen.vervaldatum,
+        klantNaam: klanten.bedrijfsnaam,
+      })
+      .from(facturen)
+      .leftJoin(klanten, eq(facturen.klantId, klanten.id))
+      .where(and(eq(facturen.status, "verzonden"), eq(facturen.isActief, 1), lte(facturen.vervaldatum, nu)))
+      .all();
+    return NextResponse.json({ aantal: overdueFacturen.length, facturen: overdueFacturen });
+  } catch {
+    return NextResponse.json({ fout: "Preview mislukt" }, { status: 500 });
+  }
+}
+
 // POST /api/facturen/herinneringen — verstuur herinneringen voor alle te late facturen
 export async function POST() {
   try {

@@ -722,8 +722,7 @@ export default function AgendaPage() {
               })}
               {/* Nu-indicator op timeline */}
               {(() => {
-                const nu = new Date();
-                const nuMin = nu.getHours() * 60 + nu.getMinutes();
+                const nuMin = nuTijd.getHours() * 60 + nuTijd.getMinutes();
                 const pos = ((nuMin - 420) / (1260 - 420)) * 100;
                 if (pos < 0 || pos > 100) return null;
                 return <div className="absolute top-0 h-full w-0.5 bg-red-500" style={{ left: `${pos}%` }} />;
@@ -745,42 +744,53 @@ export default function AgendaPage() {
           { value: "herinnering", label: "Herinneringen", color: "#a855f7" },
         ].map((f) => {
           const count = filterCounts[f.value] ?? 0;
+          const isActief = filterType === f.value;
           return (
-            <button
+            <motion.button
               key={f.value}
               onClick={() => setFilterType(f.value)}
+              whileTap={{ scale: 0.88 }}
+              animate={isActief ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={{ duration: 0.25 }}
               className={cn(
                 "px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5",
-                filterType === f.value
+                isActief
                   ? "border-autronis-accent bg-autronis-accent/10 text-autronis-accent"
                   : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
               )}
+              style={isActief && f.color ? {
+                boxShadow: `0 0 10px ${f.color}30`,
+              } : undefined}
             >
               {f.color && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: f.color }} />}
               {f.label}
               {count > 0 && (
                 <span className={cn(
                   "text-[10px] px-1.5 py-0.5 rounded-full tabular-nums",
-                  filterType === f.value ? "bg-autronis-accent/20" : "bg-autronis-bg/50"
+                  isActief ? "bg-autronis-accent/20" : "bg-autronis-bg/50"
                 )}>
                   {count}
                 </span>
               )}
-            </button>
+            </motion.button>
           );
         })}
 
         <div className="w-px h-5 bg-autronis-border mx-1 hidden sm:block" />
 
         {/* Taken toggle */}
-        <button
+        <motion.button
           onClick={() => setToonTaken((v) => !v)}
+          whileTap={{ scale: 0.88 }}
+          animate={toonTaken ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          transition={{ duration: 0.25 }}
           className={cn(
             "px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5",
             toonTaken
               ? "border-orange-500/40 bg-orange-500/10 text-orange-400"
               : "border-autronis-border text-autronis-text-secondary hover:border-orange-500/40"
           )}
+          style={toonTaken ? { boxShadow: "0 0 10px rgba(249,115,22,0.25)" } : undefined}
         >
           <CheckSquare className="w-3 h-3" />
           Taken
@@ -792,7 +802,7 @@ export default function AgendaPage() {
               {takenStats.open + takenStats.bezig}
             </span>
           )}
-        </button>
+        </motion.button>
       </div>
      </div>
 
@@ -824,6 +834,8 @@ export default function AgendaPage() {
                 <button
                   key={v}
                   onClick={() => {
+                    setNavRichting(1);
+                    setViewKey((k) => k + 1);
                     setWeergave(v);
                     if (v === "dag") setSelectedDag(new Date(jaar, maand, vandaag.getMonth() === maand ? vandaag.getDate() : 1));
                     if (v === "week") setWeekOffset(0);
@@ -855,6 +867,8 @@ export default function AgendaPage() {
             <DagView
               datum={selectedDag}
               onNavigeer={(r) => {
+                setNavRichting(r);
+                setViewKey((k) => k + 1);
                 const d = new Date(selectedDag);
                 d.setDate(d.getDate() + r);
                 setSelectedDag(d);
@@ -874,9 +888,9 @@ export default function AgendaPage() {
           ) : weergave === "jaar" ? (
             <JaarView
               jaar={jaar}
-              onNavigeer={(r) => setJaar((j) => j + r)}
+              onNavigeer={(r) => { setNavRichting(r); setViewKey((k) => k + 1); setJaar((j) => j + r); }}
               items={[...items, ...externeEvents]}
-              onMaandClick={(m) => { setMaand(m); setWeergave("maand"); }}
+              onMaandClick={(m) => { setNavRichting(1); setViewKey((k) => k + 1); setMaand(m); setWeergave("maand"); }}
             />
           ) : weergave === "maand" ? (
             <>
@@ -1048,13 +1062,13 @@ export default function AgendaPage() {
             <div>
               {/* Week navigatie */}
               <div className="flex items-center justify-between mb-2 sm:mb-3">
-                <button onClick={() => setWeekOffset((o) => o - 1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+                <button onClick={() => { setNavRichting(-1); setViewKey((k) => k + 1); setWeekOffset((o) => o - 1); }} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
                   <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <span className="text-xs sm:text-sm font-medium text-autronis-text-secondary">
                   {weekDagen[0].datum.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })} – {weekDagen[6].datum.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" })}
                 </span>
-                <button onClick={() => setWeekOffset((o) => o + 1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+                <button onClick={() => { setNavRichting(1); setViewKey((k) => k + 1); setWeekOffset((o) => o + 1); }} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
                   <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
@@ -1287,11 +1301,13 @@ export default function AgendaPage() {
                       bgColor = ec.bg; borderColor = ec.border; textColor = ec.text;
                     } else {
                       const tc = typeConfig[(item as AgendaItem).type] || typeConfig.afspraak;
-                      bgColor = `${tc.borderColor}20`; borderColor = tc.borderColor; textColor = tc.borderColor;
+                      bgColor = `${tc.borderColor}18`; borderColor = tc.borderColor; textColor = tc.borderColor;
                     }
 
                     const startTimeStr = `${String(startUur).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`;
                     const titel = isExtern ? (item as ExternEvent).titel : (item as AgendaItem).titel;
+                    const eventGradient = `linear-gradient(160deg, ${bgColor} 0%, rgba(14,23,25,0.05) 100%)`;
+                    const eventGlow = `0 2px 8px ${borderColor}18, inset 0 1px 0 ${borderColor}12`;
 
                     // Check overlapping events at same time
                     const overlapping = dagItems.filter((other) => {
@@ -1514,9 +1530,8 @@ export default function AgendaPage() {
 
                 {/* Nu-indicator lijn (week view) */}
                 {(() => {
-                  const nu = new Date();
-                  const nuUur = nu.getHours();
-                  const nuMin = nu.getMinutes();
+                  const nuUur = nuTijd.getHours();
+                  const nuMin = nuTijd.getMinutes();
                   const wStart = weekUren[0] ?? 7;
                   const wEind = (weekUren[weekUren.length - 1] ?? 20) + 1;
                   if (nuUur < wStart || nuUur >= wEind) return null;

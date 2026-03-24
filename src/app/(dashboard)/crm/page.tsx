@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   DndContext,
   DragOverlay,
@@ -99,11 +101,13 @@ function DraggableLeadCard({
   kolomKey,
   isDragging,
   onClick,
+  index = 0,
 }: {
   lead: Lead;
   kolomKey: string;
   isDragging: boolean;
   onClick: () => void;
+  index?: number;
 }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: `lead-${lead.id}`,
@@ -118,19 +122,25 @@ function DraggableLeadCard({
   const actieVerlopen = lead.volgendeActieDatum && lead.volgendeActieDatum < vandaag;
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      onClick={onClick}
-      className={cn(
-        "w-full text-left bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/50 transition-all group cursor-grab active:cursor-grabbing card-glow",
-        isDragging && "opacity-30"
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.2, delay: index * 0.04 }}
     >
-      <LeadCardContent lead={lead} actieVerlopen={!!actieVerlopen} />
-    </div>
+      <div
+        ref={setNodeRef}
+        style={style}
+        {...listeners}
+        {...attributes}
+        onClick={onClick}
+        className={cn(
+          "w-full text-left bg-autronis-card border border-autronis-border rounded-xl p-4 hover:border-autronis-accent/50 transition-all group cursor-grab active:cursor-grabbing card-glow",
+          isDragging && "opacity-30"
+        )}
+      >
+        <LeadCardContent lead={lead} actieVerlopen={!!actieVerlopen} />
+      </div>
+    </motion.div>
   );
 }
 
@@ -529,7 +539,7 @@ export default function CrmPage() {
               <Users className="w-5 h-5 text-autronis-accent" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-autronis-text-primary">{kpis.totaal}</p>
+          <AnimatedNumber value={kpis.totaal} className="text-3xl font-bold text-autronis-text-primary" />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Actieve leads</p>
         </div>
 
@@ -539,7 +549,7 @@ export default function CrmPage() {
               <Euro className="w-5 h-5 text-yellow-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-yellow-400">{formatBedrag(kpis.pipelineWaarde)}</p>
+          <AnimatedNumber value={kpis.pipelineWaarde} format={(n) => formatBedrag(n)} className="text-3xl font-bold text-yellow-400" />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Pipeline waarde</p>
         </div>
 
@@ -549,7 +559,7 @@ export default function CrmPage() {
               <TrendingUp className="w-5 h-5 text-green-400" />
             </div>
           </div>
-          <p className="text-3xl font-bold text-green-400">{formatBedrag(kpis.gewonnenWaarde)}</p>
+          <AnimatedNumber value={kpis.gewonnenWaarde} format={(n) => formatBedrag(n)} className="text-3xl font-bold text-green-400" />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Gewonnen</p>
         </div>
       </div>
@@ -573,18 +583,17 @@ export default function CrmPage() {
               >
                 {/* Count badge in column header area */}
                 <div className="flex justify-end -mt-1 mb-1 px-1">
-                  <span className="text-xs text-autronis-text-secondary bg-autronis-bg/50 px-2 py-0.5 rounded-full">
-                    {kolomLeads.length}
-                  </span>
+                  <AnimatedNumber value={kolomLeads.length} className="text-xs text-autronis-text-secondary bg-autronis-bg/50 px-2 py-0.5 rounded-full" />
                 </div>
 
-                {kolomLeads.map((lead) => (
+                {kolomLeads.map((lead, idx) => (
                   <DraggableLeadCard
                     key={lead.id}
                     lead={lead}
                     kolomKey={kolom.key}
                     isDragging={activeId === `lead-${lead.id}`}
                     onClick={() => openEditModal(lead)}
+                    index={idx}
                   />
                 ))}
               </DroppableKolom>

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, klanten } from "@/lib/db/schema";
-import { eq, and, or, ne } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
 export interface AgendaTaak {
@@ -16,7 +16,7 @@ export interface AgendaTaak {
 }
 
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
-export async function GET(_req: NextRequest) {
+export async function GET() {
   try {
     await requireAuth();
 

@@ -6,7 +6,7 @@ import {
   CheckCircle2, Circle, Clock, AlertTriangle, ListTodo, Loader2,
   ChevronDown, ChevronRight, Search, FolderOpen, Layers, Plus, X,
   Pencil, Bot, User, Copy, Terminal, GripVertical, Timer, Sparkles,
-  Zap, RefreshCw, LayoutGrid, List, BarChart3,
+  Zap, RefreshCw, LayoutGrid, List, BarChart3, Play,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -95,47 +95,81 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
   );
 }
 
-// ─── Vandaag Doen Card ───
+// ─── Vandaag Doen Card (prominent, full width) ───
 function VandaagDoenCard({ taken, onStatusToggle, onStartTimer }: {
   taken: Taak[];
   onStatusToggle: (taak: Taak) => void;
   onStartTimer: (taak: Taak) => void;
 }) {
   if (taken.length === 0) return null;
+
+  const eersteTaak = taken[0];
+
   return (
-    <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-4">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="p-1.5 rounded-lg bg-autronis-accent/15"><Zap className="w-4 h-4 text-autronis-accent" /></div>
-        <h2 className="text-sm font-bold text-autronis-text-primary">Vandaag doen</h2>
-        <span className="text-xs text-autronis-text-secondary">Top {taken.length} prioriteit</span>
+    <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 rounded-xl bg-autronis-accent/15"><Zap className="w-5 h-5 text-autronis-accent" /></div>
+        <div>
+          <h2 className="text-base font-bold text-autronis-text-primary">Vandaag doen</h2>
+          <p className="text-xs text-autronis-text-secondary">{taken.length} taken met prioriteit</p>
+        </div>
       </div>
-      <div className="space-y-1.5">
-        {taken.map((taak) => {
-          const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
-          const sc = statusConfig[taak.status] || statusConfig.open;
-          const StatusIcon = sc.icon;
-          return (
-            <div key={taak.id} className={cn("flex items-center gap-3 px-3 py-2.5 bg-autronis-bg/50 rounded-xl border-l-[3px] transition-colors hover:bg-autronis-bg/80", pc.borderColor)}>
-              <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)}>
-                <StatusIcon className={cn("w-4 h-4", taak.status === "bezig" && "animate-spin")} />
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-autronis-text-primary truncate">{taak.titel}</p>
-                <p className="text-[11px] text-autronis-text-secondary truncate">{taak.projectNaam}{taak.fase ? ` · ${taak.fase}` : ""}</p>
+
+      {/* Eerste taak = de focus taak */}
+      <div className="mb-3">
+        <div className={cn(
+          "flex items-center gap-3 px-4 py-3 bg-autronis-bg/60 rounded-xl border-l-[3px] transition-colors",
+          prioriteitConfig[eersteTaak.prioriteit]?.borderColor ?? "border-l-yellow-500/50"
+        )}>
+          <button onClick={() => onStatusToggle(eersteTaak)}
+            className={cn("flex-shrink-0 transition-colors hover:scale-110", statusConfig[eersteTaak.status]?.color ?? "text-slate-400")}>
+            {eersteTaak.status === "afgerond" ? <CheckCircle2 className="w-5 h-5" /> :
+             eersteTaak.status === "bezig" ? <Loader2 className="w-5 h-5 animate-spin" /> :
+             <Circle className="w-5 h-5" />}
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-autronis-text-primary truncate">{eersteTaak.titel}</p>
+            <p className="text-xs text-autronis-text-secondary truncate">{eersteTaak.projectNaam}{eersteTaak.fase ? ` · ${eersteTaak.fase}` : ""}</p>
+          </div>
+          {eersteTaak.uitvoerder === "claude" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0">Claude</span>}
+          <button onClick={() => onStartTimer(eersteTaak)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-semibold hover:bg-autronis-accent/25 transition-colors flex-shrink-0">
+            <Play className="w-3 h-3" /> Start
+          </button>
+          <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
+            className="px-3 py-1.5 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
+            Klaar
+          </button>
+        </div>
+      </div>
+
+      {/* Overige taken compact */}
+      {taken.length > 1 && (
+        <div className="space-y-1">
+          {taken.slice(1).map((taak) => {
+            const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
+            const sc = statusConfig[taak.status] || statusConfig.open;
+            const StatusIcon = sc.icon;
+            return (
+              <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-2 bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors hover:bg-autronis-bg/50", pc.borderColor)}>
+                <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)}>
+                  <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
+                </button>
+                <p className="flex-1 text-xs text-autronis-text-primary truncate">{taak.titel}</p>
+                <span className="text-[10px] text-autronis-text-secondary truncate max-w-20">{taak.projectNaam}</span>
+                {taak.uitvoerder === "claude" && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
+                <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)}
+                  className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-semibold hover:bg-green-500/20 transition-colors flex-shrink-0">
+                  Klaar
+                </button>
+                <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors flex-shrink-0">
+                  <Timer className="w-3 h-3" />
+                </button>
               </div>
-              {taak.uitvoerder === "claude" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0">Claude</span>}
-              {/* Klaar knop direct op card */}
-              <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)}
-                className="px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
-                Klaar
-              </button>
-              <button onClick={() => onStartTimer(taak)} className="p-1 rounded-lg text-autronis-text-secondary hover:text-autronis-accent transition-colors flex-shrink-0" title="Start timer">
-                <Timer className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -166,60 +200,41 @@ function KanbanCard({ taak, onStatusToggle, vandaag }: { taak: Taak; onStatusTog
   );
 }
 
-// ─── Week Overzicht ───
-function WeekOverzicht({ taken }: { taken: Taak[] }) {
-  const nu = new Date();
+// ─── Voortgang Compact (onderaan) ───
+function VoortgangCompact({ taken, projecten }: { taken: Taak[]; projecten: ProjectVoortgang[] }) {
   const totaal = taken.length;
   const afgerond = taken.filter((t) => t.status === "afgerond").length;
-  const open = taken.filter((t) => t.status === "open").length;
-  const bezig = taken.filter((t) => t.status === "bezig").length;
   const pct = totaal > 0 ? Math.round((afgerond / totaal) * 100) : 0;
 
-  // Top 3 projecten op voortgang
-  const projectMap = new Map<string, { af: number; tot: number }>();
-  for (const t of taken) {
-    const naam = t.projectNaam || "Overig";
-    const p = projectMap.get(naam) || { af: 0, tot: 0 };
-    p.tot++;
-    if (t.status === "afgerond") p.af++;
-    projectMap.set(naam, p);
-  }
-  const topProjecten = [...projectMap.entries()]
-    .map(([naam, { af, tot }]) => ({ naam, af, tot, pct: Math.round((af / tot) * 100) }))
-    .sort((a, b) => b.tot - a.tot)
-    .slice(0, 3);
+  if (totaal === 0) return null;
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 card-glow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-autronis-accent" />
-          <span className="text-sm font-semibold text-autronis-text-primary">Voortgang</span>
-        </div>
-        <span className="text-lg font-bold text-autronis-accent tabular-nums">{pct}%</span>
+    <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
+      <div className="flex items-center gap-3 mb-3">
+        <BarChart3 className="w-4 h-4 text-autronis-accent" />
+        <span className="text-sm font-semibold text-autronis-text-primary">Voortgang</span>
+        <span className="text-sm font-bold text-autronis-accent tabular-nums ml-auto">{pct}%</span>
+        <span className="text-xs text-autronis-text-secondary tabular-nums">{afgerond}/{totaal}</span>
       </div>
-      {/* Progress bar */}
-      <div className="w-full h-2 bg-autronis-bg rounded-full overflow-hidden mb-3">
+      <div className="w-full h-1.5 bg-autronis-bg rounded-full overflow-hidden mb-3">
         <div className="h-full bg-autronis-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
       </div>
-      {/* Stats row */}
-      <div className="flex items-center gap-4 text-xs mb-3">
-        <span className="text-green-400"><span className="font-bold tabular-nums">{afgerond}</span> afgerond</span>
-        <span className="text-yellow-400"><span className="font-bold tabular-nums">{bezig}</span> bezig</span>
-        <span className="text-autronis-text-secondary"><span className="font-bold tabular-nums">{open}</span> open</span>
-      </div>
-      {/* Top projecten */}
-      <div className="space-y-2">
-        {topProjecten.map((p) => (
-          <div key={p.naam} className="flex items-center gap-2">
-            <span className="text-xs text-autronis-text-secondary truncate w-28">{p.naam}</span>
-            <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
-              <div className="h-full bg-autronis-accent/60 rounded-full" style={{ width: `${p.pct}%` }} />
-            </div>
-            <span className="text-[10px] text-autronis-text-secondary tabular-nums w-10 text-right">{p.af}/{p.tot}</span>
-          </div>
-        ))}
-      </div>
+      {projecten.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
+          {projecten.map((p) => {
+            const ppct = p.totaal > 0 ? Math.round((p.afgerond / p.totaal) * 100) : 0;
+            return (
+              <div key={p.projectId} className="flex items-center gap-2">
+                <span className="text-[11px] text-autronis-text-secondary truncate flex-1">{p.projectNaam}</span>
+                <div className="w-12 h-1 bg-autronis-bg rounded-full overflow-hidden flex-shrink-0">
+                  <div className="h-full bg-autronis-accent/60 rounded-full" style={{ width: `${ppct}%` }} />
+                </div>
+                <span className="text-[10px] text-autronis-text-secondary tabular-nums w-8 text-right flex-shrink-0">{ppct}%</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -289,7 +304,7 @@ export default function TakenPage() {
 
   const gegroepeerd = useMemo(() => groepeerTaken(gefilterdeTaken), [gefilterdeTaken]);
 
-  // "Vandaag doen" — top 3 niet-afgeronde taken
+  // "Vandaag doen" — top 5 niet-afgeronde taken
   const vandaagTaken = useMemo(() => {
     const vandaag = new Date().toISOString().slice(0, 10);
     return taken
@@ -305,7 +320,7 @@ export default function TakenPage() {
         if (b.status === "bezig" && a.status !== "bezig") return 1;
         return 0;
       })
-      .slice(0, 3);
+      .slice(0, 5);
   }, [taken]);
 
   const uniekeProjecten = useMemo(() => {
@@ -440,25 +455,32 @@ export default function TakenPage() {
   };
 
   const vandaag = new Date().toISOString().slice(0, 10);
-  const claudeTaken = taken.filter((t) => t.uitvoerder === "claude" && t.status !== "afgerond").length;
-  const handmatigTaken = taken.filter((t) => (t.uitvoerder || "handmatig") === "handmatig" && t.status !== "afgerond").length;
+
+  // Active filters count for badge
+  const activeFilterCount = [
+    statusFilter !== "alle",
+    projectFilter !== "alle",
+    faseFilter !== "alle",
+    prioriteitFilter !== "alle",
+    uitvoerderFilter !== "alle",
+    zoek.length > 0,
+  ].filter(Boolean).length;
 
   if (loading) return <div className="p-4 lg:p-6"><SkeletonTaken /></div>;
 
   return (
     <PageTransition>
-      <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-4">
+      <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-autronis-text-primary">Taken</h1>
             <p className="text-sm text-autronis-text-secondary">
-              {kpis.totaal} taken &middot; {kpis.open + kpis.bezig} actief
+              {kpis.open + kpis.bezig} actief &middot; {kpis.afgerond} afgerond
               {kpis.verlopen > 0 && <span className="text-red-400 ml-1">&middot; {kpis.verlopen} verlopen</span>}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* View toggles */}
             <div className="flex items-center bg-autronis-bg border border-autronis-border rounded-lg p-0.5">
               {([
                 { key: "lijst" as const, icon: List, label: "Lijst" },
@@ -482,110 +504,60 @@ export default function TakenPage() {
           </div>
         </div>
 
-        {/* Week Overzicht + Vandaag Doen row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <WeekOverzicht taken={taken} />
-          <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} />
-        </div>
+        {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
+        <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} />
 
-        {/* KPI balk compact */}
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-5 sm:overflow-visible">
-          {[
-            { label: "Totaal", value: kpis.totaal, icon: ListTodo, color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
-            { label: "Open", value: kpis.open, icon: Circle, color: "text-slate-400", bg: "bg-slate-500/10" },
-            { label: "Bezig", value: kpis.bezig, icon: Clock, color: "text-blue-400", bg: "bg-blue-500/10" },
-            { label: "Afgerond", value: kpis.afgerond, icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/10" },
-            { label: "Verlopen", value: kpis.verlopen, icon: AlertTriangle, color: kpis.verlopen > 0 ? "text-red-400" : "text-autronis-accent", bg: kpis.verlopen > 0 ? "bg-red-500/10" : "bg-autronis-accent/10" },
-          ].map((kpi) => {
-            const Icon = kpi.icon;
-            return (
-              <div key={kpi.label} className="bg-autronis-card border border-autronis-border rounded-lg p-3 card-glow min-w-[100px] flex-shrink-0 sm:min-w-0 sm:flex-shrink">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <div className={cn("p-1 rounded", kpi.bg)}><Icon className={cn("w-3 h-3", kpi.color)} /></div>
-                  <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">{kpi.label}</span>
-                </div>
-                <p className={cn("text-xl font-bold tabular-nums", kpi.color)}>{kpi.value}</p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Uitvoerder cards */}
-        <div className="grid grid-cols-2 gap-2">
-          <div onClick={() => setUitvoerderFilter(uitvoerderFilter === "claude" ? "alle" : "claude")}
-            className={cn("bg-autronis-card border rounded-lg p-3 card-glow cursor-pointer transition-colors", uitvoerderFilter === "claude" ? "border-purple-500/50" : "border-autronis-border hover:border-purple-500/30")}>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-purple-500/10"><Bot className="w-4 h-4 text-purple-400" /></div>
-              <div className="flex-1"><p className="text-sm font-medium text-autronis-text-primary">Claude</p></div>
-              <p className="text-xl font-bold text-purple-400 tabular-nums">{claudeTaken}</p>
-            </div>
+        {/* 2. FILTER BAR — één compacte rij */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Status pills */}
+          <div className="flex items-center gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
+            {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }].map((f) => (
+              <button key={f.key} onClick={() => setStatusFilter(f.key)} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === f.key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>{f.label}</button>
+            ))}
           </div>
-          <div onClick={() => setUitvoerderFilter(uitvoerderFilter === "handmatig" ? "alle" : "handmatig")}
-            className={cn("bg-autronis-card border rounded-lg p-3 card-glow cursor-pointer transition-colors", uitvoerderFilter === "handmatig" ? "border-orange-500/50" : "border-autronis-border hover:border-orange-500/30")}>
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-lg bg-orange-500/10"><User className="w-4 h-4 text-orange-400" /></div>
-              <div className="flex-1"><p className="text-sm font-medium text-autronis-text-primary">Handmatig</p></div>
-              <p className="text-xl font-bold text-orange-400 tabular-nums">{handmatigTaken}</p>
-            </div>
-          </div>
-        </div>
 
-        {/* Project voortgang — klikbaar */}
-        {projectVoortgang.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {projectVoortgang.map((pv) => {
-              const faseTooltip = pv.fases?.map((f) => `${f.fase}: ${f.afgerond}/${f.totaal}`).join("\n") || "";
-              return (
-                <button key={pv.projectId} onClick={() => scrollToProject(pv.projectId)} title={faseTooltip}
-                  className="bg-autronis-card border border-autronis-border rounded-lg p-3 text-left hover:border-autronis-accent/30 transition-colors group card-glow">
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <FolderOpen className="w-3.5 h-3.5 text-autronis-accent" />
-                    <span className="text-xs font-medium text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">{pv.projectNaam}</span>
-                  </div>
-                  <ProgressBar afgerond={pv.afgerond} totaal={pv.totaal} size="sm" />
-                </button>
-              );
-            })}
-          </div>
-        )}
+          {/* Project filter */}
+          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+            <option value="alle">Alle projecten</option>
+            {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
+          </select>
 
-        {/* Project Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
-          <button onClick={() => setProjectFilter("alle")}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors", projectFilter === "alle" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50")}>
-            Alle
-          </button>
-          {uniekeProjecten.map((p) => (
-            <button key={p.id} onClick={() => setProjectFilter(projectFilter === p.id ? "alle" : p.id)}
-              className={cn("px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors", projectFilter === p.id ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50")}>
-              {p.naam}
+          {/* Prioriteit filter */}
+          <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+            <option value="alle">Alle prioriteiten</option>
+            <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
+          </select>
+
+          {/* Uitvoerder filter */}
+          <select value={uitvoerderFilter} onChange={(e) => setUitvoerderFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+            <option value="alle">Alle uitvoerders</option>
+            <option value="claude">Claude</option>
+            <option value="handmatig">Handmatig</option>
+          </select>
+
+          {/* Fase filter */}
+          <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+            <option value="alle">Alle fases</option>
+            {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+
+          {/* Search */}
+          <div className="relative sm:ml-auto sm:w-44">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-autronis-text-secondary/50" />
+            <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoeken..."
+              className="w-full bg-autronis-card border border-autronis-border rounded-lg pl-7 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+          </div>
+
+          {/* Clear filters */}
+          {activeFilterCount > 0 && (
+            <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); }}
+              className="flex items-center gap-1 px-2 py-1 text-xs text-autronis-text-secondary hover:text-red-400 transition-colors">
+              <X className="w-3 h-3" /> Wis filters ({activeFilterCount})
             </button>
-          ))}
+          )}
         </div>
 
-        {/* Filters */}
-        <div className="bg-autronis-card border border-autronis-border rounded-lg p-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-0.5">
-              {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }].map((f) => (
-                <button key={f.key} onClick={() => setStatusFilter(f.key)} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === f.key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50")}>{f.label}</button>
-              ))}
-            </div>
-            <div className="w-px h-4 bg-autronis-border" />
-            <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Alle fases</option>
-              {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-            <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Alle prioriteiten</option>
-              <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
-            </select>
-            <div className="relative sm:ml-auto sm:w-48">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-autronis-text-secondary/50" />
-              <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoeken..." className="w-full bg-autronis-bg border border-autronis-border rounded-md pl-7 pr-3 py-1 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
-            </div>
-          </div>
-        </div>
+        {/* 3. TAKEN LIJST / KANBAN / COMPACT — core product */}
 
         {/* ─── KANBAN VIEW ─── */}
         {weergave === "kanban" && (
@@ -624,15 +596,24 @@ export default function TakenPage() {
                 const StatusIcon = sc.icon;
                 const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
                 return (
-                  <div key={taak.id} className={cn("flex items-center gap-3 px-4 py-2 hover:bg-autronis-bg/30 transition-colors", taak.status === "afgerond" && "opacity-40")}>
+                  <div key={taak.id} className={cn("flex items-center gap-3 px-4 py-1.5 hover:bg-autronis-bg/30 transition-colors group", taak.status === "afgerond" && "opacity-40")}>
                     <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0", sc.color)}>
-                      <StatusIcon className={cn("w-4 h-4", taak.status === "bezig" && "animate-spin")} />
+                      <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                     </button>
-                    <p className={cn("flex-1 text-sm truncate", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
+                    <p className={cn("flex-1 text-xs truncate", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                     <span className="text-[10px] text-autronis-text-secondary truncate max-w-24">{taak.projectNaam}</span>
                     <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                     {taak.uitvoerder === "claude" && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
                     {isVerlopen && <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />}
+                    {/* Hover actions */}
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      {taak.status !== "afgerond" && (
+                        <>
+                          <button onClick={() => handleStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>
+                          <button onClick={() => handleMarkDone(taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Markeer klaar"><CheckCircle2 className="w-3 h-3" /></button>
+                        </>
+                      )}
+                    </div>
                     <div className="relative"><CheckBurst active={completedTaskId === taak.id} /></div>
                   </div>
                 );
@@ -651,7 +632,7 @@ export default function TakenPage() {
                 const count = taken.filter((t) => t.status === status).length;
                 return (
                   <div key={status} onDragOver={(e) => { e.preventDefault(); setDragOverStatus(status); }} onDragLeave={() => setDragOverStatus(null)} onDrop={(e) => handleDrop(e, status)}
-                    className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed transition-colors", dragOverStatus === status ? "border-autronis-accent bg-autronis-accent/10" : "border-autronis-border/30 bg-autronis-bg/20")}>
+                    className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 border-dashed transition-colors", dragOverStatus === status ? "border-autronis-accent bg-autronis-accent/10" : "border-autronis-border/30 bg-autronis-bg/20")}>
                     <Icon className={cn("w-3.5 h-3.5", sc.color)} /><span className="text-xs font-medium text-autronis-text-primary">{sc.label}</span>
                     <span className="text-xs text-autronis-text-secondary ml-auto tabular-nums">{count}</span>
                   </div>
@@ -663,13 +644,13 @@ export default function TakenPage() {
             {gefilterdeTaken.length === 0 ? (
               <EmptyState titel="Geen taken" beschrijving="Voeg je eerste taak toe om te beginnen." actieLabel="Nieuwe taak" onActie={openNieuwModal} />
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {gegroepeerd.map((project) => {
                   const isPC = !collapsedProjects.has(project.projectId);
                   return (
                     <div key={project.projectId} ref={(el) => { if (el) projectSectionsRef.current.set(project.projectId, el); }}
                       className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
-                      <button onClick={() => toggleProject(project.projectId)} className="w-full flex items-center gap-2 px-4 py-3 hover:bg-autronis-bg/30 transition-colors">
+                      <button onClick={() => toggleProject(project.projectId)} className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-autronis-bg/30 transition-colors">
                         {isPC ? <ChevronRight className="w-4 h-4 text-autronis-text-secondary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />}
                         <FolderOpen className="w-4 h-4 text-autronis-accent" />
                         <span className="text-sm font-semibold text-autronis-text-primary">{project.projectNaam}</span>
@@ -683,7 +664,7 @@ export default function TakenPage() {
                             const isComplete = fase.afgerond === fase.totaal && fase.totaal > 0;
                             return (
                               <div key={faseKey}>
-                                <button onClick={() => toggleFase(faseKey)} className="w-full flex items-center gap-2 px-4 py-2.5 pl-10 hover:bg-autronis-bg/20 transition-colors">
+                                <button onClick={() => toggleFase(faseKey)} className="w-full flex items-center gap-2 px-4 py-2 pl-10 hover:bg-autronis-bg/20 transition-colors">
                                   {isFC ? <ChevronRight className="w-3.5 h-3.5 text-autronis-text-secondary" /> : <ChevronDown className="w-3.5 h-3.5 text-autronis-text-secondary" />}
                                   <Layers className="w-3.5 h-3.5 text-autronis-text-secondary" />
                                   <span className={cn("text-xs font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
@@ -691,7 +672,7 @@ export default function TakenPage() {
                                   <div className="flex-1 max-w-28"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
                                 </button>
                                 {!isFC && (
-                                  <div className="space-y-0.5 px-4 pb-2 pl-16">
+                                  <div className="space-y-px px-4 pb-1.5 pl-16">
                                     {fase.taken.map((taak) => {
                                       const sc = statusConfig[taak.status] || statusConfig.open;
                                       const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
@@ -702,11 +683,11 @@ export default function TakenPage() {
 
                                       return (
                                         <div key={taak.id} draggable onDragStart={(e) => { e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
-                                          className={cn("bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing", taak.status === "afgerond" && "opacity-40", pc.borderColor)}>
-                                          <div className="flex items-center gap-2 px-3 py-2">
-                                            <GripVertical className="w-3 h-3 text-autronis-text-secondary/30 flex-shrink-0" />
+                                          className={cn("bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing group", taak.status === "afgerond" && "opacity-40", pc.borderColor)}>
+                                          <div className="flex items-center gap-2 px-3 py-1.5">
+                                            <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                                             <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
-                                              <StatusIcon className={cn("w-4 h-4", taak.status === "bezig" && "animate-spin")} />
+                                              <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                                             </button>
                                             <div className="flex-1 min-w-0">
                                               <p className={cn("text-xs font-medium truncate", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
@@ -714,16 +695,19 @@ export default function TakenPage() {
                                             {isClaude && <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                                             {taak.deadline && <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400" : "text-autronis-text-secondary")}>{isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}{formatDatum(taak.deadline)}</div>}
-                                            {taak.status !== "afgerond" && <button onClick={(e) => { e.stopPropagation(); handleStartTimer(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors flex-shrink-0" title="Start timer"><Timer className="w-3 h-3" /></button>}
-                                            {isClaude && taak.prompt && taak.status !== "afgerond" && <CopyPromptButton prompt={taak.prompt} />}
-                                            <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit))}
-                                              className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>
-                                            {(taak.omschrijving || taak.prompt || taak.projectMap) && <button onClick={() => setExpandedId(isExp ? null : taak.id)} className="flex-shrink-0 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">{isExp ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}</button>}
+                                            {/* Hover actions */}
+                                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                                              {taak.status !== "afgerond" && <button onClick={(e) => { e.stopPropagation(); handleStartTimer(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>}
+                                              {isClaude && taak.prompt && taak.status !== "afgerond" && <CopyPromptButton prompt={taak.prompt} />}
+                                              <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit))}
+                                                className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>
+                                              {(taak.omschrijving || taak.prompt || taak.projectMap) && <button onClick={() => setExpandedId(isExp ? null : taak.id)} className="flex-shrink-0 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">{isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</button>}
+                                            </div>
                                             <div className="relative"><CheckBurst active={completedTaskId === taak.id} /></div>
                                           </div>
 
                                           {editingId === taak.id && (
-                                            <div className="flex items-center gap-2 px-3 pb-2 pl-12">
+                                            <div className="flex items-center gap-2 px-3 pb-1.5 pl-12">
                                               <input type="text" value={editFase} onChange={(e) => setEditFase(e.target.value)} placeholder="Fase..." className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary w-28 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
                                               <select value={editPrioriteit} onChange={(e) => setEditPrioriteit(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
                                                 <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
@@ -734,7 +718,7 @@ export default function TakenPage() {
                                           )}
 
                                           {isExp && (
-                                            <div className="px-3 pb-2 pl-12 space-y-2">
+                                            <div className="px-3 pb-1.5 pl-12 space-y-1.5">
                                               {taak.omschrijving && <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">{taak.omschrijving}</p>}
                                               {isClaude && taak.prompt && (
                                                 <div className="bg-purple-500/5 border border-purple-500/20 rounded-lg p-2.5">
@@ -750,7 +734,7 @@ export default function TakenPage() {
                                               )}
                                               {isClaude && taak.status !== "afgerond" && (
                                                 <button onClick={() => { if (taak.prompt) { navigator.clipboard.writeText(taak.prompt); addToast("Prompt gekopieerd — open Claude Code in het juiste project", "succes"); } }}
-                                                  className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/30 text-purple-400 rounded-lg text-xs font-semibold hover:bg-purple-500/20 transition-colors w-full justify-center">
+                                                  className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/30 text-purple-400 rounded-lg text-xs font-semibold hover:bg-purple-500/20 transition-colors w-full justify-center">
                                                   <Sparkles className="w-3.5 h-3.5" /> Laat Claude dit doen
                                                 </button>
                                               )}
@@ -773,6 +757,9 @@ export default function TakenPage() {
             )}
           </>
         )}
+
+        {/* 4. VOORTGANG — compact onderaan */}
+        <VoortgangCompact taken={taken} projecten={projectVoortgang} />
 
         {/* Modal */}
         {modalOpen && (

@@ -1456,12 +1456,61 @@ export default function AgendaPage() {
             </>
           ) : (
             <>
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-autronis-accent" />
+              {/* Taken sectie */}
+              {agendaTaken.length > 0 && (
+                <div className="mb-5">
+                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+                    <ListTodo className="w-4 h-4 text-orange-400" />
+                    Open taken
+                    <span className="text-[10px] text-autronis-text-secondary font-normal ml-auto">{takenStats.open + takenStats.bezig}</span>
+                  </h3>
+                  <div className="space-y-2">
+                    {agendaTaken.filter((t) => t.status === "bezig" || t.prioriteit === "hoog").slice(0, 5).map((taak) => {
+                      const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                      return (
+                        <Link
+                          key={taak.id}
+                          href="/taken"
+                          className="block p-2.5 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 transition-colors"
+                          style={{ borderLeftColor: prioColor }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <CheckSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: prioColor }} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                {taak.status === "bezig" && (
+                                  <span className="text-[10px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
+                                )}
+                                {taak.projectNaam && (
+                                  <span className="text-[10px] text-autronis-text-secondary truncate">{taak.projectNaam}</span>
+                                )}
+                                {taak.deadline && (
+                                  <span className="text-[10px] text-autronis-text-secondary/60 ml-auto tabular-nums flex-shrink-0">
+                                    {new Date(taak.deadline).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                    {(takenStats.open + takenStats.bezig) > 5 && (
+                      <Link href="/taken" className="block text-center text-xs text-autronis-accent hover:underline py-1">
+                        Alle taken bekijken
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-autronis-accent" />
                 Aankomend
               </h3>
               {aankomend.length === 0 ? (
-                <p className="text-sm text-autronis-text-secondary">Geen aankomende items.</p>
+                <p className="text-xs text-autronis-text-secondary">Geen aankomende items.</p>
           ) : (
             <div className="space-y-3">
               {aankomend.map((item) => {

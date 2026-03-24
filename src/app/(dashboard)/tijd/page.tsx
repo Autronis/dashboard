@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, Brain, Zap } from "lucide-react";
+import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, Brain, Zap, ArrowUp, ArrowDown, Minus, Lightbulb, Play, AlertCircle, CheckCircle2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSessies } from "@/hooks/queries/use-screen-time";
@@ -40,7 +40,16 @@ export default function TijdPage() {
 
   const { data: sessiesData, isLoading: sessiesLoading } = useSessies(van);
 
+  // Fetch yesterday's stats for trend comparison
+  const gisteren = (() => {
+    const d = new Date(van);
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  })();
+  const { data: gisterenData } = useSessies(gisteren);
+
   const stats = sessiesData?.stats ?? null;
+  const gisterenStats = gisterenData?.stats ?? null;
 
   const handleNavigeer = useCallback(
     (richting: -1 | 1) => {

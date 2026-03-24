@@ -30,12 +30,15 @@ interface SequentieListItem {
   contactpersoon: string | null;
   email: string | null;
   domein: string | null;
+  domeinDagLimiet: number | null;
+  domeinVandaagVerstuurd: number | null;
   totaalEmails: number;
   verstuurd: number;
   geopend: number;
   geklikt: number;
   beantwoord: number;
   bounced: number;
+  volgendeGeplandEmail: string | null;
 }
 
 interface OutreachKPIs {
@@ -48,6 +51,14 @@ interface OutreachKPIs {
   openRate: number;
   clickRate: number;
   replyRate: number;
+  statusCounts: {
+    draft: number;
+    actief: number;
+    gepauzeerd: number;
+    gestopt: number;
+    voltooid: number;
+  };
+  scansZonderOutreach: number;
 }
 
 interface OutreachListData {

@@ -146,7 +146,7 @@ function TaakStatusIcon({ status }: { status: string }) {
   return <Circle className="w-4 h-4 text-autronis-text-secondary/40 flex-shrink-0" />;
 }
 
-function FaseSection({ fase }: { fase: Fase }) {
+function FaseSection({ fase, onStatusToggle }: { fase: Fase; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
   const [open, setOpen] = useState(fase.afgerond < fase.totaal);
   const percentage = fase.totaal > 0 ? Math.round((fase.afgerond / fase.totaal) * 100) : 0;
   const isComplete = percentage >= 100;
@@ -160,11 +160,9 @@ function FaseSection({ fase }: { fase: Fase }) {
         className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors"
       >
         <div className="flex items-center gap-3">
-          {open ? (
+          <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
             <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />
-          ) : (
-            <ChevronRight className="w-4 h-4 text-autronis-text-secondary" />
-          )}
+          </motion.div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className={cn("text-sm font-semibold", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.naam}</h3>
@@ -172,67 +170,71 @@ function FaseSection({ fase }: { fase: Fase }) {
               {isNotStarted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-border text-autronis-text-secondary font-medium">Niet gestart</span>}
               {hogePrio > 0 && !isComplete && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 font-medium">{hogePrio} hoog</span>}
             </div>
-            <p className="text-xs text-autronis-text-secondary mt-0.5">
-              {fase.afgerond}/{fase.totaal} taken
-            </p>
+            <p className="text-xs text-autronis-text-secondary mt-0.5">{fase.afgerond}/{fase.totaal} taken</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className={cn(
-            "text-sm font-bold tabular-nums",
-            isComplete ? "text-green-400" : "text-autronis-text-primary"
-          )}>
-            {percentage}%
-          </span>
-          <div className="w-20">
-            <ProgressBar percentage={percentage} />
-          </div>
+          <span className={cn("text-sm font-bold tabular-nums", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{percentage}%</span>
+          <div className="w-20"><ProgressBar percentage={percentage} /></div>
         </div>
       </button>
 
-      {open && (
-        <div className="border-t border-autronis-border">
-          {fase.taken.map((taak) => {
-            const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/30" : "border-l-transparent";
-            const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
-            return (
-              <div
-                key={taak.id}
-                className={cn(
-                  "flex items-center gap-2.5 px-4 py-2 border-b border-autronis-border/30 last:border-b-0 border-l-[3px] transition-colors",
-                  prioColor,
-                  taak.status === "afgerond" ? "opacity-50" : "hover:bg-autronis-border/10"
-                )}
-              >
-                <TaakStatusIcon status={taak.status} />
-                <span className={cn(
-                  "flex-1 text-xs",
-                  taak.status === "afgerond"
-                    ? "text-autronis-text-secondary line-through"
-                    : "text-autronis-text-primary"
-                )}>
-                  {taak.titel}
-                </span>
-                {taak.status === "bezig" && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-medium">Bezig</span>
-                )}
-                {taak.uitvoerder === "claude" && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-medium">Claude</span>
-                )}
-                {taak.prioriteit === "hoog" && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium">Hoog</span>
-                )}
-                {taak.deadline && (
-                  <span className={cn("text-[10px] tabular-nums", isVerlopen ? "text-red-400 font-medium" : "text-autronis-text-secondary/60")}>
-                    {isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}
-                    {formatDatum(taak.deadline)}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-autronis-border">
+              {fase.taken.map((taak) => {
+                const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/30" : "border-l-transparent";
+                const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
+                const nextStatus = taak.status === "open" ? "bezig" : taak.status === "bezig" ? "afgerond" : "open";
+                return (
+                  <div
+                    key={taak.id}
+                    className={cn(
+                      "flex items-center gap-2.5 px-4 py-2 border-b border-autronis-border/30 last:border-b-0 border-l-[3px] transition-colors group",
+                      prioColor,
+                      taak.status === "afgerond" ? "opacity-50" : "hover:bg-autronis-border/10"
+                    )}
+                  >
+                    <button
+                      onClick={() => onStatusToggle?.(taak.id, taak.status)}
+                      title={`Zet naar: ${nextStatus}`}
+                      className="flex-shrink-0 hover:scale-110 transition-transform"
+                    >
+                      <TaakStatusIcon status={taak.status} />
+                    </button>
+                    <span className={cn("flex-1 text-xs", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>
+                      {taak.titel}
+                    </span>
+                    {/* Sync-origin indicator */}
+                    <span title={taak.uitvoerder === "claude" ? "Claude taak (TODO.md)" : "Handmatige taak"} className="flex-shrink-0">
+                      {taak.uitvoerder === "claude"
+                        ? <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-medium">Claude</span>
+                        : <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-500/10 text-orange-400/70 font-medium">Handmatig</span>
+                      }
+                    </span>
+                    {taak.prioriteit === "hoog" && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-medium flex-shrink-0">Hoog</span>
+                    )}
+                    {taak.deadline && (
+                      <span className={cn("text-[10px] tabular-nums flex-shrink-0", isVerlopen ? "text-red-400 font-medium" : "text-autronis-text-secondary/60")}>
+                        {isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}
+                        {formatDatum(taak.deadline)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -336,8 +338,9 @@ function StatusIntelligence({ project, fases }: { project: ProjectDetail; fases:
   }[health.status];
   const Icon = cfg.icon;
 
+  const pulseClass = health.status === "risico" ? "health-pulse-risico" : health.status === "achter" ? "health-pulse-achter" : "";
   return (
-    <div className={cn("rounded-xl border p-4", cfg.border, cfg.bg)}>
+    <div className={cn("rounded-xl border p-4", cfg.border, cfg.bg, pulseClass)}>
       <div className="flex items-center gap-2 mb-1">
         <Icon className={cn("w-4 h-4", cfg.color)} />
         <span className={cn("text-sm font-bold", cfg.color)}>{cfg.label}</span>
@@ -447,6 +450,7 @@ export default function ProjectDetailPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [openingVSCode, setOpeningVSCode] = useState(false);
+  const pendingToggles = useRef<Set<number>>(new Set());
 
   const fetchProject = useCallback(async () => {
     try {
@@ -492,6 +496,31 @@ export default function ProjectDetailPage() {
       setSyncing(false);
     }
   }, [project, addToast, fetchProject]);
+
+  // Inline optimistic status toggle
+  const handleTaakStatusToggle = useCallback(async (taakId: number, huidigStatus: string) => {
+    if (pendingToggles.current.has(taakId)) return;
+    const volgende = huidigStatus === "open" ? "bezig" : huidigStatus === "bezig" ? "afgerond" : "open";
+    // Optimistic update
+    setFases((prev) => prev.map((f) => ({
+      ...f,
+      taken: f.taken.map((t) => t.id === taakId ? { ...t, status: volgende } : t),
+      afgerond: f.taken.some((t) => t.id === taakId)
+        ? f.taken.filter((t) => t.id !== taakId || volgende === "afgerond").filter((t) => t.status === "afgerond").length +
+          (volgende === "afgerond" ? 1 : 0)
+        : f.afgerond,
+    })));
+    pendingToggles.current.add(taakId);
+    try {
+      await fetch(`/api/taken/${taakId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: volgende }) });
+      fetchProject();
+    } catch {
+      addToast("Kon status niet bijwerken", "fout");
+      fetchProject(); // revert by refetching
+    } finally {
+      pendingToggles.current.delete(taakId);
+    }
+  }, [fetchProject, addToast]);
 
   const techStack = useMemo(() => extractTechStack(project?.omschrijving ?? null), [project?.omschrijving]);
   const samenvatting = useMemo(() => {
@@ -659,7 +688,7 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="space-y-3">
               {fases.map((fase) => (
-                <FaseSection key={fase.naam} fase={fase} />
+                <FaseSection key={fase.naam} fase={fase} onStatusToggle={handleTaakStatusToggle} />
               ))}
             </div>
           )}

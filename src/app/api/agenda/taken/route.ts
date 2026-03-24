@@ -36,9 +36,8 @@ export async function GET() {
 
     return NextResponse.json({ taken: rows });
   } catch (error) {
-    return NextResponse.json(
-      { fout: error instanceof Error ? error.message : "Onbekende fout" },
-      { status: error instanceof Error && error.message === "Onbekende fout" ? 500 : 401 }
-    );
+    const message = error instanceof Error ? error.message : "Onbekende fout";
+    const status = message === "Niet geauthenticeerd" ? 401 : 500;
+    return NextResponse.json({ fout: message }, { status });
   }
 }

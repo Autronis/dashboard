@@ -310,17 +310,13 @@ export default function KlantenPage() {
     return klanten
       .filter((k) => {
         if (filterStatus === "alles") {
-          if (!k.isActief && filterStatus === "alles") {
-            // show inactive only when explicitly filtering for inactief or all
-            if (k.relatieStatus === "inactief" && filterStatus !== "inactief") return false;
-          }
+          // hide inactive by default
+          if (!k.isActief) return false;
+        } else if (filterStatus === "inactief") {
+          if (k.isActief) return false;
         } else {
-          if (filterStatus === "inactief") {
-            if (k.isActief) return false;
-          } else {
-            if (!k.isActief) return false;
-            if (k.relatieStatus !== filterStatus) return false;
-          }
+          if (!k.isActief) return false;
+          if (k.relatieStatus !== filterStatus) return false;
         }
         if (filterGezondheid !== "alles" && k.gezondheid !== filterGezondheid) return false;
         if (zoek) {

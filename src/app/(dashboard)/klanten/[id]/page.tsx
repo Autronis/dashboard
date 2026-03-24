@@ -843,9 +843,43 @@ export default function KlantDetailPage() {
       {/* Timeline tab */}
       {activeTab === "tijdlijn" && (
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-          <h2 className="text-lg font-semibold text-autronis-text-primary mb-6">
-            Interactie-tijdlijn
-          </h2>
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
+            <h2 className="text-lg font-semibold text-autronis-text-primary">Interactie-tijdlijn</h2>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["alles", "factuur", "meeting", "notitie", "tijdregistratie", "offerte"] as TijdlijnFilter[]).map((f) => {
+                const filterLabels: Record<TijdlijnFilter, string> = {
+                  alles: "Alles",
+                  factuur: "Facturen",
+                  meeting: "Meetings",
+                  notitie: "Notities",
+                  tijdregistratie: "Uren",
+                  offerte: "Offertes",
+                };
+                const filterColors: Record<TijdlijnFilter, string> = {
+                  alles: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
+                  factuur: "text-green-400 border-green-400/40 bg-green-500/10",
+                  meeting: "text-purple-400 border-purple-400/40 bg-purple-500/10",
+                  notitie: "text-amber-400 border-amber-400/40 bg-amber-500/10",
+                  tijdregistratie: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
+                  offerte: "text-blue-400 border-blue-400/40 bg-blue-500/10",
+                };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setTijdlijnFilter(f)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors",
+                      tijdlijnFilter === f
+                        ? filterColors[f]
+                        : "bg-autronis-bg/50 border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                    )}
+                  >
+                    {filterLabels[f]}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           {tijdlijn.length === 0 ? (
             <p className="text-base text-autronis-text-secondary">
               Nog geen interacties vastgelegd.
@@ -855,7 +889,7 @@ export default function KlantDetailPage() {
               {/* Timeline line */}
               <div className="absolute left-5 top-0 bottom-0 w-px bg-autronis-border" />
               <div className="space-y-6">
-                {tijdlijn.map((item: TijdlijnItem) => {
+                {tijdlijn.filter((item: TijdlijnItem) => tijdlijnFilter === "alles" || item.type === tijdlijnFilter).map((item: TijdlijnItem) => {
                   const config = tijdlijnTypeConfig[item.type] || tijdlijnTypeConfig.notitie;
                   const Icon = config.icon;
                   return (
@@ -1011,23 +1045,41 @@ export default function KlantDetailPage() {
                 <div className="space-y-3">
                   {facturen.slice(0, 10).map((factuur) => {
                     const fConfig = factuurStatusConfig[factuur.status || "concept"] || factuurStatusConfig.concept;
+                    const isOverdue = factuur.status !== "betaald" && factuur.vervaldatum
+                      ? new Date(factuur.vervaldatum) < new Date()
+                      : false;
+                    const dagenTeLaat = isOverdue && factuur.vervaldatum
+                      ? Math.floor((Date.now() - new Date(factuur.vervaldatum).getTime()) / 86400000)
+                      : 0;
                     return (
                       <Link
                         key={factuur.id}
                         href={`/financien/${factuur.id}`}
-                        className="flex items-center justify-between gap-3 bg-autronis-bg/50 rounded-xl p-4 hover:bg-autronis-bg/80 transition-colors"
+                        className={cn(
+                          "flex items-center justify-between gap-3 rounded-xl p-4 transition-colors",
+                          isOverdue
+                            ? "bg-red-500/5 border border-red-500/20 hover:bg-red-500/10"
+                            : "bg-autronis-bg/50 hover:bg-autronis-bg/80"
+                        )}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-autronis-text-primary">{factuur.factuurnummer}</p>
+                          <p className={cn("text-sm font-semibold", isOverdue ? "text-red-400" : "text-autronis-text-primary")}>
+                            {factuur.factuurnummer}
+                          </p>
                           <p className="text-xs text-autronis-text-secondary mt-0.5">
                             {factuur.factuurdatum ? formatDatumKort(factuur.factuurdatum) : "Geen datum"}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
+                          {isOverdue && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-red-500/15 text-red-400">
+                              {dagenTeLaat}d te laat
+                            </span>
+                          )}
                           <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-medium", fConfig.bg, fConfig.text)}>
                             {fConfig.label}
                           </span>
-                          <span className="text-sm font-bold text-autronis-text-primary tabular-nums">
+                          <span className={cn("text-sm font-bold tabular-nums", isOverdue ? "text-red-400" : "text-autronis-text-primary")}>
                             {formatBedrag(factuur.bedragInclBtw || 0)}
                           </span>
                         </div>

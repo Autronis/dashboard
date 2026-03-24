@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -86,31 +87,26 @@ function StatusBadge({ status }: { status: string }) {
 function VoortgangRing({ percentage, size = 80 }: { percentage: number; size?: number }) {
   const radius = (size - 8) / 2;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (percentage / 100) * circumference;
+  const [displayed, setDisplayed] = useState(0);
   const color = percentage >= 100 ? "#22c55e" : percentage >= 50 ? "#17B8A5" : "#3b82f6";
+
+  useEffect(() => {
+    const t = setTimeout(() => setDisplayed(percentage), 80);
+    return () => clearTimeout(t);
+  }, [percentage]);
+
+  const offset = circumference - (displayed / 100) * circumference;
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#2A3538" strokeWidth={6} />
         <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="#2A3538"
-          strokeWidth={6}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={6}
-          strokeLinecap="round"
+          cx={size / 2} cy={size / 2} r={radius}
+          fill="none" stroke={color} strokeWidth={6} strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={offset}
-          className="transition-all duration-700"
+          style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.4,0,0.2,1)" }}
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-lg font-bold text-autronis-text-primary tabular-nums">
@@ -120,14 +116,24 @@ function VoortgangRing({ percentage, size = 80 }: { percentage: number; size?: n
   );
 }
 
+function getProgressGradient(pct: number): string {
+  if (pct >= 100) return "#22c55e";
+  if (pct >= 75) return "linear-gradient(90deg, #17B8A5, #22c55e)";
+  if (pct >= 40) return "linear-gradient(90deg, #3b82f6, #17B8A5)";
+  return "linear-gradient(90deg, #3b82f6 0%, #17B8A5 150%)";
+}
+
 function ProgressBar({ percentage }: { percentage: number }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
   return (
     <div className="w-full h-2 bg-autronis-border rounded-full overflow-hidden">
       <div
-        className="h-full rounded-full transition-all duration-500"
+        className="h-full rounded-full"
         style={{
-          width: `${Math.min(100, percentage)}%`,
-          background: percentage >= 100 ? "#22c55e" : percentage >= 50 ? "#17B8A5" : "#3b82f6",
+          width: mounted ? `${Math.min(100, percentage)}%` : "0%",
+          background: getProgressGradient(percentage),
+          transition: "width 0.7s cubic-bezier(0.4,0,0.2,1)",
         }}
       />
     </div>

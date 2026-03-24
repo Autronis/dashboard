@@ -305,12 +305,16 @@ function formatRelatief(datum: string | null): string {
   return formatDatum(datum);
 }
 
-function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void }) {
+function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void; zoek: string }) {
   const ProjectIcon = getProjectIcon(project);
   const iconColor = getIconColor(project.status ?? "actief");
+  const velocity = getVelocity(project.sparkline);
+  const VelocityIcon = velocity.icon;
+  const einddatum = getEinddatumSchatting(project.sparkline, project.takenTotaal - project.takenAfgerond);
+  const activityDot = getActivityDot(project.laatsteActiviteit);
 
   return (
-    <Link href={`/projecten/${project.id}`} className="block bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-4 card-glow transition-colors hover:border-autronis-accent/30 group relative">
+    <Link href={`/projecten/${project.id}`} className="block bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-3.5 card-glow transition-all duration-200 hover:border-autronis-accent/40 hover:shadow-[0_0_0_1px_rgba(23,184,165,0.15),0_4px_20px_rgba(0,0,0,0.2)] group relative">
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
@@ -319,14 +323,16 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
           </div>
           <div className="min-w-0">
             <span className="text-base font-semibold text-autronis-text-primary truncate block group-hover:text-autronis-accent transition-colors">
-              {project.naam}
+              <HighlightText text={project.naam} query={zoek} />
             </span>
-            <p className="text-xs text-autronis-text-secondary mt-0.5">{project.klantNaam}</p>
+            <p className="text-xs text-autronis-text-secondary mt-0.5">
+              <HighlightText text={project.klantNaam ?? ""} query={zoek} />
+            </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1.5">
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Sparkline data={project.sparkline} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+            <Sparkline data={project.sparkline} className="opacity-60 group-hover:opacity-100 transition-opacity" />
             <StatusBadge status={project.status ?? "actief"} />
           </div>
           {project.status === "actief" && <HealthBadge project={project} />}
@@ -334,7 +340,7 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
       </div>
 
       {/* Progress */}
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="flex items-center justify-between text-xs">
           <span className="text-autronis-text-secondary">Voortgang</span>
           <span className="text-autronis-text-primary font-medium tabular-nums">{project.takenVoortgang}%</span>
@@ -343,7 +349,7 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-4 text-xs text-autronis-text-secondary">
+      <div className="flex items-center gap-3 text-xs text-autronis-text-secondary flex-wrap">
         <span className="flex items-center gap-1">
           <ListTodo className="w-3.5 h-3.5" />
           {project.takenAfgerond}/{project.takenTotaal} taken
@@ -354,6 +360,12 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
             {Math.round(project.totaalMinuten / 60)}u
           </span>
         )}
+        {einddatum && (
+          <span className="flex items-center gap-1 text-autronis-accent/80">
+            <Zap className="w-3 h-3" />
+            {einddatum}
+          </span>
+        )}
         {project.deadline && (
           <span className="ml-auto text-autronis-text-secondary/70">
             {formatDatum(project.deadline)}
@@ -361,30 +373,18 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
         )}
       </div>
 
-      {/* Activity + health hint */}
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] text-autronis-text-secondary/60">
-          {project.takenDezeWeek > 0 ? (
-            <span className="text-autronis-accent font-medium">
-              {project.takenDezeWeek} taken deze week afgerond
-            </span>
-          ) : project.laatsteActiviteit ? (
-            <>Laatste activiteit: {formatRelatief(project.laatsteActiviteit)}</>
-          ) : (
-            "Nog geen activiteit"
-          )}
-        </p>
-        {(() => {
-          const health = getProjectHealth(project);
-          if (health.status !== "on-track") {
-            return (
-              <span className={cn("text-[10px] font-medium", health.status === "achter" ? "text-red-400" : "text-amber-400")}>
-                {health.reden}
-              </span>
-            );
-          }
-          return null;
-        })()}
+      {/* Activity + velocity */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <div className={cn("w-2 h-2 rounded-full flex-shrink-0", activityDot.color, activityDot.pulse && "activity-dot-active")} title={activityDot.label} />
+          <p className="text-[10px] text-autronis-text-secondary/70">{activityDot.label}</p>
+        </div>
+        {project.status === "actief" && (
+          <div className={cn("flex items-center gap-0.5 text-[10px]", velocity.color)}>
+            <VelocityIcon className="w-3 h-3" />
+            <span>{velocity.label}</span>
+          </div>
+        )}
       </div>
 
       {/* Quick actions - visible on hover */}
@@ -407,9 +407,47 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode }: { project: Project
           href={`/projecten/${project.id}`}
           className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/40 transition-colors"
           title="Details"
+          onClick={(e) => e.stopPropagation()}
         >
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
+      </div>
+    </Link>
+  );
+}
+
+// Compacte lijstrij voor list-weergave
+function ProjectRow({ project, onStartTimer, onOpenVSCode, zoek }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void; zoek: string }) {
+  const health = getProjectHealth(project);
+  const activityDot = getActivityDot(project.laatsteActiviteit);
+  const cfg = healthConfig[health.status];
+  const HealthIcon = cfg.icon;
+  const pulseClass = health.status === "risico" ? "health-pulse-risico" : health.status === "achter" ? "health-pulse-achter" : "";
+
+  return (
+    <Link href={`/projecten/${project.id}`} className="flex items-center gap-4 px-4 py-3 hover:bg-autronis-bg/40 transition-colors group border-b border-autronis-border/30 last:border-b-0">
+      <div className={cn("w-2 h-2 rounded-full flex-shrink-0", activityDot.color, activityDot.pulse && "activity-dot-active")} title={activityDot.label} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
+          <HighlightText text={project.naam} query={zoek} />
+        </p>
+        <p className="text-[11px] text-autronis-text-secondary truncate">
+          <HighlightText text={project.klantNaam ?? ""} query={zoek} />
+        </p>
+      </div>
+      <div className="w-24 flex-shrink-0">
+        <ProgressBar percentage={project.takenVoortgang} />
+        <p className="text-[10px] text-autronis-text-secondary/70 mt-0.5 tabular-nums">{project.takenVoortgang}%</p>
+      </div>
+      <span className="text-[11px] text-autronis-text-secondary tabular-nums flex-shrink-0 hidden sm:block">{project.takenAfgerond}/{project.takenTotaal}</span>
+      {project.status === "actief" && (
+        <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium flex-shrink-0", cfg.bg, cfg.color, pulseClass)}>
+          <HealthIcon className="w-2.5 h-2.5" />{cfg.label}
+        </div>
+      )}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button onClick={(e) => { e.preventDefault(); onStartTimer(project); }} className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors"><Play className="w-3.5 h-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }} className="p-1 text-autronis-text-secondary hover:text-blue-400 transition-colors"><Code2 className="w-3.5 h-3.5" /></button>
       </div>
     </Link>
   );
@@ -427,6 +465,9 @@ export default function ProjectenPage() {
   const [zoek, setZoek] = useState("");
   const [activeTab, setActiveTab] = useState<string>("actief");
   const [syncing, setSyncing] = useState(false);
+  const [weergave, setWeergave] = useState<"grid" | "lijst">("grid");
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiFired = useRef(false);
   const { addToast } = useToast();
   const timer = useTimer();
 
@@ -486,6 +527,15 @@ export default function ProjectenPage() {
 
   const projecten = data?.projecten ?? [];
   const kpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
+
+  // Confetti bij eerste 100% project op load
+  useEffect(() => {
+    if (!confettiFired.current && projecten.some((p) => p.takenVoortgang >= 100 && p.status === "actief")) {
+      confettiFired.current = true;
+      const t = setTimeout(() => { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2200); }, 600);
+      return () => clearTimeout(t);
+    }
+  }, [projecten]);
 
   const filtered = useMemo(() => {
     return projecten.filter((p) => {
@@ -579,30 +629,43 @@ export default function ProjectenPage() {
               >
                 <tab.icon className="w-3.5 h-3.5" />
                 {tab.label}
-                <span className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded-full tabular-nums",
-                  activeTab === tab.key ? "bg-white/20" : "bg-autronis-border"
-                )}>
+                <motion.span
+                  key={tabCounts[tab.key as keyof typeof tabCounts]}
+                  initial={{ scale: 1.4 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                  className={cn("text-[10px] px-1.5 py-0.5 rounded-full tabular-nums inline-block", activeTab === tab.key ? "bg-white/20" : "bg-autronis-border")}
+                >
                   {tabCounts[tab.key as keyof typeof tabCounts]}
-                </span>
+                </motion.span>
               </button>
             ))}
           </div>
 
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
-            <input
-              type="text"
-              placeholder="Zoek project of klant..."
-              value={zoek}
-              onChange={(e) => setZoek(e.target.value)}
-              className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
-            />
+          {/* Search + weergave toggle */}
+          <div className="flex items-center gap-2 flex-1">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
+              <input
+                type="text"
+                placeholder="Zoek project of klant..."
+                value={zoek}
+                onChange={(e) => setZoek(e.target.value)}
+                className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
+              />
+            </div>
+            <div className="flex items-center bg-autronis-card border border-autronis-border rounded-lg p-0.5 flex-shrink-0">
+              {([{ key: "grid" as const, Icon: LayoutGrid }, { key: "lijst" as const, Icon: List }]).map(({ key, Icon }) => (
+                <button key={key} onClick={() => setWeergave(key)}
+                  className={cn("p-1.5 rounded-md transition-colors", weergave === key ? "bg-autronis-accent text-white" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
+                  <Icon className="w-4 h-4" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Project grid */}
+        {/* Project grid / lijst */}
         {isLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-autronis-accent" />
@@ -614,18 +677,39 @@ export default function ProjectenPage() {
               {zoek || activeTab !== "alle" ? "Geen projecten gevonden met deze filters" : "Nog geen projecten"}
             </p>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        ) : weergave === "lijst" ? (
+          <motion.div
+            key={`lijst-${activeTab}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden"
+          >
             {sorted.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onStartTimer={handleStartTimer}
-                onOpenVSCode={handleOpenVSCode}
-              />
+              <ProjectRow key={project.id} project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} zoek={zoek} />
             ))}
-          </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key={`grid-${activeTab}`}
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+          >
+            <AnimatePresence mode="popLayout">
+              {sorted.map((project, i) => (
+                <motion.div
+                  key={project.id}
+                  initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4) }}
+                >
+                  <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} zoek={zoek} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         )}
+
+        <Confetti active={showConfetti} />
       </div>
     </PageTransition>
   );

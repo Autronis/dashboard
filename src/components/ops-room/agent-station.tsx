@@ -62,13 +62,21 @@ export function AgentStation({ agent, index, onClick }: AgentStationProps) {
   const status = statusConfig[agent.status];
   const RoleIcon = role.icon;
   const isActive = agent.status === "working" || agent.status === "reviewing";
+  const isError = agent.status === "error";
   const projectColor = agent.huidigeTaak ? getProjectColor(agent.huidigeTaak.project) : undefined;
+  const runtime = useLiveRuntime(agent.huidigeTaak?.startedAt);
 
   return (
     <motion.button
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3, ease: "easeOut" }}
+      animate={isError
+        ? { opacity: 1, y: 0, x: [0, -4, 4, -4, 4, 0] }
+        : { opacity: 1, y: 0, x: 0 }
+      }
+      transition={isError
+        ? { delay: index * 0.04, duration: 0.3, ease: "easeOut", x: { repeat: Infinity, repeatDelay: 3, duration: 0.4 } }
+        : { delay: index * 0.04, duration: 0.3, ease: "easeOut" }
+      }
       whileHover={{ y: -4, scale: 1.01 }}
       onClick={() => onClick(agent)}
       className={cn(
@@ -80,12 +88,24 @@ export function AgentStation({ agent, index, onClick }: AgentStationProps) {
         "group w-full text-left"
       )}
     >
+      {/* Error blink icon */}
+      {isError && (
+        <motion.div
+          animate={{ opacity: [1, 0.2, 1] }}
+          transition={{ repeat: Infinity, duration: 0.9 }}
+          className="absolute top-2.5 right-2.5"
+        >
+          <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+        </motion.div>
+      )}
+
       {/* Top row: icon + name + status dot */}
       <div className="flex items-center gap-2.5">
         <div className={cn(
           "flex items-center justify-center w-9 h-9 rounded-lg",
           "bg-autronis-border/40",
-          isActive && "ring-1.5 ring-autronis-accent/30"
+          isActive && "ring-1.5 ring-autronis-accent/30",
+          isError && "ring-1.5 ring-red-500/40"
         )}>
           <RoleIcon className={cn("w-4.5 h-4.5", role.color)} />
         </div>
@@ -113,11 +133,11 @@ export function AgentStation({ agent, index, onClick }: AgentStationProps) {
             <span style={{ color: projectColor }} className="font-medium truncate">
               {agent.huidigeTaak.project}
             </span>
-            <span className="flex items-center gap-0.5 shrink-0">
+            <span className="flex items-center gap-0.5 shrink-0 tabular-nums">
               <Clock className="w-2.5 h-2.5" />
-              {runtimeMinutes(agent.huidigeTaak.startedAt)}
+              {runtime}
             </span>
-            <span className="flex items-center gap-0.5 shrink-0 text-amber-400">
+            <span className={cn("flex items-center gap-0.5 shrink-0 tabular-nums font-medium", costColorClass(agent.kosten.kostenVandaag))}>
               <Coins className="w-2.5 h-2.5" />
               {"\u20AC"}{agent.kosten.kostenVandaag.toFixed(2)}
             </span>

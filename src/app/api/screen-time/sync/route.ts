@@ -121,10 +121,10 @@ const AUTO_CATEGORISATIE: Array<{
   { test: (_app, url) => /netflix\.com|disney|primevideo|twitch\.tv/i.test(url), categorie: "afleiding" },
   { test: (app) => /spotify|music/i.test(app), categorie: "afleiding" },
 
-  // Trading/Investing → administratie (goud kleur)
-  { test: (app) => /tradingview/i.test(app), categorie: "administratie" },
-  { test: (_app, _url, titel) => /System Investing|Investing V\d/i.test(titel), categorie: "administratie" },
-  { test: (_app, url) => /tradingview\.com|binance\.com|coinbase\.com|coingecko\.com/i.test(url), categorie: "administratie" },
+  // Trading/Investing → finance
+  { test: (app) => /tradingview/i.test(app), categorie: "finance" },
+  { test: (_app, _url, titel) => /System Investing|Investing V\d/i.test(titel), categorie: "finance" },
+  { test: (_app, url) => /tradingview\.com|binance\.com|coinbase\.com|coingecko\.com|coinank|coinglass/i.test(url), categorie: "finance" },
 
   // Business sites → administratie
   { test: (_app, url) => /linkedin\.com/i.test(url), categorie: "communicatie" },

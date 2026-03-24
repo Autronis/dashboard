@@ -618,18 +618,15 @@ export default function MeetingsPage() {
     // Upcoming sorted by soonest first
     upcomingMeetings.sort((a, b) => new Date(a.datum).getTime() - new Date(b.datum).getTime());
 
-    const aankomend = upcomingMeetings.length;
     const dezeWeek = meetings.filter((m) => isThisWeek(m.datum)).length;
-    const metDuur = meetings.filter((m) => m.duurMinuten);
-    const gemDuur = metDuur.length > 0
-      ? Math.round(metDuur.reduce((s, m) => s + (m.duurMinuten || 0), 0) / metDuur.length)
-      : null;
-    const metNotities = meetings.filter((m) => m.hasNotities).length;
+    const totaalActiepunten = meetings.reduce((sum, m) => sum + (m.actiepunten?.length || 0), 0);
+    const verwerkt = meetings.filter((m) => m.status === "klaar").length;
+    const totaalMinuten = meetings.reduce((sum, m) => sum + (m.duurMinuten || 0), 0);
 
     return {
       upcoming: upcomingMeetings,
       recent: recentMeetings,
-      kpis: { aankomend, dezeWeek, gemDuur, metNotities },
+      kpis: { dezeWeek, totaalActiepunten, verwerkt, totaalMinuten },
     };
   }, [meetings, zoekTerm]);
 
@@ -1187,70 +1184,87 @@ export default function MeetingsPage() {
   }
 
   // ============ LIST VIEW ============
+  const nextMeeting = upcoming[0];
+
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-5">
+        {/* Hero header */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary">Meetings</h1>
-            <p className="text-base text-autronis-text-secondary mt-1">
-              Kalender-afspraken en opgenomen meetings
+            <h1 className="text-2xl font-bold text-autronis-text-primary">Meetings</h1>
+            <p className="text-sm text-autronis-text-secondary mt-0.5">
+              Neem meetings op, krijg automatische samenvattingen en zet alles om in taken.
             </p>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl font-medium hover:bg-autronis-accent-hover transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Nieuwe meeting
-          </button>
-        </div>
-
-        {/* KPI cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 bg-autronis-accent/10 rounded-lg">
-                <Calendar className="w-4 h-4 text-autronis-accent" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{kpis.aankomend}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Aankomend</p>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <Clock className="w-4 h-4 text-blue-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-blue-400 tabular-nums">{kpis.dezeWeek}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Deze week</p>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 bg-purple-500/10 rounded-lg">
-                <TrendingUp className="w-4 h-4 text-purple-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.gemDuur ? formatDuur(kpis.gemDuur) : "-"}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. duur</p>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 bg-emerald-500/10 rounded-lg">
-                <FileText className="w-4 h-4 text-emerald-400" />
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-emerald-400 tabular-nums">{kpis.metNotities}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Met notities</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent text-autronis-bg rounded-xl text-sm font-semibold hover:bg-autronis-accent-hover transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nieuwe meeting
+            </button>
           </div>
         </div>
 
-        {/* Search + filter bar */}
+        {/* Smart stats — show AI output value */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
+            <p className="text-xl font-bold text-autronis-text-primary tabular-nums">{kpis.dezeWeek}</p>
+            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Meetings deze week</p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
+            <p className="text-xl font-bold text-autronis-accent tabular-nums">{kpis.totaalActiepunten}</p>
+            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Actiepunten gegenereerd</p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
+            <p className="text-xl font-bold text-emerald-400 tabular-nums">{kpis.verwerkt}</p>
+            <p className="text-[11px] text-autronis-text-secondary mt-0.5">AI geanalyseerd</p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
+            <p className="text-xl font-bold text-purple-400 tabular-nums">{kpis.totaalMinuten > 0 ? formatDuur(kpis.totaalMinuten) : "—"}</p>
+            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Totale tijd opgenomen</p>
+          </div>
+        </div>
+
+        {/* Next meeting hero — only if upcoming */}
+        {nextMeeting && (
+          <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 bg-autronis-accent/15 rounded-xl shrink-0">
+                  <Video className="w-5 h-5 text-autronis-accent" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-autronis-accent font-semibold uppercase tracking-wide">Volgende meeting</p>
+                  <p className="text-base font-semibold text-autronis-text-primary truncate">{nextMeeting.titel}</p>
+                  <p className="text-xs text-autronis-text-secondary">
+                    {formatDatum(nextMeeting.datum)} om {formatTijd(nextMeeting.datum)}
+                    {nextMeeting.klantNaam && ` · ${nextMeeting.klantNaam}`}
+                    {nextMeeting.deelnemers.length > 0 && ` · ${nextMeeting.deelnemers.length} deelnemers`}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {nextMeeting.meetingUrl && (
+                  <a href={nextMeeting.meetingUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Deelnemen
+                  </a>
+                )}
+                <button onClick={() => setSelectedId(nextMeeting.id)}
+                  className="flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/50 text-autronis-text-secondary hover:text-autronis-accent rounded-xl text-sm font-medium transition-colors">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Voorbereiden
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Search + filter */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
@@ -1258,7 +1272,7 @@ export default function MeetingsPage() {
               type="text"
               value={zoekTerm}
               onChange={(e) => setZoekTerm(e.target.value)}
-              placeholder="Zoek in meetings, transcripten, tags..."
+              placeholder="Zoek in transcripts, samenvattingen, actiepunten..."
               className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
             />
           </div>
@@ -1274,67 +1288,65 @@ export default function MeetingsPage() {
           </select>
         </div>
 
-        {/* Aankomende meetings */}
-        {upcoming.length > 0 && (
+        {/* Upcoming meetings (if more than 1) */}
+        {upcoming.length > 1 && (
           <div>
-            <h2 className="text-lg font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-autronis-accent" />
+            <h2 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-autronis-accent" />
               Aankomende meetings
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {upcoming.slice(0, 6).map((m) => (
-                <UpcomingMeetingCard
-                  key={String(m.id)}
-                  meeting={m}
-                  onSelect={() => setSelectedId(m.id)}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {upcoming.slice(1, 7).map((m) => (
+                <UpcomingMeetingCard key={String(m.id)} meeting={m} onSelect={() => setSelectedId(m.id)} />
               ))}
             </div>
-            {upcoming.length > 6 && (
-              <p className="text-sm text-autronis-text-secondary mt-3">
-                + {upcoming.length - 6} meer aankomende meetings
-              </p>
-            )}
           </div>
         )}
 
-        {/* Recente meetings */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-          <h2 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-            <Clock className="w-5 h-5 text-autronis-text-secondary" />
-            Recente meetings
-          </h2>
-
-          {recent.length === 0 ? (
-            <div className="text-center py-12">
-              <Mic className="w-12 h-12 text-autronis-text-secondary/30 mx-auto mb-4" />
-              <p className="text-autronis-text-secondary">
-                {zoekTerm ? "Geen meetings gevonden" : "Nog geen recente meetings"}
-              </p>
-              {!zoekTerm && (
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="mt-3 text-autronis-accent hover:text-autronis-accent-hover transition-colors text-sm font-medium"
-                >
-                  Voeg je eerste meeting toe
-                </button>
-              )}
+        {/* Meetings list */}
+        {meetings.length === 0 && !isLoading ? (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-8 lg:p-12 text-center">
+            <div className="inline-flex p-4 bg-autronis-accent/10 rounded-2xl mb-4">
+              <Mic className="w-10 h-10 text-autronis-accent" />
             </div>
-          ) : (
+            <h2 className="text-xl font-bold text-autronis-text-primary mb-2">AI Meeting Intelligence</h2>
+            <div className="space-y-2 mb-6 max-w-md mx-auto">
+              <p className="text-sm text-autronis-text-secondary flex items-center gap-2 justify-center">
+                <Mic className="w-4 h-4 text-autronis-accent shrink-0" /> Neem een meeting op of upload audio
+              </p>
+              <p className="text-sm text-autronis-text-secondary flex items-center gap-2 justify-center">
+                <Sparkles className="w-4 h-4 text-autronis-accent shrink-0" /> Krijg automatisch samenvattingen en actiepunten
+              </p>
+              <p className="text-sm text-autronis-text-secondary flex items-center gap-2 justify-center">
+                <CheckCircle2 className="w-4 h-4 text-autronis-accent shrink-0" /> Taken worden direct aangemaakt
+              </p>
+            </div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+            >
+              <Plus className="w-4 h-4" />
+              Start eerste meeting
+            </button>
+          </div>
+        ) : recent.length > 0 ? (
+          <div>
+            <h2 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-autronis-text-secondary" />
+              Recente meetings
+            </h2>
             <div className="space-y-2">
               {recent.map((m) => (
                 <MeetingListItem
                   key={String(m.id)}
                   meeting={m}
                   onSelect={() => setSelectedId(m.id)}
-                  onDelete={() => {
-                    if (typeof m.id === "number") handleDelete(m.id);
-                  }}
+                  onDelete={() => { if (typeof m.id === "number") handleDelete(m.id); }}
                 />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        ) : null}
 
         {/* Upload modal */}
         {showModal && (

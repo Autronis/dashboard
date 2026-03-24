@@ -218,12 +218,11 @@ export async function GET(req: NextRequest) {
     const projectMatchers = alleProjecten.map(p => {
       const naam = p.naam.toLowerCase();
       // Generate match variants: full name, hyphenated, without spaces
+      // No single words — too many false positives ("agent", "dashboard", etc.)
       const variants = [
         naam,
         naam.replace(/\s+/g, "-"),
         naam.replace(/\s+/g, ""),
-        // Also match partial for multi-word names (e.g. "ops room" matches "Ops Room")
-        ...naam.split(/\s+/).filter(w => w.length >= 4),
       ];
       return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants };
     });

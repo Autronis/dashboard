@@ -545,23 +545,55 @@ export default function FinancienPage() {
                             className="w-4 h-4 rounded border-autronis-border bg-autronis-bg text-autronis-accent focus:ring-autronis-accent/50 cursor-pointer accent-[#17B8A5]"
                           />
                         </th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Nummer</th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Klant</th>
-                        <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Datum</th>
-                        <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
-                        <th className="text-center py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
+                        {(
+                          [
+                            { col: "factuurnummer" as SortCol, label: "Nummer", align: "left" },
+                            { col: "klantNaam" as SortCol, label: "Klant", align: "left" },
+                            { col: "factuurdatum" as SortCol, label: "Datum", align: "left" },
+                            { col: "bedragInclBtw" as SortCol, label: "Bedrag", align: "right" },
+                            { col: "status" as SortCol, label: "Status", align: "center" },
+                          ] as const
+                        ).map(({ col, label, align }) => (
+                          <th
+                            key={col}
+                            onClick={() => handleSortCol(col)}
+                            className={cn(
+                              "py-3 px-4 text-xs font-semibold uppercase tracking-wide cursor-pointer select-none hover:text-autronis-text-primary transition-colors",
+                              sortCol === col ? "text-autronis-accent" : "text-autronis-text-secondary",
+                              align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left"
+                            )}
+                          >
+                            <span className="inline-flex items-center gap-1">
+                              {label}
+                              {sortCol === col && (
+                                <span className="text-[10px]">{sortDir === "asc" ? "↑" : "↓"}</span>
+                              )}
+                            </span>
+                          </th>
+                        ))}
                         <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Acties</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {facturen.map((factuur) => {
+                      {sortedFacturen.map((factuur) => {
                         const effectiveStatus = getEffectiveStatus(factuur);
                         const sc = statusConfig[effectiveStatus] || statusConfig.concept;
+                        const isVerzonden = factuur.status === "verzonden";
+                        const isFlashing = betaaldFlashId === factuur.id;
+                        const borderColors: Record<string, string> = {
+                          concept: "border-l-slate-500/50",
+                          verzonden: "border-l-blue-500/60",
+                          betaald: "border-l-green-500/60",
+                          te_laat: "border-l-red-500/70",
+                        };
                         return (
-                          <tr
+                          <motion.tr
                             key={factuur.id}
+                            animate={isFlashing ? { backgroundColor: "rgba(34,197,94,0.12)" } : { backgroundColor: "transparent" }}
+                            transition={{ duration: 0.4 }}
                             className={cn(
-                              "border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors",
+                              "border-b border-autronis-border/50 border-l-2 hover:bg-autronis-bg/30 transition-colors group",
+                              borderColors[effectiveStatus] ?? "border-l-slate-500/50",
                               selectedIds.has(factuur.id) && "bg-autronis-accent/5"
                             )}
                           >
@@ -574,7 +606,7 @@ export default function FinancienPage() {
                               />
                             </td>
                             <td className="py-4 px-4">
-                              <Link href={`/financien/${factuur.id}`} className="text-base font-medium text-autronis-accent hover:underline">
+                              <Link href={`/financien/${factuur.id}`} className="font-mono text-sm font-medium text-autronis-accent hover:underline">
                                 {factuur.factuurnummer}
                               </Link>
                             </td>
@@ -586,12 +618,26 @@ export default function FinancienPage() {
                               {formatBedrag(factuur.bedragInclBtw || 0)}
                             </td>
                             <td className="py-4 px-4 text-center">
-                              <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", sc.bg, sc.text)}>
+                              <span className={cn(
+                                "text-xs px-2.5 py-1 rounded-full font-semibold",
+                                sc.bg, sc.text,
+                                effectiveStatus === "te_laat" && "animate-pulse"
+                              )}>
                                 {sc.label}
                               </span>
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex items-center justify-end gap-2">
+                                {isVerzonden && (
+                                  <button
+                                    onClick={() => inlineBetaaldMutation.mutate(factuur.id)}
+                                    disabled={inlineBetaaldMutation.isPending}
+                                    className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/15 hover:bg-green-500/25 text-green-400 rounded-lg text-xs font-semibold transition-all"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    Betaald
+                                  </button>
+                                )}
                                 <Link
                                   href={`/financien/${factuur.id}`}
                                   className="p-2 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"
@@ -606,7 +652,7 @@ export default function FinancienPage() {
                                 </a>
                               </div>
                             </td>
-                          </tr>
+                          </motion.tr>
                         );
                       })}
                     </tbody>
@@ -614,6 +660,176 @@ export default function FinancienPage() {
                 </div>
               )}
             </div>
+
+            {/* Herinneringen preview modal */}
+            <AnimatePresence>
+              {herinneringPreviewOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  onClick={(e) => { if (e.target === e.currentTarget) setHerinneringPreviewOpen(false); }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 8 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 8 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                    className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-orange-500/10 rounded-xl">
+                          <Bell className="w-5 h-5 text-orange-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-autronis-text-primary">Herinneringen versturen</h3>
+                          <p className="text-xs text-autronis-text-secondary mt-0.5">
+                            {herinneringPreview?.aantal ?? 0} te late facturen
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setHerinneringPreviewOpen(false)}
+                        className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {herinneringPreview?.facturen?.length ? (
+                      <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
+                        {herinneringPreview.facturen.map((f) => (
+                          <div key={f.id} className="flex items-center justify-between gap-3 px-4 py-3 bg-autronis-bg rounded-xl border border-autronis-border/60">
+                            <div>
+                              <p className="font-mono text-sm text-autronis-accent">{f.factuurnummer}</p>
+                              <p className="text-xs text-autronis-text-secondary mt-0.5">{f.klantNaam}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-autronis-text-primary tabular-nums">
+                                {formatBedrag(f.bedragInclBtw || 0)}
+                              </p>
+                              {f.vervaldatum && (
+                                <p className="text-xs text-red-400 mt-0.5">{formatDatum(f.vervaldatum)}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-autronis-text-secondary mb-5 py-4 text-center">
+                        Geen te late facturen gevonden.
+                      </p>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setHerinneringPreviewOpen(false)}
+                        className="flex-1 px-4 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                      >
+                        Annuleren
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setHerinneringPreviewOpen(false);
+                          herinneringenMutation.mutate(undefined, {
+                            onSuccess: (data) => {
+                              addToast(`${data.bijgewerkt} herinneringen bijgewerkt, ${data.verzonden} e-mails verstuurd`, "succes");
+                            },
+                            onError: (err) => {
+                              addToast(err instanceof Error ? err.message : "Mislukt", "fout");
+                            },
+                          });
+                        }}
+                        disabled={!herinneringPreview?.aantal || herinneringenMutation.isPending}
+                        className="flex-1 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
+                      >
+                        {herinneringenMutation.isPending ? "Versturen..." : "Versturen bevestigen"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Periodiek preview modal */}
+            <AnimatePresence>
+              {periodiekPreviewOpen && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+                  onClick={(e) => { if (e.target === e.currentTarget) setPeriodiekPreviewOpen(false); }}
+                >
+                  <motion.div
+                    initial={{ scale: 0.95, opacity: 0, y: 8 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
+                    exit={{ scale: 0.95, opacity: 0, y: 8 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 28 }}
+                    className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+                  >
+                    <div className="flex items-center justify-between mb-5">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-blue-500/10 rounded-xl">
+                          <RefreshCw className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-autronis-text-primary">Periodieke facturen genereren</h3>
+                          <p className="text-xs text-autronis-text-secondary mt-0.5">
+                            {periodiekPreview?.aantal ?? 0} facturen klaar
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setPeriodiekPreviewOpen(false)}
+                        className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {periodiekPreview?.facturen?.length ? (
+                      <div className="space-y-2 mb-5 max-h-60 overflow-y-auto">
+                        {periodiekPreview.facturen.map((f, i) => (
+                          <div key={i} className="flex items-center gap-3 px-4 py-3 bg-autronis-bg rounded-xl border border-autronis-border/60">
+                            <RefreshCw className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                            <p className="font-mono text-sm text-autronis-text-primary">{f.factuurnummer}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-autronis-text-secondary mb-5 py-4 text-center">
+                        Geen periodieke facturen klaar.
+                      </p>
+                    )}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setPeriodiekPreviewOpen(false)}
+                        className="flex-1 px-4 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                      >
+                        Annuleren
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setPeriodiekPreviewOpen(false);
+                          periodiekMutation.mutate(undefined, {
+                            onSuccess: (data) => {
+                              addToast(`${data.aangemaakt} periodieke facturen aangemaakt`, "succes");
+                            },
+                            onError: (err) => {
+                              addToast(err instanceof Error ? err.message : "Mislukt", "fout");
+                            },
+                          });
+                        }}
+                        disabled={!periodiekPreview?.aantal || periodiekMutation.isPending}
+                        className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
+                      >
+                        {periodiekMutation.isPending ? "Genereren..." : "Genereren bevestigen"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Bulk actions bar */}
             <AnimatePresence>

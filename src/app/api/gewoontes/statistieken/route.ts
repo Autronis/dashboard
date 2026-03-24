@@ -261,7 +261,7 @@ export async function GET() {
         ? `Bescherm je ${s.huidigeStreak}-dagen streak`
         : s.totaalVoltooid === 0
           ? "Eerste keer — begin hier"
-          : "Opnieuw beginnen",
+          : "Begin vandaag",
     }));
 
     // ─── Badge progress ───

@@ -778,14 +778,22 @@ export default function GewoontesPagina() {
                     };
                     return (
                       <div key={badge.naam}
-                        className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors group relative",
+                        className={cn("flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors group relative overflow-hidden",
                           badge.behaald
-                            ? "bg-autronis-bg/50 border-autronis-border"
+                            ? "bg-autronis-bg/50 border-yellow-500/20"
                             : "bg-autronis-bg/20 border-autronis-border/30")}>
+                        {/* Shimmer sweep on behaalde badges */}
+                        {badge.behaald && (
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/8 to-transparent pointer-events-none"
+                            animate={{ x: ["-100%", "200%"] }}
+                            transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 4, ease: "easeInOut" as const }}
+                          />
+                        )}
                         <div className={cn("p-2.5 rounded-xl", badge.behaald ? (colorMap[badge.kleur] || colorMap.teal) : "bg-autronis-border/30 text-autronis-text-secondary")}>
                           <BadgeIcon className="w-5 h-5" />
                         </div>
-                        <span className="text-[11px] text-center text-autronis-text-secondary font-medium">{badge.naam}</span>
+                        <span className={cn("text-[11px] text-center font-medium", badge.behaald ? "text-autronis-text-primary" : "text-autronis-text-secondary")}>{badge.naam}</span>
                         {!badge.behaald && (
                           <div className="w-full space-y-1">
                             <div className="w-full h-1 bg-autronis-border/50 rounded-full overflow-hidden">
@@ -796,7 +804,7 @@ export default function GewoontesPagina() {
                           </div>
                         )}
                         {badge.behaald && (
-                          <span className="text-[9px] text-emerald-400 font-bold">Behaald</span>
+                          <span className="text-[9px] text-yellow-400 font-bold">✓ Behaald</span>
                         )}
                         {!badge.behaald && (
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">

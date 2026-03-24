@@ -20,6 +20,9 @@ import { ApprovalPanel } from "@/components/ops-room/approval-panel";
 import { LogPanel } from "@/components/ops-room/log-panel";
 import { ProjectPanel } from "@/components/ops-room/project-panel";
 import { Leaderboard } from "@/components/ops-room/leaderboard";
+import { MissionControl } from "@/components/ops-room/mission-control";
+import { ExecutionFeed } from "@/components/ops-room/execution-feed";
+import { AgentStatusGrid } from "@/components/ops-room/agent-status-grid";
 import { OfficeViewSyb } from "@/components/ops-room/office-view-syb";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
@@ -273,16 +276,27 @@ export default function OpsRoomPage() {
                 />
               </div>
             )}
-            {/* Orchestrator panels below the office */}
+            {/* Mission Control + Approval */}
+            <MissionControl agents={agents} />
             <ApprovalPanel />
-            <LogPanel />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+            {/* 3-column control grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Left: Projects + Ranking */}
               <div className="space-y-4">
                 <ProjectPanel agents={agents} />
                 <Leaderboard agents={agents} />
               </div>
-              <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
+
+              {/* Center: Live Execution Feed */}
+              <ExecutionFeed />
+
+              {/* Right: Agent Status + Activity */}
+              <div className="space-y-4">
+                <AgentStatusGrid agents={agents} onSelect={handleSelectAgent} />
+                <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
+                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
+                </div>
               </div>
             </div>
             {selectedAgent && (

@@ -122,17 +122,54 @@ export function useCreateCheckIn() {
   });
 }
 
-export function useSuggestKrs() {
+export function useSuggestKrs(kwartaal?: number, jaar?: number) {
   return useMutation<KrSuggestie[], Error, string>({
     mutationFn: async (titel: string) => {
       const res = await fetch("/api/doelen/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titel }),
+        body: JSON.stringify({ titel, kwartaal, jaar }),
       });
       if (!res.ok) return [];
       const json = await res.json();
       return json.suggesties ?? [];
+    },
+  });
+}
+
+export function useCheckInSamenvatting() {
+  return useMutation<string | null, Error, {
+    doelTitel: string;
+    voortgang: number;
+    vorigeVoortgang?: number;
+    wekenOver?: number;
+    blocker?: string;
+    volgendeStap?: string;
+  }>({
+    mutationFn: async (payload) => {
+      const res = await fetch("/api/doelen/check-in-samenvatting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.samenvatting ?? null;
+    },
+  });
+}
+
+export function useKwartaalReflectie() {
+  return useMutation<string | null, Error, { kwartaal: number; jaar: number }>({
+    mutationFn: async (payload) => {
+      const res = await fetch("/api/doelen/kwartaalreflectie", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      const json = await res.json();
+      return json.reflectie ?? null;
     },
   });
 }

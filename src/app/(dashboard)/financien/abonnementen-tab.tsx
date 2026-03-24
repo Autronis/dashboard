@@ -180,13 +180,13 @@ export function AbonnementenTab() {
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 card-glow">
           <p className="text-xs text-autronis-text-secondary">Maandelijkse kosten</p>
           <p className="text-2xl font-bold text-autronis-text-primary mt-1">
-            <AnimatedNumber value={totalen?.maandelijks ?? 0} prefix="€" />
+            <AnimatedNumber value={totalen?.maandelijks ?? 0} format={(n) => `€${Math.round(n)}`} />
           </p>
         </div>
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 card-glow">
           <p className="text-xs text-autronis-text-secondary">Jaarlijkse kosten</p>
           <p className="text-2xl font-bold text-autronis-text-primary mt-1">
-            <AnimatedNumber value={totalen?.jaarlijks ?? 0} prefix="€" />
+            <AnimatedNumber value={totalen?.jaarlijks ?? 0} format={(n) => `€${Math.round(n)}`} />
           </p>
         </div>
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 card-glow">

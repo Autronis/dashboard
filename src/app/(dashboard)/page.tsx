@@ -147,7 +147,7 @@ const pageVariants = {
 };
 const sectionVariants = {
   hidden: { opacity: 0, y: 14 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.38, ease: "easeOut" } },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.38, ease: "easeOut" as const } },
 };
 
 function useTypewriter(text: string, speed = 8): string {

@@ -671,7 +671,7 @@ export default function MeetingsPage() {
     for (const m of filtered) {
       if (new Date(m.datum) > now) {
         upcomingMeetings.push(m);
-      } else {
+      } else if (periodeFilter(m.datum)) {
         recentMeetings.push(m);
       }
     }
@@ -689,7 +689,7 @@ export default function MeetingsPage() {
       recent: recentMeetings,
       kpis: { dezeWeek, totaalActiepunten, verwerkt, totaalMinuten },
     };
-  }, [meetings, zoekTerm]);
+  }, [meetings, zoekTerm, filterPeriode]);
 
   const handleDelete = useCallback(
     (id: number) => {
@@ -920,10 +920,25 @@ export default function MeetingsPage() {
 
           {/* Samenvatting / Notities */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-            <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
-              <FileText className="w-5 h-5 text-autronis-accent" />
-              {m.status === "klaar" ? "Samenvatting & Notities" : "Notities"}
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
+                <FileText className="w-5 h-5 text-autronis-accent" />
+                {m.status === "klaar" ? "Samenvatting & Notities" : "Notities"}
+              </h2>
+              {m.samenvatting && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(m.samenvatting ?? "");
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-autronis-text-secondary hover:text-autronis-accent border border-autronis-border hover:border-autronis-accent/40 rounded-lg transition-colors"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? "Gekopieerd!" : "Kopieer"}
+                </button>
+              )}
+            </div>
             <textarea
               value={notitiesText}
               onChange={(e) => { setNotitiesText(e.target.value); setNotitiesDirty(true); }}
@@ -952,20 +967,25 @@ export default function MeetingsPage() {
                   Actiepunten
                   <span className="text-sm font-normal text-autronis-text-secondary">({m.actiepunten.length})</span>
                 </h2>
-                <div className="space-y-2.5">
+                <motion.div
+                  className="space-y-2.5"
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="visible"
+                >
                   {m.actiepunten.map((ap, i) => {
                     const style = getVerantwoordelijkeStyle(ap.verantwoordelijke);
                     return (
-                      <div key={i} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
+                      <motion.div key={i} variants={staggerItem} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
                         <CheckCircle2 className="w-4 h-4 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-autronis-text-primary flex-1">{ap.tekst}</span>
                         <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0", style.bg, style.color)}>
                           {ap.verantwoordelijke}
                         </span>
-                      </div>
+                      </motion.div>
                     );
                   })}
-                </div>
+                </motion.div>
               </div>
             )}
 
@@ -1281,7 +1301,7 @@ export default function MeetingsPage() {
           </div>
           <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
             <p className="text-xl font-bold text-emerald-400 tabular-nums">{kpis.verwerkt}</p>
-            <p className="text-[11px] text-autronis-text-secondary mt-0.5">AI geanalyseerd</p>
+            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Meetings geanalyseerd</p>
           </div>
           <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
             <p className="text-xl font-bold text-purple-400 tabular-nums">{kpis.totaalMinuten > 0 ? formatDuur(kpis.totaalMinuten) : "—"}</p>
@@ -1325,6 +1345,32 @@ export default function MeetingsPage() {
           </div>
         )}
 
+        {/* Pre-meeting brief — within 2 hours */}
+        {nextMeeting && isWithinTwoHours(nextMeeting.datum) && (
+          <div className="bg-gradient-to-r from-yellow-500/10 to-autronis-card border border-yellow-500/30 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-yellow-500/15 rounded-xl shrink-0">
+                <AlertTriangle className="w-5 h-5 text-yellow-400" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-yellow-400 mb-1">
+                  Meeting begint over {formatCountdown(nextMeeting.datum).toLowerCase()} — {nextMeeting.titel}
+                </p>
+                <p className="text-xs text-autronis-text-secondary">
+                  Klik op de meeting om de AI-voorbereiding te bekijken en je te wapenen voor het gesprek.
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedId(nextMeeting.id)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-yellow-500/15 hover:bg-yellow-500/25 text-yellow-400 rounded-xl text-xs font-semibold transition-colors shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Bereid voor
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Search + filter */}
         <div className="flex items-center gap-3">
           <div className="relative flex-1">
@@ -1346,6 +1392,15 @@ export default function MeetingsPage() {
             {klanten.map((k) => (
               <option key={k.id} value={k.id}>{k.bedrijfsnaam}</option>
             ))}
+          </select>
+          <select
+            value={filterPeriode}
+            onChange={(e) => setFilterPeriode(e.target.value as "alles" | "week" | "maand")}
+            className="bg-autronis-card border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+          >
+            <option value="alles">Alle tijd</option>
+            <option value="week">Deze week</option>
+            <option value="maand">Deze maand</option>
           </select>
         </div>
 

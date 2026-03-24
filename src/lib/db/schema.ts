@@ -758,7 +758,7 @@ export const screenTimeEntries = sqliteTable("screen_time_entries", {
   vensterTitel: text("venster_titel"),
   url: text("url"),
   categorie: text("categorie", {
-    enum: ["development", "communicatie", "design", "administratie", "afleiding", "overig", "inactief"],
+    enum: ["development", "communicatie", "meeting", "design", "administratie", "finance", "afleiding", "overig", "inactief"],
   }).default("overig"),
   projectId: integer("project_id").references(() => projecten.id),
   klantId: integer("klant_id").references(() => klanten.id),

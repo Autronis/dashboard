@@ -68,7 +68,7 @@ function splitEntry(entry: {
 // Rize-style: if no rule matches, use built-in heuristics before falling back to "overig"
 const AUTO_CATEGORISATIE: Array<{
   test: (app: string, url: string, titel: string) => boolean;
-  categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig";
+  categorie: "development" | "communicatie" | "design" | "administratie" | "finance" | "meeting" | "afleiding" | "overig";
 }> = [
   // Development — code editors, dev tools, dev websites
   { test: (app) => /code|cursor|vim|neovim|webstorm|intellij/i.test(app), categorie: "development" },
@@ -136,7 +136,7 @@ function autoCategoriseer(
   app: string,
   url: string,
   titel: string
-): "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | null {
+): "development" | "communicatie" | "design" | "administratie" | "finance" | "meeting" | "afleiding" | "overig" | null {
   for (const rule of AUTO_CATEGORISATIE) {
     if (rule.test(app, url, titel)) return rule.categorie;
   }
@@ -233,7 +233,7 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        let categorie: "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | "inactief" = "overig";
+        let categorie: "development" | "communicatie" | "design" | "administratie" | "finance" | "meeting" | "afleiding" | "overig" | "inactief" = "overig";
         let projectId: number | null = null;
         let klantId: number | null = null;
         let matchedByRule = false;

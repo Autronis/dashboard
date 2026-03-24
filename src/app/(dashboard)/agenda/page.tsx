@@ -19,14 +19,17 @@ import {
   MapPin,
   Users,
   Video,
+  CheckSquare,
+  ListTodo,
+  Zap,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents } from "@/hooks/queries/use-agenda";
+import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken } from "@/hooks/queries/use-agenda";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { AgendaItem, ExternEvent, ExterneKalender, DeadlineEvent } from "@/hooks/queries/use-agenda";
+import type { AgendaItem, ExternEvent, ExterneKalender, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 import { DagView } from "./dag-view";
 import { JaarView } from "./jaar-view";
 import Link from "next/link";
@@ -166,11 +169,52 @@ export default function AgendaPage() {
   const { data: externeEvents = [] } = useExterneEvents(jaar, maand);
   const { data: deadlineEvents = [] } = useDeadlineEvents(jaar, maand);
   const { data: kalenders = [] } = useExterneKalenders();
+  const { data: agendaTaken = [] } = useAgendaTaken();
 
   // Filters
   const [filterType, setFilterType] = useState<string>("alle");
+  const [toonTaken, setToonTaken] = useState(true);
   // Selected day for detail panel
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  // Taken stats voor vandaag-strip
+  const takenStats = useMemo(() => {
+    const openTaken = agendaTaken.filter((t) => t.status === "open");
+    const bezigTaken = agendaTaken.filter((t) => t.status === "bezig");
+    const hoogPrio = agendaTaken.filter((t) => t.prioriteit === "hoog");
+    const zonderDeadline = agendaTaken.filter((t) => !t.deadline && t.status !== "afgerond");
+    return { open: openTaken.length, bezig: bezigTaken.length, hoogPrio: hoogPrio.length, zonderDeadline: zonderDeadline.length, totaal: agendaTaken.length };
+  }, [agendaTaken]);
+
+  // Taken per dag voor kalender (alleen taken met deadline)
+  const takenPerDag = useMemo(() => {
+    const map: Record<string, AgendaTaak[]> = {};
+    for (const taak of agendaTaken) {
+      if (!taak.deadline) continue;
+      const dag = taak.deadline.slice(0, 10);
+      if (!map[dag]) map[dag] = [];
+      map[dag].push(taak);
+    }
+    return map;
+  }, [agendaTaken]);
+
+  // Filter counts
+  const filterCounts = useMemo(() => {
+    const counts: Record<string, number> = { alle: 0, afspraak: 0, extern: 0, deadline: 0, belasting: 0, herinnering: 0 };
+    for (const item of items) {
+      counts.alle++;
+      if (item.type in counts) counts[item.type]++;
+    }
+    for (const _event of externeEvents) {
+      counts.alle++;
+      counts.extern++;
+    }
+    for (const _dl of deadlineEvents) {
+      counts.alle++;
+      counts.deadline++;
+    }
+    return counts;
+  }, [items, externeEvents, deadlineEvents]);
 
   const saveMutation = useMutation({
     mutationFn: async (payload: { item: AgendaItem | null; body: Record<string, unknown> }) => {
@@ -441,10 +485,15 @@ export default function AgendaPage() {
         <div>
           <h1 className="text-2xl font-bold text-autronis-text-primary">Agenda</h1>
           <p className="text-sm text-autronis-text-secondary mt-1">
-            {items.length + externeEvents.length} items deze periode
-            {kalenders.length > 0 && (
+            Vandaag: {vandaagItems.length} event{vandaagItems.length !== 1 ? "s" : ""}
+            {takenStats.totaal > 0 && (
               <span className="text-autronis-accent ml-1">
-                · {kalenders.length} kalender{kalenders.length !== 1 ? "s" : ""} gekoppeld
+                · {takenStats.open + takenStats.bezig} open taken
+              </span>
+            )}
+            {kalenders.length > 0 && (
+              <span className="text-autronis-text-secondary/60 ml-1">
+                · {kalenders.length} kalender{kalenders.length !== 1 ? "s" : ""}
               </span>
             )}
           </p>
@@ -488,10 +537,10 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* Vandaag-strip */}
-      <div className="bg-autronis-card border border-autronis-border rounded-xl p-2.5 sm:p-3">
+      {/* Vandaag overzicht */}
+      <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 space-y-3">
+        {/* Bovenste rij: datum + volgend event */}
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-          {/* Vandaag label + datum */}
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-autronis-accent animate-pulse" />
             <span className="text-sm font-semibold text-autronis-text-primary">Vandaag</span>
@@ -500,10 +549,8 @@ export default function AgendaPage() {
             </span>
           </div>
 
-          {/* Divider */}
           <div className="w-px h-6 bg-autronis-border hidden sm:block" />
 
-          {/* Volgend event met countdown */}
           <div className="flex items-center gap-2 text-sm">
             {volgendEvent ? (
               <>
@@ -515,68 +562,91 @@ export default function AgendaPage() {
               </>
             ) : (
               <span className="text-autronis-text-secondary">
-                {vandaagItems.length > 0 ? "Geen komende events meer" : "Geen events vandaag"}
+                {vandaagItems.length > 0 ? "Geen komende events meer" : "Vrije dag — geen events"}
               </span>
             )}
           </div>
-
-          {/* Divider */}
-          <div className="w-px h-6 bg-autronis-border hidden sm:block" />
-
-          {/* Aantal events */}
-          <span className="text-sm text-autronis-text-secondary tabular-nums">
-            <span className="text-autronis-text-primary font-semibold">{vandaagItems.length}</span>{" "}
-            {vandaagItems.length === 1 ? "event" : "events"}
-          </span>
-
-          {/* Mini timeline */}
-          {vandaagItems.length > 0 && (
-            <>
-              <div className="w-px h-6 bg-autronis-border hidden sm:block" />
-              <div className="flex items-center gap-0.5 flex-1 min-w-[120px] max-w-[280px]">
-                <span className="text-[10px] text-autronis-text-secondary/50 tabular-nums mr-1">07</span>
-                <div className="flex-1 h-3 bg-autronis-bg/50 rounded-full relative overflow-hidden">
-                  {vandaagItems.map((item) => {
-                    const startStr = "startDatum" in item ? item.startDatum : ("datum" in item ? item.datum : "");
-                    const eindStr = "eindDatum" in item ? (item as AgendaItem | ExternEvent).eindDatum : null;
-                    // hele dag → full bar
-                    const isHeleDag = "heleDag" in item && ((item as AgendaItem).heleDag === 1 || (item as ExternEvent).heleDag === true);
-                    if (isHeleDag) {
-                      const isExtern = "bron" in item;
-                      const kleur = isExtern ? getExternEventColor(item as ExternEvent).border : (typeConfig[(item as AgendaItem).type] || typeConfig.afspraak).borderColor;
-                      return (
-                        <div
-                          key={item.id}
-                          className="absolute top-0 h-full rounded-full opacity-60"
-                          style={{ left: "0%", width: "100%", backgroundColor: kleur }}
-                        />
-                      );
-                    }
-                    if (startStr.length <= 10) return null;
-                    const startDate = new Date(startStr);
-                    const startMin = startDate.getHours() * 60 + startDate.getMinutes();
-                    const eindMin = eindStr ? (() => { const e = new Date(eindStr); return e.getHours() * 60 + e.getMinutes(); })() : startMin + 60;
-                    // Timeline range: 07:00 (420) to 21:00 (1260)
-                    const rangeStart = 420;
-                    const rangeEnd = 1260;
-                    const left = Math.max(0, ((startMin - rangeStart) / (rangeEnd - rangeStart)) * 100);
-                    const width = Math.max(2, ((Math.min(eindMin, rangeEnd) - Math.max(startMin, rangeStart)) / (rangeEnd - rangeStart)) * 100);
-                    const isExtern = "bron" in item;
-                    const kleur = isExtern ? getExternEventColor(item as ExternEvent).border : (typeConfig[(item as AgendaItem).type] || typeConfig.afspraak).borderColor;
-                    return (
-                      <div
-                        key={item.id}
-                        className="absolute top-0 h-full rounded-full opacity-70"
-                        style={{ left: `${left}%`, width: `${width}%`, backgroundColor: kleur }}
-                      />
-                    );
-                  })}
-                </div>
-                <span className="text-[10px] text-autronis-text-secondary/50 tabular-nums ml-1">21</span>
-              </div>
-            </>
-          )}
         </div>
+
+        {/* Statistieken kaartjes */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="bg-autronis-bg/40 rounded-lg px-3 py-2 border border-autronis-border/30">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-3.5 h-3.5 text-autronis-accent" />
+              <span className="text-xs text-autronis-text-secondary">Events</span>
+            </div>
+            <p className="text-lg font-bold text-autronis-text-primary mt-0.5 tabular-nums">{vandaagItems.length}</p>
+          </div>
+          <div className="bg-autronis-bg/40 rounded-lg px-3 py-2 border border-autronis-border/30">
+            <div className="flex items-center gap-2">
+              <ListTodo className="w-3.5 h-3.5 text-orange-400" />
+              <span className="text-xs text-autronis-text-secondary">Open taken</span>
+            </div>
+            <p className="text-lg font-bold text-autronis-text-primary mt-0.5 tabular-nums">
+              {takenStats.open + takenStats.bezig}
+              {takenStats.hoogPrio > 0 && (
+                <span className="text-xs text-red-400 font-medium ml-1.5">({takenStats.hoogPrio} hoog)</span>
+              )}
+            </p>
+          </div>
+          <div className="bg-autronis-bg/40 rounded-lg px-3 py-2 border border-autronis-border/30">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+              <span className="text-xs text-autronis-text-secondary">Niet ingepland</span>
+            </div>
+            <p className="text-lg font-bold text-autronis-text-primary mt-0.5 tabular-nums">{takenStats.zonderDeadline}</p>
+          </div>
+          <div className="bg-autronis-bg/40 rounded-lg px-3 py-2 border border-autronis-border/30">
+            <div className="flex items-center gap-2">
+              <Zap className="w-3.5 h-3.5 text-yellow-400" />
+              <span className="text-xs text-autronis-text-secondary">Bezig</span>
+            </div>
+            <p className="text-lg font-bold text-autronis-text-primary mt-0.5 tabular-nums">{takenStats.bezig}</p>
+          </div>
+        </div>
+
+        {/* Mini timeline (als er events zijn) */}
+        {vandaagItems.length > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="text-[10px] text-autronis-text-secondary/50 tabular-nums">07</span>
+            <div className="flex-1 h-2.5 bg-autronis-bg/50 rounded-full relative overflow-hidden">
+              {vandaagItems.map((item) => {
+                const startStr = "startDatum" in item ? item.startDatum : ("datum" in item ? item.datum : "");
+                const eindStr = "eindDatum" in item ? (item as AgendaItem | ExternEvent).eindDatum : null;
+                const isHeleDag = "heleDag" in item && ((item as AgendaItem).heleDag === 1 || (item as ExternEvent).heleDag === true);
+                if (isHeleDag) {
+                  const isExtern = "bron" in item;
+                  const kleur = isExtern ? getExternEventColor(item as ExternEvent).border : (typeConfig[(item as AgendaItem).type] || typeConfig.afspraak).borderColor;
+                  return (
+                    <div key={item.id} className="absolute top-0 h-full rounded-full opacity-60" style={{ left: "0%", width: "100%", backgroundColor: kleur }} />
+                  );
+                }
+                if (startStr.length <= 10) return null;
+                const startDate = new Date(startStr);
+                const startMin = startDate.getHours() * 60 + startDate.getMinutes();
+                const eindMin = eindStr ? (() => { const e = new Date(eindStr); return e.getHours() * 60 + e.getMinutes(); })() : startMin + 60;
+                const rangeStart = 420;
+                const rangeEnd = 1260;
+                const left = Math.max(0, ((startMin - rangeStart) / (rangeEnd - rangeStart)) * 100);
+                const width = Math.max(2, ((Math.min(eindMin, rangeEnd) - Math.max(startMin, rangeStart)) / (rangeEnd - rangeStart)) * 100);
+                const isExtern = "bron" in item;
+                const kleur = isExtern ? getExternEventColor(item as ExternEvent).border : (typeConfig[(item as AgendaItem).type] || typeConfig.afspraak).borderColor;
+                return (
+                  <div key={item.id} className="absolute top-0 h-full rounded-full opacity-70" style={{ left: `${left}%`, width: `${width}%`, backgroundColor: kleur }} />
+                );
+              })}
+              {/* Nu-indicator op timeline */}
+              {(() => {
+                const nu = new Date();
+                const nuMin = nu.getHours() * 60 + nu.getMinutes();
+                const pos = ((nuMin - 420) / (1260 - 420)) * 100;
+                if (pos < 0 || pos > 100) return null;
+                return <div className="absolute top-0 h-full w-0.5 bg-red-500" style={{ left: `${pos}%` }} />;
+              })()}
+            </div>
+            <span className="text-[10px] text-autronis-text-secondary/50 tabular-nums">21</span>
+          </div>
+        )}
       </div>
 
       {/* Snelfilters */}

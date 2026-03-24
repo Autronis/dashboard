@@ -176,3 +176,31 @@ export function useDeleteKalender() {
     },
   });
 }
+
+// ============ TAKEN VOOR KALENDER ============
+
+export interface AgendaTaak {
+  id: number;
+  titel: string;
+  status: string;
+  prioriteit: string;
+  deadline: string | null;
+  projectNaam: string | null;
+  klantNaam: string | null;
+  toegewezenAanId: number | null;
+}
+
+async function fetchAgendaTaken(): Promise<AgendaTaak[]> {
+  const res = await fetch("/api/agenda/taken");
+  if (!res.ok) return [];
+  const json = await res.json() as { taken: AgendaTaak[] };
+  return json.taken;
+}
+
+export function useAgendaTaken() {
+  return useQuery({
+    queryKey: ["agenda-taken"],
+    queryFn: fetchAgendaTaken,
+    staleTime: 30_000,
+  });
+}

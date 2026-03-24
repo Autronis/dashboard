@@ -1034,43 +1034,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Aankomende Deadlines */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
-              <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-                <CalendarDays className="w-4 h-4 text-autronis-accent" />
-                Deadlines
-              </h2>
-              {deadlines.length === 0 ? (
-                <p className="text-sm text-autronis-text-secondary">
-                  Geen projecten met deadlines.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {deadlines.map((dl) => (
-                    <Link
-                      key={dl.projectId}
-                      href={`/klanten/${dl.klantId}/projecten/${dl.projectId}`}
-                      className="bg-autronis-bg/50 rounded-lg p-3 flex items-center justify-between gap-3 hover:bg-autronis-bg/80 transition-colors block"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-autronis-text-primary truncate">
-                          {dl.projectNaam}
-                        </p>
-                        <p className="text-xs text-autronis-text-secondary">
-                          {dl.klantNaam}
-                        </p>
-                      </div>
-                      <span className={cn("text-xs font-semibold flex-shrink-0", deadlineKleur(dl.deadline))}>
-                        {deadlineLabel(dl.deadline)}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Documenten widget */}
-            <DocumentWidget />
           </div>
 
           {/* Right column: Inzichten + Team + Idee + Focus + Gewoontes + Learning + Brain */}
@@ -1104,8 +1067,9 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Mini gewoontes + focus + quick links */}
+            {/* Snelle navigatie */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+              <h3 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Snelle navigatie</h3>
               <div className="grid grid-cols-2 gap-2 mb-2">
                 <Link href="/gewoontes" className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
                   <Flame className="w-3.5 h-3.5 text-orange-400" />

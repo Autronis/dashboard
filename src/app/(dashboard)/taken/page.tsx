@@ -250,6 +250,141 @@ function VoortgangCompact({ taken, projecten }: { taken: Taak[]; projecten: Proj
   );
 }
 
+// ─── Taak Detail Modal ───
+function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTaak, onDelete, onEdit }: {
+  taak: Taak;
+  onClose: () => void;
+  onStatusToggle: (taak: Taak) => void;
+  onStartTimer: (taak: Taak) => void;
+  onPlanTaak: (taak: Taak) => void;
+  onDelete: (id: number) => void;
+  onEdit: (id: number, body: Record<string, string | undefined>) => void;
+}) {
+  const sc = statusConfig[taak.status] || statusConfig.open;
+  const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
+  const StatusIcon = sc.icon;
+  const isClaude = taak.uitvoerder === "claude";
+  const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
+  const { addToast } = useToast();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        {/* Header met status + acties */}
+        <div className="flex items-center gap-3 p-5 pb-0">
+          <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
+            <StatusIcon className={cn("w-6 h-6", taak.status === "bezig" && "animate-spin")} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg font-bold text-autronis-text-primary">{taak.titel}</h2>
+            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+              <span className="text-xs text-autronis-text-secondary">{taak.projectNaam}</span>
+              {taak.fase && <span className="text-xs text-autronis-text-secondary">&middot; {taak.fase}</span>}
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors flex-shrink-0">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Meta info */}
+        <div className="flex flex-wrap items-center gap-2 px-5 pt-3">
+          <span className={cn("text-xs px-2 py-1 rounded-full font-medium", sc.bg, sc.color)}>{sc.label}</span>
+          <span className={cn("text-xs px-2 py-1 rounded-full font-medium", pc.bg, pc.color)}>{pc.label} prioriteit</span>
+          {isClaude && <span className="text-xs px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 font-medium flex items-center gap-1"><Bot className="w-3 h-3" /> Claude</span>}
+          {!isClaude && <span className="text-xs px-2 py-1 rounded-full bg-orange-500/15 text-orange-400 font-medium flex items-center gap-1"><User className="w-3 h-3" /> Handmatig</span>}
+          {taak.deadline && (
+            <span className={cn("text-xs px-2 py-1 rounded-full font-medium", isVerlopen ? "bg-red-500/15 text-red-400" : "bg-autronis-bg text-autronis-text-secondary")}>
+              {isVerlopen && <AlertTriangle className="w-3 h-3 inline mr-1" />}
+              Deadline: {formatDatum(taak.deadline)}
+            </span>
+          )}
+          {taak.klantNaam && <span className="text-xs text-autronis-text-secondary">Klant: {taak.klantNaam}</span>}
+          {taak.toegewezenAanNaam && <span className="text-xs text-autronis-text-secondary">Toegewezen: {taak.toegewezenAanNaam}</span>}
+        </div>
+
+        {/* Omschrijving */}
+        <div className="px-5 pt-4 space-y-3">
+          {taak.omschrijving ? (
+            <div>
+              <h3 className="text-[11px] font-semibold text-autronis-text-secondary uppercase tracking-wider mb-1.5">Wat moet er gebeuren</h3>
+              <div className="bg-autronis-bg/50 rounded-xl p-4 border border-autronis-border/50">
+                <p className="text-sm text-autronis-text-primary leading-relaxed whitespace-pre-wrap">{taak.omschrijving}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-autronis-bg/30 rounded-xl p-4 border border-autronis-border/30">
+              <p className="text-sm text-autronis-text-secondary italic">Geen omschrijving toegevoegd</p>
+            </div>
+          )}
+
+          {/* Claude prompt */}
+          {isClaude && taak.prompt && (
+            <div>
+              <h3 className="text-[11px] font-semibold text-purple-400 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                <Terminal className="w-3 h-3" /> Prompt
+              </h3>
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+                <pre className="text-sm text-autronis-text-primary leading-relaxed whitespace-pre-wrap font-mono">{taak.prompt}</pre>
+              </div>
+            </div>
+          )}
+
+          {/* Project map */}
+          {isClaude && taak.projectMap && (
+            <div className="flex items-center gap-2 bg-autronis-bg/50 border border-autronis-border/50 rounded-lg px-3 py-2">
+              <FolderOpen className="w-3.5 h-3.5 text-autronis-accent flex-shrink-0" />
+              <span className="text-[11px] text-autronis-text-secondary">Project map:</span>
+              <span className="text-xs text-autronis-text-primary font-mono select-all">{taak.projectMap}</span>
+            </div>
+          )}
+
+          {/* Aangemaakt op */}
+          {taak.aangemaaktOp && (
+            <p className="text-[11px] text-autronis-text-secondary/60">Aangemaakt op {formatDatum(taak.aangemaaktOp)}</p>
+          )}
+        </div>
+
+        {/* Acties onderaan */}
+        <div className="flex flex-wrap items-center gap-2 p-5 pt-4 border-t border-autronis-border/50 mt-4">
+          {taak.status !== "afgerond" && (
+            <>
+              <button onClick={() => { onStartTimer(taak); onClose(); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-sm font-bold hover:bg-autronis-accent-hover transition-colors">
+                <Play className="w-3.5 h-3.5" /> Start timer
+              </button>
+              <button onClick={() => { onStatusToggle({ ...taak, status: "bezig" } as Taak); onClose(); }}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-500/15 text-green-400 text-sm font-semibold hover:bg-green-500/25 transition-colors">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Markeer klaar
+              </button>
+              <button onClick={() => { onPlanTaak(taak); }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-autronis-border text-autronis-text-secondary text-sm font-medium hover:border-autronis-accent/40 hover:text-autronis-accent transition-colors">
+                <CalendarPlus className="w-3.5 h-3.5" /> Plan in agenda
+              </button>
+            </>
+          )}
+          {taak.status === "afgerond" && (
+            <button onClick={() => { onStatusToggle(taak); onClose(); }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-autronis-border text-autronis-text-secondary text-sm font-medium hover:text-autronis-text-primary transition-colors">
+              <Circle className="w-3.5 h-3.5" /> Heropenen
+            </button>
+          )}
+          {isClaude && taak.prompt && taak.status !== "afgerond" && (
+            <button onClick={() => { navigator.clipboard.writeText(taak.prompt!); addToast("Prompt gekopieerd", "succes"); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm font-semibold hover:bg-purple-500/20 transition-colors">
+              <Sparkles className="w-3.5 h-3.5" /> Kopieer prompt
+            </button>
+          )}
+          <button onClick={() => { onDelete(taak.id); onClose(); }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-red-400/70 text-sm font-medium hover:bg-red-500/10 hover:text-red-400 transition-colors ml-auto">
+            <X className="w-3.5 h-3.5" /> Verwijder
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ───
 export default function TakenPage() {
   useAutoSync();
@@ -267,6 +402,7 @@ export default function TakenPage() {
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
   const [collapsedFases, setCollapsedFases] = useState<Set<string>>(new Set());
   const [completedTaskId, setCompletedTaskId] = useState<number | null>(null);
+  const [selectedTaak, setSelectedTaak] = useState<Taak | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFase, setEditFase] = useState("");
   const [editPrioriteit, setEditPrioriteit] = useState("");
@@ -619,7 +755,7 @@ export default function TakenPage() {
                     <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0", sc.color)}>
                       <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                     </button>
-                    <p className={cn("flex-1 text-xs truncate", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
+                    <p onClick={() => setSelectedTaak(taak)} className={cn("flex-1 text-xs truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                     <span className="text-[10px] text-autronis-text-secondary truncate max-w-24">{taak.projectNaam}</span>
                     <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                     {taak.uitvoerder === "claude" && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
@@ -709,7 +845,7 @@ export default function TakenPage() {
                                               <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                                             </button>
                                             <div className="flex-1 min-w-0">
-                                              <p className={cn("text-xs font-medium truncate", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
+                                              <p onClick={() => setSelectedTaak(taak)} className={cn("text-xs font-medium truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                                             </div>
                                             {isClaude && <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>

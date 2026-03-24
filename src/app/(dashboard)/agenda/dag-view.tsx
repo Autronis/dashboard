@@ -2,8 +2,8 @@
 
 import { useMemo, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee } from "lucide-react";
-import type { AgendaItem, ExternEvent, DeadlineEvent } from "@/hooks/queries/use-agenda";
+import { ChevronLeft, ChevronRight, Clock, Coffee, CheckSquare, X } from "lucide-react";
+import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
@@ -55,9 +55,13 @@ interface DagViewProps {
   items: AnyEvent[];
   onItemClick?: (item: AgendaItem) => void;
   onSlotClick?: (datum: string) => void;
+  // Taken props
+  ingeplandeTaken?: AgendaTaak[];
+  onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
+  onUnplanTaak?: (id: number) => void;
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak }: DagViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
   const isVandaag = datumStr === new Date().toISOString().slice(0, 10);
@@ -68,6 +72,11 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
     month: "long",
     year: "numeric",
   });
+
+  // Ingeplande taken voor deze dag
+  const dagTaken = useMemo(() => {
+    return ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === datumStr);
+  }, [ingeplandeTaken, datumStr]);
 
   // Split events
   const { heleDag, timed } = useMemo(() => {
@@ -108,15 +117,24 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
       }
     }
 
+    // Include ingeplande taken in range
+    for (const taak of dagTaken) {
+      if (!taak.ingeplandStart) continue;
+      const d = new Date(taak.ingeplandStart);
+      min = Math.min(min, d.getHours());
+      if (taak.ingeplandEind) {
+        max = Math.max(max, new Date(taak.ingeplandEind).getHours() + 1);
+      }
+    }
+
     if (isVandaag) {
       const nuUur = new Date().getHours();
       min = Math.min(min, nuUur);
       max = Math.max(max, nuUur + 2);
     }
 
-    // Houd het compact — niet meer dan nodig
     return { startUur: Math.max(0, min - 1), eindUur: Math.min(24, max) };
-  }, [timed, isVandaag]);
+  }, [timed, dagTaken, isVandaag]);
 
   const uren = useMemo(() => Array.from({ length: eindUur - startUur }, (_, i) => startUur + i), [startUur, eindUur]);
 
@@ -124,7 +142,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
   const pauzes = useMemo(() => {
     if (timed.length < 2) return [];
 
-    // Sorteer events op starttijd
     const sorted = [...timed]
       .map((item) => {
         const startStr = "startDatum" in item ? item.startDatum : "";
@@ -144,7 +161,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
 
     if (sorted.length < 2) return [];
 
-    // Merge overlapping intervals
     const merged: { startMin: number; eindMin: number }[] = [sorted[0]];
     for (let i = 1; i < sorted.length; i++) {
       const last = merged[merged.length - 1];
@@ -155,7 +171,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
       }
     }
 
-    // Gaps between merged intervals (min 10 min gap to show)
     const gaps: PauzeBlock[] = [];
     for (let i = 0; i < merged.length - 1; i++) {
       const gapStart = merged[i].eindMin;
@@ -224,7 +239,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
           {uren.map((uur) => (
             <div
               key={uur}
-              onClick={() => onSlotClick?.(datumStr)}
+              onClick={() => {
+                if (onSlotClick) onSlotClick(datumStr);
+              }}
               className="absolute left-0 right-0 flex border-b border-autronis-border/15 cursor-pointer hover:bg-autronis-accent/[0.03] transition-colors"
               style={{ top: `${(uur - startUur) * UUR_HOOGTE}px`, height: `${UUR_HOOGTE}px` }}
             >
@@ -298,11 +315,65 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick }: 
             );
           })}
 
+          {/* Ingeplande taken als groene blokken */}
+          {dagTaken.map((taak) => {
+            if (!taak.ingeplandStart) return null;
+            const startDate = new Date(taak.ingeplandStart);
+            const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
+            const duurMin = taak.geschatteDuur || 60;
+
+            const top = ((startMinuten - startUur * 60) / 60) * UUR_HOOGTE;
+            const height = Math.max(28, (duurMin / 60) * UUR_HOOGTE);
+            const startTijd = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+            const eindTijd = taak.ingeplandEind ? new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
+
+            return (
+              <div
+                key={`taak-dag-${taak.id}`}
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-all hover:brightness-110 z-[3] group"
+                style={{
+                  top: `${top}px`,
+                  height: `${height}px`,
+                  backgroundColor: "rgba(34,197,94,0.12)",
+                  borderLeftColor: "#22c55e",
+                }}
+                onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
+              >
+                <div className="flex items-center gap-1.5">
+                  <CheckSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{taak.titel}</p>
+                </div>
+                <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400/70" />
+                  <span className="text-[10px] sm:text-xs tabular-nums text-green-400/70">
+                    {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
+                  </span>
+                  {taak.projectNaam && (
+                    <span className="text-[10px] text-autronis-text-secondary/50 ml-auto truncate">{taak.projectNaam}</span>
+                  )}
+                </div>
+                {/* Uitplannen knop */}
+                {onUnplanTaak && (
+                  <button
+                    className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUnplanTaak(taak.id);
+                    }}
+                    title="Uit agenda halen"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
           {/* Nu-indicator */}
           {isVandaag && nuTop >= 0 && nuTop <= uren.length * UUR_HOOGTE && (
             <div className="absolute left-10 sm:left-14 right-0 flex items-center z-10 pointer-events-none" style={{ top: `${nuTop}px` }}>
-              <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/30" />
-              <div className="flex-1 h-[2px] bg-red-500/70" />
+              <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/30 animate-pulse" />
+              <div className="flex-1 h-[2px] bg-red-500" />
               <span className="text-[10px] font-bold text-red-400 bg-autronis-card/90 px-1.5 py-0.5 rounded ml-1">
                 Nu
               </span>

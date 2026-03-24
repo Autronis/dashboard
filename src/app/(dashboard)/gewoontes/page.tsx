@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   Plus,
   Flame,
@@ -166,8 +168,13 @@ function calculateLevel(totaalPunten: number): { level: number; naam: string; vo
 function StreakFlame({ streak }: { streak: number }) {
   if (streak === 0) return null;
   const size = streak >= 30 ? "w-6 h-6" : streak >= 14 ? "w-5 h-5" : streak >= 7 ? "w-4.5 h-4.5" : "w-4 h-4";
-  const color = streak >= 30 ? "text-red-400" : streak >= 14 ? "text-orange-400" : streak >= 7 ? "text-orange-400" : "text-orange-400/70";
-  const animate = streak >= 14 ? "animate-pulse" : "";
+  const color =
+    streak >= 30 ? "text-purple-400 drop-shadow-[0_0_6px_rgba(168,85,247,0.7)]" :
+    streak >= 14 ? "text-red-400" :
+    streak >= 7 ? "text-orange-400" :
+    streak >= 3 ? "text-yellow-400" :
+    "text-slate-400";
+  const animate = streak >= 30 ? "animate-pulse" : streak >= 14 ? "animate-pulse" : "";
 
   return (
     <span className={cn("inline-flex items-center gap-1 font-bold tabular-nums", color)}>
@@ -178,11 +185,11 @@ function StreakFlame({ streak }: { streak: number }) {
 }
 
 // ─── Feedback Toast after completing a habit ───
-function CompletionFeedback({ stat, onClose }: { stat: HabitStat; onClose: () => void }) {
+function CompletionFeedback({ stat, onClose, onUndo }: { stat: HabitStat; onClose: () => void; onUndo?: () => void }) {
   const messages = [
+    stat.huidigeStreak >= 21 ? "Dit is nu een gevestigde gewoonte. Respect." : null,
     stat.huidigeStreak >= 7 ? `${stat.huidigeStreak} dagen op rij! Je bent on fire.` : null,
     stat.huidigeStreak === 1 ? "Eerste stap gezet. Morgen weer!" : null,
-    stat.huidigeStreak >= 21 ? "Dit is nu een gevestigde gewoonte. Respect." : null,
     stat.totaalVoltooid % 10 === 0 && stat.totaalVoltooid > 0 ? `Milestone: ${stat.totaalVoltooid} keer voltooid!` : null,
     stat.completionRate >= 90 ? "Top 10% consistentie. Blijf zo doorgaan." : null,
   ].filter(Boolean);
@@ -191,12 +198,18 @@ function CompletionFeedback({ stat, onClose }: { stat: HabitStat; onClose: () =>
   const punten = stat.huidigeStreak >= 7 ? 3 : stat.huidigeStreak >= 3 ? 2 : 1;
 
   useEffect(() => {
-    const timer = setTimeout(onClose, 3500);
+    const timer = setTimeout(onClose, 4500);
     return () => clearTimeout(timer);
   }, [onClose]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
+    <motion.div
+      initial={{ y: 20, opacity: 0, scale: 0.95 }}
+      animate={{ y: 0, opacity: 1, scale: 1 }}
+      exit={{ y: 20, opacity: 0, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 300, damping: 28 }}
+      className="fixed bottom-6 right-6 z-50"
+    >
       <div className="bg-emerald-500/15 border border-emerald-500/30 rounded-2xl p-4 pr-10 backdrop-blur-xl shadow-2xl max-w-sm">
         <button onClick={onClose} className="absolute top-3 right-3 text-autronis-text-secondary hover:text-white">
           <X className="w-4 h-4" />
@@ -209,15 +222,28 @@ function CompletionFeedback({ stat, onClose }: { stat: HabitStat; onClose: () =>
             <p className="text-sm font-bold text-emerald-400">{stat.naam}</p>
             <p className="text-xs text-autronis-text-secondary">+{punten} punt{punten > 1 ? "en" : ""}</p>
           </div>
-          {stat.huidigeStreak > 0 && (
-            <div className="ml-auto">
-              <StreakFlame streak={stat.huidigeStreak} />
+          {stat.huidigeStreak >= 3 && (
+            <div className="ml-auto text-center">
+              <p className="text-2xl font-black tabular-nums leading-none" style={{
+                color: stat.huidigeStreak >= 30 ? "#c084fc" : stat.huidigeStreak >= 14 ? "#f87171" : "#fb923c"
+              }}>
+                {stat.huidigeStreak}
+              </p>
+              <p className="text-[9px] text-autronis-text-secondary">dagen streak</p>
             </div>
           )}
         </div>
         <p className="text-sm text-autronis-text-primary">{message}</p>
+        {onUndo && (
+          <button
+            onClick={onUndo}
+            className="mt-2.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary underline underline-offset-2 transition-colors"
+          >
+            Ongedaan maken
+          </button>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -448,6 +474,8 @@ export default function GewoontesPagina() {
   const [showSuggesties, setShowSuggesties] = useState(false);
   const [showStats, setShowStats] = useState(true);
   const [completedStat, setCompletedStat] = useState<HabitStat | null>(null);
+  const [undoId, setUndoId] = useState<number | null>(null);
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -476,7 +504,7 @@ export default function GewoontesPagina() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const toggleGewoonte = async (gewoonteId: number) => {
+  const toggleGewoonte = async (gewoonteId: number, skipFeedback = false) => {
     const vandaag = new Date().toISOString().slice(0, 10);
     const wasVoltooid = gewoontesList.find((g) => g.id === gewoonteId)?.voltooidVandaag;
 
@@ -504,11 +532,15 @@ export default function GewoontesPagina() {
       setVandaagFocus(sData.vandaagFocus || []);
       setBadgeVoortgang(sData.badgeVoortgang || []);
 
-      // Show feedback when completing (not uncompleting)
-      if (!wasVoltooid) {
+      // Show feedback when completing (not uncompleting, not undo)
+      if (!wasVoltooid && !skipFeedback) {
         const updatedStat = (sData.statistieken || []).find((s: HabitStat) => s.id === gewoonteId);
         if (updatedStat) {
           setCompletedStat(updatedStat);
+          // Set up undo window
+          if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+          setUndoId(gewoonteId);
+          undoTimerRef.current = setTimeout(() => setUndoId(null), 5000);
         }
       }
     } catch {
@@ -517,6 +549,15 @@ export default function GewoontesPagina() {
       );
       addToast("Kon gewoonte niet bijwerken", "fout");
     }
+  };
+
+  const handleUndo = () => {
+    if (undoId === null) return;
+    const id = undoId;
+    setUndoId(null);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setCompletedStat(null);
+    toggleGewoonte(id, true);
   };
 
   const handleSave = async (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string }) => {
@@ -586,6 +627,8 @@ export default function GewoontesPagina() {
   }, [vandaagFocus]);
 
   const vandaagDagNaam = new Date().toLocaleDateString("nl-NL", { weekday: "long" });
+  const isAvond = new Date().getHours() >= 20;
+  const streakGevaar = isAvond && vandaagFocus.length > 0;
 
   if (loading) {
     return (
@@ -1083,9 +1126,15 @@ export default function GewoontesPagina() {
         <ConfirmDialog open={deleteId !== null} titel="Gewoonte verwijderen" bericht="Weet je zeker dat je deze gewoonte wilt verwijderen? De bijbehorende statistieken gaan verloren." onBevestig={handleDelete} onClose={() => setDeleteId(null)} />
 
         {/* Completion feedback toast */}
-        {completedStat && (
-          <CompletionFeedback stat={completedStat} onClose={() => setCompletedStat(null)} />
-        )}
+        <AnimatePresence>
+          {completedStat && (
+            <CompletionFeedback
+              stat={completedStat}
+              onClose={() => { setCompletedStat(null); setUndoId(null); if (undoTimerRef.current) clearTimeout(undoTimerRef.current); }}
+              onUndo={undoId !== null ? handleUndo : undefined}
+            />
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

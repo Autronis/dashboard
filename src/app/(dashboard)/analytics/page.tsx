@@ -14,7 +14,6 @@ import {
   ArrowDown,
   CheckCircle2,
   Briefcase,
-  ListChecks,
   Gauge,
   Wallet,
   Shield,
@@ -26,7 +25,7 @@ import {
   AlertCircle,
   Lightbulb,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag } from "@/lib/utils";
 import {
   useAnalytics,
@@ -36,7 +35,6 @@ import {
   useRunway,
   useDecisionEngine,
   type VergelijkGebruiker,
-  type ForecastMaand,
   type DecisionEngineData,
   type DecisionInsight,
   type DecisionAction,
@@ -96,12 +94,13 @@ function AnimatedBar({
   );
 }
 
-// --- CSS Donut Chart ---
+// --- CSS Donut Chart (with hover highlight) ---
 function DonutChart({
   segments,
 }: {
   segments: { label: string; value: number; color: string }[];
 }) {
+  const [hover, setHover] = useState<string | null>(null);
   const total = segments.reduce((s, seg) => s + seg.value, 0);
   if (total === 0) return <p className="text-sm text-autronis-text-secondary">Geen data.</p>;
 
@@ -113,19 +112,37 @@ function DonutChart({
     acc += pct;
   }
 
+  const hoveredSeg = hover ? segments.find((s) => s.label === hover) : null;
+
   return (
     <div className="flex items-center gap-6">
       <div
-        className="w-28 h-28 rounded-full flex-shrink-0 relative"
+        className="w-28 h-28 rounded-full flex-shrink-0 relative cursor-pointer"
         style={{
           background: `conic-gradient(${gradientParts.join(", ")})`,
         }}
+        onMouseLeave={() => setHover(null)}
       >
-        <div className="absolute inset-3 rounded-full bg-autronis-card" />
+        <div className="absolute inset-3 rounded-full bg-autronis-card flex items-center justify-center">
+          {hoveredSeg ? (
+            <div className="text-center px-1">
+              <p className="text-[9px] text-autronis-text-secondary leading-tight truncate max-w-[52px]">{hoveredSeg.label}</p>
+              <p className="text-[10px] font-bold text-autronis-text-primary tabular-nums">{((hoveredSeg.value / total) * 100).toFixed(0)}%</p>
+            </div>
+          ) : null}
+        </div>
       </div>
       <div className="space-y-1.5 min-w-0">
         {segments.map((seg) => (
-          <div key={seg.label} className="flex items-center gap-2 text-xs">
+          <div
+            key={seg.label}
+            className={cn(
+              "flex items-center gap-2 text-xs cursor-pointer transition-opacity rounded-md px-1.5 py-0.5",
+              hover && hover !== seg.label ? "opacity-30" : "opacity-100"
+            )}
+            onMouseEnter={() => setHover(seg.label)}
+            onMouseLeave={() => setHover(null)}
+          >
             <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: seg.color }} />
             <span className="text-autronis-text-secondary truncate">{seg.label}</span>
             <span className="text-autronis-text-primary font-medium tabular-nums ml-auto">
@@ -138,7 +155,7 @@ function DonutChart({
   );
 }
 
-// ============ NEW: AI Insights + Next Actions (top-level) ============
+// ============ AI Insights + Next Actions ============
 
 function InsightsPanel({ insights, actions }: { insights: DecisionInsight[]; actions: DecisionAction[] }) {
   const insightConfig = {
@@ -229,7 +246,7 @@ function InsightsPanel({ insights, actions }: { insights: DecisionInsight[]; act
   );
 }
 
-// ============ NEW: Client Dependency Indicator ============
+// ============ Client Dependency Indicator (with 40% threshold marker) ============
 
 function ClientDependencySectie({ dep }: { dep: DecisionEngineData["clientDependency"] }) {
   const riskConfig = {
@@ -239,7 +256,6 @@ function ClientDependencySectie({ dep }: { dep: DecisionEngineData["clientDepend
   };
 
   const cfg = riskConfig[dep.riskLevel];
-  const totaal = dep.clients.reduce((s, c) => s + c.omzet, 0);
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
@@ -251,8 +267,15 @@ function ClientDependencySectie({ dep }: { dep: DecisionEngineData["clientDepend
         </div>
       </div>
 
-      {/* Concentration bar */}
-      <div className="mb-5">
+      {/* Concentration bar with 40% threshold */}
+      <div className="mb-5 relative pt-5">
+        {/* 40% threshold marker */}
+        <div
+          className="absolute bottom-0 top-5 w-px bg-red-400/50 z-10"
+          style={{ left: "40%" }}
+        >
+          <span className="absolute -top-4 -translate-x-1/2 text-[9px] text-red-400 whitespace-nowrap">40%</span>
+        </div>
         <div className="flex h-5 rounded-full overflow-hidden bg-autronis-bg">
           {dep.clients.slice(0, 6).map((c, i) => {
             const kleur = ["bg-autronis-accent", "bg-blue-400", "bg-purple-400", "bg-yellow-400", "bg-pink-400", "bg-cyan-400"][i];
@@ -291,10 +314,12 @@ function ClientDependencySectie({ dep }: { dep: DecisionEngineData["clientDepend
   );
 }
 
-// ============ NEW: Rate Analysis ============
+// ============ Rate Analysis (with biggest lek highlight) ============
 
 function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis"] }) {
   if (rates.length === 0) return null;
+
+  const maxMisgelopen = Math.max(...rates.map((r) => r.misgelopen), 0);
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
@@ -306,35 +331,43 @@ function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis
 
       <div className="overflow-x-auto -mx-6 px-6">
         <div className="min-w-[500px] space-y-1.5">
-        <div className="grid grid-cols-6 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
-          <span className="col-span-2">Klant</span>
-          <span className="text-right">Doel</span>
-          <span className="text-right">Werkelijk</span>
-          <span className="text-right">Gap</span>
-          <span className="text-right">Misgelopen</span>
-        </div>
-        {rates.map((r) => (
-          <div
-            key={r.naam}
-            className={cn(
-              "grid grid-cols-6 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2",
-              r.gap < -10 ? "bg-red-500/8" : ""
-            )}
-          >
-            <span className="text-autronis-text-primary truncate col-span-2">{r.naam}</span>
-            <span className="text-autronis-text-secondary text-right tabular-nums">{formatBedrag(r.doelTarief)}/u</span>
-            <span className={cn("text-right tabular-nums font-medium", r.gap < -10 ? "text-red-400" : "text-autronis-accent")}>
-              {formatBedrag(r.effectiefTarief)}/u
-            </span>
-            <span className={cn("text-right tabular-nums font-medium", r.gap >= 0 ? "text-green-400" : "text-red-400")}>
-              {r.gap >= 0 ? "+" : ""}{formatBedrag(r.gap)}
-            </span>
-            <span className={cn("text-right tabular-nums", r.misgelopen > 0 ? "text-red-400 font-semibold" : "text-autronis-text-secondary")}>
-              {r.misgelopen > 0 ? formatBedrag(r.misgelopen) : "—"}
-            </span>
+          <div className="grid grid-cols-6 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
+            <span className="col-span-2">Klant</span>
+            <span className="text-right">Doel</span>
+            <span className="text-right">Werkelijk</span>
+            <span className="text-right">Gap</span>
+            <span className="text-right">Misgelopen</span>
           </div>
-        ))}
-      </div>
+          {rates.map((r) => {
+            const isBiggestLek = maxMisgelopen > 0 && r.misgelopen === maxMisgelopen;
+            return (
+              <div
+                key={r.naam}
+                className={cn(
+                  "grid grid-cols-6 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2",
+                  isBiggestLek ? "bg-red-500/12 border border-red-500/20" : r.gap < -10 ? "bg-red-500/8" : ""
+                )}
+              >
+                <div className="col-span-2 flex items-center gap-2 min-w-0">
+                  <span className="text-autronis-text-primary truncate">{r.naam}</span>
+                  {isBiggestLek && (
+                    <span className="flex-shrink-0 text-[9px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded font-bold uppercase">Grootste lek</span>
+                  )}
+                </div>
+                <span className="text-autronis-text-secondary text-right tabular-nums self-center">{formatBedrag(r.doelTarief)}/u</span>
+                <span className={cn("text-right tabular-nums font-medium self-center", r.gap < -10 ? "text-red-400" : "text-autronis-accent")}>
+                  {formatBedrag(r.effectiefTarief)}/u
+                </span>
+                <span className={cn("text-right tabular-nums font-medium self-center", r.gap >= 0 ? "text-green-400" : "text-red-400")}>
+                  {r.gap >= 0 ? "+" : ""}{formatBedrag(r.gap)}
+                </span>
+                <span className={cn("text-right tabular-nums self-center", r.misgelopen > 0 ? "text-red-400 font-semibold" : "text-autronis-text-secondary")}>
+                  {r.misgelopen > 0 ? formatBedrag(r.misgelopen) : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       {rates.some((r) => r.misgelopen > 0) && (
         <div className="mt-4 pt-3 border-t border-autronis-border flex items-center justify-between">
@@ -348,7 +381,7 @@ function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis
   );
 }
 
-// ============ NEW: Efficiency Metrics ============
+// ============ Efficiency Metrics ============
 
 function EfficiencySectie({ eff }: { eff: DecisionEngineData["efficiency"] }) {
   return (
@@ -407,9 +440,11 @@ function EfficiencySectie({ eff }: { eff: DecisionEngineData["efficiency"] }) {
   );
 }
 
-// ============ NEW: Project Insights ============
+// ============ Project Insights (sortable) ============
 
 function ProjectInsightsSectie({ projects }: { projects: DecisionEngineData["projectInsights"] }) {
+  const [sort, setSort] = useState<"omzet" | "uren" | "euroPerUur">("euroPerUur");
+
   if (projects.length === 0) return null;
 
   const waardeConfig = {
@@ -418,55 +453,84 @@ function ProjectInsightsSectie({ projects }: { projects: DecisionEngineData["pro
     laag: { bg: "bg-red-500/15", text: "text-red-400" },
   };
 
+  const sorted = [...projects].sort((a, b) => {
+    if (sort === "omzet") return b.omzet - a.omzet;
+    if (sort === "uren") return b.uren - a.uren;
+    return b.euroPerUur - a.euroPerUur;
+  });
+
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
       <div className="flex items-center gap-3 mb-5">
         <Layers className="w-5 h-5 text-blue-400" />
         <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Project waarde</h2>
-        <span className="text-xs text-autronis-text-secondary ml-auto">welke projecten zijn het waard</span>
+        <div className="flex items-center gap-1 ml-auto bg-autronis-bg rounded-lg p-1">
+          {(["omzet", "uren", "euroPerUur"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setSort(key)}
+              className={cn(
+                "text-[10px] px-2.5 py-1 rounded-md transition-colors font-medium",
+                sort === key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+              )}
+            >
+              {key === "omzet" ? "Omzet" : key === "uren" ? "Uren" : "€/uur"}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto -mx-6 px-6">
-      <div className="min-w-[600px] space-y-1.5">
-        <div className="grid grid-cols-7 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
-          <span className="col-span-2">Project</span>
-          <span className="text-right">Omzet</span>
-          <span className="text-right">Uren</span>
-          <span className="text-right">€/uur</span>
-          <span className="text-right">Budget</span>
-          <span className="text-center">Waarde</span>
+        <div className="min-w-[600px] space-y-1.5">
+          <div className="grid grid-cols-7 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
+            <span className="col-span-2">Project</span>
+            <span className={cn("text-right", sort === "omzet" ? "text-autronis-accent" : "")}>Omzet</span>
+            <span className={cn("text-right", sort === "uren" ? "text-autronis-accent" : "")}>Uren</span>
+            <span className={cn("text-right", sort === "euroPerUur" ? "text-autronis-accent" : "")}>€/uur</span>
+            <span className="text-right">Budget</span>
+            <span className="text-center">Waarde</span>
+          </div>
+          <AnimatePresence initial={false}>
+            {sorted.slice(0, 10).map((p, i) => {
+              const wCfg = waardeConfig[p.waarde];
+              return (
+                <motion.div
+                  key={p.naam}
+                  layout
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.02 }}
+                  className="grid grid-cols-7 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2 hover:bg-autronis-bg/30 transition-colors"
+                >
+                  <div className="col-span-2 min-w-0">
+                    <p className="text-autronis-text-primary truncate text-sm">{p.naam}</p>
+                    <p className="text-xs text-autronis-text-secondary truncate">{p.klant}</p>
+                  </div>
+                  <span className="text-autronis-text-secondary text-right tabular-nums self-center">{formatBedrag(p.omzet)}</span>
+                  <span className="text-autronis-text-secondary text-right tabular-nums self-center">{Math.round(p.uren)}u</span>
+                  <span className={cn("text-right tabular-nums font-medium self-center", p.euroPerUur >= 95 ? "text-green-400" : p.euroPerUur >= 70 ? "text-yellow-400" : "text-red-400")}>
+                    {formatBedrag(p.euroPerUur)}
+                  </span>
+                  <span className={cn("text-right tabular-nums self-center", p.overBudgetPct !== null && p.overBudgetPct > 0 ? "text-red-400" : "text-autronis-text-secondary")}>
+                    {p.overBudgetPct !== null ? `${p.overBudgetPct > 0 ? "+" : ""}${p.overBudgetPct.toFixed(0)}%` : "—"}
+                  </span>
+                  <div className="flex justify-center self-center">
+                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase", wCfg.bg, wCfg.text)}>
+                      {p.waarde}
+                    </span>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
-        {projects.slice(0, 10).map((p) => {
-          const wCfg = waardeConfig[p.waarde];
-          return (
-            <div key={p.naam} className="grid grid-cols-7 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2 hover:bg-autronis-bg/30 transition-colors">
-              <div className="col-span-2 min-w-0">
-                <p className="text-autronis-text-primary truncate text-sm">{p.naam}</p>
-                <p className="text-xs text-autronis-text-secondary truncate">{p.klant}</p>
-              </div>
-              <span className="text-autronis-text-secondary text-right tabular-nums self-center">{formatBedrag(p.omzet)}</span>
-              <span className="text-autronis-text-secondary text-right tabular-nums self-center">{Math.round(p.uren)}u</span>
-              <span className={cn("text-right tabular-nums font-medium self-center", p.euroPerUur >= 95 ? "text-green-400" : p.euroPerUur >= 70 ? "text-yellow-400" : "text-red-400")}>
-                {formatBedrag(p.euroPerUur)}
-              </span>
-              <span className={cn("text-right tabular-nums self-center", p.overBudgetPct !== null && p.overBudgetPct > 0 ? "text-red-400" : "text-autronis-text-secondary")}>
-                {p.overBudgetPct !== null ? `${p.overBudgetPct > 0 ? "+" : ""}${p.overBudgetPct.toFixed(0)}%` : "—"}
-              </span>
-              <div className="flex justify-center self-center">
-                <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase", wCfg.bg, wCfg.text)}>
-                  {p.waarde}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
       </div>
     </div>
   );
 }
 
-// ============ NEW: Actionable Goals ============
+// ============ Actionable Goals ============
 
 function ActionableGoalsSectie({ goals }: { goals: DecisionEngineData["actionableGoals"] }) {
   function doelKleur(pct: number): string {
@@ -513,7 +577,7 @@ function ActionableGoalsSectie({ goals }: { goals: DecisionEngineData["actionabl
   );
 }
 
-// ============ NEW: Pipeline ============
+// ============ Pipeline ============
 
 function PipelineSectie({ pipeline }: { pipeline: DecisionEngineData["pipeline"] }) {
   return (
@@ -574,7 +638,7 @@ function PipelineSectie({ pipeline }: { pipeline: DecisionEngineData["pipeline"]
   );
 }
 
-// ============ NEW: Upgraded Cashflow ============
+// ============ Upgraded Cashflow ============
 
 function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
   const isGezond = cf.nettoPerMaand >= 0;
@@ -628,7 +692,7 @@ function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
   );
 }
 
-// ============ NEW: Upgraded Forecast with confidence ============
+// ============ Upgraded Forecast with confidence ============
 
 function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["forecast"] }) {
   const maxVal = Math.max(...forecast.maanden.map((m) => m.bestCase), 1);
@@ -697,7 +761,7 @@ function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["fo
   );
 }
 
-// --- Existing: Tijdsbesteding sectie ---
+// --- Tijdsbesteding sectie ---
 function TijdsbestedingSectie({
   topProjecten,
   heatmapData,
@@ -782,7 +846,7 @@ function getWeekNumber(d: Date): number {
   return Math.ceil((days + oneJan.getDay() + 1) / 7);
 }
 
-// --- Existing: Team vergelijking ---
+// --- Team vergelijking ---
 function TeamVergelijking({ gebruikers }: { gebruikers: VergelijkGebruiker[] }) {
   if (gebruikers.length < 2) return null;
 
@@ -849,9 +913,49 @@ function TeamVergelijking({ gebruikers }: { gebruikers: VergelijkGebruiker[] }) 
   );
 }
 
+// --- Sticky summary bar ---
+function StickySummaryBar({
+  cf,
+  eff,
+  forecast,
+}: {
+  cf: DecisionEngineData["cashflow"];
+  eff: DecisionEngineData["efficiency"];
+  forecast: DecisionEngineData["forecast"];
+}) {
+  return (
+    <div className="sticky top-0 z-20 bg-autronis-bg/95 backdrop-blur-sm border-b border-autronis-border -mx-4 px-4 lg:-mx-8 lg:px-8 py-2.5 flex items-center gap-3 sm:gap-5 flex-wrap text-xs">
+      <span className="text-autronis-text-secondary font-medium">Runway</span>
+      <span className={cn("font-bold tabular-nums", cf.nettoPerMaand >= 0 ? "text-green-400" : "text-red-400")}>
+        {cf.runwayMaanden === null ? "Gezond" : `${cf.runwayMaanden} mnd`}
+      </span>
+      <div className="w-px h-3 bg-autronis-border hidden sm:block" />
+      <span className="text-autronis-text-secondary font-medium">Billable</span>
+      <span className={cn("font-bold tabular-nums", eff.billablePercent >= 75 ? "text-green-400" : eff.billablePercent >= 60 ? "text-yellow-400" : "text-red-400")}>
+        {eff.billablePercent.toFixed(0)}%
+      </span>
+      <div className="w-px h-3 bg-autronis-border hidden sm:block" />
+      <span className="text-autronis-text-secondary font-medium">Pipeline</span>
+      <span className="text-cyan-400 font-bold tabular-nums">{formatBedrag(forecast.restWaarde)}</span>
+      <div className="w-px h-3 bg-autronis-border hidden sm:block" />
+      <span className="text-autronis-text-secondary font-medium">Forecast</span>
+      <span className={cn("font-bold", forecast.opKoers ? "text-green-400" : "text-red-400")}>
+        {forecast.opKoers ? "Op koers" : "Niet op koers"}
+      </span>
+      {cf.overdue > 0 && (
+        <>
+          <div className="w-px h-3 bg-autronis-border hidden sm:block" />
+          <span className="text-red-400 font-bold tabular-nums">{formatBedrag(cf.overdue)} te laat</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 // --- Main page ---
 export default function AnalyticsPage() {
   const [jaar, setJaar] = useState(new Date().getFullYear());
+  const [grafiekMetric, setGrafiekMetric] = useState<"omzet" | "uren">("omzet");
 
   const { data, isLoading } = useAnalytics(jaar);
   const { data: heatmapData } = useHeatmap();
@@ -881,23 +985,27 @@ export default function AnalyticsPage() {
     return <AnalyticsSkeleton />;
   }
 
-  const maxUren = Math.max(...data.maanden.map((m) => m.uren), 1);
-  const topProjectMax = Math.max(...data.topProjecten.map((p) => p.uren), 1);
-
   const omzetGroei =
     data.kpis.omzetVorigJaar > 0
       ? ((data.kpis.omzetDitJaar - data.kpis.omzetVorigJaar) / data.kpis.omzetVorigJaar) * 100
       : 0;
 
+  const isHuidigJaar = jaar === new Date().getFullYear();
+  const jaarDoel = decisionData?.forecast.jaardoel ?? 120_000;
+  const jaarDoelPct = Math.min((data.kpis.omzetDitJaar / jaarDoel) * 100, 100);
+
   const TARGET_OMZET = 10000;
   const huidigeMaandStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`;
   const forecastMaanden = forecastData?.maanden ?? [];
 
+  // Chart max based on selected metric
   const allOmzetValues = [
     ...data.maanden.map((m) => m.omzet),
     ...forecastMaanden.map((m) => m.bestCase),
   ];
-  const chartMax = Math.max(...allOmzetValues, TARGET_OMZET * 1.1, 1);
+  const chartMaxOmzet = Math.max(...allOmzetValues, TARGET_OMZET * 1.1, 1);
+  const chartMaxUren = Math.max(...data.maanden.map((m) => m.uren), 1);
+  const chartMax = grafiekMetric === "omzet" ? chartMaxOmzet : chartMaxUren;
 
   return (
     <PageTransition>
@@ -930,132 +1038,201 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* === AI INSIGHTS + NEXT ACTIONS (NEW - top level) === */}
+        {/* Sticky summary bar */}
+        {decisionData && (
+          <StickySummaryBar
+            cf={decisionData.cashflow}
+            eff={decisionData.efficiency}
+            forecast={decisionData.forecast}
+          />
+        )}
+
+        {/* === AI INSIGHTS + NEXT ACTIONS === */}
         {decisionData && (
           <InsightsPanel insights={decisionData.aiInsights} actions={decisionData.nextActions} />
         )}
 
-        {/* KPI balk */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
-          <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
-            <div className="p-2.5 bg-autronis-accent/10 rounded-xl w-fit mb-3">
-              <Euro className="w-5 h-5 text-autronis-accent" />
-            </div>
-            <p className="text-2xl font-bold text-autronis-accent tabular-nums">
-              <AnimatedNumber value={data.kpis.omzetDitJaar} format={(n) => formatBedrag(n)} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Omzet {jaar}</p>
-          </div>
-
-          <div
-            className={cn(
-              "border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow",
-              omzetGroei >= 0 ? "bg-gradient-to-br from-green-500/10 to-autronis-card" : "bg-gradient-to-br from-red-500/10 to-autronis-card"
-            )}
+        {/* KPI balk — animates on year switch */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={jaar}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5"
           >
-            <div className="flex items-center gap-2 mb-3">
-              <div className={cn("p-2.5 rounded-xl w-fit", omzetGroei >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
-                {omzetGroei >= 0 ? <ArrowUp className="w-5 h-5 text-green-400" /> : <ArrowDown className="w-5 h-5 text-red-400" />}
+            <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow col-span-2 sm:col-span-1">
+              <div className="p-2.5 bg-autronis-accent/10 rounded-xl w-fit mb-3">
+                <Euro className="w-5 h-5 text-autronis-accent" />
               </div>
+              <p className="text-2xl font-bold text-autronis-accent tabular-nums">
+                <AnimatedNumber value={data.kpis.omzetDitJaar} format={(n) => formatBedrag(n)} />
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Omzet {jaar}</p>
+              {isHuidigJaar && (
+                <div className="mt-3 pt-2 border-t border-autronis-accent/20">
+                  <div className="flex justify-between text-[10px] text-autronis-text-secondary mb-1.5">
+                    <span>Jaardoel</span>
+                    <span className="tabular-nums">{Math.round(jaarDoelPct)}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-autronis-bg rounded-full overflow-hidden">
+                    <motion.div
+                      className={cn("h-full rounded-full", jaarDoelPct >= 75 ? "bg-green-400" : jaarDoelPct >= 50 ? "bg-yellow-400" : "bg-autronis-accent")}
+                      initial={{ width: "0%" }}
+                      animate={{ width: `${jaarDoelPct}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-autronis-text-secondary mt-1 tabular-nums">{formatBedrag(jaarDoel)} doel</p>
+                </div>
+              )}
             </div>
-            <p className={cn("text-3xl font-black tabular-nums", omzetGroei >= 0 ? "text-green-400" : "text-red-400")}>
-              <AnimatedNumber value={omzetGroei} format={(n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">vs {jaar - 1}</p>
-          </div>
 
-          <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
-            <div className="p-2.5 bg-blue-500/10 rounded-xl w-fit mb-3">
-              <Clock className="w-5 h-5 text-blue-400" />
+            <div
+              className={cn(
+                "border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow",
+                omzetGroei >= 0 ? "bg-gradient-to-br from-green-500/10 to-autronis-card" : "bg-gradient-to-br from-red-500/10 to-autronis-card"
+              )}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className={cn("p-2.5 rounded-xl w-fit", omzetGroei >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
+                  {omzetGroei >= 0 ? <ArrowUp className="w-5 h-5 text-green-400" /> : <ArrowDown className="w-5 h-5 text-red-400" />}
+                </div>
+              </div>
+              <p className={cn("text-3xl font-black tabular-nums", omzetGroei >= 0 ? "text-green-400" : "text-red-400")}>
+                <AnimatedNumber value={omzetGroei} format={(n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`} />
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">vs {jaar - 1}</p>
             </div>
-            <p className="text-2xl font-bold text-blue-400 tabular-nums">
-              <AnimatedNumber value={data.kpis.urenDitJaar} format={(n) => `${Math.round(n)}u`} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Uren {jaar}</p>
-          </div>
 
-          <div className="bg-gradient-to-br from-yellow-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
-            <div className="p-2.5 bg-yellow-500/10 rounded-xl w-fit mb-3">
-              <Euro className="w-5 h-5 text-yellow-400" />
+            <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
+              <div className="p-2.5 bg-blue-500/10 rounded-xl w-fit mb-3">
+                <Clock className="w-5 h-5 text-blue-400" />
+              </div>
+              <p className="text-2xl font-bold text-blue-400 tabular-nums">
+                <AnimatedNumber value={data.kpis.urenDitJaar} format={(n) => `${Math.round(n)}u`} />
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Uren {jaar}</p>
             </div>
-            <p className="text-2xl font-bold text-yellow-400 tabular-nums">
-              <AnimatedNumber value={data.kpis.gemiddeldUurtarief} format={(n) => `${formatBedrag(n)}/u`} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. tarief</p>
-          </div>
 
-          <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
-            <div className="p-2.5 bg-purple-500/10 rounded-xl w-fit mb-3">
-              <Users className="w-5 h-5 text-purple-400" />
+            <div className="bg-gradient-to-br from-yellow-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
+              <div className="p-2.5 bg-yellow-500/10 rounded-xl w-fit mb-3">
+                <Euro className="w-5 h-5 text-yellow-400" />
+              </div>
+              <p className="text-2xl font-bold text-yellow-400 tabular-nums">
+                <AnimatedNumber value={data.kpis.gemiddeldUurtarief} format={(n) => `${formatBedrag(n)}/u`} />
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. tarief</p>
             </div>
-            <p className="text-2xl font-bold text-purple-400 tabular-nums">
-              <AnimatedNumber value={data.kpis.actieveKlanten} />
-            </p>
-            <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Actieve klanten</p>
-          </div>
-        </div>
 
-        {/* === EFFICIENCY METRICS (NEW) === */}
+            <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 card-glow">
+              <div className="p-2.5 bg-purple-500/10 rounded-xl w-fit mb-3">
+                <Users className="w-5 h-5 text-purple-400" />
+              </div>
+              <p className="text-2xl font-bold text-purple-400 tabular-nums">
+                <AnimatedNumber value={data.kpis.actieveKlanten} />
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">Actieve klanten</p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* === EFFICIENCY METRICS === */}
         {decisionData && <EfficiencySectie eff={decisionData.efficiency} />}
 
-        {/* Omzet chart with target line and forecast */}
+        {/* Omzet/Uren chart with metric toggle */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6">
             <BarChart3 className="w-5 h-5 text-autronis-accent flex-shrink-0" />
-            <h2 className="text-base sm:text-base sm:text-lg font-semibold text-autronis-text-primary">Omzet per maand</h2>
-            <div className="flex items-center gap-2 sm:gap-4 ml-auto text-[10px] text-autronis-text-secondary flex-wrap justify-end">
-              <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 bg-autronis-accent/40" /> Werkelijk</span>
-              <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 border-t border-dashed border-autronis-accent/60" /> Forecast</span>
-              <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 border-t border-dashed border-red-400" /> Doel</span>
+            <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">
+              {grafiekMetric === "omzet" ? "Omzet" : "Uren"} per maand
+            </h2>
+            {/* Metric toggle */}
+            <div className="flex items-center gap-1 bg-autronis-bg rounded-lg p-1">
+              {(["omzet", "uren"] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setGrafiekMetric(m)}
+                  className={cn(
+                    "text-xs px-3 py-1 rounded-md transition-colors font-medium capitalize",
+                    grafiekMetric === m ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                  )}
+                >
+                  {m === "omzet" ? "Omzet" : "Uren"}
+                </button>
+              ))}
             </div>
+            {grafiekMetric === "omzet" && (
+              <div className="flex items-center gap-2 sm:gap-4 ml-auto text-[10px] text-autronis-text-secondary flex-wrap justify-end">
+                <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 bg-autronis-accent/40" /> Werkelijk</span>
+                <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 border-t border-dashed border-autronis-accent/60" /> Forecast</span>
+                <span className="flex items-center gap-1.5"><div className="w-6 h-0.5 border-t border-dashed border-red-400" /> Doel</span>
+              </div>
+            )}
           </div>
           <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
-          <div className="relative min-w-[320px]">
-            <div
-              className="absolute left-0 right-0 border-t border-dashed border-red-400/60 z-10 pointer-events-none"
-              style={{ bottom: `${(TARGET_OMZET / chartMax) * 100}%` }}
-            >
-              <span className="absolute -top-4 right-0 text-[10px] text-red-400 tabular-nums">{formatBedrag(TARGET_OMZET)}</span>
+            <div className="relative min-w-[320px]">
+              {/* Target line — only in omzet mode */}
+              {grafiekMetric === "omzet" && (
+                <div
+                  className="absolute left-0 right-0 border-t border-dashed border-red-400/60 z-10 pointer-events-none"
+                  style={{ bottom: `${(TARGET_OMZET / chartMax) * 100}%` }}
+                >
+                  <span className="absolute -top-4 right-0 text-[10px] text-red-400 tabular-nums">{formatBedrag(TARGET_OMZET)}</span>
+                </div>
+              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={`${jaar}-${grafiekMetric}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-end gap-2 h-56"
+                >
+                  {data.maanden.map((m, i) => {
+                    const value = grafiekMetric === "omzet" ? m.omzet : m.uren;
+                    const hoogte = chartMax > 0 ? (value / chartMax) * 100 : 0;
+                    const isHuidig = m.maand === huidigeMaandStr;
+                    const tooltip = grafiekMetric === "omzet" ? formatBedrag(m.omzet) : `${Math.round(m.uren)}u`;
+                    return (
+                      <div key={m.maand} className="flex-1 flex flex-col items-center gap-2 group">
+                        <div className="relative w-full flex justify-center h-full items-end">
+                          <div className="absolute -top-7 text-xs text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tabular-nums">{tooltip}</div>
+                          <AnimatedBar hoogte={hoogte} index={i} className={cn("transition-colors", isHuidig ? "bg-autronis-accent" : "bg-autronis-accent/40", "group-hover:bg-autronis-accent")} />
+                        </div>
+                        <span className={cn("text-xs flex-shrink-0", isHuidig ? "text-autronis-accent font-semibold" : "text-autronis-text-secondary")}>{m.label}</span>
+                      </div>
+                    );
+                  })}
+                  {/* Forecast bars — only in omzet mode */}
+                  {grafiekMetric === "omzet" && forecastMaanden.map((m, i) => {
+                    const hoogte = chartMax > 0 ? (m.verwacht / chartMax) * 100 : 0;
+                    const maandLabel = new Date(m.maand + "-01").toLocaleDateString("nl-NL", { month: "short" });
+                    return (
+                      <div key={m.maand} className="flex-1 flex flex-col items-center gap-2 group">
+                        <div className="relative w-full flex justify-center h-full items-end">
+                          <div className="absolute -top-7 text-xs text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tabular-nums">{formatBedrag(m.verwacht)}</div>
+                          <motion.div
+                            className="w-full rounded-t-lg border-2 border-dashed border-autronis-accent/50 bg-autronis-accent/10"
+                            style={{ maxWidth: "40px" }}
+                            initial={{ height: "0%" }}
+                            animate={{ height: `${Math.max(hoogte, 2)}%` }}
+                            transition={{ duration: 0.5, delay: (12 + i) * 0.05, ease: "easeOut" }}
+                          />
+                        </div>
+                        <span className="text-xs flex-shrink-0 text-autronis-text-secondary italic">{maandLabel}</span>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
             </div>
-            <div className="flex items-end gap-2 h-56">
-              {data.maanden.map((m, i) => {
-                const hoogte = chartMax > 0 ? (m.omzet / chartMax) * 100 : 0;
-                const isHuidig = m.maand === huidigeMaandStr;
-                return (
-                  <div key={m.maand} className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="relative w-full flex justify-center h-full items-end">
-                      <div className="absolute -top-7 text-xs text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tabular-nums">{formatBedrag(m.omzet)}</div>
-                      <AnimatedBar hoogte={hoogte} index={i} className={cn("transition-colors", isHuidig ? "bg-autronis-accent" : "bg-autronis-accent/40", "group-hover:bg-autronis-accent")} />
-                    </div>
-                    <span className={cn("text-xs flex-shrink-0", isHuidig ? "text-autronis-accent font-semibold" : "text-autronis-text-secondary")}>{m.label}</span>
-                  </div>
-                );
-              })}
-              {forecastMaanden.map((m, i) => {
-                const hoogte = chartMax > 0 ? (m.verwacht / chartMax) * 100 : 0;
-                const maandLabel = new Date(m.maand + "-01").toLocaleDateString("nl-NL", { month: "short" });
-                return (
-                  <div key={m.maand} className="flex-1 flex flex-col items-center gap-2 group">
-                    <div className="relative w-full flex justify-center h-full items-end">
-                      <div className="absolute -top-7 text-xs text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap tabular-nums">{formatBedrag(m.verwacht)}</div>
-                      <motion.div
-                        className="w-full rounded-t-lg border-2 border-dashed border-autronis-accent/50 bg-autronis-accent/10"
-                        style={{ maxWidth: "40px" }}
-                        initial={{ height: "0%" }}
-                        animate={{ height: `${Math.max(hoogte, 2)}%` }}
-                        transition={{ duration: 0.5, delay: (12 + i) * 0.05, ease: "easeOut" }}
-                      />
-                    </div>
-                    <span className="text-xs flex-shrink-0 text-autronis-text-secondary italic">{maandLabel}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
           </div>
         </div>
 
-        {/* === FORECAST UPGRADED + PIPELINE (NEW) === */}
+        {/* === FORECAST UPGRADED + PIPELINE === */}
         {decisionData && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <ForecastUpgradedSectie forecast={decisionData.forecast} />
@@ -1063,7 +1240,7 @@ export default function AnalyticsPage() {
           </div>
         )}
 
-        {/* === CASHFLOW UPGRADED (NEW — replaces old RunwaySectie) === */}
+        {/* === CASHFLOW UPGRADED === */}
         {decisionData && <CashflowSectie cf={decisionData.cashflow} />}
 
         {/* Omzet per klant + Client dependency */}
@@ -1072,18 +1249,19 @@ export default function AnalyticsPage() {
             <div className="flex items-center gap-3 mb-6">
               <PieChart className="w-5 h-5 text-autronis-accent" />
               <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Omzet per klant</h2>
+              <span className="text-xs text-autronis-text-secondary ml-auto">{jaar}</span>
             </div>
             <DonutChart segments={omzetPerKlant} />
           </div>
 
-          {/* === CLIENT DEPENDENCY (NEW) === */}
+          {/* === CLIENT DEPENDENCY === */}
           {decisionData && <ClientDependencySectie dep={decisionData.clientDependency} />}
         </div>
 
-        {/* === RATE ANALYSIS (NEW) === */}
+        {/* === RATE ANALYSIS === */}
         {decisionData && <RateAnalysisSectie rates={decisionData.rateAnalysis} />}
 
-        {/* === PROJECT INSIGHTS (NEW — replaces old top projecten) === */}
+        {/* === PROJECT INSIGHTS (sortable) === */}
         {decisionData && <ProjectInsightsSectie projects={decisionData.projectInsights} />}
 
         {/* Tijdsbesteding */}
@@ -1094,6 +1272,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-3 mb-6">
             <PieChart className="w-5 h-5 text-purple-400" />
             <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Per medewerker</h2>
+            <span className="text-xs text-autronis-text-secondary ml-auto">{jaar}</span>
           </div>
           {data.perGebruiker.length === 0 ? (
             <p className="text-sm text-autronis-text-secondary">Geen data beschikbaar.</p>
@@ -1127,8 +1306,13 @@ export default function AnalyticsPage() {
           )}
         </div>
 
-        {/* Activiteit heatmap */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
+        {/* Activiteit heatmap — with fade-in */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7"
+        >
           <div className="flex items-center gap-3 mb-6">
             <Flame className="w-5 h-5 text-orange-400" />
             <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Activiteit</h2>
@@ -1137,9 +1321,9 @@ export default function AnalyticsPage() {
           <div className="overflow-x-auto">
             <ActivityHeatmap data={heatmapData ?? []} />
           </div>
-        </div>
+        </motion.div>
 
-        {/* === ACTIONABLE GOALS (NEW — replaces old DoelenSectie) + Team vergelijking === */}
+        {/* === ACTIONABLE GOALS + Team vergelijking === */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {decisionData?.actionableGoals && decisionData.actionableGoals.length > 0 ? (
             <ActionableGoalsSectie goals={decisionData.actionableGoals} />

@@ -9,7 +9,6 @@ import {
   Trash2,
   Zap,
   User,
-  ChevronRight,
   Minus,
   X,
   Sparkles,
@@ -105,10 +104,17 @@ interface OkrTemplate {
   keyResults: KeyResult[];
 }
 
-const OKR_TEMPLATES: OkrTemplate[] = [
+interface OkrTemplateWithColor extends OkrTemplate {
+  kleur: string;
+  bg: string;
+}
+
+const OKR_TEMPLATES: OkrTemplateWithColor[] = [
   {
     titel: "Autronis omzet laten groeien",
     omschrijving: "Focus op omzetgroei door meer klanten en proposals",
+    kleur: "#22c55e",
+    bg: "bg-green-500/10",
     keyResults: [
       { titel: "€10.000 omzet deze maand", doelwaarde: 10000, huidigeWaarde: 0, eenheid: "euro", autoKoppeling: "omzet" },
       { titel: "3 nieuwe klanten binnenhalen", doelwaarde: 3, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "klanten" },
@@ -118,6 +124,8 @@ const OKR_TEMPLATES: OkrTemplate[] = [
   {
     titel: "Producten lanceren",
     omschrijving: "Eigen producten live zetten en eerste gebruikers werven",
+    kleur: "#3B82F6",
+    bg: "bg-blue-500/10",
     keyResults: [
       { titel: "Investment Engine live", doelwaarde: 100, huidigeWaarde: 0, eenheid: "%", autoKoppeling: "geen" },
       { titel: "Case Study Generator live", doelwaarde: 100, huidigeWaarde: 0, eenheid: "%", autoKoppeling: "geen" },
@@ -127,6 +135,8 @@ const OKR_TEMPLATES: OkrTemplate[] = [
   {
     titel: "Online zichtbaarheid vergroten",
     omschrijving: "Content publiceren en verkeer naar de website trekken",
+    kleur: "#A855F7",
+    bg: "bg-purple-500/10",
     keyResults: [
       { titel: "12 LinkedIn posts deze maand", doelwaarde: 12, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "geen" },
       { titel: "4 case study video's publiceren", doelwaarde: 4, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "geen" },
@@ -136,6 +146,8 @@ const OKR_TEMPLATES: OkrTemplate[] = [
   {
     titel: "Efficiënter werken",
     omschrijving: "Meer billable uren, minder admin overhead",
+    kleur: "#f59e0b",
+    bg: "bg-yellow-500/10",
     keyResults: [
       { titel: "80% billable uren ratio", doelwaarde: 80, huidigeWaarde: 0, eenheid: "%", autoKoppeling: "geen" },
       { titel: "Urencriterium op schema - 1225 uur", doelwaarde: 1225, huidigeWaarde: 0, eenheid: "uren", autoKoppeling: "uren" },
@@ -608,7 +620,7 @@ export default function DoelenPage() {
               {/* Quick templates */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 {OKR_TEMPLATES.map((tpl) => (
-                  <button
+                  <motion.button
                     key={tpl.titel}
                     onClick={() => {
                       setEditDoel(null);
@@ -617,11 +629,14 @@ export default function DoelenPage() {
                       setFormKeyResults(tpl.keyResults.map((kr) => ({ ...kr })));
                       setModalOpen(true);
                     }}
-                    className="text-left p-4 rounded-xl border border-autronis-border hover:border-autronis-accent/50 bg-autronis-bg/30 hover:bg-autronis-accent/5 transition-colors group"
+                    whileHover={{ y: -3 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className={cn("text-left p-4 rounded-xl border-l-4 border border-autronis-border bg-autronis-bg/30 transition-colors group", tpl.bg)}
+                    style={{ borderLeftColor: tpl.kleur }}
                   >
-                    <span className="text-sm font-semibold text-autronis-text-primary group-hover:text-autronis-accent transition-colors block">{tpl.titel}</span>
+                    <span className="text-sm font-semibold text-autronis-text-primary transition-colors block">{tpl.titel}</span>
                     <span className="text-[11px] text-autronis-text-secondary mt-1 block">{tpl.keyResults.length} key results</span>
-                  </button>
+                  </motion.button>
                 ))}
               </div>
             </div>
@@ -645,6 +660,8 @@ export default function DoelenPage() {
               const doelStatus = trackStatus(doel.voortgang, tijdPct);
               const DoelStatusIcon = doelStatus.icon;
 
+              const glowKleur = doelStatus.label === "Op schema" ? "rgba(34,197,94,0.15)" : doelStatus.label === "Risico" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)";
+
               return (
                 <motion.div
                   key={doel.id}
@@ -652,6 +669,7 @@ export default function DoelenPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: doelIndex * 0.05 }}
                   className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow"
+                  style={{ boxShadow: `0 0 0 1px transparent, inset 0 0 40px ${glowKleur}` }}
                 >
                   {/* Objective header */}
                   <div className="flex items-start gap-5 mb-6">
@@ -697,37 +715,61 @@ export default function DoelenPage() {
 
                   {/* Key Results */}
                   <div className="space-y-4">
-                    {doel.keyResults.map((kr) => {
+                    {doel.keyResults.map((kr, krIndex) => {
                       const pct = kr.doelwaarde > 0 ? Math.min(((kr.huidigeWaarde ?? 0) / kr.doelwaarde) * 100, 100) : 0;
                       const isAuto = kr.autoKoppeling && kr.autoKoppeling !== "geen";
                       const isEditing = editKrId === kr.id;
                       const krStatus = trackStatus(pct, tijdPct);
                       const conf = kr.confidence ?? 70;
+                      const confKleur = conf >= 67 ? "#22c55e" : conf >= 34 ? "#f59e0b" : "#ef4444";
+
+                      const krNavRoute = kr.autoKoppeling === "omzet" ? "/financien" : kr.autoKoppeling === "uren" ? "/tijd" : kr.autoKoppeling === "klanten" ? "/klanten" : null;
 
                       return (
-                        <div key={kr.id} className="bg-autronis-bg/50 rounded-xl p-4">
+                        <motion.div
+                          key={kr.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: krIndex * 0.06, duration: 0.3 }}
+                          className="bg-autronis-bg/50 rounded-xl p-4"
+                        >
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-sm font-medium text-autronis-text-primary truncate">{kr.titel}</span>
+                              {krNavRoute ? (
+                                <button
+                                  onClick={() => router.push(krNavRoute)}
+                                  className="text-sm font-medium text-autronis-text-primary hover:text-autronis-accent transition-colors truncate text-left"
+                                  title={`Ga naar ${autoKoppelingLabel(kr.autoKoppeling)}`}
+                                >
+                                  {kr.titel}
+                                </button>
+                              ) : (
+                                <span className="text-sm font-medium text-autronis-text-primary truncate">{kr.titel}</span>
+                              )}
                               {isAuto && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-autronis-accent/20 text-autronis-accent border border-autronis-accent/30 flex-shrink-0">
+                                <span
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-autronis-accent/20 text-autronis-accent border border-autronis-accent/30 flex-shrink-0 cursor-help"
+                                  title="Automatisch bijgewerkt uit live data"
+                                >
                                   <Zap className="w-3 h-3" />Auto: {autoKoppelingLabel(kr.autoKoppeling)}
                                 </span>
                               )}
                               <span className={cn("text-[10px] font-medium px-1.5 py-0.5 rounded", krStatus.bg, krStatus.kleur)}>{krStatus.label}</span>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              {/* Confidence selector */}
-                              <select
-                                value={conf}
-                                onChange={(e) => kr.id && confidenceUpdateMutation.mutate({ doelId: doel.id, krId: kr.id, confidence: Number(e.target.value) })}
-                                className="bg-transparent border-none text-[10px] text-autronis-text-secondary cursor-pointer p-0 focus:ring-0 w-auto"
-                                title="Confidence"
-                              >
-                                {[90, 70, 50, 30, 10].map((v) => (
-                                  <option key={v} value={v}>{v}%</option>
-                                ))}
-                              </select>
+                              {/* Confidence color dot + selector */}
+                              <span title={`Confidence: ${conf >= 67 ? "Hoog" : conf >= 34 ? "Gemiddeld" : "Laag"}`}>
+                                <select
+                                  value={conf}
+                                  onChange={(e) => kr.id && confidenceUpdateMutation.mutate({ doelId: doel.id, krId: kr.id, confidence: Number(e.target.value) })}
+                                  className="bg-transparent border-none text-[10px] cursor-pointer p-0 focus:ring-0 w-auto font-semibold"
+                                  style={{ color: confKleur }}
+                                >
+                                  {[90, 70, 50, 30, 10].map((v) => (
+                                    <option key={v} value={v}>{v}%</option>
+                                  ))}
+                                </select>
+                              </span>
                               {isEditing ? (
                                 <div className="flex items-center gap-1">
                                   <input type="number" value={editKrWaarde} onChange={(e) => setEditKrWaarde(e.target.value)}
@@ -749,10 +791,26 @@ export default function DoelenPage() {
                               <span className={cn("text-xs font-semibold tabular-nums min-w-[40px] text-right", voortgangTekstKleur(pct))}>{Math.round(pct)}%</span>
                             </div>
                           </div>
-                          <div className="w-full h-2 bg-autronis-border rounded-full overflow-hidden">
-                            <motion.div className="h-full rounded-full" style={{ backgroundColor: voortgangKleur(pct) }} initial={{ width: "0%" }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: "easeOut" }} />
+                          {/* Progress bar with time indicator */}
+                          <div className="relative w-full h-2 bg-autronis-border rounded-full overflow-visible">
+                            <motion.div
+                              key={`${kr.id}-${kwartaal}-${jaar}`}
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: voortgangKleur(pct) }}
+                              initial={{ width: "0%" }}
+                              animate={{ width: `${pct}%` }}
+                              transition={{ duration: 0.6, ease: "easeOut", delay: krIndex * 0.06 }}
+                            />
+                            {/* Time indicator line */}
+                            {tijdPct > 0 && tijdPct < 100 && (
+                              <div
+                                className="absolute top-1/2 -translate-y-1/2 w-0.5 h-4 bg-white/40 rounded-full"
+                                style={{ left: `${tijdPct}%` }}
+                                title={`Tijd: ${tijdPct}%`}
+                              />
+                            )}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -801,9 +859,24 @@ export default function DoelenPage() {
           </>}
         >
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-autronis-text-secondary">Voortgang (%)</label>
-              <input type="number" min={0} max={100} value={checkInVoortgang} onChange={(e) => setCheckInVoortgang(Number(e.target.value))} className={inputClasses} />
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium text-autronis-text-secondary">Voortgang</label>
+                <span className={cn("text-lg font-bold tabular-nums", voortgangTekstKleur(checkInVoortgang))}>{checkInVoortgang}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={checkInVoortgang}
+                onChange={(e) => setCheckInVoortgang(Number(e.target.value))}
+                className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                style={{ accentColor: voortgangKleur(checkInVoortgang) }}
+              />
+              <div className="flex justify-between text-[10px] text-autronis-text-secondary">
+                <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+              </div>
             </div>
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-autronis-text-secondary">Blocker (optioneel)</label>
@@ -834,9 +907,10 @@ export default function DoelenPage() {
                   {OKR_TEMPLATES.map((tpl) => (
                     <button key={tpl.titel} type="button"
                       onClick={() => { setFormTitel(tpl.titel); setFormOmschrijving(tpl.omschrijving); setFormKeyResults(tpl.keyResults.map((kr) => ({ ...kr }))); }}
-                      className="text-left p-3 rounded-xl border border-autronis-border hover:border-autronis-accent/50 bg-autronis-bg/50 hover:bg-autronis-accent/5 transition-colors group"
+                      className={cn("text-left p-3 rounded-xl border-l-4 border border-autronis-border bg-autronis-bg/50 transition-colors", tpl.bg)}
+                      style={{ borderLeftColor: tpl.kleur }}
                     >
-                      <span className="text-sm font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors">{tpl.titel}</span>
+                      <span className="text-sm font-medium text-autronis-text-primary">{tpl.titel}</span>
                       <span className="block text-[11px] text-autronis-text-secondary mt-0.5">{tpl.keyResults.length} key results</span>
                     </button>
                   ))}

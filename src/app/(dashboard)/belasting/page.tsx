@@ -780,7 +780,7 @@ export default function BelastingPage() {
               <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
                 <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Winst {jaar}</p>
                 <AnimatedNumber
-                  value={wvData?.brutoWinst ?? 0}
+                  value={wvData?.brutowinst ?? 0}
                   format={formatBedrag}
                   className="text-2xl font-bold text-autronis-accent tabular-nums"
                 />
@@ -1173,35 +1173,48 @@ export default function BelastingPage() {
                     </div>
                   </div>
 
-                  {/* Tax brackets */}
-                  {wvData.schijven && wvData.schijven.length > 0 && (
+                  {/* Aftrekposten */}
+                  {(wvData.zelfstandigenaftrek > 0 || wvData.mkbVrijstelling > 0 || wvData.kmAftrek > 0 || wvData.afschrijvingen > 0) && (
                     <div>
-                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Belastingschijven</h3>
-                      <div className="space-y-2">
-                        {wvData.schijven.map((schijf: { naam: string; percentage: number; bedrag: number; vulling: number }, idx: number) => (
-                          <div key={idx} className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-sm text-autronis-text-primary">{schijf.naam} ({schijf.percentage}%)</span>
-                              <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(schijf.bedrag)}</span>
-                            </div>
-                            <div className="h-2 bg-autronis-bg rounded-full overflow-hidden">
-                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${schijf.vulling}%` }} />
-                            </div>
+                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Aftrekposten</h3>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                        {wvData.zelfstandigenaftrek > 0 && (
+                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary">Zelfstandigenaftrek</span>
+                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.zelfstandigenaftrek)}</span>
                           </div>
-                        ))}
+                        )}
+                        {wvData.mkbVrijstelling > 0 && (
+                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary">MKB-vrijstelling</span>
+                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.mkbVrijstelling)}</span>
+                          </div>
+                        )}
+                        {wvData.afschrijvingen > 0 && (
+                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary">Afschrijvingen</span>
+                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.afschrijvingen)}</span>
+                          </div>
+                        )}
+                        {wvData.kmAftrek > 0 && (
+                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary">Km-aftrek</span>
+                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.kmAftrek)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
 
-                  {/* Aftrekposten */}
-                  {wvData.aftrekposten && wvData.aftrekposten.length > 0 && (
+                  {/* Kosten per categorie */}
+                  {Object.keys(wvData.kostenPerCategorie).length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Aftrekposten</h3>
+                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Kosten per categorie</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
-                        {wvData.aftrekposten.map((post: { naam: string; bedrag: number }, idx: number) => (
-                          <div key={idx} className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
-                            <span className="text-sm text-autronis-text-primary">{post.naam}</span>
-                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(post.bedrag)}</span>
+                        {Object.entries(wvData.kostenPerCategorie).map(([cat, bedrag]) => (
+                          <div key={cat} className="p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary capitalize">{cat}</span>
+                            <span className="text-sm font-semibold text-orange-400 tabular-nums">{formatBedrag(bedrag)}</span>
                           </div>
                         ))}
                       </div>
@@ -1209,7 +1222,7 @@ export default function BelastingPage() {
                   )}
 
                   {/* Kwartaaloverzicht */}
-                  {wvData.kwartalen && wvData.kwartalen.length > 0 && (
+                  {wvData.perKwartaal && wvData.perKwartaal.length > 0 && (
                     <div>
                       <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Per kwartaal</h3>
                       <div className="overflow-x-auto">
@@ -1223,7 +1236,7 @@ export default function BelastingPage() {
                             </tr>
                           </thead>
                           <tbody>
-                            {wvData.kwartalen.map((q: { kwartaal: number; omzet: number; kosten: number; winst: number }) => (
+                            {wvData.perKwartaal.map((q) => (
                               <tr key={q.kwartaal} className="border-b border-autronis-border/50">
                                 <td className="py-3 px-3 font-medium text-autronis-text-primary">Q{q.kwartaal}</td>
                                 <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(q.omzet)}</td>
@@ -1262,21 +1275,21 @@ export default function BelastingPage() {
 
               {loadingInv ? (
                 <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-autronis-bg/50 rounded-xl animate-pulse" />)}</div>
-              ) : investeringenData?.investeringen?.length ? (
+              ) : investeringenLijst.length ? (
                 <div className="space-y-4">
                   {/* KPI row */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Totaal</p>
-                      <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{formatBedrag(investeringenData.totaalInvestering)}</p>
+                      <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{formatBedrag(totaalInvestering)}</p>
                     </div>
                     <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Afschrijving/jaar</p>
-                      <p className="text-lg font-bold text-orange-400 tabular-nums">{formatBedrag(investeringenData.totaleAfschrijving)}</p>
+                      <p className="text-lg font-bold text-orange-400 tabular-nums">{formatBedrag(totaleAfschrijving)}</p>
                     </div>
                     <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">KIA aftrek</p>
-                      <p className="text-lg font-bold text-green-400 tabular-nums">{formatBedrag(berekenKIA(investeringenData.totaalInvestering))}</p>
+                      <p className="text-lg font-bold text-green-400 tabular-nums">{formatBedrag(berekenKIA(totaalInvestering))}</p>
                     </div>
                   </div>
                   {/* Table */}
@@ -1293,7 +1306,7 @@ export default function BelastingPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {investeringenData.investeringen.map((inv) => (
+                        {investeringenLijst.map((inv) => (
                           <tr key={inv.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/20 transition-colors">
                             <td className="py-3 px-3 font-medium text-autronis-text-primary">{inv.naam}</td>
                             <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(inv.bedrag)}</td>
@@ -1358,8 +1371,8 @@ export default function BelastingPage() {
                         </p>
                         <p className="text-xs text-autronis-text-secondary mt-1">
                           {formatBedrag(totaalGereserveerd)} gereserveerd van {formatBedrag(geschatteBelasting)} geschat
-                          {reserveringenData.maandelijksSuggestie > 0 && (
-                            <span> — zet maandelijks {formatBedrag(reserveringenData.maandelijksSuggestie)} apart</span>
+                          {reserveringenData.suggestieMaandelijks > 0 && (
+                            <span> — zet maandelijks {formatBedrag(reserveringenData.suggestieMaandelijks)} apart</span>
                           )}
                         </p>
                       </div>
@@ -1455,7 +1468,7 @@ export default function BelastingPage() {
                   { naam: "Zelfstandigenaftrek", waarde: "3.750", status: urenCriterium?.zelfstandigenaftrek ? "ok" as const : "warning" as const },
                   { naam: "Startersaftrek", waarde: "2.123", status: "warning" as const },
                   { naam: "MKB-winstvrijstelling", waarde: "14%", status: urenCriterium?.mkbVrijstelling ? "ok" as const : "warning" as const },
-                  { naam: "KIA", waarde: "tot 28%", status: investeringenData?.totaalInvestering ? "ok" as const : "warning" as const },
+                  { naam: "KIA", waarde: "tot 28%", status: totaalInvestering > 0 ? "ok" as const : "warning" as const },
                   { naam: "FOR opbouw", waarde: "max 9,44%", status: "warning" as const },
                   { naam: "Km-vergoeding", waarde: "0,23/km", status: "warning" as const },
                 ].map((item) => {
@@ -1552,39 +1565,39 @@ export default function BelastingPage() {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Omzet</p>
-                      <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(jaaroverzichtData.omzet)}</p>
+                      <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(jaaroverzichtData.omzet.totaal)}</p>
                     </div>
                     <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Kosten</p>
-                      <p className="text-xl font-bold text-orange-400 tabular-nums">{formatBedrag(jaaroverzichtData.kosten)}</p>
+                      <p className="text-xl font-bold text-orange-400 tabular-nums">{formatBedrag(jaaroverzichtData.kosten.totaal)}</p>
                     </div>
                     <div className="p-4 bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Winst</p>
-                      <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(jaaroverzichtData.omzet - jaaroverzichtData.kosten)}</p>
+                      <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(jaaroverzichtData.winstVerlies.brutowinst)}</p>
                     </div>
                     <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Belasting</p>
-                      <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(jaaroverzichtData.geschatteBelasting)}</p>
+                      <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(jaaroverzichtData.winstVerlies.geschatteBelasting)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">BTW afgedragen</p>
-                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btwBetaald)}</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btw.afgedragen)}</p>
                     </div>
                     <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Uren gewerkt</p>
                       <p className="text-base font-bold text-autronis-text-primary tabular-nums">
-                        {jaaroverzichtData.urenGewerkt} / {jaaroverzichtData.urenDoel ?? 1225}
+                        {jaaroverzichtData.uren.totaal} / {jaaroverzichtData.uren.doel}
                       </p>
                     </div>
                     <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Investeringen</p>
-                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.investeringen)}</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.investeringen.totaal)}</p>
                     </div>
                     <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Gereserveerd</p>
-                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.reserveringen)}</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.reserveringen.gereserveerd)}</p>
                     </div>
                   </div>
                 </div>
@@ -1597,14 +1610,14 @@ export default function BelastingPage() {
             </div>
 
             {/* Audit log */}
-            {auditLogData?.entries?.length > 0 && (
+            {auditLogData && auditLogData.length > 0 && (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
                 <div className="flex items-center gap-3 mb-5">
                   <History className="w-5 h-5 text-autronis-text-secondary" />
                   <h2 className="text-xl font-bold text-autronis-text-primary">Recente wijzigingen</h2>
                 </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {auditLogData.entries.slice(0, 15).map((entry: { id: number; actie: string; entiteitType: string; details?: string; aangemaakt: string }) => (
+                  {auditLogData.slice(0, 15).map((entry) => (
                     <div key={entry.id} className="flex items-center gap-3 p-3 bg-autronis-bg/20 rounded-xl text-sm">
                       <CircleDot className="w-3.5 h-3.5 text-autronis-text-secondary flex-shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -1612,7 +1625,7 @@ export default function BelastingPage() {
                         <span className="text-autronis-text-secondary ml-1.5">{entry.entiteitType}</span>
                         {entry.details && <span className="text-autronis-text-secondary/70 ml-1.5">— {entry.details}</span>}
                       </div>
-                      <span className="text-xs text-autronis-text-secondary/50 flex-shrink-0 tabular-nums">{formatDatum(entry.aangemaakt)}</span>
+                      <span className="text-xs text-autronis-text-secondary/50 flex-shrink-0 tabular-nums">{formatDatum(entry.tijdstip)}</span>
                     </div>
                   ))}
                 </div>

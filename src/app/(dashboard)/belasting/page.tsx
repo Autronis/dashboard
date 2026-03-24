@@ -1136,6 +1136,21 @@ export default function BelastingPage() {
                           </p>
                         </div>
                       )}
+                      {urenPrognose && (
+                        <div className={cn(
+                          "p-4 rounded-xl border",
+                          urenPrognose.haalbaar ? "bg-autronis-accent/5 border-autronis-accent/20" : "bg-red-500/5 border-red-500/20"
+                        )}>
+                          <p className={cn("text-sm font-semibold", urenPrognose.haalbaar ? "text-autronis-accent" : "text-red-400")}>
+                            {urenPrognose.haalbaar
+                              ? `Op dit tempo haal je het criterium op ${urenPrognose.datum}`
+                              : "Op dit tempo haal je het criterium NIET dit jaar"}
+                          </p>
+                          <p className="text-xs text-autronis-text-secondary mt-1">
+                            Gebaseerd op je huidig gemiddelde werkritme
+                          </p>
+                        </div>
+                      )}
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                           <p className="text-xs text-autronis-text-secondary mb-1">Zelfstandigenaftrek</p>
@@ -1342,27 +1357,44 @@ export default function BelastingPage() {
                     </div>
                   </div>
 
+                  {/* Waterfall */}
+                  <div className="p-4 bg-autronis-bg/30 border border-autronis-border/50 rounded-xl">
+                    <p className="text-xs font-semibold text-autronis-text-secondary mb-3 uppercase tracking-wide">Van omzet naar belastbaar inkomen</p>
+                    <WaterfallChart
+                      key={jaar}
+                      steps={[
+                        { label: "Omzet", value: wvData.brutoOmzet, color: "text-emerald-400" },
+                        { label: "− Kosten", value: wvData.totaleKosten, color: "text-orange-400", subtract: true },
+                        ...(wvData.afschrijvingen > 0 ? [{ label: "− Afschr.", value: wvData.afschrijvingen, color: "text-orange-300", subtract: true }] : []),
+                        ...(wvData.zelfstandigenaftrek > 0 ? [{ label: "− ZA", value: wvData.zelfstandigenaftrek, color: "text-green-400", subtract: true }] : []),
+                        ...(wvData.mkbVrijstelling > 0 ? [{ label: "− MKB", value: wvData.mkbVrijstelling, color: "text-green-300", subtract: true }] : []),
+                        { label: "Belastbaar", value: wvData.belastbaarInkomen, color: "text-blue-400" },
+                        { label: "Belasting", value: wvData.geschatteBelasting, color: "text-purple-400" },
+                      ]}
+                    />
+                  </div>
+
                   {/* KPI cards */}
                   <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Omzet</p>
-                      <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(wvData.brutoOmzet)}</p>
+                      <AnimatedNumber key={`omzet-${jaar}`} value={wvData.brutoOmzet} format={formatBedrag} className="text-xl font-bold text-emerald-400 tabular-nums" />
                     </div>
                     <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Kosten</p>
-                      <p className="text-xl font-bold text-orange-400 tabular-nums">{formatBedrag(wvData.totaleKosten)}</p>
+                      <AnimatedNumber key={`kosten-${jaar}`} value={wvData.totaleKosten} format={formatBedrag} className="text-xl font-bold text-orange-400 tabular-nums" />
                     </div>
                     <div className="p-4 bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Winst</p>
-                      <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(wvData.brutowinst)}</p>
+                      <AnimatedNumber key={`winst-${jaar}`} value={wvData.brutowinst} format={formatBedrag} className="text-xl font-bold text-autronis-accent tabular-nums" />
                     </div>
                     <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Belastbaar</p>
-                      <p className="text-xl font-bold text-blue-400 tabular-nums">{formatBedrag(wvData.belastbaarInkomen)}</p>
+                      <AnimatedNumber key={`belastbaar-${jaar}`} value={wvData.belastbaarInkomen} format={formatBedrag} className="text-xl font-bold text-blue-400 tabular-nums" />
                     </div>
                     <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
                       <p className="text-xs text-autronis-text-secondary mb-1">Belasting</p>
-                      <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(wvData.geschatteBelasting)}</p>
+                      <AnimatedNumber key={`belasting-${jaar}`} value={wvData.geschatteBelasting} format={formatBedrag} className="text-xl font-bold text-purple-400 tabular-nums" />
                     </div>
                   </div>
 
@@ -1499,27 +1531,44 @@ export default function BelastingPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {investeringenLijst.map((inv) => (
-                          <tr key={inv.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/20 transition-colors">
-                            <td className="py-3 px-3 font-medium text-autronis-text-primary">{inv.naam}</td>
-                            <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(inv.bedrag)}</td>
-                            <td className="py-3 px-3 text-autronis-text-secondary">{inv.categorie}</td>
-                            <td className="py-3 px-3 text-right tabular-nums text-autronis-text-secondary">{inv.afschrijvingstermijn}j</td>
-                            <td className="py-3 px-3 text-right tabular-nums text-orange-400">
-                              {formatBedrag((inv.bedrag - inv.restwaarde) / inv.afschrijvingstermijn)}
-                            </td>
-                            <td className="py-3 px-3">
-                              <div className="flex items-center gap-1 justify-end">
-                                <button onClick={() => handleOpenEditInvestering(inv)} className="p-1.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors">
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button onClick={() => setDeleteInvesteringId(inv.id)} className="p-1.5 text-autronis-text-secondary hover:text-red-400 transition-colors">
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {investeringenLijst.map((inv) => {
+                          const aanschafJaar = new Date(inv.datum).getFullYear();
+                          const termijn = inv.afschrijvingstermijn ?? 5;
+                          const verlopen = Math.min(Math.max(new Date().getFullYear() - aanschafJaar, 0), termijn);
+                          const afschrijvingsPct = Math.round((verlopen / termijn) * 100);
+                          return (
+                            <tr key={inv.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/20 transition-colors">
+                              <td className="py-3 px-3 font-medium text-autronis-text-primary">
+                                <div>{inv.naam}</div>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <div className="w-20 h-1 bg-autronis-bg rounded-full overflow-hidden">
+                                    <div
+                                      className={cn("h-full rounded-full", afschrijvingsPct >= 100 ? "bg-green-500" : "bg-autronis-accent")}
+                                      style={{ width: `${afschrijvingsPct}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-autronis-text-secondary tabular-nums">{afschrijvingsPct}%</span>
+                                </div>
+                              </td>
+                              <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(inv.bedrag)}</td>
+                              <td className="py-3 px-3 text-autronis-text-secondary">{inv.categorie}</td>
+                              <td className="py-3 px-3 text-right tabular-nums text-autronis-text-secondary">{termijn}j</td>
+                              <td className="py-3 px-3 text-right tabular-nums text-orange-400">
+                                {formatBedrag((inv.bedrag - (inv.restwaarde ?? 0)) / termijn)}
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="flex items-center gap-1 justify-end">
+                                  <button onClick={() => handleOpenEditInvestering(inv)} className="p-1.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors">
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setDeleteInvesteringId(inv.id)} className="p-1.5 text-autronis-text-secondary hover:text-red-400 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1568,6 +1617,18 @@ export default function BelastingPage() {
                             <span> — zet maandelijks {formatBedrag(reserveringenData.suggestieMaandelijks)} apart</span>
                           )}
                         </p>
+                        {reserveringenData.suggestieMaandelijks > 0 && reserveringTekort > 0 && (
+                          <button
+                            onClick={() => {
+                              setResForm((f) => ({ ...f, bedrag: String(reserveringenData.suggestieMaandelijks) }));
+                              setReserveringModal(true);
+                            }}
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-autronis-accent hover:text-autronis-accent-hover transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Voeg {formatBedrag(reserveringenData.suggestieMaandelijks)} direct toe
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>

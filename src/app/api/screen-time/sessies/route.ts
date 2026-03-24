@@ -73,6 +73,9 @@ Regels:
 - Noem SPECIFIEKE onderwerpen uit de titels (projectnamen, features, video onderwerpen)
 - Achtergrond-apps en achtergrond-tabs NEGEREN
 - "Autronis Dashboard" als Chrome-titel is RUIS — negeer het tenzij Code dominant is
+- Begin NOOIT met "Gebruiker", "De gebruiker", "Er werd" of andere onpersoonlijke vormen
+- Schrijf ALTIJD in directe stijl: "Gewerkt aan...", "Marktdata geanalyseerd...", "YouTube video's gekeken over..."
+- Doe alsof je een logboek schrijft voor jezelf, niet een rapport voor iemand anders
 
 ${lines}
 

@@ -95,6 +95,26 @@ interface TijdlijnItem {
   bedrag?: number | null;
 }
 
+interface OpenTaak {
+  id: number;
+  titel: string;
+  status: string;
+  prioriteit: string;
+  deadline: string | null;
+  projectNaam: string;
+}
+
+interface NextAction {
+  type: "follow_up" | "factuur" | "meeting" | "taak" | "offerte";
+  label: string;
+  urgentie: "hoog" | "normaal" | "laag";
+}
+
+interface MaandOmzet {
+  maand: string;
+  omzet: number;
+}
+
 interface KlantKpis {
   aantalProjecten: number;
   totaalMinuten: number;
@@ -105,6 +125,9 @@ interface KlantKpis {
   gemiddeldeBetalingsDagen: number | null;
   aantalFacturen: number;
   aantalOffertes: number;
+  openTaken: number;
+  clv: number;
+  gemiddeldeMaandOmzet: number;
 }
 
 interface KlantData {
@@ -117,6 +140,12 @@ interface KlantData {
   offertes: OfferteItem[];
   meetings: MeetingItem[];
   tijdlijn: TijdlijnItem[];
+  openTaken: OpenTaak[];
+  nextActions: NextAction[];
+  relatieStatus: "actief" | "stil" | "aandacht_nodig" | "inactief";
+  laatsteContact: string | null;
+  dagenSindsContact: number | null;
+  maandelijkseOmzet: MaandOmzet[];
   kpis: KlantKpis;
 }
 
@@ -143,4 +172,4 @@ export function useKlantDetail(id: number) {
   });
 }
 
-export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis };
+export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis, OpenTaak, NextAction, MaandOmzet };

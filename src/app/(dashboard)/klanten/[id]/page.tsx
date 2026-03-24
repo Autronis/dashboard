@@ -34,12 +34,16 @@ import {
   Share2,
   Copy,
   XCircle,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  BarChart3,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useKlantDetail, NotFoundError } from "@/hooks/queries/use-klant-detail";
-import type { TijdlijnItem } from "@/hooks/queries/use-klant-detail";
+import type { TijdlijnItem, NextAction } from "@/hooks/queries/use-klant-detail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KlantModal } from "../klant-modal";
@@ -92,6 +96,21 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
   meeting: { icon: CalendarDays, color: "text-purple-400", bg: "bg-purple-500/10" },
   notitie: { icon: MessageSquare, color: "text-amber-400", bg: "bg-amber-500/10" },
   tijdregistratie: { icon: Clock, color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
+};
+
+const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  actief: { label: "Actieve klant", bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-400" },
+  stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
+  aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
+  inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },
+};
+
+const nextActionIcons: Record<string, typeof Receipt> = {
+  follow_up: Mail,
+  factuur: Receipt,
+  meeting: CalendarDays,
+  taak: CheckCircle2,
+  offerte: FileCheck,
 };
 
 type Tab = "overzicht" | "tijdlijn" | "financieel" | "documenten";
@@ -262,7 +281,7 @@ export default function KlantDetailPage() {
     );
   }
 
-  const { klant, projecten, notities, documenten, recenteTijdregistraties, facturen, offertes, meetings, tijdlijn, kpis } = data;
+  const { klant, projecten, notities, documenten, recenteTijdregistraties, facturen, offertes, meetings, tijdlijn, kpis, openTaken, nextActions, relatieStatus, laatsteContact, dagenSindsContact, maandelijkseOmzet } = data;
 
   // Parse JSON fields
   const diensten: string[] = klant.diensten ? JSON.parse(klant.diensten) : [];

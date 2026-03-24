@@ -14,10 +14,7 @@ import {
   AlertCircle,
   TrendingUp,
   FileText,
-  Tag,
   FlaskConical,
-  Receipt,
-  FileCheck,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { KlantModal } from "./klant-modal";
@@ -54,17 +51,22 @@ function getInitials(naam: string): string {
     .join("");
 }
 
-// Health indicator dot
-function HealthDot({ gezondheid, reden }: { gezondheid: string; reden: string }) {
-  const config = {
-    groen: "bg-green-400 shadow-green-400/50",
-    oranje: "bg-amber-400 shadow-amber-400/50",
-    rood: "bg-red-400 shadow-red-400/50 animate-pulse",
-  }[gezondheid] || "bg-green-400";
+// Relatie status badge
+const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
+  actief: { label: "Actief", bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-400" },
+  stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
+  aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
+  inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },
+};
 
+function RelatieStatusBadge({ status, reden }: { status: string; reden?: string }) {
+  const config = relatieStatusConfig[status] || relatieStatusConfig.actief;
   return (
     <div className="relative group">
-      <div className={cn("w-2.5 h-2.5 rounded-full shadow-sm", config)} />
+      <span className={cn("inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full font-medium", config.bg, config.text)}>
+        <span className={cn("w-1.5 h-1.5 rounded-full", config.dot)} />
+        {config.label}
+      </span>
       {reden && (
         <div className="absolute bottom-full right-0 mb-2 px-2.5 py-1.5 bg-autronis-card border border-autronis-border rounded-lg text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 shadow-lg">
           {reden}
@@ -101,7 +103,7 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
         klant.isDemo && "border-dashed border-autronis-border/60"
       )}
     >
-      {/* Header: Avatar + Name + Health */}
+      {/* Header: Avatar + Name + Status */}
       <div className="flex items-start gap-3 mb-3">
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0", initialsColor)}>
           {initials}
@@ -111,50 +113,62 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
             <h3 className="text-base font-semibold text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
               {klant.bedrijfsnaam}
             </h3>
-            <HealthDot gezondheid={klant.gezondheid} reden={klant.gezondheidReden} />
+            {klant.isDemo ? (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium flex-shrink-0">
+                DEMO
+              </span>
+            ) : null}
           </div>
           <p className="text-sm text-autronis-text-secondary truncate mt-0.5">
             {klant.contactpersoon || "Geen contactpersoon"}
           </p>
         </div>
-        {klant.isDemo ? (
-          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium flex-shrink-0">
-            DEMO
-          </span>
-        ) : null}
+        <RelatieStatusBadge status={klant.relatieStatus} reden={klant.gezondheidReden} />
       </div>
 
-      {/* Branche tag + last contact */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        {klant.branche && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent font-medium">
-            {klant.branche}
-          </span>
-        )}
-        <span className="text-xs text-autronis-text-secondary/70">
+      {/* Branche + last contact prominent */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {klant.branche && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent font-medium">
+              {klant.branche}
+            </span>
+          )}
+        </div>
+        <span className={cn(
+          "text-xs",
+          klant.dagenSindsContact !== null && klant.dagenSindsContact > 14
+            ? "text-amber-400"
+            : "text-autronis-text-secondary/70"
+        )}>
+          {klant.dagenSindsContact !== null && klant.dagenSindsContact > 14 && "⚠ "}
           {formatRelatief(klant.laatsteContact)}
         </span>
       </div>
 
-      {/* Last invoice + open offertes */}
-      <div className="flex items-center gap-2 mb-3 text-xs text-autronis-text-secondary/70">
-        {klant.laatsteFactuurDatum && (
-          <span className="flex items-center gap-1">
-            <Receipt className="w-3 h-3" />
-            {formatDatumKort(klant.laatsteFactuurDatum)}
-            {klant.laatsteFactuurBedrag ? ` (${formatBedrag(klant.laatsteFactuurBedrag)})` : ""}
-          </span>
-        )}
-        {klant.openstaandeOffertes > 0 && (
-          <span className="flex items-center gap-1 text-blue-400">
-            <FileCheck className="w-3 h-3" />
-            {klant.openstaandeOffertes} offerte{klant.openstaandeOffertes > 1 ? "s" : ""}
-          </span>
+      {/* Value summary: lifetime value + open pipeline */}
+      <div className="bg-autronis-bg/40 rounded-xl px-3 py-2 mb-3">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-autronis-text-secondary/70">Lifetime value</span>
+          <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(klant.totaleOmzet)}</span>
+        </div>
+        {(klant.openstaand > 0 || klant.openstaandeOffertes > 0) && (
+          <div className="flex items-center justify-between text-xs mt-1">
+            <span className="text-autronis-text-secondary/70">Open pipeline</span>
+            <span className="font-semibold text-amber-400 tabular-nums">
+              {formatBedrag(klant.openstaand)}
+              {klant.openstaandeOffertes > 0 && (
+                <span className="text-blue-400 ml-1.5">
+                  + {klant.openstaandeOffertes} offerte{klant.openstaandeOffertes > 1 ? "s" : ""}
+                </span>
+              )}
+            </span>
+          </div>
         )}
       </div>
 
-      {/* Quick contact actions */}
-      <div className="flex items-center gap-2 mb-4">
+      {/* Quick actions + open tasks indicator */}
+      <div className="flex items-center gap-2 mb-3">
         {klant.email && (
           <a
             href={`mailto:${klant.email}`}
@@ -176,16 +190,16 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
           </a>
         )}
         <div className="flex-1" />
-        {klant.openstaand > 0 && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium tabular-nums">
-            {formatBedrag(klant.openstaand)} openstaand
+        {klant.openTaken > 0 && (
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium tabular-nums">
+            {klant.openTaken} open {klant.openTaken === 1 ? "taak" : "taken"}
           </span>
         )}
       </div>
 
       {/* Tags */}
       {klant.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {klant.tags.map((tag) => (
             <span
               key={tag}
@@ -198,7 +212,7 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
       )}
 
       {/* Divider */}
-      <div className="h-px bg-autronis-border mt-auto mb-4" />
+      <div className="h-px bg-autronis-border mt-auto mb-3" />
 
       {/* Footer KPIs */}
       <div className="grid grid-cols-3 gap-2">
@@ -212,7 +226,7 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
         </div>
         <div>
           <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet</p>
-          <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatBedrag(klant.totaleOmzet)}</p>
+          <p className="text-sm font-bold text-autronis-accent tabular-nums">{formatBedrag(klant.totaleOmzet)}</p>
         </div>
       </div>
     </div>

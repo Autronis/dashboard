@@ -1166,6 +1166,23 @@ export default function AgendaPage() {
                         <div
                           key={`${uur}-${wd.datumStr}`}
                           onClick={() => openNieuwModal(wd.datumStr)}
+                          onDragOver={(e) => {
+                            if (dragTaak) {
+                              e.preventDefault();
+                              e.currentTarget.classList.add("bg-green-500/10");
+                            }
+                          }}
+                          onDragLeave={(e) => {
+                            e.currentTarget.classList.remove("bg-green-500/10");
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove("bg-green-500/10");
+                            if (dragTaak) {
+                              openPlanModal(dragTaak, wd.datumStr, `${String(uur).padStart(2, "0")}:00`);
+                              setDragTaak(null);
+                            }
+                          }}
                           className={cn(
                             "h-[64px] border-t border-r border-autronis-border/15 relative cursor-pointer hover:bg-autronis-accent/5 transition-colors",
                             isVandaag && "bg-autronis-accent/[0.04]"
@@ -1268,43 +1285,120 @@ export default function AgendaPage() {
                   });
                 })}
 
-                {/* Taken-blokken in week view (als suggested blocks) */}
+                {/* Ingeplande taken als groene blokken in week view */}
                 {toonTaken && weekDagen.map((wd, dagIdx) => {
-                  const dagTaken = takenPerDag[wd.datumStr] || [];
+                  const dagTaken = ingeplandPerDag[wd.datumStr] || [];
                   if (dagTaken.length === 0) return null;
 
-                  return dagTaken.map((taak, taakIdx) => {
+                  return dagTaken.map((taak) => {
+                    if (!taak.ingeplandStart) return null;
+                    const startDate = new Date(taak.ingeplandStart);
+                    const startUur = startDate.getHours();
+                    const startMin = startDate.getMinutes();
+
                     const wStart = weekUren[0] ?? 7;
-                    // Toon taken als suggested blocks: start na laatste event of vanaf 09:00
-                    const suggestedUur = 9 + taakIdx;
-                    if (suggestedUur < wStart || suggestedUur >= (weekUren[weekUren.length - 1] ?? 20)) return null;
+                    const wEind = (weekUren[weekUren.length - 1] ?? 20) + 1;
+                    if (startUur < wStart || startUur >= wEind) return null;
 
+                    const duurMin = taak.geschatteDuur || 60;
                     const slotH = 64;
-                    const topOffset = (suggestedUur - wStart) * slotH;
-                    const height = slotH * 0.9;
-
-                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                    const topOffset = (startUur - wStart) * slotH + (startMin / 60) * slotH;
+                    const height = Math.max(24, (duurMin / 60) * slotH);
 
                     return (
                       <div
-                        key={`taak-${taak.id}-${wd.datumStr}`}
-                        className="absolute rounded-lg px-2 py-1 overflow-hidden border-l-[3px] border-dashed z-[5] opacity-50 hover:opacity-90 transition-opacity cursor-default"
+                        key={`taak-plan-${taak.id}-${wd.datumStr}`}
+                        className="absolute rounded-lg px-2 py-1 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
-                          backgroundColor: `${prioColor}10`,
-                          borderLeftColor: prioColor,
-                          color: prioColor,
+                          backgroundColor: "rgba(34,197,94,0.12)",
+                          borderLeftColor: "#22c55e",
+                          color: "#4ade80",
                           left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
                           width: `calc((100% - 48px) / 7 - 4px)`,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPlanModal(taak, wd.datumStr, `${String(startUur).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`);
                         }}
                       >
                         <div className="flex items-center gap-1">
                           <CheckSquare className="w-3 h-3 flex-shrink-0" />
+                          <p className="text-[11px] font-semibold truncate leading-tight">{taak.titel}</p>
+                        </div>
+                        {height > 28 && (
+                          <p className="text-[10px] opacity-70 mt-0.5 tabular-nums">
+                            {`${String(startUur).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`}
+                            {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
+                          </p>
+                        )}
+                        {height > 42 && taak.projectNaam && (
+                          <p className="text-[9px] opacity-50 mt-0.5 truncate">{taak.projectNaam}</p>
+                        )}
+                        {/* Uitplannen knop bij hover */}
+                        <button
+                          className="absolute top-1 right-1 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleUnplanTaak(taak.id);
+                          }}
+                          title="Uit agenda halen"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  });
+                })}
+
+                {/* Niet-ingeplande taken met deadline als dashed suggestie blokken */}
+                {toonTaken && weekDagen.map((wd, dagIdx) => {
+                  const dagTaken = (takenPerDag[wd.datumStr] || []).filter((t) => !t.ingeplandStart);
+                  if (dagTaken.length === 0) return null;
+
+                  return dagTaken.slice(0, 3).map((taak, taakIdx) => {
+                    const wStart = weekUren[0] ?? 7;
+                    const suggestedUur = 9 + taakIdx;
+                    if (suggestedUur < wStart || suggestedUur >= (weekUren[weekUren.length - 1] ?? 20)) return null;
+
+                    // Skip als er al een ingepland blok is op deze positie
+                    const ingeplandOpDitSlot = (ingeplandPerDag[wd.datumStr] || []).some((t) => {
+                      if (!t.ingeplandStart) return false;
+                      const s = new Date(t.ingeplandStart);
+                      return s.getHours() === suggestedUur;
+                    });
+                    if (ingeplandOpDitSlot) return null;
+
+                    const slotH = 64;
+                    const topOffset = (suggestedUur - wStart) * slotH + 4;
+                    const height = slotH * 0.85;
+                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+
+                    return (
+                      <div
+                        key={`taak-sug-${taak.id}-${wd.datumStr}`}
+                        className="absolute rounded-lg px-2 py-1 overflow-hidden z-[4] opacity-35 hover:opacity-80 transition-all cursor-pointer"
+                        style={{
+                          top: `${topOffset}px`,
+                          height: `${height}px`,
+                          backgroundColor: `${prioColor}08`,
+                          border: `1px dashed ${prioColor}40`,
+                          color: prioColor,
+                          left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
+                          width: `calc((100% - 48px) / 7 - 4px)`,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openPlanModal(taak, wd.datumStr, `${String(suggestedUur).padStart(2, "0")}:00`);
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <CheckSquare className="w-3 h-3 flex-shrink-0 opacity-60" />
                           <p className="text-[11px] font-medium truncate leading-tight">{taak.titel}</p>
                         </div>
-                        {height > 28 && taak.projectNaam && (
-                          <p className="text-[9px] opacity-60 mt-0.5 truncate">{taak.projectNaam}</p>
+                        {height > 28 && (
+                          <p className="text-[9px] opacity-50 mt-0.5">Klik om in te plannen</p>
                         )}
                       </div>
                     );
@@ -1508,51 +1602,128 @@ export default function AgendaPage() {
             </>
           ) : (
             <>
-              {/* Taken sectie */}
-              {agendaTaken.length > 0 && (
+              {/* Taken om te plannen */}
+              {nietIngeplandeTaken.length > 0 && (
                 <div className="mb-5">
-                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
                     <ListTodo className="w-4 h-4 text-orange-400" />
-                    Open taken
-                    <span className="text-[10px] text-autronis-text-secondary font-normal ml-auto">{takenStats.open + takenStats.bezig}</span>
+                    Taken om te plannen
+                    <span className="text-[10px] text-autronis-text-secondary font-normal ml-auto tabular-nums">{nietIngeplandeTaken.length}</span>
                   </h3>
-                  <div className="space-y-2">
-                    {agendaTaken.filter((t) => t.status === "bezig" || t.prioriteit === "hoog").slice(0, 5).map((taak) => {
-                      const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
-                      return (
-                        <Link
-                          key={taak.id}
-                          href="/taken"
-                          className="block p-2.5 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 transition-colors"
-                          style={{ borderLeftColor: prioColor }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <CheckSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: prioColor }} />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                {taak.status === "bezig" && (
-                                  <span className="text-[10px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
-                                )}
-                                {taak.projectNaam && (
-                                  <span className="text-[10px] text-autronis-text-secondary truncate">{taak.projectNaam}</span>
-                                )}
-                                {taak.deadline && (
-                                  <span className="text-[10px] text-autronis-text-secondary/60 ml-auto tabular-nums flex-shrink-0">
-                                    {new Date(taak.deadline).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                                  </span>
-                                )}
+                  <p className="text-[10px] text-autronis-text-secondary/60 mb-2">Sleep naar kalender of klik om in te plannen</p>
+                  <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
+                    {nietIngeplandeTaken
+                      .sort((a, b) => {
+                        // Hoog prioriteit eerst, dan bezig, dan open
+                        const prioOrder = { hoog: 0, normaal: 1, laag: 2 };
+                        const aPrio = prioOrder[a.prioriteit as keyof typeof prioOrder] ?? 1;
+                        const bPrio = prioOrder[b.prioriteit as keyof typeof prioOrder] ?? 1;
+                        if (aPrio !== bPrio) return aPrio - bPrio;
+                        if (a.status === "bezig" && b.status !== "bezig") return -1;
+                        if (b.status === "bezig" && a.status !== "bezig") return 1;
+                        return 0;
+                      })
+                      .slice(0, 10)
+                      .map((taak) => {
+                        const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                        const duurLabel = taak.geschatteDuur
+                          ? taak.geschatteDuur >= 60
+                            ? `${Math.floor(taak.geschatteDuur / 60)}u${taak.geschatteDuur % 60 ? ` ${taak.geschatteDuur % 60}m` : ""}`
+                            : `${taak.geschatteDuur}m`
+                          : null;
+
+                        return (
+                          <div
+                            key={taak.id}
+                            draggable
+                            onDragStart={(e) => {
+                              setDragTaak(taak);
+                              e.dataTransfer.setData("text/plain", String(taak.id));
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragEnd={() => setDragTaak(null)}
+                            onClick={() => openPlanModal(taak)}
+                            className="p-2 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 hover:border-autronis-accent/30 transition-colors cursor-grab active:cursor-grabbing group"
+                            style={{ borderLeftColor: prioColor }}
+                          >
+                            <div className="flex items-start gap-2">
+                              {/* Drag handle */}
+                              <div className="flex flex-col gap-px mt-1 opacity-30 group-hover:opacity-60 flex-shrink-0">
+                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                  {taak.status === "bezig" && (
+                                    <span className="text-[9px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
+                                  )}
+                                  {taak.projectNaam && (
+                                    <span className="text-[9px] text-autronis-text-secondary truncate">{taak.projectNaam}</span>
+                                  )}
+                                  {duurLabel && (
+                                    <span className="text-[9px] text-autronis-text-secondary/60 flex items-center gap-0.5 flex-shrink-0">
+                                      <Clock className="w-2.5 h-2.5" />{duurLabel}
+                                    </span>
+                                  )}
+                                  {taak.deadline && (
+                                    <span className="text-[9px] text-autronis-text-secondary/60 ml-auto tabular-nums flex-shrink-0">
+                                      {new Date(taak.deadline).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </Link>
-                      );
-                    })}
-                    {(takenStats.open + takenStats.bezig) > 5 && (
-                      <Link href="/taken" className="block text-center text-xs text-autronis-accent hover:underline py-1">
-                        Alle taken bekijken
+                        );
+                      })}
+                    {nietIngeplandeTaken.length > 10 && (
+                      <Link href="/taken" className="block text-center text-[10px] text-autronis-accent hover:underline py-1">
+                        +{nietIngeplandeTaken.length - 10} meer taken
                       </Link>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Ingeplande taken vandaag */}
+              {ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr).length > 0 && (
+                <div className="mb-5">
+                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4 text-green-400" />
+                    Ingepland vandaag
+                  </h3>
+                  <div className="space-y-1.5">
+                    {ingeplandeTaken
+                      .filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr)
+                      .sort((a, b) => (a.ingeplandStart || "").localeCompare(b.ingeplandStart || ""))
+                      .map((taak) => (
+                        <div
+                          key={taak.id}
+                          className="p-2 rounded-lg bg-green-500/5 border border-green-500/20 border-l-2 group"
+                          style={{ borderLeftColor: "#22c55e" }}
+                        >
+                          <div className="flex items-start gap-2">
+                            <CheckSquare className="w-3.5 h-3.5 mt-0.5 text-green-400 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] text-green-400/70 tabular-nums">
+                                  {taak.ingeplandStart && new Date(taak.ingeplandStart).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                                  {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
+                                </span>
+                                <button
+                                  onClick={() => handleUnplanTaak(taak.id)}
+                                  className="text-[9px] text-red-400/60 hover:text-red-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  Uitplannen
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
@@ -1846,6 +2017,17 @@ export default function AgendaPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* Plan Taak Modal */}
+      {planModalTaak && (
+        <PlanTaakModal
+          taak={planModalTaak}
+          onClose={() => setPlanModalTaak(null)}
+          onPlan={handlePlanTaak}
+          isPending={planTaak.isPending}
+          prefillDatum={planPrefillDatum}
+          prefillTijd={planPrefillTijd}
+        />
       )}
       {/* Kalender Settings Modal */}
       {kalenderSettingsOpen && (

@@ -44,10 +44,10 @@ function ProgressBar({ afgerond, totaal, size = "md" }: { afgerond: number; tota
   const h = size === "sm" ? "h-1.5" : "h-2";
   return (
     <div className="flex items-center gap-2">
-      <div className={cn("flex-1 rounded-full bg-autronis-border/50", h)}>
-        <div className={cn("rounded-full transition-all duration-500", h, pct === 100 ? "bg-green-400" : "bg-autronis-accent")} style={{ width: `${pct}%` }} />
+      <div className={cn("flex-1 rounded-full bg-autronis-border/30", h)}>
+        <div className={cn("rounded-full transition-all duration-500", h, pct === 100 ? "bg-green-400/70" : "bg-autronis-accent/50")} style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-xs text-autronis-text-secondary tabular-nums whitespace-nowrap">{afgerond}/{totaal}</span>
+      <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums whitespace-nowrap">{afgerond}/{totaal}</span>
     </div>
   );
 }
@@ -220,32 +220,32 @@ function VoortgangCompact({ taken, projecten }: { taken: Taak[]; projecten: Proj
   if (totaal === 0) return null;
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
-      <div className="flex items-center gap-3 mb-3">
-        <BarChart3 className="w-4 h-4 text-autronis-accent" />
-        <span className="text-sm font-semibold text-autronis-text-primary">Voortgang</span>
-        <span className="text-sm font-bold text-autronis-accent tabular-nums ml-auto">{pct}%</span>
-        <span className="text-xs text-autronis-text-secondary tabular-nums">{afgerond}/{totaal}</span>
-      </div>
-      <div className="w-full h-1.5 bg-autronis-bg rounded-full overflow-hidden mb-3">
-        <div className="h-full bg-autronis-accent rounded-full transition-all" style={{ width: `${pct}%` }} />
-      </div>
-      {projecten.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1.5">
-          {projecten.map((p) => {
-            const ppct = p.totaal > 0 ? Math.round((p.afgerond / p.totaal) * 100) : 0;
-            return (
-              <div key={p.projectId} className="flex items-center gap-2">
-                <span className="text-[11px] text-autronis-text-secondary truncate flex-1">{p.projectNaam}</span>
-                <div className="w-12 h-1 bg-autronis-bg rounded-full overflow-hidden flex-shrink-0">
-                  <div className="h-full bg-autronis-accent/60 rounded-full" style={{ width: `${ppct}%` }} />
-                </div>
-                <span className="text-[10px] text-autronis-text-secondary tabular-nums w-8 text-right flex-shrink-0">{ppct}%</span>
-              </div>
-            );
-          })}
+    <div className="bg-autronis-card/60 border border-autronis-border/50 rounded-lg px-4 py-2.5">
+      <div className="flex items-center gap-3">
+        <BarChart3 className="w-3.5 h-3.5 text-autronis-text-secondary" />
+        <span className="text-xs font-medium text-autronis-text-secondary">Voortgang</span>
+        <div className="flex-1 max-w-32 h-1 bg-autronis-bg rounded-full overflow-hidden">
+          <div className="h-full bg-autronis-accent/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
         </div>
-      )}
+        <span className="text-xs font-semibold text-autronis-accent tabular-nums">{pct}%</span>
+        <span className="text-[10px] text-autronis-text-secondary tabular-nums">{afgerond}/{totaal}</span>
+        {projecten.length > 0 && (
+          <div className="hidden lg:flex items-center gap-3 ml-2 pl-3 border-l border-autronis-border/50">
+            {projecten.slice(0, 4).map((p) => {
+              const ppct = p.totaal > 0 ? Math.round((p.afgerond / p.totaal) * 100) : 0;
+              return (
+                <div key={p.projectId} className="flex items-center gap-1.5">
+                  <span className="text-[10px] text-autronis-text-secondary truncate max-w-20">{p.projectNaam}</span>
+                  <div className="w-8 h-1 bg-autronis-bg rounded-full overflow-hidden flex-shrink-0">
+                    <div className="h-full bg-autronis-accent/40 rounded-full" style={{ width: `${ppct}%` }} />
+                  </div>
+                  <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums">{ppct}%</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -408,6 +408,16 @@ export default function TakenPage() {
     } catch { addToast("Kon timer niet starten", "fout"); }
   }, [timer, addToast, statusMutation]);
 
+  const handlePlanTaak = useCallback((taak: Taak) => {
+    const vandaagDatum = new Date().toISOString().slice(0, 10);
+    const params = new URLSearchParams({
+      titel: taak.titel,
+      datum: taak.deadline || vandaagDatum,
+      projectId: String(taak.projectId ?? ""),
+    });
+    window.location.href = `/agenda?plan=${params.toString()}`;
+  }, []);
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -516,10 +526,10 @@ export default function TakenPage() {
         </div>
 
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
-        <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} />
+        <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} />
 
-        {/* 2. FILTER BAR — één compacte rij */}
-        <div className="flex flex-wrap items-center gap-2">
+        {/* 2. FILTER BAR — één compacte rij met groepen */}
+        <div className="flex flex-wrap items-center gap-1.5">
           {/* Status pills */}
           <div className="flex items-center gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
             {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }].map((f) => (
@@ -527,45 +537,43 @@ export default function TakenPage() {
             ))}
           </div>
 
-          {/* Project filter */}
-          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-            <option value="alle">Alle projecten</option>
-            {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
-          </select>
+          <div className="w-px h-5 bg-autronis-border/40 mx-1 hidden sm:block" />
 
-          {/* Prioriteit filter */}
-          <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-            <option value="alle">Alle prioriteiten</option>
-            <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
-          </select>
-
-          {/* Uitvoerder filter */}
-          <select value={uitvoerderFilter} onChange={(e) => setUitvoerderFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-            <option value="alle">Alle uitvoerders</option>
-            <option value="claude">Claude</option>
-            <option value="handmatig">Handmatig</option>
-          </select>
-
-          {/* Fase filter */}
-          <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-            <option value="alle">Alle fases</option>
-            {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
-          </select>
-
-          {/* Search */}
-          <div className="relative sm:ml-auto sm:w-44">
-            <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-autronis-text-secondary/50" />
-            <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoeken..."
-              className="w-full bg-autronis-card border border-autronis-border rounded-lg pl-7 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+          {/* Dropdowns groep */}
+          <div className="flex items-center gap-1.5">
+            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+              <option value="alle">Project</option>
+              {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
+            </select>
+            <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+              <option value="alle">Prioriteit</option>
+              <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
+            </select>
+            <select value={uitvoerderFilter} onChange={(e) => setUitvoerderFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+              <option value="alle">Uitvoerder</option>
+              <option value="claude">Claude</option>
+              <option value="handmatig">Handmatig</option>
+            </select>
+            <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
+              <option value="alle">Fase</option>
+              {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
           </div>
 
-          {/* Clear filters */}
-          {activeFilterCount > 0 && (
-            <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); }}
-              className="flex items-center gap-1 px-2 py-1 text-xs text-autronis-text-secondary hover:text-red-400 transition-colors">
-              <X className="w-3 h-3" /> Wis filters ({activeFilterCount})
-            </button>
-          )}
+          {/* Search + clear */}
+          <div className="flex items-center gap-1.5 sm:ml-auto">
+            <div className="relative sm:w-40">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-autronis-text-secondary/50" />
+              <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoeken..."
+                className="w-full bg-autronis-card border border-autronis-border rounded-lg pl-7 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+            </div>
+            {activeFilterCount > 0 && (
+              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); }}
+                className="flex items-center gap-1 px-2 py-1 text-[11px] text-autronis-text-secondary hover:text-red-400 transition-colors whitespace-nowrap">
+                <X className="w-3 h-3" /> Wis ({activeFilterCount})
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 3. TAKEN LIJST / KANBAN / COMPACT — core product */}

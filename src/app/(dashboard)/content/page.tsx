@@ -632,9 +632,14 @@ export default function ContentPage() {
                 </div>
 
                   <div className="space-y-2">
-                    {items.map((item) => (
-                      <div
+                    {items.map((item, idx) => {
+                      const pl = item.platform ? (PLATFORM_COLORS[item.platform] ?? null) : null;
+                      return (
+                      <motion.div
                         key={item.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.04 }}
                         draggable
                         onDragStart={() => handleDragStart(item.id)}
                         className="bg-autronis-card border border-autronis-border rounded-xl p-3 cursor-grab active:cursor-grabbing hover:border-autronis-accent/30 transition-colors group"
@@ -649,11 +654,9 @@ export default function ContentPage() {
                               <p className="text-xs font-medium text-autronis-text-primary truncate">{item.titel}</p>
                             </div>
                             <div className="flex items-center gap-2">
-                              {item.platform && (
-                                <span className={cn(
-                                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
-                                  item.platform === "linkedin" ? "bg-blue-500/10 text-blue-400" : "bg-pink-500/10 text-pink-400"
-                                )}>
+                              {pl && (
+                                <span className={cn("inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium", pl.bg, pl.text)}>
+                                  <pl.icon className="w-2.5 h-2.5" />
                                   {item.platform}
                                 </span>
                               )}
@@ -663,74 +666,141 @@ export default function ContentPage() {
                             </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      </motion.div>
+                    );
+                    })}
                     {items.length === 0 && (
                       <p className="text-xs text-autronis-text-secondary/40 text-center py-8">Geen items</p>
                     )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Content pipeline overview (bar chart) */}
-      {stats.totalePosts > 0 && weergave === "cards" && (
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-4">Content Pipeline</h2>
-          <div className="grid grid-cols-5 gap-3">
-            {[
-              { label: "Concept", count: stats.conceptPosts, kleur: "bg-gray-500" },
-              { label: "Goedgekeurd", count: allePosts.filter(p => p.status === "goedgekeurd").length, kleur: "bg-blue-500" },
-              { label: "Bewerkt", count: allePosts.filter(p => p.status === "bewerkt").length, kleur: "bg-yellow-500" },
-              { label: "Gepland", count: stats.geplandPosts, kleur: "bg-autronis-accent" },
-              { label: "Gepubliceerd", count: stats.gepubliceerdPosts, kleur: "bg-emerald-500" },
-            ].map((fase) => (
-              <div key={fase.label} className="text-center">
-                <div className="relative h-2 bg-autronis-border rounded-full overflow-hidden mb-2">
-                  <div
-                    className={cn("absolute inset-y-0 left-0 rounded-full transition-all", fase.kleur)}
-                    style={{ width: `${stats.totalePosts > 0 ? Math.max(5, (fase.count / stats.totalePosts) * 100) : 0}%` }}
-                  />
-                </div>
-                <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{fase.count}</p>
-                <p className="text-[11px] text-autronis-text-secondary">{fase.label}</p>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* AI Content Suggesties */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide">Content suggesties</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {suggesties.map((suggestie, i) => (
-            <div
-              key={i}
-              className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-4 flex items-start gap-3"
-            >
-              <div className="w-8 h-8 rounded-lg bg-autronis-accent/10 flex items-center justify-center shrink-0">
-                <Lightbulb className="w-4 h-4 text-autronis-accent" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm text-autronis-text-primary">{suggestie.tekst}</p>
-                {suggestie.actie === "genereer" && (
-                  <button
-                    onClick={handleGenereerLinkedin}
-                    disabled={genereerLinkedin.isPending}
-                    className="mt-2 text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium transition-colors disabled:opacity-50"
-                  >
-                    {genereerLinkedin.isPending ? "Bezig..." : "Genereer nu →"}
-                  </button>
+          {suggesties.map((suggestie, i) => {
+            const prioKleur = suggestie.prio === "hoog"
+              ? { border: "border-red-500/30", bg: "bg-red-500/5", icon: "text-red-400", iconBg: "bg-red-500/10" }
+              : suggestie.prio === "normaal"
+              ? { border: "border-amber-500/30", bg: "bg-amber-500/5", icon: "text-amber-400", iconBg: "bg-amber-500/10" }
+              : { border: "border-autronis-accent/20", bg: "bg-autronis-card", icon: "text-autronis-accent", iconBg: "bg-autronis-accent/10" };
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -8 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.07 }}
+                className={cn(
+                  "border rounded-2xl p-4 flex items-start gap-3 transition-all",
+                  prioKleur.border,
+                  prioKleur.bg,
+                  suggestie.href && "hover:scale-[1.01] cursor-pointer"
                 )}
-              </div>
-            </div>
-          ))}
+                onClick={() => suggestie.href && (window.location.href = suggestie.href)}
+              >
+                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", prioKleur.iconBg)}>
+                  {suggestie.prio === "hoog" ? (
+                    <AlertTriangle className={cn("w-4 h-4", prioKleur.icon)} />
+                  ) : (
+                    <Lightbulb className={cn("w-4 h-4", prioKleur.icon)} />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-autronis-text-primary">{suggestie.tekst}</p>
+                  {suggestie.actie === "genereer" && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleGenereerLinkedin(); }}
+                      disabled={genereerLinkedin.isPending}
+                      className="mt-2 text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium transition-colors disabled:opacity-50"
+                    >
+                      {genereerLinkedin.isPending ? "Bezig..." : "Genereer nu →"}
+                    </button>
+                  )}
+                  {suggestie.href && !suggestie.actie && (
+                    <span className="mt-1 inline-flex items-center gap-1 text-xs text-autronis-text-secondary/70 font-medium">
+                      Ga naar <ArrowRight className="w-3 h-3" />
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
+
+      {/* Week-brief modal */}
+      <AnimatePresence>
+        {weekBriefOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setWeekBriefOpen(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 8 }}
+              className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-autronis-text-primary">Plan content week</h3>
+                  <p className="text-sm text-autronis-text-secondary mt-1">Claude genereert 7 posts op basis van je kennisbank.</p>
+                </div>
+                <button onClick={() => setWeekBriefOpen(false)} className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-2.5 mb-5">
+                {[
+                  { label: "Posts", value: "7 posts (mix LinkedIn + Instagram)" },
+                  { label: "Formats", value: "Tips, storytelling, thought leadership" },
+                  { label: "Basis", value: `${inzichten.filter((i) => !i.isGebruikt).length} ongebruikte inzichten` },
+                  { label: "Tone", value: "Menselijk, geen AI-taal" },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between text-sm py-1.5 border-b border-autronis-border/40 last:border-0">
+                    <span className="text-autronis-text-secondary">{item.label}</span>
+                    <span className="text-autronis-text-primary font-medium">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {inzichten.filter((i) => !i.isGebruikt).length < 3 && (
+                <div className="flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 mb-4">
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <p className="text-xs text-amber-300">Weinig ongebruikte inzichten. Voeg er meer toe voor betere resultaten.</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setWeekBriefOpen(false)}
+                  className="px-4 py-2.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={handleBevestigWeek}
+                  disabled={genereerWeek.isPending}
+                  className="btn-shimmer flex items-center gap-2 px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                >
+                  {genereerWeek.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  {genereerWeek.isPending ? "Bezig..." : "Genereer 7 posts"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
     </PageTransition>
   );

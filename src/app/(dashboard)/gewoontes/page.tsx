@@ -655,6 +655,24 @@ export default function GewoontesPagina() {
           </button>
         </div>
 
+        {/* Streak gevaar banner */}
+        {streakGevaar && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-500/8 border border-amber-500/30 rounded-2xl px-5 py-4 flex items-center gap-4"
+          >
+            <AlertTriangle className="w-5 h-5 text-amber-400 animate-pulse flex-shrink-0" />
+            <p className="text-sm text-amber-300 flex-1">
+              <span className="font-semibold">Het is avond</span> en je hebt nog{" "}
+              <span className="font-semibold">{vandaagFocus.length} {vandaagFocus.length === 1 ? "gewoonte" : "gewoontes"}</span> open.
+              {vandaagFocus[0]?.streak > 0 && (
+                <span> Bescherm je {vandaagFocus[0].streak}-dagen streak.</span>
+              )}
+            </p>
+          </motion.div>
+        )}
+
         {totaal > 0 && (
           <>
             {/* ─── KPIs + Level ─── */}
@@ -678,7 +696,7 @@ export default function GewoontesPagina() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-blue-500/10"><TrendingUp className="w-4 h-4 text-blue-400" /></div>
                 </div>
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{weekRate}%</p>
+                <AnimatedNumber value={weekRate} format={(v) => `${Math.round(v)}%`} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
                 <p className="text-xs text-autronis-text-secondary mt-1">Week</p>
                 {weekUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
@@ -692,7 +710,7 @@ export default function GewoontesPagina() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-purple-500/10"><Calendar className="w-4 h-4 text-purple-400" /></div>
                 </div>
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{maandRate}%</p>
+                <AnimatedNumber value={maandRate} format={(v) => `${Math.round(v)}%`} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
                 <p className="text-xs text-autronis-text-secondary mt-1">Maand</p>
                 {maandUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
@@ -706,18 +724,25 @@ export default function GewoontesPagina() {
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-xl bg-yellow-500/10"><Zap className="w-4 h-4 text-yellow-400" /></div>
                 </div>
-                <p className="text-2xl font-bold text-yellow-400 tabular-nums">{totaalPunten}</p>
+                <AnimatedNumber value={totaalPunten} className="text-2xl font-bold text-yellow-400 tabular-nums" />
                 <p className="text-xs text-autronis-text-secondary mt-1">Punten</p>
               </div>
 
               {/* Level */}
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-autronis-accent/10"><Award className="w-4 h-4 text-autronis-accent" /></div>
+                  <div className="p-2 rounded-xl bg-autronis-accent/10">
+                    {levelInfo.level >= 6 ? <Crown className="w-4 h-4 text-yellow-400" /> : levelInfo.level >= 4 ? <Trophy className="w-4 h-4 text-autronis-accent" /> : <Award className="w-4 h-4 text-autronis-accent" />}
+                  </div>
                 </div>
                 <p className="text-lg font-bold text-autronis-accent">{levelInfo.naam}</p>
                 <div className="w-full h-1.5 bg-autronis-border rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-autronis-accent rounded-full transition-all" style={{ width: `${levelInfo.voortgang}%` }} />
+                  <motion.div
+                    className="h-full bg-autronis-accent rounded-full"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${levelInfo.voortgang}%` }}
+                    transition={{ duration: 1, ease: "easeOut" as const, delay: 0.3 }}
+                  />
                 </div>
                 <p className="text-[10px] text-autronis-text-secondary mt-1">{totaalPunten}/{levelInfo.volgende} naar volgend level</p>
               </div>
@@ -805,17 +830,21 @@ export default function GewoontesPagina() {
                 <div className="space-y-2">
                   {vandaagFocus.map((item) => {
                     const Icon = ICON_MAP[item.icoon] || Target;
+                    const urgentie = item.streak >= 7 ? "border-l-red-500/70" : item.streak >= 3 ? "border-l-amber-500/50" : "border-l-transparent";
                     return (
                       <div key={item.id}
                         onClick={() => toggleGewoonte(item.id)}
-                        className="flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent hover:border-autronis-accent/20 transition-all cursor-pointer select-none group"
+                        className={cn(
+                          "flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent border-l-2 hover:border-autronis-accent/20 transition-all cursor-pointer select-none group",
+                          urgentie
+                        )}
                       >
                         <div className="w-10 h-10 rounded-xl border-2 border-autronis-accent/30 group-hover:border-autronis-accent/60 flex items-center justify-center transition-all flex-shrink-0">
                           <Icon className="w-5 h-5 text-autronis-accent" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-base font-medium text-autronis-text-primary">{item.naam}</p>
-                          <p className="text-xs text-autronis-accent/80 mt-0.5">{item.reden}</p>
+                          {item.reden && <p className="text-xs text-autronis-accent/80 mt-0.5">{item.reden}</p>}
                         </div>
                         <div className="flex items-center gap-3 flex-shrink-0">
                           {item.verwachteTijd && (
@@ -826,6 +855,29 @@ export default function GewoontesPagina() {
                           {item.streak > 0 && <StreakFlame streak={item.streak} />}
                           <ArrowRight className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
+                      </div>
+                    );
+                  })}
+                  {/* Top suggesties als gedimde kaartjes */}
+                  {suggesties.slice(0, 2).map((s) => {
+                    const Icon = ICON_MAP[s.icoon] || Target;
+                    return (
+                      <div key={s.naam}
+                        className="flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/20 border border-dashed border-autronis-border/50 opacity-60 hover:opacity-90 transition-opacity group"
+                      >
+                        <div className="w-10 h-10 rounded-xl border border-autronis-border/50 flex items-center justify-center flex-shrink-0">
+                          <Icon className="w-4 h-4 text-autronis-text-secondary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-autronis-text-secondary">{s.naam}</p>
+                          {s.streefwaarde && <p className="text-xs text-autronis-text-secondary/60">{s.streefwaarde}</p>}
+                        </div>
+                        <button
+                          onClick={() => addSuggestie(s)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-autronis-accent/10 hover:bg-autronis-accent/20 text-autronis-accent rounded-lg text-xs font-semibold transition-colors flex-shrink-0"
+                        >
+                          <Plus className="w-3 h-3" /> Voeg toe
+                        </button>
                       </div>
                     );
                   })}
@@ -861,14 +913,37 @@ export default function GewoontesPagina() {
                           : "bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent"
                       )}
                     >
-                      {/* Large checkbox */}
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all flex-shrink-0",
-                        g.voltooidVandaag
-                          ? "bg-emerald-500 border-emerald-500 text-white scale-105"
-                          : "border-autronis-border group-hover:border-emerald-500/50"
-                      )}>
-                        {g.voltooidVandaag && <CheckCircle2 className="w-6 h-6" />}
+                      {/* Large checkbox with burst ring */}
+                      <div className="relative flex-shrink-0">
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl border-2 flex items-center justify-center transition-all",
+                          g.voltooidVandaag
+                            ? "bg-emerald-500 border-emerald-500 text-white scale-105"
+                            : "border-autronis-border group-hover:border-emerald-500/50"
+                        )}>
+                          {g.voltooidVandaag && (
+                            <motion.div
+                              key="check"
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                            >
+                              <CheckCircle2 className="w-6 h-6" />
+                            </motion.div>
+                          )}
+                        </div>
+                        <AnimatePresence>
+                          {g.voltooidVandaag && (
+                            <motion.div
+                              key="burst"
+                              initial={{ scale: 1, opacity: 0.6 }}
+                              animate={{ scale: 2.2, opacity: 0 }}
+                              exit={{}}
+                              transition={{ duration: 0.5, ease: "easeOut" as const }}
+                              className="absolute inset-0 rounded-xl bg-emerald-400/30 pointer-events-none"
+                            />
+                          )}
+                        </AnimatePresence>
                       </div>
 
                       <div className="p-2 bg-autronis-accent/10 rounded-xl flex-shrink-0">
@@ -884,13 +959,20 @@ export default function GewoontesPagina() {
                           {g.streefwaarde && <span className="text-xs text-autronis-text-secondary">{g.streefwaarde}</span>}
                           {g.verwachteTijd && <span className="text-xs text-autronis-text-secondary flex items-center gap-0.5"><Clock className="w-3 h-3" />{g.verwachteTijd}</span>}
                           <span className="text-xs text-autronis-text-secondary capitalize">{g.frequentie}</span>
-                          {/* Motivation: show goal inline */}
                           {g.doel && (
                             <span className="text-xs text-autronis-accent/60 truncate max-w-[200px]">
                               {g.doel}
                             </span>
                           )}
                         </div>
+                        {/* Inline hover stats */}
+                        {stat && (
+                          <div className="flex items-center gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <span className="text-[10px] text-blue-400/80 tabular-nums">{stat.completionRate}% rate</span>
+                            {stat.besteDag !== "-" && <span className="text-[10px] text-autronis-text-secondary/60">Beste: {stat.besteDag}</span>}
+                            {stat.langsteStreak > 0 && <span className="text-[10px] text-autronis-text-secondary/60">Record: {stat.langsteStreak}d</span>}
+                          </div>
+                        )}
                       </div>
 
                       {/* Trend indicator */}

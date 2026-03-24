@@ -166,13 +166,18 @@ export function useDeleteSecondBrainItem() {
   });
 }
 
+interface AiZoekenPayload {
+  vraag: string;
+  geschiedenis?: { vraag: string; antwoord: string }[];
+}
+
 export function useAiZoeken() {
   return useMutation({
-    mutationFn: async (vraag: string): Promise<ZoekenResponse> => {
+    mutationFn: async (payload: AiZoekenPayload): Promise<ZoekenResponse> => {
       const res = await fetch("/api/second-brain/zoeken", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vraag }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json();

@@ -10,7 +10,11 @@ const anthropic = new Anthropic();
 export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
-    const { vraag } = await req.json();
+    const body = await req.json() as {
+      vraag: string;
+      geschiedenis?: { vraag: string; antwoord: string }[];
+    };
+    const { vraag, geschiedenis = [] } = body;
 
     if (!vraag || vraag.trim().length < 3) {
       return NextResponse.json(
@@ -53,21 +57,21 @@ Inhoud: ${(item.inhoud || "").slice(0, 300)}`;
       })
       .join("\n\n");
 
+    // Build conversation history (last 3 pairs)
+    const recentHistory = geschiedenis.slice(-3);
+    const historyMessages: { role: "user" | "assistant"; content: string }[] = [];
+    for (const qa of recentHistory) {
+      historyMessages.push({ role: "user", content: qa.vraag });
+      historyMessages.push({ role: "assistant", content: qa.antwoord });
+    }
+
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1000,
+      system: `Je bent een kennisassistent. De gebruiker heeft deze items opgeslagen in zijn Second Brain:\n\n${itemContext}\n\nBeantwoord vragen op basis van deze kennis. Verwijs naar specifieke items met hun ID in het formaat [ID:X]. Als je het antwoord niet kunt vinden in de items, zeg dat eerlijk.`,
       messages: [
-        {
-          role: "user",
-          content: `Je bent een kennisassistent. De gebruiker heeft deze items opgeslagen in zijn Second Brain:
-
-${itemContext}
-
-Beantwoord de volgende vraag op basis van deze kennis. Verwijs naar specifieke items met hun ID in het formaat [ID:X].
-Als je het antwoord niet kunt vinden in de items, zeg dat eerlijk.
-
-Vraag: ${vraag}`,
-        },
+        ...historyMessages,
+        { role: "user", content: vraag },
       ],
     });
 

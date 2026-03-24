@@ -766,9 +766,14 @@ export default function SecondBrainPage() {
 
             {/* Feed items — type-specific previews */}
             {!isLoading && sortedItems.length > 0 && (
-              <div className="space-y-3">
+              <motion.div
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.045 } } }}
+                className="space-y-3"
+              >
                 {sortedItems.map((item) => {
-                  const cfg = typeConfig[item.type] ?? typeConfig.tekst;
+                  const cfg = typeConfig[item.type as TypeKey] ?? typeConfig.tekst;
                   const TypeIcon = cfg.icon;
                   let tags: string[] = [];
                   if (item.aiTags) {
@@ -780,141 +785,237 @@ export default function SecondBrainPage() {
                   }
 
                   return (
-                    <div
+                    <motion.div
                       key={item.id}
-                      className="bg-autronis-card border border-autronis-border rounded-2xl p-5 hover:border-autronis-accent/30 transition-colors cursor-pointer card-glow"
-                      onClick={() => setSelectedItem(item)}
+                      variants={{
+                        hidden: { opacity: 0, y: 10 },
+                        visible: { opacity: 1, y: 0, transition: { duration: 0.22 } },
+                      }}
+                      layout
+                      className="relative group"
+                      onHoverStart={() => !item._optimistic && setHoveredItemId(item.id)}
+                      onHoverEnd={() => setHoveredItemId(null)}
                     >
-                      <div className="flex items-start gap-3">
-                        <TypeIcon className={cn("w-5 h-5 mt-0.5 shrink-0", cfg.color)} />
-                        <div className="flex-1 min-w-0">
-                          {/* Type-specific preview */}
-                          {item.type === "url" && (
-                            <>
-                              <div className="flex items-center gap-2">
+                      {/* Card */}
+                      <div
+                        className={cn(
+                          "bg-autronis-card border rounded-2xl p-5 transition-colors card-glow",
+                          item._optimistic
+                            ? "border-autronis-accent/20 opacity-55 pointer-events-none"
+                            : "border-autronis-border hover:border-autronis-accent/30 cursor-pointer"
+                        )}
+                        onClick={() => !item._optimistic && setSelectedItem(item)}
+                      >
+                        <div className="flex items-start gap-3">
+                          {/* Type badge */}
+                          <div className={cn(
+                            "flex items-center justify-center w-7 h-7 rounded-lg shrink-0 border mt-0.5",
+                            cfg.bg, cfg.border
+                          )}>
+                            <TypeIcon className={cn("w-3.5 h-3.5", cfg.color)} />
+                          </div>
+
+                          <div className="flex-1 min-w-0">
+                            {/* Type-specific preview */}
+                            {item.type === "url" && (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <h3 className="text-autronis-text-primary font-medium truncate">
+                                    {item.titel ?? "Zonder titel"}
+                                  </h3>
+                                  {item.bronUrl && (
+                                    <span className="text-xs text-blue-400/60 shrink-0">
+                                      {extractDomain(item.bronUrl)}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.aiSamenvatting && (
+                                  <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                    {item.aiSamenvatting}
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            {item.type === "code" && (
+                              <>
+                                <h3 className="text-autronis-text-primary font-medium truncate">
+                                  {item.titel ?? "Code snippet"}
+                                </h3>
+                                {item.inhoud && (
+                                  <pre className="bg-slate-900 rounded-lg p-2.5 mt-1.5 overflow-hidden font-mono text-xs text-emerald-300/70 line-clamp-3">
+                                    {item.inhoud.replace(/^```\w*\n?/, "").replace(/```$/, "").slice(0, 300)}
+                                  </pre>
+                                )}
+                              </>
+                            )}
+
+                            {item.type === "tekst" && (
+                              <>
                                 <h3 className="text-autronis-text-primary font-medium truncate">
                                   {item.titel ?? "Zonder titel"}
                                 </h3>
-                                {item.bronUrl && (
-                                  <span className="text-xs text-purple-400/70 shrink-0">
-                                    {extractDomain(item.bronUrl)}
-                                  </span>
+                                {item.inhoud && (
+                                  <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                    {item.inhoud.slice(0, 200)}
+                                  </p>
+                                )}
+                              </>
+                            )}
+
+                            {item.type === "afbeelding" && (
+                              <div className="flex items-start gap-3">
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-autronis-text-primary font-medium truncate">
+                                    {item.titel ?? "Afbeelding"}
+                                  </h3>
+                                  {item.aiSamenvatting && (
+                                    <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
+                                      {item.aiSamenvatting}
+                                    </p>
+                                  )}
+                                </div>
+                                {item.bestandPad && (
+                                  <img
+                                    src={item.bestandPad}
+                                    alt={item.titel ?? "Afbeelding"}
+                                    className="w-16 h-16 rounded-lg object-cover shrink-0"
+                                  />
                                 )}
                               </div>
-                              {item.aiSamenvatting && (
-                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
-                                  {item.aiSamenvatting}
-                                </p>
-                              )}
-                            </>
-                          )}
+                            )}
 
-                          {item.type === "code" && (
-                            <>
-                              <h3 className="text-autronis-text-primary font-medium truncate">
-                                {item.titel ?? "Code snippet"}
-                              </h3>
-                              {item.inhoud && (
-                                <pre className="bg-slate-900 rounded-lg p-2.5 mt-1.5 overflow-hidden font-mono text-xs text-autronis-text-secondary line-clamp-3">
-                                  {item.inhoud.replace(/^```\w*\n?/, "").replace(/```$/, "").slice(0, 300)}
-                                </pre>
-                              )}
-                            </>
-                          )}
-
-                          {item.type === "tekst" && (
-                            <>
-                              <h3 className="text-autronis-text-primary font-medium truncate">
-                                {item.titel ?? "Zonder titel"}
-                              </h3>
-                              {item.inhoud && (
-                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
-                                  {item.inhoud.slice(0, 200)}
-                                </p>
-                              )}
-                            </>
-                          )}
-
-                          {item.type === "afbeelding" && (
-                            <div className="flex items-start gap-3">
-                              <div className="flex-1 min-w-0">
+                            {item.type === "pdf" && (
+                              <>
                                 <h3 className="text-autronis-text-primary font-medium truncate">
-                                  {item.titel ?? "Afbeelding"}
+                                  {item.titel ?? "PDF document"}
                                 </h3>
                                 {item.aiSamenvatting && (
                                   <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
                                     {item.aiSamenvatting}
                                   </p>
                                 )}
-                              </div>
-                              {item.bestandPad && (
-                                <img
-                                  src={item.bestandPad}
-                                  alt={item.titel ?? "Afbeelding"}
-                                  className="w-16 h-16 rounded-lg object-cover shrink-0"
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          {item.type === "pdf" && (
-                            <>
-                              <div className="flex items-center gap-2">
-                                <h3 className="text-autronis-text-primary font-medium truncate">
-                                  {item.titel ?? "PDF document"}
-                                </h3>
-                              </div>
-                              {item.aiSamenvatting && (
-                                <p className="text-autronis-text-secondary text-sm mt-1 line-clamp-2">
-                                  {item.aiSamenvatting}
-                                </p>
-                              )}
-                            </>
-                          )}
-
-                          {/* Tags row */}
-                          <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            {tags.length > 0 ? (
-                              tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="bg-autronis-accent/10 text-autronis-accent rounded-full px-2 py-0.5 text-[11px]"
-                                >
-                                  {tag}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="bg-autronis-border/50 rounded-full px-2.5 py-0.5 text-xs text-autronis-text-secondary animate-pulse">
-                                AI verwerkt...
-                              </span>
+                              </>
                             )}
-                            <span className="text-autronis-text-secondary text-xs ml-auto tabular-nums">
-                              {formatDatum(item.aangemaaktOp)}
-                            </span>
-                          </div>
-                        </div>
 
-                        {/* Favorite button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            toggleFavoriet(item);
-                          }}
-                          className="text-autronis-text-secondary hover:text-yellow-400 transition-colors shrink-0"
-                          aria-label={item.isFavoriet ? "Verwijder uit favorieten" : "Voeg toe aan favorieten"}
-                        >
-                          {item.isFavoriet ? (
-                            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                          ) : (
-                            <Star className="w-4 h-4" />
-                          )}
-                        </button>
+                            {/* Tags row */}
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              {tags.length > 0 ? (
+                                tags.map((tag) => {
+                                  const kleur = tagKleur(tag);
+                                  return (
+                                    <motion.span
+                                      key={tag}
+                                      initial={{ opacity: 0, scale: 0.85 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      transition={{ duration: 0.18 }}
+                                      className={cn("rounded-full px-2 py-0.5 text-[11px] font-medium", kleur.bg, kleur.text)}
+                                    >
+                                      {tag}
+                                    </motion.span>
+                                  );
+                                })
+                              ) : (
+                                <span className="flex items-center gap-1.5 bg-autronis-border/50 rounded-full px-2.5 py-0.5 text-xs text-autronis-text-secondary">
+                                  <motion.span
+                                    animate={{ opacity: [1, 0.35, 1] }}
+                                    transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                                    className="flex items-center"
+                                  >
+                                    <Brain className="w-3 h-3" />
+                                  </motion.span>
+                                  AI verwerkt...
+                                </span>
+                              )}
+                              <span className="text-autronis-text-secondary text-xs ml-auto tabular-nums">
+                                {formatDatum(item.aangemaaktOp)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Favorite star */}
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); toggleFavoriet(item); }}
+                            className="text-autronis-text-secondary hover:text-yellow-400 transition-colors shrink-0"
+                            aria-label={item.isFavoriet ? "Verwijder uit favorieten" : "Voeg toe aan favorieten"}
+                          >
+                            {item.isFavoriet ? (
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                            ) : (
+                              <Star className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Quick-action hover strip */}
+                      <AnimatePresence>
+                        {hoveredItemId === item.id && (
+                          <motion.div
+                            initial={{ opacity: 0, y: -2, scaleX: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scaleX: 1 }}
+                            exit={{ opacity: 0, y: -2, scaleX: 0.96 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex justify-center mt-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="flex items-center gap-0.5 bg-autronis-bg border border-autronis-border rounded-xl px-2 py-1 shadow-lg">
+                              <button
+                                type="button"
+                                onClick={() => toggleFavoriet(item)}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-yellow-400 hover:bg-yellow-400/8 transition-colors"
+                              >
+                                <Star className="w-3.5 h-3.5" />
+                                <span>Favoriet</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  updateMutation.mutate({ id: item.id, isGearchiveerd: 1 });
+                                  addToast("Gearchiveerd", "succes");
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/8 transition-colors"
+                              >
+                                <Archive className="w-3.5 h-3.5" />
+                                <span>Archiveer</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { window.location.href = `/taken?nieuw=1&bron=second-brain&id=${item.id}`; }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/8 transition-colors"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                                <span>Taak</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => { window.location.href = `/content?bron=second-brain&id=${item.id}`; }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-purple-400 hover:bg-purple-400/8 transition-colors"
+                              >
+                                <PenTool className="w-3.5 h-3.5" />
+                                <span>Content</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  deleteMutation.mutate(item.id, {
+                                    onSuccess: () => addToast("Verwijderd", "succes"),
+                                    onError: () => addToast("Verwijderen mislukt", "fout"),
+                                  });
+                                }}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-red-400 hover:bg-red-400/8 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
           </div>
         )}

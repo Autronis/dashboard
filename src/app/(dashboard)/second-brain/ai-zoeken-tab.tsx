@@ -40,7 +40,12 @@ export function AiZoekenTab({ onSelectItem }: AiZoekenTabProps) {
     (input?: string) => {
       const q = (input ?? vraag).trim();
       if (!q) return;
-      zoekMutation.mutate(q, {
+      // Send last 3 Q&A pairs as conversation history
+      const recentGeschiedenis = geschiedenis.slice(-3).map((qa) => ({
+        vraag: qa.vraag,
+        antwoord: qa.antwoord,
+      }));
+      zoekMutation.mutate({ vraag: q, geschiedenis: recentGeschiedenis }, {
         onSuccess: (data) => {
           const cleanAntwoord = data.antwoord
             .replace(/\[ID:\d+\]/g, "")
@@ -55,7 +60,7 @@ export function AiZoekenTab({ onSelectItem }: AiZoekenTabProps) {
         onError: () => addToast("Zoeken mislukt", "fout"),
       });
     },
-    [vraag, zoekMutation, addToast]
+    [vraag, geschiedenis, zoekMutation, addToast]
   );
 
   const handleBronClick = useCallback(
@@ -192,30 +197,25 @@ export function AiZoekenTab({ onSelectItem }: AiZoekenTabProps) {
         </button>
       </div>
 
-      {/* Suggested questions — only when empty */}
-      {!zoekMutation.isPending && geschiedenis.length === 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-autronis-text-secondary uppercase tracking-wide px-1">
-            Suggesties
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {suggesties.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => {
-                  setVraag(s);
-                  handleZoek(s);
-                }}
-                className={cn(
-                  "bg-autronis-card border border-autronis-border rounded-xl px-4 py-2.5",
-                  "text-sm text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/30 transition-colors"
-                )}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+      {/* Suggested questions — always visible */}
+      {!zoekMutation.isPending && (
+        <div className="flex flex-wrap gap-2">
+          {suggesties.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => {
+                setVraag(s);
+                handleZoek(s);
+              }}
+              className={cn(
+                "bg-autronis-card border border-autronis-border rounded-xl px-3 py-2",
+                "text-xs text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/30 transition-colors"
+              )}
+            >
+              {s}
+            </button>
+          ))}
         </div>
       )}
     </div>

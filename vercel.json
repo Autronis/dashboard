@@ -1,8 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/meetings/auto-record",
-      "schedule": "* * * * *"
-    }
-  ]
-}
+{}

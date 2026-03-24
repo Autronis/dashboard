@@ -70,37 +70,44 @@ const AUTO_CATEGORISATIE: Array<{
   test: (app: string, url: string, titel: string) => boolean;
   categorie: "development" | "communicatie" | "design" | "administratie" | "finance" | "meeting" | "afleiding" | "overig";
 }> = [
-  // Development — code editors, dev tools, dev websites
+  // ── FINANCE (first — title/URL matches override everything) ──
+  { test: (app) => /tradingview/i.test(app), categorie: "finance" },
+  { test: (_app, _url, titel) => /System Investing|Investing V\d/i.test(titel), categorie: "finance" },
+  { test: (_app, url) => /tradingview\.com|binance\.com|coinbase\.com|coingecko\.com|coinank|coinglass/i.test(url), categorie: "finance" },
+  { test: (_app, _url, titel) => /Google Spreadsheets.*Google Chrome/i.test(titel) && /invest/i.test(titel), categorie: "finance" },
+
+  // ── DEVELOPMENT — code editors (app-level, always correct) ──
   { test: (app) => /code|cursor|vim|neovim|webstorm|intellij/i.test(app), categorie: "development" },
+  { test: (app) => /terminal|cmd|powershell|warp|iterm|hyper|alacritty/i.test(app), categorie: "development" },
+  { test: (_app, _url, titel) => /\.(tsx?|jsx?|rs|py|go|css|html|json|md)\s*[—–-]/i.test(titel), categorie: "development" },
+  // Dev URLs
   { test: (_app, url) => /github\.com|gitlab\.com|bitbucket\.org|stackoverflow\.com/i.test(url), categorie: "development" },
   { test: (_app, url) => /claude\.ai|chat\.openai\.com|anthropic\.com|platform\.openai\.com/i.test(url), categorie: "development" },
   { test: (_app, url) => /localhost|127\.0\.0\.1|0\.0\.0\.0/i.test(url), categorie: "development" },
   { test: (_app, url) => /vercel\.com|netlify\.com|railway\.app|supabase\.com/i.test(url), categorie: "development" },
   { test: (_app, url) => /npmjs\.com|docs\.rs|crates\.io|pypi\.org/i.test(url), categorie: "development" },
-  { test: (app) => /terminal|cmd|powershell|warp|iterm|hyper|alacritty/i.test(app), categorie: "development" },
-  { test: (_app, _url, titel) => /\.(tsx?|jsx?|rs|py|go|css|html|json|md)\s*[—–-]/i.test(titel), categorie: "development" },
   { test: (_app, url) => /notion\.so/i.test(url), categorie: "development" },
-  // Chrome with Autronis/dashboard/Lovable in title = development work, not communicatie
-  { test: (_app, _url, titel) => /Autronis Dashboard|Autronis \||localhost:\d+/i.test(titel), categorie: "development" },
-  { test: (_app, _url, titel) => /Lovable|Remix of Autronis/i.test(titel), categorie: "development" },
-  // Chrome with Claude conversation = development (AI-assisted coding)
-  { test: (_app, _url, titel) => /Claude.*Google Chrome|Claude - /i.test(titel), categorie: "development" },
-  // Chrome with Tailwind/React/Next docs = development
-  { test: (_app, _url, titel) => /Tailwind|React|Next\.js|MDN|W3Schools/i.test(titel), categorie: "development" },
   { test: (_app, url) => /make\.com|n8n\.io|zapier\.com|autronis\.nl|autronis\.com/i.test(url), categorie: "development" },
+  // Dev titles (only when NOT a background tab situation)
+  { test: (_app, _url, titel) => /Lovable|Remix of Autronis/i.test(titel), categorie: "development" },
+  { test: (_app, _url, titel) => /Claude.*Google Chrome|Claude - /i.test(titel), categorie: "development" },
+  { test: (_app, _url, titel) => /Tailwind|React|Next\.js|MDN|W3Schools/i.test(titel), categorie: "development" },
+  // NOTE: "Autronis Dashboard" Chrome title removed — too many false positives as background tab
+  { test: (_app, _url, titel) => /localhost:\d+/i.test(titel), categorie: "development" },
 
-  // Communicatie
+  // ── COMMUNICATIE ──
   { test: (app) => /discord|slack|teams|zoom|telegram|whatsapp|signal/i.test(app), categorie: "communicatie" },
   { test: (_app, url) => /mail\.google\.com|outlook\.live\.com|outlook\.office/i.test(url), categorie: "communicatie" },
   { test: (_app, url) => /discord\.com|slack\.com|teams\.microsoft\.com/i.test(url), categorie: "communicatie" },
   { test: (_app, url) => /meet\.google\.com|zoom\.us/i.test(url), categorie: "communicatie" },
   { test: (_app, url) => /calendar\.google\.com/i.test(url), categorie: "communicatie" },
+  { test: (_app, url) => /linkedin\.com/i.test(url), categorie: "communicatie" },
 
-  // Design
+  // ── DESIGN ──
   { test: (app) => /figma|sketch|photoshop|illustrator|canva|affinity/i.test(app), categorie: "design" },
   { test: (_app, url) => /figma\.com|canva\.com|dribbble\.com|behance\.net/i.test(url), categorie: "design" },
 
-  // Administratie
+  // ── ADMINISTRATIE ──
   { test: (_app, url) => /moneybird\.com|exactonline|twinfield|e-boekhouden/i.test(url), categorie: "administratie" },
   { test: (_app, url) => /mijnbelastingdienst|belastingdienst\.nl/i.test(url), categorie: "administratie" },
   { test: (_app, url) => /kvk\.nl|ing\.nl|rabobank\.nl|abnamro\.nl/i.test(url), categorie: "administratie" },
@@ -109,27 +116,17 @@ const AUTO_CATEGORISATIE: Array<{
   { test: (_app, url) => /docs\.google\.com\/spreadsheet|sheets\.google/i.test(url), categorie: "administratie" },
   { test: (app) => /excel|numbers/i.test(app), categorie: "administratie" },
 
-  // YouTube educational → development (check BEFORE afleiding)
+  // ── YOUTUBE educational → development (BEFORE afleiding) ──
   { test: (_app, url) => /youtube\.com.*(?:claude|code|programming|tutorial|dev|react|next|rust|agent|cursor|api|typescript|javascript|python|automation|n8n|make)/i.test(url), categorie: "development" },
   { test: (_app, _url, titel) => /YouTube.*(Claude|Code|Agent|Team|Programming|Tutorial|Developer|Coding|API|Build|Setup|Cursor|n8n)/i.test(titel), categorie: "development" },
 
-  // Afleiding
+  // ── AFLEIDING ──
   { test: (_app, url) => /youtube\.com/i.test(url), categorie: "afleiding" },
   { test: (_app, _url, titel) => /YouTube/i.test(titel), categorie: "afleiding" },
   { test: (_app, url) => /reddit\.com(?!.*(?:programming|webdev|react|rust|automation))/i.test(url), categorie: "afleiding" },
   { test: (_app, url) => /twitter\.com|x\.com|instagram\.com|facebook\.com|tiktok\.com/i.test(url), categorie: "afleiding" },
   { test: (_app, url) => /netflix\.com|disney|primevideo|twitch\.tv/i.test(url), categorie: "afleiding" },
   { test: (app) => /spotify|music/i.test(app), categorie: "afleiding" },
-
-  // Trading/Investing → finance
-  { test: (app) => /tradingview/i.test(app), categorie: "finance" },
-  { test: (_app, _url, titel) => /System Investing|Investing V\d/i.test(titel), categorie: "finance" },
-  { test: (_app, url) => /tradingview\.com|binance\.com|coinbase\.com|coingecko\.com|coinank|coinglass/i.test(url), categorie: "finance" },
-
-  // Business sites → administratie
-  { test: (_app, url) => /linkedin\.com/i.test(url), categorie: "communicatie" },
-  { test: (_app, url) => /make\.com|n8n\.io|zapier\.com/i.test(url), categorie: "development" },
-  { test: (_app, url) => /autronis\.nl|autronis\.com/i.test(url), categorie: "development" },
 ];
 
 function autoCategoriseer(

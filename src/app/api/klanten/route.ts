@@ -116,6 +116,28 @@ export async function GET(req: NextRequest) {
       .groupBy(projecten.klantId);
     const tijdMap = new Map(laatsteTijd.map((t) => [t.klantId, t.laatsteRegistratie]));
 
+    // Batch: last meeting per klant
+    const laatsteMeetings = await db
+      .select({
+        klantId: meetings.klantId,
+        laatsteMeeting: sql<string>`max(${meetings.datum})`,
+      })
+      .from(meetings)
+      .groupBy(meetings.klantId);
+    const meetingMap = new Map(laatsteMeetings.map((m) => [m.klantId, m.laatsteMeeting]));
+
+    // Batch: open taken per klant (via projecten)
+    const openTakenStats = await db
+      .select({
+        klantId: projecten.klantId,
+        openTaken: sql<number>`count(*)`,
+      })
+      .from(taken)
+      .innerJoin(projecten, eq(taken.projectId, projecten.id))
+      .where(sql`${taken.status} IN ('open', 'bezig')`)
+      .groupBy(projecten.klantId);
+    const openTakenMap = new Map(openTakenStats.map((t) => [t.klantId, t.openTaken]));
+
     // Calculate health + enrichment per klant
     const nu = new Date();
     const klantenMetKPIs = lijst.map((klant) => {
@@ -142,10 +164,11 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Check last contact (notitie or tijdregistratie)
+      // Check last contact (notitie, tijdregistratie, or meeting)
       const laatsteNotitie = notitieMap.get(klant.id);
       const laatsteReg = tijdMap.get(klant.id);
-      const laatsteContact = [laatsteNotitie, laatsteReg]
+      const laatsteMeeting = meetingMap.get(klant.id);
+      const laatsteContact = [laatsteNotitie, laatsteReg, laatsteMeeting]
         .filter(Boolean)
         .sort()
         .reverse()[0] || null;
@@ -164,6 +187,25 @@ export async function GET(req: NextRequest) {
 
       // Effective hourly rate
       const effectiefUurtarief = totaalMinuten > 0 ? (totaleOmzet / (totaalMinuten / 60)) : klant.uurtarief || 0;
+
+      // Relatie status: maps health to user-friendly label
+      let relatieStatus: "actief" | "stil" | "aandacht_nodig" | "inactief" = "actief";
+      if (!klant.isActief) {
+        relatieStatus = "inactief";
+      } else if (gezondheid === "rood") {
+        relatieStatus = "aandacht_nodig";
+      } else if (gezondheid === "oranje") {
+        relatieStatus = "stil";
+      }
+
+      // Days since last contact
+      let dagenSindsContact: number | null = null;
+      if (laatsteContact) {
+        const contactDatum = new Date(laatsteContact.includes("T") ? laatsteContact : laatsteContact.replace(" ", "T") + "Z");
+        dagenSindsContact = Math.floor((nu.getTime() - contactDatum.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      const openTaken = openTakenMap.get(klant.id) || 0;
 
       // Build tags
       const tags: string[] = [];
@@ -186,7 +228,11 @@ export async function GET(req: NextRequest) {
         effectiefUurtarief: Math.round(effectiefUurtarief * 100) / 100,
         gezondheid,
         gezondheidReden,
+        relatieStatus,
+        dagenSindsContact,
+        openTaken,
         laatsteContact,
+        laatsteMeetingDatum: laatsteMeeting || null,
         laatsteFactuurDatum: fStats?.laatsteFactuurDatum || null,
         laatsteFactuurBedrag: fStats?.laatsteFactuurBedrag || null,
         openstaandeOffertes: offerteMap.get(klant.id) || 0,

@@ -25,7 +25,11 @@ export interface Klant {
   effectiefUurtarief: number;
   gezondheid: "groen" | "oranje" | "rood";
   gezondheidReden: string;
+  relatieStatus: "actief" | "stil" | "aandacht_nodig" | "inactief";
+  dagenSindsContact: number | null;
+  openTaken: number;
   laatsteContact: string | null;
+  laatsteMeetingDatum: string | null;
   laatsteFactuurDatum: string | null;
   laatsteFactuurBedrag: number | null;
   openstaandeOffertes: number;

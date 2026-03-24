@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties, notities, documenten, facturen, offertes, meetings } from "@/lib/db/schema";
+import { klanten, projecten, tijdregistraties, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql, desc } from "drizzle-orm";
 
@@ -216,6 +216,146 @@ export async function GET(
       gemiddeldeBetalingsDagen = Math.round(totaalDagen / betaaldeMetData.length);
     }
 
+    // Open taken for this klant
+    const openTakenLijst = await db
+      .select({
+        id: taken.id,
+        titel: taken.titel,
+        status: taken.status,
+        prioriteit: taken.prioriteit,
+        deadline: taken.deadline,
+        projectNaam: projecten.naam,
+      })
+      .from(taken)
+      .innerJoin(projecten, eq(taken.projectId, projecten.id))
+      .where(and(
+        eq(projecten.klantId, Number(id)),
+        sql`${taken.status} IN ('open', 'bezig')`
+      ))
+      .orderBy(desc(sql`case ${taken.prioriteit} when 'hoog' then 0 when 'normaal' then 1 else 2 end`))
+      .limit(10);
+
+    // Monthly revenue (last 12 months)
+    const maandelijkseOmzet = await db
+      .select({
+        maand: sql<string>`strftime('%Y-%m', ${facturen.factuurdatum})`,
+        omzet: sql<number>`coalesce(sum(${facturen.bedragInclBtw}), 0)`,
+      })
+      .from(facturen)
+      .where(and(
+        eq(facturen.klantId, Number(id)),
+        eq(facturen.isActief, 1),
+        eq(facturen.status, "betaald"),
+        sql`${facturen.factuurdatum} >= date('now', '-12 months')`
+      ))
+      .groupBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`)
+      .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
+
+    // Relatie status
+    const nu = new Date();
+    const alleDatums = [
+      ...notitiesLijst.map(n => n.aangemaaktOp),
+      ...recenteTijd.map(t => t.startTijd),
+      ...meetingsLijst.map(m => m.datum),
+    ].filter(Boolean).sort().reverse();
+    const laatsteContact = alleDatums[0] || null;
+
+    let dagenSindsContact: number | null = null;
+    if (laatsteContact) {
+      const d = new Date(laatsteContact.includes("T") ? laatsteContact : laatsteContact.replace(" ", "T") + "Z");
+      dagenSindsContact = Math.floor((nu.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    let relatieStatus: "actief" | "stil" | "aandacht_nodig" | "inactief" = "actief";
+    if (!klant.isActief) {
+      relatieStatus = "inactief";
+    } else if (dagenSindsContact !== null && dagenSindsContact > 60) {
+      relatieStatus = "aandacht_nodig";
+    } else if (dagenSindsContact !== null && dagenSindsContact > 30) {
+      relatieStatus = "stil";
+    }
+    // Also check overdue invoices
+    const teLateFact = facturenLijst.filter(f => f.status === "te_laat");
+    if (teLateFact.length > 0 && relatieStatus !== "inactief") {
+      relatieStatus = "aandacht_nodig";
+    }
+
+    // Build next actions automatically
+    interface NextAction {
+      type: "follow_up" | "factuur" | "meeting" | "taak" | "offerte";
+      label: string;
+      urgentie: "hoog" | "normaal" | "laag";
+    }
+    const nextActions: NextAction[] = [];
+
+    // Overdue invoices
+    for (const f of teLateFact) {
+      nextActions.push({
+        type: "factuur",
+        label: `Herinnering sturen voor ${f.factuurnummer}`,
+        urgentie: "hoog",
+      });
+    }
+
+    // No contact > 14 days
+    if (dagenSindsContact !== null && dagenSindsContact > 14) {
+      nextActions.push({
+        type: "follow_up",
+        label: `Follow-up sturen (${dagenSindsContact} dagen geen contact)`,
+        urgentie: dagenSindsContact > 30 ? "hoog" : "normaal",
+      });
+    }
+
+    // Open offertes that expire soon
+    for (const o of offertesLijst) {
+      if (o.status === "verzonden" && o.geldigTot) {
+        const geldigTot = new Date(o.geldigTot);
+        const dagenTot = Math.floor((geldigTot.getTime() - nu.getTime()) / (1000 * 60 * 60 * 24));
+        if (dagenTot <= 7 && dagenTot >= 0) {
+          nextActions.push({
+            type: "offerte",
+            label: `Offerte ${o.offertenummer} verloopt over ${dagenTot} dagen`,
+            urgentie: dagenTot <= 3 ? "hoog" : "normaal",
+          });
+        }
+      }
+    }
+
+    // High-priority open tasks
+    const hoogePrioTaken = openTakenLijst.filter(t => t.prioriteit === "hoog");
+    if (hoogePrioTaken.length > 0) {
+      nextActions.push({
+        type: "taak",
+        label: `${hoogePrioTaken.length} hoge prioriteit ${hoogePrioTaken.length === 1 ? "taak" : "taken"} open`,
+        urgentie: "hoog",
+      });
+    }
+
+    // Completed project without recent invoice
+    for (const p of projectenMetUren) {
+      if (p.status === "afgerond") {
+        const heeftRecenteFactuur = facturenLijst.some(f => {
+          if (!f.factuurdatum) return false;
+          const fDatum = new Date(f.factuurdatum);
+          return (nu.getTime() - fDatum.getTime()) < 30 * 24 * 60 * 60 * 1000;
+        });
+        if (!heeftRecenteFactuur) {
+          nextActions.push({
+            type: "factuur",
+            label: `Project "${p.naam}" afgerond - factureren?`,
+            urgentie: "normaal",
+          });
+        }
+      }
+    }
+
+    // CLV (Customer Lifetime Value) - total revenue + projected based on average
+    const maandenAlsKlant = klant.klantSinds
+      ? Math.max(1, Math.floor((nu.getTime() - new Date(klant.klantSinds).getTime()) / (1000 * 60 * 60 * 24 * 30)))
+      : 1;
+    const gemiddeldeMaandOmzet = totaleOmzet / maandenAlsKlant;
+    const clv = totaleOmzet + totaalOpenstaand;
+
     return NextResponse.json({
       klant,
       projecten: projectenMetUren,
@@ -226,6 +366,15 @@ export async function GET(
       offertes: offertesLijst,
       meetings: meetingsLijst,
       tijdlijn: tijdlijn.slice(0, 50),
+      openTaken: openTakenLijst,
+      nextActions: nextActions.sort((a, b) => {
+        const urgOrder = { hoog: 0, normaal: 1, laag: 2 };
+        return (urgOrder[a.urgentie] ?? 1) - (urgOrder[b.urgentie] ?? 1);
+      }),
+      relatieStatus,
+      laatsteContact,
+      dagenSindsContact,
+      maandelijkseOmzet,
       kpis: {
         aantalProjecten: projectenMetUren.length,
         totaalMinuten: totaalUren?.totaal || 0,
@@ -236,6 +385,9 @@ export async function GET(
         gemiddeldeBetalingsDagen,
         aantalFacturen: facturenLijst.length,
         aantalOffertes: offertesLijst.length,
+        openTaken: openTakenLijst.length,
+        clv: Math.round(clv * 100) / 100,
+        gemiddeldeMaandOmzet: Math.round(gemiddeldeMaandOmzet * 100) / 100,
       },
     });
   } catch (error) {

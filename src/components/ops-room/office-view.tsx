@@ -265,19 +265,22 @@ function Avatar({ x, y, color, status, isTyping, name }: {
   );
 }
 
-function SpeechBubble({ x, y, text }: { x: number; y: number; text: string }) {
+function SpeechBubble({ x, y, text, isNew }: { x: number; y: number; text: string; isNew?: boolean }) {
   const maxLen = 30;
   const displayText = text.length > maxLen ? text.slice(0, maxLen) + "..." : text;
   const bubbleWidth = Math.max(80, displayText.length * 5.2 + 20);
   return (
     <motion.g
-      initial={{ opacity: 0, y: y + 4, scale: 0.9 }}
+      initial={{ opacity: 0, y: y + 8, scale: isNew ? 0.6 : 0.9 }}
       animate={{ opacity: 1, y, scale: 1 }}
-      exit={{ opacity: 0, y: y + 4, scale: 0.9 }}
-      transition={{ duration: 0.2 }}
+      exit={{ opacity: 0, y: y - 4, scale: 0.85 }}
+      transition={isNew
+        ? { type: "spring", stiffness: 380, damping: 18 }
+        : { duration: 0.2 }
+      }
     >
       <rect x={x - bubbleWidth / 2} y={y - 18} width={bubbleWidth} height={20} rx={5}
-        fill="var(--card)" stroke="var(--border)" strokeWidth={0.7} />
+        fill="var(--card)" stroke="var(--accent)" strokeWidth={isNew ? 1 : 0.7} opacity={isNew ? 1 : 0.85} />
       <polygon
         points={`${x - 3},${y + 2} ${x + 3},${y + 2} ${x},${y + 6}`}
         fill="var(--card)" stroke="var(--border)" strokeWidth={0.7} strokeLinejoin="round"
@@ -288,6 +291,91 @@ function SpeechBubble({ x, y, text }: { x: number; y: number; text: string }) {
         {displayText}
       </text>
     </motion.g>
+  );
+}
+
+// Animated communication lines between agents on the same project
+function CommLines({ agents }: { agents: Agent[] }) {
+  const byProject = useMemo(() => {
+    const map = new Map<string, Agent[]>();
+    agents.forEach((a) => {
+      if ((a.status === "working" || a.status === "reviewing") && a.huidigeTaak && DESK_POSITIONS[a.id]) {
+        const proj = a.huidigeTaak.project;
+        if (!map.has(proj)) map.set(proj, []);
+        map.get(proj)!.push(a);
+      }
+    });
+    return map;
+  }, [agents]);
+
+  const lines = useMemo(() => {
+    const result: { x1: number; y1: number; x2: number; y2: number; color: string; key: string }[] = [];
+    byProject.forEach((projectAgents) => {
+      if (projectAgents.length < 2) return;
+      const color = getProjectColor(projectAgents[0].huidigeTaak!.project);
+      for (let i = 0; i < projectAgents.length - 1; i++) {
+        const a = projectAgents[i];
+        const b = projectAgents[i + 1];
+        const posA = DESK_POSITIONS[a.id];
+        const posB = DESK_POSITIONS[b.id];
+        if (posA && posB) {
+          result.push({
+            x1: posA.x + 60, y1: posA.y + 30,
+            x2: posB.x + 60, y2: posB.y + 30,
+            color,
+            key: `${a.id}-${b.id}`,
+          });
+        }
+      }
+    });
+    return result;
+  }, [byProject]);
+
+  return (
+    <>
+      {lines.map((line) => (
+        <g key={line.key}>
+          {/* Dashed background line */}
+          <line
+            x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2}
+            stroke={line.color} strokeWidth={1.5} strokeDasharray="5 5" opacity={0.2}
+          />
+          {/* Flowing animated dot from A to B */}
+          <motion.circle
+            r={3.5}
+            fill={line.color}
+            animate={{
+              cx: [line.x1, line.x2],
+              cy: [line.y1, line.y2],
+              opacity: [0, 0.85, 0.85, 0],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              repeatDelay: 0.8,
+              ease: "easeInOut",
+            }}
+          />
+          {/* Flowing animated dot from B to A (bidirectional) */}
+          <motion.circle
+            r={2.5}
+            fill={line.color}
+            animate={{
+              cx: [line.x2, line.x1],
+              cy: [line.y2, line.y1],
+              opacity: [0, 0.5, 0.5, 0],
+            }}
+            transition={{
+              duration: 1.8,
+              repeat: Infinity,
+              repeatDelay: 0.8,
+              ease: "easeInOut",
+              delay: 0.9,
+            }}
+          />
+        </g>
+      ))}
+    </>
   );
 }
 
@@ -405,6 +493,9 @@ export function OfficeView({ agents, selectedId, onSelect }: OfficeViewProps) {
 
         {/* Sem's desk */}
         <SemDesk />
+
+        {/* Communication lines between agents on same project */}
+        <CommLines agents={agents} />
 
         {/* Rooms */}
         <MeetingRoom projectName={meetingProject} count={meetingAgentIds.size} />
@@ -527,26 +618,29 @@ export function OfficeView({ agents, selectedId, onSelect }: OfficeViewProps) {
           );
         })}
 
-        {/* Speech bubble — only for selected agent */}
+        {/* Speech bubbles — all active agents (selected one is highlighted) */}
         <AnimatePresence>
-          {selectedId && (() => {
-            const agent = agents.find((a) => a.id === selectedId);
-            if (!agent || !agent.huidigeTaak) return null;
-            const pos = DESK_POSITIONS[agent.id];
-            if (!pos) return null;
-            const isManager = agent.rol === "manager";
-            const bubbleText = agent.terminal.length > 0
-              ? agent.terminal[agent.terminal.length - 1].tekst
-              : agent.huidigeTaak.beschrijving;
-            return (
-              <SpeechBubble
-                key={`bubble-${agent.id}`}
-                x={pos.x + (isManager ? 70 : 60)}
-                y={pos.y - 16}
-                text={bubbleText}
-              />
-            );
-          })()}
+          {agents
+            .filter((a) => (a.status === "working" || a.status === "reviewing") && a.huidigeTaak)
+            .map((agent) => {
+              const pos = DESK_POSITIONS[agent.id];
+              if (!pos) return null;
+              const isManager = agent.rol === "manager";
+              const bubbleText = agent.terminal.length > 0
+                ? agent.terminal[agent.terminal.length - 1].tekst
+                : agent.huidigeTaak!.beschrijving;
+              const isSelected = selectedId === agent.id;
+              return (
+                <SpeechBubble
+                  key={`bubble-${agent.id}-${bubbleText.slice(0, 10)}`}
+                  x={pos.x + (isManager ? 70 : 60)}
+                  y={pos.y - 16}
+                  text={bubbleText}
+                  isNew={isSelected}
+                />
+              );
+            })
+          }
         </AnimatePresence>
 
         {/* Hover tooltip */}

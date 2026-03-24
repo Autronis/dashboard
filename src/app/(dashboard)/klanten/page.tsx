@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Building2,
   Search,
@@ -9,14 +10,15 @@ import {
   Mail,
   Phone,
   Users,
-  Eye,
-  EyeOff,
   AlertCircle,
   TrendingUp,
   FileText,
   FlaskConical,
+  ArrowUpDown,
+  AlertTriangle,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { KlantModal } from "./klant-modal";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useKlanten } from "@/hooks/queries/use-klanten";
@@ -49,6 +51,42 @@ function getInitials(naam: string): string {
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join("");
+}
+
+function isChurnRisico(klant: Klant): boolean {
+  return (klant.dagenSindsContact ?? 0) > 30 && klant.actieveProjecten === 0;
+}
+
+function getLifetimeValueColor(omzet: number): string {
+  if (omzet === 0) return "text-autronis-text-secondary/60";
+  if (omzet < 1000) return "text-autronis-text-primary";
+  if (omzet < 5000) return "text-emerald-300";
+  return "text-emerald-400";
+}
+
+function getContactColor(dagen: number | null): string {
+  if (dagen === null) return "text-autronis-text-secondary/70";
+  if (dagen > 30) return "text-red-400";
+  if (dagen > 14) return "text-amber-400";
+  return "text-autronis-text-secondary/70";
+}
+
+function HighlightMatch({ text, zoek }: { text: string; zoek: string }) {
+  if (!zoek.trim()) return <>{text}</>;
+  const parts = text.split(new RegExp(`(${zoek.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === zoek.toLowerCase() ? (
+          <mark key={i} className="bg-autronis-accent/30 text-autronis-text-primary rounded px-0.5">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
 }
 
 // Relatie status badge
@@ -90,34 +128,48 @@ function formatRelatief(datum: string | null): string {
   return `${Math.floor(dagen / 30)} maanden geleden`;
 }
 
-function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
+function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void; zoek: string }) {
   const initialsColor = getInitialsColor(klant.bedrijfsnaam);
   const initials = getInitials(klant.bedrijfsnaam);
+  const churn = isChurnRisico(klant);
+  const contactDagen = klant.dagenSindsContact;
 
   return (
-    <div
+    <motion.div
       onClick={onClick}
+      whileHover={{ y: -2, scale: 1.003 }}
+      transition={{ duration: 0.18 }}
       className={cn(
-        "bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 cursor-pointer card-glow flex flex-col group",
+        "bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 cursor-pointer flex flex-col group relative overflow-hidden",
+        "hover:border-autronis-accent/40 hover:shadow-lg hover:shadow-autronis-accent/5 transition-colors",
         !klant.isActief && "opacity-60",
         klant.isDemo && "border-dashed border-autronis-border/60"
       )}
     >
+      {/* Left accent border on hover */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl bg-autronis-accent/0 group-hover:bg-autronis-accent/60 transition-all duration-200" />
+
       {/* Header: Avatar + Name + Status */}
       <div className="flex items-start gap-3 mb-3">
         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0", initialsColor)}>
           {initials}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-semibold text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
-              {klant.bedrijfsnaam}
+              <HighlightMatch text={klant.bedrijfsnaam} zoek={zoek} />
             </h3>
             {klant.isDemo ? (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium flex-shrink-0">
                 DEMO
               </span>
             ) : null}
+            {churn && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold flex-shrink-0 flex items-center gap-1">
+                <AlertTriangle className="w-2.5 h-2.5" />
+                Churnrisico
+              </span>
+            )}
           </div>
           <p className="text-sm text-autronis-text-secondary truncate mt-0.5">
             {klant.contactpersoon || "Geen contactpersoon"}
@@ -126,7 +178,7 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
         <RelatieStatusBadge status={klant.relatieStatus} reden={klant.gezondheidReden} />
       </div>
 
-      {/* Branche + last contact prominent */}
+      {/* Branche + last contact */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-wrap">
           {klant.branche && (
@@ -135,13 +187,9 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
             </span>
           )}
         </div>
-        <span className={cn(
-          "text-xs",
-          klant.dagenSindsContact !== null && klant.dagenSindsContact > 14
-            ? "text-amber-400"
-            : "text-autronis-text-secondary/70"
-        )}>
-          {klant.dagenSindsContact !== null && klant.dagenSindsContact > 14 && "⚠ "}
+        <span className={cn("text-xs flex items-center gap-1", getContactColor(contactDagen))}>
+          {contactDagen !== null && contactDagen > 30 && <AlertTriangle className="w-3 h-3" />}
+          {contactDagen !== null && contactDagen > 14 && contactDagen <= 30 && "⚠ "}
           {formatRelatief(klant.laatsteContact)}
         </span>
       </div>
@@ -150,7 +198,7 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
       <div className="bg-autronis-bg/40 rounded-xl px-3 py-2 mb-3">
         <div className="flex items-center justify-between text-xs">
           <span className="text-autronis-text-secondary/70">Lifetime value</span>
-          <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(klant.totaleOmzet)}</span>
+          <span className={cn("font-semibold tabular-nums", getLifetimeValueColor(klant.totaleOmzet))}>{formatBedrag(klant.totaleOmzet)}</span>
         </div>
         {(klant.openstaand > 0 || klant.openstaandeOffertes > 0) && (
           <div className="flex items-center justify-between text-xs mt-1">
@@ -226,12 +274,16 @@ function KlantCard({ klant, onClick }: { klant: Klant; onClick: () => void }) {
         </div>
         <div>
           <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet</p>
-          <p className="text-sm font-bold text-autronis-accent tabular-nums">{formatBedrag(klant.totaleOmzet)}</p>
+          <p className={cn("text-sm font-bold tabular-nums", getLifetimeValueColor(klant.totaleOmzet))}>{formatBedrag(klant.totaleOmzet)}</p>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
+
+type SorteerOptie = "gezondheid" | "omzet" | "contact" | "naam";
+type StatusFilter = "alles" | "actief" | "stil" | "aandacht_nodig" | "inactief";
+type GezondheidFilter = "alles" | "groen" | "oranje" | "rood";
 
 export default function KlantenPage() {
   const router = useRouter();
@@ -243,15 +295,34 @@ export default function KlantenPage() {
   const kpis = data?.kpis;
 
   const [zoekterm, setZoekterm] = useState("");
-  const [toonInactief, setToonInactief] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("alles");
+  const [filterGezondheid, setFilterGezondheid] = useState<GezondheidFilter>("alles");
+  const [sorteer, setSorteer] = useState<SorteerOptie>("gezondheid");
   const [modalOpen, setModalOpen] = useState(false);
   const [bewerkKlant, setBewerkKlant] = useState<Klant | null>(null);
+
+  const toggleGezondheid = useCallback((g: GezondheidFilter) => {
+    setFilterGezondheid((prev) => (prev === g ? "alles" : g));
+  }, []);
 
   const gefilterdeKlanten = useMemo(() => {
     const zoek = zoekterm.toLowerCase().trim();
     return klanten
       .filter((k) => {
-        if (!toonInactief && !k.isActief) return false;
+        if (filterStatus === "alles") {
+          if (!k.isActief && filterStatus === "alles") {
+            // show inactive only when explicitly filtering for inactief or all
+            if (k.relatieStatus === "inactief" && filterStatus !== "inactief") return false;
+          }
+        } else {
+          if (filterStatus === "inactief") {
+            if (k.isActief) return false;
+          } else {
+            if (!k.isActief) return false;
+            if (k.relatieStatus !== filterStatus) return false;
+          }
+        }
+        if (filterGezondheid !== "alles" && k.gezondheid !== filterGezondheid) return false;
         if (zoek) {
           return (
             k.bedrijfsnaam.toLowerCase().includes(zoek) ||
@@ -262,15 +333,22 @@ export default function KlantenPage() {
         }
         return true;
       })
-      // Sort: red health first, then orange, then green, then alphabetical
       .sort((a, b) => {
+        if (sorteer === "omzet") return b.totaleOmzet - a.totaleOmzet;
+        if (sorteer === "contact") {
+          const ad = a.dagenSindsContact ?? 9999;
+          const bd = b.dagenSindsContact ?? 9999;
+          return bd - ad; // most overdue first
+        }
+        if (sorteer === "naam") return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
+        // default: gezondheid
         const healthOrder = { rood: 0, oranje: 1, groen: 2 };
-        const aHealth = healthOrder[a.gezondheid] ?? 2;
-        const bHealth = healthOrder[b.gezondheid] ?? 2;
-        if (aHealth !== bHealth) return aHealth - bHealth;
+        const aH = healthOrder[a.gezondheid] ?? 2;
+        const bH = healthOrder[b.gezondheid] ?? 2;
+        if (aH !== bH) return aH - bH;
         return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
       });
-  }, [klanten, zoekterm, toonInactief]);
+  }, [klanten, zoekterm, filterStatus, filterGezondheid, sorteer]);
 
   return (
     <PageTransition>

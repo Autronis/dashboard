@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Sparkles, Send, Loader2, FileText, ExternalLink, X, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -29,10 +30,16 @@ export function AiDocumentButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-autronis-accent text-white text-sm font-semibold hover:from-violet-500 hover:to-autronis-accent-hover transition-all shadow-lg shadow-violet-600/20 btn-press"
+      className="relative flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-autronis-accent text-white text-sm font-semibold hover:from-violet-500 hover:to-autronis-accent-hover transition-all shadow-lg shadow-violet-600/20 btn-press overflow-hidden"
     >
-      <Sparkles className="w-4 h-4" />
-      AI Document
+      <motion.span
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+        initial={{ x: "-100%" }}
+        animate={{ x: "100%" }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: "linear", repeatDelay: 2.5 }}
+      />
+      <Sparkles className="w-4 h-4 relative z-10" />
+      <span className="relative z-10">AI Document</span>
     </button>
   );
 }

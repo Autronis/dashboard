@@ -19,6 +19,7 @@ import {
   Bell,
   RefreshCw,
   Clock,
+  CreditCard,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag, formatDatum } from "@/lib/utils";
@@ -32,6 +33,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { UitgavenTab } from "./uitgaven-tab";
 import { BankImportTab } from "./bank-import-tab";
 import { LiquiditeitTab } from "./liquiditeit-tab";
+import { AbonnementenTab } from "./abonnementen-tab";
 import {
   useFacturen,
   useOuderdomsanalyse,
@@ -47,11 +49,12 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
   te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
 };
 
-type Tab = "facturen" | "uitgaven" | "bank" | "liquiditeit";
+type Tab = "facturen" | "uitgaven" | "abonnementen" | "bank" | "liquiditeit";
 
 const TABS: { key: Tab; label: string; icon: typeof Euro }[] = [
   { key: "facturen", label: "Facturen", icon: FileText },
   { key: "uitgaven", label: "Uitgaven", icon: Receipt },
+  { key: "abonnementen", label: "Abonnementen", icon: CreditCard },
   { key: "bank", label: "Bank Import", icon: Landmark },
   { key: "liquiditeit", label: "Liquiditeit", icon: TrendingUp },
 ];
@@ -594,6 +597,7 @@ export default function FinancienPage() {
         )}
 
         {activeTab === "uitgaven" && <UitgavenTab />}
+        {activeTab === "abonnementen" && <AbonnementenTab />}
         {activeTab === "bank" && <BankImportTab />}
         {activeTab === "liquiditeit" && <LiquiditeitTab />}
       </div>

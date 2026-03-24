@@ -30,15 +30,15 @@ Taak: ${titel}
 ${omschrijving ? `Omschrijving: ${omschrijving}` : ""}
 ${projectNaam ? `Project: ${projectNaam}` : ""}
 
-BELANGRIJK: Sem werkt met AI-assistentie, dus taken gaan SNELLER dan normaal.
+BELANGRIJK: Sem werkt met AI-assistentie, dus taken gaan VEEL SNELLER dan normaal. Schat LAAG.
 - Bugfix / kleine aanpassing: 15 min
-- Config / setup: 15-30 min
+- Config / setup: 15 min
 - UI component bouwen: 15-30 min
-- Nieuwe pagina/feature: 30-60 min
-- API endpoint + frontend: 30-45 min
-- Complexe integratie: 45-90 min
-- Onderzoek/analyse: 15-30 min
-- De meeste taken duren 15-45 minuten. Ga NIET boven 90 min tenzij echt complex.
+- Nieuwe pagina/feature: 30 min
+- API endpoint + frontend: 15-30 min
+- Complexe integratie: 30-45 min
+- Onderzoek/analyse: 15 min
+- De meeste taken duren 15-30 minuten. Ga NOOIT boven 60 min tenzij extreem complex.
 
 Antwoord ALLEEN in dit exacte JSON format:
 {"geschatteDuur": <minuten, rond af op 15>, "toelichting": "<1 zin waarom, NL>", "stappen": ["<stap 1>", "<stap 2>", "<stap 3>"]}
@@ -67,8 +67,8 @@ Geef 3-5 concrete, actiegerichte stappen. Kort en bondig.`;
       stappen: string[];
     };
 
-    // Cap op 120 min als AI te hoog schat
-    if (result.geschatteDuur > 120) result.geschatteDuur = 90;
+    // Cap op 60 min
+    if (result.geschatteDuur > 60) result.geschatteDuur = 60;
 
     return NextResponse.json(result);
   } catch (error) {

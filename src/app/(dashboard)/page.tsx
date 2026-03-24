@@ -827,7 +827,6 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <div className="dot-bg min-h-screen -m-4 lg:-m-8 p-4 lg:p-8">
       <motion.div
         className="max-w-[1400px] mx-auto space-y-2.5"
         variants={pageVariants}
@@ -1263,7 +1262,6 @@ export default function DashboardPage() {
         {/* Spacer for sticky timer bar (desktop) / bottom nav (mobile) */}
         <div className="h-4 md:h-16" />
       </motion.div>
-      </div>
 
       {/* Fixed timer bar — hidden on mobile (use bottom nav Timer link instead) */}
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 p-2 sm:p-3 hidden md:block">

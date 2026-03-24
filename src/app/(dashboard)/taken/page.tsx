@@ -34,9 +34,9 @@ const prioriteitConfig: Record<string, { color: string; bg: string; label: strin
 };
 
 const kanbanKolommen = [
-  { status: "open", label: "Open", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30" },
-  { status: "bezig", label: "Bezig", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30" },
-  { status: "afgerond", label: "Afgerond", color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/30" },
+  { status: "open", label: "Open", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30", tint: "bg-slate-500/[0.04]" },
+  { status: "bezig", label: "Bezig", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", tint: "bg-blue-500/[0.05]" },
+  { status: "afgerond", label: "Afgerond", color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/30", tint: "bg-green-500/[0.04]" },
 ];
 
 // ─── Progress Bar ───
@@ -233,8 +233,19 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
 function KanbanCard({ taak, onStatusToggle, onOpenDetail, vandaag }: { taak: Taak; onStatusToggle: (t: Taak) => void; onOpenDetail: (t: Taak) => void; vandaag: string }) {
   const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
   const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
+  const [dragging, setDragging] = useState(false);
   return (
-    <div draggable onDragStart={(e) => { e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
+    <motion.div
+      layout
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      whileHover={{ y: -2 }}
+      transition={{ duration: 0.15 }}
+      draggable
+      onDragStart={(e) => { setDragging(true); e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
+      onDragEnd={() => setDragging(false)}
+      style={dragging ? { boxShadow: "0 8px 24px rgba(0,0,0,0.35), 0 0 0 2px rgba(23,184,165,0.3)", opacity: 0.85 } : undefined}
       className={cn("bg-autronis-bg/60 rounded-lg p-3 border-l-[3px] cursor-grab active:cursor-grabbing hover:bg-autronis-bg/80 transition-colors", pc.borderColor)}>
       <div className="flex items-start gap-2">
         <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 mt-0.5", statusConfig[taak.status]?.color || "text-slate-400")}>
@@ -251,7 +262,7 @@ function KanbanCard({ taak, onStatusToggle, onOpenDetail, vandaag }: { taak: Taa
         {isVerlopen && <span className="text-[10px] text-red-400 font-medium ml-auto"><AlertTriangle className="w-3 h-3 inline" /></span>}
         {taak.deadline && !isVerlopen && <span className="text-[10px] text-autronis-text-secondary ml-auto tabular-nums">{formatDatum(taak.deadline)}</span>}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -313,7 +324,14 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <motion.div
+        initial={{ x: 80, opacity: 0, scale: 0.97 }}
+        animate={{ x: 0, opacity: 1, scale: 1 }}
+        exit={{ x: 80, opacity: 0, scale: 0.97 }}
+        transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-xl mx-4 max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header met status + acties */}
         <div className="flex items-center gap-3 p-5 pb-0">
           <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
@@ -424,7 +442,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
             <X className="w-3.5 h-3.5" /> Verwijder
           </button>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -451,6 +469,7 @@ export default function TakenPage() {
   const [editFase, setEditFase] = useState("");
   const [editPrioriteit, setEditPrioriteit] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [showSyncConfetti, setShowSyncConfetti] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [nieuwTitel, setNieuwTitel] = useState("");
   const [nieuwProject, setNieuwProject] = useState("");
@@ -606,6 +625,7 @@ export default function TakenPage() {
       if (!res.ok) throw new Error(json.fout || "Sync mislukt");
       const totaalNieuw = json.resultaten.reduce((s: number, r: { takenToegevoegd: number }) => s + r.takenToegevoegd, 0);
       addToast(`${json.totaalProjecten} projecten gesynced — ${totaalNieuw} nieuwe taken`, "succes");
+      if (totaalNieuw > 0) { setShowSyncConfetti(true); setTimeout(() => setShowSyncConfetti(false), 2200); }
       fetchTaken();
     } catch (err) { addToast(err instanceof Error ? err.message : "Sync mislukt", "fout"); }
     finally { setSyncing(false); }
@@ -750,7 +770,17 @@ export default function TakenPage() {
             {activeFilterCount > 0 && (
               <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); }}
                 className="flex items-center gap-1 px-2 py-1 text-[11px] text-autronis-text-secondary hover:text-red-400 transition-colors whitespace-nowrap">
-                <X className="w-3 h-3" /> Wis ({activeFilterCount})
+                <X className="w-3 h-3" /> Wis (
+                <motion.span
+                  key={activeFilterCount}
+                  initial={{ scale: 1.6, color: "#17B8A5" }}
+                  animate={{ scale: 1, color: "currentColor" }}
+                  transition={{ type: "spring", stiffness: 600, damping: 18 }}
+                  className="inline-block tabular-nums"
+                >
+                  {activeFilterCount}
+                </motion.span>
+                )
               </button>
             )}
           </div>
@@ -768,11 +798,19 @@ export default function TakenPage() {
                   onDragOver={(e) => { e.preventDefault(); setDragOverStatus(kolom.status); }}
                   onDragLeave={() => setDragOverStatus(null)}
                   onDrop={(e) => handleDrop(e, kolom.status)}
-                  className={cn("bg-autronis-card border rounded-xl p-3 transition-colors", dragOverStatus === kolom.status ? "border-autronis-accent bg-autronis-accent/5" : "border-autronis-border")}>
+                  className={cn("border rounded-xl p-3 transition-all duration-200", kolom.tint, dragOverStatus === kolom.status ? "border-autronis-accent bg-autronis-accent/5 scale-[1.01]" : "border-autronis-border")}>
                   <div className="flex items-center gap-2 mb-3 px-1">
                     <div className={cn("w-2 h-2 rounded-full", kolom.bg.replace("/10", ""))} />
                     <span className={cn("text-sm font-semibold", kolom.color)}>{kolom.label}</span>
-                    <span className="text-xs text-autronis-text-secondary ml-auto tabular-nums">{kolomTaken.length}</span>
+                    <motion.span
+                      key={kolomTaken.length}
+                      initial={{ scale: 1.5 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                      className="text-xs text-autronis-text-secondary ml-auto tabular-nums inline-block"
+                    >
+                      {kolomTaken.length}
+                    </motion.span>
                   </div>
                   <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {kolomTaken.map((taak) => (
@@ -902,9 +940,14 @@ export default function TakenPage() {
                                             <div className="flex-1 min-w-0">
                                               <p onClick={() => setSelectedTaak(taak)} className={cn("text-xs font-medium truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                                             </div>
-                                            {isClaude && <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
+                                            {isClaude && <span className="badge-claude-shimmer flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
-                                            {taak.deadline && <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400" : "text-autronis-text-secondary")}>{isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}{formatDatum(taak.deadline)}</div>}
+                                            {taak.deadline && (
+                                              <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400 deadline-shake" : "text-autronis-text-secondary")}>
+                                                {isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}
+                                                {formatDatum(taak.deadline)}
+                                              </div>
+                                            )}
                                             {/* Hover actions */}
                                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                                               {taak.status !== "afgerond" && (
@@ -955,7 +998,7 @@ export default function TakenPage() {
                                               )}
                                             </div>
                                           )}
-                                        </div>
+                                        </motion.div>
                                       );
                                     })}
                                   </div>
@@ -1027,6 +1070,7 @@ export default function TakenPage() {
         )}
 
         {/* Taak detail modal */}
+        <AnimatePresence>
         {selectedTaak && (
           <TaakDetailModal
             taak={selectedTaak}
@@ -1038,6 +1082,7 @@ export default function TakenPage() {
             onEdit={(id, body) => editMutation.mutate({ id, ...body })}
           />
         )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

@@ -205,6 +205,52 @@ export async function GET(req: NextRequest) {
       t = tEnd;
     }
 
+    // Fetch all active projects for title-based matching
+    const alleProjecten = await db
+      .select({ id: projecten.id, naam: projecten.naam, klantNaam: klanten.bedrijfsnaam })
+      .from(projecten)
+      .leftJoin(klanten, eq(projecten.klantId, klanten.id))
+      .where(eq(projecten.isActief, 1))
+      .all();
+
+    // Build lookup: lowercase keywords → project
+    // Match on project name parts (e.g. "autronis-dashboard" matches "Autronis Dashboard")
+    const projectMatchers = alleProjecten.map(p => {
+      const naam = p.naam.toLowerCase();
+      // Generate match variants: full name, hyphenated, without spaces
+      const variants = [
+        naam,
+        naam.replace(/\s+/g, "-"),
+        naam.replace(/\s+/g, ""),
+        // Also match partial for multi-word names (e.g. "ops room" matches "Ops Room")
+        ...naam.split(/\s+/).filter(w => w.length >= 4),
+      ];
+      return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants };
+    });
+
+    function matchProject(titles: string[]): { id: number; naam: string; klantNaam: string | null } | null {
+      const joined = titles.join(" ").toLowerCase();
+      // Check VS Code titles first: "file.tsx — projectnaam — Visual Studio Code"
+      for (const title of titles) {
+        const vsMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Visual Studio Code$/);
+        if (vsMatch) {
+          const vsProject = vsMatch[1].trim().toLowerCase();
+          for (const p of projectMatchers) {
+            if (p.variants.some(v => vsProject.includes(v) || v.includes(vsProject))) {
+              return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+            }
+          }
+        }
+      }
+      // Fallback: check all titles for project name mentions
+      for (const p of projectMatchers) {
+        if (p.variants.some(v => v.length >= 4 && joined.includes(v))) {
+          return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+        }
+      }
+      return null;
+    }
+
     // Build sessies from slots — categorie from DB, never AI
     const sessies: Sessie[] = slots.map(slot => {
       const catSec: Record<string, number> = {};
@@ -223,6 +269,12 @@ export async function GET(req: NextRequest) {
           if (!seen.has(prefix)) { seen.add(prefix); titles.push(e.vensterTitel); }
         }
         if (!pId && e.projectId) { pId = e.projectId; pNaam = e.projectNaam; kNaam = e.klantNaam; }
+      }
+
+      // If no project from DB entries, try to match from window titles
+      if (!pId) {
+        const matched = matchProject(titles);
+        if (matched) { pId = matched.id; pNaam = matched.naam; kNaam = matched.klantNaam; }
       }
 
       const cat = Object.entries(catSec).sort(([, a], [, b]) => b - a)[0][0];

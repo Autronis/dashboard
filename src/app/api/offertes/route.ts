@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
         btwBedrag: offertes.btwBedrag,
         bedragInclBtw: offertes.bedragInclBtw,
         aangemaaktOp: offertes.aangemaaktOp,
+        bijgewerktOp: offertes.bijgewerktOp,
+        herinneringVerstuurdOp: offertes.herinneringVerstuurdOp,
       })
       .from(offertes)
       .innerJoin(klanten, eq(offertes.klantId, klanten.id))
@@ -67,14 +69,19 @@ export async function GET(req: NextRequest) {
 
     const nu = new Date();
     const eersteVanMaand = new Date(nu.getFullYear(), nu.getMonth(), 1).toISOString();
+    const eersteVanVorigeMaand = new Date(nu.getFullYear(), nu.getMonth() - 1, 1).toISOString();
 
     let openstaandCount = 0;
     let openstaandWaarde = 0;
     let geaccepteerdDezeMaand = 0;
     let totaalGeaccepteerd = 0;
     let totaalAfgewezen = 0;
+    let vorigeGeaccepteerd = 0;
+    let vorigeAfgewezen = 0;
+    const statusCounts: Record<string, number> = {};
 
     for (const o of alleOffertes) {
+      statusCounts[o.status] = (statusCounts[o.status] || 0) + 1;
       if (o.status === "concept" || o.status === "verzonden") {
         openstaandCount++;
         openstaandWaarde += o.bedragInclBtw || 0;
@@ -84,9 +91,15 @@ export async function GET(req: NextRequest) {
         if (o.aangemaaktOp && o.aangemaaktOp >= eersteVanMaand) {
           geaccepteerdDezeMaand++;
         }
+        if (o.aangemaaktOp && o.aangemaaktOp >= eersteVanVorigeMaand && o.aangemaaktOp < eersteVanMaand) {
+          vorigeGeaccepteerd++;
+        }
       }
       if (o.status === "afgewezen") {
         totaalAfgewezen++;
+        if (o.aangemaaktOp && o.aangemaaktOp >= eersteVanVorigeMaand && o.aangemaaktOp < eersteVanMaand) {
+          vorigeAfgewezen++;
+        }
       }
     }
 
@@ -95,11 +108,20 @@ export async function GET(req: NextRequest) {
         ? Math.round((totaalGeaccepteerd / (totaalGeaccepteerd + totaalAfgewezen)) * 100)
         : 0;
 
+    const winRateVorigeMaand =
+      vorigeGeaccepteerd + vorigeAfgewezen > 0
+        ? Math.round((vorigeGeaccepteerd / (vorigeGeaccepteerd + vorigeAfgewezen)) * 100)
+        : null;
+
     const kpis = {
       openstaandCount,
       openstaandWaarde,
       geaccepteerdDezeMaand,
       winRate,
+      winRateVorigeMaand,
+      totaalGeaccepteerd,
+      totaalAfgewezen,
+      statusCounts,
     };
 
     return NextResponse.json({ offertes: lijst, kpis });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { contracten, klanten } from "@/lib/db/schema";
+import { contracten, klanten, offertes } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc } from "drizzle-orm";
 
@@ -14,14 +14,20 @@ export async function GET() {
         id: contracten.id,
         klantId: contracten.klantId,
         klantNaam: klanten.bedrijfsnaam,
+        offerteId: contracten.offerteId,
+        offerteNummer: offertes.offertenummer,
         titel: contracten.titel,
         type: contracten.type,
         status: contracten.status,
+        verloopdatum: contracten.verloopdatum,
+        isActief: contracten.isActief,
         aangemaaktOp: contracten.aangemaaktOp,
         bijgewerktOp: contracten.bijgewerktOp,
       })
       .from(contracten)
       .leftJoin(klanten, eq(contracten.klantId, klanten.id))
+      .leftJoin(offertes, eq(contracten.offerteId, offertes.id))
+      .where(eq(contracten.isActief, 1))
       .orderBy(desc(contracten.aangemaaktOp))
       .all();
 
@@ -40,7 +46,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { klantId, titel, type, inhoud } = body;
+    const { klantId, titel, type, inhoud, offerteId, verloopdatum } = body;
 
     if (!klantId || !titel || !type) {
       return NextResponse.json({ fout: "Klant, titel en type zijn verplicht." }, { status: 400 });
@@ -55,10 +61,13 @@ export async function POST(req: NextRequest) {
       .insert(contracten)
       .values({
         klantId: Number(klantId),
+        offerteId: offerteId ? Number(offerteId) : null,
         titel: titel.trim(),
         type,
         inhoud: inhoud || "",
         status: "concept",
+        verloopdatum: verloopdatum || null,
+        isActief: 1,
         aangemaaktDoor: gebruiker.id,
       })
       .returning()

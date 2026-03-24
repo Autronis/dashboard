@@ -15,6 +15,8 @@ export interface Offerte {
   btwBedrag: number | null;
   bedragInclBtw: number | null;
   aangemaaktOp: string | null;
+  bijgewerktOp: string | null;
+  herinneringVerstuurdOp: string | null;
 }
 
 export interface OfferteKPIs {
@@ -22,6 +24,10 @@ export interface OfferteKPIs {
   openstaandWaarde: number;
   geaccepteerdDezeMaand: number;
   winRate: number;
+  winRateVorigeMaand: number | null;
+  totaalGeaccepteerd: number;
+  totaalAfgewezen: number;
+  statusCounts: Record<string, number>;
 }
 
 export function useOffertes(statusFilter: string, zoek: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSalesEngineScans, useSalesEngineBatch } from "@/hooks/queries/use-sales-engine";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDatum } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Rocket,
   TrendingUp,
@@ -15,7 +16,6 @@ import {
   AlertCircle,
   Clock,
   ExternalLink,
-  Zap,
   Search,
   ChevronDown,
   ChevronUp,
@@ -25,6 +25,7 @@ import {
   Upload,
   X,
   FileSpreadsheet,
+  Euro,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -34,11 +35,36 @@ const statusConfig: Record<string, { label: string; kleur: string; icon: typeof 
   failed: { label: "Mislukt", kleur: "text-red-400 bg-red-400/10", icon: AlertCircle },
 };
 
+const impactGlow: Record<string, string> = {
+  hoog: "shadow-[0_0_10px_rgba(52,211,153,0.25)]",
+  midden: "shadow-[0_0_8px_rgba(251,191,36,0.2)]",
+  laag: "",
+};
+
 const impactConfig: Record<string, string> = {
   hoog: "text-emerald-400 bg-emerald-400/10",
   midden: "text-yellow-400 bg-yellow-400/10",
   laag: "text-[var(--text-tertiary)] bg-[var(--border)]/30",
 };
+
+function useCountUp(target: number, duration = 900) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (target === 0) { setValue(0); return; }
+    let start: number | null = null;
+    let rafId: number;
+    const step = (ts: number) => {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) rafId = requestAnimationFrame(step);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, [target, duration]);
+  return value;
+}
 
 function parseCsvInput(text: string): Array<{ bedrijfsnaam: string; websiteUrl: string }> {
   const lines = text.trim().split("\n").filter((l) => l.trim());
@@ -64,6 +90,7 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { data: batchStatus } = useSalesEngineBatch(activeBatchId);
@@ -82,6 +109,7 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragOver(false);
     const file = e.dataTransfer.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -118,10 +146,17 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
   };
 
   const allDone = batchStatus && batchStatus.pending === 0;
+  const progress = batchStatus ? Math.round(((batchStatus.completed + batchStatus.failed) / batchStatus.totaal) * 100) : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        className="bg-[var(--card)] rounded-2xl border border-[var(--border)] w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4"
+      >
         <div className="flex items-center justify-between p-6 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <FileSpreadsheet className="w-6 h-6 text-[var(--accent)]" />
@@ -137,16 +172,19 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
               <p className="text-sm text-[var(--text-secondary)]">
                 Voer bedrijven in als CSV (bedrijfsnaam,website per regel) of sleep een CSV-bestand hierheen.
               </p>
-              <div
+              <motion.div
                 onDrop={handleDrop}
-                onDragOver={(e) => e.preventDefault()}
+                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+                onDragLeave={() => setIsDragOver(false)}
+                animate={isDragOver ? { scale: 1.02, borderColor: "var(--accent)" } : { scale: 1 }}
+                transition={{ duration: 0.15 }}
                 className="border-2 border-dashed border-[var(--border)] rounded-xl p-8 text-center hover:border-[var(--accent)]/50 transition-colors cursor-pointer"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="w-8 h-8 text-[var(--text-tertiary)] mx-auto mb-2" />
+                <Upload className={`w-8 h-8 mx-auto mb-2 transition-colors ${isDragOver ? "text-[var(--accent)]" : "text-[var(--text-tertiary)]"}`} />
                 <p className="text-sm text-[var(--text-secondary)]">Sleep een CSV-bestand hierheen of klik om te uploaden</p>
                 <input ref={fileInputRef} type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden" />
-              </div>
+              </motion.div>
               <textarea
                 value={csvText}
                 onChange={(e) => setCsvText(e.target.value)}
@@ -195,7 +233,12 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
               {batchStatus && (
                 <>
                   <div className="bg-[var(--bg)] rounded-full h-3 overflow-hidden">
-                    <div className="h-full bg-[var(--accent)] transition-all duration-500 ease-out rounded-full" style={{ width: `${Math.round(((batchStatus.completed + batchStatus.failed) / batchStatus.totaal) * 100)}%` }} />
+                    <motion.div
+                      className="h-full bg-[var(--accent)] rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
                   </div>
                   <div className="flex gap-4 text-sm">
                     <span className="text-emerald-400">{batchStatus.completed} voltooid</span>
@@ -204,17 +247,23 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
                     <span className="text-[var(--text-secondary)]">{batchStatus.totaal} totaal</span>
                   </div>
                   <div className="space-y-2 max-h-64 overflow-y-auto">
-                    {batchStatus.scans.map((scan) => {
+                    {batchStatus.scans.map((scan, i) => {
                       const cfg = statusConfig[scan.status] ?? statusConfig.pending;
                       const Icon = cfg.icon;
                       return (
-                        <div key={scan.id} className="flex items-center justify-between bg-[var(--bg)] rounded-lg p-3 border border-[var(--border)]">
+                        <motion.div
+                          key={scan.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.04, duration: 0.25 }}
+                          className="flex items-center justify-between bg-[var(--bg)] rounded-lg p-3 border border-[var(--border)]"
+                        >
                           <div className="flex items-center gap-3 min-w-0">
                             <Icon className={`w-4 h-4 flex-shrink-0 ${cfg.kleur.split(" ")[0]}`} />
                             <span className="font-medium text-sm truncate">{scan.bedrijfsnaam}</span>
                           </div>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${cfg.kleur}`}>{cfg.label}</span>
-                        </div>
+                        </motion.div>
                       );
                     })}
                   </div>
@@ -231,7 +280,7 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -271,18 +320,15 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
       const data = await res.json();
 
       if (!res.ok) {
-        addToast(data.fout || "Scan mislukt", "fout");
-        if (data.scanId) {
-          router.push(`/sales-engine/${data.scanId}`);
-        }
+        addToast(data.fout || "Scan starten mislukt", "fout");
+        setIsScanning(false);
         return;
       }
 
-      addToast(`Scan voltooid: ${data.aantalKansen} kansen gevonden`, "succes");
+      // Navigate immediately — scan processes in background, detail page polls
       router.push(`/sales-engine/${data.scanId}`);
     } catch {
       addToast("Er ging iets mis bij het starten van de scan", "fout");
-    } finally {
       setIsScanning(false);
     }
   }
@@ -368,7 +414,7 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
           {isScanning ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Bezig met scannen...
+              Scan starten...
             </>
           ) : (
             <>
@@ -379,6 +425,39 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
         </button>
       </form>
     </div>
+  );
+}
+
+function KpiCard({
+  icon: Icon,
+  iconKleur,
+  label,
+  value,
+  sub,
+  delay = 0,
+}: {
+  icon: typeof TrendingUp;
+  iconKleur: string;
+  label: string;
+  value: number;
+  sub: string;
+  delay?: number;
+}) {
+  const animated = useCountUp(value);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+      className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+    >
+      <div className="flex items-center gap-3 mb-2">
+        <Icon className={`w-5 h-5 ${iconKleur}`} />
+        <span className="text-sm text-[var(--text-secondary)]">{label}</span>
+      </div>
+      <p className="text-3xl font-bold tabular-nums">{animated}</p>
+      <p className="text-xs text-[var(--text-tertiary)] mt-1">{sub}</p>
+    </motion.div>
   );
 }
 
@@ -406,7 +485,6 @@ export default function SalesEnginePage() {
   const scans = data?.scans ?? [];
   const kpis = data?.kpis;
 
-  // Berekende KPIs
   const completedScans = scans.filter((s) => s.status === "completed");
   const dezeMaand = scans.filter((s) => {
     if (!s.aangemaaktOp) return false;
@@ -418,8 +496,15 @@ export default function SalesEnginePage() {
 
   const totaalKansen = scans.reduce((sum, s) => sum + s.aantalKansen, 0);
   const gemiddeldeKansen = completedScans.length > 0
-    ? Math.round(totaalKansen / completedScans.length * 10) / 10
+    ? Math.round((totaalKansen / completedScans.length) * 10) / 10
     : 0;
+
+  // Rough pipeline value estimate based on impact level
+  const pipelineWaarde = completedScans.reduce((sum, s) => {
+    if (s.hoogsteImpact === "hoog") return sum + 4000;
+    if (s.hoogsteImpact === "midden") return sum + 1500;
+    return sum + 500;
+  }, 0);
 
   return (
     <PageTransition>
@@ -444,48 +529,47 @@ export default function SalesEnginePage() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
+          <KpiCard
+            icon={TrendingUp}
+            iconKleur="text-[var(--accent)]"
+            label="Deze week"
+            value={kpis?.dezeWeek ?? 0}
+            sub={`${dezeMaand} deze maand`}
+            delay={0}
+          />
+          <KpiCard
+            icon={CheckCircle}
+            iconKleur="text-emerald-400"
+            label="Succesratio"
+            value={kpis?.succesRatio ?? 0}
+            sub={`${completedScans.length} van ${kpis?.totaal ?? 0} scans voltooid`}
+            delay={0.06}
+          />
+          <KpiCard
+            icon={Target}
+            iconKleur="text-purple-400"
+            label="Totaal kansen"
+            value={totaalKansen}
+            sub={`gem. ${gemiddeldeKansen} per scan`}
+            delay={0.12}
+          />
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+          >
             <div className="flex items-center gap-3 mb-2">
-              <TrendingUp className="w-5 h-5 text-[var(--accent)]" />
-              <span className="text-sm text-[var(--text-secondary)]">Deze week</span>
-            </div>
-            <p className="text-3xl font-bold tabular-nums">{kpis?.dezeWeek ?? 0}</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              {dezeMaand} deze maand
-            </p>
-          </div>
-          <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-            <div className="flex items-center gap-3 mb-2">
-              <CheckCircle className="w-5 h-5 text-emerald-400" />
-              <span className="text-sm text-[var(--text-secondary)]">Succesratio</span>
-            </div>
-            <p className="text-3xl font-bold tabular-nums">{kpis?.succesRatio ?? 0}%</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              {completedScans.length} van {kpis?.totaal ?? 0} scans voltooid
-            </p>
-          </div>
-          <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-            <div className="flex items-center gap-3 mb-2">
-              <Target className="w-5 h-5 text-purple-400" />
-              <span className="text-sm text-[var(--text-secondary)]">Totaal kansen</span>
-            </div>
-            <p className="text-3xl font-bold tabular-nums">{totaalKansen}</p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              gem. {gemiddeldeKansen} per scan
-            </p>
-          </div>
-          <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-            <div className="flex items-center gap-3 mb-2">
-              <BarChart3 className="w-5 h-5 text-orange-400" />
-              <span className="text-sm text-[var(--text-secondary)]">Hoge impact</span>
+              <Euro className="w-5 h-5 text-orange-400" />
+              <span className="text-sm text-[var(--text-secondary)]">Pipeline waarde</span>
             </div>
             <p className="text-3xl font-bold tabular-nums">
-              {scans.filter((s) => s.hoogsteImpact === "hoog").length}
+              €{pipelineWaarde.toLocaleString("nl-NL")}
             </p>
             <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              scans met hoge-impact kansen
+              schatting op basis van kansen
             </p>
-          </div>
+          </motion.div>
         </div>
 
         {/* Filters */}
@@ -516,66 +600,77 @@ export default function SalesEnginePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {scans.map((scan) => {
-              const status = statusConfig[scan.status] ?? statusConfig.pending;
-              const StatusIcon = status.icon;
+            <AnimatePresence mode="popLayout">
+              {scans.map((scan, i) => {
+                const status = statusConfig[scan.status] ?? statusConfig.pending;
+                const StatusIcon = status.icon;
 
-              return (
-                <Link
-                  key={scan.id}
-                  href={`/sales-engine/${scan.id}`}
-                  className="block bg-[var(--card)] rounded-xl p-5 border border-[var(--border)] hover:border-[var(--accent)]/30 transition-all card-glow"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1">
-                        <h3 className="font-semibold text-lg truncate">
-                          {scan.bedrijfsnaam ?? "Onbekend bedrijf"}
-                        </h3>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.kleur}`}
-                        >
-                          <StatusIcon className="w-3 h-3" />
-                          {status.label}
-                        </span>
-                        {scan.hoogsteImpact && (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                              impactConfig[scan.hoogsteImpact] ?? ""
-                            }`}
-                          >
-                            {scan.hoogsteImpact} impact
-                          </span>
-                        )}
+                return (
+                  <motion.div
+                    key={scan.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
+                    transition={{ delay: i * 0.04, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  >
+                    <Link
+                      href={`/sales-engine/${scan.id}`}
+                      className="block bg-[var(--card)] rounded-xl p-5 border border-[var(--border)] hover:border-[var(--accent)]/30 transition-all card-glow"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="font-semibold text-lg truncate">
+                              {scan.bedrijfsnaam ?? "Onbekend bedrijf"}
+                            </h3>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.kleur}`}
+                            >
+                              <StatusIcon className={`w-3 h-3 ${scan.status === "pending" ? "animate-spin" : ""}`} />
+                              {status.label}
+                            </span>
+                            {scan.hoogsteImpact && (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  impactConfig[scan.hoogsteImpact] ?? ""
+                                } ${impactGlow[scan.hoogsteImpact] ?? ""}`}
+                              >
+                                {scan.hoogsteImpact} impact
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
+                            <span className="flex items-center gap-1">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                              {(() => {
+                                try {
+                                  return new URL(scan.websiteUrl).hostname;
+                                } catch {
+                                  return scan.websiteUrl;
+                                }
+                              })()}
+                            </span>
+                            {scan.contactpersoon && <span>{scan.contactpersoon}</span>}
+                            {scan.aantalKansen > 0 && (
+                              <span>{scan.aantalKansen} kansen gevonden</span>
+                            )}
+                            {scan.aangemaaktOp && (
+                              <span>{formatDatum(scan.aangemaaktOp)}</span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
-                        <span className="flex items-center gap-1">
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          {(() => {
-                            try {
-                              return new URL(scan.websiteUrl).hostname;
-                            } catch {
-                              return scan.websiteUrl;
-                            }
-                          })()}
-                        </span>
-                        {scan.contactpersoon && <span>{scan.contactpersoon}</span>}
-                        {scan.aantalKansen > 0 && (
-                          <span>{scan.aantalKansen} kansen gevonden</span>
-                        )}
-                        {scan.aangemaaktOp && (
-                          <span>{formatDatum(scan.aangemaaktOp)}</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
+                    </Link>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
         {/* Batch Modal */}
-        {showBatchModal && <BatchScanModal onClose={() => setShowBatchModal(false)} />}
+        <AnimatePresence>
+          {showBatchModal && <BatchScanModal onClose={() => setShowBatchModal(false)} />}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

@@ -431,7 +431,7 @@ export default function FinancienPage() {
                 </div>
                 {ouderdomData ? (
                   <div className="space-y-3">
-                    {(["0-30", "31-60", "61-90", "90+"] as const).map((bucket) => {
+                    {(["0-30", "31-60", "61-90", "90+"] as const).map((bucket, i) => {
                       const data = ouderdomData.ouderdom[bucket];
                       const totaal = ouderdomData.ouderdom.totaal.bedrag;
                       const pct = totaal > 0 ? (data.bedrag / totaal) * 100 : 0;
@@ -442,14 +442,22 @@ export default function FinancienPage() {
                         "90+": "bg-red-500",
                       };
                       return (
-                        <div key={bucket} className="flex items-center gap-3">
+                        <motion.div
+                          key={bucket}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: i * 0.07, duration: 0.35 }}
+                          className="flex items-center gap-3"
+                        >
                           <span className="text-xs text-autronis-text-secondary w-12 text-right tabular-nums">
                             {bucket}d
                           </span>
                           <div className="flex-1 h-5 bg-autronis-bg rounded-full overflow-hidden">
-                            <div
-                              className={cn("h-full rounded-full transition-all", kleuren[bucket])}
-                              style={{ width: `${Math.max(pct, data.aantal > 0 ? 2 : 0)}%` }}
+                            <motion.div
+                              className={cn("h-full rounded-full", kleuren[bucket])}
+                              initial={{ width: 0 }}
+                              animate={{ width: `${Math.max(pct, data.aantal > 0 ? 2 : 0)}%` }}
+                              transition={{ delay: i * 0.07 + 0.1, duration: 0.6, ease: "easeOut" as const }}
                             />
                           </div>
                           <span className="text-xs text-autronis-text-secondary w-8 tabular-nums">
@@ -458,7 +466,7 @@ export default function FinancienPage() {
                           <span className="text-xs font-medium text-autronis-text-primary w-20 text-right tabular-nums">
                             {formatBedrag(data.bedrag)}
                           </span>
-                        </div>
+                        </motion.div>
                       );
                     })}
                     <div className="flex items-center gap-3 pt-2 border-t border-autronis-border">

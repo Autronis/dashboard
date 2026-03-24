@@ -25,7 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
-import ReactMarkdown from "react-markdown";
+import { marked } from "marked";
 
 interface Contract {
   id: number;
@@ -514,13 +514,9 @@ export default function ContractDetailPage() {
             <div
               ref={inhoudRef}
               className="bg-autronis-card border border-autronis-border rounded-2xl p-6 prose prose-invert prose-sm max-w-none select-text"
-              style={{
-                "--tw-prose-headings": "var(--color-autronis-text-primary)",
-                "--tw-prose-body": "var(--color-autronis-text-secondary)",
-              } as React.CSSProperties}
             >
               {contract.inhoud ? (
-                <ReactMarkdown>{contract.inhoud}</ReactMarkdown>
+                <div dangerouslySetInnerHTML={{ __html: marked(contract.inhoud) as string }} />
               ) : (
                 <p className="text-autronis-text-secondary">Geen inhoud beschikbaar.</p>
               )}

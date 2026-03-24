@@ -228,9 +228,8 @@ export async function GET(req: NextRequest) {
       return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants };
     });
 
-    function matchProject(titles: string[]): { id: number; naam: string; klantNaam: string | null } | null {
-      const joined = titles.join(" ").toLowerCase();
-      // Check VS Code titles first: "file.tsx — projectnaam — Visual Studio Code"
+    function matchProject(titles: string[], dominantApp: string): { id: number; naam: string; klantNaam: string | null } | null {
+      // Only match projects from VS Code / Cursor titles (intentional work, not background tabs)
       for (const title of titles) {
         const vsMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Visual Studio Code$/);
         if (vsMatch) {
@@ -241,11 +240,25 @@ export async function GET(req: NextRequest) {
             }
           }
         }
+        // Also match Cursor: "file.tsx — projectnaam — Cursor"
+        const cursorMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Cursor$/);
+        if (cursorMatch) {
+          const cursorProject = cursorMatch[1].trim().toLowerCase();
+          for (const p of projectMatchers) {
+            if (p.variants.some(v => cursorProject.includes(v) || v.includes(cursorProject))) {
+              return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+            }
+          }
+        }
       }
-      // Fallback: check all titles for project name mentions
-      for (const p of projectMatchers) {
-        if (p.variants.some(v => v.length >= 4 && joined.includes(v))) {
-          return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+      // Only check non-browser titles as fallback when Code/Cursor is dominant
+      if (/code|cursor/i.test(dominantApp)) {
+        const nonBrowserTitles = titles.filter(t => !/Google Chrome|Firefox|Edge|Brave/i.test(t));
+        const joined = nonBrowserTitles.join(" ").toLowerCase();
+        for (const p of projectMatchers) {
+          if (p.variants.some(v => v.length >= 5 && joined.includes(v))) {
+            return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+          }
         }
       }
       return null;
@@ -271,14 +284,15 @@ export async function GET(req: NextRequest) {
         if (!pId && e.projectId) { pId = e.projectId; pNaam = e.projectNaam; kNaam = e.klantNaam; }
       }
 
-      // If no project from DB entries, try to match from window titles
-      if (!pId) {
-        const matched = matchProject(titles);
-        if (matched) { pId = matched.id; pNaam = matched.naam; kNaam = matched.klantNaam; }
-      }
-
       const cat = Object.entries(catSec).sort(([, a], [, b]) => b - a)[0][0];
       const topApps = Object.entries(appSec).filter(([a]) => a !== "Inactief").sort(([, a], [, b]) => b - a).slice(0, 4);
+      const dominantApp = topApps[0]?.[0] ?? "";
+
+      // If no project from DB entries, try to match from window titles
+      if (!pId) {
+        const matched = matchProject(titles, dominantApp);
+        if (matched) { pId = matched.id; pNaam = matched.naam; kNaam = matched.klantNaam; }
+      }
       const appLabel = topApps.map(([a, sec]) => `${a} (${Math.round(sec / 60)}m)`).join(", ");
       const appShort = topApps.map(([a]) => a).slice(0, 3).join(", ");
 

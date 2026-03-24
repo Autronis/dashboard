@@ -357,7 +357,7 @@ function DagTimeline({
                       </span>
                     )}
                     {sessie.projectNaam && (
-                      <span className="text-[10px] text-autronis-accent">{sessie.projectNaam}</span>
+                      <span className="text-[10px] font-medium" style={{ color: kleur }}>{sessie.projectNaam}</span>
                     )}
                   </div>
                 )}

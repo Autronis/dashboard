@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDatum } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ExternalLink,
@@ -27,9 +28,10 @@ import {
   Gauge,
   FileText,
   UserPlus,
-  Send,
   Mail,
   Loader2,
+  RefreshCw,
+  Rocket,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -47,13 +49,12 @@ const categorieConfig: Record<string, { label: string; kleur: string }> = {
   content: { label: "Content", kleur: "text-pink-400 bg-pink-400/10" },
 };
 
-const impactConfig: Record<string, { label: string; kleur: string }> = {
-  hoog: { label: "Hoge impact", kleur: "text-emerald-400 bg-emerald-400/10" },
-  midden: { label: "Medium impact", kleur: "text-yellow-400 bg-yellow-400/10" },
-  laag: { label: "Lage impact", kleur: "text-[var(--text-tertiary)] bg-[var(--border)]/30" },
+const impactConfig: Record<string, { label: string; kleur: string; glow: string }> = {
+  hoog: { label: "Hoge impact", kleur: "text-emerald-400 bg-emerald-400/10", glow: "shadow-[0_0_12px_rgba(52,211,153,0.25)]" },
+  midden: { label: "Medium impact", kleur: "text-yellow-400 bg-yellow-400/10", glow: "shadow-[0_0_8px_rgba(251,191,36,0.15)]" },
+  laag: { label: "Lage impact", kleur: "text-[var(--text-tertiary)] bg-[var(--border)]/30", glow: "" },
 };
 
-// Parse "X uur per week" to hours number
 function parseUrenPerWeek(text: string | null): number {
   if (!text) return 0;
   const match = text.match(/(\d+(?:[.,]\d+)?)\s*uur/i);
@@ -61,7 +62,6 @@ function parseUrenPerWeek(text: string | null): number {
   return parseFloat(match[1].replace(",", "."));
 }
 
-// Calculate automation readiness score (1-10)
 function berekenReadinessScore(
   kansen: ScanKans[],
   scrapeResultaat: ScrapeResultaat | null
@@ -69,7 +69,6 @@ function berekenReadinessScore(
   let score = 0;
   const uitleg: string[] = [];
 
-  // Aantal kansen (max 2 punten)
   if (kansen.length >= 3) {
     score += 2;
     uitleg.push("3+ automatiseringskansen gevonden");
@@ -78,7 +77,6 @@ function berekenReadinessScore(
     uitleg.push(`${kansen.length} automatiseringskans(en) gevonden`);
   }
 
-  // Impact levels (max 3 punten)
   const hogeImpact = kansen.filter((k) => k.impact === "hoog").length;
   if (hogeImpact >= 2) {
     score += 3;
@@ -91,7 +89,6 @@ function berekenReadinessScore(
     uitleg.push("Kansen met medium impact");
   }
 
-  // Tijdsbesparing (max 2 punten)
   const totaalUren = kansen.reduce((sum, k) => sum + parseUrenPerWeek(k.geschatteTijdsbesparing), 0);
   if (totaalUren >= 10) {
     score += 2;
@@ -101,7 +98,6 @@ function berekenReadinessScore(
     uitleg.push(`${totaalUren} uur/week besparingspotentieel`);
   }
 
-  // Tech stack modernity (max 2 punten)
   const techStack = scrapeResultaat?.techStack ?? [];
   const modernTech = ["React", "Next.js", "Shopify", "WooCommerce"];
   const legacyTech = ["Joomla", "Magento"];
@@ -118,7 +114,6 @@ function berekenReadinessScore(
     uitleg.push("Legacy tech stack - extra werk nodig");
   }
 
-  // Formulieren/widgets aanwezig (max 1 punt)
   if ((scrapeResultaat?.formulieren?.length ?? 0) > 0 || (scrapeResultaat?.chatWidgets?.length ?? 0) > 0) {
     score += 1;
     uitleg.push("Bestaande formulieren/widgets gevonden");
@@ -128,10 +123,8 @@ function berekenReadinessScore(
 }
 
 function ScoreBar({ score }: { score: number }) {
-  const kleur =
-    score >= 7 ? "bg-emerald-400" : score >= 4 ? "bg-yellow-400" : "bg-red-400";
-  const label =
-    score >= 7 ? "Uitstekend" : score >= 4 ? "Gemiddeld" : "Beperkt";
+  const kleur = score >= 7 ? "bg-emerald-400" : score >= 4 ? "bg-yellow-400" : "bg-red-400";
+  const label = score >= 7 ? "Uitstekend" : score >= 4 ? "Gemiddeld" : "Beperkt";
 
   return (
     <div>
@@ -142,11 +135,93 @@ function ScoreBar({ score }: { score: number }) {
         </span>
       </div>
       <div className="w-full h-2 rounded-full bg-[var(--border)]">
-        <div
-          className={`h-full rounded-full transition-all ${kleur}`}
-          style={{ width: `${score * 10}%` }}
+        <motion.div
+          className={`h-full rounded-full ${kleur}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${score * 10}%` }}
+          transition={{ duration: 1, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.3 }}
         />
       </div>
+    </div>
+  );
+}
+
+interface ScanFase {
+  label: string;
+  sublabel: string;
+  done: boolean;
+  active: boolean;
+}
+
+function ScanProgressIndicator({ hasScrapeData }: { hasScrapeData: boolean }) {
+  const fases: ScanFase[] = [
+    {
+      label: "Website scrapen",
+      sublabel: "Pagina's analyseren",
+      done: hasScrapeData,
+      active: !hasScrapeData,
+    },
+    {
+      label: "AI analyse",
+      sublabel: "Kansen identificeren",
+      done: false,
+      active: hasScrapeData,
+    },
+    {
+      label: "Rapport klaar",
+      sublabel: "Resultaten opslaan",
+      done: false,
+      active: false,
+    },
+  ];
+
+  return (
+    <div className="bg-[var(--card)] rounded-xl border border-[var(--accent)]/20 p-6 shadow-[0_0_24px_rgba(23,184,165,0.06)]">
+      <div className="flex items-center gap-3 mb-5">
+        <Loader2 className="w-5 h-5 text-[var(--accent)] animate-spin" />
+        <h3 className="font-semibold text-[var(--accent)]">Scan bezig...</h3>
+      </div>
+      <div className="space-y-3">
+        {fases.map((fase, i) => (
+          <motion.div
+            key={i}
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.1, duration: 0.3 }}
+            className="flex items-center gap-3"
+          >
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 transition-colors ${
+              fase.done
+                ? "bg-emerald-400/20 text-emerald-400"
+                : fase.active
+                  ? "bg-[var(--accent)]/20 text-[var(--accent)]"
+                  : "bg-[var(--border)]/50 text-[var(--text-tertiary)]"
+            }`}>
+              {fase.done ? (
+                <CheckCircle className="w-4 h-4" />
+              ) : fase.active ? (
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                >
+                  <Loader2 className="w-3.5 h-3.5" />
+                </motion.div>
+              ) : (
+                <span className="text-[10px] font-bold">{i + 1}</span>
+              )}
+            </div>
+            <div>
+              <p className={`text-sm font-medium ${
+                fase.done ? "text-emerald-400" : fase.active ? "text-[var(--text-primary)]" : "text-[var(--text-tertiary)]"
+              }`}>
+                {fase.label}
+              </p>
+              <p className="text-xs text-[var(--text-tertiary)]">{fase.sublabel}</p>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      <p className="text-xs text-[var(--text-tertiary)] mt-4">Pagina herlaadt automatisch zodra het rapport klaar is...</p>
     </div>
   );
 }
@@ -156,11 +231,12 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
   const scanId = parseInt(id, 10);
   const { data, isLoading } = useSalesEngineScanDetail(isNaN(scanId) ? null : scanId);
   const [scrapeOpen, setScrapeOpen] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
   const { addToast } = useToast();
   const router = useRouter();
   const generateOutreach = useGenerateOutreach();
 
-  const STANDAARD_UURTARIEF = 95; // Autronis uurtarief
+  const STANDAARD_UURTARIEF = 95;
 
   if (isLoading) {
     return (
@@ -190,6 +266,34 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
   const aiAnalyse = scan.aiAnalyse as AIAnalyse | null;
   const scrapeResultaat = scan.scrapeResultaat as ScrapeResultaat | null;
 
+  async function handleHerstart() {
+    if (!lead || !scan.websiteUrl) return;
+    setIsRestarting(true);
+    try {
+      const res = await fetch("/api/sales-engine/handmatig", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bedrijfsnaam: lead.bedrijfsnaam,
+          websiteUrl: scan.websiteUrl,
+          ...(lead.contactpersoon ? { contactpersoon: lead.contactpersoon } : {}),
+          ...(lead.email ? { email: lead.email } : {}),
+        }),
+      });
+      const resData = await res.json();
+      if (!res.ok) {
+        addToast(resData.fout || "Herstart mislukt", "fout");
+        setIsRestarting(false);
+        return;
+      }
+      addToast("Nieuwe scan gestart", "succes");
+      router.push(`/sales-engine/${resData.scanId}`);
+    } catch {
+      addToast("Er ging iets mis", "fout");
+      setIsRestarting(false);
+    }
+  }
+
   // ROI berekening
   const kansenMetUren = kansen.map((k) => ({
     ...k,
@@ -202,7 +306,6 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
     ? Math.ceil((geschatteInvestering / jaarlijkseBesparing) * 12)
     : 0;
 
-  // Readiness score: prefer AI-provided score, fallback to local calculation
   const aiReadinessScore = scan.automationReadinessScore;
   const readiness = berekenReadinessScore(kansen, scrapeResultaat);
   const readinessScore = aiReadinessScore ?? readiness.score;
@@ -223,7 +326,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
             <span
               className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-sm font-medium ${status.kleur}`}
             >
-              <StatusIcon className="w-4 h-4" />
+              <StatusIcon className={`w-4 h-4 ${scan.status === "pending" ? "animate-spin" : ""}`} />
               {status.label}
             </span>
           </div>
@@ -245,6 +348,20 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
             )}
           </div>
         </div>
+
+        {/* Live Progress Indicator (pending) */}
+        <AnimatePresence>
+          {scan.status === "pending" && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12, scale: 0.97 }}
+              transition={{ duration: 0.35 }}
+            >
+              <ScanProgressIndicator hasScrapeData={scrapeResultaat !== null} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Action Buttons */}
         {scan.status === "completed" && (
@@ -269,9 +386,9 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
             <button
               onClick={() => {
                 generateOutreach.mutate(scanId, {
-                  onSuccess: (data) => {
+                  onSuccess: (outreachData) => {
                     addToast("Outreach sequentie aangemaakt", "succes");
-                    router.push(`/outreach/${data.sequentieId}`);
+                    router.push(`/outreach/${outreachData.sequentieId}`);
                   },
                   onError: (err) => addToast(err.message, "fout"),
                 });
@@ -289,22 +406,42 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
-        {/* Failed State */}
-        {scan.status === "failed" && scan.foutmelding && (
+        {/* Failed State with restart */}
+        {scan.status === "failed" && (
           <div className="bg-red-400/10 border border-red-400/20 rounded-xl p-5">
-            <div className="flex items-center gap-2 text-red-400 mb-2">
-              <AlertCircle className="w-5 h-5" />
-              <span className="font-semibold">Scan mislukt</span>
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 text-red-400 mb-2">
+                  <AlertCircle className="w-5 h-5" />
+                  <span className="font-semibold">Scan mislukt</span>
+                </div>
+                {scan.foutmelding && <p className="text-sm text-red-300">{scan.foutmelding}</p>}
+              </div>
+              <button
+                onClick={handleHerstart}
+                disabled={isRestarting}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-400/15 text-red-400 hover:bg-red-400/25 font-medium text-sm transition-colors disabled:opacity-50 flex-shrink-0"
+              >
+                {isRestarting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                {isRestarting ? "Starten..." : "Herstart scan"}
+              </button>
             </div>
-            <p className="text-sm text-red-300">{scan.foutmelding}</p>
           </div>
         )}
 
-        {/* ROI Berekening + Automation Readiness (side by side) */}
+        {/* ROI + Readiness */}
         {scan.status === "completed" && kansen.length > 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* ROI Berekening */}
-            <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+            >
               <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
                 <Calculator className="w-5 h-5 text-[var(--accent)]" />
                 ROI Berekening
@@ -346,10 +483,14 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
-            {/* Automation Readiness Score */}
-            <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.08 }}
+              className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+            >
               <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
                 <Gauge className="w-5 h-5 text-[var(--accent)]" />
                 Automation Readiness
@@ -369,7 +510,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 ))}
               </div>
-            </div>
+            </motion.div>
           </div>
         )}
 
@@ -421,9 +562,14 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
-        {/* Bedrijfsprofiel (from AI) */}
+        {/* Bedrijfsprofiel */}
         {aiAnalyse && (
-          <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35 }}
+            className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+          >
             <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
               <Building2 className="w-5 h-5 text-[var(--accent)]" />
               Bedrijfsprofiel
@@ -442,7 +588,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                 <p className="text-sm">{aiAnalyse.bedrijfsProfiel?.doelgroep}</p>
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Automatiseringskansen */}
@@ -453,16 +599,19 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
               Automatiseringskansen
             </h2>
             <div className="space-y-3">
-              {kansen.map((kans) => {
+              {kansen.map((kans, i) => {
                 const categorie = categorieConfig[kans.categorie];
                 const impact = impactConfig[kans.impact];
                 const urenPerWeek = parseUrenPerWeek(kans.geschatteTijdsbesparing);
                 const jaarBesparing = urenPerWeek * 52 * STANDAARD_UURTARIEF;
 
                 return (
-                  <div
+                  <motion.div
                     key={kans.id}
-                    className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07, duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+                    className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)] hover:border-[var(--accent)]/20 transition-colors"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -478,7 +627,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                           </span>
                         )}
                         {impact && (
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${impact.kleur}`}>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${impact.kleur} ${impact.glow}`}>
                             {impact.label}
                           </span>
                         )}
@@ -509,7 +658,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                         </span>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -518,14 +667,27 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Samenvatting */}
         {scan.samenvatting && (
-          <div className="bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-xl p-5">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.1 }}
+            className="bg-[var(--accent)]/10 border border-[var(--accent)]/20 rounded-xl p-5"
+          >
             <h2 className="font-semibold text-lg mb-2 text-[var(--accent)]">Samenvatting</h2>
             <p className="text-sm text-[var(--text-secondary)]">{scan.samenvatting}</p>
+          </motion.div>
+        )}
+
+        {/* Pending empty state */}
+        {scan.status === "pending" && kansen.length === 0 && (
+          <div className="bg-[var(--card)] rounded-xl p-10 text-center border border-[var(--border)]">
+            <Rocket className="w-10 h-10 text-[var(--text-tertiary)] mx-auto mb-3 opacity-50" />
+            <p className="text-[var(--text-secondary)] text-sm">Kansen worden geïdentificeerd...</p>
           </div>
         )}
 
         {/* Scrape Data (collapsible) */}
-        {scrapeResultaat && (
+        {scrapeResultaat && scan.status !== "pending" && (
           <div className="bg-[var(--card)] rounded-xl border border-[var(--border)]">
             <button
               onClick={() => setScrapeOpen(!scrapeOpen)}

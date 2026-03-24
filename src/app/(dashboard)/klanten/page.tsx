@@ -379,7 +379,7 @@ export default function KlantenPage() {
                   <Users className="w-4 h-4 text-autronis-accent" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{kpis.actieveKlanten}</p>
+              <AnimatedNumber value={kpis.actieveKlanten} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
               <p className="text-xs text-autronis-text-secondary mt-1">Actieve klanten</p>
             </div>
 
@@ -389,7 +389,7 @@ export default function KlantenPage() {
                   <TrendingUp className="w-4 h-4 text-green-400" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-green-400 tabular-nums">{formatBedrag(kpis.totaleOmzet)}</p>
+              <AnimatedNumber value={kpis.totaleOmzet} format={(n) => formatBedrag(Math.round(n))} className="text-2xl font-bold text-green-400 tabular-nums" />
               <p className="text-xs text-autronis-text-secondary mt-1">Totale omzet</p>
             </div>
 
@@ -399,9 +399,11 @@ export default function KlantenPage() {
                   <FileText className="w-4 h-4 text-amber-400" />
                 </div>
               </div>
-              <p className={cn("text-2xl font-bold tabular-nums", kpis.totaalOpenstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}>
-                {formatBedrag(kpis.totaalOpenstaand)}
-              </p>
+              <AnimatedNumber
+                value={kpis.totaalOpenstaand}
+                format={(n) => formatBedrag(Math.round(n))}
+                className={cn("text-2xl font-bold tabular-nums", kpis.totaalOpenstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}
+              />
               <p className="text-xs text-autronis-text-secondary mt-1">Openstaand</p>
             </div>
 
@@ -412,25 +414,36 @@ export default function KlantenPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => toggleGezondheid("groen")}
+                  className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "groen" ? "bg-green-500/20" : "hover:bg-autronis-bg/50")}
+                >
                   <div className="w-2 h-2 rounded-full bg-green-400" />
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{kpis.gezondheid.groen}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
+                </button>
+                <button
+                  onClick={() => toggleGezondheid("oranje")}
+                  className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "oranje" ? "bg-amber-500/20" : "hover:bg-autronis-bg/50")}
+                >
                   <div className="w-2 h-2 rounded-full bg-amber-400" />
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{kpis.gezondheid.oranje}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
+                </button>
+                <button
+                  onClick={() => toggleGezondheid("rood")}
+                  className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "rood" ? "bg-red-500/20" : "hover:bg-autronis-bg/50")}
+                >
                   <div className="w-2 h-2 rounded-full bg-red-400" />
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{kpis.gezondheid.rood}</span>
-                </div>
+                </button>
               </div>
-              <p className="text-xs text-autronis-text-secondary mt-1">Klantgezondheid</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1">
+                Klantgezondheid {filterGezondheid !== "alles" && <span className="text-autronis-accent">· filter actief</span>}
+              </p>
             </div>
           </div>
         )}
 
-        {/* Search & Toggle bar */}
+        {/* Search bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-autronis-text-secondary/50" />
@@ -442,20 +455,19 @@ export default function KlantenPage() {
               className="w-full bg-autronis-card border border-autronis-border text-autronis-text-primary rounded-xl pl-11 pr-4 py-3 text-sm placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent/40 transition-colors"
             />
           </div>
-
-          <button
-            onClick={() => setToonInactief(!toonInactief)}
-            className={cn(
-              "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border transition-colors",
-              toonInactief
-                ? "bg-autronis-accent/10 border-autronis-accent/30 text-autronis-accent"
-                : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
-            )}
-          >
-            {toonInactief ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            {toonInactief ? "Inactief zichtbaar" : "Toon inactief"}
-          </button>
-
+          <div className="relative">
+            <ArrowUpDown className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50 pointer-events-none" />
+            <select
+              value={sorteer}
+              onChange={(e) => setSorteer(e.target.value as SorteerOptie)}
+              className="bg-autronis-card border border-autronis-border rounded-xl pl-9 pr-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent/40 transition-colors appearance-none cursor-pointer"
+            >
+              <option value="gezondheid">Gezondheid</option>
+              <option value="omzet">Omzet</option>
+              <option value="contact">Laatste contact</option>
+              <option value="naam">Naam</option>
+            </select>
+          </div>
           <button
             onClick={() => setToonDemo(!toonDemo)}
             className={cn(
@@ -466,8 +478,51 @@ export default function KlantenPage() {
             )}
           >
             <FlaskConical className="w-4 h-4" />
-            {toonDemo ? "Demo zichtbaar" : "Toon demo klanten"}
+            Demo
           </button>
+        </div>
+
+        {/* Status filter chips */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {(["alles", "actief", "stil", "aandacht_nodig", "inactief"] as StatusFilter[]).map((status) => {
+            const labels: Record<StatusFilter, string> = {
+              alles: "Alle",
+              actief: "Actief",
+              stil: "Stil",
+              aandacht_nodig: "Aandacht nodig",
+              inactief: "Inactief",
+            };
+            const counts: Record<StatusFilter, number> = {
+              alles: klanten.length,
+              actief: klanten.filter((k) => k.isActief && k.relatieStatus === "actief").length,
+              stil: klanten.filter((k) => k.isActief && k.relatieStatus === "stil").length,
+              aandacht_nodig: klanten.filter((k) => k.isActief && k.relatieStatus === "aandacht_nodig").length,
+              inactief: klanten.filter((k) => !k.isActief).length,
+            };
+            const dotColors: Record<StatusFilter, string> = {
+              alles: "",
+              actief: "bg-green-400",
+              stil: "bg-amber-400",
+              aandacht_nodig: "bg-red-400 animate-pulse",
+              inactief: "bg-slate-400",
+            };
+            return (
+              <button
+                key={status}
+                onClick={() => setFilterStatus(status)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                  filterStatus === status
+                    ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {status !== "alles" && <span className={cn("w-1.5 h-1.5 rounded-full", dotColors[status])} />}
+                {labels[status]}
+                <span className="opacity-60">{counts[status]}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Card grid — responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
@@ -493,15 +548,25 @@ export default function KlantenPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+            variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
+            initial="hidden"
+            animate="visible"
+          >
             {gefilterdeKlanten.map((klant) => (
-              <KlantCard
+              <motion.div
                 key={klant.id}
-                klant={klant}
-                onClick={() => router.push(`/klanten/${klant.id}`)}
-              />
+                variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } }}
+              >
+                <KlantCard
+                  klant={klant}
+                  onClick={() => router.push(`/klanten/${klant.id}`)}
+                  zoek={zoekterm}
+                />
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {/* Klant Modal */}

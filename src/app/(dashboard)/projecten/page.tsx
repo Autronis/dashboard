@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderKanban,
   Search,
@@ -22,11 +23,16 @@ import {
   BarChart3,
   AlertTriangle,
   AlertCircle,
+  List,
+  LayoutGrid,
+  TrendingDown,
+  Minus,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useProjecten } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
+import { Confetti } from "@/components/ui/confetti";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
@@ -113,59 +119,174 @@ function HealthBadge({ project }: { project: Project }) {
   const health = getProjectHealth(project);
   const cfg = healthConfig[health.status];
   const Icon = cfg.icon;
+  const pulseClass = health.status === "risico" ? "health-pulse-risico" : health.status === "achter" ? "health-pulse-achter" : "";
 
   return (
-    <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", cfg.bg, cfg.color)} title={health.reden}>
+    <div className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium", cfg.bg, cfg.color, pulseClass)} title={health.reden}>
       <Icon className="w-2.5 h-2.5" />
       {cfg.label}
     </div>
   );
 }
 
+function getProgressGradient(pct: number): string {
+  if (pct >= 100) return "#22c55e";
+  if (pct >= 75) return `linear-gradient(90deg, #17B8A5, #22c55e)`;
+  if (pct >= 40) return `linear-gradient(90deg, #3b82f6, #17B8A5)`;
+  return `linear-gradient(90deg, #3b82f6 0%, #17B8A5 ${pct * 1.5}%)`;
+}
+
 function ProgressBar({ percentage }: { percentage: number }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
   return (
     <div className="w-full h-1.5 bg-autronis-border rounded-full overflow-hidden">
       <div
-        className="h-full rounded-full transition-all duration-500"
+        className="h-full rounded-full transition-all duration-700 ease-out"
         style={{
-          width: `${Math.min(100, percentage)}%`,
-          background: percentage >= 100 ? "#22c55e" : percentage >= 50 ? "#17B8A5" : "#3b82f6",
+          width: mounted ? `${Math.min(100, percentage)}%` : "0%",
+          background: getProgressGradient(percentage),
         }}
       />
     </div>
   );
 }
 
-// Mini sparkline as SVG
+// Mini sparkline as SVG with self-draw + per-day tooltip
 function Sparkline({ data, className }: { data: number[]; className?: string }) {
   const max = Math.max(...data, 1);
-  const width = 60;
-  const height = 20;
+  const width = 64;
+  const height = 22;
   const padding = 2;
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
 
-  const points = data.map((v, i) => {
+  const pts = data.map((v, i) => {
     const x = padding + (i / (data.length - 1)) * (width - padding * 2);
     const y = height - padding - (v / max) * (height - padding * 2);
-    return `${x},${y}`;
-  }).join(" ");
+    return { x, y, v };
+  });
 
+  const pointsStr = pts.map((p) => `${p.x},${p.y}`).join(" ");
   const hasActivity = data.some((v) => v > 0);
 
+  // Convert polyline to path for pathLength animation
+  const d = pts.length > 0
+    ? "M " + pts.map((p) => `${p.x} ${p.y}`).join(" L ")
+    : "";
+
+  const dayLabels = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+
   return (
-    <svg width={width} height={height} className={className}>
-      {hasActivity ? (
-        <polyline
-          points={points}
-          fill="none"
-          stroke="#17B8A5"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ) : (
-        <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#2A3538" strokeWidth="1" strokeDasharray="3,3" />
-      )}
-    </svg>
+    <div className={cn("relative", className)}>
+      <svg width={width} height={height} className="overflow-visible">
+        {hasActivity ? (
+          <motion.path
+            d={d}
+            fill="none"
+            stroke="#17B8A5"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0, opacity: 0 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
+        ) : (
+          <line x1={padding} y1={height / 2} x2={width - padding} y2={height / 2} stroke="#2A3538" strokeWidth="1" strokeDasharray="3,3" />
+        )}
+        {/* Hover dots */}
+        {pts.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={hoveredDay === i ? 3 : 0}
+            fill="#17B8A5"
+            className="transition-all duration-100"
+          />
+        ))}
+        {/* Invisible hit areas */}
+        {pts.map((p, i) => (
+          <rect
+            key={`hit-${i}`}
+            x={p.x - 5}
+            y={0}
+            width={10}
+            height={height}
+            fill="transparent"
+            onMouseEnter={() => setHoveredDay(i)}
+            onMouseLeave={() => setHoveredDay(null)}
+          />
+        ))}
+      </svg>
+      {/* Tooltip */}
+      <AnimatePresence>
+        {hoveredDay !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 4, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 4, scale: 0.9 }}
+            transition={{ duration: 0.1 }}
+            className="absolute bottom-full mb-1.5 pointer-events-none z-20 whitespace-nowrap"
+            style={{ left: pts[hoveredDay]?.x ?? 0, transform: "translateX(-50%)" }}
+          >
+            <div className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1 text-[10px] text-autronis-text-primary shadow-lg">
+              <span className="text-autronis-text-secondary mr-1">{dayLabels[hoveredDay]}</span>
+              <span className="font-semibold text-autronis-accent">{data[hoveredDay]}</span>
+              <span className="text-autronis-text-secondary ml-0.5">taken</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Velocity: vergelijk laatste 3 dagen met de 3 daarvoor
+function getVelocity(sparkline: number[]): { label: string; icon: typeof TrendingUp; color: string } {
+  if (sparkline.length < 6) return { label: "geen data", icon: Minus, color: "text-autronis-text-secondary/50" };
+  const recent = sparkline.slice(4).reduce((a, b) => a + b, 0);
+  const previous = sparkline.slice(1, 4).reduce((a, b) => a + b, 0);
+  if (recent === 0 && previous === 0) return { label: "geen activiteit", icon: Minus, color: "text-autronis-text-secondary/50" };
+  if (recent > previous) return { label: "sneller dan vorige periode", icon: TrendingUp, color: "text-green-400" };
+  if (recent < previous) return { label: "minder actief", icon: TrendingDown, color: "text-amber-400" };
+  return { label: "stabiel tempo", icon: Minus, color: "text-autronis-text-secondary" };
+}
+
+// Geschatte einddatum op basis van velocity
+function getEinddatumSchatting(sparkline: number[], openTaken: number): string | null {
+  const tasksPerDay = sparkline.reduce((a, b) => a + b, 0) / 7;
+  if (tasksPerDay < 0.1 || openTaken === 0) return null;
+  const dagen = Math.round(openTaken / tasksPerDay);
+  if (dagen > 180) return null;
+  if (dagen <= 1) return "morgen klaar";
+  if (dagen < 7) return `~${dagen} dagen`;
+  if (dagen < 30) return `~${Math.round(dagen / 7)} weken`;
+  return `~${Math.round(dagen / 30)} maanden`;
+}
+
+// Activity indicator dot
+function getActivityDot(laatsteActiviteit: string | null): { color: string; pulse: boolean; label: string } {
+  if (!laatsteActiviteit) return { color: "bg-slate-500/40", pulse: false, label: "Geen activiteit" };
+  const d = new Date(laatsteActiviteit.includes("T") ? laatsteActiviteit : laatsteActiviteit.replace(" ", "T") + "Z");
+  const dagen = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (dagen <= 1) return { color: "bg-green-400", pulse: true, label: "Vandaag actief" };
+  if (dagen <= 3) return { color: "bg-green-400/70", pulse: false, label: `${dagen}d geleden` };
+  if (dagen <= 7) return { color: "bg-amber-400", pulse: false, label: `${dagen}d geleden` };
+  return { color: "bg-red-400", pulse: false, label: `${dagen}d geleden` };
+}
+
+// Highlight matched text in a string
+function HighlightText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-autronis-accent/30 text-autronis-accent rounded-sm px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
   );
 }
 

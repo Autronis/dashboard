@@ -114,6 +114,7 @@ const nextActionIcons: Record<string, typeof Receipt> = {
 };
 
 type Tab = "overzicht" | "tijdlijn" | "financieel" | "documenten";
+type TijdlijnFilter = "alles" | "factuur" | "meeting" | "notitie" | "tijdregistratie" | "offerte";
 
 function PortalLinkButton({ klantId }: { klantId: number }) {
   const { addToast } = useToast();
@@ -199,6 +200,7 @@ export default function KlantDetailPage() {
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overzicht");
+  const [tijdlijnFilter, setTijdlijnFilter] = useState<TijdlijnFilter>("alles");
 
   const archiveMutation = useMutation({
     mutationFn: async () => {
@@ -450,9 +452,16 @@ export default function KlantDetailPage() {
             </div>
             <div>
               <p className="text-xs text-autronis-text-secondary/70">Open taken</p>
-              <p className="text-sm font-medium text-autronis-text-primary mt-0.5">
-                {kpis.openTaken > 0 ? `${kpis.openTaken} taken` : "Geen open taken"}
-              </p>
+              {kpis.openTaken > 0 ? (
+                <Link
+                  href={`/taken?klant=${id}`}
+                  className="text-sm font-medium text-autronis-accent hover:underline mt-0.5 block"
+                >
+                  {kpis.openTaken} taken →
+                </Link>
+              ) : (
+                <p className="text-sm font-medium text-autronis-text-primary mt-0.5">Geen open taken</p>
+              )}
             </div>
             <div>
               <p className="text-xs text-autronis-text-secondary/70">Lifetime value</p>
@@ -475,7 +484,18 @@ export default function KlantDetailPage() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {nextActions.slice(0, 4).map((action: NextAction, i: number) => {
+              {[...nextActions]
+                .sort((a, b) => {
+                  const urgOrder = { hoog: 0, normaal: 1, laag: 2 };
+                  const typeOrder = { factuur: 0, follow_up: 1, offerte: 2, meeting: 3, taak: 4 };
+                  const uA = urgOrder[a.urgentie as keyof typeof urgOrder] ?? 1;
+                  const uB = urgOrder[b.urgentie as keyof typeof urgOrder] ?? 1;
+                  if (uA !== uB) return uA - uB;
+                  const tA = typeOrder[a.type as keyof typeof typeOrder] ?? 5;
+                  const tB = typeOrder[b.type as keyof typeof typeOrder] ?? 5;
+                  return tA - tB;
+                })
+                .slice(0, 4).map((action: NextAction, i: number) => {
                 const ActionIcon = nextActionIcons[action.type] || ArrowRight;
                 return (
                   <div

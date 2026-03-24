@@ -291,6 +291,31 @@ body {
   animation: glow-pulse-red 2s ease-in-out infinite;
 }
 
+/* Health badge pulses (for project cards) */
+@keyframes health-pulse-amber {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0); }
+  50%       { box-shadow: 0 0 0 3px rgba(245,158,11,0.2); }
+}
+@keyframes health-pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+  50%       { box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+}
+.health-pulse-risico {
+  animation: health-pulse-amber 2s ease-in-out infinite;
+}
+.health-pulse-achter {
+  animation: health-pulse-red 1.5s ease-in-out infinite;
+}
+
+/* Activity dot pulse */
+@keyframes dot-pulse-green {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.5; }
+}
+.activity-dot-active {
+  animation: dot-pulse-green 2s ease-in-out infinite;
+}
+
 /* Yellow glow for normaal prio */
 @keyframes glow-pulse-yellow {
   0%, 100% { box-shadow: inset 3px 0 0 rgba(234,179,8,0.35); }

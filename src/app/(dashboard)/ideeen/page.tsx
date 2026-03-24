@@ -138,6 +138,16 @@ export default function IdeeenPage() {
   const [activeTab, setActiveTab] = useState<"alle" | "ai" | "inzichten">("alle");
   const [inzichtInput, setInzichtInput] = useState("");
   const inzichtInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const prefill = localStorage.getItem("autronis-kans-prefill");
+    if (prefill) {
+      setInzichtInput(prefill);
+      setActiveTab("inzichten");
+      localStorage.removeItem("autronis-kans-prefill");
+      setTimeout(() => inzichtInputRef.current?.focus(), 150);
+    }
+  }, []);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategorie, setFilterCategorie] = useState("");
   const [filterDoelgroep, setFilterDoelgroep] = useState("");
@@ -678,7 +688,7 @@ export default function IdeeenPage() {
                     onClick={() => setFilterStatus(filterStatus === s.key ? "" : s.key)}
                   >
                     <p className={cn("text-2xl font-bold tabular-nums", textColors[s.key as keyof typeof textColors])}>
-                      <AnimatedNumber value={count} duration={0.6} />
+                      <AnimatedNumber value={count} />
                     </p>
                     <p className="flex items-center justify-center gap-1 text-[10px] text-autronis-text-secondary uppercase tracking-wide mt-0.5">
                       <Icon className={cn("w-3 h-3", textColors[s.key as keyof typeof textColors])} />{s.label}
@@ -842,11 +852,33 @@ export default function IdeeenPage() {
           </div>
         </div>
 
-        {/* Cards grid */}
+        {/* Cards */}
         {alleIdeeen.length === 0 ? (
           <div className="text-center py-16">
             <Lightbulb className="w-12 h-12 text-autronis-text-secondary/30 mx-auto mb-4" />
             <p className="text-autronis-text-secondary">Geen ideeën gevonden</p>
+          </div>
+        ) : viewMode === "lijst" ? (
+          <div className="space-y-2">
+            {alleIdeeen.map((idee) => {
+              const score = calcPriorityScore(idee);
+              return (
+                <div key={idee.id} onClick={() => setDetailIdee(idee)} className="flex items-center gap-3 bg-autronis-card border border-autronis-border rounded-xl px-4 py-3 hover:border-autronis-accent/50 transition-all group cursor-pointer">
+                  {score > 0 && <span className={cn("text-sm font-bold px-2.5 py-1 rounded-xl tabular-nums flex-shrink-0", scoreKleur(score))}>{score}</span>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      {idee.nummer != null && <span className="text-xs text-autronis-text-secondary/60 font-mono flex-shrink-0">#{idee.nummer}</span>}
+                      <span className="text-sm font-semibold text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate">{idee.naam}</span>
+                    </div>
+                    {idee.omschrijving && <p className="text-xs text-autronis-text-secondary truncate mt-0.5">{idee.omschrijving}</p>}
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {idee.categorie && <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full hidden sm:block", categorieBadgeKleuren[idee.categorie] || "bg-gray-500/15 text-gray-400")}>{categorieLabel(idee.categorie)}</span>}
+                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", statusBadgeKleuren[idee.status] || "bg-gray-500/15 text-gray-400")}>{statusLabel(idee.status)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -856,12 +888,12 @@ export default function IdeeenPage() {
               return (
                 <div key={idee.id} className="bg-autronis-card border border-autronis-border rounded-2xl p-3 sm:p-6 hover:border-autronis-accent/50 transition-all card-glow group">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <button onClick={() => setDetailIdee(idee)} className="flex items-center gap-2 min-w-0 text-left">
+                    <button onClick={() => setDetailIdee(idee)} className="flex items-center gap-2 min-w-0 text-left flex-1">
                       {idee.nummer != null && <span className="text-xs text-autronis-text-secondary/60 font-mono flex-shrink-0">#{idee.nummer}</span>}
                       <h3 className="text-base font-semibold text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate">{idee.naam}</h3>
                     </button>
                     <div className="flex items-center gap-2 flex-shrink-0">
-                      {score > 0 && <span className={cn("text-sm font-bold px-2 py-0.5 rounded-lg tabular-nums", scoreKleur(score))}>{score}</span>}
+                      {score > 0 && <span className={cn("text-lg font-bold px-3 py-1 rounded-xl tabular-nums", scoreKleur(score))}>{score}</span>}
                       <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", statusBadgeKleuren[idee.status] || "bg-gray-500/15 text-gray-400")}>{statusLabel(idee.status)}</span>
                     </div>
                   </div>
@@ -891,6 +923,8 @@ export default function IdeeenPage() {
                         </div>
                       ))}
                       <div className="flex items-center gap-2 pt-1">
+                        <span className={cn("text-sm font-bold px-2.5 py-1 rounded-xl tabular-nums", scoreKleur(liveScore))}>{liveScore}</span>
+                        <div className="flex-1" />
                         <button onClick={handleSaveScore} className="text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium">Opslaan</button>
                         <button onClick={() => setScoringIdee(null)} className="text-xs text-autronis-text-secondary">Annuleren</button>
                       </div>

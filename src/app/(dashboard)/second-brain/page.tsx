@@ -23,6 +23,7 @@ import {
   Camera,
   Clipboard,
   Loader2,
+  Trash2,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -234,37 +235,45 @@ export default function SecondBrainPage() {
   }, [nieuwInput, verwerkenMutation, createMutation, addToast, addOptimisticItem]);
 
   const handleFileUpload = useCallback(
-    (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
+    (files: File[]) => {
+      if (!files.length) return;
+      const initial: Record<string, "pending" | "done" | "fout"> = {};
+      files.forEach((f) => { initial[f.name] = "pending"; });
+      setBatchProgress(initial);
 
-      if (file.type.startsWith("image/")) {
-        formData.append("type", "afbeelding");
-      } else if (file.type === "application/pdf") {
-        formData.append("type", "pdf");
-      } else {
-        formData.append("type", "tekst");
-      }
-
-      verwerkenMutation.mutate(formData, {
-        onSuccess: () => {
-          addToast("Bestand wordt verwerkt...", "succes");
-          setNeedsRefetch(true);
-        },
-        onError: () => addToast("Kon bestand niet uploaden", "fout"),
+      files.forEach((file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        if (file.type.startsWith("image/")) {
+          formData.append("type", "afbeelding");
+        } else if (file.type === "application/pdf") {
+          formData.append("type", "pdf");
+        } else {
+          formData.append("type", "tekst");
+        }
+        verwerkenMutation.mutate(formData, {
+          onSuccess: () => {
+            setBatchProgress((prev) => ({ ...prev, [file.name]: "done" }));
+            setNeedsRefetch(true);
+          },
+          onError: () => {
+            setBatchProgress((prev) => ({ ...prev, [file.name]: "fout" }));
+            addToast(`Uploaden mislukt: ${file.name}`, "fout");
+          },
+        });
       });
+
+      setTimeout(() => setBatchProgress({}), 4000);
     },
     [verwerkenMutation, addToast]
   );
 
   const handleFileInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      handleFileUpload(file);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      const files = Array.from(e.target.files ?? []);
+      if (!files.length) return;
+      handleFileUpload(files);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     },
     [handleFileUpload]
   );
@@ -283,9 +292,9 @@ export default function SecondBrainPage() {
     (e: DragEvent<HTMLDivElement>) => {
       e.preventDefault();
       setIsDragging(false);
-      const file = e.dataTransfer.files[0];
-      if (file) {
-        handleFileUpload(file);
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length > 0) {
+        handleFileUpload(files);
       }
     },
     [handleFileUpload]
@@ -463,42 +472,70 @@ export default function SecondBrainPage() {
 
         {/* Quick-add bar — larger & more prominent */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-3">
+          {/* Clipboard URL banner */}
+          <AnimatePresence>
+            {clipboardUrl && !nieuwInput.trim() && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.2 }}
+                className="flex items-center gap-3 bg-blue-500/8 border border-blue-500/20 rounded-xl px-3 py-2"
+              >
+                <Clipboard className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="text-sm text-blue-300 truncate flex-1">
+                  URL gedetecteerd: <span className="opacity-60">{extractDomain(clipboardUrl)}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setNieuwInput(clipboardUrl); setClipboardUrl(null); }}
+                  className="text-xs font-medium text-blue-400 hover:text-blue-200 transition-colors shrink-0 underline underline-offset-2"
+                >
+                  Opslaan?
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClipboardUrl(null)}
+                  className="text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors shrink-0 ml-1"
+                >
+                  ×
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="flex items-start gap-3">
-            <textarea
-              className="flex-1 bg-transparent text-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/50 outline-none resize-none min-h-[52px]"
-              placeholder="Plak tekst, URL, of code snippet..."
-              rows={2}
-              value={nieuwInput}
-              onChange={(e) => setNieuwInput(e.target.value)}
-              onPaste={handlePaste}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-            />
+            <div className="flex-1 space-y-1.5">
+              <textarea
+                className="w-full bg-transparent text-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/50 outline-none resize-none min-h-[52px]"
+                placeholder="Plak tekst, URL, of code snippet..."
+                rows={2}
+                value={nieuwInput}
+                onChange={(e) => setNieuwInput(e.target.value)}
+                onPaste={handlePaste}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || !e.shiftKey)) {
+                    e.preventDefault();
+                    handleSubmit();
+                  }
+                }}
+              />
+              {nieuwInput.trim() && (
+                <p className="text-[11px] text-autronis-text-secondary/40">Ctrl+Enter of Enter om op te slaan · Shift+Enter voor nieuwe regel</p>
+              )}
+            </div>
             <div className="flex items-center gap-2 pt-1">
               {detectedType && (
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium",
-                    detectedType === "url"
-                      ? "bg-purple-400/15 text-purple-400"
-                      : "bg-yellow-400/15 text-yellow-400"
+                    "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border",
+                    typeConfig[detectedType].bg,
+                    typeConfig[detectedType].color,
+                    typeConfig[detectedType].border,
                   )}
                 >
-                  {detectedType === "url" ? (
-                    <>
-                      <Link2 className="w-3 h-3" />
-                      Opslaan als URL
-                    </>
-                  ) : (
-                    <>
-                      <Code className="w-3 h-3" />
-                      Opslaan als Code
-                    </>
-                  )}
+                  {(() => { const Icon = typeConfig[detectedType].icon; return <Icon className="w-3 h-3" />; })()}
+                  {typeConfig[detectedType].label}
                 </span>
               )}
               <button
@@ -520,6 +557,28 @@ export default function SecondBrainPage() {
             </div>
           </div>
 
+          {/* Batch progress indicator */}
+          {Object.keys(batchProgress).length > 0 && (
+            <div className="space-y-1.5">
+              {Object.entries(batchProgress).map(([name, status]) => (
+                <div key={name} className="flex items-center gap-2 text-xs">
+                  <div className={cn(
+                    "w-1.5 h-1.5 rounded-full shrink-0",
+                    status === "pending" ? "bg-autronis-accent animate-pulse" :
+                    status === "done" ? "bg-emerald-400" : "bg-red-400"
+                  )} />
+                  <span className="text-autronis-text-secondary truncate flex-1">{name}</span>
+                  <span className={cn(
+                    status === "pending" ? "text-autronis-text-secondary" :
+                    status === "done" ? "text-emerald-400" : "text-red-400"
+                  )}>
+                    {status === "pending" ? "Verwerken..." : status === "done" ? "Klaar" : "Mislukt"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Drag-drop file upload zone */}
           <div
             onDragOver={handleDragOver}
@@ -527,15 +586,15 @@ export default function SecondBrainPage() {
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              "border-2 border-dashed rounded-xl p-4 flex items-center justify-center gap-2 cursor-pointer transition-colors",
+              "border-2 border-dashed rounded-xl p-4 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200",
               isDragging
-                ? "border-autronis-accent bg-autronis-accent/5"
+                ? "border-emerald-400 bg-emerald-500/8 shadow-[0_0_20px_rgba(52,211,153,0.12)]"
                 : "border-autronis-border hover:border-autronis-text-secondary/40"
             )}
           >
-            <Upload className="w-4 h-4 text-autronis-text-secondary" />
-            <span className="text-sm text-autronis-text-secondary">
-              Sleep een afbeelding of PDF hierheen, of klik om te uploaden
+            <Upload className={cn("w-4 h-4 transition-colors", isDragging ? "text-emerald-400" : "text-autronis-text-secondary")} />
+            <span className={cn("text-sm transition-colors font-medium", isDragging ? "text-emerald-400" : "text-autronis-text-secondary font-normal")}>
+              {isDragging ? "Loslaten om op te slaan" : "Sleep bestanden hierheen, of klik om te uploaden"}
             </span>
           </div>
 
@@ -543,6 +602,7 @@ export default function SecondBrainPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*,.pdf"
+            multiple
             className="hidden"
             onChange={handleFileInputChange}
           />

@@ -30,6 +30,10 @@ import {
   Bot,
   PenLine,
   ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  List,
+  Archive,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -48,7 +52,8 @@ import {
   type Idee,
 } from "@/hooks/queries/use-ideeen";
 import { PageTransition } from "@/components/ui/page-transition";
-import { motion } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ============ CONSTANTS ============
 
@@ -157,6 +162,8 @@ export default function IdeeenPage() {
   const [notionUrl, setNotionUrl] = useState<string | null>(null);
   const [scoringIdee, setScoringIdee] = useState<number | null>(null);
   const [startModusOpen, setStartModusOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "lijst">("grid");
+  const [discardExpanded, setDiscardExpanded] = useState(false);
 
   // Form state
   const [formNaam, setFormNaam] = useState("");
@@ -203,6 +210,11 @@ export default function IdeeenPage() {
   const [scoreImpact, setScoreImpact] = useState(5);
   const [scoreEffort, setScoreEffort] = useState(5);
   const [scoreRevenue, setScoreRevenue] = useState(5);
+
+  const liveScore = useMemo(() => {
+    const effortInverted = 11 - Math.max(1, Math.min(10, scoreEffort));
+    return Math.round((scoreImpact + scoreRevenue + effortInverted) / 3 * 10) / 10;
+  }, [scoreImpact, scoreEffort, scoreRevenue]);
 
   // Data splits
   const backlogIdeeen = ideeen.filter((i) => (i.isAiSuggestie !== 1 || i.gepromoveerd === 1) && i.categorie !== "inzicht");
@@ -303,6 +315,13 @@ export default function IdeeenPage() {
     return { categorie: cats[0][0], count: cats[0][1], percentage: Math.round((cats[0][1] / totaal) * 100) };
   }, [categorieCount, totaal]);
 
+  // Proactive: ideas sitting in "Idee" for 7+ days without uitwerking
+  const proactiveCount = useMemo(() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    return backlogIdeeen.filter((i) => i.status === "idee" && new Date(i.aangemaaktOp) < cutoff && !i.uitwerking).length;
+  }, [backlogIdeeen]);
+
   // ============ HANDLERS ============
 
   function openNieuwForm() {
@@ -373,6 +392,11 @@ export default function IdeeenPage() {
 
   function handleStartProject() {
     if (!detailIdee) return;
+    setStartModusOpen(true);
+  }
+
+  function openStartProject(idee: Idee) {
+    setDetailIdee(idee);
     setStartModusOpen(true);
   }
 

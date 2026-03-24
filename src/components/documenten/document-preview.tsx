@@ -7,6 +7,35 @@ import { useImproveDocument } from "@/hooks/queries/use-documenten";
 import { IMPROVE_MODE_LABELS, type ImproveMode } from "@/lib/ai/documenten-types";
 import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Sparkles, Loader2, Check, RotateCcw, ChevronDown, FileText, Maximize2, Minimize2, Send, Bot } from "lucide-react";
 
+const CHAT_HISTORY_KEY = "autronis-doc-chat-history";
+
+function loadChatHistory(docId: string): Array<{ role: "user" | "ai"; text: string }> {
+  if (typeof window === "undefined") return [];
+  try {
+    const stored = localStorage.getItem(CHAT_HISTORY_KEY);
+    const all = stored ? JSON.parse(stored) : {};
+    return all[docId] ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function saveChatHistory(docId: string, messages: Array<{ role: "user" | "ai"; text: string }>) {
+  try {
+    const stored = localStorage.getItem(CHAT_HISTORY_KEY);
+    const all = stored ? JSON.parse(stored) : {};
+    // Keep last 20 messages per doc, max 50 docs
+    all[docId] = messages.slice(-20);
+    const keys = Object.keys(all);
+    if (keys.length > 50) {
+      delete all[keys[0]];
+    }
+    localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(all));
+  } catch {
+    // localStorage unavailable
+  }
+}
+
 interface DocumentPreviewProps {
   document: DocumentBase | null;
   open: boolean;
@@ -17,6 +46,7 @@ interface DocumentPreviewProps {
 
 export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onArchive }: DocumentPreviewProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [showImprove, setShowImprove] = useState(false);
   const [improveResult, setImproveResult] = useState<{ original: string; improved: string } | null>(null);
   const [contentHtml, setContentHtml] = useState<string | null>(null);
@@ -29,6 +59,18 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   const [activeJobId, setActiveJobId] = useState<number | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const improveDocument = useImproveDocument();
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiChatMessages]);
+
+  // Save chat history whenever messages change
+  useEffect(() => {
+    if (doc && aiChatMessages.length > 0) {
+      saveChatHistory(doc.notionId, aiChatMessages);
+    }
+  }, [doc, aiChatMessages]);
 
   // Send AI edit as background job
   const sendAiEdit = useCallback((input: string) => {
@@ -108,8 +150,22 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
     return () => globalThis.document.removeEventListener("keydown", handleEsc);
   }, [open, onClose]);
 
+  // Load content + chat history when document opens
   useEffect(() => {
-    if (!open || !doc) { setContentHtml(null); setShowContent(false); setFullscreen(false); setAiChatMessages([]); setAiChatInput(""); setActiveJobId(null); if (pollingRef.current) clearInterval(pollingRef.current); return; }
+    if (!open || !doc) {
+      setContentHtml(null);
+      setShowContent(false);
+      setFullscreen(false);
+      setAiChatMessages([]);
+      setAiChatInput("");
+      setActiveJobId(null);
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      return;
+    }
+    // Load chat history for this document
+    const history = loadChatHistory(doc.notionId);
+    setAiChatMessages(history);
+
     setContentLoading(true);
     fetch(`/api/documenten/${doc.notionId}/content`)
       .then((r) => r.json())
@@ -131,24 +187,28 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-40 bg-black/30"
+            transition={{ duration: 0.18 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px]"
             onClick={onClose}
           />
 
-          {/* Panel */}
+          {/* Panel — softer spring */}
           <motion.div
             ref={panelRef}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "tween", duration: 0.2, ease: "easeOut" }}
-            className={`fixed right-0 top-0 z-50 h-full bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto transition-all duration-300 ${fullscreen ? "w-full max-w-full" : "w-[400px] max-w-[90vw]"}`}
+            transition={{ type: "spring", stiffness: 320, damping: 32, mass: 0.9 }}
+            className={`fixed right-0 top-0 z-50 h-full bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto transition-[width] duration-300 ${fullscreen ? "w-full max-w-full" : "w-[420px] max-w-[92vw]"}`}
           >
+            {/* Colored type strip at top */}
+            <div className="h-0.5 w-full" style={{ backgroundColor: config.color }} />
+
             {/* Header */}
             <div className="sticky top-0 z-10 bg-autronis-card border-b border-autronis-border px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: config.color }} />
-                <span className={`text-xs font-medium ${config.textClass}`}>{config.label}</span>
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
+                <span className="text-xs font-semibold" style={{ color: config.color }}>{config.label}</span>
               </div>
               <div className="flex items-center gap-2">
                 {fullscreen && (
@@ -164,15 +224,17 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             </div>
 
             {/* Content */}
-            <div className={`py-5 space-y-6 ${fullscreen ? "px-8 max-w-4xl mx-auto" : "px-6"}`}>
+            <div className={`py-5 space-y-6 ${fullscreen ? "px-8 sm:px-12 max-w-3xl mx-auto" : "px-6"}`}>
               {/* Title */}
-              <h2 className="text-lg font-semibold text-autronis-text-primary">{doc.titel}</h2>
+              <h2 className={`font-semibold text-autronis-text-primary leading-snug ${fullscreen ? "text-2xl" : "text-lg"}`}>
+                {doc.titel}
+              </h2>
 
               {/* Summary */}
               {doc.samenvatting && (
                 <div>
                   <label className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wide">Samenvatting</label>
-                  <p className="mt-1 text-sm text-autronis-text-primary leading-relaxed">{doc.samenvatting}</p>
+                  <p className={`mt-1 text-autronis-text-primary leading-relaxed italic ${fullscreen ? "text-base" : "text-sm"}`}>{doc.samenvatting}</p>
                 </div>
               )}
 
@@ -231,7 +293,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 </button>
 
                 {(showContent || fullscreen) && (
-                  <div className={`mt-3 rounded-xl bg-autronis-bg border border-autronis-border p-4 overflow-y-auto ${fullscreen ? "max-h-none" : "max-h-[50vh]"}`}>
+                  <div className={`mt-3 rounded-xl bg-autronis-bg border border-autronis-border overflow-y-auto ${fullscreen ? "max-h-none p-6" : "max-h-[50vh] p-4"}`}>
                     {contentLoading ? (
                       <div className="flex items-center gap-2 text-xs text-autronis-text-secondary py-4 justify-center">
                         <Loader2 className="w-4 h-4 animate-spin" />
@@ -239,22 +301,26 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                       </div>
                     ) : contentHtml ? (
                       <div
-                        className="prose prose-sm max-w-none
-                          [&_h1]:text-base [&_h1]:font-bold [&_h1]:text-autronis-text-primary [&_h1]:mt-4 [&_h1]:mb-2
-                          [&_h2]:text-sm [&_h2]:font-bold [&_h2]:text-autronis-text-primary [&_h2]:mt-3 [&_h2]:mb-1.5
-                          [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-autronis-text-primary [&_h3]:mt-2.5 [&_h3]:mb-1
-                          [&_p]:text-xs [&_p]:text-autronis-text-secondary [&_p]:leading-relaxed [&_p]:mb-1.5
-                          [&_ul]:text-xs [&_ul]:text-autronis-text-secondary [&_ul]:pl-4 [&_ul]:list-disc [&_ul]:mb-2
-                          [&_ol]:text-xs [&_ol]:text-autronis-text-secondary [&_ol]:pl-4 [&_ol]:list-decimal [&_ol]:mb-2
-                          [&_li]:mb-0.5 [&_li]:leading-relaxed
-                          [&_pre]:bg-autronis-card [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:overflow-x-auto [&_pre]:mb-2
-                          [&_code]:text-autronis-accent [&_code]:text-xs
+                        className={`prose max-w-none
+                          [&_h1]:font-bold [&_h1]:text-autronis-text-primary [&_h1]:mt-4 [&_h1]:mb-2
+                          [&_h2]:font-bold [&_h2]:text-autronis-text-primary [&_h2]:mt-3 [&_h2]:mb-1.5
+                          [&_h3]:font-semibold [&_h3]:text-autronis-text-primary [&_h3]:mt-2.5 [&_h3]:mb-1
+                          [&_p]:text-autronis-text-secondary [&_p]:leading-relaxed [&_p]:mb-2
+                          [&_ul]:text-autronis-text-secondary [&_ul]:pl-4 [&_ul]:list-disc [&_ul]:mb-2
+                          [&_ol]:text-autronis-text-secondary [&_ol]:pl-4 [&_ol]:list-decimal [&_ol]:mb-2
+                          [&_li]:mb-1 [&_li]:leading-relaxed
+                          [&_pre]:bg-autronis-card [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:overflow-x-auto [&_pre]:mb-2
+                          [&_code]:text-autronis-accent
                           [&_blockquote]:border-l-2 [&_blockquote]:border-autronis-accent/30 [&_blockquote]:pl-3 [&_blockquote]:italic [&_blockquote]:text-autronis-text-secondary
                           [&_strong]:text-autronis-text-primary [&_strong]:font-semibold
                           [&_hr]:border-autronis-border [&_hr]:my-3
                           [&_a]:text-autronis-accent [&_a]:underline
                           [&_.todo-list]:list-none [&_.todo-list]:pl-0
-                          [&_.callout]:bg-autronis-accent/5 [&_.callout]:border-l-2 [&_.callout]:border-autronis-accent/30 [&_.callout]:pl-3 [&_.callout]:py-1 [&_.callout]:rounded [&_.callout]:text-xs [&_.callout]:mb-2"
+                          [&_.callout]:bg-autronis-accent/5 [&_.callout]:border-l-2 [&_.callout]:border-autronis-accent/30 [&_.callout]:pl-3 [&_.callout]:py-1 [&_.callout]:rounded [&_.callout]:mb-2
+                          ${fullscreen
+                            ? "[&_h1]:text-xl [&_h2]:text-lg [&_h3]:text-base [&_p]:text-base [&_ul]:text-base [&_ol]:text-base [&_li]:text-base [&_code]:text-sm [&_pre]:text-sm"
+                            : "[&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_p]:text-xs [&_ul]:text-xs [&_ol]:text-xs [&_li]:text-xs [&_code]:text-xs [&_pre]:text-xs"
+                          }`}
                         dangerouslySetInnerHTML={{ __html: contentHtml }}
                       />
                     ) : (
@@ -269,6 +335,18 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border-b border-autronis-border">
                   <Bot className="w-4 h-4 text-autronis-accent" />
                   <span className="text-xs font-semibold text-autronis-text-primary">AI Assistent</span>
+                  {aiChatMessages.length > 0 && (
+                    <button
+                      onClick={() => {
+                        setAiChatMessages([]);
+                        if (doc) saveChatHistory(doc.notionId, []);
+                      }}
+                      className="ml-auto text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary flex items-center gap-1 transition-colors"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Wissen
+                    </button>
+                  )}
                 </div>
 
                 {/* Shortcuts */}
@@ -280,12 +358,12 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                     { label: "Aanvullen", prompt: "Welke belangrijke onderdelen ontbreken nog in dit document?" },
                     { label: "Verduidelijken", prompt: "Welke delen zijn onduidelijk en hoe kan ik ze verbeteren?" },
                     { label: "Actiepunten", prompt: "Haal alle actiepunten en to-do items uit dit document" },
+                    { label: "LinkedIn post", prompt: "Maak een LinkedIn post op basis van dit document — professioneel, engaging, max 3 alinea's" },
+                    { label: "Taken aanmaken", prompt: "Zet alle actiepunten en taken uit dit document om in een genummerde to-do lijst" },
                   ].map((shortcut) => (
                     <button
                       key={shortcut.label}
-                      onClick={() => {
-                        setAiChatInput(shortcut.prompt);
-                      }}
+                      onClick={() => setAiChatInput(shortcut.prompt)}
                       disabled={aiChatLoading}
                       className="px-2.5 py-1 rounded-lg text-[11px] bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-colors disabled:opacity-50"
                     >
@@ -297,7 +375,13 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 {aiChatMessages.length > 0 && (
                   <div className="px-4 py-3 space-y-2.5 max-h-[300px] overflow-y-auto">
                     {aiChatMessages.map((msg, i) => (
-                      <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.18 }}
+                        className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                      >
                         <div className={`max-w-[90%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
                           msg.role === "user"
                             ? "bg-autronis-accent text-white rounded-br-sm"
@@ -306,7 +390,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                           {msg.role === "ai" && <Bot className="w-3 h-3 text-autronis-accent inline mr-1 -mt-0.5" />}
                           <span className="whitespace-pre-wrap">{msg.text}</span>
                         </div>
-                      </div>
+                      </motion.div>
                     ))}
                     {aiChatLoading && (
                       <div className="flex justify-start">
@@ -315,6 +399,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                         </div>
                       </div>
                     )}
+                    <div ref={chatEndRef} />
                   </div>
                 )}
 
@@ -329,7 +414,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                         sendAiEdit(aiChatInput.trim());
                       }
                     }}
-                    placeholder={aiChatLoading ? "AI is bezig met bewerken..." : "Vraag iets of geef een instructie..."}
+                    placeholder={aiChatLoading ? "AI is bezig..." : "Vraag iets of geef een instructie..."}
                     disabled={aiChatLoading}
                     className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 disabled:opacity-50"
                   />

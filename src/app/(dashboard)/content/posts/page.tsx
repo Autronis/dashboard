@@ -354,22 +354,47 @@ const PLATFORM_OPTIONS: { value: ContentPlatform | "alle"; label: string }[] = [
   { value: "instagram", label: "Instagram" },
 ];
 
+type TabType = "posts" | "afgewezen";
+
 export default function ContentPostsPage() {
   const { addToast } = useToast();
   const generateBatch = useGenerateBatch();
+  const updatePost = useUpdatePost();
 
+  const [activeTab, setActiveTab] = useState<TabType>("posts");
   const [statusFilter, setStatusFilter] = useState<ContentStatus | "alle">("alle");
   const [platformFilter, setPlatformFilter] = useState<ContentPlatform | "alle">("alle");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectMode, setSelectMode] = useState(false);
 
-  const filters = {
-    status: statusFilter !== "alle" ? statusFilter : undefined,
-    platform: platformFilter !== "alle" ? platformFilter : undefined,
-  };
+  const { data: allPostsRaw = [], isLoading } = useContentPosts();
+  const afgewezenPosts = allPostsRaw.filter((p) => p.status === "afgewezen");
 
-  const { data: posts, isLoading } = useContentPosts(filters);
+  const activePosts = allPostsRaw.filter((p) => {
+    if (p.status === "afgewezen") return false;
+    if (statusFilter !== "alle" && p.status !== statusFilter) return false;
+    if (platformFilter !== "alle" && p.platform !== platformFilter) return false;
+    return true;
+  });
 
-  const currentBatchWeek = posts?.[0]?.batchWeek;
-  const totalPosts = posts?.length ?? 0;
+  const currentBatchWeek = allPostsRaw[0]?.batchWeek;
+
+  function toggleSelect(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkGoedkeuren() {
+    const ids = Array.from(selectedIds);
+    await Promise.all(ids.map((id) => updatePost.mutateAsync({ id, status: "goedgekeurd" })));
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    addToast(`${ids.length} posts goedgekeurd`, "succes");
+  }
 
   async function handleGenereer() {
     try {
@@ -391,90 +416,169 @@ export default function ContentPostsPage() {
             AI-gegenereerde LinkedIn en Instagram posts beheren en publiceren.
           </p>
         </div>
-        <button
-          onClick={handleGenereer}
-          disabled={generateBatch.isPending}
-          className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white font-semibold rounded-xl hover:bg-autronis-accent/90 transition-colors disabled:opacity-60 whitespace-nowrap btn-press"
-        >
-          {generateBatch.isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
+        <div className="flex items-center gap-2">
+          {selectMode ? (
+            <>
+              <button
+                onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }}
+                className="px-4 py-2.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+              >
+                Annuleren
+              </button>
+              <button
+                onClick={handleBulkGoedkeuren}
+                disabled={selectedIds.size === 0 || updatePost.isPending}
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors disabled:opacity-60 btn-press"
+              >
+                {updatePost.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                {selectedIds.size > 0 ? `Goedkeuren (${selectedIds.size})` : "Selecteer posts"}
+              </button>
+            </>
           ) : (
-            <Sparkles className="w-4 h-4" />
+            <>
+              <button
+                onClick={() => setSelectMode(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary rounded-xl text-sm font-medium transition-colors"
+              >
+                <CheckSquare className="w-4 h-4" />
+                Bulk goedkeuren
+              </button>
+              <button
+                onClick={handleGenereer}
+                disabled={generateBatch.isPending}
+                className="btn-shimmer flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-autronis-bg font-semibold rounded-xl hover:bg-autronis-accent-hover transition-colors disabled:opacity-60 whitespace-nowrap btn-press"
+              >
+                {generateBatch.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                {generateBatch.isPending ? "Claude schrijft..." : "Genereer batch"}
+              </button>
+            </>
           )}
-          Genereer batch
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 bg-autronis-bg rounded-xl p-1 border border-autronis-border w-fit">
+        <button
+          onClick={() => setActiveTab("posts")}
+          className={cn(
+            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+            activeTab === "posts" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+          )}
+        >
+          Posts
+          <span className="ml-1.5 text-xs text-autronis-text-secondary tabular-nums">({activePosts.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab("afgewezen")}
+          className={cn(
+            "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+            activeTab === "afgewezen" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+          )}
+        >
+          Afgewezen
+          {afgewezenPosts.length > 0 && (
+            <span className="ml-1.5 text-xs bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full tabular-nums">{afgewezenPosts.length}</span>
+          )}
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ContentStatus | "alle")}
-          className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
-        >
-          {STATUS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={platformFilter}
-          onChange={(e) => setPlatformFilter(e.target.value as ContentPlatform | "alle")}
-          className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
-        >
-          {PLATFORM_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-        {currentBatchWeek && (
-          <span className="text-xs text-autronis-text-secondary ml-auto">
-            Batch <span className="font-mono text-autronis-text-primary">{currentBatchWeek}</span>
-            {" · "}
-            <span className="text-autronis-text-primary">{totalPosts}</span> posts
-          </span>
-        )}
-      </div>
-
-      {/* Generation loading state */}
-      {generateBatch.isPending && (
-        <div className="bg-autronis-card border border-autronis-accent/40 rounded-2xl p-6 flex items-center gap-4">
-          <Loader2 className="w-6 h-6 text-autronis-accent animate-spin flex-shrink-0" />
-          <div>
-            <p className="text-sm font-semibold text-autronis-text-primary">
-              AI is bezig met het genereren van content...
-            </p>
-            <p className="text-xs text-autronis-text-secondary mt-0.5">
-              Dit kan 15-30 seconden duren. Even geduld.
-            </p>
+      {activeTab === "posts" && (
+        <>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as ContentStatus | "alle")}
+              className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
+            >
+              {STATUS_OPTIONS.filter((o) => o.value !== "afgewezen").map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value as ContentPlatform | "alle")}
+              className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
+            >
+              {PLATFORM_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {currentBatchWeek && (
+              <span className="text-xs text-autronis-text-secondary ml-auto">
+                Batch <span className="font-mono text-autronis-text-primary">{currentBatchWeek}</span>
+              </span>
+            )}
           </div>
-        </div>
+
+          {/* Generation loading state */}
+          {generateBatch.isPending && (
+            <div className="bg-autronis-card border border-autronis-accent/40 rounded-2xl p-6 flex items-center gap-4">
+              <Loader2 className="w-6 h-6 text-autronis-accent animate-spin flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-autronis-text-primary">
+                  Claude is bezig met het schrijven van content...
+                </p>
+                <p className="text-xs text-autronis-text-secondary mt-0.5">
+                  Dit kan 15-30 seconden duren. Even geduld.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 text-autronis-accent animate-spin" />
+            </div>
+          ) : activePosts.length > 0 ? (
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+              {activePosts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  selected={selectedIds.has(post.id)}
+                  onToggleSelect={toggleSelect}
+                  selectMode={selectMode}
+                />
+              ))}
+            </div>
+          ) : !generateBatch.isPending ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <Sparkles className="w-12 h-12 text-autronis-accent/40 mb-4" />
+              <p className="text-lg font-semibold text-autronis-text-primary">
+                Nog geen content gegenereerd.
+              </p>
+              <p className="text-sm text-autronis-text-secondary mt-1">
+                Klik op &lsquo;Genereer batch&rsquo; om te starten.
+              </p>
+            </div>
+          ) : null}
+        </>
       )}
 
-      {/* Content */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-autronis-accent animate-spin" />
-        </div>
-      ) : posts && posts.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {posts.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
-      ) : !generateBatch.isPending ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center">
-          <Sparkles className="w-12 h-12 text-autronis-accent/40 mb-4" />
-          <p className="text-lg font-semibold text-autronis-text-primary">
-            Nog geen content gegenereerd.
-          </p>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Klik op &lsquo;Genereer batch&rsquo; om te starten.
-          </p>
-        </div>
-      ) : null}
+      {activeTab === "afgewezen" && (
+        afgewezenPosts.length > 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+            {afgewezenPosts.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-24 text-center">
+            <ThumbsDown className="w-10 h-10 text-autronis-text-secondary/30 mb-3" />
+            <p className="text-base font-medium text-autronis-text-primary">Geen afgewezen posts</p>
+          </div>
+        )
+      )}
     </div>
     </PageTransition>
   );

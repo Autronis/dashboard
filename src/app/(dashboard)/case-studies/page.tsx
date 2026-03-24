@@ -10,28 +10,39 @@ import {
   Trash2,
   Eye,
   Edit3,
-  ChevronRight,
   RefreshCw,
   Copy,
   Download,
   Linkedin,
-  Clock,
   CheckCircle2,
   XCircle,
   Terminal,
   ArrowRight,
   Filter,
   Share2,
-  Archive,
   ChevronDown,
   BarChart3,
   Building2,
   Sparkles,
+  X,
+  Check,
+  Layers,
 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const GENERATOR_URL = "http://localhost:3456";
+const DRAFT_KEY = "autronis-cs-draft";
+
+const GENEREER_STAPPEN = [
+  { label: "Klantdata verwerken", offset: 0 },
+  { label: "Structuur bepalen", offset: 5000 },
+  { label: "Case study schrijven", offset: 11000 },
+  { label: "Banners genereren", offset: 24000 },
+  { label: "Afronden", offset: 28000 },
+];
 
 // ============ TYPES ============
 
@@ -83,8 +94,6 @@ interface Project {
   status: string;
 }
 
-type CaseStudyStatus = "concept" | "gepubliceerd" | "gearchiveerd";
-
 // ============ COMPONENT ============
 
 export default function CaseStudiesPage() {
@@ -103,7 +112,6 @@ export default function CaseStudiesPage() {
   const [editSlug, setEditSlug] = useState<string | null>(null);
   const [editContent, setEditContent] = useState<string>("");
   const [editSaving, setEditSaving] = useState(false);
-  const [showInstructions, setShowInstructions] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Klant & project selectie
@@ -131,7 +139,19 @@ export default function CaseStudiesPage() {
 
   // Overzicht filters
   const [filterKlant, setFilterKlant] = useState<string>("");
-  const [statusFilter, setStatusFilter] = useState<CaseStudyStatus | "alle">("alle");
+
+  // Genereer step animation
+  const [genereerStap, setGenereerStap] = useState(0);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Inline preview modal
+  const [previewSlug, setPreviewSlug] = useState<string | null>(null);
+
+  // Output dropdown state
+  const [publiceerOpen, setPubliceerOpen] = useState(false);
+  const [downloadOpen, setDownloadOpen] = useState(false);
+  const publiceerRef = useRef<HTMLDivElement>(null);
+  const downloadRef = useRef<HTMLDivElement>(null);
 
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -189,6 +209,45 @@ export default function CaseStudiesPage() {
     const interval = setInterval(checkServer, 30000);
     return () => clearInterval(interval);
   }, [checkServer]);
+
+  // Load draft from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const { formState: fs, stappen: st, resultaatMetrics: rm } = JSON.parse(saved) as {
+          formState: typeof formState;
+          stappen: Stap[];
+          resultaatMetrics: ResultaatMetric[];
+        };
+        if (fs) setFormState(fs);
+        if (st?.length >= 2) setStappen(st);
+        if (rm?.length >= 1) setResultaatMetrics(rm);
+      }
+    } catch {
+      // Corrupt draft — negeer
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save draft to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ formState, stappen, resultaatMetrics }));
+    } catch {
+      // localStorage vol — negeer
+    }
+  }, [formState, stappen, resultaatMetrics]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (publiceerRef.current && !publiceerRef.current.contains(e.target as Node)) setPubliceerOpen(false);
+      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   // Filtered projects for selected client
   const clientProjecten = useMemo(() => {
@@ -260,6 +319,21 @@ export default function CaseStudiesPage() {
     setResultaatMetrics(updated);
   }
 
+  // ============ HERGEBRUIK ALS TEMPLATE ============
+
+  function hergebruikTemplate() {
+    setFormState({ klantnaam: "", klantBeschrijving: "", klantBranche: "", probleem: "", probleemMetricWaarde: "", probleemMetricLabel: "", oplossing: "", extraContext: "" });
+    setStappen([{ titel: "", beschrijving: "" }, { titel: "", beschrijving: "" }]);
+    setResultaatMetrics([{ label: "", van: "", naar: "" }]);
+    setSelectedKlantId(null);
+    setSelectedProjectId(null);
+    setResult(null);
+    setError(null);
+    setGenereerStap(0);
+    setActiveTab("nieuw");
+    setFormTab("formulier");
+  }
+
   // ============ SUBMIT ============
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -267,6 +341,13 @@ export default function CaseStudiesPage() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setGenereerStap(1);
+
+    // Clear previous timers, set up new step timers
+    stepTimersRef.current.forEach(clearTimeout);
+    stepTimersRef.current = GENEREER_STAPPEN.slice(1).map((stap, i) =>
+      setTimeout(() => setGenereerStap(i + 2), stap.offset)
+    );
 
     const filteredStappen = stappen.filter((s) => s.titel.trim());
     const primaryMetric = resultaatMetrics[0];
@@ -298,13 +379,20 @@ export default function CaseStudiesPage() {
       });
       const data: CaseStudyResult = await res.json();
       if (data.success) {
+        stepTimersRef.current.forEach(clearTimeout);
+        setGenereerStap(GENEREER_STAPPEN.length + 1);
         setResult(data);
         loadExisting();
+        try { localStorage.removeItem(DRAFT_KEY); } catch { /* negeer */ }
       } else {
+        stepTimersRef.current.forEach(clearTimeout);
+        setGenereerStap(0);
         setError(data.error ?? "Er is iets misgegaan");
       }
     } catch {
-      setError("Kan geen verbinding maken met de Case Study Generator. Draai eerst: npm run web");
+      stepTimersRef.current.forEach(clearTimeout);
+      setGenereerStap(0);
+      setError("Kan geen verbinding maken met de Case Study Generator. Draai eerst: npm run dev");
     }
 
     setLoading(false);
@@ -351,34 +439,25 @@ export default function CaseStudiesPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Kon markdown niet kopieren");
+      setError("Kon markdown niet kopiëren");
     }
   }
 
   function openLinkedInPost() {
     if (!result) return;
-    const params = new URLSearchParams({
-      caseStudy: result.titel,
-      slug: result.slug,
-    });
+    const params = new URLSearchParams({ caseStudy: result.titel, slug: result.slug });
     window.open(`/content/posts?${params.toString()}`, "_blank");
   }
 
   function openInstagramBanner() {
     if (!result) return;
-    const params = new URLSearchParams({
-      caseStudy: result.titel,
-      slug: result.slug,
-    });
+    const params = new URLSearchParams({ caseStudy: result.titel, slug: result.slug });
     window.open(`/content/banners?${params.toString()}`, "_blank");
   }
 
   function openVideo() {
     if (!result) return;
-    const params = new URLSearchParams({
-      caseStudy: result.titel,
-      slug: result.slug,
-    });
+    const params = new URLSearchParams({ caseStudy: result.titel, slug: result.slug });
     window.open(`/content/videos?${params.toString()}`, "_blank");
   }
 
@@ -401,15 +480,12 @@ export default function CaseStudiesPage() {
 
   // Filtered existing case studies
   const filteredExisting = useMemo(() => {
-    let list = existing;
-    if (filterKlant) {
-      list = list.filter(
-        (cs) =>
-          cs.titel.toLowerCase().includes(filterKlant.toLowerCase()) ||
-          cs.subtitel.toLowerCase().includes(filterKlant.toLowerCase())
-      );
-    }
-    return list;
+    if (!filterKlant) return existing;
+    return existing.filter(
+      (cs) =>
+        cs.titel.toLowerCase().includes(filterKlant.toLowerCase()) ||
+        cs.subtitel.toLowerCase().includes(filterKlant.toLowerCase())
+    );
   }, [existing, filterKlant]);
 
   return (
@@ -419,9 +495,7 @@ export default function CaseStudiesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Case Studies</h1>
-            <p className="text-autronis-text-secondary mt-1">
-              Genereer en beheer case studies voor klanten.
-            </p>
+            <p className="text-autronis-text-secondary mt-1">Genereer en beheer case studies voor klanten.</p>
           </div>
           <button
             onClick={() => {
@@ -431,129 +505,166 @@ export default function CaseStudiesPage() {
             className="inline-flex items-center gap-2 rounded-xl bg-autronis-accent px-5 py-2.5 text-sm font-bold text-autronis-bg hover:bg-autronis-accent-hover transition-all btn-press shadow-lg shadow-autronis-accent/20"
           >
             {activeTab === "nieuw" ? (
-              <>
-                <Eye className="h-4 w-4" /> Overzicht
-              </>
+              <><Eye className="h-4 w-4" /> Overzicht</>
             ) : (
-              <>
-                <Plus className="h-4 w-4" /> Nieuwe Case Study
-              </>
+              <><Plus className="h-4 w-4" /> Nieuwe Case Study</>
             )}
           </button>
         </div>
 
         {/* ============ SERVER STATUS ============ */}
-        <div className="rounded-xl border border-autronis-border bg-autronis-card p-5 card-glow space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <div
-                className={`h-3 w-3 rounded-full ${
-                  serverOnline
-                    ? "bg-emerald-400"
-                    : serverOnline === false
-                    ? "bg-red-400"
-                    : "bg-yellow-400 animate-pulse"
-                }`}
-              />
-              {serverOnline && (
-                <div className="absolute inset-0 h-3 w-3 rounded-full bg-emerald-400 animate-ping opacity-40" />
-              )}
+        {serverOnline === null ? (
+          <div className="rounded-xl border border-autronis-border bg-autronis-card p-4 flex items-center gap-3">
+            <div className="h-3 w-3 rounded-full bg-yellow-400 animate-pulse flex-shrink-0" />
+            <span className="text-sm text-autronis-text-secondary">Verbinding controleren met generator...</span>
+            <code className="text-xs bg-autronis-border/50 text-autronis-text-secondary px-1.5 py-0.5 rounded ml-auto">{GENERATOR_URL}</code>
+          </div>
+        ) : serverOnline ? (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-center gap-3">
+            <div className="relative flex-shrink-0">
+              <div className="h-3 w-3 rounded-full bg-emerald-400" />
+              <div className="absolute inset-0 h-3 w-3 rounded-full bg-emerald-400 animate-ping opacity-40" />
             </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-autronis-text-primary">
-                  {serverOnline
-                    ? "Online"
-                    : serverOnline === false
-                    ? "Offline"
-                    : "Verbinding checken..."}
-                </span>
-                <code className="text-xs bg-autronis-border/50 text-autronis-text-secondary px-1.5 py-0.5 rounded">
-                  {GENERATOR_URL}
-                </code>
-              </div>
-              {lastPingTime && (
-                <p className="text-xs text-autronis-text-tertiary mt-0.5">
-                  Laatste ping: {lastPingTime.toLocaleTimeString("nl-NL")}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={checkServer}
-              className="text-autronis-text-tertiary hover:text-autronis-accent transition-colors p-1.5 rounded-lg hover:bg-white/5"
-            >
-              <RefreshCw className="h-4 w-4" />
+            <span className="text-sm font-semibold text-emerald-400">Verbonden</span>
+            <code className="text-xs bg-autronis-border/50 text-autronis-text-secondary px-1.5 py-0.5 rounded">{GENERATOR_URL}</code>
+            {lastPingTime && (
+              <span className="text-xs text-autronis-text-tertiary ml-auto">Laatste ping: {lastPingTime.toLocaleTimeString("nl-NL")}</span>
+            )}
+            <button onClick={checkServer} className="text-autronis-text-tertiary hover:text-emerald-400 transition-colors p-1.5 rounded-lg hover:bg-white/5 flex-shrink-0">
+              <RefreshCw className="h-3.5 w-3.5" />
             </button>
           </div>
-
-          {/* Start instructions */}
-          {serverOnline === false && (
-            <div className="space-y-2">
-              <button
-                onClick={() => setShowInstructions(!showInstructions)}
-                className="inline-flex items-center gap-2 text-sm font-semibold text-autronis-accent hover:text-autronis-accent-hover transition-colors"
-              >
-                <Terminal className="h-4 w-4" />
-                Server starten
-                <ChevronDown
-                  className={`h-3.5 w-3.5 transition-transform ${showInstructions ? "rotate-180" : ""}`}
-                />
+        ) : (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-3 rounded-full bg-red-400 flex-shrink-0" />
+              <span className="text-sm font-semibold text-red-400">Generator offline</span>
+              <code className="text-xs bg-autronis-border/50 text-autronis-text-secondary px-1.5 py-0.5 rounded">{GENERATOR_URL}</code>
+              <div className="flex-1" />
+              <button onClick={checkServer} className="text-autronis-text-tertiary hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-white/5">
+                <RefreshCw className="h-3.5 w-3.5" />
               </button>
-              {showInstructions && (
-                <div className="rounded-lg bg-autronis-bg border border-autronis-border p-4 space-y-2">
-                  <p className="text-sm text-autronis-text-secondary">
-                    Start de case study generator in een terminal:
-                  </p>
-                  <code className="block text-sm text-autronis-accent bg-black/30 rounded-lg px-4 py-3 font-mono">
-                    cd ../case-study-generator && npm run dev
-                  </code>
-                  <p className="text-xs text-autronis-text-tertiary">
-                    De server draait vervolgens op {GENERATOR_URL}
-                  </p>
-                </div>
-              )}
             </div>
-          )}
-        </div>
-
-        {/* Edit modal */}
-        {editSlug && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8">
-            <div className="w-full max-w-4xl rounded-2xl border border-autronis-border bg-autronis-card p-6 space-y-4 max-h-[80vh] flex flex-col">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-autronis-text-primary">
-                  Case Study Bewerken — {editSlug}
-                </h2>
+            <div className="rounded-lg bg-autronis-bg border border-autronis-border p-4 space-y-2">
+              <p className="text-sm font-semibold text-autronis-text-secondary flex items-center gap-2">
+                <Terminal className="h-4 w-4 text-autronis-accent" />
+                Start de generator server:
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-sm text-autronis-accent bg-black/30 rounded-lg px-4 py-3 font-mono">
+                  cd ../case-study-generator && npm run dev
+                </code>
                 <button
-                  onClick={() => setEditSlug(null)}
-                  className="text-autronis-text-tertiary hover:text-white text-xl"
+                  onClick={() => navigator.clipboard.writeText("cd ../case-study-generator && npm run dev")}
+                  className="flex-shrink-0 p-2.5 rounded-lg border border-autronis-border hover:border-autronis-accent/50 text-autronis-text-secondary hover:text-autronis-accent transition-colors"
+                  title="Kopieer commando"
                 >
-                  &times;
+                  <Copy className="h-4 w-4" />
                 </button>
               </div>
-              <textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="flex-1 w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-autronis-text-primary font-mono resize-none focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-              />
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setEditSlug(null)}
-                  className="px-4 py-2 rounded-lg text-sm text-autronis-text-secondary hover:text-white transition-colors"
-                >
-                  Annuleren
-                </button>
-                <button
-                  onClick={saveEdit}
-                  disabled={editSaving}
-                  className="px-5 py-2 rounded-lg bg-autronis-accent text-autronis-bg font-bold text-sm hover:bg-autronis-accent-hover transition-all disabled:opacity-40"
-                >
-                  {editSaving ? "Opslaan..." : "Opslaan"}
-                </button>
-              </div>
+              <p className="text-xs text-autronis-text-tertiary">Server draait daarna op {GENERATOR_URL}</p>
             </div>
           </div>
         )}
+
+        {/* ============ EDIT MODAL ============ */}
+        <AnimatePresence>
+          {editSlug && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setEditSlug(null); }}
+            >
+              <motion.div
+                className="w-full max-w-4xl rounded-2xl border border-autronis-border bg-autronis-card p-6 space-y-4 max-h-[80vh] flex flex-col"
+                initial={{ opacity: 0, y: 32, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.97 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-bold text-autronis-text-primary">
+                    Case Study Bewerken — <span className="text-autronis-accent">{editSlug}</span>
+                  </h2>
+                  <button
+                    onClick={() => setEditSlug(null)}
+                    className="text-autronis-text-tertiary hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <textarea
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="flex-1 w-full rounded-xl border border-autronis-border bg-autronis-bg px-4 py-3 text-sm text-autronis-text-primary font-mono resize-none focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                />
+                <div className="flex gap-3 justify-end">
+                  <button
+                    onClick={() => setEditSlug(null)}
+                    className="px-4 py-2 rounded-lg text-sm text-autronis-text-secondary hover:text-white transition-colors"
+                  >
+                    Annuleren
+                  </button>
+                  <button
+                    onClick={saveEdit}
+                    disabled={editSaving}
+                    className="px-5 py-2 rounded-lg bg-autronis-accent text-autronis-bg font-bold text-sm hover:bg-autronis-accent-hover transition-all disabled:opacity-40"
+                  >
+                    {editSaving ? "Opslaan..." : "Opslaan"}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ============ INLINE PREVIEW MODAL ============ */}
+        <AnimatePresence>
+          {previewSlug && (
+            <motion.div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={(e) => { if (e.target === e.currentTarget) setPreviewSlug(null); }}
+            >
+              <motion.div
+                className="w-full max-w-5xl h-[85vh] rounded-2xl border border-autronis-border bg-autronis-card flex flex-col overflow-hidden"
+                initial={{ opacity: 0, y: 32 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 16 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex items-center justify-between px-5 py-3 border-b border-autronis-border flex-shrink-0">
+                  <span className="text-sm font-semibold text-autronis-text-primary">{previewSlug}</span>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={`${GENERATOR_URL}/out/${previewSlug}/page.html`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-autronis-accent hover:text-autronis-accent-hover flex items-center gap-1.5 transition-colors"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" /> Nieuw tabblad
+                    </a>
+                    <button
+                      onClick={() => setPreviewSlug(null)}
+                      className="text-autronis-text-tertiary hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+                <iframe
+                  src={`${GENERATOR_URL}/out/${previewSlug}/page.html`}
+                  className="flex-1 w-full"
+                  title={previewSlug}
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ============ OVERZICHT TAB ============ */}
         {activeTab === "overzicht" && (
@@ -567,7 +678,7 @@ export default function CaseStudiesPage() {
                     value={filterKlant}
                     onChange={(e) => setFilterKlant(e.target.value)}
                     placeholder="Zoek op klant of titel..."
-                    className={`${inputClass} pl-10`}
+                    className={cn(inputClass, "pl-10")}
                   />
                 </div>
                 <span className="text-xs text-autronis-text-tertiary tabular-nums">
@@ -577,18 +688,45 @@ export default function CaseStudiesPage() {
             )}
 
             {filteredExisting.length === 0 && existing.length === 0 ? (
-              <div className="rounded-xl border border-autronis-border bg-autronis-card p-12 text-center card-glow">
-                <Video className="h-12 w-12 text-autronis-text-tertiary mx-auto mb-4" />
-                <p className="text-lg font-semibold text-autronis-text-primary mb-2">Nog geen case studies</p>
-                <p className="text-sm text-autronis-text-secondary mb-6">
-                  Maak je eerste case study aan via het formulier.
-                </p>
-                <button
-                  onClick={() => setActiveTab("nieuw")}
-                  className="inline-flex items-center gap-2 rounded-xl bg-autronis-accent px-5 py-2.5 text-sm font-bold text-autronis-bg hover:bg-autronis-accent-hover transition-all btn-press"
-                >
-                  <Plus className="h-4 w-4" /> Nieuwe Case Study
-                </button>
+              <div className="space-y-4">
+                {/* Empty message */}
+                <div className="rounded-xl border border-dashed border-autronis-border/50 bg-autronis-card p-8 flex flex-col items-center text-center gap-4">
+                  <Video className="h-10 w-10 text-autronis-text-tertiary/30" />
+                  <div>
+                    <p className="text-base font-semibold text-autronis-text-primary">Nog geen case studies</p>
+                    <p className="text-sm text-autronis-text-secondary mt-1">Zo ziet een gegenereerde case study er uit:</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("nieuw")}
+                    className="inline-flex items-center gap-2 rounded-xl bg-autronis-accent px-5 py-2.5 text-sm font-bold text-autronis-bg hover:bg-autronis-accent-hover transition-all btn-press"
+                  >
+                    <Plus className="h-4 w-4" /> Eerste Case Study aanmaken
+                  </button>
+                </div>
+                {/* Dummy voorbeeld card */}
+                <div className="rounded-xl border border-autronis-border/30 bg-autronis-card/40 p-5 opacity-50 pointer-events-none select-none">
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-20 h-14 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                      <BarChart3 className="h-6 w-6 text-emerald-400/40" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400/80 px-2 py-0.5 rounded-full">Voorbeeld</span>
+                      <h3 className="text-base font-bold text-autronis-text-primary mt-1.5">Jobby — 80% minder tijd op lead-opvolging</h3>
+                      <p className="text-sm text-autronis-text-secondary mt-0.5">Hoe Autronis een CRM-automatisering bouwde die het salesteam 6 uur per week bespaart</p>
+                      <div className="flex items-center gap-2 mt-3">
+                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-autronis-accent/10 border border-autronis-accent/20 px-3 py-1.5 text-[11px] font-semibold text-autronis-accent">
+                          <Eye className="h-3 w-3" /> Bekijk
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-autronis-border px-3 py-1.5 text-[11px] font-semibold text-autronis-text-secondary">
+                          <Edit3 className="h-3 w-3" /> Bewerk
+                        </div>
+                        <div className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-autronis-border px-3 py-1.5 text-[11px] font-semibold text-autronis-text-secondary">
+                          <Layers className="h-3 w-3" /> Hergebruik
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : filteredExisting.length === 0 ? (
               <div className="rounded-xl border border-autronis-border bg-autronis-card p-8 text-center">
@@ -598,37 +736,37 @@ export default function CaseStudiesPage() {
               </div>
             ) : (
               <div className="grid gap-4">
-                {filteredExisting.map((cs) => (
-                  <div
+                {filteredExisting.map((cs, i) => (
+                  <motion.div
                     key={cs.slug}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.07, duration: 0.3 }}
                     className="rounded-xl border border-autronis-border bg-autronis-card p-5 card-glow hover:border-autronis-accent/20 transition-all"
                   >
                     <div className="flex items-start gap-4">
-                      {/* Thumbnail / icon */}
-                      <div className="flex-shrink-0 w-16 h-16 rounded-lg bg-autronis-accent/10 border border-autronis-accent/20 flex items-center justify-center">
-                        <BarChart3 className="h-7 w-7 text-autronis-accent" />
+                      {/* Thumbnail — toont banner als die bestaat, anders icon */}
+                      <div className="flex-shrink-0 w-20 h-14 rounded-lg bg-autronis-accent/10 border border-autronis-accent/20 overflow-hidden relative">
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <BarChart3 className="h-6 w-6 text-autronis-accent/40" />
+                        </div>
+                        <img
+                          src={`${GENERATOR_URL}/out/${cs.slug}/banners/banner-metric-bold.png`}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                        />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <h3 className="text-base font-bold text-autronis-text-primary truncate">{cs.titel}</h3>
-                            <p className="text-sm text-autronis-text-secondary truncate mt-0.5">
-                              {cs.subtitel}
-                            </p>
-                          </div>
-                        </div>
+                        <h3 className="text-base font-bold text-autronis-text-primary truncate">{cs.titel}</h3>
+                        <p className="text-sm text-autronis-text-secondary truncate mt-0.5">{cs.subtitel}</p>
 
-                        {/* Action buttons */}
+                        {/* Acties */}
                         <div className="flex items-center gap-2 mt-3 flex-wrap">
-                          <a
-                            href={`${GENERATOR_URL}/out/${cs.slug}/page.html`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={accentBtnClass}
-                          >
+                          <button onClick={() => setPreviewSlug(cs.slug)} className={accentBtnClass}>
                             <Eye className="h-3.5 w-3.5" /> Bekijk
-                          </a>
+                          </button>
                           <button onClick={() => openEdit(cs.slug)} className={actionBtnClass}>
                             <Edit3 className="h-3.5 w-3.5" /> Bewerk
                           </button>
@@ -638,15 +776,7 @@ export default function CaseStudiesPage() {
                             rel="noopener noreferrer"
                             className={actionBtnClass}
                           >
-                            <ImageIcon className="h-3.5 w-3.5" /> Banners
-                          </a>
-                          <a
-                            href={`${GENERATOR_URL}/out/${cs.slug}/page.html`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={actionBtnClass}
-                          >
-                            <Download className="h-3.5 w-3.5" /> Download
+                            <ImageIcon className="h-3.5 w-3.5" /> Banner
                           </a>
                           <a
                             href={`${GENERATOR_URL}/out/${cs.slug}/case-study.md`}
@@ -656,10 +786,13 @@ export default function CaseStudiesPage() {
                           >
                             <Share2 className="h-3.5 w-3.5" /> Markdown
                           </a>
+                          <button onClick={hergebruikTemplate} className={actionBtnClass}>
+                            <Layers className="h-3.5 w-3.5" /> Hergebruik
+                          </button>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -673,21 +806,19 @@ export default function CaseStudiesPage() {
             <div className="flex gap-1 rounded-lg bg-autronis-bg border border-autronis-border p-1 w-fit">
               <button
                 onClick={() => setFormTab("formulier")}
-                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                  formTab === "formulier"
-                    ? "bg-autronis-accent text-autronis-bg"
-                    : "text-autronis-text-secondary hover:text-white"
-                }`}
+                className={cn(
+                  "px-4 py-2 rounded-md text-sm font-semibold transition-all",
+                  formTab === "formulier" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-white"
+                )}
               >
                 Formulier
               </button>
               <button
                 onClick={() => setFormTab("preview")}
-                className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${
-                  formTab === "preview"
-                    ? "bg-autronis-accent text-autronis-bg"
-                    : "text-autronis-text-secondary hover:text-white"
-                }`}
+                className={cn(
+                  "px-4 py-2 rounded-md text-sm font-semibold transition-all",
+                  formTab === "preview" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-white"
+                )}
               >
                 <span className="flex items-center gap-1.5">
                   <Eye className="h-3.5 w-3.5" /> Preview
@@ -710,16 +841,12 @@ export default function CaseStudiesPage() {
                       <div className="relative">
                         <select
                           value={selectedKlantId ?? ""}
-                          onChange={(e) =>
-                            handleKlantSelect(e.target.value ? Number(e.target.value) : null)
-                          }
+                          onChange={(e) => handleKlantSelect(e.target.value ? Number(e.target.value) : null)}
                           className={selectClass}
                         >
                           <option value="">— Kies klant of vul handmatig in —</option>
                           {klanten.map((k) => (
-                            <option key={k.id} value={k.id}>
-                              {k.bedrijfsnaam}
-                            </option>
+                            <option key={k.id} value={k.id}>{k.bedrijfsnaam}</option>
                           ))}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-autronis-text-tertiary pointer-events-none" />
@@ -730,17 +857,13 @@ export default function CaseStudiesPage() {
                       <div className="relative">
                         <select
                           value={selectedProjectId ?? ""}
-                          onChange={(e) =>
-                            handleProjectSelect(e.target.value ? Number(e.target.value) : null)
-                          }
+                          onChange={(e) => handleProjectSelect(e.target.value ? Number(e.target.value) : null)}
                           disabled={!selectedKlantId}
-                          className={`${selectClass} disabled:opacity-40 disabled:cursor-not-allowed`}
+                          className={cn(selectClass, "disabled:opacity-40 disabled:cursor-not-allowed")}
                         >
                           <option value="">— Kies project —</option>
                           {clientProjecten.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.naam}
-                            </option>
+                            <option key={p.id} value={p.id}>{p.naam}</option>
                           ))}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-autronis-text-tertiary pointer-events-none" />
@@ -780,9 +903,7 @@ export default function CaseStudiesPage() {
                     name="klantBeschrijving"
                     rows={2}
                     value={formState.klantBeschrijving}
-                    onChange={(e) =>
-                      setFormState((s) => ({ ...s, klantBeschrijving: e.target.value }))
-                    }
+                    onChange={(e) => setFormState((s) => ({ ...s, klantBeschrijving: e.target.value }))}
                     placeholder="Wie is de klant?"
                     className={inputClass}
                   />
@@ -806,9 +927,7 @@ export default function CaseStudiesPage() {
                     <input
                       name="probleemMetricWaarde"
                       value={formState.probleemMetricWaarde}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, probleemMetricWaarde: e.target.value }))
-                      }
+                      onChange={(e) => setFormState((s) => ({ ...s, probleemMetricWaarde: e.target.value }))}
                       placeholder="Bijv. 25 minuten per lead"
                       className={inputClass}
                     />
@@ -818,9 +937,7 @@ export default function CaseStudiesPage() {
                     <input
                       name="probleemMetricLabel"
                       value={formState.probleemMetricLabel}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, probleemMetricLabel: e.target.value }))
-                      }
+                      onChange={(e) => setFormState((s) => ({ ...s, probleemMetricLabel: e.target.value }))}
                       placeholder="Bijv. Tijd per lead"
                       className={inputClass}
                     />
@@ -860,13 +977,13 @@ export default function CaseStudiesPage() {
                         value={stap.titel}
                         onChange={(e) => updateStap(i, "titel", e.target.value)}
                         placeholder="Titel"
-                        className={`flex-1 ${inputClass}`}
+                        className={cn("flex-1", inputClass)}
                       />
                       <input
                         value={stap.beschrijving}
                         onChange={(e) => updateStap(i, "beschrijving", e.target.value)}
                         placeholder="Beschrijving"
-                        className={`flex-1 ${inputClass}`}
+                        className={cn("flex-1", inputClass)}
                       />
                       <button
                         type="button"
@@ -883,7 +1000,12 @@ export default function CaseStudiesPage() {
                 {/* Multiple result metrics */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className={labelClass}>Resultaat metrics</label>
+                    <div className="flex items-center gap-3">
+                      <label className={labelClass}>Resultaat metrics</label>
+                      <span className="text-[10px] text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        Alleen de eerste metric wordt verwerkt
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={addMetric}
@@ -893,37 +1015,48 @@ export default function CaseStudiesPage() {
                     </button>
                   </div>
                   {resultaatMetrics.map((metric, i) => (
-                    <div key={i} className="flex gap-3 items-start">
-                      <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 mt-1">
-                        {i + 1}
-                      </span>
-                      <input
-                        value={metric.label}
-                        onChange={(e) => updateMetric(i, "label", e.target.value)}
-                        placeholder="Label (bijv. Tijd per lead)"
-                        className={`flex-[1.2] ${inputClass}`}
-                      />
-                      <input
-                        value={metric.van}
-                        onChange={(e) => updateMetric(i, "van", e.target.value)}
-                        placeholder="Van (bijv. 25 min)"
-                        className={`flex-1 ${inputClass}`}
-                      />
-                      <ArrowRight className="flex-shrink-0 h-5 w-5 text-autronis-text-tertiary mt-3" />
-                      <input
-                        value={metric.naar}
-                        onChange={(e) => updateMetric(i, "naar", e.target.value)}
-                        placeholder="Naar (bijv. 5 min)"
-                        className={`flex-1 ${inputClass}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeMetric(i)}
-                        disabled={resultaatMetrics.length <= 1}
-                        className="flex-shrink-0 p-2.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex gap-3 items-start">
+                        <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-400 mt-1">
+                          {i + 1}
+                        </span>
+                        <input
+                          value={metric.label}
+                          onChange={(e) => updateMetric(i, "label", e.target.value)}
+                          placeholder="Label (bijv. Tijd per lead)"
+                          className={cn("flex-[1.2]", inputClass)}
+                        />
+                        <input
+                          value={metric.van}
+                          onChange={(e) => updateMetric(i, "van", e.target.value)}
+                          placeholder="Van (bijv. 25 min)"
+                          className={cn("flex-1", inputClass)}
+                        />
+                        <ArrowRight className="flex-shrink-0 h-5 w-5 text-autronis-text-tertiary mt-3" />
+                        <input
+                          value={metric.naar}
+                          onChange={(e) => updateMetric(i, "naar", e.target.value)}
+                          placeholder="Naar (bijv. 5 min)"
+                          className={cn("flex-1", inputClass)}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeMetric(i)}
+                          disabled={resultaatMetrics.length <= 1}
+                          className="flex-shrink-0 p-2.5 rounded-lg text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {/* Live van→naar preview */}
+                      {(metric.van || metric.naar) && (
+                        <div className="ml-11 flex items-center gap-2 text-xs">
+                          {metric.label && <span className="text-autronis-text-tertiary">{metric.label}:</span>}
+                          <span className="line-through text-red-400/70">{metric.van || "—"}</span>
+                          <ArrowRight className="h-3 w-3 text-emerald-400" />
+                          <span className="font-bold text-emerald-400">{metric.naar || "—"}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -948,12 +1081,57 @@ export default function CaseStudiesPage() {
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      Genereren... (±30 seconden)
+                      Genereren...
                     </span>
                   ) : (
                     "Genereer Case Study"
                   )}
                 </button>
+
+                {/* Stap-voor-stap genereer progress */}
+                <AnimatePresence>
+                  {loading && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="rounded-xl border border-autronis-accent/20 bg-autronis-accent/5 p-5 space-y-2.5 overflow-hidden"
+                    >
+                      {GENEREER_STAPPEN.map((stap, i) => {
+                        const stepNum = i + 1;
+                        const isActive = genereerStap === stepNum;
+                        const isDone = genereerStap > stepNum;
+                        return (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className={cn(
+                              "h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                              isDone ? "bg-emerald-500/20 text-emerald-400" :
+                              isActive ? "bg-autronis-accent/20 text-autronis-accent" :
+                              "bg-autronis-border/30 text-autronis-text-tertiary"
+                            )}>
+                              {isDone ? (
+                                <Check className="h-3 w-3" />
+                              ) : isActive ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+                              )}
+                            </div>
+                            <span className={cn(
+                              "text-sm transition-colors duration-300",
+                              isDone ? "text-autronis-text-tertiary line-through" :
+                              isActive ? "text-autronis-text-primary font-medium" :
+                              "text-autronis-text-tertiary"
+                            )}>
+                              {stap.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </form>
             )}
 
@@ -967,10 +1145,7 @@ export default function CaseStudiesPage() {
                   <h2 className="text-2xl font-bold text-autronis-text-primary">
                     {formState.klantnaam || "Klantnaam"}
                     {formState.klantBranche && (
-                      <span className="text-autronis-text-secondary font-normal">
-                        {" "}
-                        — {formState.klantBranche}
-                      </span>
+                      <span className="text-autronis-text-secondary font-normal"> — {formState.klantBranche}</span>
                     )}
                   </h2>
                   {formState.klantBeschrijving && (
@@ -983,9 +1158,7 @@ export default function CaseStudiesPage() {
                 {/* Probleem */}
                 {formState.probleem && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider">
-                      Het probleem
-                    </h3>
+                    <h3 className="text-sm font-semibold text-red-400 uppercase tracking-wider">Het probleem</h3>
                     <p className="text-autronis-text-primary">{formState.probleem}</p>
                     {formState.probleemMetricWaarde && (
                       <div className="inline-flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5 text-sm text-red-400">
@@ -1002,9 +1175,7 @@ export default function CaseStudiesPage() {
                 {/* Oplossing */}
                 {formState.oplossing && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-autronis-accent uppercase tracking-wider">
-                      De oplossing
-                    </h3>
+                    <h3 className="text-sm font-semibold text-autronis-accent uppercase tracking-wider">De oplossing</h3>
                     <p className="text-autronis-text-primary">{formState.oplossing}</p>
                   </div>
                 )}
@@ -1012,9 +1183,7 @@ export default function CaseStudiesPage() {
                 {/* Stappen */}
                 {stappen.some((s) => s.titel.trim()) && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-autronis-accent uppercase tracking-wider">
-                      Aanpak
-                    </h3>
+                    <h3 className="text-sm font-semibold text-autronis-accent uppercase tracking-wider">Aanpak</h3>
                     <div className="space-y-2">
                       {stappen
                         .filter((s) => s.titel.trim())
@@ -1026,9 +1195,7 @@ export default function CaseStudiesPage() {
                             <div>
                               <p className="text-sm font-semibold text-autronis-text-primary">{stap.titel}</p>
                               {stap.beschrijving && (
-                                <p className="text-xs text-autronis-text-secondary">
-                                  {stap.beschrijving}
-                                </p>
+                                <p className="text-xs text-autronis-text-secondary">{stap.beschrijving}</p>
                               )}
                             </div>
                           </div>
@@ -1040,30 +1207,21 @@ export default function CaseStudiesPage() {
                 {/* Resultaat metrics */}
                 {resultaatMetrics.some((m) => m.van || m.naar) && (
                   <div className="space-y-3">
-                    <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">
-                      Resultaten
-                    </h3>
+                    <h3 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">Resultaten</h3>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {resultaatMetrics
                         .filter((m) => m.van || m.naar)
                         .map((metric, i) => (
-                          <div
-                            key={i}
-                            className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2"
-                          >
+                          <div key={i} className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 space-y-2">
                             {metric.label && (
                               <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wider">
                                 {metric.label}
                               </p>
                             )}
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-autronis-text-secondary line-through">
-                                {metric.van}
-                              </span>
+                              <span className="text-sm text-autronis-text-secondary line-through">{metric.van}</span>
                               <ArrowRight className="h-4 w-4 text-emerald-400" />
-                              <span className="text-sm font-bold text-emerald-400">
-                                {metric.naar}
-                              </span>
+                              <span className="text-sm font-bold text-emerald-400">{metric.naar}</span>
                             </div>
                           </div>
                         ))}
@@ -1072,17 +1230,12 @@ export default function CaseStudiesPage() {
                 )}
 
                 {/* Empty state */}
-                {!formState.klantnaam &&
-                  !formState.probleem &&
-                  !formState.oplossing &&
-                  !resultaatMetrics.some((m) => m.van || m.naar) && (
-                    <div className="text-center py-8">
-                      <Sparkles className="h-8 w-8 text-autronis-text-tertiary mx-auto mb-3" />
-                      <p className="text-sm text-autronis-text-secondary">
-                        Vul het formulier in om een preview te zien
-                      </p>
-                    </div>
-                  )}
+                {!formState.klantnaam && !formState.probleem && !formState.oplossing && !resultaatMetrics.some((m) => m.van || m.naar) && (
+                  <div className="text-center py-8">
+                    <Sparkles className="h-8 w-8 text-autronis-text-tertiary mx-auto mb-3" />
+                    <p className="text-sm text-autronis-text-secondary">Vul het formulier in om een preview te zien</p>
+                  </div>
+                )}
 
                 <div className="pt-4 border-t border-autronis-border">
                   <button
@@ -1104,14 +1257,17 @@ export default function CaseStudiesPage() {
 
             {/* ============ RESULTAAT + OUTPUT ACTIONS ============ */}
             {result && (
-              <div className="rounded-xl border border-autronis-accent/20 bg-autronis-accent/5 p-6 space-y-5 card-glow">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="rounded-xl border border-autronis-accent/20 bg-autronis-accent/5 p-6 space-y-5 card-glow"
+              >
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-1">
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                      <span className="text-sm font-semibold text-emerald-400">
-                        Succesvol gegenereerd
-                      </span>
+                      <span className="text-sm font-semibold text-emerald-400">Succesvol gegenereerd</span>
                     </div>
                     <h3 className="text-lg font-bold text-autronis-text-primary">{result.titel}</h3>
                     <p className="text-sm text-autronis-text-secondary mt-0.5">
@@ -1120,61 +1276,118 @@ export default function CaseStudiesPage() {
                   </div>
                 </div>
 
-                {/* Quick links */}
-                <div className="flex flex-wrap gap-2">
-                  <a
-                    href={`${GENERATOR_URL}${result.urls.page}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={accentBtnClass}
-                  >
-                    <FileText className="h-4 w-4" /> Case Study Pagina
-                  </a>
-                  <a
-                    href={`${GENERATOR_URL}${result.urls.markdown}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={accentBtnClass}
-                  >
-                    <FileText className="h-4 w-4" /> Markdown
-                  </a>
-                  {result.urls.banners.map((url, i) => (
-                    <a
+                {/* Quick links — staggered */}
+                <motion.div
+                  className="flex flex-wrap gap-2"
+                  initial="hidden"
+                  animate="visible"
+                  variants={{ visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } } }}
+                >
+                  {[
+                    { href: `${GENERATOR_URL}${result.urls.page}`, label: "Case Study Pagina", icon: FileText },
+                    { href: `${GENERATOR_URL}${result.urls.markdown}`, label: "Markdown", icon: Share2 },
+                    ...result.urls.banners.map((url, i) => ({
+                      href: `${GENERATOR_URL}${url}`,
+                      label: `Banner ${i + 1}`,
+                      icon: ImageIcon,
+                    })),
+                  ].map((link, i) => (
+                    <motion.a
                       key={i}
-                      href={`${GENERATOR_URL}${url}`}
+                      href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={accentBtnClass}
+                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0 } }}
                     >
-                      <ImageIcon className="h-4 w-4" /> Banner {i + 1}
-                    </a>
+                      <link.icon className="h-4 w-4" /> {link.label}
+                    </motion.a>
                   ))}
-                </div>
+                </motion.div>
 
-                {/* Output actions */}
-                <div className="border-t border-autronis-border/50 pt-4">
-                  <p className="text-xs font-semibold text-autronis-text-tertiary uppercase tracking-wider mb-3">
-                    Acties
-                  </p>
+                {/* Output acties — gegroepeerde dropdowns */}
+                <div className="border-t border-autronis-border/50 pt-4 space-y-3">
+                  <p className="text-xs font-semibold text-autronis-text-tertiary uppercase tracking-wider">Publiceren & downloaden</p>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={openLinkedInPost} className={actionBtnClass}>
-                      <Linkedin className="h-4 w-4" /> Maak LinkedIn post
-                    </button>
-                    <button onClick={openInstagramBanner} className={actionBtnClass}>
-                      <ImageIcon className="h-4 w-4" /> Maak Instagram banner
-                    </button>
-                    <button onClick={openVideo} className={actionBtnClass}>
-                      <Video className="h-4 w-4" /> Maak video
-                    </button>
-                    <button onClick={downloadPdf} className={actionBtnClass}>
-                      <Download className="h-4 w-4" /> Download PDF
-                    </button>
-                    <button onClick={copyMarkdown} className={actionBtnClass}>
-                      <Copy className="h-4 w-4" /> {copied ? "Gekopieerd!" : "Kopieer tekst"}
-                    </button>
+                    {/* Publiceer dropdown */}
+                    <div className="relative" ref={publiceerRef}>
+                      <button
+                        onClick={() => { setPubliceerOpen(!publiceerOpen); setDownloadOpen(false); }}
+                        className={cn(accentBtnClass)}
+                      >
+                        <Share2 className="h-4 w-4" /> Publiceer
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", publiceerOpen && "rotate-180")} />
+                      </button>
+                      <AnimatePresence>
+                        {publiceerOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 top-full mt-1.5 w-44 bg-autronis-card border border-autronis-border rounded-xl shadow-xl overflow-hidden z-20"
+                          >
+                            <button
+                              onClick={() => { openLinkedInPost(); setPubliceerOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-autronis-text-primary hover:bg-white/5 transition-colors"
+                            >
+                              <Linkedin className="h-3.5 w-3.5 text-blue-400" /> LinkedIn post
+                            </button>
+                            <button
+                              onClick={() => { openInstagramBanner(); setPubliceerOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-autronis-text-primary hover:bg-white/5 transition-colors"
+                            >
+                              <ImageIcon className="h-3.5 w-3.5 text-pink-400" /> Instagram banner
+                            </button>
+                            <button
+                              onClick={() => { openVideo(); setPubliceerOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-autronis-text-primary hover:bg-white/5 transition-colors"
+                            >
+                              <Video className="h-3.5 w-3.5 text-purple-400" /> Video
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* Download dropdown */}
+                    <div className="relative" ref={downloadRef}>
+                      <button
+                        onClick={() => { setDownloadOpen(!downloadOpen); setPubliceerOpen(false); }}
+                        className={actionBtnClass}
+                      >
+                        <Download className="h-4 w-4" /> Download
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", downloadOpen && "rotate-180")} />
+                      </button>
+                      <AnimatePresence>
+                        {downloadOpen && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 4 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute left-0 top-full mt-1.5 w-44 bg-autronis-card border border-autronis-border rounded-xl shadow-xl overflow-hidden z-20"
+                          >
+                            <button
+                              onClick={() => { downloadPdf(); setDownloadOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-autronis-text-primary hover:bg-white/5 transition-colors"
+                            >
+                              <FileText className="h-3.5 w-3.5 text-autronis-accent" /> PDF pagina
+                            </button>
+                            <button
+                              onClick={() => { copyMarkdown(); setDownloadOpen(false); }}
+                              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-xs text-autronis-text-primary hover:bg-white/5 transition-colors"
+                            >
+                              {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5 text-autronis-accent" />}
+                              {copied ? "Gekopieerd!" : "Kopieer markdown"}
+                            </button>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
           </>
         )}

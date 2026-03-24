@@ -280,7 +280,12 @@ function VoortgangCompact({ taken, projecten }: { taken: Taak[]; projecten: Proj
         <BarChart3 className="w-3.5 h-3.5 text-autronis-text-secondary" />
         <span className="text-xs font-medium text-autronis-text-secondary">Voortgang</span>
         <div className="flex-1 max-w-32 h-1 bg-autronis-bg rounded-full overflow-hidden">
-          <div className="h-full bg-autronis-accent/70 rounded-full transition-all" style={{ width: `${pct}%` }} />
+          <motion.div
+            className="h-full bg-autronis-accent/70 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+          />
         </div>
         <span className="text-xs font-semibold text-autronis-accent tabular-nums">{pct}%</span>
         <span className="text-[10px] text-autronis-text-secondary tabular-nums">{afgerond}/{totaal}</span>

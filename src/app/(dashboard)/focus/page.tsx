@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   Target, Clock, Flame, TrendingUp, TrendingDown, Minus,
   Play, CheckCircle2, Zap, Trophy, BarChart3, Calendar, ArrowRight,
@@ -32,6 +34,9 @@ function formatDuurLang(minuten: number): string {
 
 // ─── Goal Ring ───
 function GoalRing({ huidig, doel, size = 120 }: { huidig: number; doel: number; size?: number }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const radius = (size - 12) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = Math.min(huidig / doel, 1);
@@ -46,7 +51,7 @@ function GoalRing({ huidig, doel, size = 120 }: { huidig: number; doel: number; 
           cx={size / 2} cy={size / 2} r={radius} fill="none"
           stroke={isCompleet ? "#4ade80" : "#17B8A5"}
           strokeWidth="8" strokeLinecap="round"
-          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeDasharray={circumference} strokeDashoffset={mounted ? offset : circumference}
           className="transition-[stroke-dashoffset] duration-700 ease-out"
         />
       </svg>
@@ -79,6 +84,9 @@ function StreakBadge({ streak }: { streak: number }) {
 
 // ─── Week Heatmap ───
 function WeekHeatmap({ week, vorigeWeekTotaal }: { week: Array<{ dag: string; duurMinuten: number }>; vorigeWeekTotaal: number }) {
+  const [barsMounted, setBarsMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setBarsMounted(true), 80); return () => clearTimeout(t); }, []);
+
   const weekTotaal = week.reduce((sum, d) => sum + d.duurMinuten, 0);
   const delta = vorigeWeekTotaal > 0 ? Math.round(((weekTotaal - vorigeWeekTotaal) / vorigeWeekTotaal) * 100) : 0;
   const vandaag = new Date().toISOString().substring(0, 10);
@@ -138,7 +146,7 @@ function WeekHeatmap({ week, vorigeWeekTotaal }: { week: Array<{ dag: string; du
                           ? "bg-autronis-accent shadow-sm shadow-autronis-accent/20"
                           : "bg-autronis-accent/30"
                   )}
-                  style={{ height: `${Math.max(hoogte, dag.duurMinuten === 0 ? 3 : 6)}%` }}
+                  style={{ height: barsMounted ? `${Math.max(hoogte, dag.duurMinuten === 0 ? 3 : 6)}%` : "0%" }}
                 />
               </div>
               <span className={cn("text-[10px] font-medium", isVandaagDag ? "text-autronis-accent" : "text-autronis-text-secondary/70")}>
@@ -373,10 +381,15 @@ export default function FocusPage() {
               <div className="p-1.5 rounded-lg bg-autronis-accent/10"><Clock className="w-3.5 h-3.5 text-autronis-accent" /></div>
               <span className="text-xs text-autronis-text-secondary">Vandaag</span>
             </div>
-            <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{formatDuur(vandaagMinuten)}</p>
+            <AnimatedNumber value={vandaagMinuten} format={(n) => formatDuur(Math.round(n))} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
             <div className="flex items-center gap-2 mt-2">
               <div className="flex-1 h-1.5 bg-autronis-border/30 rounded-full overflow-hidden">
-                <div className={cn("h-full rounded-full transition-all", deepWorkPct >= 100 ? "bg-green-400" : "bg-autronis-accent")} style={{ width: `${deepWorkPct}%` }} />
+                <motion.div
+                  className={cn("h-full rounded-full", deepWorkPct >= 100 ? "bg-green-400" : "bg-autronis-accent")}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${deepWorkPct}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                />
               </div>
               <span className="text-[10px] text-autronis-text-secondary tabular-nums">{deepWorkPct}%</span>
             </div>
@@ -389,7 +402,7 @@ export default function FocusPage() {
               <div className="p-1.5 rounded-lg bg-blue-500/10"><Target className="w-3.5 h-3.5 text-blue-400" /></div>
               <span className="text-xs text-autronis-text-secondary">Deze week</span>
             </div>
-            <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{formatDuur(weekTotaal)}</p>
+            <AnimatedNumber value={weekTotaal} format={(n) => formatDuur(Math.round(n))} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
             <div className="flex items-center gap-1.5 mt-2">
               {vorigeWeekTotaal > 0 ? (
                 <>

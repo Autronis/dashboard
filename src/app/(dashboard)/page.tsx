@@ -48,6 +48,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
 
 import { KPICard } from "@/components/ui/kpi-card";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 import { CheckBurst } from "@/components/ui/confetti";
 import type { TijdCategorie } from "@/types";
@@ -1040,9 +1041,7 @@ export default function DashboardPage() {
                   <ListTodo className="w-4 h-4 text-autronis-accent" />
                   Mijn taken
                 </h2>
-                <span className="text-xs text-autronis-accent font-medium">
-                  {mijnTaken.length} open
-                </span>
+                <AnimatedNumber value={mijnTaken.length} format={(n) => `${Math.round(n)} open`} className="text-xs text-autronis-accent font-medium" />
               </div>
               {mijnTaken.length === 0 ? (
                 <p className="text-sm text-autronis-text-secondary">

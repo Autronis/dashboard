@@ -991,9 +991,9 @@ export default function DashboardPage() {
         })()}
 
         {/* Main 2-column layout */}
-        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3">
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3 min-w-0">
           {/* Left column: Projecten + Taken + Briefing + Deadlines + Docs */}
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0 overflow-hidden">
             {/* Compact project overzicht */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
               <div className="flex items-center justify-between mb-2.5">
@@ -1098,7 +1098,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Right column: Inzichten + Team + Idee + Focus + Gewoontes + Learning + Brain */}
-          <div className="space-y-3">
+          <div className="space-y-3 min-w-0">
             {/* Slimme inzichten */}
             {inzichten.length > 0 && (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">

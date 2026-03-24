@@ -1,15 +1,38 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee, CheckSquare, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Coffee, CheckSquare, X, Video } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
 const UUR_HOOGTE = 60; // px per uur
 
-// Color config per event type for dag view
+function extractMeetingUrl(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const patterns = [
+    /https?:\/\/meet\.google\.com\/[a-z\-]+/i,
+    /https?:\/\/[\w.]*zoom\.us\/j\/\d+[^\s]*/i,
+    /https?:\/\/teams\.microsoft\.com\/l\/meetup-join\/[^\s]+/i,
+    /https?:\/\/[\w.]*webex\.com\/[^\s]+/i,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m) return m[0];
+  }
+  return null;
+}
+
+function getMeetingLabel(url: string): string {
+  if (url.includes("zoom.us")) return "Zoom";
+  if (url.includes("meet.google")) return "Meet";
+  if (url.includes("teams.microsoft")) return "Teams";
+  if (url.includes("webex")) return "Webex";
+  return "Meeting";
+}
+
 function getEventColors(item: AnyEvent): { bg: string; border: string; text: string } {
   const isExtern = "bron" in item;
   const isDeadline = "linkHref" in item;
@@ -28,7 +51,6 @@ function getEventColors(item: AnyEvent): { bg: string; border: string; text: str
     }
     return { bg: "rgba(23,184,165,0.12)", border: "#17B8A5", text: "#4DC9B4" };
   }
-  // Internal items
   const ai = item as AgendaItem;
   switch (ai.type) {
     case "afspraak":
@@ -49,13 +71,22 @@ interface PauzeBlock {
   eindMin: number;
 }
 
+interface TooltipState {
+  x: number;
+  y: number;
+  titel: string;
+  startTijd: string | null;
+  eindTijd: string | null;
+  meetUrl: string | null;
+  isImminent: boolean;
+}
+
 interface DagViewProps {
   datum: Date;
   onNavigeer: (richting: -1 | 1) => void;
   items: AnyEvent[];
   onItemClick?: (item: AgendaItem) => void;
   onSlotClick?: (datum: string) => void;
-  // Taken props
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
@@ -63,8 +94,38 @@ interface DagViewProps {
 
 export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak }: DagViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
   const isVandaag = datumStr === new Date().toISOString().slice(0, 10);
+
+  // Real-time klok voor nu-lijn
+  const [nu, setNu] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNu(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Hover tooltip
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  const showTooltip = useCallback((state: TooltipState) => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    setTooltip(state);
+  }, []);
+
+  const hideTooltip = useCallback(() => {
+    tooltipTimerRef.current = setTimeout(() => setTooltip(null), 120);
+  }, []);
+
+  const keepTooltip = useCallback(() => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
+    };
+  }, []);
 
   const dagLabel = datum.toLocaleDateString("nl-NL", {
     weekday: "long",
@@ -73,12 +134,10 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     year: "numeric",
   });
 
-  // Ingeplande taken voor deze dag
   const dagTaken = useMemo(() => {
     return ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === datumStr);
   }, [ingeplandeTaken, datumStr]);
 
-  // Split events
   const { heleDag, timed } = useMemo(() => {
     const heleDag: AnyEvent[] = [];
     const timed: AnyEvent[] = [];
@@ -97,7 +156,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     return { heleDag, timed };
   }, [items]);
 
-  // Bepaal zichtbaar bereik: 1 uur voor eerste event tot 1 uur na laatste, min 06-20
   const { startUur, eindUur } = useMemo(() => {
     let min = 7;
     let max = 20;
@@ -117,7 +175,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       }
     }
 
-    // Include ingeplande taken in range
     for (const taak of dagTaken) {
       if (!taak.ingeplandStart) continue;
       const d = new Date(taak.ingeplandStart);
@@ -128,17 +185,16 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     }
 
     if (isVandaag) {
-      const nuUur = new Date().getHours();
+      const nuUur = nu.getHours();
       min = Math.min(min, nuUur);
       max = Math.max(max, nuUur + 2);
     }
 
     return { startUur: Math.max(0, min - 1), eindUur: Math.min(24, max) };
-  }, [timed, dagTaken, isVandaag]);
+  }, [timed, dagTaken, isVandaag, nu]);
 
   const uren = useMemo(() => Array.from({ length: eindUur - startUur }, (_, i) => startUur + i), [startUur, eindUur]);
 
-  // Bereken pauzes (gaps) tussen timed events
   const pauzes = useMemo(() => {
     if (timed.length < 2) return [];
 
@@ -182,18 +238,15 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     return gaps;
   }, [timed]);
 
-  // Scroll naar nu of eerste event
   useEffect(() => {
     if (!scrollRef.current) return;
     if (isVandaag) {
-      const nuUur = new Date().getHours();
+      const nuUur = nu.getHours();
       const offset = (nuUur - startUur) * UUR_HOOGTE - 60;
       scrollRef.current.scrollTop = Math.max(0, offset);
     }
-  }, [isVandaag, startUur]);
+  }, [isVandaag, startUur, nu]);
 
-  // Nu-indicator positie
-  const nu = new Date();
   const nuMin = nu.getHours() * 60 + nu.getMinutes();
   const nuTop = ((nuMin - startUur * 60) / 60) * UUR_HOOGTE;
 
@@ -213,24 +266,40 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       </div>
 
       {/* Hele-dag events */}
-      {heleDag.length > 0 && (
-        <div className="mb-3 space-y-1">
-          {heleDag.map((item) => {
-            const isExtern = "bron" in item;
-            const colors = getEventColors(item);
-            return (
-              <div
-                key={item.id}
-                className="px-3 py-2 rounded-lg text-sm font-medium border cursor-pointer border-l-[3px]"
-                style={{ backgroundColor: colors.bg, borderLeftColor: colors.border, color: colors.text, borderColor: `${colors.border}40` }}
-                onClick={() => !isExtern && onItemClick?.(item as AgendaItem)}
-              >
-                {item.titel}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      <AnimatePresence>
+        {heleDag.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-3 space-y-1 overflow-hidden"
+          >
+            {heleDag.map((item, idx) => {
+              const isExtern = "bron" in item;
+              const colors = getEventColors(item);
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.06, duration: 0.25 }}
+                  className="px-3 py-2 rounded-lg text-sm font-medium border cursor-pointer border-l-[3px]"
+                  style={{
+                    background: `linear-gradient(135deg, ${colors.bg} 0%, transparent 100%)`,
+                    borderLeftColor: colors.border,
+                    color: colors.text,
+                    borderColor: `${colors.border}30`,
+                    boxShadow: `0 2px 8px ${colors.border}20`,
+                  }}
+                  onClick={() => !isExtern && onItemClick?.(item as AgendaItem)}
+                >
+                  {item.titel}
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Tijdlijn */}
       <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl overflow-x-auto">
@@ -254,7 +323,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             </div>
           ))}
 
-          {/* Pauze blokken */}
+          {/* Pauze blokken met gestreepte textuur */}
           {pauzes.map((pauze, i) => {
             const top = ((pauze.startMin - startUur * 60) / 60) * UUR_HOOGTE;
             const height = Math.max(20, ((pauze.eindMin - pauze.startMin) / 60) * UUR_HOOGTE);
@@ -263,19 +332,24 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             return (
               <div
                 key={`pauze-${i}`}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg bg-autronis-border/8 border border-dashed border-autronis-border/20 flex items-center justify-center gap-1.5 pointer-events-none z-[1]"
-                style={{ top: `${top}px`, height: `${height}px` }}
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg border border-dashed border-autronis-border/25 flex items-center justify-center gap-1.5 pointer-events-none z-[1]"
+                style={{
+                  top: `${top}px`,
+                  height: `${height}px`,
+                  background: "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(255,255,255,0.012) 5px, rgba(255,255,255,0.012) 10px)",
+                  backgroundColor: "rgba(42,53,56,0.3)",
+                }}
               >
-                <Coffee className="w-3 h-3 text-autronis-text-secondary/40" />
-                <span className="text-xs text-autronis-text-secondary/40 font-medium">
+                <Coffee className="w-3 h-3 text-autronis-text-secondary/35" />
+                <span className="text-xs text-autronis-text-secondary/35 font-medium">
                   Pauze · {duurLabel}
                 </span>
               </div>
             );
           })}
 
-          {/* Events */}
-          {timed.map((item) => {
+          {/* Events met stagger + gradient + glow */}
+          {timed.map((item, idx) => {
             const startStr = "startDatum" in item ? item.startDatum : "";
             if (startStr.length <= 10) return null;
 
@@ -297,12 +371,45 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const startTijd = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
             const eindTijd = eindStr ? new Date(eindStr).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
+            // Meeting URL
+            const meetUrl = isExtern
+              ? ((item as ExternEvent).meetingUrl || extractMeetingUrl((item as ExternEvent).omschrijving) || extractMeetingUrl((item as ExternEvent).locatie))
+              : extractMeetingUrl((item as AgendaItem).omschrijving);
+
+            // Is imminent (< 5 min)?
+            const startMs = startDate.getTime();
+            const nuMs = nu.getTime();
+            const diffMin = (startMs - nuMs) / 60000;
+            const isImminent = diffMin >= 0 && diffMin < 5;
+
             return (
-              <div
+              <motion.div
                 key={item.id}
+                initial={{ opacity: 0, scaleX: 0.85, originX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ delay: idx * 0.055, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
                 onClick={() => !isExtern && onItemClick?.(item as AgendaItem)}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-colors hover:brightness-110 z-[2]"
-                style={{ top: `${top}px`, height: `${height}px`, backgroundColor: colors.bg, borderLeftColor: colors.border }}
+                onMouseEnter={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  showTooltip({
+                    x: rect.right + 8,
+                    y: rect.top,
+                    titel: item.titel,
+                    startTijd,
+                    eindTijd,
+                    meetUrl: meetUrl || null,
+                    isImminent,
+                  });
+                }}
+                onMouseLeave={hideTooltip}
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-[filter] hover:brightness-115 z-[2]"
+                style={{
+                  top: `${top}px`,
+                  height: `${height}px`,
+                  background: `linear-gradient(135deg, ${colors.bg} 40%, rgba(14,23,25,0.1) 100%)`,
+                  borderLeftColor: colors.border,
+                  boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
+                }}
               >
                 <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{item.titel}</p>
                 <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
@@ -310,13 +417,18 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
                     {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
                   </span>
+                  {isImminent && meetUrl && (
+                    <span className="ml-auto text-[9px] text-autronis-accent bg-autronis-accent/15 px-1.5 py-0.5 rounded-full animate-pulse font-medium">
+                      Nu
+                    </span>
+                  )}
                 </div>
-              </div>
+              </motion.div>
             );
           })}
 
           {/* Ingeplande taken als groene blokken */}
-          {dagTaken.map((taak) => {
+          {dagTaken.map((taak, idx) => {
             if (!taak.ingeplandStart) return null;
             const startDate = new Date(taak.ingeplandStart);
             const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
@@ -328,14 +440,18 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const eindTijd = taak.ingeplandEind ? new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
             return (
-              <div
+              <motion.div
                 key={`taak-dag-${taak.id}`}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-all hover:brightness-110 z-[3] group"
+                initial={{ opacity: 0, scaleX: 0.85, originX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                transition={{ delay: (timed.length + idx) * 0.055, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-[filter] hover:brightness-115 z-[3] group"
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  backgroundColor: "rgba(34,197,94,0.12)",
+                  background: "linear-gradient(135deg, rgba(34,197,94,0.14) 40%, rgba(14,23,25,0.1) 100%)",
                   borderLeftColor: "#22c55e",
+                  boxShadow: "0 2px 10px rgba(34,197,94,0.15), inset 0 1px 0 rgba(34,197,94,0.15)",
                 }}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               >
@@ -352,7 +468,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                     <span className="text-[10px] text-autronis-text-secondary/50 ml-auto truncate">{taak.projectNaam}</span>
                   )}
                 </div>
-                {/* Uitplannen knop */}
                 {onUnplanTaak && (
                   <button
                     className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -365,15 +480,18 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                     <X className="w-3 h-3" />
                   </button>
                 )}
-              </div>
+              </motion.div>
             );
           })}
 
-          {/* Nu-indicator */}
+          {/* Nu-indicator met smooth position transitie */}
           {isVandaag && nuTop >= 0 && nuTop <= uren.length * UUR_HOOGTE && (
-            <div className="absolute left-10 sm:left-14 right-0 flex items-center z-10 pointer-events-none" style={{ top: `${nuTop}px` }}>
-              <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/30 animate-pulse" />
-              <div className="flex-1 h-[2px] bg-red-500" />
+            <div
+              className="absolute left-10 sm:left-14 right-0 flex items-center z-10 pointer-events-none transition-[top] duration-[60000ms] ease-linear"
+              style={{ top: `${nuTop}px` }}
+            >
+              <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/40 animate-pulse" />
+              <div className="flex-1 h-[2px] bg-gradient-to-r from-red-500 to-red-500/40" />
               <span className="text-[10px] font-bold text-red-400 bg-autronis-card/90 px-1.5 py-0.5 rounded ml-1">
                 Nu
               </span>
@@ -381,6 +499,58 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           )}
         </div>
       </div>
+
+      {/* Hover tooltip (fixed position, buiten scroll container) */}
+      <AnimatePresence>
+        {tooltip && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: -4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: -4 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className="fixed z-[9999] bg-autronis-card border border-autronis-border/60 rounded-xl p-3 shadow-2xl min-w-[180px] max-w-[240px]"
+            style={{
+              left: Math.min(tooltip.x, window.innerWidth - 248),
+              top: Math.min(tooltip.y, window.innerHeight - 120),
+              boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)",
+            }}
+            onMouseEnter={keepTooltip}
+            onMouseLeave={hideTooltip}
+          >
+            {/* Arrow pointer */}
+            <div
+              className="absolute -left-[6px] top-3 w-3 h-3 bg-autronis-card border-l border-b border-autronis-border/60 rotate-45"
+            />
+            <p className="text-sm font-semibold text-autronis-text-primary mb-1.5 pr-1">{tooltip.titel}</p>
+            {tooltip.startTijd && (
+              <div className="flex items-center gap-1.5 text-xs text-autronis-text-secondary mb-2">
+                <Clock className="w-3 h-3 text-autronis-accent flex-shrink-0" />
+                <span className="tabular-nums">
+                  {tooltip.startTijd}{tooltip.eindTijd ? ` – ${tooltip.eindTijd}` : ""}
+                </span>
+              </div>
+            )}
+            {tooltip.meetUrl && (
+              <a
+                href={tooltip.meetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg transition-colors",
+                  tooltip.isImminent
+                    ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                    : "bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25"
+                )}
+              >
+                <Video className="w-3.5 h-3.5" />
+                {getMeetingLabel(tooltip.meetUrl)} joinen
+                {tooltip.isImminent && <span className="ml-1 text-[9px] opacity-80">Nu!</span>}
+              </a>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

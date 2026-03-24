@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
   ChevronRight,
@@ -116,6 +117,13 @@ export default function AgendaPage() {
   const [kalenderSettingsOpen, setKalenderSettingsOpen] = useState(false);
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Real-time klok — update elke minuut
+  const [nuTijd, setNuTijd] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNuTijd(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
 
   const [titel, setTitel] = useState("");
   const [omschrijving, setOmschrijving] = useState("");
@@ -332,6 +340,8 @@ export default function AgendaPage() {
   }, [items, externeEvents, deadlineEvents, filterType]);
 
   function navigeer(richting: number) {
+    setNavRichting(richting > 0 ? 1 : -1);
+    setViewKey((k) => k + 1);
     let nm = maand + richting;
     let nj = jaar;
     if (nm < 0) { nm = 11; nj--; }
@@ -396,6 +406,14 @@ export default function AgendaPage() {
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
+  // Slide transitie richting + key
+  const [navRichting, setNavRichting] = useState<1 | -1>(1);
+  const [viewKey, setViewKey] = useState(0);
+
+  // Delete shake animatie
+  const [deleteShake, setDeleteShake] = useState(false);
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const vandaagStr = datumStr(vandaag.getFullYear(), vandaag.getMonth(), vandaag.getDate());
 
   // Vandaag-strip data
@@ -404,13 +422,12 @@ export default function AgendaPage() {
   }, [itemsPerDag, vandaagStr]);
 
   const volgendEvent = useMemo(() => {
-    const nu = new Date();
     const toekomstig = vandaagItems
       .filter((item) => {
         const startStr = "startDatum" in item ? item.startDatum : ("datum" in item ? item.datum : null);
-        if (!startStr || startStr.length <= 10) return false; // hele dag events skippen
+        if (!startStr || startStr.length <= 10) return false;
         const start = new Date(startStr);
-        return start > nu;
+        return start > nuTijd;
       })
       .sort((a, b) => {
         const aStr = "startDatum" in a ? a.startDatum : ("datum" in a ? a.datum : "");
@@ -418,20 +435,19 @@ export default function AgendaPage() {
         return aStr.localeCompare(bStr);
       });
     return toekomstig[0] || null;
-  }, [vandaagItems]);
+  }, [vandaagItems, nuTijd]);
 
   const countdownTekst = useMemo(() => {
     if (!volgendEvent) return null;
-    const nu = new Date();
     const startStr = "startDatum" in volgendEvent ? volgendEvent.startDatum : ("datum" in volgendEvent ? volgendEvent.datum : "");
     const start = new Date(startStr);
-    const diffMin = Math.round((start.getTime() - nu.getTime()) / 60000);
+    const diffMin = Math.round((start.getTime() - nuTijd.getTime()) / 60000);
     if (diffMin < 1) return "nu";
     if (diffMin < 60) return `over ${diffMin} min`;
     const uren = Math.floor(diffMin / 60);
     const min = diffMin % 60;
     return min > 0 ? `over ${uren}u ${min}min` : `over ${uren}u`;
-  }, [volgendEvent]);
+  }, [volgendEvent, nuTijd]);
 
   // Week view helpers
   const weekDagen = useMemo(() => {
@@ -509,6 +525,23 @@ export default function AgendaPage() {
   ]
     .sort((a, b) => a.startDatum.localeCompare(b.startDatum))
     .slice(0, 10);
+
+  const slideVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? "40%" : "-40%",
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      transition: { type: "spring" as const, stiffness: 320, damping: 32, restDelta: 0.001 },
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? "-40%" : "40%",
+      opacity: 0,
+      transition: { duration: 0.18, ease: "easeIn" as const },
+    }),
+  };
 
   if (loading) {
     return (
@@ -808,6 +841,16 @@ export default function AgendaPage() {
             </div>
           </div>
 
+          <div className="overflow-hidden">
+          <AnimatePresence mode="wait" custom={navRichting} initial={false}>
+          <motion.div
+            key={`${weergave}-${viewKey}`}
+            custom={navRichting}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+          >
           {weergave === "dag" ? (
             <DagView
               datum={selectedDag}
@@ -1507,6 +1550,9 @@ export default function AgendaPage() {
               </div>
             </div>
           )}
+          </motion.div>
+          </AnimatePresence>
+          </div>
         </div>
 
         {/* Sidebar: dag detail of aankomend */}

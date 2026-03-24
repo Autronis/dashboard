@@ -114,6 +114,14 @@ export default function FinancienPage() {
     setSelectedIds(new Set());
   }, [statusFilter, zoek]);
 
+  // Mark overdue invoices visually
+  const getEffectiveStatus = (f: Factuur): string => {
+    if (f.status === "verzonden" && f.vervaldatum && f.vervaldatum < new Date().toISOString().slice(0, 10)) {
+      return "te_laat";
+    }
+    return f.status;
+  };
+
   const handleSortCol = (col: SortCol) => {
     if (sortCol === col) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -147,14 +155,6 @@ export default function FinancienPage() {
       addToast("Kon factuur niet bijwerken", "fout");
     },
   });
-
-  // Mark overdue invoices visually
-  const getEffectiveStatus = (f: Factuur): string => {
-    if (f.status === "verzonden" && f.vervaldatum && f.vervaldatum < new Date().toISOString().slice(0, 10)) {
-      return "te_laat";
-    }
-    return f.status;
-  };
 
   const toggleSelect = (id: number) => {
     setSelectedIds((prev) => {
@@ -316,6 +316,11 @@ export default function FinancienPage() {
                   className={cn("text-3xl font-bold tabular-nums", kpis.openstaand > 0 ? "text-red-400" : "text-autronis-text-primary")}
                 />
                 <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Openstaand</p>
+                {verwachtBinnen14Dagen > 0 && (
+                  <p className="text-xs text-emerald-400 mt-1">
+                    Waarvan {formatBedrag(verwachtBinnen14Dagen)} binnen 14d
+                  </p>
+                )}
               </div>
 
               <div className="kpi-gradient-betaald border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
@@ -332,10 +337,15 @@ export default function FinancienPage() {
                 <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Betaald deze maand</p>
               </div>
 
-              <div className="kpi-gradient-deadlines border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+              <div className={cn(
+                "kpi-gradient-deadlines border rounded-2xl p-6 lg:p-7 card-glow transition-all",
+                kpis.teLaat > 0
+                  ? "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.12)]"
+                  : "border-autronis-border"
+              )}>
                 <div className="flex items-center gap-3 mb-3">
                   <div className={cn("p-2.5 rounded-xl", kpis.teLaat > 0 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
-                    <AlertTriangle className={cn("w-5 h-5", kpis.teLaat > 0 ? "text-red-400" : "text-autronis-accent")} />
+                    <AlertTriangle className={cn("w-5 h-5", kpis.teLaat > 0 ? "text-red-400 animate-pulse" : "text-autronis-accent")} />
                   </div>
                 </div>
                 <AnimatedNumber
@@ -359,53 +369,55 @@ export default function FinancienPage() {
               </div>
             </div>
 
+            {/* Cashflow warning */}
+            {cashflowWaarschuwing && (
+              <div className="bg-amber-500/8 border border-amber-500/30 rounded-2xl px-5 py-4 flex items-center gap-4">
+                <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
+                <p className="text-sm text-amber-300 flex-1">
+                  <span className="font-semibold">{formatBedrag(cashflowWaarschuwing.openstaand)}</span> staat al{" "}
+                  <span className="font-semibold">{cashflowWaarschuwing.oudste} dagen</span> open bij{" "}
+                  <span className="font-semibold">{cashflowWaarschuwing.klantNaam}</span>
+                </p>
+                <button
+                  onClick={() => setHerinneringPreviewOpen(true)}
+                  className="text-xs px-3 py-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg font-medium transition-colors flex-shrink-0"
+                >
+                  Herinnering sturen
+                </button>
+              </div>
+            )}
+
             {/* Quick actions + Ouderdomsanalyse */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
               {/* Quick actions */}
               <div className="flex flex-col gap-3">
                 <button
-                  onClick={() => {
-                    herinneringenMutation.mutate(undefined, {
-                      onSuccess: (data) => {
-                        addToast(
-                          data.bijgewerkt > 0
-                            ? `${data.bijgewerkt} herinnering(en) verstuurd`
-                            : "Geen te late facturen gevonden",
-                          data.bijgewerkt > 0 ? "succes" : "fout"
-                        );
-                      },
-                      onError: (err) => {
-                        addToast(err.message, "fout");
-                      },
-                    });
-                  }}
-                  disabled={herinneringenMutation.isPending}
-                  className="inline-flex items-center gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors disabled:opacity-50"
+                  onClick={() => setHerinneringPreviewOpen(true)}
+                  className="inline-flex items-center justify-between gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors"
                 >
-                  <Bell className="w-4 h-4 text-orange-400" />
-                  {herinneringenMutation.isPending ? "Bezig..." : "Herinneringen versturen"}
+                  <div className="flex items-center gap-3">
+                    <Bell className="w-4 h-4 text-orange-400" />
+                    Herinneringen versturen
+                  </div>
+                  {(herinneringPreview?.aantal ?? 0) > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 font-semibold">
+                      {herinneringPreview?.aantal}
+                    </span>
+                  )}
                 </button>
                 <button
-                  onClick={() => {
-                    periodiekMutation.mutate(undefined, {
-                      onSuccess: (data) => {
-                        addToast(
-                          data.aangemaakt > 0
-                            ? `${data.aangemaakt} periodieke factuur/facturen aangemaakt`
-                            : "Geen periodieke facturen te genereren",
-                          data.aangemaakt > 0 ? "succes" : "fout"
-                        );
-                      },
-                      onError: (err) => {
-                        addToast(err.message, "fout");
-                      },
-                    });
-                  }}
-                  disabled={periodiekMutation.isPending}
-                  className="inline-flex items-center gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors disabled:opacity-50"
+                  onClick={() => setPeriodiekPreviewOpen(true)}
+                  className="inline-flex items-center justify-between gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors"
                 >
-                  <RefreshCw className="w-4 h-4 text-blue-400" />
-                  {periodiekMutation.isPending ? "Bezig..." : "Periodieke facturen genereren"}
+                  <div className="flex items-center gap-3">
+                    <RefreshCw className="w-4 h-4 text-blue-400" />
+                    Periodieke facturen
+                  </div>
+                  {(periodiekPreview?.aantal ?? 0) > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold">
+                      {periodiekPreview?.aantal} klaar
+                    </span>
+                  )}
                 </button>
               </div>
 

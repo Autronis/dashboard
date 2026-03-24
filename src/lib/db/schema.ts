@@ -1035,7 +1035,7 @@ export const ideeen = sqliteTable("ideeen", {
   nummer: integer("nummer"),
   naam: text("naam").notNull(),
   categorie: text("categorie", {
-    enum: ["dashboard", "klant_verkoop", "intern", "dev_tools", "content_media", "geld_groei", "experimenteel", "website"],
+    enum: ["dashboard", "klant_verkoop", "intern", "dev_tools", "content_media", "geld_groei", "experimenteel", "website", "inzicht"],
   }),
   status: text("status", {
     enum: ["idee", "uitgewerkt", "actief", "gebouwd"],

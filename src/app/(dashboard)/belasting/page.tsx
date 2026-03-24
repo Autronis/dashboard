@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Confetti } from "@/components/ui/confetti";
 import {
   Receipt,
   CreditCard,
@@ -149,13 +151,81 @@ function StatusBadge({ status, label }: { status: "ok" | "warning" | "danger"; l
   );
 }
 
+// ============ HELPERS ============
+
+function glowStyle(status: "ok" | "warning" | "danger"): React.CSSProperties {
+  if (status === "ok") return { boxShadow: "0 0 0 1px rgba(34,197,94,0.25), 0 0 16px 2px rgba(34,197,94,0.08)" };
+  if (status === "warning") return { boxShadow: "0 0 0 1px rgba(234,179,8,0.25), 0 0 16px 2px rgba(234,179,8,0.08)" };
+  return { boxShadow: "0 0 0 1px rgba(239,68,68,0.25), 0 0 16px 2px rgba(239,68,68,0.08)" };
+}
+
+interface WaterfallStep {
+  label: string;
+  value: number;
+  color: string;
+  subtract?: boolean;
+}
+
+function WaterfallChart({ steps }: { steps: WaterfallStep[] }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
+
+  const max = Math.max(...steps.map((s) => Math.abs(s.value)), 1);
+  return (
+    <div className="flex items-end gap-3 h-20 mt-1">
+      {steps.map((step, i) => {
+        const pct = (Math.abs(step.value) / max) * 100;
+        return (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <span className={cn("text-[10px] font-bold tabular-nums", step.color)}>
+              {formatBedrag(step.value)}
+            </span>
+            <div className="w-full bg-autronis-bg/50 rounded-t-md overflow-hidden" style={{ height: 44 }}>
+              <div
+                className={cn("w-full rounded-t-md transition-all ease-out", step.color.replace("text-", "bg-").replace("-400", "-500") + "/30 border-t-2 " + step.color.replace("text-", "border-"))}
+                style={{ height: mounted ? `${pct}%` : "0%", transitionDuration: `${600 + i * 100}ms`, marginTop: "auto" }}
+              />
+            </div>
+            <span className="text-[9px] text-autronis-text-secondary text-center leading-tight">{step.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniBarChart({ data, color = "#23C6B7" }: { data: number[]; color?: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 100); return () => clearTimeout(t); }, []);
+  const max = Math.max(...data, 1);
+  return (
+    <div className="flex items-end gap-0.5 h-8">
+      {data.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-sm transition-all ease-out"
+          style={{
+            height: mounted ? `${Math.max((v / max) * 100, 4)}%` : "4%",
+            background: color,
+            opacity: 0.6 + (v / max) * 0.4,
+            transitionDuration: `${400 + i * 60}ms`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ============ COMPONENT ============
 
 export default function BelastingPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const [jaar, setJaar] = useState(new Date().getFullYear());
+  const [jaarDirection, setJaarDirection] = useState<1 | -1>(1);
   const [activeTab, setActiveTab] = useState<TabId>("overzicht");
+  const [showConfetti, setShowConfetti] = useState(false);
+  const confettiFired = useRef(false);
 
   // Modals
   const [investeringModal, setInvesteringModal] = useState(false);
@@ -235,11 +305,16 @@ export default function BelastingPage() {
         body: JSON.stringify({ afgerond: nieuweStatus }),
       });
       if (!res.ok) throw new Error();
-      return nieuweStatus;
+      return { nieuweStatus, wasAfgerond: !!deadline.afgerond };
     },
-    onSuccess: (nieuweStatus: number) => {
+    onSuccess: ({ nieuweStatus, wasAfgerond }: { nieuweStatus: number; wasAfgerond: boolean }) => {
       addToast(nieuweStatus ? "Deadline afgerond" : "Deadline heropend", "succes");
-      queryClient.invalidateQueries({ queryKey: ["belasting"] });
+      queryClient.invalidateQueries({ queryKey: ["belasting"] }).then(() => {
+        // Check if all deadlines are now done (after cache update)
+        if (nieuweStatus === 1 && !wasAfgerond) {
+          confettiFired.current = false; // allow re-fire after invalidate
+        }
+      });
     },
     onError: () => {
       addToast("Kon deadline niet bijwerken", "fout");
@@ -485,6 +560,45 @@ export default function BelastingPage() {
   // Open BTW aangiftes
   const openBtwAangiftes = aangiftes.filter((a) => a.status !== "betaald");
 
+  // Confetti when all deadlines done
+  useEffect(() => {
+    if (deadlines.length > 0 && deadlines.every((d) => !!d.afgerond) && !confettiFired.current) {
+      confettiFired.current = true;
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 3000);
+    }
+  }, [deadlines]);
+
+  // ---- SMART INSIGHTS ----
+
+  // Belastingdruk warning: tekort per maand om bij te komen
+  const maandenResterend = Math.max(1, 12 - nu.getMonth());
+  const reserveringTekortPerMaand = reserveringTekort > 0
+    ? Math.ceil(reserveringTekort / maandenResterend)
+    : 0;
+
+  // Uren prognose: op basis van huidig tempo
+  const urenPrognose: { datum: string; haalbaar: boolean } | null = (() => {
+    if (!urenCriterium || urenCriterium.voldoet) return null;
+    const dagVanJaar = Math.floor((nu.getTime() - new Date(jaar, 0, 1).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    if (dagVanJaar <= 0) return null;
+    const urenPerDag = urenCriterium.behaaldUren / dagVanJaar;
+    if (urenPerDag <= 0) return { datum: "", haalbaar: false };
+    const dagenNodig = (urenCriterium.doelUren - urenCriterium.behaaldUren) / urenPerDag;
+    const prognoseDatum = new Date(nu.getTime() + dagenNodig * 24 * 60 * 60 * 1000);
+    const haalbaar = prognoseDatum.getFullYear() === jaar;
+    return {
+      datum: prognoseDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "long" }),
+      haalbaar,
+    };
+  })();
+
+  // KIA kans: als investeringen net onder de drempel zitten
+  const kiaGrens = 2801;
+  const kiaKans = totaalInvestering > 0 && totaalInvestering < kiaGrens
+    ? kiaGrens - totaalInvestering
+    : null;
+
   // ---- LOADING STATE ----
 
   if (loadingBelasting) {
@@ -521,18 +635,29 @@ export default function BelastingPage() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl">
+            <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
               <button
-                onClick={() => setJaar((j) => j - 1)}
+                onClick={() => { setJaarDirection(-1); setJaar((j) => j - 1); confettiFired.current = false; }}
                 className="px-3 py-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
               >
                 <ChevronDown className="w-4 h-4 rotate-90" />
               </button>
-              <span className="text-sm font-semibold text-autronis-text-primary tabular-nums px-1">
-                {jaar}
-              </span>
+              <div className="w-12 overflow-hidden relative flex items-center justify-center">
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={jaar}
+                    initial={{ x: jaarDirection * 20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    exit={{ x: jaarDirection * -20, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="text-sm font-semibold text-autronis-text-primary tabular-nums"
+                  >
+                    {jaar}
+                  </motion.span>
+                </AnimatePresence>
+              </div>
               <button
-                onClick={() => setJaar((j) => j + 1)}
+                onClick={() => { setJaarDirection(1); setJaar((j) => j + 1); confettiFired.current = false; }}
                 className="px-3 py-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
               >
                 <ChevronUp className="w-4 h-4 rotate-90" />
@@ -573,6 +698,29 @@ export default function BelastingPage() {
           </div>
         )}
 
+        {/* Belastingdruk warning banner */}
+        {reserveringTekortPerMaand > 0 && geschatteBelasting > 0 && (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4 flex items-center gap-3">
+            <PiggyBank className="w-5 h-5 text-orange-400 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-orange-400">
+                Je hebt nog {formatBedrag(reserveringTekort)} te reserveren voor belasting
+              </p>
+              <p className="text-xs text-orange-400/70 mt-0.5">
+                Zet de komende {maandenResterend} maanden{" "}
+                <span className="font-semibold text-orange-300">{formatBedrag(reserveringTekortPerMaand)}/maand</span>{" "}
+                apart om op schema te komen
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab("analyse")}
+              className="text-xs font-semibold text-orange-400 hover:text-orange-300 transition-colors whitespace-nowrap"
+            >
+              Bekijk analyse
+            </button>
+          </div>
+        )}
+
         {/* Tab bar — 4 tabs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {tabs.map((tab) => {
@@ -609,12 +757,15 @@ export default function BelastingPage() {
               <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Jouw situatie nu</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* BTW Status */}
-                <div className={cn(
-                  "p-5 rounded-xl border transition-colors",
-                  btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
-                  btwStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                  "border-green-500/30 bg-green-500/5"
-                )}>
+                <div
+                  className={cn(
+                    "p-5 rounded-xl border transition-all duration-300",
+                    btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                    btwStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                    "border-green-500/30 bg-green-500/5"
+                  )}
+                  style={glowStyle(btwStatus)}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-green-400" : btwStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge

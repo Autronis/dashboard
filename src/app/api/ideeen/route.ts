@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     const conditions = [];
     if (status) conditions.push(eq(ideeen.status, status as "idee" | "uitgewerkt" | "actief" | "gebouwd"));
-    if (categorie) conditions.push(eq(ideeen.categorie, categorie as "dashboard" | "klant_verkoop" | "intern" | "dev_tools" | "content_media" | "geld_groei" | "experimenteel" | "website"));
+    if (categorie) conditions.push(eq(ideeen.categorie, categorie as "dashboard" | "klant_verkoop" | "intern" | "dev_tools" | "content_media" | "geld_groei" | "experimenteel" | "website" | "inzicht"));
     if (prioriteit) conditions.push(eq(ideeen.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
 
     const rows = await db

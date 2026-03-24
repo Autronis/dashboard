@@ -68,6 +68,7 @@ const categorieOpties = [
   { key: "geld_groei", label: "Geld & Groei" },
   { key: "experimenteel", label: "Experimenteel" },
   { key: "website", label: "Website" },
+  { key: "inzicht", label: "Inzicht" },
 ] as const;
 
 const prioriteitOpties = [
@@ -85,6 +86,7 @@ const categorieBadgeKleuren: Record<string, string> = {
   geld_groei: "bg-yellow-500/15 text-yellow-400",
   experimenteel: "bg-purple-500/15 text-purple-400",
   website: "bg-cyan-500/15 text-cyan-400",
+  inzicht: "bg-amber-500/15 text-amber-400",
 };
 
 const statusBadgeKleuren: Record<string, string> = {
@@ -128,7 +130,9 @@ export default function IdeeenPage() {
   const { addToast } = useToast();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<"alle" | "ai">("alle");
+  const [activeTab, setActiveTab] = useState<"alle" | "ai" | "inzichten">("alle");
+  const [inzichtInput, setInzichtInput] = useState("");
+  const inzichtInputRef = useRef<HTMLInputElement>(null);
   const [filterStatus, setFilterStatus] = useState("");
   const [filterCategorie, setFilterCategorie] = useState("");
   const [filterDoelgroep, setFilterDoelgroep] = useState("");
@@ -201,7 +205,8 @@ export default function IdeeenPage() {
   const [scoreRevenue, setScoreRevenue] = useState(5);
 
   // Data splits
-  const backlogIdeeen = ideeen.filter((i) => i.isAiSuggestie !== 1 || i.gepromoveerd === 1);
+  const backlogIdeeen = ideeen.filter((i) => (i.isAiSuggestie !== 1 || i.gepromoveerd === 1) && i.categorie !== "inzicht");
+  const inzichtIdeeen = ideeen.filter((i) => i.categorie === "inzicht").sort((a, b) => b.aangemaaktOp.localeCompare(a.aangemaaktOp));
   const aiSuggesties = ideeen.filter((i) => i.isAiSuggestie === 1 && i.gepromoveerd !== 1);
 
   // KPIs
@@ -411,6 +416,19 @@ export default function IdeeenPage() {
     });
   }
 
+  function handleSaveInzicht() {
+    const tekst = inzichtInput.trim();
+    if (!tekst) return;
+    const naam = tekst.length > 60 ? tekst.slice(0, 60) : tekst;
+    createMutation.mutate(
+      { naam, omschrijving: tekst.length > 60 ? tekst : null, categorie: "inzicht", status: "idee", prioriteit: "normaal" },
+      {
+        onSuccess: () => { setInzichtInput(""); inzichtInputRef.current?.focus(); },
+        onError: () => addToast("Opslaan mislukt", "fout"),
+      }
+    );
+  }
+
   function handleSyncBacklog() {
     syncBacklogMutation.mutate(undefined, {
       onSuccess: (data) => addToast(`Sync klaar: ${data.nieuw} nieuw, ${data.bijgewerkt} bijgewerkt`, "succes"),
@@ -567,6 +585,10 @@ export default function IdeeenPage() {
         <button onClick={() => setActiveTab("ai")} className={cn("inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === "ai" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
           <Sparkles className="w-4 h-4" />AI Suggesties
           {aiTotaal > 0 && <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-full", activeTab === "ai" ? "bg-autronis-bg/20 text-autronis-bg" : "bg-autronis-accent/15 text-autronis-accent")}>{aiTotaal}</span>}
+        </button>
+        <button onClick={() => setActiveTab("inzichten")} className={cn("inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === "inzichten" ? "bg-amber-500 text-white" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
+          <PenLine className="w-4 h-4" />Inzichten
+          {inzichtIdeeen.length > 0 && <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-full", activeTab === "inzichten" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-400")}>{inzichtIdeeen.length}</span>}
         </button>
       </div>
 
@@ -814,6 +836,69 @@ export default function IdeeenPage() {
           </div>
         )}
       </>)}
+
+      {/* Inzichten Tab */}
+      {activeTab === "inzichten" && (
+        <div className="space-y-4">
+          {/* Quick capture */}
+          <div className="bg-autronis-card border border-amber-500/30 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <input
+                ref={inzichtInputRef}
+                type="text"
+                value={inzichtInput}
+                onChange={(e) => setInzichtInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveInzicht(); }}
+                placeholder="Typ een inzicht of notitie..."
+                className="flex-1 bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-amber-500/50"
+                autoFocus
+              />
+              <button
+                onClick={handleSaveInzicht}
+                disabled={!inzichtInput.trim() || createMutation.isPending}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-white rounded-xl text-sm font-medium transition-colors disabled:opacity-40"
+              >
+                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-autronis-text-secondary/50 mt-2 ml-1">Enter om op te slaan · Eerste 60 tekens worden de titel</p>
+          </div>
+
+          {/* Inzichten lijst */}
+          {inzichtIdeeen.length === 0 ? (
+            <div className="text-center py-12">
+              <PenLine className="w-10 h-10 text-autronis-text-secondary/20 mx-auto mb-3" />
+              <p className="text-sm text-autronis-text-secondary">Nog geen inzichten — typ hierboven om te beginnen</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {inzichtIdeeen.map((inzicht) => {
+                const datum = new Date(inzicht.aangemaaktOp);
+                const datumStr = datum.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: datum.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined });
+                return (
+                  <div key={inzicht.id} className="group flex items-start gap-3 bg-autronis-card border border-autronis-border hover:border-amber-500/30 rounded-xl px-4 py-3 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-autronis-text-primary">{inzicht.omschrijving || inzicht.naam}</p>
+                      {inzicht.omschrijving && inzicht.naam !== inzicht.omschrijving.slice(0, 60) && (
+                        <p className="text-xs text-amber-400/70 mt-0.5">{inzicht.naam}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <span className="text-[11px] text-autronis-text-secondary/50">{datumStr}</span>
+                      <button
+                        onClick={() => deleteMutation.mutate(inzicht.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-autronis-text-secondary/40 hover:text-red-400"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI Suggesties Tab */}
       {activeTab === "ai" && (

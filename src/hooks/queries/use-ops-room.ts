@@ -53,12 +53,12 @@ function mapRowToAgent(row: AgentActiviteitRow): Agent {
     rol: mapRole(row.agentType),
     team: (row.agentId.endsWith("-syb") || ["autro", "daan", "finn", "leo"].includes(row.agentId)) ? "syb" as const : "sem" as const,
     status,
-    huidigeTaak: status === "working" ? {
+    huidigeTaak: (status === "working" || status === "idle") && row.project ? {
       id: `task-${row.id}`,
       beschrijving: row.details ?? row.laatsteActie,
       project: row.project,
       startedAt: row.laatstGezien,
-      status: "bezig",
+      status: status === "working" ? "bezig" : "afgerond",
     } : null,
     voltooideVandaag: 0, // TODO: track completed tasks separately
     laatsteActiviteit: row.laatstGezien,

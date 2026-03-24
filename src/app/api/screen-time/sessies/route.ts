@@ -217,46 +217,37 @@ export async function GET(req: NextRequest) {
     // Match on project name parts (e.g. "autronis-dashboard" matches "Autronis Dashboard")
     const projectMatchers = alleProjecten.map(p => {
       const naam = p.naam.toLowerCase();
-      // Generate match variants: full name, hyphenated, without spaces
-      // No single words — too many false positives ("agent", "dashboard", etc.)
-      const variants = [
-        naam,
-        naam.replace(/\s+/g, "-"),
-        naam.replace(/\s+/g, ""),
-      ];
-      return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants };
+      const variants = new Set<string>();
+      // Full name + hyphenated + no-spaces
+      variants.add(naam);
+      variants.add(naam.replace(/\s+/g, "-"));
+      variants.add(naam.replace(/\s+/g, ""));
+      // Split on "/" for compound names like "Agent Office / Ops Room"
+      // Each part gets its own variants (≥6 chars to avoid false positives)
+      for (const part of naam.split(/\s*\/\s*/)) {
+        const trimmed = part.trim();
+        if (trimmed.length >= 6) {
+          variants.add(trimmed);
+          variants.add(trimmed.replace(/\s+/g, "-"));
+          variants.add(trimmed.replace(/\s+/g, ""));
+        }
+      }
+      return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants: [...variants] };
     });
 
     function matchProject(titles: string[], dominantApp: string): { id: number; naam: string; klantNaam: string | null } | null {
-      // Only match projects from VS Code / Cursor titles (intentional work, not background tabs)
+      // Match from VS Code / Cursor titles (intentional work, not background tabs)
       for (const title of titles) {
+        // VS Code: "file.tsx — projectnaam — Visual Studio Code"
         const vsMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Visual Studio Code$/);
-        if (vsMatch) {
-          const vsProject = vsMatch[1].trim().toLowerCase();
+        // Cursor: "file.tsx — projectnaam — Cursor"
+        const cursorMatch = !vsMatch ? title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Cursor$/) : null;
+        const editorProject = (vsMatch?.[1] || cursorMatch?.[1])?.trim().toLowerCase();
+        if (editorProject) {
           for (const p of projectMatchers) {
-            if (p.variants.some(v => vsProject.includes(v) || v.includes(vsProject))) {
+            if (p.variants.some(v => editorProject.includes(v) || v.includes(editorProject))) {
               return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
             }
-          }
-        }
-        // Also match Cursor: "file.tsx — projectnaam — Cursor"
-        const cursorMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Cursor$/);
-        if (cursorMatch) {
-          const cursorProject = cursorMatch[1].trim().toLowerCase();
-          for (const p of projectMatchers) {
-            if (p.variants.some(v => cursorProject.includes(v) || v.includes(cursorProject))) {
-              return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
-            }
-          }
-        }
-      }
-      // Only check non-browser titles as fallback when Code/Cursor is dominant
-      if (/code|cursor/i.test(dominantApp)) {
-        const nonBrowserTitles = titles.filter(t => !/Google Chrome|Firefox|Edge|Brave/i.test(t));
-        const joined = nonBrowserTitles.join(" ").toLowerCase();
-        for (const p of projectMatchers) {
-          if (p.variants.some(v => v.length >= 5 && joined.includes(v))) {
-            return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
           }
         }
       }

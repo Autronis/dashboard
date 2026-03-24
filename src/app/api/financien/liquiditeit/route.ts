@@ -156,6 +156,7 @@ export async function GET(req: NextRequest) {
       saldo90,
       totaalOpenstaand,
       maandelijkseUitgaven: Math.round(maandelijkseUitgaven * 100) / 100,
+      maandelijkseAbonnementen: Math.round(maandelijkseAbonnementen * 100) / 100,
       projectRevenue: Math.round(projectRevenue * 100) / 100,
       openFacturen: openFacturen.map((f) => ({
         factuurnummer: f.factuurnummer,

@@ -31,6 +31,83 @@ const PERIODES: { id: Periode; label: string }[] = [
   { id: "maand", label: "Maand" },
 ];
 
+// ====== Animated progress bar ======
+function AnimatedBar({
+  pct,
+  color,
+}: {
+  pct: number;
+  color: string;
+}) {
+  const [width, setWidth] = useState(0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      const id = setTimeout(() => setWidth(pct), 80);
+      return () => clearTimeout(id);
+    }
+    setWidth(pct);
+  }, [pct]);
+  return (
+    <div className="w-full h-1.5 bg-autronis-border/30 rounded-full mt-2 overflow-hidden">
+      <div
+        className={`h-full rounded-full ${color}`}
+        style={{ width: `${width}%`, transition: "width 700ms cubic-bezier(0.4,0,0.2,1)" }}
+      />
+    </div>
+  );
+}
+
+// ====== Circular progress ring ======
+function CircularScore({
+  score,
+  color,
+}: {
+  score: number;
+  color: string;
+}) {
+  const [animScore, setAnimScore] = useState(0);
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      const id = setTimeout(() => setAnimScore(score), 80);
+      return () => clearTimeout(id);
+    }
+    setAnimScore(score);
+  }, [score]);
+
+  const r = 20;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (animScore / 100) * circ;
+
+  return (
+    <div className="relative w-14 h-14 shrink-0">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r={r} fill="none" stroke="currentColor" strokeWidth="4" className="text-autronis-border/30" />
+        <circle
+          cx="24"
+          cy="24"
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          style={{ transition: "stroke-dashoffset 700ms cubic-bezier(0.4,0,0.2,1)" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-xs font-bold tabular-nums" style={{ color }}>
+          {score}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function TijdPage() {
   const [activeTab, setActiveTab] = useState<TabId>("tijdlijn");
   const [periode, setPeriode] = useState<Periode>("dag");
@@ -257,9 +334,7 @@ export default function TijdPage() {
                         {formatTijd((stats?.deepWorkMinuten ?? 0) * 60)}
                         <span className="text-xs font-medium text-autronis-text-secondary ml-1">/ {formatTijd((stats?.deepWorkTarget ?? 240) * 60)}</span>
                       </p>
-                      <div className="w-full h-1.5 bg-autronis-border/30 rounded-full mt-2 overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${dwBarColor}`} style={{ width: `${dwPct}%` }} />
-                      </div>
+                      <AnimatedBar pct={dwPct} color={dwBarColor} />
                     </div>
                   )}
                 </div>
@@ -283,21 +358,24 @@ export default function TijdPage() {
                     )}
                   </div>
                   {sessiesLoading ? (
-                    <Skeleton className="h-7 w-14" />
+                    <Skeleton className="h-14 w-14 rounded-full" />
                   ) : (
-                    <div>
-                      <p className={`text-xl font-bold tabular-nums ${scoreColor}`}>
-                        {score}<span className="text-sm font-medium text-autronis-text-secondary ml-1">/100</span>
-                      </p>
-                      {/* Flow score breakdown — why this score */}
-                      {flowRedenen.length > 0 && score < 70 && (
-                        <p className="text-[10px] text-autronis-text-secondary mt-1.5 leading-relaxed">
-                          {flowRedenen.join(" · ")}
-                        </p>
-                      )}
-                      {score >= 70 && (
-                        <p className="text-[10px] text-emerald-400 font-medium mt-1.5">Sterke focus vandaag</p>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <CircularScore
+                        score={score}
+                        color={score >= 70 ? "#34d399" : score >= 40 ? "#fbbf24" : "#f87171"}
+                      />
+                      <div className="min-w-0">
+                        {flowRedenen.length > 0 && score < 70 ? (
+                          <p className="text-[10px] text-autronis-text-secondary leading-relaxed">
+                            {flowRedenen.join(" · ")}
+                          </p>
+                        ) : score >= 70 ? (
+                          <p className="text-[10px] text-emerald-400 font-medium">Sterke focus</p>
+                        ) : (
+                          <p className="text-[10px] text-autronis-text-secondary">Geen data</p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>

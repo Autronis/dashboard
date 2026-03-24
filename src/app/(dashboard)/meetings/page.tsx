@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
   MicOff,
@@ -32,6 +33,10 @@ import {
   ExternalLink,
   Save,
   ChevronRight,
+  Copy,
+  Check,
+  Radio,
+  Mail,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -111,6 +116,30 @@ function formatCountdown(datum: string): string {
 function isUpcoming(datum: string): boolean {
   return new Date(datum) > new Date();
 }
+
+function isWithinTwoHours(datum: string): boolean {
+  const diff = new Date(datum).getTime() - Date.now();
+  return diff > 0 && diff < 2 * 60 * 60 * 1000;
+}
+
+function sentimentEmoji(sentiment: string | null): { emoji: string; color: string } {
+  if (!sentiment) return { emoji: "😐", color: "text-autronis-text-secondary" };
+  const l = sentiment.toLowerCase();
+  if (l.includes("positief") || l.includes("goed") || l.includes("enthousiast") || l.includes("constructief") || l.includes("prettig"))
+    return { emoji: "😊", color: "text-emerald-400" };
+  if (l.includes("gespannen") || l.includes("negatief") || l.includes("conflict") || l.includes("moeilijk"))
+    return { emoji: "😟", color: "text-red-400" };
+  return { emoji: "😐", color: "text-amber-400" };
+}
+
+const staggerContainer = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.06 } },
+};
+const staggerItem = {
+  hidden: { opacity: 0, x: -8 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.3 } },
+};
 
 function isThisWeek(datum: string): boolean {
   const d = new Date(datum);
@@ -433,11 +462,25 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
   const sc = meeting.status && statusConfig[meeting.status];
   const upcoming = isUpcoming(meeting.datum);
 
+  const stripColor = meeting.status === "klaar"
+    ? "bg-emerald-400"
+    : meeting.status === "verwerken"
+    ? "bg-amber-400 animate-pulse"
+    : meeting.status === "mislukt"
+    ? "bg-red-400"
+    : upcoming ? "bg-autronis-accent" : "bg-autronis-border";
+
+  const sentiment = meeting.status === "klaar" ? sentimentEmoji(meeting.sentiment) : null;
+
   return (
-    <button
+    <motion.button
       onClick={onSelect}
-      className="w-full text-left bg-autronis-bg/30 rounded-xl border border-autronis-border/50 px-5 py-4 hover:border-autronis-accent/30 transition-colors group"
+      whileHover={{ x: 2 }}
+      transition={{ duration: 0.15 }}
+      className="w-full text-left bg-autronis-bg/30 rounded-xl border border-autronis-border/50 pl-4 pr-5 py-4 hover:border-autronis-accent/30 transition-colors group relative overflow-hidden"
     >
+      {/* Status strip */}
+      <div className={cn("absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl", stripColor)} />
       <div className="flex items-center gap-4">
         <div className="flex-shrink-0">
           {meeting.bron === "kalender" ? (
@@ -498,6 +541,11 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
             {isDb && meeting.status === "klaar" && (
               <span className="text-xs">
                 {meeting.actiepunten.length} actiepunten
+              </span>
+            )}
+            {sentiment && (
+              <span className={cn("text-sm flex-shrink-0", sentiment.color)} title={meeting.sentiment ?? undefined}>
+                {sentiment.emoji}
               </span>
             )}
             {meeting.hasNotities ? (

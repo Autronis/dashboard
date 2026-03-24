@@ -16,6 +16,7 @@ import {
   Receipt,
   Landmark,
   TrendingUp,
+  BarChart3,
   Bell,
   RefreshCw,
   Clock,
@@ -34,6 +35,7 @@ import { UitgavenTab } from "./uitgaven-tab";
 import { BankImportTab } from "./bank-import-tab";
 import { LiquiditeitTab } from "./liquiditeit-tab";
 import { AbonnementenTab } from "./abonnementen-tab";
+import { ProfitProjectenTab } from "./profit-projecten-tab";
 import {
   useFacturen,
   useOuderdomsanalyse,
@@ -49,14 +51,15 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
   te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
 };
 
-type Tab = "facturen" | "uitgaven" | "abonnementen" | "bank" | "liquiditeit";
+type Tab = "facturen" | "uitgaven" | "abonnementen" | "profit" | "bank" | "liquiditeit";
 
 const TABS: { key: Tab; label: string; icon: typeof Euro }[] = [
   { key: "facturen", label: "Facturen", icon: FileText },
   { key: "uitgaven", label: "Uitgaven", icon: Receipt },
   { key: "abonnementen", label: "Abonnementen", icon: CreditCard },
+  { key: "profit", label: "Profit / Project", icon: TrendingUp },
   { key: "bank", label: "Bank Import", icon: Landmark },
-  { key: "liquiditeit", label: "Liquiditeit", icon: TrendingUp },
+  { key: "liquiditeit", label: "Liquiditeit", icon: BarChart3 },
 ];
 
 export default function FinancienPage() {

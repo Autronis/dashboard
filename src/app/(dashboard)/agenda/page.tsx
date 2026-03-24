@@ -1894,11 +1894,16 @@ export default function AgendaPage() {
                             href={meetUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-medium bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 px-3 py-1.5 rounded-lg transition-colors"
+                            className={cn(
+                              "inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors",
+                              itemIsImminent
+                                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                                : "bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25"
+                            )}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <Video className="w-3.5 h-3.5" />
-                            Deelnemen
+                            {itemIsImminent ? "Nu deelnemen!" : "Deelnemen"}
                           </a>
                         )}
                         {/* Locatie (als geen URL) */}
@@ -1947,11 +1952,16 @@ export default function AgendaPage() {
                           href={internalMeetUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-xs font-medium bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 px-3 py-1.5 rounded-lg transition-colors"
+                          className={cn(
+                            "inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-colors",
+                            itemIsImminent
+                              ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 animate-pulse"
+                              : "bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25"
+                          )}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <Video className="w-3.5 h-3.5" />
-                          Deelnemen
+                          {itemIsImminent ? "Nu deelnemen!" : "Deelnemen"}
                         </a>
                       )}
                     </div>

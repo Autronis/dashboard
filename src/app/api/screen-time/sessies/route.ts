@@ -7,6 +7,8 @@ import { eq, and, asc, sql } from "drizzle-orm";
 // ─── Cache ───
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
+// Cache version — bump to invalidate all cached descriptions
+const CACHE_VERSION = 2;
 
 // ─── Types ───
 interface Sessie {
@@ -235,23 +237,32 @@ export async function GET(req: NextRequest) {
       return { id: p.id, naam: p.naam, klantNaam: p.klantNaam, variants: [...variants] };
     });
 
-    function matchProject(titles: string[], dominantApp: string): { id: number; naam: string; klantNaam: string | null } | null {
+    function matchProject(titles: string[], _dominantApp: string): { id: number; naam: string; klantNaam: string | null } | null {
       // Match from VS Code / Cursor titles (intentional work, not background tabs)
+      // Only assign if ONE project clearly dominates — skip if multiple projects are open
+      const projectHits = new Map<number, { naam: string; klantNaam: string | null; count: number }>();
+
       for (const title of titles) {
-        // VS Code: "file.tsx — projectnaam — Visual Studio Code"
         const vsMatch = title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Visual Studio Code$/);
-        // Cursor: "file.tsx — projectnaam — Cursor"
         const cursorMatch = !vsMatch ? title.match(/^.+?\s*[—-]\s*(.+?)\s*[—-]\s*Cursor$/) : null;
         const editorProject = (vsMatch?.[1] || cursorMatch?.[1])?.trim().toLowerCase();
         if (editorProject) {
           for (const p of projectMatchers) {
             if (p.variants.some(v => editorProject.includes(v) || v.includes(editorProject))) {
-              return { id: p.id, naam: p.naam, klantNaam: p.klantNaam };
+              const existing = projectHits.get(p.id);
+              projectHits.set(p.id, { naam: p.naam, klantNaam: p.klantNaam, count: (existing?.count ?? 0) + 1 });
+              break;
             }
           }
         }
       }
-      return null;
+
+      if (projectHits.size === 0) return null;
+      // Multiple projects open → too ambiguous, don't assign
+      if (projectHits.size > 1) return null;
+
+      const [[id, hit]] = [...projectHits.entries()];
+      return { id, naam: hit.naam, klantNaam: hit.klantNaam };
     }
 
     // Build sessies from slots — categorie from DB, never AI
@@ -312,7 +323,7 @@ export async function GET(req: NextRequest) {
     });
 
     // AI beschrijvingen (tekst only, categorie stays from DB)
-    const cacheKey = `${datum}:${gebruikerId}`;
+    const cacheKey = `v${CACHE_VERSION}:${datum}:${gebruikerId}`;
     const cached = cache.get(cacheKey);
     let beschrijvingen: string[];
 

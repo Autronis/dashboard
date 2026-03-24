@@ -601,6 +601,7 @@ export default function FinancienPage() {
 
         {activeTab === "uitgaven" && <UitgavenTab />}
         {activeTab === "abonnementen" && <AbonnementenTab />}
+        {activeTab === "profit" && <ProfitProjectenTab />}
         {activeTab === "bank" && <BankImportTab />}
         {activeTab === "liquiditeit" && <LiquiditeitTab />}
       </div>

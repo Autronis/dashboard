@@ -411,12 +411,11 @@ export function AbonnementenTab() {
       <ConfirmDialog
         open={deleteId !== null}
         onClose={() => setDeleteId(null)}
-        onConfirm={handleDelete}
+        onBevestig={handleDelete}
         titel="Abonnement verwijderen?"
-        beschrijving="Dit abonnement wordt gedeactiveerd. Je kunt het later niet meer terugvinden."
-        bevestigLabel="Verwijderen"
+        bericht="Dit abonnement wordt gedeactiveerd. Je kunt het later niet meer terugvinden."
+        bevestigTekst="Verwijderen"
         variant="danger"
-        isLoading={deleteMut.isPending}
       />
     </div>
   );

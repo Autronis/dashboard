@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { facturen, uitgaven, projecten, klanten } from "@/lib/db/schema";
+import { facturen, uitgaven, projecten, klanten, abonnementen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql, gte, lte, inArray } from "drizzle-orm";
 
@@ -61,7 +61,22 @@ export async function GET(req: NextRequest) {
         )
       );
 
-    const maandelijkseUitgaven = (uitgavenGemiddeld?.totaal ?? 0) / 3;
+    const maandelijkseUitgavenVariabel = (uitgavenGemiddeld?.totaal ?? 0) / 3;
+
+    // 3b. Abonnementen vaste lasten (maandelijks equivalent)
+    const abonnementenLijst = await db
+      .select({ bedrag: abonnementen.bedrag, frequentie: abonnementen.frequentie })
+      .from(abonnementen)
+      .where(eq(abonnementen.isActief, 1));
+
+    const maandelijkseAbonnementen = abonnementenLijst.reduce((sum, a) => {
+      const maand = a.frequentie === "maandelijks" ? a.bedrag
+        : a.frequentie === "per_kwartaal" ? a.bedrag / 3
+        : a.bedrag / 12;
+      return sum + maand;
+    }, 0);
+
+    const maandelijkseUitgaven = maandelijkseUitgavenVariabel + maandelijkseAbonnementen;
     const dagelijkseUitgaven = maandelijkseUitgaven / 30;
 
     // 3. Active projects expected revenue

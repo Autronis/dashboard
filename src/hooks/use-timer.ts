@@ -3,6 +3,12 @@
 import { create } from "zustand";
 import type { TijdCategorie } from "@/types";
 
+interface LastTimer {
+  projectId: number;
+  omschrijving: string;
+  categorie: TijdCategorie;
+}
+
 interface TimerState {
   isRunning: boolean;
   startTijd: string | null;
@@ -11,6 +17,7 @@ interface TimerState {
   categorie: TijdCategorie;
   registratieId: number | null;
   elapsed: number; // seconds
+  lastTimer: LastTimer | null;
 
   start: (projectId: number, omschrijving: string, categorie: TijdCategorie, registratieId: number) => void;
   stop: () => void;
@@ -76,6 +83,7 @@ export const useTimer = create<TimerState>((set, get) => ({
   categorie: "development",
   registratieId: null,
   elapsed: 0,
+  lastTimer: null,
 
   start: (projectId, omschrijving, categorie, registratieId) => {
     const startTijd = new Date().toISOString();
@@ -93,6 +101,10 @@ export const useTimer = create<TimerState>((set, get) => ({
   },
 
   stop: () => {
+    const { projectId, omschrijving, categorie } = get();
+    const last: LastTimer | null = projectId
+      ? { projectId, omschrijving, categorie }
+      : null;
     set({
       isRunning: false,
       startTijd: null,
@@ -101,6 +113,7 @@ export const useTimer = create<TimerState>((set, get) => ({
       categorie: "development",
       registratieId: null,
       elapsed: 0,
+      lastTimer: last,
     });
     clearStorage();
   },

@@ -140,6 +140,24 @@ export const uitgaven = sqliteTable("uitgaven", {
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ ABONNEMENTEN ============
+export const abonnementen = sqliteTable("abonnementen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  leverancier: text("leverancier"),
+  bedrag: real("bedrag").notNull(),
+  frequentie: text("frequentie", { enum: ["maandelijks", "jaarlijks", "per_kwartaal"] }).default("maandelijks"),
+  categorie: text("categorie", { enum: ["tools", "hosting", "ai", "marketing", "communicatie", "opslag", "design", "overig"] }).default("tools"),
+  startDatum: text("start_datum"),
+  volgendeBetaling: text("volgende_betaling"),
+  projectId: integer("project_id").references(() => projecten.id),
+  url: text("url"),
+  notities: text("notities"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ DOELEN ============
 export const doelen = sqliteTable("doelen", {
   id: integer("id").primaryKey({ autoIncrement: true }),

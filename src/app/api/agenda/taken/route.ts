@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { taken, projecten, klanten } from "@/lib/db/schema";
-import { eq, or } from "drizzle-orm";
+import { sqlite } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
@@ -9,27 +7,25 @@ export async function GET() {
   try {
     await requireAuth();
 
-    const rows = await db
-      .select({
-        id: taken.id,
-        titel: taken.titel,
-        status: taken.status,
-        prioriteit: taken.prioriteit,
-        deadline: taken.deadline,
-        geschatteDuur: taken.geschatteDuur,
-        ingeplandStart: taken.ingeplandStart,
-        ingeplandEind: taken.ingeplandEind,
-        toegewezenAanId: taken.toegewezenAan,
-        projectNaam: projecten.naam,
-      })
-      .from(taken)
-      .leftJoin(projecten, eq(taken.projectId, projecten.id))
-      .where(
-        or(
-          eq(taken.status, "open"),
-          eq(taken.status, "bezig")
-        )
-      );
+    const rows = sqlite.prepare(`
+      SELECT
+        t.id,
+        t.titel,
+        t.status,
+        t.prioriteit,
+        t.deadline,
+        t.geschatte_duur as geschatteDuur,
+        t.ingepland_start as ingeplandStart,
+        t.ingepland_eind as ingeplandEind,
+        t.toegewezen_aan as toegewezenAanId,
+        p.naam as projectNaam
+      FROM taken t
+      LEFT JOIN projecten p ON t.project_id = p.id
+      WHERE t.status IN ('open', 'bezig')
+      ORDER BY
+        CASE t.prioriteit WHEN 'hoog' THEN 0 WHEN 'normaal' THEN 1 ELSE 2 END,
+        t.deadline ASC
+    `).all();
 
     return NextResponse.json({ taken: rows });
   } catch (error) {

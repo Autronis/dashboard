@@ -41,6 +41,83 @@ function validateBody(body: Record<string, unknown>): HandmatigScanBody {
   };
 }
 
+async function processScanBackground(scanId: number, leadId: number, body: HandmatigScanBody) {
+  try {
+    // Scrape website — update DB mid-scan so frontend can detect phase
+    const scrapeResult = await scrapeWebsite(body.websiteUrl);
+    await db.update(salesEngineScans)
+      .set({
+        scrapeResultaat: JSON.stringify(scrapeResult),
+        bijgewerktOp: new Date().toISOString(),
+      })
+      .where(eq(salesEngineScans.id, scanId))
+      .run();
+
+    // AI analysis
+    const analysis = await analyzeWithClaude(scrapeResult, {
+      bedrijfsnaam: body.bedrijfsnaam,
+      bedrijfsgrootte: "Onbekend",
+      rol: "Onbekend",
+      grootsteKnelpunt: "Handmatige scan - geen knelpunt opgegeven",
+      huidigeTools: "",
+    });
+
+    // Save kansen
+    for (const kans of analysis.kansen) {
+      await db.insert(salesEngineKansen)
+        .values({
+          scanId,
+          titel: kans.titel,
+          beschrijving: kans.beschrijving,
+          categorie: kans.categorie,
+          impact: kans.impact,
+          geschatteTijdsbesparing: kans.geschatteTijdsbesparing,
+          geschatteKosten: kans.geschatteKosten ?? null,
+          geschatteBesparing: kans.geschatteBesparing ?? null,
+          implementatieEffort: kans.implementatieEffort ?? null,
+          prioriteit: kans.prioriteit,
+        })
+        .run();
+    }
+
+    // Mark completed
+    await db.update(salesEngineScans)
+      .set({
+        aiAnalyse: JSON.stringify(analysis),
+        samenvatting: analysis.samenvatting,
+        status: "completed",
+        automationReadinessScore: analysis.automationReadinessScore ?? null,
+        aanbevolenPakket: analysis.aanbevolenPakket ?? null,
+        bijgewerktOp: new Date().toISOString(),
+      })
+      .where(eq(salesEngineScans.id, scanId))
+      .run();
+
+    // Pipeline integratie: update lead
+    const hoogImpactKansen = analysis.kansen.filter((k) => k.impact === "hoog").length;
+    const geschatteWaarde = hoogImpactKansen * 2000;
+    await db.update(leads)
+      .set({
+        waarde: geschatteWaarde,
+        status: "contact",
+        volgendeActie: "Voorstel opstellen",
+        notities: `AI Samenvatting: ${analysis.samenvatting}\n\nAutomation Readiness: ${analysis.automationReadinessScore}/10\nAanbevolen pakket: ${analysis.aanbevolenPakket}\nAantal kansen: ${analysis.kansen.length} (${hoogImpactKansen} hoog impact)`,
+        bijgewerktOp: new Date().toISOString(),
+      })
+      .where(eq(leads.id, leadId))
+      .run();
+  } catch (error) {
+    await db.update(salesEngineScans)
+      .set({
+        status: "failed",
+        foutmelding: error instanceof Error ? error.message : "Onbekende fout",
+        bijgewerktOp: new Date().toISOString(),
+      })
+      .where(eq(salesEngineScans.id, scanId))
+      .run();
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
@@ -84,7 +161,7 @@ export async function POST(req: NextRequest) {
       existingLead = { id: newLead.id };
     }
 
-    // Create scan record
+    // Create scan record with pending status
     const [scan] = await db
       .insert(salesEngineScans)
       .values({
@@ -95,93 +172,16 @@ export async function POST(req: NextRequest) {
       .returning()
       .all();
 
-    try {
-      // Scrape website
-      const scrapeResult = await scrapeWebsite(body.websiteUrl);
-      await db.update(salesEngineScans)
-        .set({
-          scrapeResultaat: JSON.stringify(scrapeResult),
-          bijgewerktOp: new Date().toISOString(),
-        })
-        .where(eq(salesEngineScans.id, scan.id))
-        .run();
+    // Fire off background processing — don't await
+    processScanBackground(scan.id, existingLead.id, body).catch(() => {
+      // Errors are handled inside processScanBackground
+    });
 
-      // AI analysis
-      const analysis = await analyzeWithClaude(scrapeResult, {
-        bedrijfsnaam: body.bedrijfsnaam,
-        bedrijfsgrootte: "Onbekend",
-        rol: "Onbekend",
-        grootsteKnelpunt: "Handmatige scan - geen knelpunt opgegeven",
-        huidigeTools: "",
-      });
-
-      // Save kansen
-      for (const kans of analysis.kansen) {
-        await db.insert(salesEngineKansen)
-          .values({
-            scanId: scan.id,
-            titel: kans.titel,
-            beschrijving: kans.beschrijving,
-            categorie: kans.categorie,
-            impact: kans.impact,
-            geschatteTijdsbesparing: kans.geschatteTijdsbesparing,
-            geschatteKosten: kans.geschatteKosten ?? null,
-            geschatteBesparing: kans.geschatteBesparing ?? null,
-            implementatieEffort: kans.implementatieEffort ?? null,
-            prioriteit: kans.prioriteit,
-          })
-          .run();
-      }
-
-      // Update scan to completed
-      await db.update(salesEngineScans)
-        .set({
-          aiAnalyse: JSON.stringify(analysis),
-          samenvatting: analysis.samenvatting,
-          status: "completed",
-          automationReadinessScore: analysis.automationReadinessScore ?? null,
-          aanbevolenPakket: analysis.aanbevolenPakket ?? null,
-          bijgewerktOp: new Date().toISOString(),
-        })
-        .where(eq(salesEngineScans.id, scan.id))
-        .run();
-
-      // Pipeline integratie: update lead met scan resultaten
-      const hoogImpactKansen = analysis.kansen.filter((k) => k.impact === "hoog").length;
-      const geschatteWaarde = hoogImpactKansen * 2000;
-      await db.update(leads)
-        .set({
-          waarde: geschatteWaarde,
-          status: "contact",
-          volgendeActie: "Voorstel opstellen",
-          notities: `AI Samenvatting: ${analysis.samenvatting}\n\nAutomation Readiness: ${analysis.automationReadinessScore}/10\nAanbevolen pakket: ${analysis.aanbevolenPakket}\nAantal kansen: ${analysis.kansen.length} (${hoogImpactKansen} hoog impact)`,
-          bijgewerktOp: new Date().toISOString(),
-        })
-        .where(eq(leads.id, existingLead.id))
-        .run();
-
-      return NextResponse.json({
-        scanId: scan.id,
-        leadId: existingLead.id,
-        status: "completed",
-        samenvatting: analysis.samenvatting,
-        aantalKansen: analysis.kansen.length,
-      }, { status: 201 });
-    } catch (processingError) {
-      await db.update(salesEngineScans)
-        .set({
-          status: "failed",
-          foutmelding: processingError instanceof Error ? processingError.message : "Onbekende fout",
-          bijgewerktOp: new Date().toISOString(),
-        })
-        .where(eq(salesEngineScans.id, scan.id))
-        .run();
-
-      return NextResponse.json(
-        { fout: processingError instanceof Error ? processingError.message : "Scan mislukt", scanId: scan.id },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json({
+      scanId: scan.id,
+      leadId: existingLead.id,
+      status: "pending",
+    }, { status: 202 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     const status = message === "Niet geauthenticeerd" ? 401 : 400;

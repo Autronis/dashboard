@@ -142,7 +142,10 @@ export function useSalesEngineScanDetail(id: number | null) {
     queryKey: ["sales-engine-scan", id],
     queryFn: () => fetchScanDetail(id!),
     enabled: id !== null,
-    staleTime: 30_000,
+    staleTime: 0,
+    refetchInterval: (query) => {
+      return query.state.data?.scan.status === "pending" ? 2000 : false;
+    },
   });
 }
 

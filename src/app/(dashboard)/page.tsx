@@ -828,7 +828,7 @@ export default function DashboardPage() {
   return (
     <PageTransition>
       <motion.div
-        className="max-w-[1400px] mx-auto space-y-2.5"
+        className="max-w-[1080px] mx-auto space-y-2.5"
         variants={pageVariants}
         initial="hidden"
         animate="visible"

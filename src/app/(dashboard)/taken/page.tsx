@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonTaken } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CheckBurst } from "@/components/ui/confetti";
+import { CheckBurst, Confetti } from "@/components/ui/confetti";
 import { useTaken } from "@/hooks/queries/use-taken";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -243,7 +243,7 @@ function KanbanCard({ taak, onStatusToggle, onOpenDetail, vandaag }: { taak: Taa
       whileHover={{ y: -2 }}
       transition={{ duration: 0.15 }}
       draggable
-      onDragStart={(e) => { setDragging(true); e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
+      onDragStart={(e) => { setDragging(true); (e as unknown as React.DragEvent).dataTransfer.setData("taakId", String(taak.id)); (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "move"; }}
       onDragEnd={() => setDragging(false)}
       style={dragging ? { boxShadow: "0 8px 24px rgba(0,0,0,0.35), 0 0 0 2px rgba(23,184,165,0.3)", opacity: 0.85 } : undefined}
       className={cn("bg-autronis-bg/60 rounded-lg p-3 border-l-[3px] cursor-grab active:cursor-grabbing hover:bg-autronis-bg/80 transition-colors", pc.borderColor)}>
@@ -925,7 +925,7 @@ export default function TakenPage() {
                                           animate={{ opacity: taak.status === "afgerond" ? 0.4 : 1, x: 0 }}
                                           transition={{ duration: 0.18, delay: Math.min(fase.taken.indexOf(taak) * 0.03, 0.3) }}
                                           draggable
-                                          onDragStart={(e) => { e.dataTransfer.setData("taakId", String(taak.id)); e.dataTransfer.effectAllowed = "move"; }}
+                                          onDragStart={(e) => { (e as unknown as React.DragEvent).dataTransfer.setData("taakId", String(taak.id)); (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "move"; }}
                                           className={cn(
                                             "hover-slide-bg bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing group",
                                             taak.prioriteit === "hoog" ? "urgent-pulse" : taak.prioriteit === "normaal" ? "normaal-pulse" : "",
@@ -1068,6 +1068,9 @@ export default function TakenPage() {
             </div>
           </div>
         )}
+
+        {/* Sync confetti */}
+        <Confetti active={showSyncConfetti} />
 
         {/* Taak detail modal */}
         <AnimatePresence>

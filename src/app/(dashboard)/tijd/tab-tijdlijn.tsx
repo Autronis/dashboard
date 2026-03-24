@@ -810,7 +810,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
                 <Zap className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-autronis-text-secondary uppercase">Deep Work (≥25 min ononderbroken)</span>
+                    <span className="text-[10px] text-autronis-text-secondary uppercase">Deep Work (≥15 min ononderbroken)</span>
                     <span className="text-xs font-semibold text-yellow-400 tabular-nums">{formatTijd(stats.deepWorkMinuten * 60)} / {formatTijd(stats.deepWorkTarget * 60)}</span>
                   </div>
                   <div className="w-full h-1.5 bg-autronis-border/30 rounded-full overflow-hidden">

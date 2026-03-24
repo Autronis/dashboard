@@ -29,7 +29,7 @@ export interface SessionGebruiker {
 
 // ============ SCREEN TIME TYPES ============
 
-export type ScreenTimeCategorie = "development" | "communicatie" | "design" | "administratie" | "afleiding" | "overig" | "inactief";
+export type ScreenTimeCategorie = "development" | "communicatie" | "meeting" | "design" | "administratie" | "finance" | "afleiding" | "overig" | "inactief";
 
 export interface ScreenTimeEntry {
   id: number;

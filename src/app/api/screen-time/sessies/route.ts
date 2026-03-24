@@ -315,7 +315,7 @@ export async function GET(req: NextRequest) {
     }
 
     // ─── Focus Metrics ───
-    const PRODUCTIEF_CATS = new Set(["development", "design", "administratie"]);
+    const PRODUCTIEF_CATS = new Set(["development", "design", "administratie", "finance", "communicatie"]);
     const DEEP_WORK_GAP_MAX_MIN = 15; // Max gap between sessions to still count as one deep work block
     const DEEP_WORK_INTERRUPT_MAX_MIN = 5; // Short non-productive interruptions (≤5 min) don't break the block
 
@@ -334,7 +334,7 @@ export async function GET(req: NextRequest) {
 
     // Deep work: merge consecutive productive sessions with gaps ≤10 min into blocks
     // A deep work block must be ≥25 min total
-    const DEEP_WORK_BLOCK_MIN = 25;
+    const DEEP_WORK_BLOCK_MIN = 15;
     interface DeepWorkBlock { startTijd: string; eindTijd: string; duurMin: number; beschrijvingen: string[] }
     const deepWorkBlocks: DeepWorkBlock[] = [];
     let currentBlock: DeepWorkBlock | null = null;

@@ -37,6 +37,8 @@ export const PRODUCTIEF_CATEGORIEEN: ScreenTimeCategorie[] = [
   "development",
   "design",
   "administratie",
+  "finance",
+  "communicatie",
 ];
 
 // ============ HELPERS ============

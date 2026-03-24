@@ -1100,6 +1100,28 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* Deadlines — compact */}
+            {deadlines.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+                <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
+                  <CalendarDays className="w-3.5 h-3.5 text-autronis-accent" />
+                  Deadlines
+                </h3>
+                <div className="space-y-1.5">
+                  {deadlines.map((dl) => (
+                    <Link key={dl.projectId} href={`/klanten/${dl.klantId}/projecten/${dl.projectId}`}
+                      className="flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-autronis-bg/50 transition-colors">
+                      <span className="text-xs text-autronis-text-primary truncate">{dl.projectNaam}</span>
+                      <span className={cn("text-[11px] font-semibold shrink-0 ml-2", deadlineKleur(dl.deadline))}>{deadlineLabel(dl.deadline)}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Documenten */}
+            <DocumentWidget />
+
             {/* Teamgenoot status - compact when offline */}
             {teamgenoot ? (
               teamgenoot.actieveTimer ? (

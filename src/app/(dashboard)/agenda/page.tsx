@@ -824,6 +824,9 @@ export default function AgendaPage() {
               })()}
               onItemClick={(item) => openItemDetail(item)}
               onSlotClick={(d) => openNieuwModal(d)}
+              ingeplandeTaken={ingeplandeTaken}
+              onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
+              onUnplanTaak={handleUnplanTaak}
             />
           ) : weergave === "jaar" ? (
             <JaarView

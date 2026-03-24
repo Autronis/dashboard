@@ -186,7 +186,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
 }
 
 // ─── Kanban Card ───
-function KanbanCard({ taak, onStatusToggle, vandaag }: { taak: Taak; onStatusToggle: (t: Taak) => void; vandaag: string }) {
+function KanbanCard({ taak, onStatusToggle, onOpenDetail, vandaag }: { taak: Taak; onStatusToggle: (t: Taak) => void; onOpenDetail: (t: Taak) => void; vandaag: string }) {
   const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
   const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
   return (
@@ -197,7 +197,7 @@ function KanbanCard({ taak, onStatusToggle, vandaag }: { taak: Taak; onStatusTog
           {taak.status === "afgerond" ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
         </button>
         <div className="flex-1 min-w-0">
-          <p className={cn("text-xs font-medium leading-snug", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
+          <p onClick={() => onOpenDetail(taak)} className={cn("text-xs font-medium leading-snug cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
           <p className="text-[10px] text-autronis-text-secondary mt-1 truncate">{taak.projectNaam}</p>
         </div>
       </div>
@@ -732,7 +732,7 @@ export default function TakenPage() {
                   </div>
                   <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                     {kolomTaken.map((taak) => (
-                      <KanbanCard key={taak.id} taak={taak} onStatusToggle={handleStatusToggle} vandaag={vandaag} />
+                      <KanbanCard key={taak.id} taak={taak} onStatusToggle={handleStatusToggle} onOpenDetail={setSelectedTaak} vandaag={vandaag} />
                     ))}
                   </div>
                 </div>
@@ -969,6 +969,19 @@ export default function TakenPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Taak detail modal */}
+        {selectedTaak && (
+          <TaakDetailModal
+            taak={selectedTaak}
+            onClose={() => setSelectedTaak(null)}
+            onStatusToggle={(t) => { handleStatusToggle(t); setSelectedTaak(null); }}
+            onStartTimer={handleStartTimer}
+            onPlanTaak={handlePlanTaak}
+            onDelete={(id) => { handleDelete(id); setSelectedTaak(null); }}
+            onEdit={(id, body) => editMutation.mutate({ id, ...body })}
+          />
         )}
       </div>
     </PageTransition>

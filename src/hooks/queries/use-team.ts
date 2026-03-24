@@ -140,6 +140,6 @@ export function useCapaciteit(week: number, jaar: number) {
       if (!res.ok) throw new Error("Kon capaciteit niet laden");
       return res.json();
     },
-    staleTime: 30_000,
+    staleTime: 300_000,
   });
 }

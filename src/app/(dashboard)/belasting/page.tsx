@@ -786,12 +786,15 @@ export default function BelastingPage() {
                 </div>
 
                 {/* Belasting reservering */}
-                <div className={cn(
-                  "p-5 rounded-xl border transition-colors",
-                  reserveringStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
-                  reserveringStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                  "border-green-500/30 bg-green-500/5"
-                )}>
+                <div
+                  className={cn(
+                    "p-5 rounded-xl border transition-all duration-300",
+                    reserveringStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                    reserveringStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                    "border-green-500/30 bg-green-500/5"
+                  )}
+                  style={glowStyle(reserveringStatus)}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <PiggyBank className={cn("w-5 h-5", reserveringStatus === "ok" ? "text-green-400" : reserveringStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge
@@ -809,12 +812,15 @@ export default function BelastingPage() {
                 </div>
 
                 {/* Urencriterium */}
-                <div className={cn(
-                  "p-5 rounded-xl border transition-colors",
-                  urenStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
-                  urenStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                  "border-green-500/30 bg-green-500/5"
-                )}>
+                <div
+                  className={cn(
+                    "p-5 rounded-xl border transition-all duration-300",
+                    urenStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                    urenStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                    "border-green-500/30 bg-green-500/5"
+                  )}
+                  style={glowStyle(urenStatus)}
+                >
                   <div className="flex items-center justify-between mb-3">
                     <Timer className={cn("w-5 h-5", urenStatus === "ok" ? "text-green-400" : urenStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge
@@ -847,7 +853,13 @@ export default function BelastingPage() {
               </div>
               {openDeadlines.length === 0 ? (
                 <div className="text-center py-8">
-                  <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3" />
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                  >
+                    <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3" />
+                  </motion.div>
                   <p className="text-autronis-text-primary font-semibold">Alle deadlines afgerond!</p>
                   <p className="text-sm text-autronis-text-secondary mt-1">Geen openstaande verplichtingen</p>
                 </div>
@@ -867,15 +879,16 @@ export default function BelastingPage() {
                         className={cn(
                           "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
                           isOverdue
-                            ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10"
+                            ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10 deadline-shake"
                             : isUrgent
                             ? "border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10"
                             : "border-autronis-border hover:bg-autronis-bg/30"
                         )}
                         onClick={() => handleToggleDeadline(deadline)}
                       >
-                        <div className="p-2 rounded-lg bg-autronis-bg/50">
-                          <Icon className={cn("w-5 h-5", config.color)} />
+                        <div className="p-2 rounded-lg bg-autronis-bg/50 relative">
+                          <Icon className={cn("w-5 h-5 group-hover:opacity-0 transition-opacity", config.color)} />
+                          <Square className="w-5 h-5 absolute inset-2 text-autronis-accent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -966,14 +979,18 @@ export default function BelastingPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {aangiftes
                     .sort((a, b) => a.kwartaal - b.kwartaal)
-                    .map((aangifte) => {
+                    .map((aangifte, idx) => {
                       const statusCfg = btwStatusConfig[aangifte.status] ?? btwStatusConfig.open;
                       const netto = aangifte.btwOntvangen - aangifte.btwBetaald;
                       const isCurrent = aangifte.kwartaal === currentQuarter;
+                      const maxBtw = Math.max(aangifte.btwOntvangen, aangifte.btwBetaald, 1);
 
                       return (
-                        <div
+                        <motion.div
                           key={aangifte.id}
+                          initial={{ opacity: 0, y: 16 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.07, duration: 0.3, ease: "easeOut" }}
                           className={cn(
                             "p-5 rounded-xl border",
                             isCurrent ? "border-autronis-accent/30 bg-autronis-accent/5" : "border-autronis-border bg-autronis-bg/20"
@@ -992,6 +1009,25 @@ export default function BelastingPage() {
                               {statusCfg.label}
                             </span>
                           </div>
+                          {/* Mini comparison bar */}
+                          {(aangifte.btwOntvangen > 0 || aangifte.btwBetaald > 0) && (
+                            <div className="mb-4 space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-autronis-text-secondary w-16">Ontvangen</span>
+                                <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
+                                  <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${(aangifte.btwOntvangen / maxBtw) * 100}%` }} />
+                                </div>
+                                <span className="text-[10px] text-emerald-400 tabular-nums w-14 text-right">{formatBedrag(aangifte.btwOntvangen)}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] text-autronis-text-secondary w-16">Betaald</span>
+                                <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-500 rounded-full transition-all duration-700" style={{ width: `${(aangifte.btwBetaald / maxBtw) * 100}%` }} />
+                                </div>
+                                <span className="text-[10px] text-blue-400 tabular-nums w-14 text-right">{formatBedrag(aangifte.btwBetaald)}</span>
+                              </div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-3 gap-3 mb-4">
                             <div>
                               <p className="text-xs text-autronis-text-secondary">Ontvangen</p>
@@ -1032,7 +1068,7 @@ export default function BelastingPage() {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
                 </div>
@@ -1160,25 +1196,31 @@ export default function BelastingPage() {
                       const isUrgent = !isAfgerond && dagen >= 0 && dagen < 14;
 
                       return (
-                        <div
+                        <motion.div
                           key={deadline.id}
+                          layout
                           className={cn(
                             "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
                             isAfgerond
                               ? "border-autronis-border/50 bg-autronis-bg/20 opacity-60"
                               : isOverdue
-                              ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10"
+                              ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10 deadline-shake"
                               : isUrgent
                               ? "border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10"
                               : "border-autronis-border hover:bg-autronis-bg/30"
                           )}
                           onClick={() => handleToggleDeadline(deadline)}
                         >
-                          <div className={cn("p-2 rounded-lg", isAfgerond ? "bg-green-500/10" : "bg-autronis-bg/50")}>
+                          <div className={cn("p-2 rounded-lg relative", isAfgerond ? "bg-green-500/10" : "bg-autronis-bg/50")}>
                             {isAfgerond ? (
-                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                              </motion.div>
                             ) : (
-                              <Icon className={cn("w-5 h-5", config.color)} />
+                              <>
+                                <Icon className={cn("w-5 h-5 group-hover:opacity-0 transition-opacity", config.color)} />
+                                <Square className="w-5 h-5 absolute inset-2 text-autronis-accent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </>
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1209,7 +1251,7 @@ export default function BelastingPage() {
                               </div>
                             )}
                           </div>
-                        </div>
+                        </motion.div>
                       );
                     })}
                 </div>

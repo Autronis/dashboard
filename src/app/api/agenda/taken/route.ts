@@ -21,23 +21,20 @@ export async function GET() {
         ingeplandEind: taken.ingeplandEind,
         toegewezenAanId: taken.toegewezenAan,
         projectNaam: projecten.naam,
-        klantNaam: klanten.bedrijfsnaam,
       })
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))
-      .leftJoin(klanten, eq(projecten.klantId, klanten.id))
       .where(
         or(
           eq(taken.status, "open"),
           eq(taken.status, "bezig")
         )
-      )
-      .orderBy(taken.prioriteit, taken.deadline);
+      );
 
     return NextResponse.json({ taken: rows });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
-    const status = message === "Niet geauthenticeerd" ? 401 : 500;
-    return NextResponse.json({ fout: message }, { status });
+    const isAuth = message === "Niet geauthenticeerd";
+    return NextResponse.json({ fout: message }, { status: isAuth ? 401 : 500 });
   }
 }

@@ -195,12 +195,9 @@ export interface AgendaTaak {
 
 async function fetchAgendaTaken(): Promise<AgendaTaak[]> {
   const res = await fetch("/api/agenda/taken");
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Agenda taken fetch failed: ${res.status} ${text}`);
-  }
+  if (!res.ok) return [];
   const json = await res.json() as { taken: AgendaTaak[] };
-  return json.taken;
+  return json.taken ?? [];
 }
 
 export function useAgendaTaken() {

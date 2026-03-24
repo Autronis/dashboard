@@ -669,11 +669,11 @@ export default function TakenPage() {
                   return (
                     <div key={project.projectId} ref={(el) => { if (el) projectSectionsRef.current.set(project.projectId, el); }}
                       className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
-                      <button onClick={() => toggleProject(project.projectId)} className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-autronis-bg/30 transition-colors">
-                        {isPC ? <ChevronRight className="w-4 h-4 text-autronis-text-secondary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />}
-                        <FolderOpen className="w-4 h-4 text-autronis-accent" />
-                        <span className="text-sm font-semibold text-autronis-text-primary">{project.projectNaam}</span>
-                        <div className="flex-1 max-w-40"><ProgressBar afgerond={project.afgerond} totaal={project.totaal} size="sm" /></div>
+                      <button onClick={() => toggleProject(project.projectId)} className="w-full flex items-center gap-2 px-3 py-2 hover:bg-autronis-bg/30 transition-colors">
+                        {isPC ? <ChevronRight className="w-3.5 h-3.5 text-autronis-text-secondary" /> : <ChevronDown className="w-3.5 h-3.5 text-autronis-text-secondary" />}
+                        <FolderOpen className="w-3.5 h-3.5 text-autronis-accent" />
+                        <span className="text-xs font-semibold text-autronis-text-primary">{project.projectNaam}</span>
+                        <div className="flex-1 max-w-32"><ProgressBar afgerond={project.afgerond} totaal={project.totaal} size="sm" /></div>
                       </button>
                       {!isPC && (
                         <div className="border-t border-autronis-border/50">
@@ -683,15 +683,15 @@ export default function TakenPage() {
                             const isComplete = fase.afgerond === fase.totaal && fase.totaal > 0;
                             return (
                               <div key={faseKey}>
-                                <button onClick={() => toggleFase(faseKey)} className="w-full flex items-center gap-2 px-4 py-2 pl-10 hover:bg-autronis-bg/20 transition-colors">
-                                  {isFC ? <ChevronRight className="w-3.5 h-3.5 text-autronis-text-secondary" /> : <ChevronDown className="w-3.5 h-3.5 text-autronis-text-secondary" />}
-                                  <Layers className="w-3.5 h-3.5 text-autronis-text-secondary" />
-                                  <span className={cn("text-xs font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
-                                  {isComplete && <CheckCircle2 className="w-3 h-3 text-green-400" />}
-                                  <div className="flex-1 max-w-28"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
+                                <button onClick={() => toggleFase(faseKey)} className="w-full flex items-center gap-2 px-3 py-1.5 pl-9 hover:bg-autronis-bg/20 transition-colors">
+                                  {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary" />}
+                                  <Layers className="w-3 h-3 text-autronis-text-secondary" />
+                                  <span className={cn("text-[11px] font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
+                                  {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-green-400" />}
+                                  <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
                                 </button>
                                 {!isFC && (
-                                  <div className="space-y-px px-4 pb-1.5 pl-16">
+                                  <div className="space-y-px px-3 pb-1 pl-14">
                                     {fase.taken.map((taak) => {
                                       const sc = statusConfig[taak.status] || statusConfig.open;
                                       const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
@@ -716,7 +716,12 @@ export default function TakenPage() {
                                             {taak.deadline && <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400" : "text-autronis-text-secondary")}>{isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}{formatDatum(taak.deadline)}</div>}
                                             {/* Hover actions */}
                                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                              {taak.status !== "afgerond" && <button onClick={(e) => { e.stopPropagation(); handleStartTimer(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>}
+                                              {taak.status !== "afgerond" && (
+                                                <>
+                                                  <button onClick={(e) => { e.stopPropagation(); handlePlanTaak(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan in agenda"><CalendarPlus className="w-3 h-3" /></button>
+                                                  <button onClick={(e) => { e.stopPropagation(); handleStartTimer(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>
+                                                </>
+                                              )}
                                               {isClaude && taak.prompt && taak.status !== "afgerond" && <CopyPromptButton prompt={taak.prompt} />}
                                               <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit))}
                                                 className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>

@@ -261,7 +261,8 @@ export async function GET(req: NextRequest) {
 
     // ─── Focus Metrics ───
     const PRODUCTIEF_CATS = new Set(["development", "design", "administratie"]);
-    const DEEP_WORK_GAP_MAX_MIN = 10; // Max gap between sessions to still count as one deep work block
+    const DEEP_WORK_GAP_MAX_MIN = 15; // Max gap between sessions to still count as one deep work block
+    const DEEP_WORK_INTERRUPT_MAX_MIN = 5; // Short non-productive interruptions (≤5 min) don't break the block
 
     // Session durations in minutes (using time span, not raw duurSeconden)
     const sessieDuurMin = sessies.map(s => Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 60000));
@@ -315,10 +316,19 @@ export async function GET(req: NextRequest) {
           };
         }
       } else {
-        // Non-productive session breaks the block
+        // Non-productive session — only breaks the block if it's longer than the interrupt threshold
+        // Short interruptions (≤5 min like checking Slack, quick email) don't break deep work flow
         if (currentBlock) {
-          if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
-          currentBlock = null;
+          const interruptMin = sessieDuurMin[i];
+          if (interruptMin > DEEP_WORK_INTERRUPT_MAX_MIN || sessies[i].categorie === "afleiding") {
+            // Long interruption or distraction — break the block
+            if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
+            currentBlock = null;
+          } else {
+            // Short interruption — extend the block through it
+            currentBlock.eindTijd = sessies[i].eindTijd;
+            currentBlock.duurMin = (new Date(currentBlock.eindTijd).getTime() - new Date(currentBlock.startTijd).getTime()) / 60000;
+          }
         }
       }
     }

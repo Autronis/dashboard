@@ -1139,12 +1139,18 @@ export default function AgendaPage() {
                         {dagNum}
                       </span>
                       {/* Taken indicator */}
-                      {toonTaken && (takenPerDag[wd.datumStr]?.length ?? 0) > 0 && (
-                        <div className="flex items-center justify-center gap-0.5 mt-1">
-                          <CheckSquare className="w-2.5 h-2.5 text-orange-400" />
-                          <span className="text-[9px] text-orange-400 font-medium tabular-nums">{takenPerDag[wd.datumStr].length}</span>
-                        </div>
-                      )}
+                      {toonTaken && (() => {
+                        const deadlineTaken = takenPerDag[wd.datumStr]?.length ?? 0;
+                        const ingepland = ingeplandPerDag[wd.datumStr]?.length ?? 0;
+                        const totaal = deadlineTaken + ingepland;
+                        if (totaal === 0) return null;
+                        return (
+                          <div className="flex items-center justify-center gap-0.5 mt-1">
+                            <CheckSquare className={cn("w-2.5 h-2.5", ingepland > 0 ? "text-green-400" : "text-orange-400")} />
+                            <span className={cn("text-[9px] font-medium tabular-nums", ingepland > 0 ? "text-green-400" : "text-orange-400")}>{totaal}</span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}

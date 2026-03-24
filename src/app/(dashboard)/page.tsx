@@ -827,16 +827,22 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-[1400px] mx-auto space-y-2.5">
+      <div className="dot-bg min-h-screen -m-4 lg:-m-8 p-4 lg:p-8">
+      <motion.div
+        className="max-w-[1400px] mx-auto space-y-2.5"
+        variants={pageVariants}
+        initial="hidden"
+        animate="visible"
+      >
         {/* Begroeting */}
-        <div>
+        <motion.div variants={sectionVariants}>
           <h1 className="text-xl sm:text-2xl font-bold text-autronis-text-primary tracking-tight">
             {getBegroeting()}, {gebruiker.naam.split(" ")[0]}
           </h1>
           <p className="text-sm text-autronis-text-secondary capitalize">
             {getDatumString()}
           </p>
-        </div>
+        </motion.div>
 
         {/* Belasting deadline alert */}
         {urgentDeadlines.length > 0 && (
@@ -863,7 +869,7 @@ export default function DashboardPage() {
         )}
 
         {/* Row 1: KPI's */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
+        <motion.div variants={sectionVariants} className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3">
           <Link href="/financien" className="block">
             <KPICard
               label="Omzet deze maand"
@@ -919,7 +925,7 @@ export default function DashboardPage() {
               className={kpis.deadlinesDezeWeek === 0 ? "opacity-50" : ""}
             />
           </Link>
-        </div>
+        </motion.div>
 
         {/* Focus Card — Wat moet je nu doen? */}
         {mijnTaken.length > 0 && (() => {
@@ -927,14 +933,14 @@ export default function DashboardPage() {
           const normal = mijnTaken.filter((t) => t.prioriteit !== "hoog");
           const nextTask = mijnTaken[0];
           return (
-            <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-4">
+            <motion.div variants={sectionVariants} className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-4">
               {/* Header + stats inline */}
               <div className="flex items-center gap-3 mb-3">
                 <Zap className="w-4 h-4 text-autronis-accent shrink-0" />
                 <h2 className="text-sm font-bold text-autronis-text-primary">Wat moet je nu doen?</h2>
                 <div className="flex items-center gap-2 ml-auto">
                   {critical.length > 0 && (
-                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-500/15 text-red-400 tabular-nums">{critical.length} urgent</span>
+                    <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-500/15 text-red-400 tabular-nums animate-pulse">{critical.length} urgent</span>
                   )}
                   <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-autronis-bg/60 text-autronis-text-secondary tabular-nums">{normal.length} overig</span>
                   {kpis.deadlinesDezeWeek > 0 && (
@@ -981,12 +987,12 @@ export default function DashboardPage() {
                   </Link>
                 )}
               </div>
-            </div>
+          </motion.div>
           );
         })()}
 
         {/* Main 2-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3">
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3">
           {/* Left column: Projecten + Taken + Briefing + Deadlines + Docs */}
           <div className="space-y-3">
             {/* Compact project overzicht */}
@@ -1004,13 +1010,23 @@ export default function DashboardPage() {
                 {projecten.filter((p) => p.status === "actief").slice(0, 5).map((p) => {
                   const pct = p.voortgang ?? 0;
                   return (
-                    <Link key={p.id} href={`/projecten/${p.id}`} className="flex items-center gap-3 px-2.5 py-1.5 rounded-lg hover:bg-autronis-bg/50 transition-colors group">
-                      <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent truncate flex-1">{p.naam}</span>
-                      <div className="w-16 h-1.5 bg-autronis-border rounded-full overflow-hidden shrink-0">
-                        <div className={cn("h-full rounded-full", pct >= 80 ? "bg-emerald-400" : pct >= 40 ? "bg-autronis-accent" : "bg-amber-400")} style={{ width: `${pct}%` }} />
-                      </div>
-                      <span className="text-[11px] text-autronis-text-secondary tabular-nums w-8 text-right shrink-0">{pct}%</span>
-                    </Link>
+                    <motion.div key={p.id} whileHover={{ x: 2 }} transition={{ duration: 0.15 }}>
+                      <Link href={`/projecten/${p.id}`} className={cn(
+                        "flex items-center gap-3 px-2.5 py-1.5 rounded-lg hover:bg-autronis-bg/50 transition-colors group",
+                        pct >= 80 && "border-l-2 border-l-emerald-400/60 pl-2"
+                      )}>
+                        <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent truncate flex-1">{p.naam}</span>
+                        <div className="w-16 h-1.5 bg-autronis-border rounded-full overflow-hidden shrink-0 progress-shimmer">
+                          <motion.div
+                            className={cn("h-full rounded-full", pct >= 80 ? "bg-emerald-400" : pct >= 40 ? "bg-autronis-accent" : "bg-amber-400")}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-autronis-text-secondary tabular-nums w-8 text-right shrink-0">{pct}%</span>
+                      </Link>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -1050,7 +1066,10 @@ export default function DashboardPage() {
                           )}
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-autronis-text-primary truncate">
+                          <p className={cn(
+                            "text-sm font-medium text-autronis-text-primary truncate transition-all duration-300",
+                            completingTaskId === taak.id && "line-through opacity-40"
+                          )}>
                             {taak.titel}
                           </p>
                           <div className="flex items-center gap-2 mt-0.5">
@@ -1239,10 +1258,11 @@ export default function DashboardPage() {
               </section>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Spacer for sticky timer bar (desktop) / bottom nav (mobile) */}
         <div className="h-4 md:h-16" />
+      </motion.div>
       </div>
 
       {/* Fixed timer bar — hidden on mobile (use bottom nav Timer link instead) */}

@@ -650,7 +650,7 @@ export default function AgendaPage() {
       </div>
 
       {/* Snelfilters */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap items-center">
         {[
           { value: "alle", label: "Alle" },
           { value: "afspraak", label: "Afspraken", color: "#17B8A5" },
@@ -658,21 +658,56 @@ export default function AgendaPage() {
           { value: "deadline", label: "Deadlines", color: "#ef4444" },
           { value: "belasting", label: "Belasting", color: "#eab308" },
           { value: "herinnering", label: "Herinneringen", color: "#a855f7" },
-        ].map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setFilterType(f.value)}
-            className={cn(
-              "px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5",
-              filterType === f.value
-                ? "border-autronis-accent bg-autronis-accent/10 text-autronis-accent"
-                : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
-            )}
-          >
-            {f.color && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: f.color }} />}
-            {f.label}
-          </button>
-        ))}
+        ].map((f) => {
+          const count = filterCounts[f.value] ?? 0;
+          return (
+            <button
+              key={f.value}
+              onClick={() => setFilterType(f.value)}
+              className={cn(
+                "px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5",
+                filterType === f.value
+                  ? "border-autronis-accent bg-autronis-accent/10 text-autronis-accent"
+                  : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
+              )}
+            >
+              {f.color && <div className="w-2 h-2 rounded-full" style={{ backgroundColor: f.color }} />}
+              {f.label}
+              {count > 0 && (
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded-full tabular-nums",
+                  filterType === f.value ? "bg-autronis-accent/20" : "bg-autronis-bg/50"
+                )}>
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        <div className="w-px h-5 bg-autronis-border mx-1 hidden sm:block" />
+
+        {/* Taken toggle */}
+        <button
+          onClick={() => setToonTaken((v) => !v)}
+          className={cn(
+            "px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors flex items-center gap-1.5",
+            toonTaken
+              ? "border-orange-500/40 bg-orange-500/10 text-orange-400"
+              : "border-autronis-border text-autronis-text-secondary hover:border-orange-500/40"
+          )}
+        >
+          <CheckSquare className="w-3 h-3" />
+          Taken
+          {takenStats.totaal > 0 && (
+            <span className={cn(
+              "text-[10px] px-1.5 py-0.5 rounded-full tabular-nums",
+              toonTaken ? "bg-orange-500/20" : "bg-autronis-bg/50"
+            )}>
+              {takenStats.open + takenStats.bezig}
+            </span>
+          )}
+        </button>
       </div>
      </div>
 
@@ -1031,19 +1066,33 @@ export default function AgendaPage() {
                     <div
                       key={wd.datumStr}
                       className={cn(
-                        "text-center py-2 border-b border-autronis-border/30",
-                        isVandaag && "bg-autronis-accent/5"
+                        "text-center py-2 border-b transition-colors",
+                        isVandaag
+                          ? "bg-autronis-accent/10 border-autronis-accent/30"
+                          : "border-autronis-border/30"
                       )}
                     >
-                      <span className="text-[10px] font-semibold text-autronis-text-secondary uppercase">{dagNaam}</span>
+                      <span className={cn(
+                        "text-[10px] font-semibold uppercase",
+                        isVandaag ? "text-autronis-accent" : "text-autronis-text-secondary"
+                      )}>{dagNaam}</span>
                       <span
                         className={cn(
-                          "block text-sm font-bold",
-                          isVandaag ? "text-autronis-accent" : "text-autronis-text-primary"
+                          "block text-sm font-bold mx-auto mt-0.5",
+                          isVandaag
+                            ? "text-autronis-bg bg-autronis-accent w-7 h-7 rounded-full flex items-center justify-center leading-none"
+                            : "text-autronis-text-primary"
                         )}
                       >
                         {dagNum}
                       </span>
+                      {/* Taken indicator */}
+                      {toonTaken && (takenPerDag[wd.datumStr]?.length ?? 0) > 0 && (
+                        <div className="flex items-center justify-center gap-0.5 mt-1">
+                          <CheckSquare className="w-2.5 h-2.5 text-orange-400" />
+                          <span className="text-[9px] text-orange-400 font-medium tabular-nums">{takenPerDag[wd.datumStr].length}</span>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1067,7 +1116,7 @@ export default function AgendaPage() {
                           onClick={() => openNieuwModal(wd.datumStr)}
                           className={cn(
                             "h-[64px] border-t border-r border-autronis-border/15 relative cursor-pointer hover:bg-autronis-accent/5 transition-colors",
-                            isVandaag && "bg-autronis-accent/[0.02]"
+                            isVandaag && "bg-autronis-accent/[0.04]"
                           )}
                         />
                       );
@@ -1167,6 +1216,49 @@ export default function AgendaPage() {
                   });
                 })}
 
+                {/* Taken-blokken in week view (als suggested blocks) */}
+                {toonTaken && weekDagen.map((wd, dagIdx) => {
+                  const dagTaken = takenPerDag[wd.datumStr] || [];
+                  if (dagTaken.length === 0) return null;
+
+                  return dagTaken.map((taak, taakIdx) => {
+                    const wStart = weekUren[0] ?? 7;
+                    // Toon taken als suggested blocks: start na laatste event of vanaf 09:00
+                    const suggestedUur = 9 + taakIdx;
+                    if (suggestedUur < wStart || suggestedUur >= (weekUren[weekUren.length - 1] ?? 20)) return null;
+
+                    const slotH = 64;
+                    const topOffset = (suggestedUur - wStart) * slotH;
+                    const height = slotH * 0.9;
+
+                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+
+                    return (
+                      <div
+                        key={`taak-${taak.id}-${wd.datumStr}`}
+                        className="absolute rounded-lg px-2 py-1 overflow-hidden border-l-[3px] border-dashed z-[5] opacity-50 hover:opacity-90 transition-opacity cursor-default"
+                        style={{
+                          top: `${topOffset}px`,
+                          height: `${height}px`,
+                          backgroundColor: `${prioColor}10`,
+                          borderLeftColor: prioColor,
+                          color: prioColor,
+                          left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
+                          width: `calc((100% - 48px) / 7 - 4px)`,
+                        }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <CheckSquare className="w-3 h-3 flex-shrink-0" />
+                          <p className="text-[11px] font-medium truncate leading-tight">{taak.titel}</p>
+                        </div>
+                        {height > 28 && taak.projectNaam && (
+                          <p className="text-[9px] opacity-60 mt-0.5 truncate">{taak.projectNaam}</p>
+                        )}
+                      </div>
+                    );
+                  });
+                })}
+
                 {/* Hele-dag events strip bovenaan */}
                 {(() => {
                   const heleDagEvents = weekDagen.map((wd) => {
@@ -1241,14 +1333,14 @@ export default function AgendaPage() {
                       style={{ top: `${topOffset}px` }}
                     >
                       <div
-                        className="absolute h-[2px] bg-red-500/70"
+                        className="absolute h-[2px] bg-red-500"
                         style={{
                           left: `calc(${vandaagIdx} * 100% / 7)`,
                           width: `calc(100% / 7)`,
                         }}
                       />
                       <div
-                        className="absolute w-2.5 h-2.5 rounded-full bg-red-500 -translate-x-1/2 shadow-lg shadow-red-500/30"
+                        className="absolute w-3 h-3 rounded-full bg-red-500 -translate-x-1/2 shadow-lg shadow-red-500/40 animate-pulse"
                         style={{
                           left: `calc(${vandaagIdx} * 100% / 7)`,
                         }}

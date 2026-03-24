@@ -25,6 +25,9 @@ export async function PUT(
     if (body.uitvoerder !== undefined) updateData.uitvoerder = body.uitvoerder;
     if (body.prompt !== undefined) updateData.prompt = body.prompt?.trim() || null;
     if (body.projectMap !== undefined) updateData.projectMap = body.projectMap || null;
+    if (body.geschatteDuur !== undefined) updateData.geschatteDuur = body.geschatteDuur || null;
+    if (body.ingeplandStart !== undefined) updateData.ingeplandStart = body.ingeplandStart || null;
+    if (body.ingeplandEind !== undefined) updateData.ingeplandEind = body.ingeplandEind || null;
 
     const [bijgewerkt] = await db
       .update(taken)

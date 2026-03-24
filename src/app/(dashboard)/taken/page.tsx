@@ -6,7 +6,7 @@ import {
   CheckCircle2, Circle, Clock, AlertTriangle, ListTodo, Loader2,
   ChevronDown, ChevronRight, Search, FolderOpen, Layers, Plus, X,
   Pencil, Bot, User, Copy, Terminal, GripVertical, Timer, Sparkles,
-  Zap, RefreshCw, LayoutGrid, List, BarChart3, Play,
+  Zap, RefreshCw, LayoutGrid, List, BarChart3, Play, CalendarPlus,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -96,78 +96,89 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
 }
 
 // ─── Vandaag Doen Card (prominent, full width) ───
-function VandaagDoenCard({ taken, onStatusToggle, onStartTimer }: {
+function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
   taken: Taak[];
   onStatusToggle: (taak: Taak) => void;
   onStartTimer: (taak: Taak) => void;
+  onPlanTaak: (taak: Taak) => void;
 }) {
+  const [showAll, setShowAll] = useState(false);
   if (taken.length === 0) return null;
 
   const eersteTaak = taken[0];
+  const maxVisible = 3;
+  const visibleTaken = showAll ? taken.slice(1) : taken.slice(1, maxVisible);
+  const hiddenCount = taken.length - maxVisible;
 
   return (
-    <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2 rounded-xl bg-autronis-accent/15"><Zap className="w-5 h-5 text-autronis-accent" /></div>
-        <div>
-          <h2 className="text-base font-bold text-autronis-text-primary">Vandaag doen</h2>
-          <p className="text-xs text-autronis-text-secondary">{taken.length} taken met prioriteit</p>
+    <div className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-4">
+      {/* Focus taak — de belangrijkste */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-1.5 rounded-lg bg-autronis-accent/15"><Zap className="w-4 h-4 text-autronis-accent" /></div>
+        <span className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Volgende taak</span>
+      </div>
+      <div className={cn(
+        "flex items-center gap-3 px-4 py-3 bg-autronis-bg/60 rounded-xl border-l-[3px] transition-colors mb-2",
+        prioriteitConfig[eersteTaak.prioriteit]?.borderColor ?? "border-l-yellow-500/50"
+      )}>
+        <button onClick={() => onStatusToggle(eersteTaak)}
+          className={cn("flex-shrink-0 transition-colors hover:scale-110", statusConfig[eersteTaak.status]?.color ?? "text-slate-400")}>
+          {eersteTaak.status === "afgerond" ? <CheckCircle2 className="w-5 h-5" /> :
+           eersteTaak.status === "bezig" ? <Loader2 className="w-5 h-5 animate-spin" /> :
+           <Circle className="w-5 h-5" />}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-autronis-text-primary truncate">{eersteTaak.titel}</p>
+          <p className="text-xs text-autronis-text-secondary truncate">{eersteTaak.projectNaam}{eersteTaak.fase ? ` · ${eersteTaak.fase}` : ""}</p>
         </div>
+        {eersteTaak.uitvoerder === "claude" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0">Claude</span>}
+        <button onClick={() => onPlanTaak(eersteTaak)}
+          className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors flex-shrink-0" title="Plan in agenda">
+          <CalendarPlus className="w-4 h-4" />
+        </button>
+        <button onClick={() => onStartTimer(eersteTaak)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-bold hover:bg-autronis-accent-hover transition-colors flex-shrink-0">
+          <Play className="w-3.5 h-3.5" /> Start
+        </button>
+        <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
+          className="px-3 py-2 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
+          Klaar
+        </button>
       </div>
 
-      {/* Eerste taak = de focus taak */}
-      <div className="mb-3">
-        <div className={cn(
-          "flex items-center gap-3 px-4 py-3 bg-autronis-bg/60 rounded-xl border-l-[3px] transition-colors",
-          prioriteitConfig[eersteTaak.prioriteit]?.borderColor ?? "border-l-yellow-500/50"
-        )}>
-          <button onClick={() => onStatusToggle(eersteTaak)}
-            className={cn("flex-shrink-0 transition-colors hover:scale-110", statusConfig[eersteTaak.status]?.color ?? "text-slate-400")}>
-            {eersteTaak.status === "afgerond" ? <CheckCircle2 className="w-5 h-5" /> :
-             eersteTaak.status === "bezig" ? <Loader2 className="w-5 h-5 animate-spin" /> :
-             <Circle className="w-5 h-5" />}
-          </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-autronis-text-primary truncate">{eersteTaak.titel}</p>
-            <p className="text-xs text-autronis-text-secondary truncate">{eersteTaak.projectNaam}{eersteTaak.fase ? ` · ${eersteTaak.fase}` : ""}</p>
-          </div>
-          {eersteTaak.uitvoerder === "claude" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0">Claude</span>}
-          <button onClick={() => onStartTimer(eersteTaak)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-semibold hover:bg-autronis-accent/25 transition-colors flex-shrink-0">
-            <Play className="w-3 h-3" /> Start
-          </button>
-          <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
-            className="px-3 py-1.5 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
-            Klaar
-          </button>
-        </div>
-      </div>
-
-      {/* Overige taken compact */}
+      {/* Overige taken compact — max 2 meer zichtbaar */}
       {taken.length > 1 && (
-        <div className="space-y-1">
-          {taken.slice(1).map((taak) => {
+        <div className="space-y-0.5">
+          {visibleTaken.map((taak) => {
             const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
             const sc = statusConfig[taak.status] || statusConfig.open;
             const StatusIcon = sc.icon;
             return (
-              <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-2 bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors hover:bg-autronis-bg/50", pc.borderColor)}>
+              <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-1.5 bg-autronis-bg/20 rounded-lg border-l-[2px] transition-colors hover:bg-autronis-bg/40 group", pc.borderColor)}>
                 <button onClick={() => onStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)}>
-                  <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
+                  <StatusIcon className={cn("w-3 h-3", taak.status === "bezig" && "animate-spin")} />
                 </button>
-                <p className="flex-1 text-xs text-autronis-text-primary truncate">{taak.titel}</p>
-                <span className="text-[10px] text-autronis-text-secondary truncate max-w-20">{taak.projectNaam}</span>
-                {taak.uitvoerder === "claude" && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
-                <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)}
-                  className="px-2 py-0.5 rounded-md bg-green-500/10 text-green-400 text-[10px] font-semibold hover:bg-green-500/20 transition-colors flex-shrink-0">
-                  Klaar
-                </button>
-                <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors flex-shrink-0">
-                  <Timer className="w-3 h-3" />
-                </button>
+                <p className="flex-1 text-[11px] text-autronis-text-primary truncate">{taak.titel}</p>
+                <span className="text-[10px] text-autronis-text-secondary truncate max-w-16">{taak.projectNaam}</span>
+                {taak.uitvoerder === "claude" && <Bot className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />}
+                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <button onClick={() => onPlanTaak(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan"><CalendarPlus className="w-3 h-3" /></button>
+                  <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start"><Timer className="w-3 h-3" /></button>
+                  <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
+                </div>
               </div>
             );
           })}
+          {!showAll && hiddenCount > 0 && (
+            <button onClick={() => setShowAll(true)} className="w-full text-center py-1 text-[11px] text-autronis-text-secondary hover:text-autronis-accent transition-colors">
+              +{hiddenCount} meer
+            </button>
+          )}
+          {showAll && hiddenCount > 0 && (
+            <button onClick={() => setShowAll(false)} className="w-full text-center py-1 text-[11px] text-autronis-text-secondary hover:text-autronis-accent transition-colors">
+              Minder tonen
+            </button>
+          )}
         </div>
       )}
     </div>

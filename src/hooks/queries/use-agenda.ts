@@ -185,6 +185,9 @@ export interface AgendaTaak {
   status: string;
   prioriteit: string;
   deadline: string | null;
+  geschatteDuur: number | null; // minuten
+  ingeplandStart: string | null; // ISO datetime
+  ingeplandEind: string | null;  // ISO datetime
   projectNaam: string | null;
   klantNaam: string | null;
   toegewezenAanId: number | null;
@@ -202,5 +205,49 @@ export function useAgendaTaken() {
     queryKey: ["agenda-taken"],
     queryFn: fetchAgendaTaken,
     staleTime: 30_000,
+  });
+}
+
+export interface PlanTaakPayload {
+  ingeplandStart: string;
+  ingeplandEind: string;
+  geschatteDuur?: number;
+}
+
+export function usePlanTaak() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: PlanTaakPayload & { id: number }) => {
+      const res = await fetch(`/api/taken/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error("Inplannen mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["agenda"] });
+    },
+  });
+}
+
+export function useUnplanTaak() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/taken/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ingeplandStart: null, ingeplandEind: null }),
+      });
+      if (!res.ok) throw new Error("Uitplannen mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["agenda"] });
+    },
   });
 }

@@ -27,11 +27,12 @@ import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken } from "@/hooks/queries/use-agenda";
+import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken, usePlanTaak, useUnplanTaak } from "@/hooks/queries/use-agenda";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AgendaItem, ExternEvent, ExterneKalender, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 import { DagView } from "./dag-view";
 import { JaarView } from "./jaar-view";
+import { PlanTaakModal } from "./plan-taak-modal";
 import Link from "next/link";
 
 const typeConfig: Record<string, { icon: typeof Calendar; color: string; bg: string; borderColor: string; label: string }> = {
@@ -170,12 +171,63 @@ export default function AgendaPage() {
   const { data: deadlineEvents = [] } = useDeadlineEvents(jaar, maand);
   const { data: kalenders = [] } = useExterneKalenders();
   const { data: agendaTaken = [] } = useAgendaTaken();
+  const planTaak = usePlanTaak();
+  const unplanTaak = useUnplanTaak();
+  const [planModalTaak, setPlanModalTaak] = useState<AgendaTaak | null>(null);
+  const [planPrefillDatum, setPlanPrefillDatum] = useState<string | undefined>();
+  const [planPrefillTijd, setPlanPrefillTijd] = useState<string | undefined>();
+
+  // Drag state voor taken
+  const [dragTaak, setDragTaak] = useState<AgendaTaak | null>(null);
 
   // Filters
   const [filterType, setFilterType] = useState<string>("alle");
   const [toonTaken, setToonTaken] = useState(true);
   // Selected day for detail panel
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  function handlePlanTaak(id: number, start: string, eind: string, duur: number) {
+    planTaak.mutate(
+      { id, ingeplandStart: start, ingeplandEind: eind, geschatteDuur: duur },
+      {
+        onSuccess: () => {
+          addToast("Taak ingepland", "succes");
+          setPlanModalTaak(null);
+        },
+        onError: () => addToast("Kon taak niet inplannen", "fout"),
+      }
+    );
+  }
+
+  function handleUnplanTaak(id: number) {
+    unplanTaak.mutate(id, {
+      onSuccess: () => addToast("Taak uit agenda gehaald", "succes"),
+      onError: () => addToast("Kon taak niet uitplannen", "fout"),
+    });
+  }
+
+  function openPlanModal(taak: AgendaTaak, datum?: string, tijd?: string) {
+    setPlanModalTaak(taak);
+    setPlanPrefillDatum(datum);
+    setPlanPrefillTijd(tijd);
+  }
+
+  // Ingeplande taken (hebben ingeplandStart)
+  const ingeplandeTaken = useMemo(() => agendaTaken.filter((t) => t.ingeplandStart), [agendaTaken]);
+  // Niet ingeplande taken (voor sidebar)
+  const nietIngeplandeTaken = useMemo(() => agendaTaken.filter((t) => !t.ingeplandStart), [agendaTaken]);
+
+  // Ingeplande taken per dag
+  const ingeplandPerDag = useMemo(() => {
+    const map: Record<string, AgendaTaak[]> = {};
+    for (const taak of ingeplandeTaken) {
+      if (!taak.ingeplandStart) continue;
+      const dag = taak.ingeplandStart.slice(0, 10);
+      if (!map[dag]) map[dag] = [];
+      map[dag].push(taak);
+    }
+    return map;
+  }, [ingeplandeTaken]);
 
   // Taken stats voor vandaag-strip
   const takenStats = useMemo(() => {

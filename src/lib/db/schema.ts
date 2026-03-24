@@ -254,6 +254,9 @@ export const taken = sqliteTable("taken", {
   prompt: text("prompt"),
   projectMap: text("project_map"),
   googleEventId: text("google_event_id"),
+  geschatteDuur: integer("geschatte_duur"), // minuten (30, 60, 120, etc.)
+  ingeplandStart: text("ingepland_start"), // ISO datetime wanneer ingepland in agenda
+  ingeplandEind: text("ingepland_eind"),   // ISO datetime einde van ingepland blok
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });

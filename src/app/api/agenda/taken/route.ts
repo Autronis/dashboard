@@ -4,17 +4,6 @@ import { taken, projecten, klanten } from "@/lib/db/schema";
 import { eq, or } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
-export interface AgendaTaak {
-  id: number;
-  titel: string;
-  status: string;
-  prioriteit: string;
-  deadline: string | null;
-  projectNaam: string | null;
-  klantNaam: string | null;
-  toegewezenAanId: number | null;
-}
-
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
 export async function GET() {
   try {
@@ -27,6 +16,9 @@ export async function GET() {
         status: taken.status,
         prioriteit: taken.prioriteit,
         deadline: taken.deadline,
+        geschatteDuur: taken.geschatteDuur,
+        ingeplandStart: taken.ingeplandStart,
+        ingeplandEind: taken.ingeplandEind,
         toegewezenAanId: taken.toegewezenAan,
         projectNaam: projecten.naam,
         klantNaam: klanten.bedrijfsnaam,
@@ -46,7 +38,7 @@ export async function GET() {
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },
-      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+      { status: error instanceof Error && error.message === "Onbekende fout" ? 500 : 401 }
     );
   }
 }

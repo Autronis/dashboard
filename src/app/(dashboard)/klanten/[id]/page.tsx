@@ -327,18 +327,25 @@ export default function KlantDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={() => verrijkMutation.mutate(klant.website || undefined)}
-            disabled={verrijkMutation.isPending}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-semibold transition-colors"
-          >
-            {verrijkMutation.isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Sparkles className="w-4 h-4" />
-            )}
-            {verrijkMutation.isPending ? "Verrijken..." : "Verrijk met AI"}
-          </button>
+          <div className="relative group/ai">
+            <button
+              onClick={() => verrijkMutation.mutate(klant.website || undefined)}
+              disabled={verrijkMutation.isPending}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-400 rounded-xl text-sm font-semibold transition-colors"
+            >
+              {verrijkMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4" />
+              )}
+              {verrijkMutation.isPending ? "Verrijken..." : "Verrijk met AI"}
+            </button>
+            <div className="absolute top-full left-0 mt-2 w-56 p-3 bg-autronis-card border border-autronis-border rounded-xl shadow-xl opacity-0 group-hover/ai:opacity-100 transition-opacity pointer-events-none z-20">
+              <p className="text-xs text-autronis-text-secondary leading-relaxed">
+                Haalt automatisch op: branche, diensten, tech stack en bedrijfsgrootte via de website.
+              </p>
+            </div>
+          </div>
           <button
             onClick={() => setKlantModalOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"
@@ -409,6 +416,96 @@ export default function KlantDetailPage() {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Relatie samenvatting + Next Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Relatie samenvatting */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide">Relatie status</h3>
+            {(() => {
+              const rsConfig = relatieStatusConfig[relatieStatus] || relatieStatusConfig.actief;
+              return (
+                <span className={cn("inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold", rsConfig.bg, rsConfig.text)}>
+                  <span className={cn("w-2 h-2 rounded-full", rsConfig.dot)} />
+                  {rsConfig.label}
+                </span>
+              );
+            })()}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-xs text-autronis-text-secondary/70">Laatste contact</p>
+              <p className={cn(
+                "text-sm font-medium mt-0.5",
+                dagenSindsContact !== null && dagenSindsContact > 14 ? "text-amber-400" : "text-autronis-text-primary"
+              )}>
+                {dagenSindsContact !== null
+                  ? dagenSindsContact === 0 ? "Vandaag"
+                    : dagenSindsContact === 1 ? "Gisteren"
+                    : `${dagenSindsContact} dagen geleden`
+                  : "Onbekend"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-autronis-text-secondary/70">Open taken</p>
+              <p className="text-sm font-medium text-autronis-text-primary mt-0.5">
+                {kpis.openTaken > 0 ? `${kpis.openTaken} taken` : "Geen open taken"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-autronis-text-secondary/70">Lifetime value</p>
+              <p className="text-sm font-medium text-autronis-accent mt-0.5 tabular-nums">{formatBedrag(kpis.clv)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-autronis-text-secondary/70">Gem. per maand</p>
+              <p className="text-sm font-medium text-autronis-text-primary mt-0.5 tabular-nums">{formatBedrag(kpis.gemiddeldeMaandOmzet)}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Next Actions */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6">
+          <h3 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-4">Volgende acties</h3>
+          {nextActions.length === 0 ? (
+            <div className="flex items-center gap-3 text-sm text-autronis-text-secondary/70">
+              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              Geen openstaande acties — alles op orde
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {nextActions.slice(0, 4).map((action: NextAction, i: number) => {
+                const ActionIcon = nextActionIcons[action.type] || ArrowRight;
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
+                      action.urgentie === "hoog"
+                        ? "bg-red-500/5 border border-red-500/20"
+                        : "bg-autronis-bg/50"
+                    )}
+                  >
+                    <ActionIcon className={cn(
+                      "w-4 h-4 flex-shrink-0",
+                      action.urgentie === "hoog" ? "text-red-400" : "text-autronis-text-secondary"
+                    )} />
+                    <span className={cn(
+                      "flex-1",
+                      action.urgentie === "hoog" ? "text-red-400 font-medium" : "text-autronis-text-primary"
+                    )}>
+                      {action.label}
+                    </span>
+                    {action.urgentie === "hoog" && (
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
@@ -783,16 +880,16 @@ export default function KlantDetailPage() {
       {/* Financial tab */}
       {activeTab === "financieel" && (
         <div className="space-y-8">
-          {/* Financial KPIs */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Financial KPIs - 6 cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
                 <div className="p-2 rounded-xl bg-green-500/10">
                   <Euro className="w-4 h-4 text-green-400" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-green-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1">Totale omzet</p>
+              <p className="text-xl font-bold text-green-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale omzet</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
@@ -800,19 +897,37 @@ export default function KlantDetailPage() {
                   <Receipt className="w-4 h-4 text-amber-400" />
                 </div>
               </div>
-              <p className={cn("text-2xl font-bold tabular-nums", kpis.openstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}>
+              <p className={cn("text-xl font-bold tabular-nums", kpis.openstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}>
                 {formatBedrag(kpis.openstaand)}
               </p>
-              <p className="text-xs text-autronis-text-secondary mt-1">Openstaand</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Openstaand</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-autronis-accent/10">
+                  <TrendingUp className="w-4 h-4 text-autronis-accent" />
+                </div>
+              </div>
+              <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(kpis.clv)}</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Lifetime value</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
                 <div className="p-2 rounded-xl bg-blue-500/10">
-                  <CreditCard className="w-4 h-4 text-blue-400" />
+                  <BarChart3 className="w-4 h-4 text-blue-400" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(kpis.gemiddeldFactuurbedrag)}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1">Gem. factuurbedrag</p>
+              <p className="text-xl font-bold text-blue-400 tabular-nums">{formatBedrag(kpis.gemiddeldeMaandOmzet)}</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. per maand</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-purple-500/10">
+                  <CreditCard className="w-4 h-4 text-purple-400" />
+                </div>
+              </div>
+              <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(kpis.gemiddeldFactuurbedrag)}</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Gem. factuur</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
@@ -820,12 +935,40 @@ export default function KlantDetailPage() {
                   <Timer className="w-4 h-4 text-autronis-accent" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                {kpis.gemiddeldeBetalingsDagen !== null ? `${kpis.gemiddeldeBetalingsDagen} dagen` : "\u2014"}
+              <p className="text-xl font-bold text-autronis-text-primary tabular-nums">
+                {kpis.gemiddeldeBetalingsDagen !== null ? `${kpis.gemiddeldeBetalingsDagen}d` : "\u2014"}
               </p>
-              <p className="text-xs text-autronis-text-secondary mt-1">Gem. betaaltermijn</p>
+              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Betaaltermijn</p>
             </div>
           </div>
+
+          {/* Monthly revenue chart */}
+          {maandelijkseOmzet.length > 0 && (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Omzet per maand</h2>
+              <div className="flex items-end gap-2 h-40">
+                {(() => {
+                  const maxOmzet = Math.max(...maandelijkseOmzet.map(m => m.omzet), 1);
+                  return maandelijkseOmzet.map((m) => {
+                    const height = Math.max((m.omzet / maxOmzet) * 100, 4);
+                    const maandLabel = m.maand.substring(5);
+                    return (
+                      <div key={m.maand} className="flex-1 flex flex-col items-center gap-1 group">
+                        <span className="text-[10px] text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                          {formatBedrag(m.omzet)}
+                        </span>
+                        <div
+                          className="w-full bg-autronis-accent/80 rounded-t-lg hover:bg-autronis-accent transition-colors"
+                          style={{ height: `${height}%` }}
+                        />
+                        <span className="text-[10px] text-autronis-text-secondary/60">{maandLabel}</span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Facturen */}

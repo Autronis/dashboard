@@ -41,6 +41,12 @@ import {
   Info,
   CheckSquare,
   Square,
+  Zap,
+  Target,
+  ArrowRight,
+  CircleDot,
+  BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { cn, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -72,17 +78,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // ============ CONSTANTS ============
 
-type TabId = "overzicht" | "btw" | "winst-verlies" | "investeringen" | "reserveringen" | "kosten" | "subsidies" | "jaaroverzicht";
+type TabId = "overzicht" | "acties" | "analyse" | "optimalisatie";
 
-const tabs: { id: TabId; label: string; icon: typeof Receipt }[] = [
-  { id: "overzicht", label: "Overzicht", icon: FileBarChart },
-  { id: "btw", label: "BTW", icon: Receipt },
-  { id: "winst-verlies", label: "Winst & Verlies", icon: TrendingUp },
-  { id: "investeringen", label: "Investeringen", icon: Package },
-  { id: "reserveringen", label: "Reserveringen", icon: PiggyBank },
-  { id: "kosten", label: "Kosten & Aftrek", icon: Wallet },
-  { id: "subsidies", label: "Subsidies & Tips", icon: Lightbulb },
-  { id: "jaaroverzicht", label: "Jaaroverzicht", icon: FileBarChart },
+const tabs: { id: TabId; label: string; icon: typeof Receipt; description: string }[] = [
+  { id: "overzicht", label: "Overzicht", icon: Target, description: "Jouw situatie nu" },
+  { id: "acties", label: "Acties", icon: Zap, description: "Wat moet je doen" },
+  { id: "analyse", label: "Analyse", icon: BarChart3, description: "Inzicht in je cijfers" },
+  { id: "optimalisatie", label: "Optimalisatie", icon: Sparkles, description: "Bespaar meer" },
 ];
 
 const typeConfig: Record<string, { icon: typeof Receipt; color: string; label: string }> = {
@@ -126,6 +128,27 @@ const aanslagStatusConfig: Record<string, { bg: string; text: string }> = {
   deels_betaald: { bg: "bg-blue-500/15", text: "text-blue-400" },
 };
 
+// ============ STATUS HELPERS ============
+
+function getStatusIndicator(status: "ok" | "warning" | "danger") {
+  const config = {
+    ok: { bg: "bg-green-500/15", text: "text-green-400", dot: "bg-green-400" },
+    warning: { bg: "bg-yellow-500/15", text: "text-yellow-400", dot: "bg-yellow-400" },
+    danger: { bg: "bg-red-500/15", text: "text-red-400", dot: "bg-red-400" },
+  };
+  return config[status];
+}
+
+function StatusBadge({ status, label }: { status: "ok" | "warning" | "danger"; label: string }) {
+  const cfg = getStatusIndicator(status);
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold", cfg.bg, cfg.text)}>
+      <span className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
+      {label}
+    </span>
+  );
+}
+
 // ============ COMPONENT ============
 
 export default function BelastingPage() {
@@ -133,10 +156,6 @@ export default function BelastingPage() {
   const queryClient = useQueryClient();
   const [jaar, setJaar] = useState(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState<TabId>("overzicht");
-
-  // Collapsible sections (overzicht tab)
-  const [deadlinesOpen, setDeadlinesOpen] = useState(true);
-  const [urenOpen, setUrenOpen] = useState(true);
 
   // Modals
   const [investeringModal, setInvesteringModal] = useState(false);
@@ -434,6 +453,38 @@ export default function BelastingPage() {
     return 0;
   };
 
+  // Investering computed
+  const investeringenLijst = investeringenData ?? [];
+  const totaalInvestering = investeringenLijst.reduce((sum, inv) => sum + inv.bedrag, 0);
+  const totaleAfschrijving = investeringenLijst.reduce((sum, inv) => sum + inv.jaarlijkseAfschrijving, 0);
+
+  // Reservering computed
+  const geschatteBelasting = wvData?.geschatteBelasting ?? 0;
+  const totaalGereserveerd = reserveringenData?.totaalGereserveerd ?? 0;
+  const reserveringTekort = geschatteBelasting - totaalGereserveerd;
+  const reserveringStatus: "ok" | "warning" | "danger" =
+    reserveringTekort <= 0 ? "ok" : reserveringTekort < geschatteBelasting * 0.3 ? "warning" : "danger";
+
+  // Uren computed
+  const urenAchterstand = urenCriterium ? Math.max(0, urenCriterium.doelUren - urenCriterium.behaaldUren) : 0;
+  const dagenResterend = Math.ceil((new Date(jaar, 11, 31).getTime() - nu.getTime()) / (1000 * 60 * 60 * 24));
+  const urenPerDagNodig = dagenResterend > 0 && urenAchterstand > 0
+    ? (urenAchterstand / dagenResterend).toFixed(1)
+    : "0";
+  const urenStatus: "ok" | "warning" | "danger" =
+    !urenCriterium ? "warning" :
+    urenCriterium.voldoet ? "ok" :
+    (urenCriterium.voortgangPercentage ?? 0) < 50 ? "danger" : "warning";
+
+  // BTW status
+  const btwStatus: "ok" | "warning" | "danger" =
+    !currentQAangifte ? "warning" :
+    currentQAangifte.status === "betaald" ? "ok" :
+    currentQAangifte.status === "ingediend" ? "warning" : "danger";
+
+  // Open BTW aangiftes
+  const openBtwAangiftes = aangiftes.filter((a) => a.status !== "betaald");
+
   // ---- LOADING STATE ----
 
   if (loadingBelasting) {
@@ -463,14 +514,13 @@ export default function BelastingPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-autronis-text-primary">
-              Belasting & Compliance
+              Belasting & Financieel
             </h1>
             <p className="text-base text-autronis-text-secondary mt-1">
-              BTW, belasting, investeringen en reserveringen
+              Wat je moet doen, betalen en optimaliseren
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Year selector */}
             <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl">
               <button
                 onClick={() => setJaar((j) => j - 1)}
@@ -515,16 +565,16 @@ export default function BelastingPage() {
               </p>
             </div>
             <button
-              onClick={() => setActiveTab("overzicht")}
+              onClick={() => setActiveTab("acties")}
               className="text-xs font-semibold text-red-400 hover:text-red-300 transition-colors"
             >
-              Bekijk
+              Bekijk acties
             </button>
           </div>
         )}
 
-        {/* Tab bar */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        {/* Tab bar — 4 tabs */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -533,14 +583,19 @@ export default function BelastingPage() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors",
+                  "flex flex-col items-start gap-1 p-4 rounded-2xl text-left transition-all",
                   isActive
-                    ? "bg-autronis-accent text-autronis-bg shadow-lg shadow-autronis-accent/20"
-                    : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
+                    ? "bg-autronis-accent/15 border-2 border-autronis-accent shadow-lg shadow-autronis-accent/10"
+                    : "bg-autronis-card border-2 border-transparent hover:border-autronis-border"
                 )}
               >
-                <Icon className="w-4 h-4" />
-                {tab.label}
+                <div className="flex items-center gap-2">
+                  <Icon className={cn("w-4 h-4", isActive ? "text-autronis-accent" : "text-autronis-text-secondary")} />
+                  <span className={cn("text-sm font-bold", isActive ? "text-autronis-accent" : "text-autronis-text-primary")}>
+                    {tab.label}
+                  </span>
+                </div>
+                <span className="text-xs text-autronis-text-secondary">{tab.description}</span>
               </button>
             );
           })}
@@ -548,1097 +603,900 @@ export default function BelastingPage() {
 
         {/* ===== TAB: OVERZICHT ===== */}
         {activeTab === "overzicht" && (
-          <div className="space-y-8">
-            {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-              {/* BTW afdracht dit kwartaal */}
-              <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-emerald-500/10 rounded-xl">
-                    <Receipt className="w-5 h-5 text-emerald-400" />
-                  </div>
-                </div>
-                <AnimatedNumber
-                  value={nettoAfdragen}
-                  format={formatBedrag}
-                  className={cn("text-3xl font-bold tabular-nums", nettoAfdragen > 0 ? "text-red-400" : "text-emerald-400")}
-                />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-                  BTW afdracht Q{currentQuarter}
-                </p>
-              </div>
-
-              {/* Geschatte belasting */}
-              <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-purple-500/10 rounded-xl">
-                    <Landmark className="w-5 h-5 text-purple-400" />
-                  </div>
-                </div>
-                <AnimatedNumber
-                  value={wvData?.geschatteBelasting ?? 0}
-                  format={formatBedrag}
-                  className="text-3xl font-bold text-purple-400 tabular-nums"
-                />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-                  Geschatte belasting {jaar}
-                </p>
-              </div>
-
-              {/* Gereserveerd */}
-              <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-blue-500/10 rounded-xl">
-                    <PiggyBank className="w-5 h-5 text-blue-400" />
-                  </div>
-                </div>
-                <AnimatedNumber
-                  value={reserveringenData?.totaalGereserveerd ?? 0}
-                  format={formatBedrag}
-                  className="text-3xl font-bold text-blue-400 tabular-nums"
-                />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-                  Gereserveerd
-                </p>
-              </div>
-
-              {/* Volgende deadline / Urencriterium */}
-              <div
-                className={cn(
-                  "bg-gradient-to-br to-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow",
-                  dagenTotDeadline !== null && dagenTotDeadline < 14
-                    ? "from-red-500/10"
-                    : "from-autronis-accent/10"
-                )}
-              >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={cn("p-2.5 rounded-xl", dagenTotDeadline !== null && dagenTotDeadline < 14 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
-                    <CalendarClock className={cn("w-5 h-5", dagenTotDeadline !== null && dagenTotDeadline < 14 ? "text-red-400" : "text-autronis-accent")} />
-                  </div>
-                </div>
-                {dagenTotDeadline !== null ? (
-                  <>
-                    <AnimatedNumber
-                      value={dagenTotDeadline}
-                      format={(n) => `${Math.round(n)} dagen`}
-                      className={cn("text-3xl font-bold tabular-nums", dagenTotDeadline < 14 ? "text-red-400" : "text-autronis-text-primary")}
+          <div className="space-y-6">
+            {/* Jouw situatie nu */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Jouw situatie nu</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* BTW Status */}
+                <div className={cn(
+                  "p-5 rounded-xl border transition-colors",
+                  btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                  btwStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                  "border-green-500/30 bg-green-500/5"
+                )}>
+                  <div className="flex items-center justify-between mb-3">
+                    <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-green-400" : btwStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <StatusBadge
+                      status={btwStatus}
+                      label={btwStatus === "ok" ? "Betaald" : btwStatus === "warning" ? "Ingediend" : "Actie nodig"}
                     />
-                    <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide truncate" title={volgendeDeadline?.omschrijving}>
-                      {volgendeDeadline?.omschrijving}
+                  </div>
+                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{formatBedrag(nettoAfdragen)}</p>
+                  <p className="text-sm text-autronis-text-secondary mt-1">BTW afdracht Q{currentQuarter}</p>
+                  {btwStatus === "danger" && (
+                    <button
+                      onClick={() => setActiveTab("acties")}
+                      className="mt-3 text-xs font-semibold text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
+                    >
+                      Aangifte doen <ArrowRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Belasting reservering */}
+                <div className={cn(
+                  "p-5 rounded-xl border transition-colors",
+                  reserveringStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                  reserveringStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                  "border-green-500/30 bg-green-500/5"
+                )}>
+                  <div className="flex items-center justify-between mb-3">
+                    <PiggyBank className={cn("w-5 h-5", reserveringStatus === "ok" ? "text-green-400" : reserveringStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <StatusBadge
+                      status={reserveringStatus}
+                      label={reserveringStatus === "ok" ? "Op schema" : reserveringStatus === "warning" ? "Let op" : "Reserveren"}
+                    />
+                  </div>
+                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{formatBedrag(geschatteBelasting)}</p>
+                  <p className="text-sm text-autronis-text-secondary mt-1">Geschatte belasting {jaar}</p>
+                  {reserveringTekort > 0 && (
+                    <p className="mt-2 text-xs text-red-400 font-medium">
+                      Nog {formatBedrag(reserveringTekort)} reserveren
                     </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-3xl font-bold text-autronis-accent">Alles af</p>
-                    <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
-                      Geen openstaande deadlines
+                  )}
+                </div>
+
+                {/* Urencriterium */}
+                <div className={cn(
+                  "p-5 rounded-xl border transition-colors",
+                  urenStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                  urenStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                  "border-green-500/30 bg-green-500/5"
+                )}>
+                  <div className="flex items-center justify-between mb-3">
+                    <Timer className={cn("w-5 h-5", urenStatus === "ok" ? "text-green-400" : urenStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <StatusBadge
+                      status={urenStatus}
+                      label={urenStatus === "ok" ? "Behaald" : urenStatus === "warning" ? "Risico" : "Achterstand"}
+                    />
+                  </div>
+                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
+                    {urenCriterium ? `${urenCriterium.voortgangPercentage}%` : "—"}
+                  </p>
+                  <p className="text-sm text-autronis-text-secondary mt-1">Urencriterium</p>
+                  {urenAchterstand > 0 && (
+                    <p className="mt-2 text-xs text-yellow-400 font-medium">
+                      {urenPerDagNodig} uur/dag nodig
                     </p>
-                  </>
-                )}
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Deadlines section */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl">
-              <button
-                onClick={() => setDeadlinesOpen(!deadlinesOpen)}
-                className="w-full flex items-center justify-between p-6 lg:p-7"
-              >
-                <div className="flex items-center gap-3">
-                  <CalendarClock className="w-5 h-5 text-autronis-accent" />
-                  <h2 className="text-xl font-bold text-autronis-text-primary">Deadlines {jaar}</h2>
-                  {openDeadlines.length > 0 && (
-                    <span className="text-xs px-2 py-0.5 bg-autronis-accent/15 text-autronis-accent rounded-full font-semibold">
-                      {openDeadlines.length} open
-                    </span>
-                  )}
+            {/* Volgende deadlines */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-autronis-text-primary">Volgende deadlines</h2>
+                {openDeadlines.length > 0 && (
+                  <span className="text-xs px-2 py-0.5 bg-autronis-accent/15 text-autronis-accent rounded-full font-semibold">
+                    {openDeadlines.length} open
+                  </span>
+                )}
+              </div>
+              {openDeadlines.length === 0 ? (
+                <div className="text-center py-8">
+                  <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3" />
+                  <p className="text-autronis-text-primary font-semibold">Alle deadlines afgerond!</p>
+                  <p className="text-sm text-autronis-text-secondary mt-1">Geen openstaande verplichtingen</p>
                 </div>
-                {deadlinesOpen ? <ChevronUp className="w-5 h-5 text-autronis-text-secondary" /> : <ChevronDown className="w-5 h-5 text-autronis-text-secondary" />}
-              </button>
+              ) : (
+                <div className="space-y-2">
+                  {openDeadlines.slice(0, 5).map((deadline) => {
+                    const config = typeConfig[deadline.type] ?? typeConfig.btw;
+                    const Icon = config.icon;
+                    const deadlineDatum = new Date(deadline.datum);
+                    const dagen = Math.ceil((deadlineDatum.getTime() - nu.getTime()) / (1000 * 60 * 60 * 24));
+                    const isOverdue = dagen < 0;
+                    const isUrgent = dagen >= 0 && dagen < 14;
 
-              {deadlinesOpen && (
-                <div className="px-6 lg:px-7 pb-6 lg:pb-7">
-                  {deadlines.length === 0 ? (
-                    <p className="text-autronis-text-secondary text-sm py-4">
-                      Nog geen deadlines voor {jaar}. Klik op &quot;Gegevens aanmaken&quot; om te starten.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {deadlines
-                        .sort((a, b) => a.datum.localeCompare(b.datum))
-                        .map((deadline) => {
-                          const config = typeConfig[deadline.type] ?? typeConfig.btw;
-                          const Icon = config.icon;
-                          const isAfgerond = !!deadline.afgerond;
-                          const deadlineDatum = new Date(deadline.datum);
-                          const dagen = Math.ceil((deadlineDatum.getTime() - nu.getTime()) / (1000 * 60 * 60 * 24));
-                          const isOverdue = !isAfgerond && dagen < 0;
-                          const isUrgent = !isAfgerond && dagen >= 0 && dagen < 14;
-
-                          return (
-                            <div
-                              key={deadline.id}
-                              className={cn(
-                                "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
-                                isAfgerond
-                                  ? "border-autronis-border/50 bg-autronis-bg/20 opacity-60"
-                                  : isOverdue
-                                  ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10"
-                                  : isUrgent
-                                  ? "border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10"
-                                  : "border-autronis-border hover:bg-autronis-bg/30"
-                              )}
-                              onClick={() => handleToggleDeadline(deadline)}
-                            >
-                              <div className={cn("p-2 rounded-lg", isAfgerond ? "bg-green-500/10" : "bg-autronis-bg/50")}>
-                                {isAfgerond ? (
-                                  <CheckCircle2 className="w-5 h-5 text-green-400" />
-                                ) : (
-                                  <Icon className={cn("w-5 h-5", config.color)} />
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className={cn("text-base font-medium", isAfgerond ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>
-                                    {deadline.omschrijving}
-                                  </span>
-                                  <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", isAfgerond ? "bg-green-500/15 text-green-400" : `bg-${config.color.replace("text-", "")}/15 ${config.color}`)}>
-                                    {config.label}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-autronis-text-secondary mt-0.5">{formatDatum(deadline.datum)}</p>
-                              </div>
-                              <div className="text-right flex-shrink-0">
-                                {isAfgerond ? (
-                                  <span className="text-sm font-medium text-green-400">Afgerond</span>
-                                ) : isOverdue ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <AlertTriangle className="w-4 h-4 text-red-400" />
-                                    <span className="text-sm font-semibold text-red-400">{Math.abs(dagen)} dagen te laat</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5">
-                                    <Clock className="w-4 h-4 text-autronis-text-secondary" />
-                                    <span className={cn("text-sm font-semibold tabular-nums", isUrgent ? "text-yellow-400" : "text-autronis-text-secondary")}>
-                                      {dagen} dagen
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                    return (
+                      <div
+                        key={deadline.id}
+                        className={cn(
+                          "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
+                          isOverdue
+                            ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10"
+                            : isUrgent
+                            ? "border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10"
+                            : "border-autronis-border hover:bg-autronis-bg/30"
+                        )}
+                        onClick={() => handleToggleDeadline(deadline)}
+                      >
+                        <div className="p-2 rounded-lg bg-autronis-bg/50">
+                          <Icon className={cn("w-5 h-5", config.color)} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base font-medium text-autronis-text-primary">
+                              {deadline.omschrijving}
+                            </span>
+                            <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", `bg-${config.color.replace("text-", "")}/15 ${config.color}`)}>
+                              {config.label}
+                            </span>
+                          </div>
+                          <p className="text-sm text-autronis-text-secondary mt-0.5">{formatDatum(deadline.datum)}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          {isOverdue ? (
+                            <div className="flex items-center gap-1.5">
+                              <AlertTriangle className="w-4 h-4 text-red-400" />
+                              <span className="text-sm font-semibold text-red-400">{Math.abs(dagen)} dagen te laat</span>
                             </div>
-                          );
-                        })}
-                    </div>
-                  )}
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="w-4 h-4 text-autronis-text-secondary" />
+                              <span className={cn("text-sm font-semibold tabular-nums", isUrgent ? "text-yellow-400" : "text-autronis-text-secondary")}>
+                                {dagen} dagen
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Urencriterium */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl">
-              <button
-                onClick={() => setUrenOpen(!urenOpen)}
-                className="w-full flex items-center justify-between p-6 lg:p-7"
-              >
+            {/* Snelle cijfers */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Omzet {jaar}</p>
+                <AnimatedNumber
+                  value={wvData?.brutoOmzet ?? 0}
+                  format={formatBedrag}
+                  className="text-2xl font-bold text-emerald-400 tabular-nums"
+                />
+              </div>
+              <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Kosten {jaar}</p>
+                <AnimatedNumber
+                  value={wvData?.totaleKosten ?? 0}
+                  format={formatBedrag}
+                  className="text-2xl font-bold text-orange-400 tabular-nums"
+                />
+              </div>
+              <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Winst {jaar}</p>
+                <AnimatedNumber
+                  value={wvData?.brutoWinst ?? 0}
+                  format={formatBedrag}
+                  className="text-2xl font-bold text-autronis-accent tabular-nums"
+                />
+              </div>
+              <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Gereserveerd</p>
+                <AnimatedNumber
+                  value={totaalGereserveerd}
+                  format={formatBedrag}
+                  className="text-2xl font-bold text-purple-400 tabular-nums"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===== TAB: ACTIES ===== */}
+        {activeTab === "acties" && (
+          <div className="space-y-6">
+            {/* BTW Aangiftes — per kwartaal kaarten */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-autronis-text-primary">BTW Aangiftes {jaar}</h2>
+              </div>
+              {aangiftes.length === 0 ? (
+                <div className="text-center py-8">
+                  <Receipt className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Nog geen BTW data</p>
+                  <p className="text-sm text-autronis-text-secondary/70 mt-1">Maak eerst gegevens aan via de knop rechtsboven</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {aangiftes
+                    .sort((a, b) => a.kwartaal - b.kwartaal)
+                    .map((aangifte) => {
+                      const statusCfg = btwStatusConfig[aangifte.status] ?? btwStatusConfig.open;
+                      const netto = aangifte.btwOntvangen - aangifte.btwBetaald;
+                      const isCurrent = aangifte.kwartaal === currentQuarter;
+
+                      return (
+                        <div
+                          key={aangifte.id}
+                          className={cn(
+                            "p-5 rounded-xl border",
+                            isCurrent ? "border-autronis-accent/30 bg-autronis-accent/5" : "border-autronis-border bg-autronis-bg/20"
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg font-bold text-autronis-text-primary">Q{aangifte.kwartaal}</span>
+                              {isCurrent && (
+                                <span className="text-xs px-2 py-0.5 bg-autronis-accent/15 text-autronis-accent rounded-full font-semibold">
+                                  Huidig
+                                </span>
+                              )}
+                            </div>
+                            <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", statusCfg.bg, statusCfg.text)}>
+                              {statusCfg.label}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3 mb-4">
+                            <div>
+                              <p className="text-xs text-autronis-text-secondary">Ontvangen</p>
+                              <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatBedrag(aangifte.btwOntvangen)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-autronis-text-secondary">Betaald</p>
+                              <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatBedrag(aangifte.btwBetaald)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-autronis-text-secondary">Af te dragen</p>
+                              <p className={cn("text-sm font-bold tabular-nums", netto > 0 ? "text-red-400" : "text-green-400")}>
+                                {formatBedrag(netto)}
+                              </p>
+                            </div>
+                          </div>
+                          {/* Action buttons */}
+                          <div className="flex gap-2">
+                            {aangifte.status === "open" && (
+                              <button
+                                onClick={() => handleBtwStatus(aangifte, "ingediend")}
+                                className="flex-1 px-3 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/25 transition-colors"
+                              >
+                                Aangifte indienen
+                              </button>
+                            )}
+                            {(aangifte.status === "open" || aangifte.status === "ingediend") && (
+                              <button
+                                onClick={() => handleBtwStatus(aangifte, "betaald")}
+                                className="flex-1 px-3 py-2 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                              >
+                                Betaald markeren
+                              </button>
+                            )}
+                            {aangifte.status === "betaald" && (
+                              <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-green-400 text-xs font-semibold">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Afgerond
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+              {/* ICP info */}
+              <div className="mt-5 p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Send className="w-4 h-4 text-cyan-400" />
+                  <span className="text-sm font-semibold text-cyan-400">ICP-opgave</span>
+                </div>
+                <p className="text-xs text-autronis-text-secondary">
+                  Intracommunautaire prestaties? Dien je ICP-opgave in via de Belastingdienst bij omzet aan EU-bedrijven.
+                </p>
+              </div>
+            </div>
+
+            {/* Urencriterium tracker */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
                   <Timer className="w-5 h-5 text-autronis-accent" />
                   <h2 className="text-xl font-bold text-autronis-text-primary">Urencriterium {jaar}</h2>
-                  {urenCriterium && (
-                    <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", urenCriterium.voldoet ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400")}>
-                      {urenCriterium.voldoet ? "Voldoet" : "Nog niet"}
-                    </span>
-                  )}
                 </div>
-                {urenOpen ? <ChevronUp className="w-5 h-5 text-autronis-text-secondary" /> : <ChevronDown className="w-5 h-5 text-autronis-text-secondary" />}
-              </button>
+                {urenCriterium && (
+                  <StatusBadge
+                    status={urenStatus}
+                    label={urenCriterium.voldoet ? "Behaald" : `${urenAchterstand.toFixed(0)} uur te gaan`}
+                  />
+                )}
+              </div>
 
-              {urenOpen && urenCriterium && (
-                <div className="px-6 lg:px-7 pb-6 lg:pb-7">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="flex flex-col items-center justify-center p-6 bg-autronis-bg/30 rounded-xl border border-autronis-border">
+              {urenCriterium ? (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="flex flex-col items-center justify-center p-5 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                       <ProgressRing
                         percentage={urenCriterium.voortgangPercentage}
-                        size={120}
-                        strokeWidth={10}
+                        size={100}
+                        strokeWidth={8}
                         color={urenCriterium.voldoet ? "#22c55e" : "#17B8A5"}
                       />
-                      <p className="text-2xl font-bold text-autronis-text-primary mt-4 tabular-nums">
+                      <p className="text-xl font-bold text-autronis-text-primary mt-3 tabular-nums">
                         {urenCriterium.behaaldUren} / {urenCriterium.doelUren}
                       </p>
-                      <p className="text-sm text-autronis-text-secondary mt-1">uren gewerkt</p>
+                      <p className="text-xs text-autronis-text-secondary mt-1">uren gewerkt</p>
                     </div>
-                    <div className="md:col-span-2 space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                          <p className="text-sm text-autronis-text-secondary mb-1">Doel uren</p>
-                          <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{urenCriterium.doelUren}</p>
+                    <div className="md:col-span-2 space-y-3">
+                      {/* Smart insight */}
+                      {!urenCriterium.voldoet && urenAchterstand > 0 && (
+                        <div className="p-4 bg-yellow-500/5 border border-yellow-500/20 rounded-xl">
+                          <p className="text-sm font-semibold text-yellow-400 mb-1">
+                            Je loopt {urenAchterstand.toFixed(0)} uur achter
+                          </p>
+                          <p className="text-xs text-autronis-text-secondary">
+                            Om het urencriterium te halen moet je gemiddeld <span className="font-semibold text-autronis-text-primary">{urenPerDagNodig} uur per dag</span> werken
+                            (nog {dagenResterend} dagen in {jaar}).
+                          </p>
                         </div>
-                        <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                          <p className="text-sm text-autronis-text-secondary mb-1">Behaald</p>
-                          <p className="text-2xl font-bold text-autronis-accent tabular-nums">{urenCriterium.behaaldUren}</p>
+                      )}
+                      {urenCriterium.voldoet && (
+                        <div className="p-4 bg-green-500/5 border border-green-500/20 rounded-xl">
+                          <p className="text-sm font-semibold text-green-400">Urencriterium behaald!</p>
+                          <p className="text-xs text-autronis-text-secondary mt-1">
+                            Je hebt recht op de zelfstandigenaftrek en MKB-winstvrijstelling.
+                          </p>
                         </div>
-                        <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                          <p className="text-sm text-autronis-text-secondary mb-1">Zelfstandigenaftrek</p>
-                          <p className={cn("text-2xl font-bold tabular-nums", urenCriterium.zelfstandigenaftrek > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
+                      )}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
+                          <p className="text-xs text-autronis-text-secondary mb-1">Zelfstandigenaftrek</p>
+                          <p className={cn("text-lg font-bold tabular-nums", urenCriterium.zelfstandigenaftrek > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
                             {urenCriterium.zelfstandigenaftrek > 0 ? formatBedrag(urenCriterium.zelfstandigenaftrek) : "Niet bereikt"}
                           </p>
                         </div>
-                        <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                          <p className="text-sm text-autronis-text-secondary mb-1">MKB-winstvrijstelling</p>
-                          <p className={cn("text-2xl font-bold", urenCriterium.mkbVrijstelling ? "text-green-400" : "text-autronis-text-secondary")}>
+                        <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
+                          <p className="text-xs text-autronis-text-secondary mb-1">MKB-winstvrijstelling</p>
+                          <p className={cn("text-lg font-bold", urenCriterium.mkbVrijstelling ? "text-green-400" : "text-autronis-text-secondary")}>
                             {urenCriterium.mkbVrijstelling ? "13,31%" : "Niet bereikt"}
                           </p>
                         </div>
                       </div>
-                      <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
+                      {/* Progress bar */}
+                      <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm text-autronis-text-secondary">Voortgang</p>
-                          <p className="text-sm font-semibold text-autronis-text-primary tabular-nums">{urenCriterium.voortgangPercentage}%</p>
+                          <p className="text-xs text-autronis-text-secondary">Voortgang</p>
+                          <p className="text-xs font-semibold text-autronis-text-primary tabular-nums">{urenCriterium.voortgangPercentage}%</p>
                         </div>
-                        <div className="h-3 bg-autronis-bg rounded-full overflow-hidden">
+                        <div className="h-2.5 bg-autronis-bg rounded-full overflow-hidden">
                           <div
                             className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-green-500" : "bg-autronis-accent")}
-                            style={{ width: `${urenCriterium.voortgangPercentage}%` }}
+                            style={{ width: `${Math.min(100, urenCriterium.voortgangPercentage)}%` }}
                           />
                         </div>
-                        {!urenCriterium.voldoet && (
-                          <p className="text-xs text-autronis-text-secondary mt-2">
-                            Nog <span className="font-semibold text-autronis-text-primary">{Math.max(0, urenCriterium.doelUren - urenCriterium.behaaldUren).toFixed(1)}</span> uren nodig voor het urencriterium
-                          </p>
-                        )}
                       </div>
                     </div>
                   </div>
                 </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Timer className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Geen uren data voor {jaar}</p>
+                  <p className="text-sm text-autronis-text-secondary/70 mt-1">Registreer je uren om het criterium te tracken</p>
+                </div>
               )}
+            </div>
 
-              {urenOpen && !urenCriterium && (
-                <div className="px-6 lg:px-7 pb-6 lg:pb-7">
-                  <p className="text-autronis-text-secondary text-sm py-4">Geen urencriterium data beschikbaar voor {jaar}.</p>
+            {/* Alle deadlines (volledige lijst) */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Alle deadlines {jaar}</h2>
+              {deadlines.length === 0 ? (
+                <p className="text-autronis-text-secondary text-sm py-4">
+                  Nog geen deadlines voor {jaar}. Klik op &quot;Gegevens aanmaken&quot; om te starten.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {deadlines
+                    .sort((a, b) => a.datum.localeCompare(b.datum))
+                    .map((deadline) => {
+                      const config = typeConfig[deadline.type] ?? typeConfig.btw;
+                      const Icon = config.icon;
+                      const isAfgerond = !!deadline.afgerond;
+                      const deadlineDatum = new Date(deadline.datum);
+                      const dagen = Math.ceil((deadlineDatum.getTime() - nu.getTime()) / (1000 * 60 * 60 * 24));
+                      const isOverdue = !isAfgerond && dagen < 0;
+                      const isUrgent = !isAfgerond && dagen >= 0 && dagen < 14;
+
+                      return (
+                        <div
+                          key={deadline.id}
+                          className={cn(
+                            "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
+                            isAfgerond
+                              ? "border-autronis-border/50 bg-autronis-bg/20 opacity-60"
+                              : isOverdue
+                              ? "border-red-500/30 bg-red-500/5 hover:bg-red-500/10"
+                              : isUrgent
+                              ? "border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10"
+                              : "border-autronis-border hover:bg-autronis-bg/30"
+                          )}
+                          onClick={() => handleToggleDeadline(deadline)}
+                        >
+                          <div className={cn("p-2 rounded-lg", isAfgerond ? "bg-green-500/10" : "bg-autronis-bg/50")}>
+                            {isAfgerond ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            ) : (
+                              <Icon className={cn("w-5 h-5", config.color)} />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("text-base font-medium", isAfgerond ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>
+                                {deadline.omschrijving}
+                              </span>
+                              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", isAfgerond ? "bg-green-500/15 text-green-400" : `bg-${config.color.replace("text-", "")}/15 ${config.color}`)}>
+                                {config.label}
+                              </span>
+                            </div>
+                            <p className="text-sm text-autronis-text-secondary mt-0.5">{formatDatum(deadline.datum)}</p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            {isAfgerond ? (
+                              <span className="text-sm font-medium text-green-400">Afgerond</span>
+                            ) : isOverdue ? (
+                              <div className="flex items-center gap-1.5">
+                                <AlertTriangle className="w-4 h-4 text-red-400" />
+                                <span className="text-sm font-semibold text-red-400">{Math.abs(dagen)} dagen te laat</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-4 h-4 text-autronis-text-secondary" />
+                                <span className={cn("text-sm font-semibold tabular-nums", isUrgent ? "text-yellow-400" : "text-autronis-text-secondary")}>
+                                  {dagen} dagen
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+
+            {/* Voorlopige aanslagen */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-autronis-text-primary">Voorlopige aanslagen</h2>
+                <button
+                  onClick={() => setAanslagModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/15 text-purple-400 rounded-lg text-xs font-semibold hover:bg-purple-500/25 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Nieuwe aanslag
+                </button>
+              </div>
+              {!aanslagenData?.length ? (
+                <div className="text-center py-6">
+                  <Landmark className="w-8 h-8 text-autronis-text-secondary/30 mx-auto mb-2" />
+                  <p className="text-sm text-autronis-text-secondary">Nog geen voorlopige aanslagen</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {aanslagenData.map((aanslag) => {
+                    const statusCfg = aanslagStatusConfig[aanslag.status] ?? aanslagStatusConfig.open;
+                    return (
+                      <div key={aanslag.id} className="flex items-center gap-4 p-4 rounded-xl border border-autronis-border bg-autronis-bg/20">
+                        <div className="p-2 rounded-lg bg-purple-500/10">
+                          <Landmark className="w-5 h-5 text-purple-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-autronis-text-primary">{aanslag.type}</p>
+                          <p className="text-xs text-autronis-text-secondary mt-0.5">
+                            {formatBedrag(aanslag.bedrag)} {aanslag.vervaldatum && `— vervalt ${formatDatum(aanslag.vervaldatum)}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", statusCfg.bg, statusCfg.text)}>
+                            {aanslag.status === "deels_betaald" ? "Deels betaald" : aanslag.status.charAt(0).toUpperCase() + aanslag.status.slice(1)}
+                          </span>
+                          {aanslag.status !== "betaald" && (
+                            <button
+                              onClick={() => handleMarkAanslagBetaald(aanslag.id, aanslag.bedrag)}
+                              className="px-2.5 py-1 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                            >
+                              Betaald
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ===== TAB: BTW ===== */}
-        {activeTab === "btw" && (
-          <div className="space-y-8">
-            {/* BTW Kwartaaloverzicht */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl">
-              <div className="p-6 lg:p-7">
-                <div className="flex items-center gap-3 mb-6">
-                  <Receipt className="w-5 h-5 text-autronis-accent" />
-                  <h2 className="text-xl font-bold text-autronis-text-primary">BTW Kwartaaloverzicht {jaar}</h2>
-                </div>
+        {/* ===== TAB: ANALYSE ===== */}
+        {activeTab === "analyse" && (
+          <div className="space-y-6">
+            {/* Winst & Verlies insights */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Winst & Verlies {jaar}</h2>
 
-                {aangiftes.length === 0 ? (
-                  <p className="text-autronis-text-secondary text-sm py-4">
-                    Nog geen BTW aangiftes voor {jaar}. Klik op &quot;Gegevens aanmaken&quot; om te starten.
-                  </p>
-                ) : (
+              {loadingWV ? (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {Array.from({ length: 4 }).map((_, i) => <SkeletonKPI key={i} />)}
+                </div>
+              ) : wvData ? (
+                <div className="space-y-5">
+                  {/* Insight banner */}
+                  <div className="p-4 bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <Sparkles className="w-5 h-5 text-autronis-accent flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-autronis-text-primary">
+                          Je winst is {formatBedrag(wvData.brutowinst)}
+                          {wvData.effectiefTarief > 0 && (
+                            <span className="text-autronis-text-secondary font-normal"> — effectieve belastingdruk {wvData.effectiefTarief.toFixed(1)}%</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-autronis-text-secondary mt-1">
+                          Van je {formatBedrag(wvData.brutoOmzet)} omzet gaat {formatBedrag(wvData.totaleKosten)} naar kosten en naar schatting {formatBedrag(wvData.geschatteBelasting)} naar belasting.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* KPI cards */}
+                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Omzet</p>
+                      <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(wvData.brutoOmzet)}</p>
+                    </div>
+                    <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Kosten</p>
+                      <p className="text-xl font-bold text-orange-400 tabular-nums">{formatBedrag(wvData.totaleKosten)}</p>
+                    </div>
+                    <div className="p-4 bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Winst</p>
+                      <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(wvData.brutowinst)}</p>
+                    </div>
+                    <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Belastbaar</p>
+                      <p className="text-xl font-bold text-blue-400 tabular-nums">{formatBedrag(wvData.belastbaarInkomen)}</p>
+                    </div>
+                    <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Belasting</p>
+                      <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(wvData.geschatteBelasting)}</p>
+                    </div>
+                  </div>
+
+                  {/* Tax brackets */}
+                  {wvData.schijven && wvData.schijven.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Belastingschijven</h3>
+                      <div className="space-y-2">
+                        {wvData.schijven.map((schijf: { naam: string; percentage: number; bedrag: number; vulling: number }, idx: number) => (
+                          <div key={idx} className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-sm text-autronis-text-primary">{schijf.naam} ({schijf.percentage}%)</span>
+                              <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(schijf.bedrag)}</span>
+                            </div>
+                            <div className="h-2 bg-autronis-bg rounded-full overflow-hidden">
+                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${schijf.vulling}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Aftrekposten */}
+                  {wvData.aftrekposten && wvData.aftrekposten.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Aftrekposten</h3>
+                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                        {wvData.aftrekposten.map((post: { naam: string; bedrag: number }, idx: number) => (
+                          <div key={idx} className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                            <span className="text-sm text-autronis-text-primary">{post.naam}</span>
+                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(post.bedrag)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Kwartaaloverzicht */}
+                  {wvData.kwartalen && wvData.kwartalen.length > 0 && (
+                    <div>
+                      <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Per kwartaal</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-autronis-border">
+                              <th className="text-left py-3 px-3 text-autronis-text-secondary font-medium">Kwartaal</th>
+                              <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Omzet</th>
+                              <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Kosten</th>
+                              <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Winst</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {wvData.kwartalen.map((q: { kwartaal: number; omzet: number; kosten: number; winst: number }) => (
+                              <tr key={q.kwartaal} className="border-b border-autronis-border/50">
+                                <td className="py-3 px-3 font-medium text-autronis-text-primary">Q{q.kwartaal}</td>
+                                <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(q.omzet)}</td>
+                                <td className="py-3 px-3 text-right tabular-nums text-orange-400">{formatBedrag(q.kosten)}</td>
+                                <td className={cn("py-3 px-3 text-right tabular-nums font-semibold", q.winst >= 0 ? "text-green-400" : "text-red-400")}>
+                                  {formatBedrag(q.winst)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <TrendingUp className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Nog geen financiele data</p>
+                  <p className="text-sm text-autronis-text-secondary/70 mt-1">Maak facturen en registreer kosten om inzicht te krijgen</p>
+                </div>
+              )}
+            </div>
+
+            {/* Investeringen */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-autronis-text-primary">Investeringen</h2>
+                <button
+                  onClick={() => { resetInvForm(); setInvesteringModal(true); }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent/15 text-autronis-accent rounded-lg text-xs font-semibold hover:bg-autronis-accent/25 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Investering
+                </button>
+              </div>
+
+              {loadingInv ? (
+                <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-autronis-bg/50 rounded-xl animate-pulse" />)}</div>
+              ) : investeringenData?.investeringen?.length ? (
+                <div className="space-y-4">
+                  {/* KPI row */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Totaal</p>
+                      <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{formatBedrag(investeringenData.totaalInvestering)}</p>
+                    </div>
+                    <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Afschrijving/jaar</p>
+                      <p className="text-lg font-bold text-orange-400 tabular-nums">{formatBedrag(investeringenData.totaleAfschrijving)}</p>
+                    </div>
+                    <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">KIA aftrek</p>
+                      <p className="text-lg font-bold text-green-400 tabular-nums">{formatBedrag(berekenKIA(investeringenData.totaalInvestering))}</p>
+                    </div>
+                  </div>
+                  {/* Table */}
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-autronis-border">
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Kwartaal</th>
-                          <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">BTW Ontvangen</th>
-                          <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">BTW Betaald</th>
-                          <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Netto</th>
-                          <th className="text-center py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
-                          <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Actie</th>
+                          <th className="text-left py-3 px-3 text-autronis-text-secondary font-medium">Naam</th>
+                          <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Bedrag</th>
+                          <th className="text-left py-3 px-3 text-autronis-text-secondary font-medium">Categorie</th>
+                          <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Termijn</th>
+                          <th className="text-right py-3 px-3 text-autronis-text-secondary font-medium">Per jaar</th>
+                          <th className="py-3 px-3"></th>
                         </tr>
                       </thead>
                       <tbody>
-                        {aangiftes.map((aangifte) => {
-                          const sc = btwStatusConfig[aangifte.status] ?? btwStatusConfig.open;
-                          const netto = aangifte.btwOntvangen - aangifte.btwBetaald;
-                          return (
-                            <tr key={aangifte.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors">
-                              <td className="py-4 px-4">
-                                <span className="text-base font-semibold text-autronis-text-primary">Q{aangifte.kwartaal}</span>
-                                <span className="text-sm text-autronis-text-secondary ml-2">{jaar}</span>
-                              </td>
-                              <td className="py-4 px-4 text-right">
-                                <span className="text-base font-medium text-emerald-400 tabular-nums">{formatBedrag(aangifte.btwOntvangen)}</span>
-                              </td>
-                              <td className="py-4 px-4 text-right">
-                                <span className="text-base font-medium text-orange-400 tabular-nums">{formatBedrag(aangifte.btwBetaald)}</span>
-                              </td>
-                              <td className="py-4 px-4 text-right">
-                                <span className={cn("text-base font-semibold tabular-nums", netto > 0 ? "text-red-400" : "text-autronis-accent")}>
-                                  {formatBedrag(netto)}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4 text-center">
-                                <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", sc.bg, sc.text)}>{sc.label}</span>
-                              </td>
-                              <td className="py-4 px-4 text-right">
-                                {aangifte.status === "open" && (
-                                  <button
-                                    onClick={() => handleBtwStatus(aangifte, "ingediend")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors"
-                                  >
-                                    <Send className="w-3 h-3" />
-                                    Ingediend
-                                  </button>
-                                )}
-                                {aangifte.status === "ingediend" && (
-                                  <button
-                                    onClick={() => handleBtwStatus(aangifte, "betaald")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" />
-                                    Betaald
-                                  </button>
-                                )}
-                                {aangifte.status === "betaald" && (
-                                  <span className="text-xs text-autronis-text-secondary">Afgerond</span>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
+                        {investeringenData.investeringen.map((inv) => (
+                          <tr key={inv.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/20 transition-colors">
+                            <td className="py-3 px-3 font-medium text-autronis-text-primary">{inv.naam}</td>
+                            <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(inv.bedrag)}</td>
+                            <td className="py-3 px-3 text-autronis-text-secondary">{inv.categorie}</td>
+                            <td className="py-3 px-3 text-right tabular-nums text-autronis-text-secondary">{inv.afschrijvingstermijn}j</td>
+                            <td className="py-3 px-3 text-right tabular-nums text-orange-400">
+                              {formatBedrag((inv.bedrag - inv.restwaarde) / inv.afschrijvingstermijn)}
+                            </td>
+                            <td className="py-3 px-3">
+                              <div className="flex items-center gap-1 justify-end">
+                                <button onClick={() => handleOpenEditInvestering(inv)} className="p-1.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors">
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => setDeleteInvesteringId(inv.id)} className="p-1.5 text-autronis-text-secondary hover:text-red-400 transition-colors">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
-                      <tfoot>
-                        <tr className="bg-autronis-bg/30">
-                          <td className="py-4 px-4 text-base font-bold text-autronis-text-primary">Totaal</td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-base font-bold text-emerald-400 tabular-nums">
-                              {formatBedrag(aangiftes.reduce((sum, a) => sum + a.btwOntvangen, 0))}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className="text-base font-bold text-orange-400 tabular-nums">
-                              {formatBedrag(aangiftes.reduce((sum, a) => sum + a.btwBetaald, 0))}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right">
-                            <span className={cn("text-base font-bold tabular-nums", aangiftes.reduce((sum, a) => sum + a.btwOntvangen - a.btwBetaald, 0) > 0 ? "text-red-400" : "text-autronis-accent")}>
-                              {formatBedrag(aangiftes.reduce((sum, a) => sum + a.btwOntvangen - a.btwBetaald, 0))}
-                            </span>
-                          </td>
-                          <td colSpan={2} />
-                        </tr>
-                      </tfoot>
                     </table>
                   </div>
-                )}
-              </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Nog geen investeringen</p>
+                  <p className="text-sm text-autronis-text-secondary/70 mt-1">Voeg een investering toe om KIA-aftrek te berekenen</p>
+                </div>
+              )}
             </div>
 
-            {/* ICP Section */}
+            {/* Reserveringen */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <div className="flex items-center gap-3 mb-4">
-                <Send className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-xl font-bold text-autronis-text-primary">ICP Aangifte</h2>
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-xl font-bold text-autronis-text-primary">Reserveringen {jaar}</h2>
+                <button
+                  onClick={() => setReserveringModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/25 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Reservering
+                </button>
               </div>
-              <p className="text-sm text-autronis-text-secondary leading-relaxed">
-                ICP aangifte wordt afgeleid uit facturen met buitenlands BTW-nummer. Alle intracommunautaire leveringen worden automatisch meegenomen in de BTW aangifte.
-              </p>
-            </div>
-          </div>
-        )}
 
-        {/* ===== TAB: WINST & VERLIES ===== */}
-        {activeTab === "winst-verlies" && (
-          <div className="space-y-8">
-            {loadingWV ? (
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
-                {Array.from({ length: 5 }).map((_, i) => <SkeletonKPI key={i} />)}
-              </div>
-            ) : wvData ? (
-              <>
-                {/* Summary cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-5 gap-5">
-                  <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Bruto omzet</p>
-                    <p className="text-2xl font-bold text-emerald-400 tabular-nums">{formatBedrag(wvData.brutoOmzet)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Totale kosten</p>
-                    <p className="text-2xl font-bold text-orange-400 tabular-nums">{formatBedrag(wvData.totaleKosten)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Brutowinst</p>
-                    <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatBedrag(wvData.brutowinst)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Belastbaar inkomen</p>
-                    <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(wvData.belastbaarInkomen)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Geschatte belasting</p>
-                    <p className="text-2xl font-bold text-purple-400 tabular-nums">{formatBedrag(wvData.geschatteBelasting)}</p>
-                  </div>
-                </div>
-
-                {/* Tax brackets visualization */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <h3 className="text-lg font-bold text-autronis-text-primary mb-6">Belastingschijven</h3>
-                  <div className="space-y-4">
-                    {/* Schijf 1 */}
-                    {(() => {
-                      const schijf1Max = 75518;
-                      const inSchijf1 = Math.min(wvData.belastbaarInkomen, schijf1Max);
-                      const pctSchijf1 = schijf1Max > 0 ? (inSchijf1 / schijf1Max) * 100 : 0;
-                      return (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm text-autronis-text-secondary">
-                              Schijf 1: <span className="text-autronis-text-primary font-semibold">36,97%</span> tot {formatBedrag(schijf1Max)}
-                            </p>
-                            <p className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(inSchijf1)}</p>
-                          </div>
-                          <div className="h-4 bg-autronis-bg rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${pctSchijf1}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    {/* Schijf 2 */}
-                    {(() => {
-                      const schijf1Max = 75518;
-                      const inSchijf2 = Math.max(0, wvData.belastbaarInkomen - schijf1Max);
-                      const pctSchijf2 = inSchijf2 > 0 ? Math.min((inSchijf2 / schijf1Max) * 100, 100) : 0;
-                      return (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-sm text-autronis-text-secondary">
-                              Schijf 2: <span className="text-autronis-text-primary font-semibold">49,50%</span> boven {formatBedrag(schijf1Max)}
-                            </p>
-                            <p className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(inSchijf2)}</p>
-                          </div>
-                          <div className="h-4 bg-autronis-bg rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${pctSchijf2}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })()}
-                    {/* Effectief tarief */}
-                    <div className="pt-2 border-t border-autronis-border">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-autronis-text-secondary">Effectief tarief</p>
-                        <p className="text-lg font-bold text-autronis-accent tabular-nums">{wvData.effectiefTarief.toFixed(1)}%</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Aftrekposten */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <h3 className="text-lg font-bold text-autronis-text-primary mb-6">Aftrekposten</h3>
-                  <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                    {[
-                      { label: "Zelfstandigenaftrek", value: wvData.zelfstandigenaftrek },
-                      { label: "MKB-vrijstelling", value: wvData.mkbVrijstelling },
-                      { label: "KM aftrek", value: wvData.kmAftrek },
-                      { label: "Afschrijvingen", value: wvData.afschrijvingen },
-                      { label: "KIA", value: berekenKIA(investeringenData?.reduce((s, i) => s + i.bedrag, 0) ?? 0) },
-                    ].map((item) => (
-                      <div key={item.label} className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                        <p className="text-xs text-autronis-text-secondary mb-1">{item.label}</p>
-                        <p className={cn("text-xl font-bold tabular-nums", item.value > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
-                          {item.value > 0 ? formatBedrag(item.value) : "-"}
+              {loadingRes ? (
+                <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-14 bg-autronis-bg/50 rounded-xl animate-pulse" />)}</div>
+              ) : reserveringenData ? (
+                <div className="space-y-5">
+                  {/* Smart insight */}
+                  <div className={cn(
+                    "p-4 rounded-xl border",
+                    reserveringTekort > 0 ? "bg-red-500/5 border-red-500/20" : "bg-green-500/5 border-green-500/20"
+                  )}>
+                    <div className="flex items-start gap-3">
+                      <PiggyBank className={cn("w-5 h-5 flex-shrink-0 mt-0.5", reserveringTekort > 0 ? "text-red-400" : "text-green-400")} />
+                      <div>
+                        <p className={cn("text-sm font-semibold", reserveringTekort > 0 ? "text-red-400" : "text-green-400")}>
+                          {reserveringTekort > 0
+                            ? `Nog ${formatBedrag(reserveringTekort)} te reserveren`
+                            : `${formatBedrag(Math.abs(reserveringTekort))} boven je geschatte belasting`}
+                        </p>
+                        <p className="text-xs text-autronis-text-secondary mt-1">
+                          {formatBedrag(totaalGereserveerd)} gereserveerd van {formatBedrag(geschatteBelasting)} geschat
+                          {reserveringenData.maandelijksSuggestie > 0 && (
+                            <span> — zet maandelijks {formatBedrag(reserveringenData.maandelijksSuggestie)} apart</span>
+                          )}
                         </p>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Kosten per categorie */}
-                {Object.keys(wvData.kostenPerCategorie).length > 0 && (
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-6">Kosten per categorie</h3>
-                    <div className="space-y-3">
-                      {Object.entries(wvData.kostenPerCategorie)
-                        .sort(([, a], [, b]) => b - a)
-                        .map(([categorie, bedrag]) => {
-                          const maxBedrag = Math.max(...Object.values(wvData.kostenPerCategorie));
-                          const pct = maxBedrag > 0 ? (bedrag / maxBedrag) * 100 : 0;
-                          return (
-                            <div key={categorie}>
-                              <div className="flex items-center justify-between mb-1">
-                                <p className="text-sm text-autronis-text-primary">{categorie}</p>
-                                <p className="text-sm font-semibold text-orange-400 tabular-nums">{formatBedrag(bedrag)}</p>
-                              </div>
-                              <div className="h-2.5 bg-autronis-bg rounded-full overflow-hidden">
-                                <div className="h-full bg-orange-500/60 rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
                     </div>
                   </div>
-                )}
 
-                {/* Per kwartaal */}
-                {wvData.perKwartaal.length > 0 && (
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-6">Per kwartaal</h3>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-autronis-border">
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Kwartaal</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Omzet</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Kosten</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Winst</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {wvData.perKwartaal.map((q) => (
-                            <tr key={q.kwartaal} className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors">
-                              <td className="py-4 px-4 text-base font-semibold text-autronis-text-primary">Q{q.kwartaal}</td>
-                              <td className="py-4 px-4 text-right text-base font-medium text-emerald-400 tabular-nums">{formatBedrag(q.omzet)}</td>
-                              <td className="py-4 px-4 text-right text-base font-medium text-orange-400 tabular-nums">{formatBedrag(q.kosten)}</td>
-                              <td className="py-4 px-4 text-right text-base font-semibold tabular-nums">
-                                <span className={q.winst >= 0 ? "text-autronis-accent" : "text-red-400"}>{formatBedrag(q.winst)}</span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-autronis-text-secondary">Voortgang reservering</p>
+                      <p className="text-xs font-semibold text-autronis-text-primary tabular-nums">
+                        {geschatteBelasting > 0 ? Math.round((totaalGereserveerd / geschatteBelasting) * 100) : 0}%
+                      </p>
                     </div>
-                  </div>
-                )}
-
-                {/* Suggestie card */}
-                {reserveringenData && (
-                  <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-accent/30 rounded-2xl p-6 lg:p-7">
-                    <div className="flex items-center gap-3 mb-3">
-                      <PiggyBank className="w-5 h-5 text-autronis-accent" />
-                      <h3 className="text-lg font-bold text-autronis-text-primary">Suggestie</h3>
-                    </div>
-                    <p className="text-sm text-autronis-text-secondary">
-                      Op basis van je geschatte belasting van <span className="font-semibold text-purple-400">{formatBedrag(wvData.geschatteBelasting)}</span>,
-                      raden we aan om maandelijks <span className="font-semibold text-autronis-accent">{formatBedrag(reserveringenData.suggestieMaandelijks)}</span> te reserveren.
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-8 text-center">
-                <p className="text-autronis-text-secondary">Geen W&V data beschikbaar voor {jaar}.</p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ===== TAB: INVESTERINGEN ===== */}
-        {activeTab === "investeringen" && (
-          <div className="space-y-8">
-            {loadingInv ? (
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-                {Array.from({ length: 3 }).map((_, i) => <SkeletonKPI key={i} />)}
-              </div>
-            ) : (
-              <>
-                {/* KPIs */}
-                {(() => {
-                  const items = investeringenData ?? [];
-                  const totaal = items.reduce((s, i) => s + i.bedrag, 0);
-                  const totaalAfschrijving = items.reduce((s, i) => s + i.jaarlijkseAfschrijving, 0);
-                  const kia = berekenKIA(totaal);
-                  return (
-                    <>
-                      <div className="grid grid-cols-2 lg:grid-cols-3 gap-5">
-                        <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                          <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Totaal geinvesteerd</p>
-                          <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(totaal)}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                          <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Jaarlijkse afschrijving</p>
-                          <p className="text-2xl font-bold text-orange-400 tabular-nums">{formatBedrag(totaalAfschrijving)}</p>
-                        </div>
-                        <div className="bg-gradient-to-br from-green-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                          <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">KIA aftrek</p>
-                          <p className={cn("text-2xl font-bold tabular-nums", kia > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
-                            {kia > 0 ? formatBedrag(kia) : "Niet van toepassing"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Table + add button */}
-                      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                        <div className="flex items-center justify-between mb-6">
-                          <h3 className="text-lg font-bold text-autronis-text-primary">Investeringen</h3>
-                          <button
-                            onClick={() => { resetInvForm(); setInvesteringModal(true); }}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-                          >
-                            <Plus className="w-4 h-4" />
-                            Nieuwe investering
-                          </button>
-                        </div>
-
-                        {items.length === 0 ? (
-                          <p className="text-autronis-text-secondary text-sm py-4">Nog geen investeringen geregistreerd.</p>
-                        ) : (
-                          <div className="overflow-x-auto">
-                            <table className="w-full">
-                              <thead>
-                                <tr className="border-b border-autronis-border">
-                                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Naam</th>
-                                  <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
-                                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Datum</th>
-                                  <th className="text-center py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Categorie</th>
-                                  <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Termijn</th>
-                                  <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Afschrijving/jr</th>
-                                  <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Acties</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {items.map((inv) => (
-                                  <tr key={inv.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors">
-                                    <td className="py-4 px-4 text-base font-medium text-autronis-text-primary">{inv.naam}</td>
-                                    <td className="py-4 px-4 text-right text-base font-medium text-blue-400 tabular-nums">{formatBedrag(inv.bedrag)}</td>
-                                    <td className="py-4 px-4 text-sm text-autronis-text-secondary">{formatDatum(inv.datum)}</td>
-                                    <td className="py-4 px-4 text-center">
-                                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-500/15 text-blue-400">{inv.categorie}</span>
-                                    </td>
-                                    <td className="py-4 px-4 text-right text-sm text-autronis-text-secondary tabular-nums">{inv.afschrijvingstermijn} jaar</td>
-                                    <td className="py-4 px-4 text-right text-base font-medium text-orange-400 tabular-nums">{formatBedrag(inv.jaarlijkseAfschrijving)}</td>
-                                    <td className="py-4 px-4 text-right">
-                                      <div className="flex items-center justify-end gap-2">
-                                        <button
-                                          onClick={() => handleOpenEditInvestering(inv)}
-                                          className="p-1.5 rounded-lg hover:bg-autronis-bg/50 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
-                                        >
-                                          <Pencil className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                          onClick={() => setDeleteInvesteringId(inv.id)}
-                                          className="p-1.5 rounded-lg hover:bg-red-500/10 text-autronis-text-secondary hover:text-red-400 transition-colors"
-                                        >
-                                          <Trash2 className="w-4 h-4" />
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
+                    <div className="h-3 bg-autronis-bg rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          reserveringTekort <= 0 ? "bg-green-500" : reserveringTekort < geschatteBelasting * 0.3 ? "bg-yellow-500" : "bg-red-500"
                         )}
-                      </div>
-
-                      {/* KIA card */}
-                      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                        <h3 className="text-lg font-bold text-autronis-text-primary mb-4">Kleinschaligheidsinvesteringsaftrek (KIA)</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                            <p className="text-sm text-autronis-text-secondary mb-1">Totaal investeringen</p>
-                            <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(totaal)}</p>
-                          </div>
-                          <div className="p-4 bg-autronis-bg/30 rounded-xl border border-autronis-border">
-                            <p className="text-sm text-autronis-text-secondary mb-1">KIA aftrek</p>
-                            <p className={cn("text-2xl font-bold tabular-nums", kia > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
-                              {kia > 0 ? formatBedrag(kia) : "Niet van toepassing"}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-autronis-text-secondary mt-4">
-                          KIA is van toepassing bij investeringen tussen {formatBedrag(2801)} en {formatBedrag(373030)} per jaar.
-                        </p>
-                      </div>
-                    </>
-                  );
-                })()}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ===== TAB: RESERVERINGEN ===== */}
-        {activeTab === "reserveringen" && (
-          <div className="space-y-8">
-            {loadingRes ? (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                {Array.from({ length: 4 }).map((_, i) => <SkeletonKPI key={i} />)}
-              </div>
-            ) : reserveringenData ? (
-              <>
-                {/* KPI cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                  <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Geschatte belasting</p>
-                    <p className="text-2xl font-bold text-purple-400 tabular-nums">{formatBedrag(reserveringenData.geschatteBelasting)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Gereserveerd</p>
-                    <p className="text-2xl font-bold text-blue-400 tabular-nums">{formatBedrag(reserveringenData.totaalGereserveerd)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow"
-                    style={{ backgroundImage: reserveringenData.tekort > 0 ? "linear-gradient(to bottom right, rgba(239,68,68,0.1), transparent)" : "linear-gradient(to bottom right, rgba(34,197,94,0.1), transparent)" }}
-                  >
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">
-                      {reserveringenData.tekort > 0 ? "Tekort" : "Overschot"}
-                    </p>
-                    <p className={cn("text-2xl font-bold tabular-nums", reserveringenData.tekort > 0 ? "text-red-400" : "text-green-400")}>
-                      {formatBedrag(Math.abs(reserveringenData.tekort))}
-                    </p>
-                  </div>
-                  <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Suggestie / maand</p>
-                    <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatBedrag(reserveringenData.suggestieMaandelijks)}</p>
-                  </div>
-                </div>
-
-                {/* Progress bar */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-bold text-autronis-text-primary">Voortgang reserveringen</h3>
-                    <p className="text-sm text-autronis-text-secondary tabular-nums">
-                      {formatBedrag(reserveringenData.totaalGereserveerd)} / {formatBedrag(reserveringenData.geschatteBelasting)}
-                    </p>
-                  </div>
-                  {(() => {
-                    const pct = reserveringenData.geschatteBelasting > 0
-                      ? Math.min(100, (reserveringenData.totaalGereserveerd / reserveringenData.geschatteBelasting) * 100)
-                      : 0;
-                    const genoeg = reserveringenData.tekort <= 0;
-                    return (
-                      <>
-                        <div className="h-4 bg-autronis-bg rounded-full overflow-hidden">
-                          <div
-                            className={cn("h-full rounded-full transition-all duration-500", genoeg ? "bg-green-500" : "bg-red-500")}
-                            style={{ width: `${pct}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-autronis-text-secondary mt-2 tabular-nums">{pct.toFixed(0)}% van geschatte belasting gereserveerd</p>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                {/* Maandelijks overzicht */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-autronis-text-primary">Maandelijkse reserveringen</h3>
-                    <button
-                      onClick={() => setReserveringModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Toevoegen
-                    </button>
+                        style={{ width: `${Math.min(100, geschatteBelasting > 0 ? (totaalGereserveerd / geschatteBelasting) * 100 : 0)}%` }}
+                      />
+                    </div>
                   </div>
 
-                  {reserveringenData.reserveringen.length === 0 ? (
-                    <p className="text-autronis-text-secondary text-sm py-4">Nog geen reserveringen geregistreerd.</p>
-                  ) : (
+                  {/* Reserveringen lijst */}
+                  {reserveringenData.reserveringen?.length > 0 && (
                     <div className="space-y-2">
-                      {reserveringenData.reserveringen.map((res) => (
-                        <div key={res.id} className="flex items-center justify-between p-4 rounded-xl border border-autronis-border hover:bg-autronis-bg/30 transition-colors">
+                      {reserveringenData.reserveringen.map((res: { id: number; maand: string; bedrag: number; type: string }) => (
+                        <div key={res.id} className="flex items-center justify-between p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                           <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-500/10 rounded-lg">
-                              <PiggyBank className="w-4 h-4 text-purple-400" />
+                            <div className="p-1.5 rounded-lg bg-blue-500/10">
+                              <PiggyBank className="w-4 h-4 text-blue-400" />
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-autronis-text-primary">{res.maand}</p>
-                              <p className="text-xs text-autronis-text-secondary">{res.type}</p>
+                              <p className="text-sm font-medium text-autronis-text-primary">{res.type}</p>
+                              <p className="text-xs text-autronis-text-secondary">{res.maand}</p>
                             </div>
                           </div>
-                          <p className="text-base font-semibold text-purple-400 tabular-nums">{formatBedrag(res.bedrag)}</p>
+                          <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(res.bedrag)}</span>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-
-                {/* Voorlopige aanslagen */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <Landmark className="w-5 h-5 text-purple-400" />
-                      <h3 className="text-lg font-bold text-autronis-text-primary">Voorlopige aanslagen {jaar}</h3>
-                    </div>
-                    <button
-                      onClick={() => setAanslagModal(true)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-semibold transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Nieuwe aanslag
-                    </button>
-                  </div>
-
-                  {loadingAanslagen ? (
-                    <div className="space-y-3">
-                      {Array.from({ length: 2 }).map((_, i) => (
-                        <div key={i} className="h-16 bg-autronis-bg/50 rounded-xl animate-pulse" />
-                      ))}
-                    </div>
-                  ) : !aanslagenData || aanslagenData.length === 0 ? (
-                    <p className="text-autronis-text-secondary text-sm py-4">Geen voorlopige aanslagen voor {jaar}.</p>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-autronis-border">
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Jaar</th>
-                            <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Type</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Betaald</th>
-                            <th className="text-center py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
-                            <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Actie</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {aanslagenData.map((aanslag) => {
-                            const sc = aanslagStatusConfig[aanslag.status] ?? aanslagStatusConfig.open;
-                            return (
-                              <tr key={aanslag.id} className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors">
-                                <td className="py-4 px-4 text-base font-semibold text-autronis-text-primary tabular-nums">{aanslag.jaar}</td>
-                                <td className="py-4 px-4 text-sm text-autronis-text-primary">{aanslag.type}</td>
-                                <td className="py-4 px-4 text-right text-base font-medium text-purple-400 tabular-nums">{formatBedrag(aanslag.bedrag)}</td>
-                                <td className="py-4 px-4 text-right text-base font-medium text-autronis-text-secondary tabular-nums">{formatBedrag(aanslag.betaaldBedrag)}</td>
-                                <td className="py-4 px-4 text-center">
-                                  <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", sc.bg, sc.text)}>
-                                    {aanslag.status === "deels_betaald" ? "Deels betaald" : aanslag.status.charAt(0).toUpperCase() + aanslag.status.slice(1)}
-                                  </span>
-                                </td>
-                                <td className="py-4 px-4 text-right">
-                                  {aanslag.status !== "betaald" && (
-                                    <button
-                                      onClick={() => handleMarkAanslagBetaald(aanslag.id, aanslag.bedrag)}
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-semibold transition-colors"
-                                    >
-                                      <CheckCircle2 className="w-3 h-3" />
-                                      Betaald
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+              ) : (
+                <div className="text-center py-8">
+                  <PiggyBank className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Nog geen reserveringen</p>
+                  <p className="text-sm text-autronis-text-secondary/70 mt-1">Start met reserveren zodat je belastingbetaling geen verrassing is</p>
                 </div>
-              </>
-            ) : (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-8 text-center">
-                <p className="text-autronis-text-secondary">Geen reserveringsdata beschikbaar voor {jaar}.</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
-        {/* ===== TAB: KOSTEN & AFTREK ===== */}
-        {activeTab === "kosten" && (
+        {/* ===== TAB: OPTIMALISATIE ===== */}
+        {activeTab === "optimalisatie" && (
           <div className="space-y-6">
-            {/* Intro */}
+            {/* Kosten & Aftrek tips */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <div className="flex items-start gap-3">
-                <Info className="w-5 h-5 text-autronis-accent mt-0.5 shrink-0" />
-                <div>
-                  <h3 className="text-base font-semibold text-autronis-text-primary mb-1">Zakelijke kosten & aftrekposten</h3>
-                  <p className="text-sm text-autronis-text-secondary leading-relaxed">
-                    Alle zakelijke kosten die je maakt zijn aftrekbaar van je winst, wat je belasting verlaagt.
-                    Bewaar altijd je bonnetjes en facturen. BTW op zakelijke aankopen kun je terugvragen via je BTW-aangifte.
-                  </p>
-                </div>
+              <div className="flex items-center gap-3 mb-5">
+                <Wallet className="w-5 h-5 text-autronis-accent" />
+                <h2 className="text-xl font-bold text-autronis-text-primary">Aftrekbare kosten</h2>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                {[
+                  { icon: Monitor, label: "Hardware", desc: "Laptop, telefoon, etc.", color: "text-blue-400", bg: "bg-blue-500/10" },
+                  { icon: Globe, label: "Software", desc: "SaaS, licenties, hosting", color: "text-purple-400", bg: "bg-purple-500/10" },
+                  { icon: Coffee, label: "Kantoor", desc: "Huur, inrichting, spullen", color: "text-amber-400", bg: "bg-amber-500/10" },
+                  { icon: Car, label: "Vervoer", desc: "Km-vergoeding, OV", color: "text-cyan-400", bg: "bg-cyan-500/10" },
+                  { icon: Megaphone, label: "Marketing", desc: "Ads, website, branding", color: "text-pink-400", bg: "bg-pink-500/10" },
+                  { icon: GraduationCap, label: "Opleiding", desc: "Cursussen, boeken", color: "text-indigo-400", bg: "bg-indigo-500/10" },
+                  { icon: Wrench, label: "Diensten", desc: "Boekhouder, adviseur", color: "text-orange-400", bg: "bg-orange-500/10" },
+                  { icon: CreditCard, label: "Bankkosten", desc: "Rekening, transacties", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+                  { icon: Receipt, label: "Verzekeringen", desc: "AOV, bedrijfspolis", color: "text-red-400", bg: "bg-red-500/10" },
+                  { icon: BookOpen, label: "Administratie", desc: "7 jaar bewaren!", color: "text-teal-400", bg: "bg-teal-500/10" },
+                ].map((item) => (
+                  <div key={item.label} className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                    <div className={cn("p-2 rounded-lg w-fit mb-2", item.bg)}>
+                      <item.icon className={cn("w-4 h-4", item.color)} />
+                    </div>
+                    <p className="text-sm font-medium text-autronis-text-primary">{item.label}</p>
+                    <p className="text-xs text-autronis-text-secondary">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Fiscale aftrekposten */}
+              <h3 className="text-sm font-semibold text-autronis-text-secondary mt-6 mb-3">Fiscale regelingen</h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                {[
+                  { naam: "Zelfstandigenaftrek", waarde: "3.750", status: urenCriterium?.zelfstandigenaftrek ? "ok" as const : "warning" as const },
+                  { naam: "Startersaftrek", waarde: "2.123", status: "warning" as const },
+                  { naam: "MKB-winstvrijstelling", waarde: "14%", status: urenCriterium?.mkbVrijstelling ? "ok" as const : "warning" as const },
+                  { naam: "KIA", waarde: "tot 28%", status: investeringenData?.totaalInvestering ? "ok" as const : "warning" as const },
+                  { naam: "FOR opbouw", waarde: "max 9,44%", status: "warning" as const },
+                  { naam: "Km-vergoeding", waarde: "0,23/km", status: "warning" as const },
+                ].map((item) => {
+                  const cfg = getStatusIndicator(item.status);
+                  return (
+                    <div key={item.naam} className="flex items-center justify-between p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                      <div>
+                        <p className="text-sm text-autronis-text-primary">{item.naam}</p>
+                        <p className="text-xs text-autronis-text-secondary">{item.waarde}</p>
+                      </div>
+                      <span className={cn("w-2.5 h-2.5 rounded-full", cfg.dot)} />
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
-            {/* Aftrekbare kostenposten overzicht */}
+            {/* Subsidies */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-autronis-accent" />
-                Aftrekbare kostenposten
-              </h3>
+              <div className="flex items-center gap-3 mb-5">
+                <Gift className="w-5 h-5 text-autronis-accent" />
+                <h2 className="text-xl font-bold text-autronis-text-primary">Subsidies & Regelingen</h2>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { icon: Monitor, label: "Hardware & apparatuur", desc: "Laptop, monitor, toetsenbord, muis, telefoon, headset, camera. Boven €450 afschrijven via Investeringen tab.", color: "text-blue-400", bg: "bg-blue-500/10" },
-                  { icon: Globe, label: "Software & abonnementen", desc: "SaaS tools, hosting, domeinen, cloud services, AI tools (OpenAI, Anthropic), licenties.", color: "text-purple-400", bg: "bg-purple-500/10" },
-                  { icon: Building2, label: "Kantoor & werkplek", desc: "Huur werkruimte, coworking, kantoorartikelen, bureau, bureaustoel, verlichting.", color: "text-amber-400", bg: "bg-amber-500/10" },
-                  { icon: Car, label: "Vervoer & reizen", desc: "Zakelijke kilometers (€0,23/km), OV, parkeren, vliegtickets, verblijfkosten.", color: "text-cyan-400", bg: "bg-cyan-500/10" },
-                  { icon: Megaphone, label: "Marketing & acquisitie", desc: "Website, advertenties, drukwerk, visitekaartjes, beurzen, netwerkevenementen.", color: "text-pink-400", bg: "bg-pink-500/10" },
-                  { icon: GraduationCap, label: "Opleiding & ontwikkeling", desc: "Cursussen, trainingen, boeken, conferenties, coaching, certificeringen.", color: "text-green-400", bg: "bg-green-500/10" },
-                  { icon: Coffee, label: "Representatie", desc: "Zakelijke lunches (80% aftrekbaar), koffie voor klanten, relatiegeschenken (max €227/pp).", color: "text-orange-400", bg: "bg-orange-500/10" },
-                  { icon: Wrench, label: "Professionele diensten", desc: "Boekhouder, accountant, juridisch advies, KvK, notaris, verzekeringen (beroeps-/aansprakelijkheid).", color: "text-indigo-400", bg: "bg-indigo-500/10" },
-                  { icon: CreditCard, label: "Bankkosten & financieel", desc: "Zakelijke bankrekening, betaalkosten (Stripe/Mollie), incassokosten, valuta-kosten.", color: "text-slate-400", bg: "bg-slate-500/10" },
-                  { icon: Receipt, label: "Telefoon & internet", desc: "Zakelijk telefoonabonnement, internet (zakelijk deel aftrekbaar als je thuiswerkt).", color: "text-teal-400", bg: "bg-teal-500/10" },
-                ].map((item) => (
-                  <div key={item.label} className={cn("rounded-xl border border-autronis-border p-4 flex gap-3", item.bg)}>
-                    <div className="shrink-0 mt-0.5">
-                      <item.icon className={cn("w-5 h-5", item.color)} />
+                  { naam: "WBSO", desc: "R&D loonkostenaftrek voor technisch onderzoek en softwareontwikkeling.", voordeel: "Tot 32% loonkostenaftrek", relevant: "ok" as const, url: "https://www.rvo.nl/subsidies-financiering/wbso" },
+                  { naam: "Innovatiebox", desc: "Verlaagd tarief (9%) op winst uit innovatieve activiteiten.", voordeel: "9% in plaats van 26,9%", relevant: "ok" as const, url: "https://www.belastingdienst.nl/wps/wcm/connect/nl/innovatiebox" },
+                  { naam: "SLIM-regeling", desc: "Subsidie voor scholing en ontwikkeling van werknemers in het MKB.", voordeel: "Max 24.999", relevant: "warning" as const, url: "https://www.rvo.nl/subsidies-financiering/slim" },
+                  { naam: "MIT", desc: "MKB Innovatiestimulering Topsectoren voor innovatieprojecten.", voordeel: "Max 20.000 haalbaarheid", relevant: "warning" as const, url: "https://www.rvo.nl/subsidies-financiering/mit" },
+                  { naam: "EIA", desc: "Energie-investeringsaftrek voor energiebesparende investeringen.", voordeel: "45,5% extra aftrek", relevant: "warning" as const, url: "https://www.rvo.nl/subsidies-financiering/eia" },
+                  { naam: "Groeifaciliteit", desc: "Overheidsgarantie waardoor financiers meer risico durven nemen.", voordeel: "50% garantie", relevant: "warning" as const, url: "https://www.rvo.nl/subsidies-financiering/groeifaciliteit" },
+                ].map((sub) => (
+                  <div key={sub.naam} className="p-4 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-base font-bold text-autronis-text-primary">{sub.naam}</span>
+                      <StatusBadge status={sub.relevant} label={sub.relevant === "ok" ? "Relevant" : "Bekijk"} />
                     </div>
-                    <div>
-                      <p className="font-semibold text-sm text-autronis-text-primary">{item.label}</p>
-                      <p className="text-xs text-autronis-text-secondary mt-1 leading-relaxed">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Fiscale aftrekposten specifiek voor ZZP/VOF */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-green-400" />
-                Fiscale aftrekposten (automatisch berekend)
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { label: "Zelfstandigenaftrek", bedrag: "€ 3.750", voorwaarde: "Urencriterium (1.225 uur)", status: urenCriterium?.voldoet ? "Bereikt" : "Nog niet", statusColor: urenCriterium?.voldoet ? "text-green-400" : "text-yellow-400" },
-                  { label: "Startersaftrek", bedrag: "€ 2.123", voorwaarde: "Eerste 3 jaar als ondernemer", status: "Check zelf", statusColor: "text-blue-400" },
-                  { label: "MKB-winstvrijstelling", bedrag: "14% van winst", voorwaarde: "Automatisch bij IB-ondernemer", status: "Altijd", statusColor: "text-green-400" },
-                  { label: "KIA (Kleinschaligheidsinvesteringsaftrek)", bedrag: "Tot 28%", voorwaarde: "Investeringen €2.801 - €373.030", status: (investeringenData?.length ?? 0) > 0 ? "Actief" : "Geen inv.", statusColor: (investeringenData?.length ?? 0) > 0 ? "text-green-400" : "text-autronis-text-secondary" },
-                  { label: "FOR (Fiscale Oudedagsreserve)", bedrag: "Max 9,44% winst", voorwaarde: "Max €10.100/jaar, AOW-leeftijd < 10 jr", status: "Check zelf", statusColor: "text-blue-400" },
-                  { label: "Km-vergoeding", bedrag: "€ 0,23/km", voorwaarde: "Zakelijke kilometers bijhouden", status: "Bijgehouden", statusColor: "text-green-400" },
-                ].map((item) => (
-                  <div key={item.label} className="bg-autronis-bg/50 border border-autronis-border rounded-xl p-4">
-                    <p className="font-semibold text-sm text-autronis-text-primary mb-1">{item.label}</p>
-                    <p className="text-lg font-bold text-autronis-accent tabular-nums">{item.bedrag}</p>
-                    <p className="text-xs text-autronis-text-secondary mt-2">{item.voorwaarde}</p>
-                    <p className={cn("text-xs font-medium mt-1", item.statusColor)}>Status: {item.status}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Bonnetjes & administratie tips */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-amber-400" />
-                Bonnetjes & administratie
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { titel: "Bewaarplicht", tekst: "Je bent verplicht je administratie 7 jaar te bewaren. Dit geldt voor facturen, bonnetjes, bankafschriften, contracten en offertes." },
-                  { titel: "Digitale bonnetjes", tekst: "Foto's van bonnetjes zijn geldig als bewijs. Gebruik een app of scan ze in. Zorg dat datum, bedrag en BTW leesbaar zijn." },
-                  { titel: "BTW terugvragen", tekst: "BTW op zakelijke aankopen mag je terugvragen via je BTW-aangifte. Dit geldt voor alle aankopen met een factuur op naam van je bedrijf." },
-                  { titel: "Gemengd gebruik", tekst: "Bij privé + zakelijk gebruik (bijv. telefoon, auto) mag je alleen het zakelijke deel aftrekken. Houd een logboek bij." },
-                  { titel: "Kleine aankopen", tekst: "Aankopen onder €450 (excl. BTW) mag je direct als kosten boeken. Daarboven moet je afschrijven over meerdere jaren." },
-                  { titel: "Factuurvereisten", tekst: "Een geldige factuur bevat: naam + adres leverancier, jouw bedrijfsnaam, datum, omschrijving, bedrag excl. BTW, BTW-bedrag, BTW-nummer." },
-                ].map((tip) => (
-                  <div key={tip.titel} className="flex gap-3 p-3 rounded-lg bg-autronis-bg/30 border border-autronis-border/50">
-                    <CheckCircle2 className="w-4 h-4 text-autronis-accent mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-autronis-text-primary">{tip.titel}</p>
-                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed">{tip.tekst}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Veelgemaakte fouten */}
-            <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5" />
-                Veelgemaakte fouten
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  "Bonnetjes niet bewaren — zonder bewijs geen aftrek",
-                  "Privékosten als zakelijk boeken — boetes bij controle",
-                  "BTW niet terugvragen op zakelijke aankopen",
-                  "Investeringen niet afschrijven (boven €450)",
-                  "Zakelijke kilometers niet bijhouden",
-                  "Representatiekosten 100% aftrekken (max 80%)",
-                  "Geen apart zakelijke bankrekening",
-                  "Facturen zonder BTW-nummer versturen",
-                ].map((fout) => (
-                  <div key={fout} className="flex items-start gap-2 text-sm">
-                    <span className="text-red-400 mt-0.5">✕</span>
-                    <span className="text-autronis-text-secondary">{fout}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===== TAB: SUBSIDIES & TIPS ===== */}
-        {activeTab === "subsidies" && (
-          <div className="space-y-6">
-            {/* Relevante subsidies */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
-                <Gift className="w-5 h-5 text-autronis-accent" />
-                Subsidies & regelingen voor Autronis
-              </h3>
-              <p className="text-sm text-autronis-text-secondary mb-5">
-                Als AI- en automatiseringsbedrijf kom je mogelijk in aanmerking voor deze regelingen. Check jaarlijks of je er gebruik van kunt maken.
-              </p>
-              <div className="space-y-4">
-                {[
-                  {
-                    naam: "WBSO (Wet Bevordering Speur- en Ontwikkelingswerk)",
-                    relevant: "Zeer relevant",
-                    relevantColor: "text-green-400 bg-green-500/15",
-                    bedrag: "Tot 32% loonheffingskorting op R&D uren",
-                    beschrijving: "Als je nieuwe software, AI-modellen of technische oplossingen ontwikkelt, kun je WBSO aanvragen. Dit geldt voor het ontwikkelen van nieuwe technische producten, processen of programmatuur. Je moet minimaal 500 S&O-uren per jaar maken.",
-                    deadline: "Aanvragen via RVO.nl, 3x per jaar (uiterlijk 1 maand voor startdatum)",
-                    url: "rvo.nl/subsidies-financiering/wbso",
-                  },
-                  {
-                    naam: "Innovatiebox",
-                    relevant: "Relevant bij winst uit IP",
-                    relevantColor: "text-blue-400 bg-blue-500/15",
-                    bedrag: "9% belasting i.p.v. tot 49,5% op innovatiewinst",
-                    beschrijving: "Als je winst maakt uit zelf ontwikkelde software of technologie (met WBSO-verklaring), kun je die winst in de innovatiebox laten vallen. Je betaalt dan slechts 9% belasting over dat deel.",
-                    deadline: "Bij belastingaangifte, vereist S&O-verklaring (WBSO)",
-                    url: "belastingdienst.nl/innovatiebox",
-                  },
-                  {
-                    naam: "SLIM-regeling (Stimuleringsregeling Leren en ontwikkelen in MKB)",
-                    relevant: "Relevant",
-                    relevantColor: "text-green-400 bg-green-500/15",
-                    bedrag: "Tot 80% subsidie op scholingskosten",
-                    beschrijving: "Subsidie voor het ontwikkelen van een leerrijke werkomgeving, opleidingsplannen of het aanbieden van een derde leerweg. Geldt voor cursussen, trainingen en certificeringen.",
-                    deadline: "Wisselende aanvraagperiodes via RVO.nl",
-                    url: "rvo.nl/subsidies-financiering/slim",
-                  },
-                  {
-                    naam: "MIT (MKB Innovatiestimulering Topsectoren)",
-                    relevant: "Bij innovatieprojecten",
-                    relevantColor: "text-blue-400 bg-blue-500/15",
-                    bedrag: "Tot €25.000 (haalbaarheid) of €200.000 (R&D)",
-                    beschrijving: "Voor innovatieve projecten die aansluiten bij een van de topsectoren (zoals ICT). Geschikt als je een nieuw AI-product of -dienst wilt ontwikkelen.",
-                    deadline: "Jaarlijks openstellingsmoment, via provincie of RVO",
-                    url: "rvo.nl/subsidies-financiering/mit",
-                  },
-                  {
-                    naam: "Groeifaciliteit",
-                    relevant: "Bij externe financiering",
-                    relevantColor: "text-amber-400 bg-amber-500/15",
-                    bedrag: "50% staatsgarantie op risicokapitaal",
-                    beschrijving: "Als je externe financiering (lening of risicokapitaal) nodig hebt om te groeien, kan de overheid 50% garant staan. Handig als je wilt opschalen.",
-                    deadline: "Doorlopend aanvragen via je bank",
-                    url: "rvo.nl/subsidies-financiering/groeifaciliteit",
-                  },
-                  {
-                    naam: "EIA (Energie-investeringsaftrek)",
-                    relevant: "Bij energie-investeringen",
-                    relevantColor: "text-amber-400 bg-amber-500/15",
-                    bedrag: "45,5% extra aftrek op energiebesparende investeringen",
-                    beschrijving: "Als je investeert in energiezuinige apparatuur, zonnepanelen, of energie-efficiënte systemen voor je kantoor. Moet op de Energielijst staan.",
-                    deadline: "Binnen 3 maanden na aanschaf aanmelden bij RVO",
-                    url: "rvo.nl/subsidies-financiering/eia",
-                  },
-                ].map((subsidie) => (
-                  <div key={subsidie.naam} className="bg-autronis-bg/50 border border-autronis-border rounded-xl p-5">
-                    <div className="flex items-start justify-between gap-4 mb-2">
-                      <h4 className="font-semibold text-autronis-text-primary">{subsidie.naam}</h4>
-                      <span className={cn("text-xs font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap shrink-0", subsidie.relevantColor)}>
-                        {subsidie.relevant}
-                      </span>
-                    </div>
-                    <p className="text-sm font-bold text-autronis-accent mb-2">{subsidie.bedrag}</p>
-                    <p className="text-sm text-autronis-text-secondary leading-relaxed mb-3">{subsidie.beschrijving}</p>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-autronis-text-secondary"><span className="text-amber-400 font-medium">Deadline:</span> {subsidie.deadline}</span>
-                      <a
-                        href={`https://${subsidie.url}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-autronis-accent hover:text-autronis-accent-hover transition-colors"
-                      >
+                    <p className="text-xs text-autronis-text-secondary mb-2">{sub.desc}</p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-autronis-accent">{sub.voordeel}</span>
+                      <a href={sub.url} target="_blank" rel="noopener noreferrer" className="text-xs text-autronis-text-secondary hover:text-autronis-accent transition-colors flex items-center gap-1">
                         Meer info <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
@@ -1647,244 +1505,117 @@ export default function BelastingPage() {
               </div>
             </div>
 
-            {/* Belastingtips */}
+            {/* Belasting tips */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
+              <div className="flex items-center gap-3 mb-5">
                 <Lightbulb className="w-5 h-5 text-yellow-400" />
-                Belastingtips voor {jaar}
-              </h3>
-              <div className="space-y-3">
+                <h2 className="text-xl font-bold text-autronis-text-primary">Belastingtips</h2>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
-                  { tip: "Doe investeringen slim", tekst: "Plan grote aankopen zodat ze in het juiste jaar vallen. Als je vlak bij de KIA-grens zit, kan het slim zijn om een aankoop naar voren te halen of uit te stellen." },
-                  { tip: "Vraag voorlopige aanslag aan", tekst: "Een voorlopige aanslag voorkomt dat je een groot bedrag ineens moet betalen. Je betaalt dan maandelijks een voorschot aan de Belastingdienst." },
-                  { tip: "Reserveer maandelijks voor belasting", tekst: "Zet elke maand 30-40% van je winst apart op een spaarrekening. Zo word je niet verrast door de definitieve aanslag." },
-                  { tip: "Houd je urencriterium bij", tekst: "Je hebt minimaal 1.225 uur nodig voor zelfstandigenaftrek (€3.750) en startersaftrek (€2.123). Dat is ~24 uur per week." },
-                  { tip: "Check je FOR-mogelijkheid", tekst: "Met de Fiscale Oudedagsreserve kun je tot 9,44% van je winst (max €10.100) belastingvrij opzij zetten voor je pensioen." },
-                  { tip: "Maak gebruik van de WBSO", tekst: "Als AI-bedrijf is de WBSO zeer relevant. Je kunt tot 32% korting krijgen op loonheffing voor R&D-werkzaamheden." },
-                  { tip: "Betaal facturen voor 31 december", tekst: "Kosten zijn aftrekbaar in het jaar dat je ze betaalt. Betaal openstaande facturen voor het einde van het jaar." },
-                  { tip: "Vergeet de thuiswerkaftrek niet", tekst: "Als je vanuit huis werkt, kun je een deel van je huur/hypotheek, gas, water en internet als zakelijke kosten opvoeren." },
-                ].map((item) => (
-                  <div key={item.tip} className="flex gap-3 p-3 rounded-lg bg-autronis-bg/30 border border-autronis-border/50">
-                    <Lightbulb className="w-4 h-4 text-yellow-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-autronis-text-primary">{item.tip}</p>
-                      <p className="text-xs text-autronis-text-secondary mt-0.5 leading-relaxed">{item.tekst}</p>
-                    </div>
+                  "Investeer slim: doe aankopen boven 2.800 voor KIA-aftrek",
+                  "Vraag een voorlopige aanslag aan zodat je niet alles in een keer betaalt",
+                  "Reserveer maandelijks 30% van je winst voor belasting",
+                  "Houd je uren nauwkeurig bij voor het urencriterium (1.225 uur)",
+                  "Overweeg FOR-opbouw als extra pensioenvoorziening",
+                  "Check of je in aanmerking komt voor WBSO (R&D aftrek)",
+                  "Plan facturen strategisch rond het jaareinde",
+                  "Vergeet de thuiswerkplek-aftrek niet als je vanuit huis werkt",
+                ].map((tip, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-xl">
+                    <Lightbulb className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <span className="text-sm text-autronis-text-primary">{tip}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Jaarafsluiting checklist */}
+            {/* Jaaroverzicht export */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-                <CheckSquare className="w-5 h-5 text-autronis-accent" />
-                Jaarafsluiting checklist {jaar}
-              </h3>
-              <div className="space-y-2">
-                {[
-                  "Alle facturen verstuurd en betaald?",
-                  "Openstaande debiteuren opvolgen",
-                  "Bonnetjes en facturen compleet en gescand?",
-                  "Zakelijke bankrekening geklopt met administratie?",
-                  "BTW-aangiftes alle kwartalen ingediend?",
-                  "Urencriterium gehaald (1.225 uur)?",
-                  "Investeringen correct geregistreerd en afgeschreven?",
-                  "KIA-aftrek berekend en geclaimd?",
-                  "Kilometers compleet bijgehouden?",
-                  "FOR-dotatie bepaald?",
-                  "Voorlopige aanslagen verwerkt en betaald?",
-                  "WBSO-aanvraag ingediend (als van toepassing)?",
-                  "Privégebruik zakelijke spullen gecorrigeerd?",
-                  "Reserveringen voor belasting op peil?",
-                  "Jaaroverzicht geëxporteerd en opgeslagen?",
-                ].map((item, i) => (
-                  <label key={i} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-autronis-bg/30 transition-colors cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 rounded border-autronis-border text-autronis-accent focus:ring-autronis-accent bg-autronis-bg"
-                    />
-                    <span className="text-sm text-autronis-text-secondary group-hover:text-autronis-text-primary transition-colors">{item}</span>
-                  </label>
-                ))}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <FileBarChart className="w-5 h-5 text-autronis-accent" />
+                  <h2 className="text-xl font-bold text-autronis-text-primary">Jaaroverzicht {jaar}</h2>
+                </div>
+                <button
+                  onClick={() => addToast("PDF export komt binnenkort", "succes")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent/15 text-autronis-accent rounded-lg text-xs font-semibold hover:bg-autronis-accent/25 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> PDF Export
+                </button>
               </div>
+
+              {loadingJaar ? (
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{Array.from({ length: 4 }).map((_, i) => <SkeletonKPI key={i} />)}</div>
+              ) : jaaroverzichtData ? (
+                <div className="space-y-5">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Omzet</p>
+                      <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(jaaroverzichtData.omzet)}</p>
+                    </div>
+                    <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-xl text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Kosten</p>
+                      <p className="text-xl font-bold text-orange-400 tabular-nums">{formatBedrag(jaaroverzichtData.kosten)}</p>
+                    </div>
+                    <div className="p-4 bg-autronis-accent/5 border border-autronis-accent/20 rounded-xl text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Winst</p>
+                      <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(jaaroverzichtData.omzet - jaaroverzichtData.kosten)}</p>
+                    </div>
+                    <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl text-center">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Belasting</p>
+                      <p className="text-xl font-bold text-purple-400 tabular-nums">{formatBedrag(jaaroverzichtData.geschatteBelasting)}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">BTW afgedragen</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btwBetaald)}</p>
+                    </div>
+                    <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Uren gewerkt</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">
+                        {jaaroverzichtData.urenGewerkt} / {jaaroverzichtData.urenDoel ?? 1225}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Investeringen</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.investeringen)}</p>
+                    </div>
+                    <div className="p-3 bg-autronis-bg/30 border border-autronis-border rounded-xl">
+                      <p className="text-xs text-autronis-text-secondary mb-1">Gereserveerd</p>
+                      <p className="text-base font-bold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.reserveringen)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <FileBarChart className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                  <p className="text-autronis-text-secondary font-medium">Nog geen jaaroverzicht beschikbaar</p>
+                </div>
+              )}
             </div>
 
-            {/* Belangrijke datums */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h3 className="text-lg font-semibold text-autronis-text-primary mb-5 flex items-center gap-2">
-                <CalendarClock className="w-5 h-5 text-blue-400" />
-                Belangrijke belastingdata {jaar}
-              </h3>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-autronis-border">
-                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Deadline</th>
-                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Wat</th>
-                      <th className="text-left py-3 text-autronis-text-secondary font-medium">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      { datum: `28 feb ${jaar}`, wat: "BTW Q4 vorig jaar", details: "Aangifte omzetbelasting 4e kwartaal" },
-                      { datum: `1 apr ${jaar}`, wat: "Voorlopige aanslag", details: "Controleer of je voorlopige aanslag klopt" },
-                      { datum: `30 apr ${jaar}`, wat: "BTW Q1", details: "Aangifte omzetbelasting 1e kwartaal" },
-                      { datum: `1 mei ${jaar}`, wat: "Inkomstenbelasting", details: `IB-aangifte ${jaar - 1} indienen` },
-                      { datum: `31 jul ${jaar}`, wat: "BTW Q2", details: "Aangifte omzetbelasting 2e kwartaal" },
-                      { datum: `31 okt ${jaar}`, wat: "BTW Q3", details: "Aangifte omzetbelasting 3e kwartaal" },
-                      { datum: `31 dec ${jaar}`, wat: "Jaarafsluiting", details: "Administratie afsluiten, laatste facturen betalen" },
-                      { datum: `31 jan ${jaar + 1}`, wat: "BTW Q4", details: `Aangifte omzetbelasting 4e kwartaal ${jaar}` },
-                      { datum: `28 feb ${jaar + 1}`, wat: "Jaarrekening", details: "Jaarrekening (+ evt. publicatie KvK)" },
-                    ].map((item, i) => (
-                      <tr key={i} className="border-b border-autronis-border/50">
-                        <td className="py-3 font-medium text-autronis-text-primary whitespace-nowrap tabular-nums">{item.datum}</td>
-                        <td className="py-3 text-autronis-accent font-medium">{item.wat}</td>
-                        <td className="py-3 text-autronis-text-secondary">{item.details}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===== TAB: JAAROVERZICHT ===== */}
-        {activeTab === "jaaroverzicht" && (
-          <div className="space-y-8">
-            {loadingJaar ? (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                {Array.from({ length: 4 }).map((_, i) => <SkeletonKPI key={i} />)}
-              </div>
-            ) : jaaroverzichtData ? (
-              <>
-                {/* Export button */}
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => addToast("PDF export komt binnenkort", "succes")}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export als PDF
-                  </button>
+            {/* Audit log */}
+            {auditLogData?.entries?.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+                <div className="flex items-center gap-3 mb-5">
+                  <History className="w-5 h-5 text-autronis-text-secondary" />
+                  <h2 className="text-xl font-bold text-autronis-text-primary">Recente wijzigingen</h2>
                 </div>
-
-                {/* Overview cards */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                  <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Omzet</p>
-                    <p className="text-2xl font-bold text-emerald-400 tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{formatBedrag(jaaroverzichtData.omzet?.totaal ?? 0)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Kosten</p>
-                    <p className="text-2xl font-bold text-orange-400 tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{formatBedrag(jaaroverzichtData.kosten?.totaal ?? 0)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Winst</p>
-                    <p className="text-2xl font-bold text-autronis-accent tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{formatBedrag(jaaroverzichtData.winstVerlies?.brutowinst ?? 0)}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
-                    <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Belasting</p>
-                    <p className="text-2xl font-bold text-purple-400 tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{formatBedrag(jaaroverzichtData.winstVerlies?.geschatteBelasting ?? 0)}</p>
-                  </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {auditLogData.entries.slice(0, 15).map((entry: { id: number; actie: string; entiteitType: string; details?: string; aangemaakt: string }) => (
+                    <div key={entry.id} className="flex items-center gap-3 p-3 bg-autronis-bg/20 rounded-xl text-sm">
+                      <CircleDot className="w-3.5 h-3.5 text-autronis-text-secondary flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-autronis-text-primary">{entry.actie}</span>
+                        <span className="text-autronis-text-secondary ml-1.5">{entry.entiteitType}</span>
+                        {entry.details && <span className="text-autronis-text-secondary/70 ml-1.5">— {entry.details}</span>}
+                      </div>
+                      <span className="text-xs text-autronis-text-secondary/50 flex-shrink-0 tabular-nums">{formatDatum(entry.aangemaakt)}</span>
+                    </div>
+                  ))}
                 </div>
-
-                {/* Detail sections */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-4">BTW</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-autronis-text-secondary">BTW afgedragen</p>
-                        {/* @ts-ignore pre-existing type mismatch */}
-                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(jaaroverzichtData.btw?.afgedragen ?? 0)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-4">Uren</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-autronis-text-secondary">Totaal uren gewerkt</p>
-                        <p className="text-base font-semibold text-autronis-text-primary tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{typeof jaaroverzichtData.uren === "object" ? `${jaaroverzichtData.uren.totaal} / ${jaaroverzichtData.uren.doel}` : jaaroverzichtData.uren}</p>
-                      </div>
-                      {urenCriterium && (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-autronis-text-secondary">Urencriterium</p>
-                          <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", urenCriterium.voldoet ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400")}>
-                            {urenCriterium.voldoet ? "Voldoet" : "Nog niet"}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-4">Investeringen</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-autronis-text-secondary">Totaal investeringen</p>
-                        <p className="text-base font-semibold text-blue-400 tabular-nums">{/* @ts-ignore pre-existing type mismatch */}
-{formatBedrag(jaaroverzichtData.investeringen?.totaal ?? 0)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-                    <h3 className="text-lg font-bold text-autronis-text-primary mb-4">Reserveringen</h3>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-autronis-text-secondary">Gereserveerd</p>
-                        <p className="text-base font-semibold text-purple-400 tabular-nums">{formatBedrag(reserveringenData?.totaalGereserveerd ?? 0)}</p>
-                      </div>
-                      {reserveringenData && (
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm text-autronis-text-secondary">Tekort/Overschot</p>
-                          <p className={cn("text-base font-semibold tabular-nums", reserveringenData.tekort > 0 ? "text-red-400" : "text-green-400")}>
-                            {reserveringenData.tekort > 0 ? "-" : "+"}{formatBedrag(Math.abs(reserveringenData.tekort))}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Audit log */}
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-                  <div className="flex items-center gap-3 mb-6">
-                    <History className="w-5 h-5 text-autronis-text-secondary" />
-                    <h3 className="text-lg font-bold text-autronis-text-primary">Audit log</h3>
-                  </div>
-                  {!auditLogData || auditLogData.length === 0 ? (
-                    <p className="text-autronis-text-secondary text-sm py-4">Geen audit log entries.</p>
-                  ) : (
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {auditLogData.slice(0, 20).map((entry) => (
-                        <div key={entry.id} className="flex items-start gap-3 p-3 rounded-lg border border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors">
-                          <div className="p-1.5 bg-autronis-bg/50 rounded-lg flex-shrink-0 mt-0.5">
-                            <History className="w-3.5 h-3.5 text-autronis-text-secondary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm text-autronis-text-primary">
-                              <span className="font-semibold">{entry.actie}</span>
-                              <span className="text-autronis-text-secondary"> op {entry.entiteitType} #{entry.entiteitId}</span>
-                            </p>
-                            {entry.details && <p className="text-xs text-autronis-text-secondary mt-0.5">{entry.details}</p>}
-                            <p className="text-xs text-autronis-text-secondary/60 mt-1 tabular-nums">{formatDatum(entry.tijdstip)}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-8 text-center">
-                <p className="text-autronis-text-secondary">Geen jaaroverzicht beschikbaar voor {jaar}.</p>
               </div>
             )}
           </div>

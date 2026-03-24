@@ -31,6 +31,9 @@ import {
   Eye,
   Send,
   X,
+  CalendarPlus,
+  Share2,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -113,6 +116,47 @@ function scoreGlow(score: number): string {
   if (score >= 8) return "0 0 10px rgba(245,158,11,0.4)";
   if (score >= 5) return "0 0 8px rgba(23,184,165,0.25)";
   return "none";
+}
+
+// ============ DISMISS TRACKING ============
+
+const DISMISS_STORAGE_KEY = "radar_dismiss_counts";
+const DISMISS_HINT_THRESHOLD = 5;
+
+function getDismissCounts(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISS_STORAGE_KEY) ?? "{}") as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function trackDismiss(categorie: string | null) {
+  if (!categorie) return;
+  const counts = getDismissCounts();
+  counts[categorie] = (counts[categorie] ?? 0) + 1;
+  localStorage.setItem(DISMISS_STORAGE_KEY, JSON.stringify(counts));
+}
+
+function getTopDismissedCategory(): { cat: string; label: string; count: number } | null {
+  const counts = getDismissCounts();
+  let topCat: string | null = null;
+  let topCount = 0;
+  for (const [cat, count] of Object.entries(counts)) {
+    if (count >= DISMISS_HINT_THRESHOLD && count > topCount) {
+      topCat = cat;
+      topCount = count;
+    }
+  }
+  if (!topCat) return null;
+  const label = categorieOpties.find((c) => c.value === topCat)?.label ?? topCat;
+  return { cat: topCat, label, count: topCount };
+}
+
+function clearDismissCount(cat: string) {
+  const counts = getDismissCounts();
+  delete counts[cat];
+  localStorage.setItem(DISMISS_STORAGE_KEY, JSON.stringify(counts));
 }
 
 // ============ SCORE BADGE ============
@@ -200,6 +244,8 @@ function ItemCard({
   onToggleBewaard,
   onNietRelevant,
   onVraagClaude,
+  onLeesLater,
+  onDeelInzicht,
   isToggling,
   isOpened,
   onOpen,
@@ -211,6 +257,8 @@ function ItemCard({
   onToggleBewaard: (id: number, bewaard: boolean) => void;
   onNietRelevant: (id: number) => void;
   onVraagClaude: (item: RadarItem) => void;
+  onLeesLater: (item: RadarItem) => void;
+  onDeelInzicht: (item: RadarItem) => void;
   isToggling: boolean;
   isOpened: boolean;
   onOpen: (id: number) => void;
@@ -352,6 +400,20 @@ function ItemCard({
               <Sparkles className="w-3 h-3" />
               Vraag Claude
             </button>
+            <button
+              onClick={() => onLeesLater(item)}
+              className="text-xs text-autronis-text-secondary hover:text-autronis-accent transition-colors flex items-center gap-1"
+            >
+              <CalendarPlus className="w-3 h-3" />
+              Lees later
+            </button>
+            <button
+              onClick={() => onDeelInzicht(item)}
+              className="text-xs text-autronis-text-secondary hover:text-autronis-accent transition-colors flex items-center gap-1"
+            >
+              <Share2 className="w-3 h-3" />
+              Deel als inzicht
+            </button>
             {showNotitie && (
               <button
                 onClick={() => setNotitieOpen(!notitieOpen)}
@@ -400,6 +462,8 @@ function MustReadsSection({
   onToggleBewaard,
   onNietRelevant,
   onVraagClaude,
+  onLeesLater,
+  onDeelInzicht,
   isToggling,
   openedIds,
   onOpen,
@@ -409,6 +473,8 @@ function MustReadsSection({
   onToggleBewaard: (id: number, bewaard: boolean) => void;
   onNietRelevant: (id: number) => void;
   onVraagClaude: (item: RadarItem) => void;
+  onLeesLater: (item: RadarItem) => void;
+  onDeelInzicht: (item: RadarItem) => void;
   isToggling: boolean;
   openedIds: Set<number>;
   onOpen: (id: number) => void;
@@ -445,6 +511,8 @@ function MustReadsSection({
               onToggleBewaard={onToggleBewaard}
               onNietRelevant={onNietRelevant}
               onVraagClaude={onVraagClaude}
+              onLeesLater={onLeesLater}
+              onDeelInzicht={onDeelInzicht}
               isToggling={isToggling}
               isOpened={openedIds.has(item.id)}
               onOpen={onOpen}

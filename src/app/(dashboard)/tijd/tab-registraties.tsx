@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Download, RotateCcw, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Plus, Trash2, Download, RotateCcw, Clock, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
@@ -80,6 +80,98 @@ function LiveDuur({ startTijd }: { startTijd: string }) {
   return <>{formatDuurKort(minuten)}</>;
 }
 
+// ============ INLINE EDIT ROW ============
+
+const CATEGORIE_OPTIES: TijdCategorie[] = ["development", "meeting", "administratie", "overig"];
+const CATEGORIE_LABELS: Record<TijdCategorie, string> = {
+  development: "Development",
+  meeting: "Meeting",
+  administratie: "Administratie",
+  overig: "Overig",
+  focus: "Focus",
+};
+
+interface InlineEditProps {
+  reg: Registratie;
+  onSave: (data: { omschrijving: string; startTijdStr: string; eindTijdStr: string; categorie: TijdCategorie }) => void;
+  onCancel: () => void;
+}
+
+function InlineEdit({ reg, onSave, onCancel }: InlineEditProps) {
+  const [omschrijving, setOmschrijving] = useState(reg.omschrijving ?? "");
+  const [startStr, setStartStr] = useState(
+    reg.startTijd ? formatTijdstip(reg.startTijd) : "09:00"
+  );
+  const [eindStr, setEindStr] = useState(
+    reg.eindTijd ? formatTijdstip(reg.eindTijd) : "10:00"
+  );
+  const [categorie, setCategorie] = useState<TijdCategorie>(reg.categorie as TijdCategorie ?? "development");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") onSave({ omschrijving, startTijdStr: startStr, eindTijdStr: eindStr, categorie });
+    if (e.key === "Escape") onCancel();
+  }
+
+  const datumStr = reg.startTijd.split("T")[0];
+
+  return (
+    <div className="bg-autronis-card border border-autronis-accent/50 rounded-2xl px-3 sm:px-5 py-3 space-y-3">
+      <input
+        ref={inputRef}
+        type="text"
+        value={omschrijving}
+        onChange={(e) => setOmschrijving(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Omschrijving..."
+        className="w-full bg-autronis-bg border border-autronis-border text-autronis-text-primary rounded-lg px-3 py-1.5 text-sm placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent transition-colors"
+      />
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          type="time"
+          value={startStr}
+          onChange={(e) => setStartStr(e.target.value)}
+          className="bg-autronis-bg border border-autronis-border text-autronis-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-autronis-accent transition-colors"
+        />
+        <span className="text-autronis-text-secondary text-sm">–</span>
+        <input
+          type="time"
+          value={eindStr}
+          onChange={(e) => setEindStr(e.target.value)}
+          className="bg-autronis-bg border border-autronis-border text-autronis-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-autronis-accent transition-colors"
+        />
+        <select
+          value={categorie}
+          onChange={(e) => setCategorie(e.target.value as TijdCategorie)}
+          className="bg-autronis-bg border border-autronis-border text-autronis-text-primary rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-autronis-accent transition-colors"
+        >
+          {CATEGORIE_OPTIES.map((c) => (
+            <option key={c} value={c}>{CATEGORIE_LABELS[c]}</option>
+          ))}
+        </select>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            onClick={() => onSave({ omschrijving, startTijdStr: startStr, eindTijdStr: eindStr, categorie })}
+            className="px-3 py-1.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-xs font-semibold transition-colors"
+          >
+            Opslaan
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-3 py-1.5 text-autronis-text-secondary hover:text-autronis-text-primary text-xs transition-colors"
+          >
+            Annuleer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ============ MAIN COMPONENT ============
 
 export function TabRegistraties() {
@@ -92,6 +184,8 @@ export function TabRegistraties() {
   const [modalOpen, setModalOpen] = useState(false);
   const [bewerkRegistratie, setBewerkRegistratie] = useState<Registratie | null>(null);
   const [verwijderConfirm, setVerwijderConfirm] = useState<number | null>(null);
+  const [inlineEditId, setInlineEditId] = useState<number | null>(null);
+  const [kopieerdSucces, setKopieerdSucces] = useState(false);
 
   const range = berekenVanTot(huidigeDatum, periode);
 
@@ -113,6 +207,36 @@ export function TabRegistraties() {
     },
     onError: () => addToast("Kon registratie niet verwijderen", "fout"),
   });
+
+  // Inline save
+  const handleInlineSave = useCallback(async (
+    reg: Registratie,
+    data: { omschrijving: string; startTijdStr: string; eindTijdStr: string; categorie: TijdCategorie }
+  ) => {
+    const datumStr = reg.startTijd.split("T")[0];
+    const startISO = new Date(`${datumStr}T${data.startTijdStr}:00`).toISOString();
+    const eindISO = new Date(`${datumStr}T${data.eindTijdStr}:00`).toISOString();
+    const duurMinuten = Math.round((new Date(eindISO).getTime() - new Date(startISO).getTime()) / 60000);
+
+    try {
+      const res = await fetch(`/api/tijdregistraties/${reg.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          omschrijving: data.omschrijving || null,
+          startTijd: startISO,
+          eindTijd: eindISO,
+          duurMinuten,
+          categorie: data.categorie,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setInlineEditId(null);
+      invalidateRegistraties();
+    } catch {
+      addToast("Kon registratie niet opslaan", "fout");
+    }
+  }, []);
 
   // Repeat entry — starts a new timer
   async function handleHerhaal(reg: Registratie) {
@@ -143,6 +267,25 @@ export function TabRegistraties() {
   // Export CSV
   function handleExport() {
     window.open(`/api/tijdregistraties/export?van=${range.van}&tot=${range.tot}`, "_blank");
+  }
+
+  // Copy as table (clipboard)
+  async function handleKopieer() {
+    const voltooide = registraties.filter((r) => r.eindTijd && r.duurMinuten);
+    const header = "Datum\tProject\tOmschrijving\tCategorie\tDuur";
+    const rows = voltooide.map((r) => {
+      const datum = r.startTijd ? new Date(r.startTijd).toLocaleDateString("nl-NL") : "";
+      const duur = r.duurMinuten ? formatUrenTotaal(r.duurMinuten) : "";
+      return [datum, r.projectNaam ?? "", r.omschrijving ?? "", r.categorie ?? "", duur].join("\t");
+    });
+    const tekst = [header, ...rows].join("\n");
+    try {
+      await navigator.clipboard.writeText(tekst);
+      setKopieerdSucces(true);
+      setTimeout(() => setKopieerdSucces(false), 2000);
+    } catch {
+      addToast("Kon niet kopiëren", "fout");
+    }
   }
 
   // Group by day
@@ -181,6 +324,18 @@ export function TabRegistraties() {
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleKopieer}
+              className={cn(
+                "p-2 border rounded-lg transition-colors",
+                kopieerdSucces
+                  ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                  : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+              )}
+              title="Kopieer als tabel"
+            >
+              {kopieerdSucces ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </button>
             <button
               onClick={handleExport}
               className="p-2 bg-autronis-card border border-autronis-border rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
@@ -328,13 +483,24 @@ export function TabRegistraties() {
                       ? Math.round((Date.now() - new Date(reg.startTijd).getTime()) / 60000)
                       : (reg.duurMinuten ?? 0);
 
+                    if (inlineEditId === reg.id) {
+                      return (
+                        <InlineEdit
+                          key={reg.id}
+                          reg={reg}
+                          onSave={(data) => handleInlineSave(reg, data)}
+                          onCancel={() => setInlineEditId(null)}
+                        />
+                      );
+                    }
+
                     return (
                       <div
                         key={reg.id}
                         className={cn(
-                          "group bg-autronis-card border rounded-2xl px-3 sm:px-5 py-3 sm:py-4 transition-all card-glow",
+                          "group bg-autronis-card border rounded-2xl px-3 sm:px-5 py-3 sm:py-4 transition-all card-glow cursor-default",
                           isActief
-                            ? "border-autronis-accent shadow-sm shadow-autronis-accent/10"
+                            ? "border-autronis-accent shadow-sm shadow-autronis-accent/10 animated-border"
                             : "border-autronis-border hover:border-autronis-text-secondary/20"
                         )}
                       >
@@ -348,10 +514,17 @@ export function TabRegistraties() {
                                 : "bg-autronis-text-secondary/40"
                             )}
                           />
-                          {/* Content */}
+                          {/* Content — click omschrijving to inline edit */}
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-sm sm:text-base font-medium text-autronis-text-primary truncate">
+                              <span
+                                className={cn(
+                                  "text-sm sm:text-base font-medium text-autronis-text-primary truncate",
+                                  !isActief && "cursor-pointer hover:text-autronis-accent transition-colors"
+                                )}
+                                onClick={() => !isActief && setInlineEditId(reg.id)}
+                                title={!isActief ? "Klik om te bewerken" : undefined}
+                              >
                                 {reg.omschrijving ?? "(geen omschrijving)"}
                               </span>
                               <span
@@ -390,16 +563,6 @@ export function TabRegistraties() {
                                 <RotateCcw className="w-4 h-4" />
                               </button>
                             )}
-                            <button
-                              onClick={() => {
-                                setBewerkRegistratie(reg);
-                                setModalOpen(true);
-                              }}
-                              className="p-2 rounded-lg hover:bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
-                              title="Bewerken"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </button>
                             <button
                               onClick={() => setVerwijderConfirm(reg.id)}
                               className="p-2 rounded-lg hover:bg-autronis-border text-autronis-text-secondary hover:text-red-400 transition-colors"

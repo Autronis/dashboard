@@ -381,147 +381,217 @@ function DagTimeline({
   );
 }
 
-// ============ WEEK TIMELINE ============
+// ============ WEEK HEATMAP ============
 
-function WeekTimeline({
+const PRODUCTIEF_CATS = new Set(["development", "design", "administratie", "finance", "communicatie"]);
+const HEATMAP_START = 7;
+const HEATMAP_END = 22;
+const HEATMAP_HOURS = Array.from({ length: HEATMAP_END - HEATMAP_START }, (_, i) => i + HEATMAP_START);
+const DAG_NAMEN = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+
+interface HeatmapCell {
+  actief: number;   // seconden
+  productief: number; // seconden
+  afleiding: number;  // seconden
+  sessies: ScreenTimeSessie[];
+}
+
+function buildHeatmap(weekData: WeekDagData[]): HeatmapCell[][] {
+  // rows = uren, cols = dagen
+  return HEATMAP_HOURS.map((uur) =>
+    weekData.map((dag) => {
+      const cell: HeatmapCell = { actief: 0, productief: 0, afleiding: 0, sessies: [] };
+      for (const sessie of dag.sessies) {
+        if (sessie.isIdle) continue;
+        const sStart = new Date(sessie.startTijd);
+        const sEind = new Date(sessie.eindTijd);
+        const celStart = new Date(sStart);
+        celStart.setHours(uur, 0, 0, 0);
+        const celEind = new Date(sStart);
+        celEind.setHours(uur + 1, 0, 0, 0);
+
+        const overlapStart = Math.max(sStart.getTime(), celStart.getTime());
+        const overlapEind = Math.min(sEind.getTime(), celEind.getTime());
+        if (overlapEind <= overlapStart) continue;
+
+        const sec = (overlapEind - overlapStart) / 1000;
+        cell.actief += sec;
+        if (sessie.categorie === "afleiding") cell.afleiding += sec;
+        else if (PRODUCTIEF_CATS.has(sessie.categorie)) cell.productief += sec;
+        if (!cell.sessies.includes(sessie)) cell.sessies.push(sessie);
+      }
+      return cell;
+    })
+  );
+}
+
+function cellColor(cell: HeatmapCell): string {
+  if (cell.actief < 30) return "transparent";
+  const prodPct = cell.actief > 0 ? cell.productief / cell.actief : 0;
+  const aflPct = cell.actief > 0 ? cell.afleiding / cell.actief : 0;
+  const intensity = Math.min(1, cell.actief / 2400); // 40 min = max intensity
+
+  if (aflPct > 0.5) {
+    return `rgba(239,68,68,${0.15 + intensity * 0.55})`;
+  }
+  if (prodPct > 0.6) {
+    return `rgba(23,184,165,${0.15 + intensity * 0.65})`;
+  }
+  return `rgba(107,114,128,${0.1 + intensity * 0.35})`;
+}
+
+function WeekHeatmap({
   weekData,
-  onSelectSessie,
 }: {
   weekData: WeekDagData[];
-  onSelectSessie: (sessie: ScreenTimeSessie) => void;
 }) {
-  const DAG_NAMEN = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
+  const [tooltip, setTooltip] = useState<{ uur: number; dagIdx: number; cell: HeatmapCell } | null>(null);
+  const heatmap = useMemo(() => buildHeatmap(weekData), [weekData]);
 
-  // Auto-detect time range: find earliest and latest activity across week
-  const allSessies = weekData.flatMap(d => d.sessies.filter(s => !s.isIdle));
-  const startHour = allSessies.length > 0
-    ? Math.max(0, Math.floor(Math.min(...allSessies.map(s => new Date(s.startTijd).getHours()))) - 1)
-    : 8;
-  const endHour = allSessies.length > 0
-    ? Math.min(24, Math.ceil(Math.max(...allSessies.map(s => new Date(s.eindTijd).getHours()))) + 1)
-    : 20;
-  const visHours = endHour - startHour;
-  const hourLabels = Array.from({ length: visHours + 1 }, (_, i) => i + startHour);
+  // Day totals
+  const dagTotalen = weekData.map((dag) =>
+    dag.sessies.filter((s) => !s.isIdle).reduce((sum, s) => sum + s.duurSeconden, 0)
+  );
+  const maxDagTotaal = Math.max(...dagTotalen, 1);
 
   return (
-    <div>
-      {/* Day columns as grid */}
-      <div className="grid grid-cols-7 gap-1">
-        {weekData.map((dag, dagIdx) => {
-          const dagDate = new Date(dag.datum);
-          const dagNr = dagDate.getDate();
-          const vandaag = isToday(dag.datum);
-          const activeSessies = dag.sessies.filter(s => !s.isIdle);
-          const dagTotaal = activeSessies.reduce((s, sess) =>
-            s + Math.max(0, (new Date(sess.eindTijd).getTime() - new Date(sess.startTijd).getTime()) / 1000), 0);
+    <div className="space-y-3">
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-[11px] text-autronis-text-secondary">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "rgba(23,184,165,0.7)" }} />
+          Productief
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "rgba(239,68,68,0.6)" }} />
+          Afleiding
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: "rgba(107,114,128,0.35)" }} />
+          Overig
+        </div>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <span className="opacity-50">Intensiteit = tijd in dat uur</span>
+        </div>
+      </div>
 
-          return (
-            <div key={dag.datum} className={cn(
-              "rounded-lg border overflow-hidden",
-              vandaag ? "border-autronis-accent/40 bg-autronis-accent/5" : "border-autronis-border/30 bg-autronis-card/50"
-            )}>
-              {/* Day header */}
-              <div className={cn(
-                "text-center py-2 border-b",
-                vandaag ? "border-autronis-accent/20" : "border-autronis-border/20"
-              )}>
-                <span className={cn(
-                  "text-xs font-semibold",
-                  vandaag ? "text-autronis-accent" : "text-autronis-text-secondary"
-                )}>
-                  {DAG_NAMEN[dagIdx]} {dagNr}
-                </span>
-                {dagTotaal > 0 && (
-                  <p className={cn("text-[10px] tabular-nums mt-0.5", vandaag ? "text-autronis-accent/70" : "text-autronis-text-secondary/50")}>
-                    {formatTijd(dagTotaal)}
-                  </p>
-                )}
-              </div>
+      {/* Grid */}
+      <div className="overflow-x-auto">
+        <div style={{ minWidth: "480px" }}>
+          {/* Day headers + totaal bar */}
+          <div className="flex mb-1">
+            <div className="w-8 shrink-0" />
+            {weekData.map((dag, dagIdx) => {
+              const vandaag = isToday(dag.datum);
+              const dagDate = new Date(dag.datum + "T12:00:00");
+              const totaal = dagTotalen[dagIdx] ?? 0;
+              const barPct = (totaal / maxDagTotaal) * 100;
 
-              {/* Time grid */}
-              <div className="relative" style={{ height: `${visHours * 28}px` }}>
-                {/* Hour lines */}
-                {hourLabels.map((hour) => {
-                  const top = ((hour - startHour) / visHours) * 100;
-                  return (
-                    <div key={hour} className="absolute left-0 right-0 border-t border-autronis-border/10" style={{ top: `${top}%` }}>
-                      {dagIdx === 0 && (
-                        <span className="absolute -left-0.5 -translate-y-1/2 text-[8px] text-autronis-text-secondary/30 select-none">
-                          {String(hour).padStart(2, "0")}
-                        </span>
-                      )}
+              return (
+                <div key={dag.datum} className="flex-1 text-center px-0.5">
+                  <div className={cn(
+                    "text-[11px] font-semibold mb-1",
+                    vandaag ? "text-autronis-accent" : "text-autronis-text-secondary"
+                  )}>
+                    {DAG_NAMEN[dagIdx]} {dagDate.getDate()}
+                  </div>
+                  {/* Mini totaal bar */}
+                  <div className="h-1 bg-autronis-border/20 rounded-full overflow-hidden mb-1">
+                    <div
+                      className={cn("h-full rounded-full", vandaag ? "bg-autronis-accent/60" : "bg-autronis-text-secondary/30")}
+                      style={{ width: `${barPct}%` }}
+                    />
+                  </div>
+                  {totaal > 0 && (
+                    <div className={cn("text-[9px] tabular-nums", vandaag ? "text-autronis-accent/70" : "text-autronis-text-secondary/40")}>
+                      {formatTijd(totaal)}
                     </div>
-                  );
-                })}
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-                {/* Session blocks — solid colored */}
-                {activeSessies.map((sessie, sIdx) => {
-                  const sHour = new Date(sessie.startTijd).getHours() + new Date(sessie.startTijd).getMinutes() / 60;
-                  const eHour = new Date(sessie.eindTijd).getHours() + new Date(sessie.eindTijd).getMinutes() / 60;
-                  const top = ((sHour - startHour) / visHours) * 100;
-                  const height = Math.max(2, ((eHour - sHour) / visHours) * 100);
-                  const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
-                  const catLabel = CATEGORIE_LABELS[sessie.categorie] || sessie.categorie;
-                  const duurMin = Math.round(sessie.duurSeconden / 60);
+          {/* Heatmap rows */}
+          <div className="space-y-0.5">
+            {HEATMAP_HOURS.map((uur, uurIdx) => (
+              <div key={uur} className="flex items-center gap-0">
+                {/* Hour label */}
+                <div className="w-8 shrink-0 text-[10px] text-autronis-text-secondary/50 tabular-nums text-right pr-2">
+                  {String(uur).padStart(2, "0")}
+                </div>
+                {/* Cells */}
+                {weekData.map((dag, dagIdx) => {
+                  const cell = heatmap[uurIdx]?.[dagIdx];
+                  if (!cell) return <div key={dagIdx} className="flex-1 h-5 px-0.5" />;
+                  const bg = cellColor(cell);
+                  const vandaag = isToday(dag.datum);
+                  const nowHour = new Date().getHours();
+                  const isNow = vandaag && uur === nowHour;
 
                   return (
                     <div
-                      key={sIdx}
-                      onClick={() => onSelectSessie(sessie)}
-                      className="absolute left-1 right-1 rounded-lg cursor-pointer group hover:brightness-125 hover:z-10 overflow-hidden"
-                      style={{
-                        top: `${top}%`,
-                        height: `${height}%`,
-                        minHeight: "8px",
-                        backgroundColor: `${kleur}55`,
-                      }}
+                      key={dagIdx}
+                      className="flex-1 px-0.5 relative"
+                      onMouseEnter={() => cell.actief > 30 && setTooltip({ uur, dagIdx, cell })}
+                      onMouseLeave={() => setTooltip(null)}
                     >
-                      {/* Label on large enough blocks */}
-                      {height > 8 && (
-                        <div className="px-1 py-0.5 h-full flex flex-col justify-center">
-                          <span className="text-[9px] font-semibold text-white truncate leading-tight">{catLabel}</span>
-                          {height > 14 && <span className="text-[8px] text-white/60 tabular-nums">{formatTijd(duurMin * 60)}</span>}
+                      <div
+                        className={cn(
+                          "h-5 rounded-sm transition-all cursor-default",
+                          isNow && "ring-1 ring-autronis-accent/60",
+                          cell.actief > 30 && "hover:brightness-125"
+                        )}
+                        style={{ backgroundColor: bg }}
+                      />
+
+                      {/* Tooltip */}
+                      {tooltip && tooltip.uur === uur && tooltip.dagIdx === dagIdx && (
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-40 pointer-events-none">
+                          <div className="bg-[#0E1719] border border-autronis-border rounded-xl px-3 py-2.5 shadow-xl whitespace-nowrap min-w-[160px]">
+                            <p className="text-[11px] font-semibold text-autronis-text-primary mb-1.5">
+                              {DAG_NAMEN[tooltip.dagIdx]} {String(tooltip.uur).padStart(2, "0")}:00 – {String(tooltip.uur + 1).padStart(2, "0")}:00
+                            </p>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-[10px] text-autronis-text-secondary">Actief</span>
+                                <span className="text-[10px] text-autronis-text-primary tabular-nums font-medium">{formatTijd(cell.actief)}</span>
+                              </div>
+                              {cell.productief > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-[10px] text-autronis-text-secondary">Productief</span>
+                                  <span className="text-[10px] text-emerald-400 tabular-nums font-medium">{formatTijd(cell.productief)}</span>
+                                </div>
+                              )}
+                              {cell.afleiding > 0 && (
+                                <div className="flex items-center justify-between gap-4">
+                                  <span className="text-[10px] text-autronis-text-secondary">Afleiding</span>
+                                  <span className="text-[10px] text-red-400 tabular-nums font-medium">{formatTijd(cell.afleiding)}</span>
+                                </div>
+                              )}
+                              {cell.sessies.length > 0 && (
+                                <div className="border-t border-autronis-border/30 pt-1 mt-1">
+                                  {cell.sessies.slice(0, 3).map((s, i) => (
+                                    <p key={i} className="text-[10px] text-autronis-text-secondary truncate max-w-[160px]">
+                                      · {s.app || s.categorie}
+                                    </p>
+                                  ))}
+                                  {cell.sessies.length > 3 && (
+                                    <p className="text-[10px] text-autronis-text-secondary/50">+{cell.sessies.length - 3} meer</p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       )}
-
-                      {/* Hover tooltip */}
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover:block z-30 pointer-events-none">
-                        <div className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 shadow-xl whitespace-nowrap">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: kleur }} />
-                            <span className="text-xs font-semibold text-autronis-text-primary">{catLabel}</span>
-                          </div>
-                          {sessie.beschrijving && sessie.beschrijving !== sessie.app && (
-                            <p className="text-[11px] text-autronis-text-secondary mb-1">{sessie.beschrijving}</p>
-                          )}
-                          <p className="text-[10px] text-autronis-text-secondary tabular-nums">
-                            {formatTijdRange(sessie.startTijd)} – {formatTijdRange(sessie.eindTijd)} · {formatTijd(sessie.duurSeconden)}
-                          </p>
-                        </div>
-                      </div>
                     </div>
                   );
                 })}
-
-                {/* Empty day indicator */}
-                {activeSessies.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[10px] text-autronis-text-secondary/30">—</span>
-                  </div>
-                )}
-
-                {/* Current time */}
-                {vandaag && (() => {
-                  const now = new Date();
-                  const h = now.getHours() + now.getMinutes() / 60;
-                  if (h < startHour || h > endHour) return null;
-                  const pos = ((h - startHour) / visHours) * 100;
-                  return <div className="absolute left-0 right-0 h-[2px] bg-red-500 z-10 pointer-events-none" style={{ top: `${pos}%` }} />;
-                })()}
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -922,9 +992,8 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
             )
           ) : (
             weekData && weekData.length > 0 ? (
-              <WeekTimeline
+              <WeekHeatmap
                 weekData={weekData}
-                onSelectSessie={setWeekSelectedSessie}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20">

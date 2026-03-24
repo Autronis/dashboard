@@ -592,7 +592,7 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
           <ChevronRight className="w-4 h-4 text-autronis-text-secondary/50" />
         </div>
       </div>
-    </button>
+    </motion.button>
   );
 }
 
@@ -606,7 +606,9 @@ export default function MeetingsPage() {
   const [pasteTranscript, setPasteTranscript] = useState("");
   const [transcriptZoek, setTranscriptZoek] = useState("");
   const [filterKlant, setFilterKlant] = useState<number | null>(null);
+  const [filterPeriode, setFilterPeriode] = useState<"alles" | "week" | "maand">("alles");
   const [zoekTerm, setZoekTerm] = useState("");
+  const [copied, setCopied] = useState(false);
   const [notitiesText, setNotitiesText] = useState("");
   const [notitiesDirty, setNotitiesDirty] = useState(false);
   const { data: meetings = [], isLoading } = useMeetings(filterKlant ?? undefined);
@@ -641,6 +643,17 @@ export default function MeetingsPage() {
     const now = new Date();
     const upcomingMeetings: Meeting[] = [];
     const recentMeetings: Meeting[] = [];
+
+    const periodeFilter = (datum: string) => {
+      if (filterPeriode === "alles") return true;
+      const d = new Date(datum);
+      if (filterPeriode === "week") {
+        const start = new Date(now); start.setDate(now.getDate() - 7); start.setHours(0,0,0,0);
+        return d >= start;
+      }
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      return d >= start;
+    };
 
     const filtered = zoekTerm.trim()
       ? meetings.filter((m) => {

@@ -869,21 +869,24 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
               </div>
             )}
 
-            {/* Row 4: Focus Insights — actionable */}
+            {/* Row 4: Focus Insights — actionable cards */}
             {inzichten.length > 0 && (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {inzichten.slice(0, 4).map((inzicht, i) => {
                   const config = {
-                    positief: { icon: CheckCircle2, border: "border-emerald-500/20", bg: "bg-emerald-500/5", color: "text-emerald-400" },
-                    waarschuwing: { icon: AlertTriangle, border: "border-amber-500/20", bg: "bg-amber-500/5", color: "text-amber-400" },
-                    tip: { icon: Lightbulb, border: "border-blue-500/20", bg: "bg-blue-500/5", color: "text-blue-400" },
-                    actie: { icon: ArrowRight, border: "border-autronis-accent/20", bg: "bg-autronis-accent/5", color: "text-autronis-accent" },
+                    positief: { icon: CheckCircle2, border: "border-emerald-500/20", bg: "bg-emerald-500/8", color: "text-emerald-400", hoverBg: "hover:bg-emerald-500/12" },
+                    waarschuwing: { icon: AlertTriangle, border: "border-amber-500/20", bg: "bg-amber-500/8", color: "text-amber-400", hoverBg: "hover:bg-amber-500/12" },
+                    tip: { icon: Lightbulb, border: "border-blue-500/20", bg: "bg-blue-500/8", color: "text-blue-400", hoverBg: "hover:bg-blue-500/12" },
+                    actie: { icon: ArrowRight, border: "border-autronis-accent/20", bg: "bg-autronis-accent/8", color: "text-autronis-accent", hoverBg: "hover:bg-autronis-accent/12" },
                   }[inzicht.type];
                   const InzichtIcon = config.icon;
                   return (
-                    <div key={i} className={cn("flex items-start gap-2 rounded-lg px-3 py-2 border shrink-0 max-w-xs", config.border, config.bg)}>
-                      <InzichtIcon className={cn("w-3.5 h-3.5 mt-0.5 shrink-0", config.color)} />
-                      <p className="text-[11px] text-autronis-text-primary leading-relaxed">{inzicht.tekst}</p>
+                    <div key={i} className={cn(
+                      "flex items-start gap-2.5 rounded-xl px-3.5 py-2.5 border transition-colors cursor-default",
+                      config.border, config.bg, config.hoverBg
+                    )}>
+                      <InzichtIcon className={cn("w-4 h-4 mt-0.5 shrink-0", config.color)} />
+                      <p className="text-xs text-autronis-text-primary leading-relaxed">{inzicht.tekst}</p>
                     </div>
                   );
                 })}

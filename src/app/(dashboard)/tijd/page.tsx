@@ -81,103 +81,211 @@ export default function TijdPage() {
           </div>
         </div>
 
-        {/* KPI cards — only on tijdlijn tab */}
-        {activeTab === "tijdlijn" && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Actieve tijd */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-[#17B8A5]/15 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4 text-autronis-accent" />
-                </div>
-                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Actieve tijd
-                </span>
-              </div>
-              {sessiesLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                  {formatTijd(stats?.totaalActief ?? 0)}
-                </p>
-              )}
-            </div>
+        {/* KPI cards + coaching — only on tijdlijn tab */}
+        {activeTab === "tijdlijn" && (() => {
+          const dwPct = stats ? Math.min(100, Math.round(((stats.deepWorkMinuten ?? 0) / (stats.deepWorkTarget ?? 240)) * 100)) : 0;
+          const dwRemaining = Math.max(0, (stats?.deepWorkTarget ?? 240) - (stats?.deepWorkMinuten ?? 0));
+          const score = stats?.focusScore ?? 0;
+          const scoreColor = score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-red-400";
+          const scoreLabel = score >= 70 ? "Sterk" : score >= 40 ? "Kan beter" : "Zwak";
+          const scoreBorderColor = score >= 70 ? "border-emerald-500/20" : score >= 40 ? "border-amber-500/20" : "border-red-500/20";
 
-            {/* Productief % */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-4 h-4 text-green-400" />
-                </div>
-                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Productief
-                </span>
-              </div>
-              {sessiesLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (
-                <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                  {stats?.productiefPercentage ?? 0}
-                  <span className="text-base font-medium text-autronis-text-secondary ml-0.5">%</span>
-                </p>
-              )}
-            </div>
+          // Trends vs yesterday
+          const prodTrend = gisterenStats ? (stats?.productiefPercentage ?? 0) - gisterenStats.productiefPercentage : null;
+          const scoreTrend = gisterenStats ? score - gisterenStats.focusScore : null;
 
-            {/* Deep Work — totale deep work tijd (sessies ≥25 min) */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
-                  <Zap className="w-4 h-4 text-yellow-400" />
-                </div>
-                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Deep work
-                </span>
-              </div>
-              {sessiesLoading ? (
-                <Skeleton className="h-8 w-24" />
-              ) : (
-                <div>
-                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                    {formatTijd((stats?.deepWorkMinuten ?? 0) * 60)}
-                  </p>
-                  <div className="w-full h-1 bg-autronis-border/30 rounded-full mt-2 overflow-hidden">
-                    <div className="h-full bg-yellow-400 rounded-full transition-all" style={{ width: `${Math.min(100, ((stats?.deepWorkMinuten ?? 0) / (stats?.deepWorkTarget ?? 240)) * 100)}%` }} />
+          // Deep work status
+          const dwStatusColor = dwPct >= 75 ? "text-emerald-400" : dwPct >= 40 ? "text-amber-400" : "text-red-400";
+          const dwBarColor = dwPct >= 75 ? "bg-emerald-400" : dwPct >= 40 ? "bg-amber-400" : "bg-red-400";
+          const dwBorderColor = dwPct >= 75 ? "border-emerald-500/20" : dwPct >= 40 ? "border-amber-500/20" : "border-red-500/20";
+
+          // Productief status
+          const prodPct = stats?.productiefPercentage ?? 0;
+          const prodColor = prodPct >= 80 ? "text-emerald-400" : prodPct >= 60 ? "text-amber-400" : "text-red-400";
+          const prodBorderColor = prodPct >= 80 ? "border-emerald-500/20" : prodPct >= 60 ? "border-amber-500/20" : "border-red-500/20";
+
+          // Coaching advices
+          const adviezen: Array<{ type: "goed" | "waarschuwing" | "kritiek"; tekst: string }> = [];
+          if (stats) {
+            if (dwPct < 40) adviezen.push({ type: "kritiek", tekst: `Je zit onder je deep work target (${formatTijd((stats.deepWorkMinuten ?? 0) * 60)} / ${formatTijd((stats.deepWorkTarget ?? 240) * 60)})` });
+            else if (dwPct >= 75) adviezen.push({ type: "goed", tekst: `Deep work target bijna gehaald (${dwPct}%)` });
+            if (prodPct >= 80) adviezen.push({ type: "goed", tekst: `Productiviteit is sterk (${prodPct}%)` });
+            else if (prodPct < 60) adviezen.push({ type: "waarschuwing", tekst: `Productiviteit is laag (${prodPct}%) — te veel afleiding?` });
+            if (stats.contextSwitches > 15) adviezen.push({ type: "waarschuwing", tekst: `${stats.contextSwitches} context switches — probeer langere blokken` });
+            if (stats.gemSessieLengte < 25) adviezen.push({ type: "waarschuwing", tekst: `Gem. sessie ${stats.gemSessieLengte}m — je wordt vaak onderbroken` });
+            if (dwRemaining > 0 && dwPct < 75) adviezen.push({ type: "kritiek", tekst: `Nog ${formatTijd(dwRemaining * 60)} deep work nodig` });
+          }
+
+          return (
+            <>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Actieve tijd */}
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-[#17B8A5]/15 flex items-center justify-center shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-autronis-accent" />
+                      </div>
+                      <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide font-medium">
+                        Actieve tijd
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-autronis-text-secondary mt-1 tabular-nums">
-                    van {formatTijd((stats?.deepWorkTarget ?? 240) * 60)} doel
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Flow Score */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-9 h-9 rounded-full bg-purple-500/15 flex items-center justify-center shrink-0">
-                  <Brain className="w-4 h-4 text-purple-400" />
-                </div>
-                <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">
-                  Flow Score
-                </span>
-              </div>
-              {sessiesLoading ? (
-                <Skeleton className="h-8 w-16" />
-              ) : (() => {
-                const score = stats?.focusScore ?? 0;
-                const color = score >= 70 ? "text-emerald-400" : score >= 40 ? "text-amber-400" : "text-red-400";
-                const label = score >= 70 ? "Sterk" : score >= 40 ? "Kan beter" : "Zwak";
-                return (
-                  <div>
-                    <p className={`text-2xl font-bold tabular-nums ${color}`}>
-                      {score}<span className="text-sm font-medium text-autronis-text-secondary ml-1">/100</span>
+                  {sessiesLoading ? (
+                    <Skeleton className="h-7 w-20" />
+                  ) : (
+                    <p className="text-xl font-bold text-autronis-text-primary tabular-nums">
+                      {formatTijd(stats?.totaalActief ?? 0)}
                     </p>
-                    <p className={`text-[10px] mt-1 font-medium ${color}`}>{label}</p>
+                  )}
+                </div>
+
+                {/* Productief % */}
+                <div className={`bg-autronis-card border ${prodBorderColor} rounded-2xl p-4 card-glow`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
+                        <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                      </div>
+                      <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide font-medium">
+                        Productief
+                      </span>
+                    </div>
+                    {prodTrend !== null && prodTrend !== 0 && (
+                      <span className={`flex items-center gap-0.5 text-[10px] font-medium ${prodTrend > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {prodTrend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                        {Math.abs(prodTrend)}%
+                      </span>
+                    )}
                   </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
+                  {sessiesLoading ? (
+                    <Skeleton className="h-7 w-14" />
+                  ) : (
+                    <p className={`text-xl font-bold tabular-nums ${prodColor}`}>
+                      {prodPct}
+                      <span className="text-sm font-medium text-autronis-text-secondary ml-0.5">%</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Deep Work */}
+                <div className={`bg-autronis-card border ${dwBorderColor} rounded-2xl p-4 card-glow`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0">
+                        <Zap className="w-3.5 h-3.5 text-yellow-400" />
+                      </div>
+                      <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide font-medium">
+                        Deep work
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-bold tabular-nums ${dwStatusColor}`}>{dwPct}%</span>
+                  </div>
+                  {sessiesLoading ? (
+                    <Skeleton className="h-7 w-20" />
+                  ) : (
+                    <div>
+                      <p className="text-xl font-bold text-autronis-text-primary tabular-nums">
+                        {formatTijd((stats?.deepWorkMinuten ?? 0) * 60)}
+                      </p>
+                      <div className="w-full h-1.5 bg-autronis-border/30 rounded-full mt-2 overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${dwBarColor}`} style={{ width: `${dwPct}%` }} />
+                      </div>
+                      <p className="text-[10px] text-autronis-text-secondary mt-1 tabular-nums">
+                        van {formatTijd((stats?.deepWorkTarget ?? 240) * 60)} doel
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Flow Score */}
+                <div className={`bg-autronis-card border ${scoreBorderColor} rounded-2xl p-4 card-glow`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-purple-500/15 flex items-center justify-center shrink-0">
+                        <Brain className="w-3.5 h-3.5 text-purple-400" />
+                      </div>
+                      <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide font-medium">
+                        Flow Score
+                      </span>
+                    </div>
+                    {scoreTrend !== null && scoreTrend !== 0 && (
+                      <span className={`flex items-center gap-0.5 text-[10px] font-medium ${scoreTrend > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {scoreTrend > 0 ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />}
+                        {Math.abs(scoreTrend)}
+                      </span>
+                    )}
+                  </div>
+                  {sessiesLoading ? (
+                    <Skeleton className="h-7 w-14" />
+                  ) : (
+                    <div>
+                      <p className={`text-xl font-bold tabular-nums ${scoreColor}`}>
+                        {score}<span className="text-sm font-medium text-autronis-text-secondary ml-1">/100</span>
+                      </p>
+                      {/* Flow score breakdown */}
+                      <div className="mt-2 space-y-1">
+                        {stats && stats.contextSwitches > 10 && (
+                          <p className="text-[10px] text-autronis-text-secondary flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-amber-400 shrink-0" />
+                            {stats.contextSwitches} switches
+                          </p>
+                        )}
+                        {stats && stats.gemSessieLengte < 25 && (
+                          <p className="text-[10px] text-autronis-text-secondary flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
+                            Korte sessies ({stats.gemSessieLengte}m)
+                          </p>
+                        )}
+                        {stats && (stats.deepWorkMinuten ?? 0) < 60 && (
+                          <p className="text-[10px] text-autronis-text-secondary flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-red-400 shrink-0" />
+                            Weinig deep work
+                          </p>
+                        )}
+                        {score >= 70 && (
+                          <p className={`text-[10px] font-medium ${scoreColor}`}>{scoreLabel}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Coaching panel */}
+              {!sessiesLoading && adviezen.length > 0 && (
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Lightbulb className="w-4 h-4 text-yellow-400" />
+                    <span className="text-sm font-semibold text-autronis-text-primary">Vandaag</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {adviezen.map((advies, i) => {
+                      const config = {
+                        goed: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20" },
+                        waarschuwing: { icon: AlertCircle, color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/20" },
+                        kritiek: { icon: AlertCircle, color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
+                      }[advies.type];
+                      const AdviesIcon = config.icon;
+                      return (
+                        <div key={i} className={`flex items-center gap-2 rounded-lg px-3 py-1.5 border text-xs ${config.bg}`}>
+                          <AdviesIcon className={`w-3.5 h-3.5 shrink-0 ${config.color}`} />
+                          <span className="text-autronis-text-primary">{advies.tekst}</span>
+                        </div>
+                      );
+                    })}
+                    {dwRemaining > 0 && dwPct < 75 && (
+                      <button className="flex items-center gap-2 rounded-lg px-3 py-1.5 border border-autronis-accent/30 bg-autronis-accent/10 text-xs text-autronis-accent font-medium hover:bg-autronis-accent/20 transition-colors">
+                        <Play className="w-3 h-3" />
+                        Start deep work blok
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Tab bar */}
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-1.5 flex gap-1 overflow-x-auto">
@@ -188,10 +296,10 @@ export default function TijdPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
                   isActive
-                    ? "bg-autronis-accent/15 text-autronis-accent"
-                    : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40"
+                    ? "bg-autronis-accent/20 text-autronis-accent shadow-sm shadow-autronis-accent/10 border border-autronis-accent/20"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 border border-transparent"
                 }`}
               >
                 <Icon className="w-4 h-4" />

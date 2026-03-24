@@ -1052,9 +1052,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Project voortgang widget - filter 100% */}
-            <ProjectVoortgangWidget />
-
             {/* Documenten widget */}
             <DocumentWidget />
           </div>

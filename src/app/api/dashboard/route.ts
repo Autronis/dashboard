@@ -253,6 +253,8 @@ export async function GET() {
         id: projecten.id,
         naam: projecten.naam,
         klantNaam: klanten.bedrijfsnaam,
+        voortgang: projecten.voortgangPercentage,
+        status: projecten.status,
       })
       .from(projecten)
       .innerJoin(klanten, eq(projecten.klantId, klanten.id))

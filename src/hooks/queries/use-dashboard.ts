@@ -41,7 +41,7 @@ interface DashboardData {
     urenTotaal: number;
     taken: { id: number; titel: string; projectNaam: string | null }[];
   } | null;
-  projecten: { id: number; naam: string; klantNaam: string }[];
+  projecten: { id: number; naam: string; klantNaam: string; voortgang: number | null; status: string }[];
 }
 
 async function fetchDashboard(): Promise<DashboardData> {

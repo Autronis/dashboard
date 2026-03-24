@@ -7,6 +7,8 @@ import type { AgendaTaak } from "@/hooks/queries/use-agenda";
 import Link from "next/link";
 
 const DUUR_OPTIES = [
+  { label: "5 min", waarde: 5 },
+  { label: "10 min", waarde: 10 },
   { label: "15 min", waarde: 15 },
   { label: "30 min", waarde: 30 },
   { label: "45 min", waarde: 45 },

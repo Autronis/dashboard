@@ -1104,6 +1104,38 @@ export default function DashboardPage() {
               </div>
             )}
 
+            {/* Mini gewoontes + focus + quick links */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <Link href="/gewoontes" className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Gewoontes</span>
+                </Link>
+                <Link href="/focus" className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <Clock className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Focus</span>
+                </Link>
+                <Link href="/radar" className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <Radar className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Learning</span>
+                </Link>
+                <Link href="/second-brain" className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <Brain className="w-3.5 h-3.5 text-autronis-accent" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Second Brain</span>
+                </Link>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link href="/financien" className="flex-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <Euro className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Financien</span>
+                </Link>
+                <Link href="/analytics" className="flex-1 flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">Analytics</span>
+                </Link>
+              </div>
+            </div>
+
             {/* Teamgenoot status - compact when offline */}
             {teamgenoot ? (
               teamgenoot.actieveTimer ? (
@@ -1147,81 +1179,6 @@ export default function DashboardPage() {
             {/* Idee van de dag — compact */}
             <IdeeVanDeDag />
 
-            {/* Learning Radar */}
-            <RadarWidget />
-
-            {/* Second Brain Widget */}
-            <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-5 card-glow">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-autronis-accent" />
-                  <h3 className="text-autronis-text-primary font-semibold">Second Brain</h3>
-                </div>
-                <Link href="/second-brain" className="text-autronis-accent text-sm hover:text-autronis-accent-hover transition-colors">
-                  Bekijk alles →
-                </Link>
-              </div>
-              {recentBrainItems && recentBrainItems.length > 0 ? (
-                <div className="space-y-2">
-                  {(() => {
-                    const seen = new Set<string>();
-                    return recentBrainItems.filter((item) => {
-                      const key = item.titel || item.id.toString();
-                      if (seen.has(key)) return false;
-                      seen.add(key);
-                      return true;
-                    }).map((item) => {
-                      const TypeIcon = secondBrainTypeIcons[item.type] ?? FileText;
-                      return (
-                        <Link key={item.id} href="/second-brain" className="flex items-center gap-3 group">
-                          <TypeIcon className="w-4 h-4 text-autronis-text-secondary" />
-                          <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate flex-1">
-                            {item.titel || "Zonder titel"}
-                          </span>
-                          <span className="text-xs text-autronis-text-secondary tabular-nums">
-                            {new Date(item.aangemaaktOp).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                          </span>
-                        </Link>
-                      );
-                    });
-                  })()}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <Brain className="w-8 h-8 text-autronis-accent/30 mx-auto mb-2" />
-                  <p className="text-sm text-autronis-text-secondary mb-2">Nog geen items opgeslagen</p>
-                  <Link
-                    href="/second-brain"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent/10 hover:bg-autronis-accent/20 text-autronis-accent rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Brain className="w-3.5 h-3.5" />
-                    Begin hier
-                  </Link>
-                </div>
-              )}
-            </div>
-
-            {/* Mini gewoontes + focus indicator */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow space-y-2">
-              <Link href="/gewoontes" className="flex items-center justify-between group">
-                <span className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
-                  <Flame className="w-3.5 h-3.5 text-orange-400" />
-                  Gewoontes
-                </span>
-                <span className="text-xs text-autronis-text-secondary group-hover:text-autronis-accent transition-colors">
-                  Bekijk →
-                </span>
-              </Link>
-              <Link href="/focus" className="flex items-center justify-between group">
-                <span className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-400" />
-                  Focus vandaag
-                </span>
-                <span className="text-xs text-autronis-text-secondary group-hover:text-autronis-accent transition-colors">
-                  Bekijk →
-                </span>
-              </Link>
-            </div>
 
             {/* Concurrent updates widget */}
             {concurrentData && concurrentData.highlights.length > 0 && (

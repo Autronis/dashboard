@@ -59,6 +59,7 @@ export async function GET(req: NextRequest) {
         nietRelevant: radarItems.nietRelevant,
         aangemaaktOp: radarItems.aangemaaktOp,
         bronNaam: sql<string>`${radarBronnen.naam}`.as("bron_naam"),
+        bronType: sql<string>`${radarBronnen.type}`.as("bron_type"),
       })
       .from(radarItems)
       .leftJoin(radarBronnen, eq(radarItems.bronId, radarBronnen.id))

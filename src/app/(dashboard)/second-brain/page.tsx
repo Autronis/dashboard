@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo, type DragEvent } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain,
   FileText,
@@ -15,6 +16,13 @@ import {
   BookOpen,
   ArrowUpDown,
   Upload,
+  CheckSquare,
+  PenTool,
+  Archive,
+  Terminal,
+  Camera,
+  Clipboard,
+  Loader2,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +33,7 @@ import {
   useCreateSecondBrainItem,
   useVerwerkenSecondBrain,
   useUpdateSecondBrainItem,
+  useDeleteSecondBrainItem,
   type SecondBrainItem,
 } from "@/hooks/queries/use-second-brain";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,12 +41,36 @@ import { AiZoekenTab } from "./ai-zoeken-tab";
 import { DetailModal } from "./detail-modal";
 
 const typeConfig = {
-  tekst: { icon: FileText, label: "Tekst", color: "text-blue-400" },
-  url: { icon: Link2, label: "URL", color: "text-purple-400" },
-  afbeelding: { icon: ImageIcon, label: "Afbeelding", color: "text-green-400" },
-  pdf: { icon: FileDown, label: "PDF", color: "text-red-400" },
-  code: { icon: Code, label: "Code", color: "text-yellow-400" },
+  tekst: { icon: FileText, label: "Tekst", color: "text-slate-400", bg: "bg-slate-500/15", border: "border-slate-500/20" },
+  url: { icon: Link2, label: "URL", color: "text-blue-400", bg: "bg-blue-500/15", border: "border-blue-500/20" },
+  afbeelding: { icon: Camera, label: "Afbeelding", color: "text-purple-400", bg: "bg-purple-500/15", border: "border-purple-500/20" },
+  pdf: { icon: FileDown, label: "PDF", color: "text-red-400", bg: "bg-red-500/15", border: "border-red-500/20" },
+  code: { icon: Terminal, label: "Code", color: "text-emerald-400", bg: "bg-emerald-500/15", border: "border-emerald-500/20" },
 } as const;
+
+// Tag category coloring
+const TAG_COLORS: Record<string, { bg: string; text: string }> = {
+  technologie: { bg: "bg-autronis-accent/10", text: "text-autronis-accent" },
+  tool: { bg: "bg-autronis-accent/10", text: "text-autronis-accent" },
+  proces: { bg: "bg-autronis-accent/10", text: "text-autronis-accent" },
+  klant: { bg: "bg-amber-500/10", text: "text-amber-400" },
+  referentie: { bg: "bg-amber-500/10", text: "text-amber-400" },
+  idee: { bg: "bg-purple-500/10", text: "text-purple-400" },
+  inspiratie: { bg: "bg-purple-500/10", text: "text-purple-400" },
+  "geleerde-les": { bg: "bg-orange-500/10", text: "text-orange-400" },
+};
+function tagKleur(tag: string): { bg: string; text: string } {
+  const lower = tag.toLowerCase();
+  for (const [key, val] of Object.entries(TAG_COLORS)) {
+    if (lower === key || lower.includes(key)) return val;
+  }
+  return { bg: "bg-autronis-accent/10", text: "text-autronis-accent" };
+}
+
+// Optimistic item type
+interface OptimisticItem extends SecondBrainItem {
+  _optimistic?: true;
+}
 
 type TypeKey = keyof typeof typeConfig;
 type SortMode = "nieuwste" | "meest-gebruikt" | "favorieten";
@@ -59,28 +92,46 @@ export default function SecondBrainPage() {
   const [tagFilter, setTagFilter] = useState("");
   const [zoek, setZoek] = useState("");
   const [favoriet, setFavoriet] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<SecondBrainItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<OptimisticItem | null>(null);
   const [nieuwInput, setNieuwInput] = useState("");
   const [detectedType, setDetectedType] = useState<TypeKey | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("nieuwste");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [needsRefetch, setNeedsRefetch] = useState(false);
+  const [optimisticItems, setOptimisticItems] = useState<OptimisticItem[]>([]);
+  const [clipboardUrl, setClipboardUrl] = useState<string | null>(null);
+  const [batchProgress, setBatchProgress] = useState<Record<string, "pending" | "done" | "fout">>({});
+  const [hoveredItemId, setHoveredItemId] = useState<number | null>(null);
 
   const { data, isLoading } = useSecondBrain(typeFilter, tagFilter, zoek, favoriet, needsRefetch ? 3000 : false);
   const createMutation = useCreateSecondBrainItem();
   const verwerkenMutation = useVerwerkenSecondBrain();
   const updateMutation = useUpdateSecondBrainItem();
+  const deleteMutation = useDeleteSecondBrainItem();
 
-  const items = data?.items ?? [];
+  const serverItems = data?.items ?? [];
   const kpis = data?.kpis;
+
+  // Merge optimistic items (remove once they appear in server data)
+  const items = useMemo(() => {
+    const serverIds = new Set(serverItems.map((i) => i.id));
+    const stillOptimistic = optimisticItems.filter((o) => !serverIds.has(o.id));
+    return [...stillOptimistic, ...serverItems] as OptimisticItem[];
+  }, [serverItems, optimisticItems]);
 
   // Stop polling when all visible items have AI tags
   useEffect(() => {
-    if (needsRefetch && items.length > 0 && items.every((item) => item.aiTags !== null)) {
+    if (needsRefetch && serverItems.length > 0 && serverItems.every((item) => item.aiTags !== null)) {
       setNeedsRefetch(false);
     }
-  }, [needsRefetch, items]);
+  }, [needsRefetch, serverItems]);
+
+  // Remove optimistic items when they appear in server data
+  useEffect(() => {
+    const serverIds = new Set(serverItems.map((i) => i.id));
+    setOptimisticItems((prev) => prev.filter((o) => !serverIds.has(o.id)));
+  }, [serverItems]);
 
   // Keep selectedItem in sync with query data
   useEffect(() => {
@@ -91,6 +142,24 @@ export default function SecondBrainPage() {
       }
     }
   }, [items, selectedItem]);
+
+  // Clipboard URL detection
+  useEffect(() => {
+    async function detectClipboardUrl() {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (/^https?:\/\//.test(text.trim()) && text.trim() !== clipboardUrl) {
+          setClipboardUrl(text.trim());
+        } else if (clipboardUrl && !/^https?:\/\//.test(text.trim())) {
+          setClipboardUrl(null);
+        }
+      } catch {
+        // Clipboard access not granted
+      }
+    }
+    const interval = setInterval(detectClipboardUrl, 2000);
+    return () => clearInterval(interval);
+  }, [clipboardUrl]);
 
   // Auto-detect type from input
   useEffect(() => {
@@ -113,16 +182,44 @@ export default function SecondBrainPage() {
     }
   }, []);
 
+  const addOptimisticItem = useCallback((type: TypeKey, input: string) => {
+    const fakeId = -(Date.now());
+    const optimistic: OptimisticItem = {
+      id: fakeId,
+      gebruikerId: 0,
+      type,
+      titel: input.slice(0, 60) || "Opslaan...",
+      inhoud: type !== "url" ? input : null,
+      aiSamenvatting: null,
+      aiTags: null,
+      bronUrl: type === "url" ? input : null,
+      bestandPad: null,
+      taal: null,
+      isFavoriet: 0,
+      isGearchiveerd: 0,
+      aangemaaktOp: new Date().toISOString(),
+      bijgewerktOp: new Date().toISOString(),
+      _optimistic: true,
+    };
+    setOptimisticItems((prev) => [optimistic, ...prev]);
+    return fakeId;
+  }, []);
+
   const handleSubmit = useCallback(async () => {
     const input = nieuwInput.trim();
     if (!input) return;
 
     const isUrl = /^https?:\/\//.test(input);
     const isCode = input.startsWith("```");
-    const resolvedType = isUrl ? "URL" : isCode ? "Code" : "Tekst";
+    const type: TypeKey = isUrl ? "url" : isCode ? "code" : "tekst";
+    const resolvedLabel = typeConfig[type].label;
+
+    addOptimisticItem(type, input);
+    setNieuwInput("");
+    setDetectedType(null);
 
     const onSuccess = () => {
-      addToast(`Opgeslagen als ${resolvedType}`, "succes");
+      addToast(`${resolvedLabel} opgeslagen · AI verwerkt...`, "succes");
       setNeedsRefetch(true);
     };
     const onError = () => addToast("Kon item niet opslaan", "fout");
@@ -134,10 +231,7 @@ export default function SecondBrainPage() {
     } else {
       createMutation.mutate({ type: "tekst", inhoud: input }, { onSuccess, onError });
     }
-
-    setNieuwInput("");
-    setDetectedType(null);
-  }, [nieuwInput, verwerkenMutation, createMutation, addToast]);
+  }, [nieuwInput, verwerkenMutation, createMutation, addToast, addOptimisticItem]);
 
   const handleFileUpload = useCallback(
     (file: File) => {

@@ -30,6 +30,7 @@ export interface RadarItem {
   bewaard: number;
   nietRelevant: number;
   bronNaam: string | null;
+  bronType: string | null;
   aangemaaktOp: string;
 }
 

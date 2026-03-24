@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import {
   Hammer, Search, Compass, Bot, Cog, Crown,
-  Clock, Coins,
+  Clock, Coins, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
@@ -26,12 +27,28 @@ const statusConfig: Record<AgentStatus, { label: string; dotClass: string; borde
   offline: { label: "Offline", dotClass: "bg-gray-600", borderClass: "border-gray-600/15" },
 };
 
-function runtimeMinutes(dateString: string): string {
-  const diff = Date.now() - new Date(dateString).getTime();
+// Live ticking hook — updates every second
+function useLiveRuntime(startedAt: string | undefined): string {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!startedAt) return;
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  if (!startedAt) return "";
+  const diff = Date.now() - new Date(startedAt).getTime();
   const min = Math.floor(diff / 60000);
-  if (min < 1) return "<1m";
-  if (min < 60) return `${min}m`;
+  const sec = Math.floor((diff % 60000) / 1000);
+  if (min < 1) return `${sec}s`;
+  if (min < 60) return `${min}m${sec}s`;
   return `${Math.floor(min / 60)}u${min % 60}m`;
+}
+
+function costColorClass(cost: number): string {
+  if (cost < 0.5) return "text-green-400";
+  if (cost < 2.0) return "text-amber-400";
+  return "text-red-400";
 }
 
 interface AgentStationProps {

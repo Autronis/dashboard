@@ -8,6 +8,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Vercel deployment
-        run: |
-          curl -s -X POST "https://api.vercel.com/v1/integrations/deploy/prj_ZgJQ8MJVVD1iOfGN1pbhIzhXBKo9/YqGjDvuxv1"
+      - uses: actions/checkout@v4
+      - name: Deploy to Vercel
+        run: npx vercel --token ${{ secrets.VERCEL_TOKEN }} --prod --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

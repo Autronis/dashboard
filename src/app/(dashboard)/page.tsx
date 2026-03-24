@@ -10,6 +10,7 @@ import {
   Clock,
   FolderKanban,
   AlertTriangle,
+  Flame,
   Play,
   Square,
   CheckCircle2,
@@ -1200,8 +1201,27 @@ export default function DashboardPage() {
               )}
             </div>
 
-            <FocusWidget />
-            <HabitWidget />
+            {/* Mini gewoontes + focus indicator */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow space-y-2">
+              <Link href="/gewoontes" className="flex items-center justify-between group">
+                <span className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-orange-400" />
+                  Gewoontes
+                </span>
+                <span className="text-xs text-autronis-text-secondary group-hover:text-autronis-accent transition-colors">
+                  Bekijk →
+                </span>
+              </Link>
+              <Link href="/focus" className="flex items-center justify-between group">
+                <span className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-blue-400" />
+                  Focus vandaag
+                </span>
+                <span className="text-xs text-autronis-text-secondary group-hover:text-autronis-accent transition-colors">
+                  Bekijk →
+                </span>
+              </Link>
+            </div>
 
             {/* Concurrent updates widget */}
             {concurrentData && concurrentData.highlights.length > 0 && (

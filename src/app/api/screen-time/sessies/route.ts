@@ -323,7 +323,7 @@ export async function GET(req: NextRequest) {
         // Short interruptions (≤5 min like checking Slack, quick email) don't break deep work flow
         if (currentBlock) {
           const interruptMin = sessieDuurMin[i];
-          if (interruptMin > DEEP_WORK_INTERRUPT_MAX_MIN || sessies[i].categorie === "afleiding") {
+          if (interruptMin > DEEP_WORK_INTERRUPT_MAX_MIN) {
             // Long interruption or distraction — break the block
             if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
             currentBlock = null;

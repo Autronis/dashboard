@@ -10,6 +10,8 @@ import {
   Linkedin,
   Instagram,
   X,
+  Plus,
+  Send,
 } from "lucide-react";
 import { useContentPosts, useContentVideos, useSchedulePost, usePublishPost } from "@/hooks/queries/use-content";
 import { useToast } from "@/hooks/use-toast";
@@ -102,33 +104,53 @@ interface PostCardProps {
   post: ContentPost;
   hasVideo: boolean;
   onClick: () => void;
+  onPublish?: (id: number) => void;
+  isPublishing?: boolean;
+  isPast?: boolean;
 }
 
-function PostCard({ post, hasVideo, onClick }: PostCardProps) {
+function PostCard({ post, hasVideo, onClick, onPublish, isPublishing, isPast }: PostCardProps) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left bg-autronis-bg border border-autronis-border rounded-lg p-2 hover:border-autronis-accent/50 transition-all group space-y-1"
-    >
-      <div className="flex items-center gap-1.5">
-        <PlatformDot platform={post.platform} />
-        <span className="text-xs font-medium text-autronis-text-primary truncate flex-1">
-          {post.titel}
-        </span>
-        {hasVideo && (
-          <Camera className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+    <div className="space-y-1">
+      <button
+        onClick={onClick}
+        className={cn(
+          "w-full text-left bg-autronis-bg border rounded-lg p-2 hover:border-autronis-accent/50 transition-all group space-y-1",
+          isPast && post.status !== "gepubliceerd"
+            ? "border-amber-500/40"
+            : "border-autronis-border"
         )}
-      </div>
-      <div className="flex items-center justify-between gap-1">
-        {post.geplandOp && (
-          <span className="text-[10px] text-autronis-text-secondary flex items-center gap-0.5">
-            <Clock className="w-2.5 h-2.5" />
-            {formatTime(post.geplandOp)}
+      >
+        <div className="flex items-center gap-1.5">
+          <PlatformDot platform={post.platform} />
+          <span className="text-xs font-medium text-autronis-text-primary truncate flex-1">
+            {post.titel}
           </span>
-        )}
-        <StatusBadge status={post.status} />
-      </div>
-    </button>
+          {hasVideo && (
+            <Camera className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-1">
+          {post.geplandOp && (
+            <span className="text-[10px] text-autronis-text-secondary flex items-center gap-0.5">
+              <Clock className="w-2.5 h-2.5" />
+              {formatTime(post.geplandOp)}
+            </span>
+          )}
+          <StatusBadge status={post.status} />
+        </div>
+      </button>
+      {isPast && post.status !== "gepubliceerd" && onPublish && (
+        <button
+          onClick={() => onPublish(post.id)}
+          disabled={isPublishing}
+          className="w-full flex items-center justify-center gap-1 py-1 text-[10px] font-medium text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg transition-colors disabled:opacity-50"
+        >
+          <Send className="w-2.5 h-2.5" />
+          {isPublishing ? "..." : "Publiceer nu"}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -319,6 +341,23 @@ export default function ContentKalenderPage() {
     return { total: scheduledThisWeek.length, published, planned, linkedin, instagram };
   }, [scheduledThisWeek]);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Past 8 weeks heatmap data
+  const heatmapDays = useMemo(() => {
+    const days: { date: Date; count: number }[] = [];
+    for (let w = 7; w >= 0; w--) {
+      for (let d = 0; d < 7; d++) {
+        const date = addDays(addDays(today, -(w * 7)), d);
+        const dateStr = date.toISOString().split("T")[0];
+        const count = posts.filter((p) => p.geplandOp?.startsWith(dateStr) && p.status === "gepubliceerd").length;
+        days.push({ date, count });
+      }
+    }
+    return days;
+  }, [posts, today]);
+
   function postsForDay(day: Date): ContentPost[] {
     return scheduledThisWeek.filter(
       (p) => p.geplandOp && isSameDay(new Date(p.geplandOp), day)
@@ -353,9 +392,6 @@ export default function ContentKalenderPage() {
       },
     });
   }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const weekLabel = `${weekStart.toLocaleDateString("nl-NL", { day: "numeric", month: "long" })} – ${weekEnd.toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}`;
 
@@ -477,18 +513,63 @@ export default function ContentKalenderPage() {
 
               {/* Posts */}
               <div className="flex-1 p-2 pt-1 space-y-1.5 overflow-y-auto">
-                {dayPosts.map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    hasVideo={videoPostIds.has(post.id)}
-                    onClick={() => setSelectedPost(post)}
-                  />
-                ))}
+                {dayPosts.map((post) => {
+                  const isPast = post.geplandOp ? new Date(post.geplandOp) < today : false;
+                  return (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      hasVideo={videoPostIds.has(post.id)}
+                      onClick={() => setSelectedPost(post)}
+                      onPublish={handlePublish}
+                      isPublishing={publishPost.isPending}
+                      isPast={isPast}
+                    />
+                  );
+                })}
+                {dayPosts.length === 0 && !isToday && (
+                  <button
+                    onClick={() => {
+                      const slot = unscheduled[0];
+                      if (slot) setSelectedPost(slot);
+                    }}
+                    className="w-full h-10 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity text-autronis-text-secondary/50 hover:text-autronis-accent hover:bg-autronis-accent/5 rounded-lg border border-dashed border-transparent hover:border-autronis-accent/20"
+                    title="Inplannen op deze dag"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
           );
         })}
+      </div>
+
+      {/* Week heatmap */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+        <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-3">Publicatie heatmap — 8 weken</h2>
+        <div className="flex gap-1 flex-wrap">
+          {heatmapDays.map((day, i) => (
+            <div
+              key={i}
+              title={`${day.date.toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}: ${day.count} gepubliceerd`}
+              className={cn(
+                "w-4 h-4 rounded-sm transition-colors",
+                day.count === 0 ? "bg-autronis-border/50" :
+                day.count === 1 ? "bg-autronis-accent/30" :
+                day.count === 2 ? "bg-autronis-accent/60" :
+                "bg-autronis-accent"
+              )}
+            />
+          ))}
+        </div>
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] text-autronis-text-secondary">Minder</span>
+          {["bg-autronis-border/50", "bg-autronis-accent/30", "bg-autronis-accent/60", "bg-autronis-accent"].map((c, i) => (
+            <div key={i} className={cn("w-3 h-3 rounded-sm", c)} />
+          ))}
+          <span className="text-[10px] text-autronis-text-secondary">Meer</span>
+        </div>
       </div>
 
       {/* Unscheduled */}

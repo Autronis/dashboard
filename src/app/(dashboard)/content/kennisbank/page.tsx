@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { useContentProfiel, useUpdateProfiel, useContentInzichten, useCreateInzicht, useDeleteInzicht } from "@/hooks/queries/use-content";
 import { useKlanten } from "@/hooks/queries/use-klanten";
@@ -165,8 +165,29 @@ export default function KennisbankPage() {
 
       {/* Inzichten */}
       <section className="space-y-4">
+        {(() => {
+          const ongebruikt = inzichten?.filter((i) => !i.isGebruikt).length ?? 0;
+          if (ongebruikt < 3) {
+            return (
+              <div className="flex items-center gap-3 bg-amber-500/8 border border-amber-500/20 rounded-xl px-4 py-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <p className="text-sm text-amber-300">
+                  Slechts <strong>{ongebruikt}</strong> ongebruikte inzichten beschikbaar voor content generatie. Voeg er meer toe voor betere resultaten.
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()}
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-autronis-text-primary">Inzichten</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-semibold text-autronis-text-primary">Inzichten</h2>
+            {inzichten && (
+              <span className="text-xs text-autronis-text-secondary bg-autronis-bg border border-autronis-border px-2 py-0.5 rounded-full">
+                {inzichten.filter((i) => !i.isGebruikt).length} ongebruikt
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setModalOpen(true)}
             className="flex items-center gap-2 bg-autronis-accent text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-autronis-accent/90 transition-colors btn-press"

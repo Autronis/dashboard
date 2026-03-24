@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef } from "react";
+import React, { useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -108,8 +108,8 @@ export default function ContentPage() {
   const genereerWeek = useGenerateBatch();
   const updatePost = useUpdatePost();
 
-  const [weergave, setWeergave] = useState<"cards" | "pipeline">("cards");
   const [pipelineFilter, setPipelineFilter] = useState<PipelineFilter>("alle");
+  const [weekBriefOpen, setWeekBriefOpen] = useState(false);
 
   const huidigeWeek = formatWeek();
 
@@ -214,23 +214,31 @@ export default function ContentPage() {
     return items;
   }, [allePosts, videos, banners, pipelineFilter]);
 
-  // Suggesties
+  // Suggesties with priority
   const suggesties = useMemo(() => {
-    const tips: { tekst: string; actie?: string }[] = [];
+    const tips: { tekst: string; actie?: string; href?: string; prio: "hoog" | "normaal" | "info" }[] = [];
+    const ongebruikteInzichten = inzichten.filter((i) => !i.isGebruikt);
+
     if (stats.postsDezeWeek === 0) {
-      tips.push({ tekst: "Je hebt deze week nog niet gepost — genereer een LinkedIn post", actie: "genereer" });
+      tips.push({ tekst: "Je hebt deze week nog niet gepost — genereer een LinkedIn post", actie: "genereer", prio: "hoog" });
     }
-    if (stats.bannersKlaar < 3) {
-      tips.push({ tekst: "Maak meer banners voor een consistent Instagram grid" });
+    if (ongebruikteInzichten.length < 3) {
+      tips.push({ tekst: `Slechts ${ongebruikteInzichten.length} ongebruikte inzichten — voeg er meer toe voor betere content`, href: "/content/kennisbank", prio: "hoog" });
     }
     if (stats.conceptPosts > 5) {
-      tips.push({ tekst: `Je hebt ${stats.conceptPosts} concepten staan — plan ze in of publiceer` });
+      tips.push({ tekst: `Je hebt ${stats.conceptPosts} concepten staan — plan ze in of publiceer`, href: "/content/posts", prio: "normaal" });
+    }
+    if (stats.bannersKlaar < 3) {
+      tips.push({ tekst: "Maak meer banners voor een consistent Instagram grid", href: "/content/banners", prio: "normaal" });
+    }
+    if (stats.geplandPosts === 0 && stats.totalePosts > 0) {
+      tips.push({ tekst: "Geen posts gepland — gebruik de kalender om posts in te plannen", href: "/content/kalender", prio: "normaal" });
     }
     if (tips.length === 0) {
-      tips.push({ tekst: "Tip: maak content van je laatste project resultaten" });
+      tips.push({ tekst: "Tip: maak content van je laatste project resultaten", href: "/content/kennisbank", prio: "info" });
     }
-    return tips;
-  }, [stats]);
+    return tips.slice(0, 3);
+  }, [stats, inzichten]);
 
   // Handlers
   function handleGenereer() {
@@ -248,6 +256,11 @@ export default function ContentPage() {
   }
 
   function handleGenereerWeek() {
+    setWeekBriefOpen(true);
+  }
+
+  function handleBevestigWeek() {
+    setWeekBriefOpen(false);
     genereerWeek.mutate({ count: 7 }, {
       onSuccess: () => addToast("Week content gegenereerd (7 posts)", "succes"),
       onError: (err) => addToast(err.message || "Genereren mislukt", "fout"),
@@ -318,50 +331,42 @@ export default function ContentPage() {
         <button
           onClick={handleGenereer}
           disabled={genereerBatch.isPending}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+          className="btn-shimmer inline-flex items-center gap-2 px-6 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
         >
           {genereerBatch.isPending ? (
             <Loader2 className="w-4 h-4 animate-spin" />
           ) : (
             <Sparkles className="w-4 h-4" />
           )}
-          Genereer content
+          {genereerBatch.isPending ? "Claude schrijft..." : "Genereer content"}
         </button>
       </div>
 
       {/* KPI cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-          <div className="flex items-center gap-2 mb-2">
-            <Newspaper className="w-4 h-4 text-blue-400" />
-            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">Posts deze week</span>
-          </div>
-          <p className="text-2xl font-bold text-blue-400 tabular-nums">{stats.postsDezeWeek}</p>
-          <p className="text-[11px] text-autronis-text-secondary mt-1">{stats.totalePosts} totaal</p>
-        </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-          <div className="flex items-center gap-2 mb-2">
-            <Video className="w-4 h-4 text-purple-400" />
-            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">Video&apos;s deze maand</span>
-          </div>
-          <p className="text-2xl font-bold text-purple-400 tabular-nums">{stats.videossDezeMaand}</p>
-          <p className="text-[11px] text-autronis-text-secondary mt-1">{stats.totaleVideos} totaal</p>
-        </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-          <div className="flex items-center gap-2 mb-2">
-            <ImageIcon className="w-4 h-4 text-pink-400" />
-            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">Banners gemaakt</span>
-          </div>
-          <p className="text-2xl font-bold text-pink-400 tabular-nums">{stats.bannersKlaar}</p>
-          <p className="text-[11px] text-autronis-text-secondary mt-1">{stats.totaleBanners} totaal</p>
-        </div>
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-          <div className="flex items-center gap-2 mb-2">
-            <BookOpen className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">Inzichten opgeslagen</span>
-          </div>
-          <p className="text-2xl font-bold text-emerald-400 tabular-nums">{stats.inzichten}</p>
-        </div>
+        {[
+          { label: "Posts deze week", value: stats.postsDezeWeek, sub: `${stats.totalePosts} totaal`, icon: Newspaper, kleur: "text-blue-400", bg: "kpi-gradient-facturen" },
+          { label: "Video's deze maand", value: stats.videossDezeMaand, sub: `${stats.totaleVideos} totaal`, icon: Video, kleur: "text-purple-400", bg: "kpi-gradient-projecten" },
+          { label: "Banners gemaakt", value: stats.bannersKlaar, sub: `${stats.totaleBanners} totaal`, icon: ImageIcon, kleur: "text-pink-400", bg: "kpi-gradient-deadlines" },
+          { label: "Inzichten opgeslagen", value: stats.inzichten, sub: null, icon: BookOpen, kleur: "text-emerald-400", bg: "kpi-gradient-betaald" },
+        ].map((kpi, i) => (
+          <motion.div
+            key={kpi.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.06, duration: 0.35 }}
+            className={cn("border border-autronis-border rounded-2xl p-5 card-glow", kpi.bg)}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <kpi.icon className={cn("w-4 h-4", kpi.kleur)} />
+              <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">{kpi.label}</span>
+            </div>
+            <p className={cn("text-2xl font-bold tabular-nums", kpi.kleur)}>
+              <AnimatedNumber value={kpi.value} />
+            </p>
+            {kpi.sub && <p className="text-[11px] text-autronis-text-secondary mt-1">{kpi.sub}</p>}
+          </motion.div>
+        ))}
       </div>
 
       {/* Content kalender preview */}
@@ -373,35 +378,43 @@ export default function ContentPage() {
           </Link>
         </div>
         <div className="grid grid-cols-7 gap-2">
-          {kalenderDagen.map((dag) => (
-            <div key={dag.label} className="text-center">
+          {kalenderDagen.map((dag, i) => (
+            <motion.div
+              key={dag.label}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04 }}
+              className="text-center"
+            >
               <p className="text-[11px] text-autronis-text-secondary mb-2 font-medium">{dag.label}</p>
-              <div className={cn(
-                "min-h-[60px] rounded-xl border p-2 transition-colors",
-                dag.posts.length > 0
-                  ? "border-autronis-accent/30 bg-autronis-accent/5"
-                  : "border-autronis-border bg-autronis-bg/50"
-              )}>
-                {dag.posts.length > 0 ? (
-                  <div className="space-y-1">
-                    {dag.posts.slice(0, 2).map((post) => (
-                      <div key={post.id} className="flex items-center gap-1">
-                        <div className={cn(
-                          "w-1.5 h-1.5 rounded-full shrink-0",
-                          post.platform === "linkedin" ? "bg-blue-400" : "bg-pink-400"
-                        )} />
-                        <p className="text-[10px] text-autronis-text-primary truncate">{post.titel}</p>
-                      </div>
-                    ))}
-                    {dag.posts.length > 2 && (
-                      <p className="text-[10px] text-autronis-text-secondary">+{dag.posts.length - 2} meer</p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-[10px] text-autronis-text-secondary/50 mt-3">—</p>
-                )}
-              </div>
-            </div>
+              <Link href="/content/kalender">
+                <div className={cn(
+                  "min-h-[60px] rounded-xl border p-2 transition-all hover:scale-[1.02]",
+                  dag.posts.length > 0
+                    ? "border-autronis-accent/30 bg-autronis-accent/5"
+                    : "border-autronis-border bg-autronis-bg/50 hover:border-autronis-border-hover"
+                )}>
+                  {dag.posts.length > 0 ? (
+                    <div className="space-y-1">
+                      {dag.posts.slice(0, 2).map((post) => {
+                        const pl = PLATFORM_COLORS[post.platform ?? "linkedin"] ?? PLATFORM_COLORS.linkedin;
+                        return (
+                          <div key={post.id} title={`${post.platform}: ${post.titel}`} className="flex items-center gap-1">
+                            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", post.platform === "linkedin" ? "bg-blue-400" : "bg-pink-400")} />
+                            <p className={cn("text-[10px] truncate font-medium", pl.text)}>{post.titel}</p>
+                          </div>
+                        );
+                      })}
+                      {dag.posts.length > 2 && (
+                        <p className="text-[10px] text-autronis-text-secondary">+{dag.posts.length - 2}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[10px] text-autronis-text-secondary/50 mt-3">—</p>
+                  )}
+                </div>
+              </Link>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -431,40 +444,14 @@ export default function ContentPage() {
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
           >
             {genereerWeek.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarDays className="w-4 h-4" />}
-            Plan content week
+            {genereerWeek.isPending ? "Bezig..." : "Plan content week"}
           </button>
         </div>
       </div>
 
-      {/* View toggle + Section cards / Pipeline */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide">Overzicht</h2>
-        <div className="flex items-center gap-1 bg-autronis-bg rounded-xl p-1 border border-autronis-border">
-          <button
-            onClick={() => setWeergave("cards")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              weergave === "cards" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
-            )}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            Cards
-          </button>
-          <button
-            onClick={() => setWeergave("pipeline")}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              weergave === "pipeline" ? "bg-autronis-card text-autronis-text-primary" : "text-autronis-text-secondary hover:text-autronis-text-primary"
-            )}
-          >
-            <Columns3 className="w-3.5 h-3.5" />
-            Pipeline
-          </button>
-        </div>
-      </div>
-
-      {weergave === "cards" ? (
-        /* Section cards with live stats */
+      {/* Section cards */}
+      <div>
+        <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-4">Modules</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           <Link
             href="/content/kennisbank"
@@ -589,10 +576,12 @@ export default function ContentPage() {
             </div>
           </Link>
         </div>
-      ) : (
-        /* Pipeline / Kanban view */
-        <div className="space-y-4">
-          {/* Filter buttons */}
+      </div>
+
+      {/* Pipeline */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide">Pipeline</h2>
           <div className="flex gap-2">
             {([
               { key: "alle" as const, label: "Alle" },
@@ -614,27 +603,33 @@ export default function ContentPage() {
               </button>
             ))}
           </div>
+        </div>
 
-          {/* Kanban columns */}
-          <div className="grid grid-cols-4 gap-4">
-            {KOLOM_CONFIG.map((kolom) => {
-              const items = pipelineItems.filter((i) => i.kolom === kolom.key);
-              return (
-                <div
-                  key={kolom.key}
-                  className="bg-autronis-bg border border-autronis-border rounded-2xl p-4 min-h-[300px]"
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handleDrop(kolom.key)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full", kolom.bgKleur)} />
-                      <h3 className={cn("text-sm font-semibold", kolom.kleur)}>{kolom.label}</h3>
-                    </div>
-                    <span className="text-xs text-autronis-text-secondary tabular-nums bg-autronis-card px-2 py-0.5 rounded-full">
-                      {items.length}
-                    </span>
+        {/* Kanban columns */}
+        <div className="grid grid-cols-4 gap-4">
+          {KOLOM_CONFIG.map((kolom) => {
+            const items = pipelineItems.filter((i) => i.kolom === kolom.key);
+            return (
+              <div
+                key={kolom.key}
+                className={cn("border rounded-2xl p-4 min-h-[200px]", kolom.tint)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(kolom.key)}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2 h-2 rounded-full", kolom.bgKleur)} />
+                    <h3 className={cn("text-sm font-semibold", kolom.kleur)}>{kolom.label}</h3>
                   </div>
+                  <motion.span
+                    key={items.length}
+                    initial={{ scale: 1.3 }}
+                    animate={{ scale: 1 }}
+                    className="text-xs text-autronis-text-secondary tabular-nums bg-autronis-card px-2 py-0.5 rounded-full"
+                  >
+                    {items.length}
+                  </motion.span>
+                </div>
 
                   <div className="space-y-2">
                     {items.map((item) => (

@@ -251,7 +251,7 @@ export function AbonnementenTab() {
       {/* Lijst */}
       {filtered.length === 0 ? (
         <EmptyState
-          icon={<CreditCard className="w-8 h-8" />}
+          icoon={<CreditCard className="w-8 h-8" />}
           titel="Nog geen abonnementen"
           beschrijving="Voeg je eerste abonnement toe om je vaste kosten bij te houden."
           actieLabel="Abonnement toevoegen"
@@ -363,34 +363,34 @@ export function AbonnementenTab() {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Naam *" value={form.naam} onChange={(v) => setForm((f) => ({ ...f, naam: v }))} placeholder="OpenAI, Vercel, etc." />
-            <FormField label="Leverancier" value={form.leverancier} onChange={(v) => setForm((f) => ({ ...f, leverancier: v }))} placeholder="Optioneel" />
+            <FormField label="Naam *" value={form.naam} onChange={(e) => setForm((f) => ({ ...f, naam: e.target.value }))} placeholder="OpenAI, Vercel, etc." />
+            <FormField label="Leverancier" value={form.leverancier} onChange={(e) => setForm((f) => ({ ...f, leverancier: e.target.value }))} placeholder="Optioneel" />
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <FormField label="Bedrag *" value={form.bedrag} onChange={(v) => setForm((f) => ({ ...f, bedrag: v }))} type="number" placeholder="29.00" />
+            <FormField label="Bedrag *" value={form.bedrag} onChange={(e) => setForm((f) => ({ ...f, bedrag: e.target.value }))} type="number" placeholder="29.00" />
             <SelectField
               label="Frequentie"
               value={form.frequentie}
-              onChange={(v) => setForm((f) => ({ ...f, frequentie: v }))}
-              options={[
-                { value: "maandelijks", label: "Maandelijks" },
-                { value: "per_kwartaal", label: "Per kwartaal" },
-                { value: "jaarlijks", label: "Jaarlijks" },
+              onChange={(e) => setForm((f) => ({ ...f, frequentie: e.target.value }))}
+              opties={[
+                { waarde: "maandelijks", label: "Maandelijks" },
+                { waarde: "per_kwartaal", label: "Per kwartaal" },
+                { waarde: "jaarlijks", label: "Jaarlijks" },
               ]}
             />
             <SelectField
               label="Categorie"
               value={form.categorie}
-              onChange={(v) => setForm((f) => ({ ...f, categorie: v }))}
-              options={Object.entries(CATEGORIE_CONFIG).map(([k, v]) => ({ value: k, label: v.label }))}
+              onChange={(e) => setForm((f) => ({ ...f, categorie: e.target.value }))}
+              opties={Object.entries(CATEGORIE_CONFIG).map(([k, v]) => ({ waarde: k, label: v.label }))}
             />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <FormField label="Startdatum" value={form.startDatum} onChange={(v) => setForm((f) => ({ ...f, startDatum: v }))} type="date" />
-            <FormField label="Volgende betaling" value={form.volgendeBetaling} onChange={(v) => setForm((f) => ({ ...f, volgendeBetaling: v }))} type="date" />
+            <FormField label="Startdatum" value={form.startDatum} onChange={(e) => setForm((f) => ({ ...f, startDatum: e.target.value }))} type="date" />
+            <FormField label="Volgende betaling" value={form.volgendeBetaling} onChange={(e) => setForm((f) => ({ ...f, volgendeBetaling: e.target.value }))} type="date" />
           </div>
-          <FormField label="URL" value={form.url} onChange={(v) => setForm((f) => ({ ...f, url: v }))} placeholder="https://..." />
-          <FormField label="Notities" value={form.notities} onChange={(v) => setForm((f) => ({ ...f, notities: v }))} placeholder="Optioneel" />
+          <FormField label="URL" value={form.url} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} placeholder="https://..." />
+          <FormField label="Notities" value={form.notities} onChange={(e) => setForm((f) => ({ ...f, notities: e.target.value }))} placeholder="Optioneel" />
 
           <div className="flex justify-end gap-3 pt-2">
             <button onClick={() => setModalOpen(false)} className="px-4 py-2.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">
@@ -415,7 +415,7 @@ export function AbonnementenTab() {
         titel="Abonnement verwijderen?"
         beschrijving="Dit abonnement wordt gedeactiveerd. Je kunt het later niet meer terugvinden."
         bevestigLabel="Verwijderen"
-        variant="destructive"
+        variant="danger"
         isLoading={deleteMut.isPending}
       />
     </div>

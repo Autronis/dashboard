@@ -398,7 +398,13 @@ export default function AgendaPage() {
 
   function handleVerwijder() {
     if (!selectedItem) return;
-    deleteMutation.mutate(selectedItem.id);
+    // Shake animatie voordat we verwijderen
+    setDeleteShake(true);
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    deleteTimerRef.current = setTimeout(() => {
+      setDeleteShake(false);
+      deleteMutation.mutate(selectedItem.id);
+    }, 400);
   }
 
   const [weergave, setWeergave] = useState<"dag" | "week" | "maand" | "jaar">("week");
@@ -1327,13 +1333,14 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={`week-${item.id}-${wd.datumStr}`}
-                        className="absolute rounded-lg px-2 py-1 overflow-hidden cursor-pointer hover:brightness-125 transition-all border-l-[3px] z-10"
+                        className="absolute rounded-lg px-2 py-1 overflow-hidden cursor-pointer hover:brightness-115 transition-[filter] border-l-[3px] z-10"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
-                          backgroundColor: bgColor,
+                          background: eventGradient,
                           borderLeftColor: borderColor,
                           color: textColor,
+                          boxShadow: eventGlow,
                           left: `calc(48px + (${dagIdx} + ${leftPct / 100}) * (100% - 48px) / 7 + 2px)`,
                           width: `calc(${widthPct / 100} * (100% - 48px) / 7 - 4px)`,
                         }}
@@ -1673,8 +1680,15 @@ export default function AgendaPage() {
           ) : (
             <>
               {/* Taken om te plannen */}
+              <AnimatePresence>
               {nietIngeplandeTaken.length > 0 && (
-                <div className="mb-5">
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ type: "spring", stiffness: 280, damping: 26 }}
+                  className="mb-5"
+                >
                   <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
                     <ListTodo className="w-4 h-4 text-orange-400" />
                     Taken om te plannen
@@ -1754,8 +1768,9 @@ export default function AgendaPage() {
                       </Link>
                     )}
                   </div>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
               {/* Ingeplande taken vandaag */}
               {ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr).length > 0 && (
@@ -1807,15 +1822,16 @@ export default function AgendaPage() {
           ) : (
             <div className="space-y-3">
               {aankomend.map((item) => {
-                // Countdown per item
+                // Countdown per item (real-time via nuTijd)
                 const itemStartStr = item.startDatum;
                 let itemCountdown: string | null = null;
+                let itemIsImminent = false;
                 if (itemStartStr.length > 10) {
-                  const nu = new Date();
                   const start = new Date(itemStartStr);
-                  const diffMs = start.getTime() - nu.getTime();
+                  const diffMs = start.getTime() - nuTijd.getTime();
                   if (diffMs > 0) {
                     const diffMin = Math.round(diffMs / 60000);
+                    itemIsImminent = diffMin < 5;
                     if (diffMin < 60) itemCountdown = `over ${diffMin} min`;
                     else {
                       const uren = Math.floor(diffMin / 60);
@@ -1950,9 +1966,28 @@ export default function AgendaPage() {
       </div>
 
       {/* Modal */}
+      <AnimatePresence>
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        >
+          <motion.div
+            initial={{ scale: 0.94, opacity: 0, y: 12 }}
+            animate={deleteShake
+              ? { x: [0, -10, 10, -8, 8, -4, 4, 0], scale: 1, opacity: 1, y: 0 }
+              : { scale: 1, opacity: 1, y: 0 }
+            }
+            exit={{ scale: 0.94, opacity: 0, y: 12 }}
+            transition={deleteShake
+              ? { duration: 0.4, ease: "easeInOut" }
+              : { type: "spring", stiffness: 380, damping: 30 }
+            }
+            className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+          >
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-autronis-text-primary">
                 {selectedItem ? "Item bewerken" : "Nieuw agenda-item"}
@@ -2085,9 +2120,10 @@ export default function AgendaPage() {
                 {saveMutation.isPending ? "Opslaan..." : selectedItem ? "Bijwerken" : "Toevoegen"}
               </button>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       )}
+      </AnimatePresence>
       {/* Plan Taak Modal */}
       {planModalTaak && (
         <PlanTaakModal

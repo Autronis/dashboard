@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useCallback, useRef } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   BookOpen,
   Newspaper,
@@ -9,15 +10,18 @@ import {
   CalendarDays,
   Image as ImageIcon,
   Sparkles,
-  TrendingUp,
   Loader2,
   ArrowRight,
-  LayoutGrid,
-  Columns3,
   Lightbulb,
   GripVertical,
+  AlertTriangle,
+  X,
+  CheckCircle2,
+  Linkedin,
+  Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { PageTransition } from "@/components/ui/page-transition";
 import {
   useContentPosts,
@@ -81,12 +85,17 @@ function mapBannerToKolom(banner: ContentBanner): PipelineKolom {
   return "concept";
 }
 
-const KOLOM_CONFIG: { key: PipelineKolom; label: string; kleur: string; bgKleur: string }[] = [
-  { key: "concept", label: "Concept", kleur: "text-gray-400", bgKleur: "bg-gray-500/20" },
-  { key: "goedgekeurd", label: "Goedgekeurd", kleur: "text-blue-400", bgKleur: "bg-blue-500/20" },
-  { key: "gepland", label: "Gepland", kleur: "text-autronis-accent", bgKleur: "bg-autronis-accent/20" },
-  { key: "gepubliceerd", label: "Gepubliceerd", kleur: "text-emerald-400", bgKleur: "bg-emerald-500/20" },
+const KOLOM_CONFIG: { key: PipelineKolom; label: string; kleur: string; bgKleur: string; tint: string }[] = [
+  { key: "concept", label: "Concept", kleur: "text-gray-400", bgKleur: "bg-gray-500/20", tint: "bg-gray-500/[0.04] border-gray-500/15" },
+  { key: "goedgekeurd", label: "Goedgekeurd", kleur: "text-blue-400", bgKleur: "bg-blue-500/20", tint: "bg-blue-500/[0.04] border-blue-500/15" },
+  { key: "gepland", label: "Gepland", kleur: "text-autronis-accent", bgKleur: "bg-autronis-accent/20", tint: "bg-autronis-accent/[0.04] border-autronis-accent/15" },
+  { key: "gepubliceerd", label: "Gepubliceerd", kleur: "text-emerald-400", bgKleur: "bg-emerald-500/20", tint: "bg-emerald-500/[0.04] border-emerald-500/15" },
 ];
+
+const PLATFORM_COLORS: Record<string, { bg: string; text: string; icon: React.FC<{ className?: string }> }> = {
+  linkedin: { bg: "bg-blue-500/10", text: "text-blue-400", icon: Linkedin },
+  instagram: { bg: "bg-pink-500/10", text: "text-pink-400", icon: Instagram },
+};
 
 export default function ContentPage() {
   const { addToast } = useToast();

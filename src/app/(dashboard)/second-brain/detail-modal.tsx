@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import {
   X,
   Star,
@@ -14,6 +14,8 @@ import {
   CheckSquare,
   PenTool,
   BookMarked,
+  Copy,
+  Check,
 } from "lucide-react";
 import {
   type SecondBrainItem,
@@ -28,6 +30,8 @@ interface DetailModalProps {
   item: SecondBrainItem;
   onClose: () => void;
   onUpdate: () => void;
+  allItems?: SecondBrainItem[];
+  allTags?: string[];
 }
 
 const typeConfig: Record<string, { icon: typeof FileText; label: string; color: string }> = {
@@ -38,10 +42,13 @@ const typeConfig: Record<string, { icon: typeof FileText; label: string; color: 
   code: { icon: Code, label: "Code", color: "text-yellow-400" },
 };
 
-export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
+export function DetailModal({ item, onClose, onUpdate, allItems = [], allTags = [] }: DetailModalProps) {
   const { addToast } = useToast();
   const [showConfirm, setShowConfirm] = useState(false);
   const [nieuwTag, setNieuwTag] = useState("");
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+  const tagInputRef = useRef<HTMLInputElement>(null);
 
   const updateMutation = useUpdateSecondBrainItem();
   const deleteMutation = useDeleteSecondBrainItem();
@@ -57,6 +64,42 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
       return [];
     }
   })();
+
+  // Detect code language from ``` fence
+  const codeLanguage = useMemo(() => {
+    if (item.type !== "code" || !item.inhoud) return null;
+    const match = item.inhoud.match(/^```(\w+)/);
+    return match ? match[1] : null;
+  }, [item.type, item.inhoud]);
+
+  const codeContent = useMemo(() => {
+    if (!item.inhoud) return "";
+    return item.inhoud.replace(/^```\w*\n?/, "").replace(/\n?```$/, "");
+  }, [item.inhoud]);
+
+  // Related items: share at least 1 tag with current item
+  const relatedItems = useMemo(() => {
+    if (!parsedTags.length || !allItems.length) return [];
+    return allItems
+      .filter((i) => {
+        if (i.id === item.id) return false;
+        if (!i.aiTags) return false;
+        try {
+          const tags = JSON.parse(i.aiTags) as string[];
+          return tags.some((t) => parsedTags.includes(t));
+        } catch {
+          return false;
+        }
+      })
+      .slice(0, 4);
+  }, [allItems, item.id, parsedTags]);
+
+  // Tag autocomplete suggestions
+  const tagSuggestions = useMemo(() => {
+    if (!nieuwTag.trim()) return [];
+    const lower = nieuwTag.toLowerCase();
+    return allTags.filter((t) => t.toLowerCase().includes(lower) && !parsedTags.includes(t)).slice(0, 6);
+  }, [nieuwTag, allTags, parsedTags]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -91,20 +134,35 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
     );
   };
 
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter") return;
-    const tag = nieuwTag.trim();
-    if (!tag || parsedTags.includes(tag)) return;
+  const addTag = (tag: string) => {
+    const trimmed = tag.trim();
+    if (!trimmed || parsedTags.includes(trimmed)) return;
     updateMutation.mutate(
-      { id: item.id, aiTags: [...parsedTags, tag] },
+      { id: item.id, aiTags: [...parsedTags, trimmed] },
       {
         onSuccess: () => {
           addToast("Tag toegevoegd", "succes");
           setNieuwTag("");
+          setShowTagSuggestions(false);
           onUpdate();
         },
       }
     );
+  };
+
+  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") addTag(nieuwTag);
+    else if (e.key === "Escape") setShowTagSuggestions(false);
+  };
+
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(codeContent);
+      setCodeCopied(true);
+      setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      addToast("Kopiëren mislukt", "fout");
+    }
   };
 
   const handleArchiveer = () => {
@@ -191,9 +249,27 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
               />
             )}
             {item.type === "code" && item.inhoud && (
-              <pre className="bg-black/30 rounded-xl p-4 overflow-x-auto font-mono text-sm text-autronis-text-primary">
-                {item.inhoud}
-              </pre>
+              <div className="relative">
+                <div className="flex items-center justify-between bg-slate-900/80 rounded-t-xl px-4 py-2 border-b border-autronis-border">
+                  <span className="text-xs text-autronis-text-secondary font-mono">
+                    {codeLanguage ?? "code"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="flex items-center gap-1 text-xs text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                  >
+                    {codeCopied ? (
+                      <><Check className="w-3.5 h-3.5 text-emerald-400" /><span className="text-emerald-400">Gekopieerd</span></>
+                    ) : (
+                      <><Copy className="w-3.5 h-3.5" /><span>Kopiëren</span></>
+                    )}
+                  </button>
+                </div>
+                <pre className="bg-slate-900/80 rounded-b-xl p-4 overflow-x-auto font-mono text-sm text-emerald-300/80">
+                  {codeContent}
+                </pre>
+              </div>
             )}
             {item.type === "url" && item.bronUrl && (
               <a
@@ -243,14 +319,33 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
                   </button>
                 </span>
               ))}
-              <input
-                type="text"
-                value={nieuwTag}
-                onChange={(e) => setNieuwTag(e.target.value)}
-                onKeyDown={handleAddTag}
-                placeholder="+ tag toevoegen"
-                className="bg-transparent text-autronis-text-secondary text-xs outline-none placeholder:text-autronis-text-secondary/50 min-w-[120px]"
-              />
+              <div className="relative">
+                <input
+                  ref={tagInputRef}
+                  type="text"
+                  value={nieuwTag}
+                  onChange={(e) => { setNieuwTag(e.target.value); setShowTagSuggestions(true); }}
+                  onKeyDown={handleAddTag}
+                  onFocus={() => setShowTagSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowTagSuggestions(false), 150)}
+                  placeholder="+ tag toevoegen"
+                  className="bg-transparent text-autronis-text-secondary text-xs outline-none placeholder:text-autronis-text-secondary/50 min-w-[120px]"
+                />
+                {showTagSuggestions && tagSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 bg-autronis-bg border border-autronis-border rounded-xl shadow-lg z-10 min-w-[160px]">
+                    {tagSuggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onMouseDown={() => addTag(s)}
+                        className="w-full text-left px-3 py-1.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-card transition-colors first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -284,6 +379,34 @@ export function DetailModal({ item, onClose, onUpdate }: DetailModalProps) {
               </a>
             </div>
           </div>
+
+          {/* Related items */}
+          {relatedItems.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wide mb-2">
+                Gerelateerd
+              </p>
+              <div className="space-y-2">
+                {relatedItems.map((related) => {
+                  const relCfg = typeConfig[related.type] ?? typeConfig.tekst;
+                  const RelIcon = relCfg.icon;
+                  return (
+                    <button
+                      key={related.id}
+                      type="button"
+                      onClick={() => { onClose(); }}
+                      className="w-full flex items-center gap-2.5 bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 hover:border-autronis-accent/30 transition-colors text-left"
+                    >
+                      <RelIcon className={cn("w-3.5 h-3.5 shrink-0", relCfg.color)} />
+                      <span className="text-sm text-autronis-text-secondary truncate flex-1">
+                        {related.titel ?? "Zonder titel"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Footer */}
           <div className="flex items-center justify-between border-t border-autronis-border pt-4">

@@ -1031,6 +1031,8 @@ export default function SecondBrainPage() {
             item={selectedItem}
             onClose={() => setSelectedItem(null)}
             onUpdate={() => queryClient.invalidateQueries({ queryKey: ["second-brain"] })}
+            allItems={serverItems}
+            allTags={allTags.map(([tag]) => tag)}
           />
         )}
       </div>

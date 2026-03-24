@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-
+import { motion, AnimatePresence } from "framer-motion";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import {
@@ -141,11 +141,39 @@ function formatTijd(datum: string): string {
   return new Date(datum).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
 }
 
+const pageVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07 } },
+};
+const sectionVariants = {
+  hidden: { opacity: 0, y: 14 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.38, ease: "easeOut" } },
+};
+
+function useTypewriter(text: string, speed = 8): string {
+  const [displayed, setDisplayed] = useState("");
+  const hasRun = useRef(false);
+  useEffect(() => {
+    if (!text) { setDisplayed(""); return; }
+    if (hasRun.current) { setDisplayed(text); return; }
+    hasRun.current = true;
+    let i = 0;
+    const id = setInterval(() => {
+      i++;
+      setDisplayed(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, speed);
+    return () => clearInterval(id);
+  }, [text, speed]);
+  return displayed;
+}
+
 function DailyBriefing() {
   const vandaag = new Date().toISOString().slice(0, 10);
   const { data: briefing, isLoading } = useBriefing(vandaag);
   const genereer = useGenereerBriefing();
   const { addToast } = useToast();
+  const samenvattingTyped = useTypewriter(briefing?.samenvatting ?? "");
 
   // Auto-generate once per session
   useEffect(() => {
@@ -198,7 +226,17 @@ function DailyBriefing() {
     return (
       <div className="bg-autronis-card border border-autronis-accent/20 rounded-2xl p-8 text-center">
         <Loader2 className="w-8 h-8 text-autronis-accent animate-spin mx-auto mb-3" />
-        <p className="text-autronis-text-secondary">Briefing wordt gegenereerd...</p>
+        <div className="flex items-center justify-center gap-1">
+          <span className="text-autronis-text-secondary text-sm">Claude genereert</span>
+          {[0, 1, 2].map((i) => (
+            <motion.span
+              key={i}
+              className="w-1 h-1 rounded-full bg-autronis-accent inline-block"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.2 }}
+            />
+          ))}
+        </div>
       </div>
     );
   }
@@ -212,9 +250,9 @@ function DailyBriefing() {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Sparkles className="w-3.5 h-3.5 text-autronis-accent shrink-0" />
           <h2 className="text-sm font-semibold text-autronis-text-primary shrink-0">Dagbriefing</h2>
-          {briefing.samenvatting && (
+          {samenvattingTyped && (
             <p className="text-xs text-autronis-text-secondary truncate">
-              {trunceerNaarZinnen(briefing.samenvatting, 1)}
+              {samenvattingTyped}
             </p>
           )}
         </div>
@@ -224,7 +262,9 @@ function DailyBriefing() {
           className="flex-shrink-0 p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors disabled:opacity-50"
           title="Vernieuwen"
         >
-          <RefreshCw className={cn("w-3.5 h-3.5", genereer.isPending && "animate-spin")} />
+          <motion.div animate={genereer.isPending ? { rotate: 360 } : { rotate: 0 }} transition={{ duration: 0.6, repeat: genereer.isPending ? Infinity : 0, ease: "linear" }}>
+            <RefreshCw className="w-3.5 h-3.5" />
+          </motion.div>
         </button>
       </div>
 
@@ -618,6 +658,7 @@ export default function DashboardPage() {
 
   // CheckBurst animation state
   const [completedTaskId, setCompletedTaskId] = useState<number | null>(null);
+  const [completingTaskId, setCompletingTaskId] = useState<number | null>(null);
 
   // Belasting deadline alerts
   const [urgentDeadlines, setUrgentDeadlines] = useState<Array<{omschrijving: string; datum: string; dagenOver: number}>>([]);
@@ -735,6 +776,7 @@ export default function DashboardPage() {
     },
     onSuccess: (taakId) => {
       setCompletedTaskId(taakId);
+      setCompletingTaskId(null);
       setTimeout(() => setCompletedTaskId(null), 500);
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -755,7 +797,8 @@ export default function DashboardPage() {
   };
 
   const handleTaakAfvinken = (taakId: number) => {
-    completeTaakMutation.mutate(taakId);
+    setCompletingTaskId(taakId);
+    setTimeout(() => completeTaakMutation.mutate(taakId), 300);
   };
 
   const formatElapsed = (seconds: number) => {

@@ -968,17 +968,23 @@ export default function DashboardPage() {
 
               {/* Overige taken */}
               <div className="space-y-1">
-                {mijnTaken.slice(1, 4).map((taak) => {
+                {mijnTaken.slice(1, 4).map((taak, idx) => {
                   const prio = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
                   return (
-                    <div key={taak.id} className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-autronis-bg/40 transition-colors">
+                    <motion.div
+                      key={taak.id}
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.18, delay: (idx + 1) * 0.05 }}
+                      className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-autronis-bg/40 transition-colors"
+                    >
                       <button
                         onClick={() => handleTaakAfvinken(taak.id)}
                         className={cn("w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-green-500/20", prio.border)}
                       />
                       <span className="text-sm text-autronis-text-primary truncate flex-1">{taak.titel}</span>
                       {taak.prioriteit === "hoog" && <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
-                    </div>
+                    </motion.div>
                   );
                 })}
                 {mijnTaken.length > 4 && (
@@ -1049,11 +1055,14 @@ export default function DashboardPage() {
                 </p>
               ) : (
                 <div className="space-y-2">
-                  {mijnTaken.map((taak) => {
+                  {mijnTaken.map((taak, idx) => {
                     const prio = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
                     return (
-                      <div
+                      <motion.div
                         key={taak.id}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.2, delay: idx * 0.04 }}
                         className="bg-autronis-bg/50 rounded-lg p-3 flex items-center gap-3 group relative"
                       >
                         <button
@@ -1087,7 +1096,7 @@ export default function DashboardPage() {
                           {taak.prioriteit === "hoog" && <AlertCircle className="w-4 h-4" />}
                         </span>
                         <CheckBurst active={completedTaskId === taak.id} />
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>

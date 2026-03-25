@@ -24,6 +24,8 @@ import {
   Clipboard,
   Loader2,
   Trash2,
+  Search,
+  X,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,11 +44,11 @@ import { AiZoekenTab } from "./ai-zoeken-tab";
 import { DetailModal } from "./detail-modal";
 
 const typeConfig = {
-  tekst: { icon: FileText, label: "Tekst", color: "text-slate-400", bg: "bg-slate-500/15", border: "border-slate-500/20" },
-  url: { icon: Link2, label: "URL", color: "text-blue-400", bg: "bg-blue-500/15", border: "border-blue-500/20" },
-  afbeelding: { icon: Camera, label: "Afbeelding", color: "text-purple-400", bg: "bg-purple-500/15", border: "border-purple-500/20" },
-  pdf: { icon: FileDown, label: "PDF", color: "text-red-400", bg: "bg-red-500/15", border: "border-red-500/20" },
-  code: { icon: Terminal, label: "Code", color: "text-emerald-400", bg: "bg-emerald-500/15", border: "border-emerald-500/20" },
+  tekst: { icon: FileText, label: "Tekst", color: "text-slate-400", bg: "bg-slate-500/15", border: "border-slate-500/20", accent: "#94a3b8" },
+  url: { icon: Link2, label: "URL", color: "text-blue-400", bg: "bg-blue-500/15", border: "border-blue-500/20", accent: "#60a5fa" },
+  afbeelding: { icon: Camera, label: "Afbeelding", color: "text-purple-400", bg: "bg-purple-500/15", border: "border-purple-500/20", accent: "#c084fc" },
+  pdf: { icon: FileDown, label: "PDF", color: "text-red-400", bg: "bg-red-500/15", border: "border-red-500/20", accent: "#f87171" },
+  code: { icon: Terminal, label: "Code", color: "text-emerald-400", bg: "bg-emerald-500/15", border: "border-emerald-500/20", accent: "#34d399" },
 } as const;
 
 // Tag category coloring
@@ -612,25 +614,33 @@ export default function SecondBrainPage() {
         </div>
 
         {/* Tab buttons */}
-        <div className="flex gap-2">
+        <div className="flex gap-2 border-b border-autronis-border pb-0">
           <button
             onClick={() => setActiveTab("feed")}
             className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium transition-colors",
+              "flex items-center gap-2 px-4 py-2.5 rounded-t-xl text-sm font-medium transition-colors border-b-2 -mb-px",
               activeTab === "feed"
-                ? "bg-autronis-accent text-white"
-                : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                ? "text-autronis-accent border-autronis-accent"
+                : "text-autronis-text-secondary border-transparent hover:text-autronis-text-primary"
             )}
           >
             Feed
+            {items.length > 0 && (
+              <span className={cn(
+                "px-1.5 py-0.5 rounded-full text-[10px] font-semibold tabular-nums",
+                activeTab === "feed" ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary"
+              )}>
+                {items.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setActiveTab("zoeken")}
             className={cn(
-              "px-4 py-2 rounded-xl text-sm font-medium transition-colors",
+              "px-4 py-2.5 rounded-t-xl text-sm font-medium transition-colors border-b-2 -mb-px",
               activeTab === "zoeken"
-                ? "bg-autronis-accent text-white"
-                : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                ? "text-autronis-accent border-autronis-accent"
+                : "text-autronis-text-secondary border-transparent hover:text-autronis-text-primary"
             )}
           >
             AI Zoeken
@@ -640,9 +650,26 @@ export default function SecondBrainPage() {
         {/* Feed tab */}
         {activeTab === "feed" && (
           <div className="space-y-4">
+            {/* Search bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary pointer-events-none" />
+              <input
+                type="text"
+                value={zoek}
+                onChange={(e) => setZoek(e.target.value)}
+                placeholder="Zoek in je kennisbank..."
+                className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-9 pr-9 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+              />
+              {zoek && (
+                <button onClick={() => setZoek("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="w-4 h-4 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors" />
+                </button>
+              )}
+            </div>
+
             {/* Filter bar */}
             <div className="flex flex-wrap items-center gap-2">
-              {/* Type filters */}
+              {/* Type filters with icons */}
               <button
                 onClick={() => setTypeFilter("alle")}
                 className={cn(
@@ -655,20 +682,25 @@ export default function SecondBrainPage() {
                 Alle
               </button>
               {(Object.entries(typeConfig) as [TypeKey, (typeof typeConfig)[TypeKey]][]).map(
-                ([key, cfg]) => (
-                  <button
-                    key={key}
-                    onClick={() => setTypeFilter(key)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                      typeFilter === key
-                        ? "bg-autronis-accent text-white"
-                        : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
-                    )}
-                  >
-                    {cfg.label}
-                  </button>
-                )
+                ([key, cfg]) => {
+                  const Icon = cfg.icon;
+                  const isActive = typeFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setTypeFilter(key)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                        isActive
+                          ? "bg-autronis-accent text-white"
+                          : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                      )}
+                    >
+                      <Icon className="w-3 h-3" />
+                      {cfg.label}
+                    </button>
+                  );
+                }
               )}
 
               {/* Favoriet toggle */}
@@ -685,18 +717,23 @@ export default function SecondBrainPage() {
                 Favorieten
               </button>
 
-              {/* Sort toggle */}
+              {/* Sort chips */}
               <div className="ml-auto flex items-center gap-1">
-                <ArrowUpDown className="w-3.5 h-3.5 text-autronis-text-secondary" />
-                <select
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="bg-transparent text-xs text-autronis-text-secondary outline-none cursor-pointer"
-                >
-                  <option value="nieuwste">Nieuwste eerst</option>
-                  <option value="meest-gebruikt">Meest gebruikt</option>
-                  <option value="favorieten">Favorieten eerst</option>
-                </select>
+                <ArrowUpDown className="w-3.5 h-3.5 text-autronis-text-secondary shrink-0" />
+                {(["nieuwste", "meest-gebruikt", "favorieten"] as SortMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    onClick={() => setSortMode(mode)}
+                    className={cn(
+                      "px-2.5 py-1 rounded-lg text-xs transition-colors",
+                      sortMode === mode
+                        ? "bg-autronis-accent/20 text-autronis-accent font-medium"
+                        : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                    )}
+                  >
+                    {mode === "nieuwste" ? "Nieuwst" : mode === "meest-gebruikt" ? "Gebruik" : "Favoriet"}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -706,9 +743,10 @@ export default function SecondBrainPage() {
                 {tagFilter && (
                   <button
                     onClick={() => setTagFilter("")}
-                    className="px-2.5 py-0.5 rounded-full text-xs bg-autronis-border/50 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 transition-colors"
                   >
-                    Wis tag x
+                    <X className="w-3 h-3" />
+                    {tagFilter}
                   </button>
                 )}
                 {allTags.map(([tag, freq]) => {
@@ -802,13 +840,15 @@ export default function SecondBrainPage() {
                       {/* Card */}
                       <div
                         className={cn(
-                          "bg-autronis-card border rounded-2xl p-5 transition-colors card-glow",
+                          "bg-autronis-card border rounded-2xl p-5 transition-colors card-glow overflow-hidden relative pl-6",
                           item._optimistic
                             ? "border-autronis-accent/20 opacity-55 pointer-events-none"
                             : "border-autronis-border hover:border-autronis-accent/30 cursor-pointer"
                         )}
+                        style={{ borderLeft: `3px solid ${cfg.accent}40` }}
                         onClick={() => !item._optimistic && setSelectedItem(item)}
                       >
+                        <div className="absolute left-0 top-0 bottom-0 w-[3px] rounded-l-2xl" style={{ backgroundColor: cfg.accent }} />
                         <div className="flex items-start gap-3">
                           {/* Type badge */}
                           <div className={cn(

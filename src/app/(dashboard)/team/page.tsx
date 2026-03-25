@@ -114,6 +114,20 @@ function getConflictWeeks(verlofList: VerlofEntry[], vandaag: Date): string[] {
   return Array.from(conflictWeeks).sort().slice(0, 3);
 }
 
+function getNextVacation(verlofList: VerlofEntry[], userId: number, vandaag: Date): { label: string; dagen: number } | null {
+  const vandaagStr = vandaag.toISOString().slice(0, 10);
+  const upcoming = verlofList
+    .filter((v) => v.gebruikerId === userId && v.status === "goedgekeurd" && v.type === "vakantie" && v.startDatum >= vandaagStr)
+    .sort((a, b) => a.startDatum.localeCompare(b.startDatum));
+  if (!upcoming.length) return null;
+  const next = upcoming[0];
+  const daysUntil = Math.ceil((new Date(next.startDatum).getTime() - vandaag.getTime()) / (1000 * 60 * 60 * 24));
+  const duur = countWeekdays(next.startDatum, next.eindDatum);
+  if (daysUntil === 0) return { label: `Vandaag — ${duur}d`, dagen: duur };
+  if (daysUntil <= 7) return { label: `Over ${daysUntil}d — ${duur}d`, dagen: duur };
+  return { label: `${MAANDEN_KORT[new Date(next.startDatum).getMonth()]} — ${duur}d`, dagen: duur };
+}
+
 function getVacationForecast(verlofList: VerlofEntry[], userId: number, vandaag: Date): string | null {
   const year = vandaag.getFullYear();
   const yearStartMs = new Date(year, 0, 1).getTime();
@@ -224,9 +238,19 @@ export default function TeamPage() {
           })}
         </div>
 
-        {activeTab === "verlof" && <VerlofTab currentUser={currentUser} />}
-        {activeTab === "declaraties" && <DeclaratiesTab currentUser={currentUser} />}
-        {activeTab === "capaciteit" && <CapaciteitTab />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+          >
+            {activeTab === "verlof" && <VerlofTab currentUser={currentUser} />}
+            {activeTab === "declaraties" && <DeclaratiesTab currentUser={currentUser} />}
+            {activeTab === "capaciteit" && <CapaciteitTab />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </PageTransition>
   );
@@ -345,10 +369,13 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
     return "bg-blue-500/20 text-blue-400 hover:bg-blue-500/30";
   }
 
+  const vandaagStr = vandaag.toISOString().slice(0, 10);
   const semDagen = countVakantiedagen(1);
   const sybDagen = countVakantiedagen(2);
   const semForecast = jaar === vandaag.getFullYear() ? getVacationForecast(verlofList, 1, vandaag) : null;
   const sybForecast = jaar === vandaag.getFullYear() ? getVacationForecast(verlofList, 2, vandaag) : null;
+  const semNextVacation = jaar === vandaag.getFullYear() ? getNextVacation(verlofList, 1, vandaag) : null;
+  const sybNextVacation = jaar === vandaag.getFullYear() ? getNextVacation(verlofList, 2, vandaag) : null;
   const conflictWeeks = getConflictWeeks(verlofList, vandaag);
   const openstaandeAanvragen = verlofList.filter((v) => v.status === "aangevraagd");
 
@@ -391,7 +418,13 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           {/* Sem */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow min-w-[148px]">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05, duration: 0.3 }}
+            whileHover={{ scale: 1.02 }}
+            className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow min-w-[160px]"
+          >
             <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-1">Sem</p>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold text-blue-400 tabular-nums">{semDagen}</span>
@@ -405,16 +438,28 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 }}
               />
             </div>
-            {semForecast && (
+            {semNextVacation && (
+              <p className="text-[10px] text-blue-400/70 mt-1.5 flex items-center gap-1">
+                <Palmtree className="w-2.5 h-2.5 flex-shrink-0" />
+                {semNextVacation.label}
+              </p>
+            )}
+            {!semNextVacation && semForecast && (
               <p className="text-[10px] text-autronis-text-secondary/60 mt-1.5 flex items-center gap-1">
                 <TrendingUp className="w-2.5 h-2.5 flex-shrink-0" />
                 {semForecast}
               </p>
             )}
-          </div>
+          </motion.div>
 
           {/* Syb */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow min-w-[148px]">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.3 }}
+            whileHover={{ scale: 1.02 }}
+            className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow min-w-[160px]"
+          >
             <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-1">Syb</p>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-bold text-purple-400 tabular-nums">{sybDagen}</span>
@@ -428,13 +473,19 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                 transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
               />
             </div>
-            {sybForecast && (
+            {sybNextVacation && (
+              <p className="text-[10px] text-purple-400/70 mt-1.5 flex items-center gap-1">
+                <Palmtree className="w-2.5 h-2.5 flex-shrink-0" />
+                {sybNextVacation.label}
+              </p>
+            )}
+            {!sybNextVacation && sybForecast && (
               <p className="text-[10px] text-autronis-text-secondary/60 mt-1.5 flex items-center gap-1">
                 <TrendingUp className="w-2.5 h-2.5 flex-shrink-0" />
                 {sybForecast}
               </p>
             )}
-          </div>
+          </motion.div>
         </div>
 
         <button

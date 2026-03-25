@@ -626,7 +626,8 @@ export default function IdeeenPage() {
         </button>
       </div>
 
-      {activeTab === "alle" && (<>
+      <AnimatePresence mode="wait">
+      {activeTab === "alle" && (<motion.div key="alle" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}><>
         {/* === "WHAT SHOULD I BUILD NEXT?" BLOCK === */}
         {topToBuild.length > 0 && (
           <div className="bg-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
@@ -667,7 +668,7 @@ export default function IdeeenPage() {
                         <Rocket className="w-3 h-3" />Start project
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -867,10 +868,17 @@ export default function IdeeenPage() {
           </div>
         ) : viewMode === "lijst" ? (
           <div className="space-y-2">
-            {alleIdeeen.map((idee) => {
+            {alleIdeeen.map((idee, i) => {
               const score = calcPriorityScore(idee);
               return (
-                <div key={idee.id} onClick={() => setDetailIdee(idee)} className="flex items-center gap-3 bg-autronis-card border border-autronis-border rounded-xl px-4 py-3 hover:border-autronis-accent/50 transition-all group cursor-pointer">
+                <motion.div
+                  key={idee.id}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.03 }}
+                  onClick={() => setDetailIdee(idee)}
+                  className="flex items-center gap-3 bg-autronis-card border border-autronis-border rounded-xl px-4 py-3 hover:border-autronis-accent/50 transition-all group cursor-pointer"
+                >
                   {score > 0 && <span className={cn("text-sm font-bold px-2.5 py-1 rounded-xl tabular-nums flex-shrink-0", scoreKleur(score))}>{score}</span>}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -883,17 +891,28 @@ export default function IdeeenPage() {
                     {idee.categorie && <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full hidden sm:block", categorieBadgeKleuren[idee.categorie] || "bg-gray-500/15 text-gray-400")}>{categorieLabel(idee.categorie)}</span>}
                     <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", statusBadgeKleuren[idee.status] || "bg-gray-500/15 text-gray-400")}>{statusLabel(idee.status)}</span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 gap-5"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
+          >
             {alleIdeeen.map((idee) => {
               const score = calcPriorityScore(idee);
               const isScoring = scoringIdee === idee.id;
               return (
-                <div key={idee.id} className="bg-autronis-card border border-autronis-border rounded-2xl p-3 sm:p-6 hover:border-autronis-accent/50 transition-all card-glow group">
+                <motion.div
+                  key={idee.id}
+                  variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                  whileHover={{ y: -2 }}
+                  transition={{ duration: 0.15 }}
+                  className="bg-autronis-card border border-autronis-border rounded-2xl p-3 sm:p-6 hover:border-autronis-accent/50 transition-all card-glow group"
+                >
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <button onClick={() => setDetailIdee(idee)} className="flex items-center gap-2 min-w-0 text-left flex-1">
                       {idee.nummer != null && <span className="text-xs text-autronis-text-secondary/60 font-mono flex-shrink-0">#{idee.nummer}</span>}
@@ -941,15 +960,16 @@ export default function IdeeenPage() {
                       {idee.impact != null ? "Score aanpassen" : "Score toevoegen"}
                     </button>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
-      </>)}
+      </></motion.div>)}
 
       {/* Inzichten Tab */}
       {activeTab === "inzichten" && (
+      <motion.div key="inzichten" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
         <div className="space-y-4">
           {/* Quick capture */}
           <div className="bg-autronis-card border border-amber-500/30 rounded-2xl p-4">
@@ -1009,10 +1029,11 @@ export default function IdeeenPage() {
             </div>
           )}
         </div>
-      )}
+      </motion.div>)}
 
       {/* AI Suggesties Tab */}
       {activeTab === "ai" && (
+      <motion.div key="ai" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
@@ -1091,7 +1112,8 @@ export default function IdeeenPage() {
             </div>
           )}
         </>
-      )}
+      </motion.div>)}
+      </AnimatePresence>
 
       {/* Detail Modal */}
       {detailIdee && (

@@ -1256,8 +1256,13 @@ export default function RadarPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Nieuw vandaag */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="p-2 bg-autronis-accent/10 rounded-xl w-fit mb-2">
-              <Radar className="w-4 h-4 text-autronis-accent" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-autronis-text-secondary">
+                Nieuw vandaag
+              </span>
+              <div className="p-2 bg-autronis-accent/10 rounded-lg">
+                <Radar className="w-4 h-4 text-autronis-accent" />
+              </div>
             </div>
             <div className="flex items-end gap-2">
               <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
@@ -1277,42 +1282,51 @@ export default function RadarPage() {
                 )}
               </AnimatePresence>
             </div>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Nieuw vandaag
+            <p className="text-xs text-autronis-text-secondary mt-1">
+              {syncDelta && syncDelta > 0 ? `+${syncDelta} gesynchroniseerd` : "Vandaag toegevoegd"}
             </p>
           </div>
 
           {/* Must-reads */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="p-2 bg-amber-500/10 rounded-xl w-fit mb-2">
-              <Star className="w-4 h-4 text-amber-400" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-autronis-text-secondary">
+                Must-reads
+              </span>
+              <div className="p-2 bg-amber-500/10 rounded-lg">
+                <Star className="w-4 h-4 text-amber-400" />
+              </div>
             </div>
             <p className="text-2xl font-bold text-amber-400 tabular-nums">{mustReadsCount}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Must-reads
-            </p>
+            <p className="text-xs text-autronis-text-secondary mt-1">Score 8 of hoger</p>
           </div>
 
           {/* Bewaard */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="p-2 bg-yellow-500/10 rounded-xl w-fit mb-2">
-              <BookmarkCheck className="w-4 h-4 text-yellow-400" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-autronis-text-secondary">
+                Bewaard
+              </span>
+              <div className="p-2 bg-yellow-500/10 rounded-lg">
+                <BookmarkCheck className="w-4 h-4 text-yellow-400" />
+              </div>
             </div>
             <p className="text-2xl font-bold text-yellow-400 tabular-nums">{bewaardCount}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Bewaard
-            </p>
+            <p className="text-xs text-autronis-text-secondary mt-1">Opgeslagen artikelen</p>
           </div>
 
           {/* Bronnen */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-            <div className="p-2 bg-blue-500/10 rounded-xl w-fit mb-2">
-              <Database className="w-4 h-4 text-blue-400" />
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-autronis-text-secondary">
+                Bronnen
+              </span>
+              <div className="p-2 bg-blue-500/10 rounded-lg">
+                <Database className="w-4 h-4 text-blue-400" />
+              </div>
             </div>
             <p className="text-2xl font-bold text-blue-400 tabular-nums">{bronnenActief}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
-              Bronnen
-            </p>
+            <p className="text-xs text-autronis-text-secondary mt-1">Actieve feeds</p>
           </div>
         </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Wand2, Link, Package, Copy, Check, Loader2, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp } from "lucide-react";
+import { Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Prompts {
   promptA: string;
@@ -38,6 +38,7 @@ export default function AnimatiesPage() {
   const [stepsOpen, setStepsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const launchConfetti = useCallback(() => {
     const canvas = confettiRef.current;
@@ -86,9 +87,15 @@ export default function AnimatiesPage() {
     reader.readAsDataURL(file);
   };
 
+  const stopGenerate = () => {
+    abortRef.current?.abort();
+    setLoading(false);
+  };
+
   const generate = async () => {
     if (inputType === "image" && !uploadedImage) return;
     if (inputType !== "image" && !input.trim()) return;
+    abortRef.current = new AbortController();
     setLoading(true); setError(""); setPrompts(null);
 
     let body: Record<string, string> = {};
@@ -96,15 +103,22 @@ export default function AnimatiesPage() {
     else if (inputType === "product") body = { product: input };
     else if (inputType === "image" && uploadedImage) body = { imageBase64: uploadedImage.base64, mediaType: uploadedImage.mediaType };
 
-    const res = await fetch("/api/animaties/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json() as Prompts & { error?: string };
-    setLoading(false);
-    if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
-    setPrompts(data); setActiveTab("A");
+    try {
+      const res = await fetch("/api/animaties/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: abortRef.current.signal,
+      });
+      const data = await res.json() as Prompts & { error?: string };
+      setLoading(false);
+      if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
+      setPrompts(data); setActiveTab("A");
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      setLoading(false);
+      setError("Er ging iets mis.");
+    }
   };
 
   const copyPrompt = (openHiggsfield = false) => {
@@ -294,32 +308,48 @@ export default function AnimatiesPage() {
                     <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
                   </button>
                 )}
-                <button
-                  onClick={generate}
-                  disabled={loading || !uploadedImage}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  {loading ? "Genereren..." : "Genereer"}
-                </button>
+                {loading ? (
+                  <button
+                    onClick={stopGenerate}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
+                  >
+                    <X className="w-4 h-4" /> Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={generate}
+                    disabled={!uploadedImage}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Zap className="w-4 h-4" /> Genereer
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex gap-3">
                 <input
                   value={input}
                   onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && generate()}
+                  onKeyDown={e => e.key === "Enter" && !loading && generate()}
                   placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
                   className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
                 />
-                <button
-                  onClick={generate}
-                  disabled={loading || !input.trim()}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  {loading ? "Genereren..." : "Genereer"}
-                </button>
+                {loading ? (
+                  <button
+                    onClick={stopGenerate}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
+                  >
+                    <X className="w-4 h-4" /> Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={generate}
+                    disabled={!input.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Zap className="w-4 h-4" /> Genereer
+                  </button>
+                )}
               </div>
             )}
             {error && (

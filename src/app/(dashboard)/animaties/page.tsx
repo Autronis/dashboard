@@ -43,8 +43,10 @@ export default function AnimatiesPage() {
   const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>({ A: null, B: null });
   const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
+  const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const productRefInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -108,7 +110,10 @@ export default function AnimatiesPage() {
 
     let body: Record<string, string> = {};
     if (inputType === "url") body = { url: input };
-    else if (inputType === "product") body = { product: input };
+    else if (inputType === "product") {
+      body = { product: input };
+      if (productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; }
+    }
     else if (inputType === "image" && uploadedImage) body = { imageBase64: uploadedImage.base64, mediaType: uploadedImage.mediaType };
 
     try {

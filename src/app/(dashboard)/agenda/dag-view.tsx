@@ -43,9 +43,6 @@ function getEventColors(item: AnyEvent): { bg: string; border: string; text: str
   if (isExtern) {
     const ext = item as ExternEvent;
     const titel = ext.titel.toLowerCase();
-    if (ext.meetingUrl || ext.deelnemers.length > 0 || titel.includes("meeting") || titel.includes("call") || titel.includes("gesprek")) {
-      return { bg: "rgba(139,92,246,0.15)", border: "#a78bfa", text: "#c4b5fd" };
-    }
     if (titel.includes("deadline") || titel.includes("oplevering")) {
       return { bg: "rgba(239,68,68,0.12)", border: "#ef4444", text: "#f87171" };
     }
@@ -422,7 +419,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   </div>
                 ) : (
                   <>
-                    <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug" style={{ display: "-webkit-box", WebkitLineClamp: height < 70 ? 1 : 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.titel}</p>
+                    <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug break-words">{item.titel}</p>
                     <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
                       <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" style={{ color: colors.text }} />
                       <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
@@ -476,7 +473,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   <>
                     <div className="flex items-center gap-1.5">
                       <CheckSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 flex-shrink-0" />
-                      <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug" style={{ display: "-webkit-box", WebkitLineClamp: height < 70 ? 1 : 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{taak.titel}</p>
+                      <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug break-words">{taak.titel}</p>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
                       <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400/70" />

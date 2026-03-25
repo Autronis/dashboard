@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { screenTimeEntries, screenTimeRegels, projecten } from "@/lib/db/schema";
 import { requireApiKey } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 // ─── Server-side idle detection constants ───
 const MAX_ENTRY_DURATION_SECONDS = 300; // 5 min cap per entry

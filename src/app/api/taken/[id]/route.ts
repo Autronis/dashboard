@@ -46,11 +46,13 @@ export async function PUT(
     // Sync with Google Calendar in the background
     if (huidig) {
       const nieuweDeadline = (body.deadline !== undefined ? body.deadline : huidig.deadline) as string | null;
+      const nieuweIngeplandStart = (body.ingeplandStart !== undefined ? body.ingeplandStart : huidig.ingeplandStart) as string | null;
+      const nieuweIngeplandEind = (body.ingeplandEind !== undefined ? body.ingeplandEind : huidig.ingeplandEind) as string | null;
       const nieuweTitel = ((body.titel !== undefined ? body.titel : huidig.titel) as string).trim();
       const nieuweOmschrijving = (body.omschrijving !== undefined ? body.omschrijving : huidig.omschrijving) as string | null;
 
+      // Deadline sync
       if (nieuweDeadline && huidig.googleEventId) {
-        // Update existing event
         updateGoogleEvent(gebruiker.id, huidig.googleEventId, {
           summary: `📋 ${nieuweTitel}`,
           description: nieuweOmschrijving ?? undefined,
@@ -58,7 +60,6 @@ export async function PUT(
           allDay: true,
         }).catch(() => {});
       } else if (nieuweDeadline && !huidig.googleEventId) {
-        // Deadline added for the first time — create event
         pushEventToGoogle(gebruiker.id, {
           summary: `📋 ${nieuweTitel}`,
           description: nieuweOmschrijving ?? undefined,
@@ -72,9 +73,39 @@ export async function PUT(
           })
           .catch(() => {});
       } else if (!nieuweDeadline && huidig.googleEventId) {
-        // Deadline removed — delete event
         deleteGoogleEvent(gebruiker.id, huidig.googleEventId).catch(() => {});
         await db.update(taken).set({ googleEventId: null }).where(eq(taken.id, Number(id))).execute();
+      }
+
+      // Ingepland (planned block) sync
+      const ingeplandChanged = body.ingeplandStart !== undefined || body.ingeplandEind !== undefined || body.titel !== undefined;
+      if (ingeplandChanged) {
+        if (nieuweIngeplandStart && huidig.googlePlanEventId) {
+          updateGoogleEvent(gebruiker.id, huidig.googlePlanEventId, {
+            summary: `⏰ ${nieuweTitel}`,
+            description: nieuweOmschrijving ?? undefined,
+            start: nieuweIngeplandStart,
+            end: nieuweIngeplandEind ?? undefined,
+            allDay: false,
+          }).catch(() => {});
+        } else if (nieuweIngeplandStart && !huidig.googlePlanEventId) {
+          pushEventToGoogle(gebruiker.id, {
+            summary: `⏰ ${nieuweTitel}`,
+            description: nieuweOmschrijving ?? undefined,
+            start: nieuweIngeplandStart,
+            end: nieuweIngeplandEind ?? undefined,
+            allDay: false,
+          })
+            .then(async (event) => {
+              if (event?.id) {
+                await db.update(taken).set({ googlePlanEventId: event.id }).where(eq(taken.id, Number(id))).execute();
+              }
+            })
+            .catch(() => {});
+        } else if (!nieuweIngeplandStart && huidig.googlePlanEventId) {
+          deleteGoogleEvent(gebruiker.id, huidig.googlePlanEventId).catch(() => {});
+          await db.update(taken).set({ googlePlanEventId: null }).where(eq(taken.id, Number(id))).execute();
+        }
       }
     }
 
@@ -104,6 +135,9 @@ export async function DELETE(
     // Remove from Google Calendar if linked
     if (taak?.googleEventId) {
       deleteGoogleEvent(gebruiker.id, taak.googleEventId).catch(() => {});
+    }
+    if (taak?.googlePlanEventId) {
+      deleteGoogleEvent(gebruiker.id, taak.googlePlanEventId).catch(() => {});
     }
 
     return NextResponse.json({ succes: true });

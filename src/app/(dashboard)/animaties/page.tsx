@@ -535,29 +535,48 @@ export default function AnimatiesPage() {
                 )}
               </div>
             ) : (
-              <div className="flex gap-3">
-                <input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !loading && generate()}
-                  placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
-                  className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
-                />
-                {loading ? (
-                  <button
-                    onClick={stopGenerate}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
-                  >
-                    <X className="w-4 h-4" /> Stop
-                  </button>
-                ) : (
-                  <button
-                    onClick={generate}
-                    disabled={!input.trim()}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Zap className="w-4 h-4" /> Genereer
-                  </button>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-3">
+                  <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !loading && generate()}
+                    placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
+                    className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
+                  />
+                  {loading ? (
+                    <button
+                      onClick={stopGenerate}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
+                    >
+                      <X className="w-4 h-4" /> Stop
+                    </button>
+                  ) : (
+                    <button
+                      onClick={generate}
+                      disabled={!input.trim()}
+                      className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <Zap className="w-4 h-4" /> Genereer
+                    </button>
+                  )}
+                </div>
+                {inputType === "product" && (
+                  <div className="flex items-center gap-2">
+                    <input ref={productRefInputRef} type="file" accept="image/*" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const res = ev.target?.result as string; setProductRefImage({ base64: res.split(",")[1], mediaType: f.type, preview: res }); }; r.readAsDataURL(f); }} />
+                    {productRefImage ? (
+                      <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5">
+                        <img src={productRefImage.preview} alt="ref" className="w-6 h-6 object-contain rounded" />
+                        <span className="text-xs text-autronis-text-secondary">Referentie afbeelding</span>
+                        <button onClick={() => setProductRefImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary ml-1"><X className="w-3.5 h-3.5" /></button>
+                      </div>
+                    ) : (
+                      <button onClick={() => productRefInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-xs text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all">
+                        <Upload className="w-3.5 h-3.5" /> Referentie afbeelding toevoegen (optioneel)
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )}

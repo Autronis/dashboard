@@ -836,14 +836,20 @@ export default function GewoontesPagina() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  {vandaagFocus.map((item) => {
+                  <AnimatePresence mode="popLayout">
+                  {vandaagFocus.map((item, doetNuIdx) => {
                     const Icon = ICON_MAP[item.icoon] || Target;
                     const urgentie = item.streak >= 7 ? "border-l-red-500/70" : item.streak >= 3 ? "border-l-amber-500/50" : "border-l-transparent";
                     return (
-                      <div key={item.id}
+                      <motion.div key={item.id}
+                        layout
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, x: -14, transition: { duration: 0.18 } }}
+                        transition={{ duration: 0.2, delay: doetNuIdx * 0.045 }}
                         onClick={() => toggleGewoonte(item.id)}
                         className={cn(
-                          "flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent border-l-2 hover:border-autronis-accent/20 transition-all cursor-pointer select-none group",
+                          "flex items-center gap-4 rounded-xl p-4 bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent border-l-2 hover:border-autronis-accent/20 transition-colors cursor-pointer select-none group",
                           urgentie
                         )}
                       >
@@ -863,9 +869,10 @@ export default function GewoontesPagina() {
                           {item.streak > 0 && <StreakFlame streak={item.streak} />}
                           <ArrowRight className="w-4 h-4 text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
+                  </AnimatePresence>
                   {/* Top suggesties als gedimde kaartjes */}
                   {suggesties.slice(0, 2).map((s) => {
                     const Icon = ICON_MAP[s.icoon] || Target;
@@ -908,14 +915,17 @@ export default function GewoontesPagina() {
                 )}
               </div>
               <div className="space-y-2">
-                {gewoontesList.map((g) => {
+                {gewoontesList.map((g, vandaagIdx) => {
                   const Icon = ICON_MAP[g.icoon] || Target;
                   const stat = statistieken.find((s) => s.id === g.id);
                   return (
-                    <div key={g.id}
+                    <motion.div key={g.id}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.18, delay: vandaagIdx * 0.035 }}
                       onClick={() => toggleGewoonte(g.id)}
                       className={cn(
-                        "rounded-xl p-4 flex items-center gap-4 group transition-all cursor-pointer select-none",
+                        "rounded-xl p-4 flex items-center gap-4 group transition-colors cursor-pointer select-none",
                         g.voltooidVandaag
                           ? "bg-emerald-500/10 border border-emerald-500/20"
                           : "bg-autronis-bg/50 hover:bg-autronis-bg/80 border border-transparent"
@@ -1007,7 +1017,7 @@ export default function GewoontesPagina() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>

@@ -153,6 +153,13 @@ export default function CaseStudiesPage() {
   const publiceerRef = useRef<HTMLDivElement>(null);
   const downloadRef = useRef<HTMLDivElement>(null);
 
+  // View mode: list or grid
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+
+  // Draft saved indicator
+  const [draftSaved, setDraftSaved] = useState(false);
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const formRef = useRef<HTMLFormElement>(null);
 
   // ============ DATA LOADING ============
@@ -230,10 +237,15 @@ export default function CaseStudiesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Save draft to localStorage
+  // Save draft to localStorage + show indicator
   useEffect(() => {
+    const hasContent = formState.klantnaam || formState.probleem || formState.oplossing;
+    if (!hasContent) return;
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ formState, stappen, resultaatMetrics }));
+      setDraftSaved(true);
+      if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+      draftTimerRef.current = setTimeout(() => setDraftSaved(false), 2000);
     } catch {
       // localStorage vol — negeer
     }
@@ -247,6 +259,20 @@ export default function CaseStudiesPage() {
     }
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Keyboard shortcut N → Nieuw tab
+  useEffect(() => {
+    function handler(e: KeyboardEvent) {
+      if ((e.target as HTMLElement).tagName === "INPUT" || (e.target as HTMLElement).tagName === "TEXTAREA" || (e.target as HTMLElement).tagName === "SELECT") return;
+      if (e.key === "n" || e.key === "N") {
+        setActiveTab("nieuw");
+        setFormTab("formulier");
+      }
+      if (e.key === "Escape") setActiveTab("overzicht");
+    }
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, []);
 
   // Filtered projects for selected client
@@ -487,6 +513,25 @@ export default function CaseStudiesPage() {
         cs.subtitel.toLowerCase().includes(filterKlant.toLowerCase())
     );
   }, [existing, filterKlant]);
+
+  // Form completeness
+  const formVelden = [
+    formState.klantnaam,
+    formState.probleem,
+    formState.oplossing,
+    stappen.filter((s) => s.titel.trim()).length > 0 ? "ok" : "",
+    resultaatMetrics[0]?.van || resultaatMetrics[0]?.naar ? "ok" : "",
+  ];
+  const formVolledigheid = Math.round((formVelden.filter(Boolean).length / formVelden.length) * 100);
+
+  function clearDraft() {
+    setFormState({ klantnaam: "", klantBeschrijving: "", klantBranche: "", probleem: "", probleemMetricWaarde: "", probleemMetricLabel: "", oplossing: "", extraContext: "" });
+    setStappen([{ titel: "", beschrijving: "" }, { titel: "", beschrijving: "" }]);
+    setResultaatMetrics([{ label: "", van: "", naar: "" }]);
+    setSelectedKlantId(null);
+    setSelectedProjectId(null);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* negeer */ }
+  }
 
   return (
     <PageTransition>

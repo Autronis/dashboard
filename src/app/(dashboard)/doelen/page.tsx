@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useRouter } from "next/navigation";
 import {
   Target,
@@ -551,10 +552,10 @@ export default function DoelenPage() {
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-1.5 text-xs">
                     <Shield className={cn("w-3.5 h-3.5", confidenceLabel(gemConfidence).kleur)} />
-                    <span className={cn("font-semibold tabular-nums", confidenceLabel(gemConfidence).kleur)}>{gemConfidence}%</span>
+                    <AnimatedNumber value={gemConfidence} format={(n) => `${Math.round(n)}%`} className={cn("font-semibold tabular-nums", confidenceLabel(gemConfidence).kleur)} />
                     <span className="text-autronis-text-secondary">confidence</span>
                   </div>
-                  <span className={cn("text-sm font-bold tabular-nums", voortgangTekstKleur(gemVoortgang))}>{Math.round(gemVoortgang)}%</span>
+                  <AnimatedNumber value={gemVoortgang} format={(n) => `${Math.round(n)}%`} className={cn("text-sm font-bold tabular-nums", voortgangTekstKleur(gemVoortgang))} />
                 </div>
               </div>
               <div className="w-full h-2.5 bg-autronis-border rounded-full overflow-hidden">
@@ -573,13 +574,19 @@ export default function DoelenPage() {
             </div>
             <div className="space-y-2">
               {weekActions.slice(0, 5).map((wa, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl bg-autronis-bg/50">
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.05 }}
+                  className="flex items-start gap-3 p-3 rounded-xl bg-autronis-bg/50"
+                >
                   <div className={cn("px-2 py-0.5 rounded-md text-[10px] font-bold uppercase mt-0.5 flex-shrink-0", wa.prioriteit === "hoog" ? "bg-red-500/15 text-red-400" : "bg-yellow-500/15 text-yellow-400")}>{wa.prioriteit}</div>
                   <div className="min-w-0">
                     <p className="text-sm text-autronis-text-primary">{wa.actie}</p>
                     <p className="text-xs text-autronis-text-secondary">{wa.doel}</p>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -619,7 +626,7 @@ export default function DoelenPage() {
 
               {/* Quick templates */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                {OKR_TEMPLATES.map((tpl) => (
+                {OKR_TEMPLATES.map((tpl, i) => (
                   <motion.button
                     key={tpl.titel}
                     onClick={() => {
@@ -629,8 +636,10 @@ export default function DoelenPage() {
                       setFormKeyResults(tpl.keyResults.map((kr) => ({ ...kr })));
                       setModalOpen(true);
                     }}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
                     whileHover={{ y: -3 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    transition={{ duration: 0.2, delay: i * 0.06 }}
                     className={cn("text-left p-4 rounded-xl border-l-4 border border-autronis-border bg-autronis-bg/30 transition-colors group", tpl.bg)}
                     style={{ borderLeftColor: tpl.kleur }}
                   >
@@ -693,7 +702,7 @@ export default function DoelenPage() {
                         <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />Nog {wekenOver} weken</span>
                         <span className="inline-flex items-center gap-1">
                           <Shield className={cn("w-3 h-3", confidenceLabel(doelConfidence).kleur)} />
-                          <span className={confidenceLabel(doelConfidence).kleur}>{doelConfidence}%</span> confidence
+                          <AnimatedNumber value={doelConfidence} format={(n) => `${Math.round(n)}%`} className={confidenceLabel(doelConfidence).kleur} /> confidence
                         </span>
                         <div className="flex items-center gap-1">
                           <button onClick={() => openBewerken(doel)} className="p-1.5 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-colors" title="Bewerken"><Edit2 className="w-3.5 h-3.5" /></button>
@@ -788,7 +797,7 @@ export default function DoelenPage() {
                                   {formatKrWaarde(kr.doelwaarde, kr.eenheid, kr.autoKoppeling)}
                                 </button>
                               )}
-                              <span className={cn("text-xs font-semibold tabular-nums min-w-[40px] text-right", voortgangTekstKleur(pct))}>{Math.round(pct)}%</span>
+                              <AnimatedNumber value={pct} format={(n) => `${Math.round(n)}%`} className={cn("text-xs font-semibold tabular-nums min-w-[40px] text-right", voortgangTekstKleur(pct))} />
                             </div>
                           </div>
                           {/* Progress bar with time indicator */}

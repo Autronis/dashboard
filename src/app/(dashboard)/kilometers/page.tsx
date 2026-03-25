@@ -783,9 +783,18 @@ export default function KilometersPage() {
                       return (
                         <div
                           key={i}
-                          className="flex-1 flex flex-col items-center gap-1 relative"
+                          className="flex-1 flex flex-col items-center gap-1 relative cursor-pointer"
                           onMouseEnter={() => setHoveredBar(i)}
                           onMouseLeave={() => setHoveredBar(null)}
+                          onClick={() => {
+                            const targetMaand = i + 1;
+                            const dir = targetMaand > maand || (targetMaand === maand) ? 1 : -1;
+                            setNavRichting(dir as 1 | -1);
+                            setNavKey((k) => k + 1);
+                            setMaand(targetMaand);
+                            setShowJaar(false);
+                          }}
+                          title={`Ga naar ${MAAND_NAMEN[i]}`}
                         >
                           {/* Hover tooltip */}
                           <AnimatePresence>
@@ -859,9 +868,21 @@ export default function KilometersPage() {
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <span className="text-lg font-semibold text-autronis-text-primary min-w-[200px] text-center">
-            {MAAND_NAMEN[maand - 1]} {jaar}
-          </span>
+          <div className="min-w-[200px] text-center overflow-hidden">
+            <AnimatePresence mode="wait" custom={navRichting} initial={false}>
+              <motion.span
+                key={monthKey}
+                custom={navRichting}
+                variants={slideVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="inline-block text-lg font-semibold text-autronis-text-primary"
+              >
+                {MAAND_NAMEN[maand - 1]} {jaar}
+              </motion.span>
+            </AnimatePresence>
+          </div>
           <button
             onClick={handleNextMonth}
             className="p-2 rounded-lg hover:bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
@@ -886,7 +907,12 @@ export default function KilometersPage() {
               {/* KPI cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {/* Totaal km */}
-                <div className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-2 bg-autronis-accent/10 rounded-xl">
                       <Car className="w-4 h-4 text-autronis-accent" />
@@ -894,10 +920,15 @@ export default function KilometersPage() {
                   </div>
                   <AnimatedNumber key={`km-${monthKey}`} value={totaalKm} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
                   <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totaal km</p>
-                </div>
+                </motion.div>
 
                 {/* Aftrekbaar — met info tooltip */}
-                <div className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.06, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card"
+                >
                   <div className="flex items-center gap-2 mb-2 relative group">
                     <div className="p-2 bg-green-500/10 rounded-xl">
                       <MapPin className="w-4 h-4 text-green-400" />
@@ -915,21 +946,38 @@ export default function KilometersPage() {
                   </div>
                   <AnimatedNumber key={`bedrag-${monthKey}`} value={totaalBedrag} format={formatBedrag} className="text-2xl font-bold text-green-400 tabular-nums" />
                   <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Aftrekbaar</p>
-                </div>
+                </motion.div>
 
                 {/* Ritten */}
-                <div className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card">
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-2 bg-blue-500/10 rounded-xl">
                       <Car className="w-4 h-4 text-blue-400" />
                     </div>
                   </div>
                   <AnimatedNumber key={`ritten-${monthKey}`} value={aantalRitten} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
-                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Ritten</p>
-                </div>
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
+                    Ritten
+                    {aantalRitten > 0 && (
+                      <span className="ml-1.5 text-autronis-text-secondary/50 normal-case tracking-normal">
+                        · gem. {(totaalKm / aantalRitten).toFixed(0)} km
+                      </span>
+                    )}
+                  </p>
+                </motion.div>
 
-                {/* vs vorige maand — met pijl */}
-                <div className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card">
+                {/* vs vorige maand */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.18, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card"
+                >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-2 bg-purple-500/10 rounded-xl">
                       {kmVerschil >= 0
@@ -938,15 +986,26 @@ export default function KilometersPage() {
                       }
                     </div>
                   </div>
-                  <div className={cn("text-2xl font-bold tabular-nums flex items-center gap-1.5", kmVerschil >= 0 ? "text-emerald-400" : "text-red-400")}>
-                    {kmVerschil >= 0
-                      ? <TrendingUp className="w-5 h-5" />
-                      : <TrendingDown className="w-5 h-5" />
-                    }
-                    {kmVerschil >= 0 ? "+" : ""}{kmVerschil.toFixed(0)}%
-                  </div>
-                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">vs. vorige maand</p>
-                </div>
+                  {prevKm === 0 ? (
+                    <p className="text-2xl font-bold text-autronis-text-secondary/40 tabular-nums">—</p>
+                  ) : (
+                    <div className={cn("text-2xl font-bold tabular-nums flex items-center gap-1.5", kmVerschil >= 0 ? "text-emerald-400" : "text-red-400")}>
+                      {kmVerschil >= 0
+                        ? <TrendingUp className="w-5 h-5" />
+                        : <TrendingDown className="w-5 h-5" />
+                      }
+                      {kmVerschil >= 0 ? "+" : ""}{kmVerschil.toFixed(0)}%
+                    </div>
+                  )}
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
+                    vs. vorige maand
+                    {prevKm > 0 && (
+                      <span className="ml-1.5 text-autronis-text-secondary/50 normal-case tracking-normal">
+                        · was {prevKm.toFixed(0)} km
+                      </span>
+                    )}
+                  </p>
+                </motion.div>
               </div>
 
               {/* Klant subtotalen met % */}
@@ -981,6 +1040,13 @@ export default function KilometersPage() {
                 <div className="flex items-center justify-between px-6 pt-5 pb-3">
                   <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide">
                     Ritten {MAAND_NAMEN[maand - 1]}
+                    {ritten.length > 0 && (
+                      <span className="ml-2 text-autronis-text-secondary/40 normal-case tracking-normal font-normal">
+                        {sortedRitten.length !== ritten.length
+                          ? `${sortedRitten.length} / ${ritten.length}`
+                          : ritten.length}
+                      </span>
+                    )}
                   </h2>
                   <button
                     onClick={() => setShowSnelForm(!showSnelForm)}
@@ -995,6 +1061,56 @@ export default function KilometersPage() {
                     Snel toevoegen
                   </button>
                 </div>
+
+                {/* Search + doeltype filter chips */}
+                {ritten.length > 0 && (
+                  <div className="px-6 pb-3 flex flex-wrap items-center gap-2">
+                    <div className="relative flex-1 min-w-[160px] max-w-xs">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-autronis-text-secondary/40 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="Zoek op route of klant..."
+                        value={zoek}
+                        onChange={(e) => setZoek(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-autronis-bg border border-autronis-border rounded-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/40 focus:outline-none focus:border-autronis-accent transition-colors"
+                      />
+                      {zoek && (
+                        <button
+                          onClick={() => setZoek("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-autronis-text-secondary/50 hover:text-autronis-text-primary transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {aanwezigeDoelTypes.map((type) => {
+                      const chip = DOEL_CHIP[type] ?? { bg: "bg-slate-500/15", text: "text-slate-400" };
+                      const actief = doelFilter === type;
+                      return (
+                        <button
+                          key={type}
+                          onClick={() => setDoelFilter(actief ? null : type)}
+                          className={cn(
+                            "px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                            actief
+                              ? `${chip.bg} ${chip.text} border-current/30`
+                              : "bg-transparent border-autronis-border/50 text-autronis-text-secondary hover:border-autronis-border"
+                          )}
+                        >
+                          {DOEL_LABELS[type] ?? type}
+                        </button>
+                      );
+                    })}
+                    {(doelFilter || zoek) && (
+                      <button
+                        onClick={() => { setDoelFilter(null); setZoek(""); }}
+                        className="text-xs text-autronis-text-secondary/50 hover:text-autronis-text-primary transition-colors"
+                      >
+                        Wissen
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* Snelle rit invoer */}
                 <AnimatePresence>
@@ -1014,6 +1130,19 @@ export default function KilometersPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
+
+                {/* Filtered empty state */}
+                {ritten.length > 0 && sortedRitten.length === 0 && (
+                  <div className="px-6 pb-6 text-center py-8">
+                    <p className="text-sm text-autronis-text-secondary">Geen ritten gevonden voor deze filter.</p>
+                    <button
+                      onClick={() => { setDoelFilter(null); setZoek(""); }}
+                      className="mt-2 text-xs text-autronis-accent hover:text-autronis-accent-hover transition-colors"
+                    >
+                      Filter wissen
+                    </button>
+                  </div>
+                )}
 
                 {/* Empty state */}
                 {ritten.length === 0 ? (
@@ -1057,7 +1186,7 @@ export default function KilometersPage() {
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : sortedRitten.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -1102,11 +1231,14 @@ export default function KilometersPage() {
                               {rit.kilometers.toFixed(1)}
                             </td>
                             <td className="py-3.5 px-4 text-sm text-autronis-text-secondary">
-                              {rit.doelType ? (
-                                <span className="px-2 py-0.5 rounded-full text-xs bg-autronis-accent/10 text-autronis-accent">
-                                  {DOEL_LABELS[rit.doelType] || rit.doelType}
-                                </span>
-                              ) : rit.zakelijkDoel ? (
+                              {rit.doelType ? (() => {
+                                const chip = DOEL_CHIP[rit.doelType] ?? { bg: "bg-slate-500/15", text: "text-slate-400" };
+                                return (
+                                  <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", chip.bg, chip.text)}>
+                                    {DOEL_LABELS[rit.doelType] || rit.doelType}
+                                  </span>
+                                );
+                              })() : rit.zakelijkDoel ? (
                                 <span className="truncate max-w-[150px] block">{rit.zakelijkDoel}</span>
                               ) : "—"}
                             </td>
@@ -1163,7 +1295,7 @@ export default function KilometersPage() {
                       </tbody>
                     </table>
                   </div>
-                )}
+                ) : null}
               </div>
 
             </motion.div>

@@ -8,7 +8,7 @@ import { eq, and, asc, sql } from "drizzle-orm";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 2;
+const CACHE_VERSION = 3;
 
 // ─── Types ───
 interface Sessie {
@@ -290,7 +290,12 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const cat = Object.entries(catSec).sort(([, a], [, b]) => b - a)[0][0];
+      // Finance and meeting get a 2x weight — they represent intentional focused work
+      // even when an IDE has more passive background seconds in the same slot
+      const CAT_WEIGHT: Record<string, number> = { finance: 2, meeting: 2 };
+      const cat = Object.entries(catSec)
+        .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
+        .sort(([, a], [, b]) => b - a)[0][0];
       const topApps = Object.entries(appSec).filter(([a]) => a !== "Inactief").sort(([, a], [, b]) => b - a).slice(0, 4);
       const dominantApp = topApps[0]?.[0] ?? "";
 

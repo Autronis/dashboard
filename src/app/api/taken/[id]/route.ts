@@ -11,9 +11,12 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { id } = await params;
     const body = await req.json();
+
+    // Fetch current state for Google Calendar sync comparison
+    const [huidig] = await db.select().from(taken).where(eq(taken.id, Number(id))).limit(1);
 
     const updateData: Record<string, unknown> = { bijgewerktOp: new Date().toISOString() };
     if (body.titel !== undefined) updateData.titel = body.titel.trim();
@@ -38,6 +41,41 @@ export async function PUT(
 
     if (!bijgewerkt) {
       return NextResponse.json({ fout: "Taak niet gevonden." }, { status: 404 });
+    }
+
+    // Sync with Google Calendar in the background
+    if (huidig) {
+      const nieuweDeadline = (body.deadline !== undefined ? body.deadline : huidig.deadline) as string | null;
+      const nieuweTitel = ((body.titel !== undefined ? body.titel : huidig.titel) as string).trim();
+      const nieuweOmschrijving = (body.omschrijving !== undefined ? body.omschrijving : huidig.omschrijving) as string | null;
+
+      if (nieuweDeadline && huidig.googleEventId) {
+        // Update existing event
+        updateGoogleEvent(gebruiker.id, huidig.googleEventId, {
+          summary: `📋 ${nieuweTitel}`,
+          description: nieuweOmschrijving ?? undefined,
+          start: nieuweDeadline,
+          allDay: true,
+        }).catch(() => {});
+      } else if (nieuweDeadline && !huidig.googleEventId) {
+        // Deadline added for the first time — create event
+        pushEventToGoogle(gebruiker.id, {
+          summary: `📋 ${nieuweTitel}`,
+          description: nieuweOmschrijving ?? undefined,
+          start: nieuweDeadline,
+          allDay: true,
+        })
+          .then(async (event) => {
+            if (event?.id) {
+              await db.update(taken).set({ googleEventId: event.id }).where(eq(taken.id, Number(id))).execute();
+            }
+          })
+          .catch(() => {});
+      } else if (!nieuweDeadline && huidig.googleEventId) {
+        // Deadline removed — delete event
+        deleteGoogleEvent(gebruiker.id, huidig.googleEventId).catch(() => {});
+        await db.update(taken).set({ googleEventId: null }).where(eq(taken.id, Number(id))).execute();
+      }
     }
 
     return NextResponse.json({ taak: bijgewerkt });

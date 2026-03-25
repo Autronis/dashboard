@@ -123,10 +123,10 @@ export default function AnimatiesPage() {
     abortRef.current = new AbortController();
     setLoading(true); setError(""); setPrompts(null);
     const body: Record<string, string> = logoImage
-      ? { imageBase64: logoImage.base64, mediaType: logoImage.mediaType, product: logoInput }
-      : { product: logoInput };
+      ? { imageBase64: logoImage.base64, mediaType: logoImage.mediaType, description: logoInput }
+      : { description: logoInput };
     try {
-      const res = await fetch("/api/animaties/generate", {
+      const res = await fetch("/api/animaties/generate-logo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

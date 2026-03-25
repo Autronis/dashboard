@@ -2075,6 +2075,7 @@ export default function AgendaPage() {
                   </button>
                 );
               })}
+                    </div>
                   )}
                 </motion.div>
               )}

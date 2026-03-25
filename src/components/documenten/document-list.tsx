@@ -73,6 +73,14 @@ export function DocumentList() {
 
   const klantNamen = [...new Set(documenten?.map((d: DocumentBase) => d.klantNaam).filter(Boolean) ?? [])];
 
+  // Count per type across all loaded docs (ignoring current type filter)
+  const typeCountsAll = (documenten ?? []).reduce((acc: Record<string, number>, doc: DocumentBase) => {
+    acc[doc.type] = (acc[doc.type] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const anyFilterActive = zoekterm !== "" || filterType !== "alle" || filterKlant !== "" || filterDatum !== "";
+
   const gefilterd = documenten
     ?.filter((doc: DocumentBase) => {
       const matchType = filterType === "alle" || doc.type === filterType;
@@ -251,16 +259,21 @@ export function DocumentList() {
         }}
       />
 
-      {/* Type filter chips — colored per type */}
-      <div className="flex flex-wrap gap-1.5">
+      {/* Type filter chips — colored per type with counts */}
+      <div className="flex flex-wrap gap-1.5 items-center">
         <button
           onClick={() => setFilterType("alle")}
           className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border", filterType === "alle" ? "bg-autronis-accent/20 text-autronis-accent border-autronis-accent/30" : "border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary")}
         >
           Alle
+          {(documenten?.length ?? 0) > 0 && (
+            <span className="ml-1.5 text-[10px] opacity-60">{documenten?.length}</span>
+          )}
         </button>
         {(Object.entries(DOCUMENT_TYPE_CONFIG) as [DocumentType, typeof DOCUMENT_TYPE_CONFIG[DocumentType]][]).map(([type, cfg]) => {
           const Icon = TYPE_ICONS[type];
+          const count = typeCountsAll[type] ?? 0;
+          if (count === 0) return null;
           return (
             <button
               key={type}
@@ -272,22 +285,40 @@ export function DocumentList() {
             >
               <Icon className="w-3 h-3" />
               {cfg.label}
+              <span className={cn("text-[10px] tabular-nums", filterType === type ? "opacity-70" : "opacity-40")}>{count}</span>
             </button>
           );
         })}
+        {anyFilterActive && (
+          <button
+            onClick={() => { setFilterType("alle"); setFilterKlant(""); setFilterDatum(""); setZoekterm(""); }}
+            className="ml-1 text-xs text-autronis-text-secondary/50 hover:text-autronis-accent transition-colors flex items-center gap-1"
+          >
+            <X className="w-3 h-3" />
+            Wissen
+          </button>
+        )}
       </div>
 
       {/* Search + secondary filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary pointer-events-none" />
           <input
             type="text"
             value={zoekterm}
             onChange={(e) => setZoekterm(e.target.value)}
             placeholder="Zoek documenten..."
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
+            className="w-full pl-10 pr-8 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent"
           />
+          {zoekterm && (
+            <button
+              onClick={() => setZoekterm("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-autronis-text-secondary/50 hover:text-autronis-text-primary transition-colors"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
         <select value={filterKlant} onChange={(e) => setFilterKlant(e.target.value)} className="rounded-lg bg-autronis-card border border-autronis-border px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent">
           <option value="">Alle klanten</option>

@@ -552,7 +552,10 @@ export default function CaseStudiesPage() {
             {activeTab === "nieuw" ? (
               <><Eye className="h-4 w-4" /> Overzicht</>
             ) : (
-              <><Plus className="h-4 w-4" /> Nieuwe Case Study</>
+              <>
+                <Plus className="h-4 w-4" /> Nieuwe Case Study
+                <kbd className="ml-1 text-[10px] bg-autronis-bg/20 px-1.5 py-0.5 rounded font-mono">N</kbd>
+              </>
             )}
           </button>
         </div>
@@ -711,9 +714,55 @@ export default function CaseStudiesPage() {
           )}
         </AnimatePresence>
 
+        {/* ============ TAB CONTENT ============ */}
+        <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+        >
+
         {/* ============ OVERZICHT TAB ============ */}
         {activeTab === "overzicht" && (
           <div className="space-y-4">
+            {/* KPI balk */}
+            {existing.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05, duration: 0.25 }}
+                  className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
+                  <p className="text-xs text-autronis-text-secondary mb-1">Case studies</p>
+                  <p className="text-2xl font-bold text-autronis-accent tabular-nums">{existing.length}</p>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1, duration: 0.25 }}
+                  className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
+                  <p className="text-xs text-autronis-text-secondary mb-1">Generator</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", serverOnline === null ? "bg-yellow-400 animate-pulse" : serverOnline ? "bg-emerald-400" : "bg-red-400")} />
+                    <span className={cn("text-sm font-bold", serverOnline ? "text-emerald-400" : serverOnline === false ? "text-red-400" : "text-yellow-400")}>
+                      {serverOnline === null ? "Controleren" : serverOnline ? "Online" : "Offline"}
+                    </span>
+                  </div>
+                </motion.div>
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.25 }}
+                  className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:flex items-center justify-between hidden">
+                  <div>
+                    <p className="text-xs text-autronis-text-secondary mb-1">Weergave</p>
+                    <p className="text-sm font-semibold text-autronis-text-primary">{viewMode === "list" ? "Lijst" : "Grid"}</p>
+                  </div>
+                  <div className="flex gap-1 bg-autronis-bg rounded-lg p-1">
+                    <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-autronis-accent/20 text-autronis-accent" : "text-autronis-text-tertiary hover:text-autronis-text-primary")} title="Lijst">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                    </button>
+                    <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-autronis-accent/20 text-autronis-accent" : "text-autronis-text-tertiary hover:text-autronis-text-primary")} title="Grid">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+
             {/* Filters */}
             {existing.length > 0 && (
               <div className="flex items-center gap-3">
@@ -729,6 +778,15 @@ export default function CaseStudiesPage() {
                 <span className="text-xs text-autronis-text-tertiary tabular-nums">
                   {filteredExisting.length} case {filteredExisting.length === 1 ? "study" : "studies"}
                 </span>
+                {/* Mobile view toggle */}
+                <div className="flex gap-1 bg-autronis-bg border border-autronis-border rounded-lg p-1 sm:hidden">
+                  <button onClick={() => setViewMode("list")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "list" ? "bg-autronis-accent/20 text-autronis-accent" : "text-autronis-text-tertiary")}>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                  </button>
+                  <button onClick={() => setViewMode("grid")} className={cn("p-1.5 rounded-md transition-colors", viewMode === "grid" ? "bg-autronis-accent/20 text-autronis-accent" : "text-autronis-text-tertiary")}>
+                    <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zm10 0a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -780,20 +838,21 @@ export default function CaseStudiesPage() {
                 </p>
               </div>
             ) : (
-              <div className="grid gap-4">
+              <div className={cn(viewMode === "grid" ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" : "grid gap-4")}>
                 {filteredExisting.map((cs, i) => (
-                  <motion.div
-                    key={cs.slug}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.07, duration: 0.3 }}
-                    className="rounded-xl border border-autronis-border bg-autronis-card p-5 card-glow hover:border-autronis-accent/20 transition-all"
-                  >
-                    <div className="flex items-start gap-4">
-                      {/* Thumbnail — toont banner als die bestaat, anders icon */}
-                      <div className="flex-shrink-0 w-20 h-14 rounded-lg bg-autronis-accent/10 border border-autronis-accent/20 overflow-hidden relative">
+                  viewMode === "grid" ? (
+                    <motion.div
+                      key={cs.slug}
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.06, duration: 0.25 }}
+                      className="rounded-xl border border-autronis-border bg-autronis-card card-glow hover:border-autronis-accent/30 transition-all group cursor-pointer overflow-hidden"
+                      onClick={() => setPreviewSlug(cs.slug)}
+                    >
+                      {/* Grid thumbnail */}
+                      <div className="w-full aspect-video bg-autronis-accent/10 relative overflow-hidden">
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <BarChart3 className="h-6 w-6 text-autronis-accent/40" />
+                          <BarChart3 className="h-8 w-8 text-autronis-accent/30" />
                         </div>
                         <img
                           src={`${GENERATOR_URL}/out/${cs.slug}/banners/banner-metric-bold.png`}
@@ -801,43 +860,92 @@ export default function CaseStudiesPage() {
                           className="absolute inset-0 w-full h-full object-cover"
                           onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
                         />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                          <span className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5 text-sm font-bold text-white">
+                            <Eye className="h-4 w-4" /> Bekijk
+                          </span>
+                        </div>
                       </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-base font-bold text-autronis-text-primary truncate">{cs.titel}</h3>
-                        <p className="text-sm text-autronis-text-secondary truncate mt-0.5">{cs.subtitel}</p>
-
-                        {/* Acties */}
-                        <div className="flex items-center gap-2 mt-3 flex-wrap">
-                          <button onClick={() => setPreviewSlug(cs.slug)} className={accentBtnClass}>
-                            <Eye className="h-3.5 w-3.5" /> Bekijk
+                      <div className="p-4">
+                        <h3 className="text-sm font-bold text-autronis-text-primary line-clamp-2">{cs.titel}</h3>
+                        <p className="text-xs text-autronis-text-secondary mt-1 truncate">{cs.subtitel}</p>
+                        <div className="flex items-center gap-1.5 mt-3" onClick={(e) => e.stopPropagation()}>
+                          <button onClick={() => openEdit(cs.slug)} className={cn(actionBtnClass, "py-1 text-[11px]")}>
+                            <Edit3 className="h-3 w-3" /> Bewerk
                           </button>
-                          <button onClick={() => openEdit(cs.slug)} className={actionBtnClass}>
-                            <Edit3 className="h-3.5 w-3.5" /> Bewerk
-                          </button>
-                          <a
-                            href={`${GENERATOR_URL}/out/${cs.slug}/banners/banner-metric-bold.png`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={actionBtnClass}
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" /> Banner
-                          </a>
-                          <a
-                            href={`${GENERATOR_URL}/out/${cs.slug}/case-study.md`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={actionBtnClass}
-                          >
-                            <Share2 className="h-3.5 w-3.5" /> Markdown
-                          </a>
-                          <button onClick={hergebruikTemplate} className={actionBtnClass}>
-                            <Layers className="h-3.5 w-3.5" /> Hergebruik
+                          <button onClick={hergebruikTemplate} className={cn(actionBtnClass, "py-1 text-[11px]")}>
+                            <Layers className="h-3 w-3" /> Hergebruik
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key={cs.slug}
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.07, duration: 0.3 }}
+                      className="rounded-xl border border-autronis-border bg-autronis-card p-5 card-glow hover:border-autronis-accent/20 transition-all group cursor-pointer"
+                      onClick={() => setPreviewSlug(cs.slug)}
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Thumbnail */}
+                        <div className="flex-shrink-0 w-20 h-14 rounded-lg bg-autronis-accent/10 border border-autronis-accent/20 overflow-hidden relative">
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <BarChart3 className="h-6 w-6 text-autronis-accent/40" />
+                          </div>
+                          <img
+                            src={`${GENERATOR_URL}/out/${cs.slug}/banners/banner-metric-bold.png`}
+                            alt=""
+                            className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                            <Eye className="h-4 w-4 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <h3 className="text-base font-bold text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">{cs.titel}</h3>
+                              <p className="text-sm text-autronis-text-secondary truncate mt-0.5">{cs.subtitel}</p>
+                            </div>
+                            <code className="text-[10px] text-autronis-text-tertiary/60 flex-shrink-0 mt-1 font-mono hidden sm:block">{cs.slug}</code>
+                          </div>
+
+                          {/* Acties */}
+                          <div className="flex items-center gap-2 mt-3 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                            <button onClick={() => setPreviewSlug(cs.slug)} className={accentBtnClass}>
+                              <Eye className="h-3.5 w-3.5" /> Bekijk
+                            </button>
+                            <button onClick={() => openEdit(cs.slug)} className={actionBtnClass}>
+                              <Edit3 className="h-3.5 w-3.5" /> Bewerk
+                            </button>
+                            <a
+                              href={`${GENERATOR_URL}/out/${cs.slug}/banners/banner-metric-bold.png`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={actionBtnClass}
+                            >
+                              <ImageIcon className="h-3.5 w-3.5" /> Banner
+                            </a>
+                            <a
+                              href={`${GENERATOR_URL}/out/${cs.slug}/case-study.md`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={actionBtnClass}
+                            >
+                              <Share2 className="h-3.5 w-3.5" /> Markdown
+                            </a>
+                            <button onClick={hergebruikTemplate} className={actionBtnClass}>
+                              <Layers className="h-3.5 w-3.5" /> Hergebruik
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )
                 ))}
               </div>
             )}
@@ -847,6 +955,8 @@ export default function CaseStudiesPage() {
         {/* ============ NIEUW TAB ============ */}
         {activeTab === "nieuw" && (
           <>
+            {/* Form meta row: sub-tabs + completeness + draft */}
+            <div className="flex items-center gap-3 flex-wrap">
             {/* Sub-tabs: Formulier / Preview */}
             <div className="flex gap-1 rounded-lg bg-autronis-bg border border-autronis-border p-1 w-fit">
               <button
@@ -870,6 +980,43 @@ export default function CaseStudiesPage() {
                 </span>
               </button>
             </div>
+
+            {/* Completeness + draft indicator */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-1 max-w-xs">
+                <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden border border-autronis-border">
+                  <motion.div
+                    className={cn("h-full rounded-full transition-colors", formVolledigheid === 100 ? "bg-green-500" : formVolledigheid > 50 ? "bg-autronis-accent" : "bg-autronis-accent/50")}
+                    animate={{ width: `${formVolledigheid}%` }}
+                    transition={{ duration: 0.4 }}
+                  />
+                </div>
+                <span className="text-xs text-autronis-text-tertiary tabular-nums flex-shrink-0">{formVolledigheid}%</span>
+              </div>
+              <AnimatePresence>
+                {draftSaved && (
+                  <motion.span
+                    initial={{ opacity: 0, x: 8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-xs text-autronis-text-tertiary flex items-center gap-1"
+                  >
+                    <CheckCircle2 className="h-3 w-3 text-green-400" /> Draft opgeslagen
+                  </motion.span>
+                )}
+              </AnimatePresence>
+              {(formState.klantnaam || formState.probleem) && (
+                <button
+                  type="button"
+                  onClick={clearDraft}
+                  className="text-xs text-autronis-text-tertiary hover:text-red-400 transition-colors flex items-center gap-1"
+                >
+                  <X className="h-3 w-3" /> Wis formulier
+                </button>
+              )}
+            </div>
+
+            </div>{/* end form meta row */}
 
             {/* ---- FORMULIER ---- */}
             {formTab === "formulier" && (
@@ -1141,39 +1288,70 @@ export default function CaseStudiesPage() {
                       animate={{ opacity: 1, height: "auto" }}
                       exit={{ opacity: 0, height: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="rounded-xl border border-autronis-accent/20 bg-autronis-accent/5 p-5 space-y-2.5 overflow-hidden"
+                      className="rounded-xl border border-autronis-accent/20 bg-autronis-accent/5 p-5 space-y-4 overflow-hidden"
                     >
-                      {GENEREER_STAPPEN.map((stap, i) => {
-                        const stepNum = i + 1;
-                        const isActive = genereerStap === stepNum;
-                        const isDone = genereerStap > stepNum;
-                        return (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className={cn(
-                              "h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
-                              isDone ? "bg-emerald-500/20 text-emerald-400" :
-                              isActive ? "bg-autronis-accent/20 text-autronis-accent" :
-                              "bg-autronis-border/30 text-autronis-text-tertiary"
-                            )}>
-                              {isDone ? (
-                                <Check className="h-3 w-3" />
-                              ) : isActive ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
-                              )}
-                            </div>
-                            <span className={cn(
-                              "text-sm transition-colors duration-300",
-                              isDone ? "text-autronis-text-tertiary line-through" :
-                              isActive ? "text-autronis-text-primary font-medium" :
-                              "text-autronis-text-tertiary"
-                            )}>
-                              {stap.label}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {/* Progress bar */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-semibold text-autronis-accent">
+                            {genereerStap <= GENEREER_STAPPEN.length
+                              ? GENEREER_STAPPEN[Math.max(0, genereerStap - 1)]?.label ?? "Starten..."
+                              : "Afronden..."}
+                          </span>
+                          <span className="text-xs text-autronis-text-tertiary tabular-nums">
+                            {Math.min(genereerStap, GENEREER_STAPPEN.length)}/{GENEREER_STAPPEN.length}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-autronis-bg rounded-full overflow-hidden">
+                          <motion.div
+                            className="h-full bg-autronis-accent rounded-full"
+                            animate={{ width: `${(Math.min(genereerStap, GENEREER_STAPPEN.length) / GENEREER_STAPPEN.length) * 100}%` }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+                      {/* Step list */}
+                      <div className="space-y-2">
+                        {GENEREER_STAPPEN.map((stap, i) => {
+                          const stepNum = i + 1;
+                          const isActive = genereerStap === stepNum;
+                          const isDone = genereerStap > stepNum;
+                          return (
+                            <motion.div
+                              key={i}
+                              initial={{ opacity: 0, x: -8 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: i * 0.05 }}
+                              className="flex items-center gap-3"
+                            >
+                              <div className={cn(
+                                "h-5 w-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300",
+                                isDone ? "bg-emerald-500/20 text-emerald-400" :
+                                isActive ? "bg-autronis-accent/20 text-autronis-accent" :
+                                "bg-autronis-border/30 text-autronis-text-tertiary"
+                              )}>
+                                {isDone ? (
+                                  <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
+                                    <Check className="h-3 w-3" />
+                                  </motion.div>
+                                ) : isActive ? (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                ) : (
+                                  <div className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />
+                                )}
+                              </div>
+                              <span className={cn(
+                                "text-sm transition-colors duration-300",
+                                isDone ? "text-autronis-text-tertiary line-through" :
+                                isActive ? "text-autronis-text-primary font-medium" :
+                                "text-autronis-text-tertiary"
+                              )}>
+                                {stap.label}
+                              </span>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1436,6 +1614,9 @@ export default function CaseStudiesPage() {
             )}
           </>
         )}
+
+        </motion.div>
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

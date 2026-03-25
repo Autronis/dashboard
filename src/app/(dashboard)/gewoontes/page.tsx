@@ -680,24 +680,26 @@ export default function GewoontesPagina() {
               {/* Today's score */}
               <div className={cn("rounded-2xl border p-5 card-glow col-span-2 lg:col-span-1",
                 allesGedaan ? "bg-emerald-500/10 border-emerald-500/30" : "bg-autronis-card border-autronis-border")}>
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-emerald-500/10">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Vandaag</p>
+                  <div className="p-1.5 rounded-lg bg-emerald-500/10">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   </div>
                 </div>
                 <p className="text-3xl font-bold text-autronis-text-primary tabular-nums">{voltooid}/{totaal}</p>
-                <p className="text-xs text-autronis-text-secondary mt-1">
-                  {allesGedaan ? "Alles gedaan!" : "Vandaag"}
+                <p className="text-xs text-autronis-text-secondary/60 mt-1.5">
+                  {allesGedaan ? "Alles gedaan!" : `${totaal - voltooid} resterend`}
                 </p>
               </div>
 
-              {/* Week rate — with explanation */}
+              {/* Week rate */}
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow group relative">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-blue-500/10"><TrendingUp className="w-4 h-4 text-blue-400" /></div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Week</p>
+                  <div className="p-1.5 rounded-lg bg-blue-500/10"><TrendingUp className="w-3.5 h-3.5 text-blue-400" /></div>
                 </div>
                 <AnimatedNumber value={weekRate} format={(v) => `${Math.round(v)}%`} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
-                <p className="text-xs text-autronis-text-secondary mt-1">Week</p>
+                <p className="text-xs text-autronis-text-secondary/60 mt-1.5">Completie rate</p>
                 {weekUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
                     {weekUitleg}
@@ -705,13 +707,14 @@ export default function GewoontesPagina() {
                 )}
               </div>
 
-              {/* Month rate — with explanation */}
+              {/* Month rate */}
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow group relative">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-purple-500/10"><Calendar className="w-4 h-4 text-purple-400" /></div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Maand</p>
+                  <div className="p-1.5 rounded-lg bg-purple-500/10"><Calendar className="w-3.5 h-3.5 text-purple-400" /></div>
                 </div>
                 <AnimatedNumber value={maandRate} format={(v) => `${Math.round(v)}%`} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
-                <p className="text-xs text-autronis-text-secondary mt-1">Maand</p>
+                <p className="text-xs text-autronis-text-secondary/60 mt-1.5">Completie rate</p>
                 {maandUitleg && (
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-xs text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
                     {maandUitleg}
@@ -721,22 +724,24 @@ export default function GewoontesPagina() {
 
               {/* Total points */}
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-yellow-500/10"><Zap className="w-4 h-4 text-yellow-400" /></div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Punten</p>
+                  <div className="p-1.5 rounded-lg bg-yellow-500/10"><Zap className="w-3.5 h-3.5 text-yellow-400" /></div>
                 </div>
                 <AnimatedNumber value={totaalPunten} className="text-2xl font-bold text-yellow-400 tabular-nums" />
-                <p className="text-xs text-autronis-text-secondary mt-1">Punten</p>
+                <p className="text-xs text-autronis-text-secondary/60 mt-1.5">Totaal verdiend</p>
               </div>
 
               {/* Level */}
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-2 rounded-xl bg-autronis-accent/10">
-                    {levelInfo.level >= 6 ? <Crown className="w-4 h-4 text-yellow-400" /> : levelInfo.level >= 4 ? <Trophy className="w-4 h-4 text-autronis-accent" /> : <Award className="w-4 h-4 text-autronis-accent" />}
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Level</p>
+                  <div className="p-1.5 rounded-lg bg-autronis-accent/10">
+                    {levelInfo.level >= 6 ? <Crown className="w-3.5 h-3.5 text-yellow-400" /> : levelInfo.level >= 4 ? <Trophy className="w-3.5 h-3.5 text-autronis-accent" /> : <Award className="w-3.5 h-3.5 text-autronis-accent" />}
                   </div>
                 </div>
-                <p className="text-lg font-bold text-autronis-accent">{levelInfo.naam}</p>
-                <div className="w-full h-1.5 bg-autronis-border rounded-full mt-2 overflow-hidden">
+                <p className="text-xl font-bold text-autronis-accent">{levelInfo.naam}</p>
+                <div className="w-full h-1.5 bg-autronis-border rounded-full mt-2.5 overflow-hidden">
                   <motion.div
                     className="h-full bg-autronis-accent rounded-full"
                     initial={{ width: 0 }}
@@ -744,7 +749,7 @@ export default function GewoontesPagina() {
                     transition={{ duration: 1, ease: "easeOut" as const, delay: 0.3 }}
                   />
                 </div>
-                <p className="text-[10px] text-autronis-text-secondary mt-1">{totaalPunten}/{levelInfo.volgende} naar volgend level</p>
+                <p className="text-[10px] text-autronis-text-secondary/60 mt-1 tabular-nums">{totaalPunten}/{levelInfo.volgende} naar volgend level</p>
               </div>
             </div>
 
@@ -903,7 +908,7 @@ export default function GewoontesPagina() {
             {/* ─── 2. VANDAAG: habit list with checkboxes ─── */}
             <div className={cn("rounded-2xl border p-6 lg:p-7 card-glow",
               allesGedaan ? "bg-emerald-500/5 border-emerald-500/20" : "bg-autronis-card border-autronis-border")}>
-              <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center justify-between mb-3">
                 <h2 className="text-xl font-semibold text-autronis-text-primary flex items-center gap-2">
                   <CheckCircle2 className="w-5 h-5 text-autronis-accent" />
                   Vandaag
@@ -913,6 +918,20 @@ export default function GewoontesPagina() {
                     <Flame className="w-5 h-5 animate-pulse" /> Alles gedaan!
                   </span>
                 )}
+              </div>
+              {/* Dagvoortgang */}
+              <div className="flex items-center gap-3 mb-5">
+                <div className="flex-1 h-2.5 bg-autronis-border rounded-full overflow-hidden">
+                  <motion.div
+                    className={cn("h-full rounded-full", allesGedaan ? "bg-emerald-500" : "bg-autronis-accent")}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${totaal > 0 ? (voltooid / totaal) * 100 : 0}%` }}
+                    transition={{ duration: 0.9, ease: "easeOut" }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-autronis-text-secondary tabular-nums flex-shrink-0">
+                  {Math.round(totaal > 0 ? (voltooid / totaal) * 100 : 0)}%
+                </span>
               </div>
               <div className="space-y-2">
                 {gewoontesList.map((g, vandaagIdx) => {

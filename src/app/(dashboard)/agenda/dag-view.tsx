@@ -466,19 +466,29 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 }}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               >
-                <div className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 flex-shrink-0" />
-                  <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{taak.titel}</p>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400/70" />
-                  <span className="text-[10px] sm:text-xs tabular-nums text-green-400/70">
-                    {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
-                  </span>
-                  {taak.projectNaam && (
-                    <span className="text-[10px] text-autronis-text-secondary/50 ml-auto truncate">{taak.projectNaam}</span>
-                  )}
-                </div>
+                {height < 46 ? (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <CheckSquare className="w-3 h-3 text-green-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-autronis-text-primary truncate flex-1 leading-tight">{taak.titel}</span>
+                    <span className="text-[10px] tabular-nums text-green-400/70 flex-shrink-0">{startTijd}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <CheckSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 flex-shrink-0" />
+                      <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug" style={{ display: "-webkit-box", WebkitLineClamp: height < 70 ? 1 : 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{taak.titel}</p>
+                    </div>
+                    <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400/70" />
+                      <span className="text-[10px] sm:text-xs tabular-nums text-green-400/70">
+                        {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
+                      </span>
+                      {taak.projectNaam && (
+                        <span className="text-[10px] text-autronis-text-secondary/50 ml-auto truncate">{taak.projectNaam}</span>
+                      )}
+                    </div>
+                  </>
+                )}
                 {onUnplanTaak && (
                   <button
                     className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"

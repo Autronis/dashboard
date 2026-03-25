@@ -1711,147 +1711,222 @@ export default function AgendaPage() {
             </>
           ) : (
             <>
-              {/* Taken om te plannen */}
-              <AnimatePresence>
-              {nietIngeplandeTaken.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ type: "spring", stiffness: 280, damping: 26 }}
-                  className="mb-5"
-                >
-                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
-                    <ListTodo className="w-4 h-4 text-orange-400" />
-                    Taken om te plannen
-                    <span className="text-[10px] text-autronis-text-secondary font-normal ml-auto tabular-nums">{nietIngeplandeTaken.length}</span>
-                  </h3>
-                  <p className="text-[10px] text-autronis-text-secondary/60 mb-2">Sleep naar kalender of klik om in te plannen</p>
-                  <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
-                    {nietIngeplandeTaken
-                      .sort((a, b) => {
-                        // Hoog prioriteit eerst, dan bezig, dan open
-                        const prioOrder = { hoog: 0, normaal: 1, laag: 2 };
-                        const aPrio = prioOrder[a.prioriteit as keyof typeof prioOrder] ?? 1;
-                        const bPrio = prioOrder[b.prioriteit as keyof typeof prioOrder] ?? 1;
-                        if (aPrio !== bPrio) return aPrio - bPrio;
-                        if (a.status === "bezig" && b.status !== "bezig") return -1;
-                        if (b.status === "bezig" && a.status !== "bezig") return 1;
-                        return 0;
-                      })
-                      .slice(0, 10)
-                      .map((taak) => {
-                        const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
-                        const duurLabel = taak.geschatteDuur
-                          ? taak.geschatteDuur >= 60
-                            ? `${Math.floor(taak.geschatteDuur / 60)}u${taak.geschatteDuur % 60 ? ` ${taak.geschatteDuur % 60}m` : ""}`
-                            : `${taak.geschatteDuur}m`
-                          : null;
+              {/* ── Sidebar tabs ── */}
+              <div className="flex gap-1 mb-4 bg-autronis-bg/40 rounded-xl p-1 border border-autronis-border/40">
+                {([
+                  { key: "plannen", label: "Te plannen", count: nietIngeplandeTaken.length },
+                  { key: "vandaag", label: "Vandaag", count: ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr).length },
+                  { key: "aankomend", label: "Aankomend", count: aankomend.length },
+                ] as const).map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setSidebarTab(tab.key)}
+                    className={cn(
+                      "flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-medium transition-all",
+                      sidebarTab === tab.key
+                        ? "bg-autronis-card text-autronis-text-primary shadow-sm"
+                        : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                    )}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className={cn(
+                        "text-[10px] tabular-nums px-1.5 py-0.5 rounded-full",
+                        sidebarTab === tab.key
+                          ? "bg-autronis-accent/20 text-autronis-accent"
+                          : "bg-autronis-border/50 text-autronis-text-secondary"
+                      )}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
+              <AnimatePresence mode="wait">
+
+              {/* ── Tab: Te plannen ── */}
+              {sidebarTab === "plannen" && (
+                <motion.div key="plannen" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  {/* Priority filter */}
+                  <div className="flex gap-1 mb-3">
+                    {([
+                      { key: "alle", label: "Alle" },
+                      { key: "hoog", label: "Hoog" },
+                      { key: "bezig", label: "Bezig" },
+                    ] as const).map((f) => (
+                      <button
+                        key={f.key}
+                        onClick={() => setPlannenFilter(f.key)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-lg text-[10px] font-medium transition-colors border",
+                          plannenFilter === f.key
+                            ? f.key === "hoog"
+                              ? "bg-red-500/15 border-red-500/30 text-red-400"
+                              : f.key === "bezig"
+                                ? "bg-autronis-accent/15 border-autronis-accent/30 text-autronis-accent"
+                                : "bg-autronis-card border-autronis-border text-autronis-text-primary"
+                            : "bg-transparent border-autronis-border/40 text-autronis-text-secondary hover:border-autronis-border"
+                        )}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                    <span className="ml-auto text-[10px] text-autronis-text-secondary/50 self-center tabular-nums">
+                      Sleep of klik
+                    </span>
+                  </div>
+
+                  {takenPerProject.length === 0 ? (
+                    <p className="text-xs text-autronis-text-secondary py-4 text-center">
+                      {plannenFilter !== "alle" ? "Geen taken voor dit filter" : "Alle taken zijn ingepland!"}
+                    </p>
+                  ) : (
+                    <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-0.5">
+                      {takenPerProject.map((groep) => {
+                        const isExpanded = expandedProjecten.has(groep.projectNaam) || takenPerProject.length === 1;
                         return (
+                          <div key={groep.projectNaam}>
+                            {/* Project header */}
+                            <button
+                              onClick={() => setExpandedProjecten((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(groep.projectNaam)) next.delete(groep.projectNaam);
+                                else next.add(groep.projectNaam);
+                                return next;
+                              })}
+                              className="w-full flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-autronis-bg/30 transition-colors group"
+                            >
+                              <ChevronRight className={cn("w-3 h-3 text-autronis-text-secondary/60 transition-transform flex-shrink-0", isExpanded && "rotate-90")} />
+                              <span className="text-[11px] font-semibold text-autronis-text-secondary truncate flex-1 text-left">{groep.projectNaam}</span>
+                              <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">{groep.taken.length}</span>
+                            </button>
+
+                            {/* Taken in groep */}
+                            <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="space-y-1 mt-1 pl-1">
+                                  {groep.taken.map((taak) => {
+                                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                                    const duurLabel = taak.geschatteDuur
+                                      ? taak.geschatteDuur >= 60
+                                        ? `${Math.floor(taak.geschatteDuur / 60)}u${taak.geschatteDuur % 60 ? ` ${taak.geschatteDuur % 60}m` : ""}`
+                                        : `${taak.geschatteDuur}m`
+                                      : null;
+                                    return (
+                                      <div
+                                        key={taak.id}
+                                        draggable
+                                        onDragStart={(e) => {
+                                          setDragTaak(taak);
+                                          e.dataTransfer.setData("text/plain", String(taak.id));
+                                          e.dataTransfer.effectAllowed = "move";
+                                        }}
+                                        onDragEnd={() => setDragTaak(null)}
+                                        onClick={() => openPlanModal(taak)}
+                                        className="p-2 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 hover:border-autronis-accent/30 transition-colors cursor-grab active:cursor-grabbing group"
+                                        style={{ borderLeftColor: prioColor }}
+                                      >
+                                        <div className="flex items-start gap-2">
+                                          <div className="flex flex-col gap-px mt-1 opacity-30 group-hover:opacity-60 flex-shrink-0">
+                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                              {taak.status === "bezig" && (
+                                                <span className="text-[9px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
+                                              )}
+                                              {taak.prioriteit === "hoog" && (
+                                                <span className="text-[9px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full">Hoog</span>
+                                              )}
+                                              {duurLabel && (
+                                                <span className="text-[9px] text-autronis-text-secondary/60 flex items-center gap-0.5 flex-shrink-0">
+                                                  <Clock className="w-2.5 h-2.5" />{duurLabel}
+                                                </span>
+                                              )}
+                                              {taak.deadline && (
+                                                <span className="text-[9px] text-autronis-text-secondary/60 ml-auto tabular-nums flex-shrink-0">
+                                                  {new Date(taak.deadline).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* ── Tab: Vandaag ── */}
+              {sidebarTab === "vandaag" && (
+                <motion.div key="vandaag" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  {ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr).length === 0 ? (
+                    <p className="text-xs text-autronis-text-secondary py-4 text-center">Nog niets ingepland vandaag.</p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {ingeplandeTaken
+                        .filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr)
+                        .sort((a, b) => (a.ingeplandStart || "").localeCompare(b.ingeplandStart || ""))
+                        .map((taak) => (
                           <div
                             key={taak.id}
-                            draggable
-                            onDragStart={(e) => {
-                              setDragTaak(taak);
-                              e.dataTransfer.setData("text/plain", String(taak.id));
-                              e.dataTransfer.effectAllowed = "move";
-                            }}
-                            onDragEnd={() => setDragTaak(null)}
-                            onClick={() => openPlanModal(taak)}
-                            className="p-2 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 hover:border-autronis-accent/30 transition-colors cursor-grab active:cursor-grabbing group"
-                            style={{ borderLeftColor: prioColor }}
+                            className="p-2.5 rounded-lg bg-green-500/5 border border-green-500/20 border-l-2 group"
+                            style={{ borderLeftColor: "#22c55e" }}
                           >
                             <div className="flex items-start gap-2">
-                              {/* Drag handle */}
-                              <div className="flex flex-col gap-px mt-1 opacity-30 group-hover:opacity-60 flex-shrink-0">
-                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                                <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                              </div>
+                              <CheckSquare className="w-3.5 h-3.5 mt-0.5 text-green-400 flex-shrink-0" />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
-                                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                                  {taak.status === "bezig" && (
-                                    <span className="text-[9px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
-                                  )}
-                                  {taak.projectNaam && (
-                                    <span className="text-[9px] text-autronis-text-secondary truncate">{taak.projectNaam}</span>
-                                  )}
-                                  {duurLabel && (
-                                    <span className="text-[9px] text-autronis-text-secondary/60 flex items-center gap-0.5 flex-shrink-0">
-                                      <Clock className="w-2.5 h-2.5" />{duurLabel}
-                                    </span>
-                                  )}
-                                  {taak.deadline && (
-                                    <span className="text-[9px] text-autronis-text-secondary/60 ml-auto tabular-nums flex-shrink-0">
-                                      {new Date(taak.deadline).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
-                                    </span>
-                                  )}
+                                {taak.projectNaam && (
+                                  <p className="text-[9px] text-autronis-text-secondary truncate mt-0.5">{taak.projectNaam}</p>
+                                )}
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className="text-[9px] text-green-400/80 tabular-nums font-medium">
+                                    {taak.ingeplandStart && new Date(taak.ingeplandStart).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
+                                    {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
+                                  </span>
+                                  <button
+                                    onClick={() => handleUnplanTaak(taak.id)}
+                                    className="text-[9px] text-red-400/60 hover:text-red-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    Uitplannen
+                                  </button>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    {nietIngeplandeTaken.length > 10 && (
-                      <Link href="/taken" className="block text-center text-[10px] text-autronis-accent hover:underline py-1">
-                        +{nietIngeplandeTaken.length - 10} meer taken
-                      </Link>
-                    )}
-                  </div>
+                        ))}
+                    </div>
+                  )}
                 </motion.div>
               )}
-              </AnimatePresence>
 
-              {/* Ingeplande taken vandaag */}
-              {ingeplandeTaken.filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr).length > 0 && (
-                <div className="mb-5">
-                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2 flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4 text-green-400" />
-                    Ingepland vandaag
-                  </h3>
-                  <div className="space-y-1.5">
-                    {ingeplandeTaken
-                      .filter((t) => t.ingeplandStart?.slice(0, 10) === vandaagStr)
-                      .sort((a, b) => (a.ingeplandStart || "").localeCompare(b.ingeplandStart || ""))
-                      .map((taak) => (
-                        <div
-                          key={taak.id}
-                          className="p-2 rounded-lg bg-green-500/5 border border-green-500/20 border-l-2 group"
-                          style={{ borderLeftColor: "#22c55e" }}
-                        >
-                          <div className="flex items-start gap-2">
-                            <CheckSquare className="w-3.5 h-3.5 mt-0.5 text-green-400 flex-shrink-0" />
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-[9px] text-green-400/70 tabular-nums">
-                                  {taak.ingeplandStart && new Date(taak.ingeplandStart).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
-                                  {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
-                                </span>
-                                <button
-                                  onClick={() => handleUnplanTaak(taak.id)}
-                                  className="text-[9px] text-red-400/60 hover:text-red-400 ml-auto opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
-                                  Uitplannen
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-
-              <h3 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-autronis-accent" />
-                Aankomend
-              </h3>
-              {aankomend.length === 0 ? (
-                <p className="text-xs text-autronis-text-secondary">Geen aankomende items.</p>
-          ) : (
+              {/* ── Tab: Aankomend ── */}
+              {sidebarTab === "aankomend" && (
+                <motion.div key="aankomend" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.15 }}>
+                  {aankomend.length === 0 ? (
+                    <p className="text-xs text-autronis-text-secondary py-4 text-center">Geen aankomende items.</p>
+                  ) : (
             <div className="space-y-3">
               {aankomend.map((item) => {
                 // Countdown per item (real-time via nuTijd)

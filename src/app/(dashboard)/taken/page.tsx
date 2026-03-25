@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import {
@@ -808,8 +808,9 @@ export default function TakenPage() {
               <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
               Sync
             </button>
-            <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors">
+            <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors" title="Nieuwe taak (N)">
               <Plus className="w-4 h-4" /> Nieuw
+              <kbd className="ml-0.5 px-1 py-0.5 text-[9px] bg-autronis-bg/20 rounded font-mono">N</kbd>
             </button>
           </div>
         </div>
@@ -996,19 +997,72 @@ export default function TakenPage() {
                       </button>
                       {!isPC && (
                         <div className="border-t border-autronis-border/50">
-                          {project.fases.map((fase) => {
+                          {project.fases
+                            .filter((fase) => !hideCompleted || fase.afgerond < fase.totaal)
+                            .map((fase) => {
                             const faseKey = `${project.projectId}-${fase.fase}`;
                             const isFC = collapsedFases.has(faseKey);
                             const isComplete = fase.afgerond === fase.totaal && fase.totaal > 0;
+                            const isFlashed = flashedFases.has(faseKey);
+                            const isQuickAdding = quickAddFase?.projectId === project.projectId && quickAddFase.fase === fase.fase;
                             return (
-                              <div key={faseKey}>
-                                <button onClick={() => toggleFase(faseKey)} className="w-full flex items-center gap-2 px-3 py-1.5 pl-9 hover:bg-autronis-bg/20 transition-colors">
-                                  {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary" />}
-                                  <Layers className="w-3 h-3 text-autronis-text-secondary" />
-                                  <span className={cn("text-[11px] font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
-                                  {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-green-400" />}
-                                  <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
-                                </button>
+                              <motion.div
+                                key={faseKey}
+                                animate={isFlashed ? { backgroundColor: ["transparent", "rgba(34,197,94,0.1)", "transparent"] } : {}}
+                                transition={{ duration: 0.8 }}
+                              >
+                                <div className="w-full flex items-center gap-1 px-3 py-1.5 pl-9 hover:bg-autronis-bg/20 transition-colors group/fase">
+                                  <button onClick={() => toggleFase(faseKey)} className="flex items-center gap-2 flex-1 min-w-0">
+                                    {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />}
+                                    <Layers className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+                                    <span className={cn("text-[11px] font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
+                                    {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-green-400 flex-shrink-0" />}
+                                    <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
+                                  </button>
+                                  <button
+                                    onClick={() => { setQuickAddFase({ projectId: project.projectId, fase: fase.fase }); setQuickAddTitel(""); }}
+                                    className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
+                                    title="Snel taak toevoegen (of druk N)"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+                                <AnimatePresence>
+                                  {isQuickAdding && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.15 }}
+                                      className="px-3 pb-1.5 pl-14"
+                                    >
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="text"
+                                          value={quickAddTitel}
+                                          onChange={(e) => setQuickAddTitel(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") handleQuickAdd(project.projectId, fase.fase);
+                                            if (e.key === "Escape") { setQuickAddFase(null); setQuickAddTitel(""); }
+                                          }}
+                                          placeholder="Taak toevoegen..."
+                                          autoFocus
+                                          className="flex-1 bg-autronis-bg border border-autronis-accent/30 rounded-md px-2 py-1 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/40 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+                                        />
+                                        <button
+                                          onClick={() => handleQuickAdd(project.projectId, fase.fase)}
+                                          disabled={!quickAddTitel.trim() || quickAddMutation.isPending}
+                                          className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-md text-xs font-medium disabled:opacity-40"
+                                        >
+                                          {quickAddMutation.isPending ? "..." : "↵"}
+                                        </button>
+                                        <button onClick={() => setQuickAddFase(null)} className="p-1 text-autronis-text-secondary/50 hover:text-autronis-text-secondary transition-colors">
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                                 {!isFC && (
                                   <div className="space-y-px px-3 pb-1 pl-14">
                                     {fase.taken.map((taak) => {
@@ -1104,7 +1158,7 @@ export default function TakenPage() {
                                     })}
                                   </div>
                                 )}
-                              </div>
+                              </motion.div>
                             );
                           })}
                         </div>

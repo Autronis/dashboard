@@ -93,10 +93,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { id } = await params;
 
+    // Fetch before deleting to get googleEventId
+    const [taak] = await db.select().from(taken).where(eq(taken.id, Number(id))).limit(1);
+
     await db.delete(taken).where(eq(taken.id, Number(id)));
+
+    // Remove from Google Calendar if linked
+    if (taak?.googleEventId) {
+      deleteGoogleEvent(gebruiker.id, taak.googleEventId).catch(() => {});
+    }
+
     return NextResponse.json({ succes: true });
   } catch (error) {
     return NextResponse.json(

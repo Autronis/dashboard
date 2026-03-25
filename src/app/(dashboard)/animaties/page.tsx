@@ -16,37 +16,6 @@ interface Prompts {
 type Tab = "A" | "B" | "C";
 type Mode = "scroll-stop" | "logo-animatie";
 
-const LOGO_PROMPTS = {
-  A: `Professional product photography of the Autronis logo — a 3D butterfly sculpture centered in frame. Black matte 6-toothed gear body, four translucent frosted glass wings with engraved silver circuit traces and circular nodes, teal (#23C6B7) luminous ring around a white center orb, two black curved antennae.
-
-Object floating slightly above surface. Clean white background (#FFFFFF), soft diffused studio lighting, subtle subsurface glow through the glass wings. Photorealistic CGI render, 16:9 aspect ratio. No text, no other objects in frame.
-
-Shot on Phase One IQ4 150MP, 120mm macro lens, f/8, studio strobe lighting with large softbox above. Ultra-sharp detail, 8K quality downsampled to 4K.`,
-
-  B: `Professional exploded-view product photography of the Autronis butterfly logo, deconstructed into individual components floating in space against clean white background (#FFFFFF).
-
-Every component separated and floating with even spacing, maintaining spatial relationships along a vertical explosion axis:
-- Black matte 6-toothed gear body (center)
-- Upper left translucent glass wing (with silver circuit traces)
-- Upper right translucent glass wing (with silver circuit traces)
-- Lower left translucent glass wing
-- Lower right translucent glass wing
-- Teal luminous ring (#23C6B7)
-- White center orb
-- Left curved black antenna
-- Right curved black antenna
-
-Each piece floats with soft shadows beneath. Studio lighting identical to assembled shot — subsurface glow visible on glass wing pieces. Photorealistic CGI, 16:9 aspect ratio. Shot on Phase One IQ4 150MP, focus-stacked.`,
-
-  C: `START FRAME: All Autronis butterfly logo components scattered and floating in space against clean white background — black gear body, four translucent glass wings, teal ring, white orb, two antennae — all separated, hovering at different heights with slight rotations.
-
-END FRAME: The fully assembled Autronis butterfly logo centered on white background, wings spread open and gently flapping in a slow elegant rhythm. Teal center ring glows softly. Wings catch light creating translucent glass caustic reflections.
-
-TRANSITION: Components begin drifting toward center from their floating positions in a satisfying mechanical sequence — gear body locks in first, then teal ring and white orb slot into place, then the four glass wings fold in symmetrically from the sides, then antennae click into position at the top. Once fully assembled (2-3 seconds), wings begin a slow, graceful flap cycle — smooth and hypnotic like a living logo.
-
-STYLE: Photorealistic CGI, clean white background throughout, consistent soft studio lighting. No camera movement — locked-off tripod shot. Mechanical precision of assembly, organic grace of the wing movement.
-DURATION: 5-6 seconds total. ASPECT RATIO: 16:9. QUALITY: High fidelity, smooth 24fps or higher.`,
-};
 
 export default function AnimatiesPage() {
   const [mode, setMode] = useState<Mode>("scroll-stop");
@@ -57,10 +26,7 @@ export default function AnimatiesPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("A");
   const [copied, setCopied] = useState(false);
-  const [copiedLogo, setCopiedLogo] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [logoTab, setLogoTab] = useState<Tab>("A");
-  const [logoPrompts, setLogoPrompts] = useState<Record<Tab, string>>({ A: LOGO_PROMPTS.A, B: LOGO_PROMPTS.B, C: LOGO_PROMPTS.C });
   const [stepsOpen, setStepsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -157,14 +123,6 @@ export default function AnimatiesPage() {
     });
   };
 
-  const copyLogoPrompt = (openHiggsfield = false) => {
-    navigator.clipboard.writeText(logoPrompts[logoTab]).then(() => {
-      setCopiedLogo(true); launchConfetti();
-      setTimeout(() => setCopiedLogo(false), 2000);
-      if (openHiggsfield) window.open("https://higgsfield.ai", "_blank");
-    });
-  };
-
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer afbeelding (16:9)" },
     B: { label: prompts?.tabBNaam ?? "Deconstructed View", icon: Layers, instruction: "Upload afbeelding A als referentie → genereer afbeelding (16:9)" },
@@ -252,75 +210,87 @@ export default function AnimatiesPage() {
 
       {/* LOGO ANIMATIE MODE */}
       {mode === "logo-animatie" && (
-        <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
-          {/* Tabs + copy buttons */}
-          <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
-            {(["A", "B", "C"] as Tab[]).map(tab => {
-              const labels = { A: "Assembled Shot", B: "Exploded View", C: "Video Transitie" };
-              const icons = { A: Image, B: Layers, C: Clapperboard };
-              const Icon = icons[tab];
-              return (
+        <>
+          <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 mb-5">
+            <p className="text-xs text-autronis-text-tertiary mb-3">Upload je logo — AI genereert 3 prompts: clean shot, exploded view en video transitie</p>
+            <div className="flex gap-3 items-start">
+              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+              {uploadedImage ? (
+                <div className="flex-1 flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5">
+                  <img src={uploadedImage.preview} alt="logo" className="w-10 h-10 object-contain rounded" />
+                  <span className="text-sm text-autronis-text-primary flex-1">Logo geladen</span>
+                  <button onClick={() => setUploadedImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
                 <button
-                  key={tab}
-                  onClick={() => setLogoTab(tab)}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
-                    logoTab === tab
-                      ? "bg-autronis-accent text-white"
-                      : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
-                  }`}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex-1 flex flex-col items-center gap-2 py-6 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
                 >
-                  <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-black ${logoTab === tab ? "bg-white/20" : "bg-autronis-border"}`}>{tab}</span>
-                  <Icon className="w-3.5 h-3.5" />
-                  {labels[tab]}
+                  <Upload className="w-6 h-6" />
+                  <span className="text-sm">Upload je logo</span>
+                  <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
                 </button>
-              );
-            })}
-            <div className="ml-auto flex gap-2">
-              <button
-                onClick={() => copyLogoPrompt(false)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
-                  copiedLogo ? "bg-autronis-accent text-white border-autronis-accent" : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"
-                }`}
-              >
-                {copiedLogo ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedLogo ? "Gekopieerd!" : "Copy"}
-              </button>
-              <button
-                onClick={() => copyLogoPrompt(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Copy + Open Higgsfield
-              </button>
+              )}
+              {loading ? (
+                <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                  <X className="w-4 h-4" /> Stop
+                </button>
+              ) : (
+                <button onClick={generate} disabled={!uploadedImage} className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Zap className="w-4 h-4" /> Genereer
+                </button>
+              )}
             </div>
+            {error && (
+              <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{error}</p>
+            )}
           </div>
-          {/* Stap indicator */}
-          <div className="px-4 py-2 border-b border-autronis-border flex items-center gap-2">
-            <span className="text-xs font-bold px-2 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent">
-              Stap {logoTab === "A" ? "1" : logoTab === "B" ? "2" : "3"}
-            </span>
-            <span className="text-xs text-autronis-text-tertiary">
-              {logoTab === "A" && "Genereer assembled shot in Higgsfield (afbeelding, 16:9)"}
-              {logoTab === "B" && "Upload afbeelding A als referentie → genereer exploded view"}
-              {logoTab === "C" && "Upload A als start frame + B als end frame → genereer video (5s)"}
-            </span>
-          </div>
-          {/* Editable prompt */}
-          <div className="flex-1 p-4">
-            <textarea
-              value={logoPrompts[logoTab]}
-              onChange={e => setLogoPrompts(prev => ({ ...prev, [logoTab]: e.target.value }))}
-              rows={12}
-              className="w-full font-mono text-sm text-autronis-text-secondary bg-transparent resize-none focus:outline-none leading-relaxed"
-            />
-          </div>
-          <div className="px-4 py-3 border-t border-autronis-border bg-autronis-bg/50">
-            <p className="text-xs text-autronis-text-tertiary flex items-center gap-1.5">
-              <Code2 className="w-3.5 h-3.5 text-autronis-accent" />
-              Na stap 3: download de video → open VSCode → zeg <span className="text-autronis-accent font-mono">"scroll-stop build"</span> + geef het videobestand
-            </p>
-          </div>
-        </div>
+
+          {prompts && (
+            <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+              <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
+                {(["A", "B", "C"] as Tab[]).map(tab => (
+                  <button key={tab} onClick={() => setActiveTab(tab)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-autronis-accent text-white" : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"}`}
+                  >
+                    <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-black ${activeTab === tab ? "bg-white/20" : "bg-autronis-border"}`}>{tab}</span>
+                    {tabConfig[tab].label}
+                  </button>
+                ))}
+                <div className="ml-auto flex gap-2">
+                  <button onClick={() => copyPrompt(false)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${copied ? "bg-autronis-accent text-white border-autronis-accent" : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"}`}>
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? "Gekopieerd!" : "Copy"}
+                  </button>
+                  <button onClick={() => copyPrompt(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all">
+                    <ExternalLink className="w-4 h-4" /> Copy + Open Higgsfield
+                  </button>
+                </div>
+              </div>
+              <div className="px-4 py-2 border-b border-autronis-border flex items-center gap-2">
+                <span className="text-xs font-bold px-2 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent">Stap {activeTab === "A" ? "1" : activeTab === "B" ? "2" : "3"}</span>
+                <span className="text-xs text-autronis-text-tertiary">{tabConfig[activeTab].instruction}</span>
+              </div>
+              <div className="flex-1 min-h-0 overflow-y-auto p-4">
+                <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
+              </div>
+            </div>
+          )}
+
+          {!prompts && !loading && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
+                  <RotateCcw className="w-6 h-6 text-autronis-text-tertiary" />
+                </div>
+                <p className="text-autronis-text-tertiary text-sm">Upload je logo om AI-prompts te genereren</p>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* SCROLL-STOP MODE */}

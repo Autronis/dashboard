@@ -11,7 +11,7 @@ import {
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
-  UserCheck, Activity, CalendarDays,
+  UserCheck, Activity, CalendarDays, Wand2,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -72,6 +72,7 @@ const navSections: (NavLink | NavSection)[] = [
     section: "Kennis & Content",
     items: [
       { label: "Content", icon: Megaphone, href: "/content" },
+      { label: "Animaties", icon: Wand2, href: "/animaties" },
       { label: "Case Studies", icon: Video, href: "/case-studies" },
       { label: "Documenten", icon: FileText, href: "/documenten" },
       { label: "Wiki", icon: BookOpen, href: "/wiki" },

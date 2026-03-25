@@ -91,10 +91,12 @@ export async function POST(req: NextRequest) {
       },
       {
         type: "text",
-        text: "Analyseer dit product/logo en genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2. Gebruik de exacte kleuren, materialen en vormen die je ziet in de afbeelding.",
+        text: product
+          ? `Analyseer dit product/logo en genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2. Gebruik de exacte kleuren, materialen en vormen die je ziet in de afbeelding.\n\nExtra instructies: ${product}`
+          : "Analyseer dit product/logo en genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2. Gebruik de exacte kleuren, materialen en vormen die je ziet in de afbeelding.",
       },
     ];
-    bronLabel = "geüploade afbeelding";
+    bronLabel = product ?? "geüploade afbeelding";
   } else if (url) {
     try {
       const scraped = await scrapeUrl(url);

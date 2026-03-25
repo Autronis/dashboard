@@ -27,8 +27,13 @@ export default function AnimatiesPage() {
   const [activeTab, setActiveTab] = useState<Tab>("A");
   const [copied, setCopied] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [logoInput, setLogoInput] = useState(
+    "Autronis butterfly logo sculpture: black matte gear body, translucent glass wings with silver circuit traces and nodes, teal (#23C6B7) ring, white orb center, two black curved antennae.\n\nAnimatie: begint als exploded view met alle losse onderdelen zwevend → onderdelen komen logisch en clean samen → logo kantelt rechtop → vleugels flappen zachtjes."
+  );
+  const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [stepsOpen, setStepsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -95,6 +100,31 @@ export default function AnimatiesPage() {
     else if (inputType === "product") body = { product: input };
     else if (inputType === "image" && uploadedImage) body = { imageBase64: uploadedImage.base64, mediaType: uploadedImage.mediaType };
 
+    try {
+      const res = await fetch("/api/animaties/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: abortRef.current.signal,
+      });
+      const data = await res.json() as Prompts & { error?: string };
+      setLoading(false);
+      if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
+      setPrompts(data); setActiveTab("A");
+    } catch (e) {
+      if (e instanceof Error && e.name === "AbortError") return;
+      setLoading(false);
+      setError("Er ging iets mis.");
+    }
+  };
+
+  const generateLogo = async () => {
+    if (!logoInput.trim() && !logoImage) return;
+    abortRef.current = new AbortController();
+    setLoading(true); setError(""); setPrompts(null);
+    const body: Record<string, string> = logoImage
+      ? { imageBase64: logoImage.base64, mediaType: logoImage.mediaType, product: logoInput }
+      : { product: logoInput };
     try {
       const res = await fetch("/api/animaties/generate", {
         method: "POST",
@@ -212,41 +242,42 @@ export default function AnimatiesPage() {
       {mode === "logo-animatie" && (
         <>
           <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 mb-5">
-            <p className="text-xs text-autronis-text-tertiary mb-3">Upload je logo — AI genereert 3 prompts: clean shot, exploded view en video transitie</p>
-            <div className="flex gap-3 items-start">
-              <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
-              {uploadedImage ? (
-                <div className="flex-1 flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5">
-                  <img src={uploadedImage.preview} alt="logo" className="w-10 h-10 object-contain rounded" />
-                  <span className="text-sm text-autronis-text-primary flex-1">Logo geladen</span>
-                  <button onClick={() => setUploadedImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary">
-                    <X className="w-4 h-4" />
-                  </button>
+            {/* Description textarea */}
+            <textarea
+              value={logoInput}
+              onChange={e => setLogoInput(e.target.value)}
+              rows={4}
+              placeholder="Beschrijf je logo en wat de animatie moet doen..."
+              className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors resize-none mb-3"
+            />
+            {/* Optional image reference + generate */}
+            <div className="flex gap-3 items-center">
+              <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const res = ev.target?.result as string; setLogoImage({ base64: res.split(",")[1], mediaType: f.type, preview: res }); }; r.readAsDataURL(f); }} />
+              {logoImage ? (
+                <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2">
+                  <img src={logoImage.preview} alt="ref" className="w-7 h-7 object-contain rounded" />
+                  <span className="text-xs text-autronis-text-secondary">Referentie</span>
+                  <button onClick={() => setLogoImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary ml-1"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : (
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 flex flex-col items-center gap-2 py-6 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
-                >
-                  <Upload className="w-6 h-6" />
-                  <span className="text-sm">Upload je logo</span>
-                  <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
+                <button onClick={() => logoFileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-xs text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all">
+                  <Upload className="w-3.5 h-3.5" /> Referentie afbeelding (optioneel)
                 </button>
               )}
-              {loading ? (
-                <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
-                  <X className="w-4 h-4" /> Stop
-                </button>
-              ) : (
-                <button onClick={generate} disabled={!uploadedImage} className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  <Zap className="w-4 h-4" /> Genereer
-                </button>
-              )}
+              <div className="ml-auto flex gap-2">
+                {loading ? (
+                  <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                    <X className="w-4 h-4" /> Stop
+                  </button>
+                ) : (
+                  <button onClick={generateLogo} disabled={!logoInput.trim()} className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <Zap className="w-4 h-4" /> Genereer prompts
+                  </button>
+                )}
+              </div>
             </div>
-            {error && (
-              <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{error}</p>
-            )}
+            {error && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{error}</p>}
           </div>
 
           {prompts && (
@@ -286,7 +317,7 @@ export default function AnimatiesPage() {
                 <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
                   <RotateCcw className="w-6 h-6 text-autronis-text-tertiary" />
                 </div>
-                <p className="text-autronis-text-tertiary text-sm">Upload je logo om AI-prompts te genereren</p>
+                <p className="text-autronis-text-tertiary text-sm">Beschrijf wat je wilt en klik Genereer</p>
               </div>
             </div>
           )}

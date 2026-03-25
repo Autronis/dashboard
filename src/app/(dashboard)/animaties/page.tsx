@@ -35,6 +35,7 @@ export default function AnimatiesPage() {
   const [copied, setCopied] = useState(false);
   const [copiedLogo, setCopiedLogo] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [logoPrompt, setLogoPrompt] = useState(LOGO_ANIMATIE_PROMPT);
   const [stepsOpen, setStepsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -132,7 +133,7 @@ export default function AnimatiesPage() {
   };
 
   const copyLogoPrompt = (openHiggsfield = false) => {
-    navigator.clipboard.writeText(LOGO_ANIMATIE_PROMPT).then(() => {
+    navigator.clipboard.writeText(logoPrompt).then(() => {
       setCopiedLogo(true); launchConfetti();
       setTimeout(() => setCopiedLogo(false), 2000);
       if (openHiggsfield) window.open("https://higgsfield.ai", "_blank");
@@ -252,7 +253,12 @@ export default function AnimatiesPage() {
             </div>
           </div>
           <div className="p-4">
-            <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{LOGO_ANIMATIE_PROMPT}</pre>
+            <textarea
+              value={logoPrompt}
+              onChange={e => setLogoPrompt(e.target.value)}
+              rows={10}
+              className="w-full font-mono text-sm text-autronis-text-secondary bg-transparent resize-none focus:outline-none leading-relaxed"
+            />
           </div>
           <div className="px-4 py-3 border-t border-autronis-border bg-autronis-bg/50">
             <p className="text-xs text-autronis-text-tertiary flex items-center gap-1.5">

@@ -16,13 +16,37 @@ interface Prompts {
 type Tab = "A" | "B" | "C";
 type Mode = "scroll-stop" | "logo-animatie";
 
-const LOGO_ANIMATIE_PROMPT = `3D Autronis butterfly logo sculpture, translucent glass wings with teal (#23C6B7) glow, matte black chrome gear body, glowing teal orb center. Floating in clean white space, soft studio lighting.
+const LOGO_PROMPTS = {
+  A: `Professional product photography of the Autronis logo — a 3D butterfly sculpture centered in frame. Black matte 6-toothed gear body, four translucent frosted glass wings with engraved silver circuit traces and circular nodes, teal (#23C6B7) luminous ring around a white center orb, two black curved antennae.
 
-ANIMATION: The butterfly slowly rotates 360 degrees on its vertical axis while its wings gently flap up and down in a slow, elegant rhythm. Wings catch light as they move, creating soft teal caustic reflections. Movement is smooth and hypnotic — like a living logo. Loop seamlessly.
+Object floating slightly above surface. Clean white background (#FFFFFF), soft diffused studio lighting, subtle subsurface glow through the glass wings. Photorealistic CGI render, 16:9 aspect ratio. No text, no other objects in frame.
 
-DURATION: 4-6 seconds seamless loop.
-ASPECT RATIO: 16:9 or 1:1
-STYLE: Photorealistic CGI, product photography lighting, pure white or transparent background. No text.`;
+Shot on Phase One IQ4 150MP, 120mm macro lens, f/8, studio strobe lighting with large softbox above. Ultra-sharp detail, 8K quality downsampled to 4K.`,
+
+  B: `Professional exploded-view product photography of the Autronis butterfly logo, deconstructed into individual components floating in space against clean white background (#FFFFFF).
+
+Every component separated and floating with even spacing, maintaining spatial relationships along a vertical explosion axis:
+- Black matte 6-toothed gear body (center)
+- Upper left translucent glass wing (with silver circuit traces)
+- Upper right translucent glass wing (with silver circuit traces)
+- Lower left translucent glass wing
+- Lower right translucent glass wing
+- Teal luminous ring (#23C6B7)
+- White center orb
+- Left curved black antenna
+- Right curved black antenna
+
+Each piece floats with soft shadows beneath. Studio lighting identical to assembled shot — subsurface glow visible on glass wing pieces. Photorealistic CGI, 16:9 aspect ratio. Shot on Phase One IQ4 150MP, focus-stacked.`,
+
+  C: `START FRAME: All Autronis butterfly logo components scattered and floating in space against clean white background — black gear body, four translucent glass wings, teal ring, white orb, two antennae — all separated, hovering at different heights with slight rotations.
+
+END FRAME: The fully assembled Autronis butterfly logo centered on white background, wings spread open and gently flapping in a slow elegant rhythm. Teal center ring glows softly. Wings catch light creating translucent glass caustic reflections.
+
+TRANSITION: Components begin drifting toward center from their floating positions in a satisfying mechanical sequence — gear body locks in first, then teal ring and white orb slot into place, then the four glass wings fold in symmetrically from the sides, then antennae click into position at the top. Once fully assembled (2-3 seconds), wings begin a slow, graceful flap cycle — smooth and hypnotic like a living logo.
+
+STYLE: Photorealistic CGI, clean white background throughout, consistent soft studio lighting. No camera movement — locked-off tripod shot. Mechanical precision of assembly, organic grace of the wing movement.
+DURATION: 5-6 seconds total. ASPECT RATIO: 16:9. QUALITY: High fidelity, smooth 24fps or higher.`,
+};
 
 export default function AnimatiesPage() {
   const [mode, setMode] = useState<Mode>("scroll-stop");
@@ -35,7 +59,8 @@ export default function AnimatiesPage() {
   const [copied, setCopied] = useState(false);
   const [copiedLogo, setCopiedLogo] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [logoPrompt, setLogoPrompt] = useState(LOGO_ANIMATIE_PROMPT);
+  const [logoTab, setLogoTab] = useState<Tab>("A");
+  const [logoPrompts, setLogoPrompts] = useState<Record<Tab, string>>({ A: LOGO_PROMPTS.A, B: LOGO_PROMPTS.B, C: LOGO_PROMPTS.C });
   const [stepsOpen, setStepsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -133,7 +158,7 @@ export default function AnimatiesPage() {
   };
 
   const copyLogoPrompt = (openHiggsfield = false) => {
-    navigator.clipboard.writeText(logoPrompt).then(() => {
+    navigator.clipboard.writeText(logoPrompts[logoTab]).then(() => {
       setCopiedLogo(true); launchConfetti();
       setTimeout(() => setCopiedLogo(false), 2000);
       if (openHiggsfield) window.open("https://higgsfield.ai", "_blank");
@@ -227,13 +252,30 @@ export default function AnimatiesPage() {
 
       {/* LOGO ANIMATIE MODE */}
       {mode === "logo-animatie" && (
-        <div className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-autronis-border flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-autronis-text-primary">Logo Animatie Prompt</p>
-              <p className="text-xs text-autronis-text-tertiary mt-0.5">Autronis logo dat ronddraait en vleugels flapt — voor op de website</p>
-            </div>
-            <div className="flex gap-2">
+        <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+          {/* Tabs + copy buttons */}
+          <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
+            {(["A", "B", "C"] as Tab[]).map(tab => {
+              const labels = { A: "Assembled Shot", B: "Exploded View", C: "Video Transitie" };
+              const icons = { A: Image, B: Layers, C: Clapperboard };
+              const Icon = icons[tab];
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setLogoTab(tab)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                    logoTab === tab
+                      ? "bg-autronis-accent text-white"
+                      : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
+                  }`}
+                >
+                  <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-black ${logoTab === tab ? "bg-white/20" : "bg-autronis-border"}`}>{tab}</span>
+                  <Icon className="w-3.5 h-3.5" />
+                  {labels[tab]}
+                </button>
+              );
+            })}
+            <div className="ml-auto flex gap-2">
               <button
                 onClick={() => copyLogoPrompt(false)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
@@ -252,18 +294,30 @@ export default function AnimatiesPage() {
               </button>
             </div>
           </div>
-          <div className="p-4">
+          {/* Stap indicator */}
+          <div className="px-4 py-2 border-b border-autronis-border flex items-center gap-2">
+            <span className="text-xs font-bold px-2 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent">
+              Stap {logoTab === "A" ? "1" : logoTab === "B" ? "2" : "3"}
+            </span>
+            <span className="text-xs text-autronis-text-tertiary">
+              {logoTab === "A" && "Genereer assembled shot in Higgsfield (afbeelding, 16:9)"}
+              {logoTab === "B" && "Upload afbeelding A als referentie → genereer exploded view"}
+              {logoTab === "C" && "Upload A als start frame + B als end frame → genereer video (5s)"}
+            </span>
+          </div>
+          {/* Editable prompt */}
+          <div className="flex-1 p-4">
             <textarea
-              value={logoPrompt}
-              onChange={e => setLogoPrompt(e.target.value)}
-              rows={10}
+              value={logoPrompts[logoTab]}
+              onChange={e => setLogoPrompts(prev => ({ ...prev, [logoTab]: e.target.value }))}
+              rows={12}
               className="w-full font-mono text-sm text-autronis-text-secondary bg-transparent resize-none focus:outline-none leading-relaxed"
             />
           </div>
           <div className="px-4 py-3 border-t border-autronis-border bg-autronis-bg/50">
             <p className="text-xs text-autronis-text-tertiary flex items-center gap-1.5">
               <Code2 className="w-3.5 h-3.5 text-autronis-accent" />
-              Na het genereren: download de video → open VSCode → zeg <span className="text-autronis-accent font-mono">"scroll-stop build"</span> + geef het videobestand
+              Na stap 3: download de video → open VSCode → zeg <span className="text-autronis-accent font-mono">"scroll-stop build"</span> + geef het videobestand
             </p>
           </div>
         </div>

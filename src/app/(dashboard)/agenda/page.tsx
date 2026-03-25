@@ -1410,7 +1410,7 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-start gap-1">
                           {TypeIcon && height > 22 && <TypeIcon className="w-2.5 h-2.5 flex-shrink-0 mt-0.5 opacity-80" />}
-                          <p className="text-[11px] font-semibold truncate leading-tight flex-1">{titel}</p>
+                          <p className="text-[11px] font-semibold overflow-hidden leading-tight flex-1">{titel}</p>
                         </div>
                         {height > 30 && (
                           <p className="text-[10px] opacity-75 tabular-nums mt-0.5 font-medium">
@@ -1471,7 +1471,7 @@ export default function AgendaPage() {
                       >
                         <div className="flex items-center gap-1">
                           <CheckSquare className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
-                          <p className="text-[11px] font-semibold truncate leading-tight flex-1">{taak.titel}</p>
+                          <p className="text-[11px] font-semibold overflow-hidden leading-tight flex-1">{taak.titel}</p>
                         </div>
                         {height > 30 && (
                           <p className="text-[10px] opacity-75 mt-0.5 tabular-nums font-medium">

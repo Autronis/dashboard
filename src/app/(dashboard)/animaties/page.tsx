@@ -39,6 +39,10 @@ export default function AnimatiesPage() {
   const [kieVideoUrl, setKieVideoUrl] = useState<string | null>(null);
   const [kieError, setKieError] = useState("");
   const kiePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [kieImgLoading, setKieImgLoading] = useState<Record<"A" | "B", boolean>>({ A: false, B: false });
+  const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>({ A: null, B: null });
+  const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
+  const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -157,6 +161,43 @@ export default function AnimatiesPage() {
       }, 4000);
     } catch {
       setKieError("Er ging iets mis."); setKieLoading(false);
+    }
+  };
+
+  const generateKieImage = async (tab: "A" | "B") => {
+    if (!prompts) return;
+    const prompt = tab === "A" ? prompts.promptA : prompts.promptB;
+    setKieImgLoading(prev => ({ ...prev, [tab]: true }));
+    setKieImgError(prev => ({ ...prev, [tab]: "" }));
+    setKieImgUrl(prev => ({ ...prev, [tab]: null }));
+    try {
+      const res = await fetch("/api/animaties/kie-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const data = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || data.error) {
+        setKieImgError(prev => ({ ...prev, [tab]: data.error ?? "Fout." }));
+        setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+        return;
+      }
+      kieImgPollingRef.current[tab] = setInterval(async () => {
+        const poll = await fetch(`/api/animaties/kie-image-status?taskId=${data.taskId}`);
+        const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
+        if (result.status === "done" && result.imageUrl) {
+          clearInterval(kieImgPollingRef.current[tab]!);
+          setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! }));
+          setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+        } else if (result.status === "failed") {
+          clearInterval(kieImgPollingRef.current[tab]!);
+          setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));
+          setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+        }
+      }, 4000);
+    } catch {
+      setKieImgError(prev => ({ ...prev, [tab]: "Er ging iets mis." }));
+      setKieImgLoading(prev => ({ ...prev, [tab]: false }));
     }
   };
 
@@ -350,6 +391,28 @@ export default function AnimatiesPage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4">
                 <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
               </div>
+              {(activeTab === "A" || activeTab === "B") && (
+                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                      <Image className="w-3.5 h-3.5 text-autronis-accent" /> Genereer afbeelding via Kie.ai (Nano Banana 2)
+                    </p>
+                    <button onClick={() => generateKieImage(activeTab)} disabled={kieImgLoading[activeTab]}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {kieImgLoading[activeTab] ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genereren...</> : <><Zap className="w-3.5 h-3.5" /> Genereer</>}
+                    </button>
+                  </div>
+                  {kieImgError[activeTab] && <p className="text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieImgError[activeTab]}</p>}
+                  {kieImgUrl[activeTab] && (
+                    <div className="mt-2">
+                      <img src={kieImgUrl[activeTab]!} alt="gegenereerde afbeelding" className="w-full rounded-lg border border-autronis-border" />
+                      <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
               {activeTab === "C" && (
                 <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
                   <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
@@ -549,6 +612,29 @@ export default function AnimatiesPage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4">
                 <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
               </div>
+              {/* Kie.ai image generator — Tab A and B */}
+              {(activeTab === "A" || activeTab === "B") && (
+                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                      <Image className="w-3.5 h-3.5 text-autronis-accent" /> Genereer afbeelding via Kie.ai (Nano Banana 2)
+                    </p>
+                    <button onClick={() => generateKieImage(activeTab)} disabled={kieImgLoading[activeTab]}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {kieImgLoading[activeTab] ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genereren...</> : <><Zap className="w-3.5 h-3.5" /> Genereer</>}
+                    </button>
+                  </div>
+                  {kieImgError[activeTab] && <p className="text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieImgError[activeTab]}</p>}
+                  {kieImgUrl[activeTab] && (
+                    <div className="mt-2">
+                      <img src={kieImgUrl[activeTab]!} alt="gegenereerde afbeelding" className="w-full rounded-lg border border-autronis-border" />
+                      <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Kie.ai video generator — only on Tab C */}
               {activeTab === "C" && (
                 <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">

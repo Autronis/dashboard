@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
 
 // PUT /api/taken/[id]
 export async function PUT(

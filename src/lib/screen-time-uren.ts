@@ -1,13 +1,20 @@
 import { db } from "@/lib/db";
-import { screenTimeEntries, projecten, klanten } from "@/lib/db/schema";
+import { screenTimeEntries } from "@/lib/db/schema";
 import { eq, and, sql, asc } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
 const SLOT_MS = 30 * 60 * 1000; // 30 min
+const NL_TZ = "Europe/Amsterdam";
+
+/** Convert UTC ISO string to NL local date string (YYYY-MM-DD) */
+function nlDatum(isoStr: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: NL_TZ }).format(new Date(isoStr));
+}
 
 /**
  * Calculate active screen time hours for a date range using the same
  * 30-min slot merging logic as the Tijd page's sessies API.
+ * vanDatum/totDatum are NL local dates (YYYY-MM-DD).
  * Returns hours (not minutes or seconds).
  */
 export async function berekenActieveUren(
@@ -15,56 +22,61 @@ export async function berekenActieveUren(
   vanDatum: string,
   totDatum: string
 ): Promise<number> {
-  // Get all dates in range that have entries
-  const dagenResult = await db
-    .select({ dag: sql<string>`SUBSTR(${screenTimeEntries.startTijd}, 1, 10)` })
+  // Expand UTC range by ±1 day to capture entries near midnight that belong
+  // to the right NL local date but fall on a different UTC date.
+  const vanExpanded = new Date(vanDatum);
+  vanExpanded.setDate(vanExpanded.getDate() - 1);
+  const totExpanded = new Date(totDatum);
+  totExpanded.setDate(totExpanded.getDate() + 1);
+  const vanUtc = vanExpanded.toISOString().slice(0, 10);
+  const totUtc = totExpanded.toISOString().slice(0, 10);
+
+  const entries = await db
+    .select({
+      app: screenTimeEntries.app,
+      categorie: screenTimeEntries.categorie,
+      startTijd: screenTimeEntries.startTijd,
+      eindTijd: screenTimeEntries.eindTijd,
+      duurSeconden: screenTimeEntries.duurSeconden,
+    })
     .from(screenTimeEntries)
     .where(and(
       eq(screenTimeEntries.gebruikerId, gebruikerId),
-      sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanDatum}`,
-      sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totDatum}`,
+      sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanUtc}`,
+      sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totUtc}`,
     ))
-    .groupBy(sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10)`)
+    .orderBy(asc(screenTimeEntries.startTijd))
     .all();
+
+  // Group by NL local date, filtering out skip apps and entries outside the requested range
+  const dagMap = new Map<string, typeof entries>();
+  for (const entry of entries) {
+    if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
+    const dag = nlDatum(entry.startTijd);
+    if (dag < vanDatum || dag > totDatum) continue;
+    if (!dagMap.has(dag)) dagMap.set(dag, []);
+    dagMap.get(dag)!.push(entry);
+  }
 
   let totaalSeconden = 0;
 
-  for (const { dag } of dagenResult) {
-    const entries = await db
-      .select({
-        app: screenTimeEntries.app,
-        categorie: screenTimeEntries.categorie,
-        startTijd: screenTimeEntries.startTijd,
-        eindTijd: screenTimeEntries.eindTijd,
-        duurSeconden: screenTimeEntries.duurSeconden,
-      })
-      .from(screenTimeEntries)
-      .where(and(
-        eq(screenTimeEntries.gebruikerId, gebruikerId),
-        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) = ${dag}`,
-      ))
-      .orderBy(asc(screenTimeEntries.startTijd))
-      .all();
-
-    // Filter same as sessies API
-    const active = entries.filter(e => !SKIP_APPS.has(e.app) && e.categorie !== "inactief");
-    if (active.length === 0) continue;
+  for (const dagEntries of dagMap.values()) {
+    if (dagEntries.length === 0) continue;
 
     // Group into 30-min slots
-    const firstTime = new Date(active[0].startTijd).getTime();
-    const lastTime = new Date(active[active.length - 1].eindTijd).getTime();
+    const firstTime = new Date(dagEntries[0].startTijd).getTime();
+    const lastTime = new Date(dagEntries[dagEntries.length - 1].eindTijd).getTime();
     const slotStart = Math.floor(firstTime / SLOT_MS) * SLOT_MS;
 
     let t = slotStart;
     while (t < lastTime) {
       const tEnd = t + SLOT_MS;
-      const slotEntries = active.filter(e => {
+      const slotEntries = dagEntries.filter(e => {
         const eTime = new Date(e.startTijd).getTime();
         return eTime >= t && eTime < tEnd;
       });
 
       if (slotEntries.length > 0) {
-        // Same as sessies API: use time span from first to last entry in slot
         const sessieStart = new Date(slotEntries[0].startTijd).getTime();
         const sessieEnd = new Date(slotEntries[slotEntries.length - 1].eindTijd).getTime();
         totaalSeconden += Math.max(0, (sessieEnd - sessieStart) / 1000);

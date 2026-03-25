@@ -10,8 +10,10 @@ const NACHT_START_UUR = 22; // 22:00
 const NACHT_EIND_UUR = 8;  // 08:00
 
 function isNachtUur(tijdStr: string): boolean {
-  const d = new Date(tijdStr);
-  const uur = d.getHours();
+  const uur = parseInt(
+    new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "numeric", hour12: false }).format(new Date(tijdStr)),
+    10
+  );
   return uur >= NACHT_START_UUR || uur < NACHT_EIND_UUR;
 }
 

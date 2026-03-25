@@ -194,6 +194,11 @@ export default function AgendaPage() {
   // Selected day for detail panel
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  // Sidebar tabs
+  const [sidebarTab, setSidebarTab] = useState<"plannen" | "vandaag" | "aankomend">("plannen");
+  const [plannenFilter, setPlannenFilter] = useState<"alle" | "hoog" | "bezig">("alle");
+  const [expandedProjecten, setExpandedProjecten] = useState<Set<string>>(new Set());
+
   function handlePlanTaak(id: number, start: string, eind: string, duur: number) {
     planTaak.mutate(
       { id, ingeplandStart: start, ingeplandEind: eind, geschatteDuur: duur },

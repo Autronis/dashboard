@@ -21,6 +21,7 @@ import {
   RefreshCw,
   Clock,
   CreditCard,
+  ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag, formatDatum } from "@/lib/utils";
@@ -304,10 +305,12 @@ export default function FinancienPage() {
           <>
             {/* KPI balk */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* Openstaand */}
               <div className="kpi-gradient-openstaand border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={cn("p-2.5 rounded-xl", kpis.openstaand > 0 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
-                    <Euro className={cn("w-5 h-5", kpis.openstaand > 0 ? "text-red-400" : "text-autronis-accent")} />
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Openstaand</p>
+                  <div className={cn("p-2 rounded-lg", kpis.openstaand > 0 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
+                    <Euro className={cn("w-4 h-4", kpis.openstaand > 0 ? "text-red-400" : "text-autronis-accent")} />
                   </div>
                 </div>
                 <AnimatedNumber
@@ -315,18 +318,22 @@ export default function FinancienPage() {
                   format={formatBedrag}
                   className={cn("text-3xl font-bold tabular-nums", kpis.openstaand > 0 ? "text-red-400" : "text-autronis-text-primary")}
                 />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Openstaand</p>
-                {verwachtBinnen14Dagen > 0 && (
-                  <p className="text-xs text-emerald-400 mt-1">
-                    Waarvan {formatBedrag(verwachtBinnen14Dagen)} binnen 14d
+                {verwachtBinnen14Dagen > 0 ? (
+                  <p className="text-xs text-emerald-400 mt-2 flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3" />
+                    {formatBedrag(verwachtBinnen14Dagen)} binnen 14 dagen
                   </p>
+                ) : (
+                  <p className="text-xs text-autronis-text-secondary/40 mt-2">Geen openstaande facturen</p>
                 )}
               </div>
 
+              {/* Betaald */}
               <div className="kpi-gradient-betaald border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                    <CheckCircle2 className="w-5 h-5 text-autronis-accent" />
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Betaald deze maand</p>
+                  <div className="p-2 bg-autronis-accent/10 rounded-lg">
+                    <CheckCircle2 className="w-4 h-4 text-autronis-accent" />
                   </div>
                 </div>
                 <AnimatedNumber
@@ -334,38 +341,46 @@ export default function FinancienPage() {
                   format={formatBedrag}
                   className="text-3xl font-bold text-autronis-accent tabular-nums"
                 />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Betaald deze maand</p>
+                <p className="text-xs text-autronis-text-secondary/40 mt-2">
+                  {kpis.betaaldDezeMaand > 0 ? "Ontvangen deze maand" : "Nog niets ontvangen"}
+                </p>
               </div>
 
+              {/* Te laat */}
               <div className={cn(
                 "kpi-gradient-deadlines border rounded-2xl p-6 lg:p-7 card-glow transition-all",
                 kpis.teLaat > 0
                   ? "border-red-500/30 shadow-[0_0_20px_rgba(239,68,68,0.12)]"
                   : "border-autronis-border"
               )}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={cn("p-2.5 rounded-xl", kpis.teLaat > 0 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
-                    <AlertTriangle className={cn("w-5 h-5", kpis.teLaat > 0 ? "text-red-400 animate-pulse" : "text-autronis-accent")} />
+                <div className="flex items-center justify-between mb-4">
+                  <p className={cn("text-xs font-semibold uppercase tracking-wider", kpis.teLaat > 0 ? "text-red-400/70" : "text-autronis-text-secondary")}>Te laat</p>
+                  <div className={cn("p-2 rounded-lg", kpis.teLaat > 0 ? "bg-red-500/10" : "bg-autronis-accent/10")}>
+                    <AlertTriangle className={cn("w-4 h-4", kpis.teLaat > 0 ? "text-red-400 animate-pulse" : "text-autronis-accent")} />
                   </div>
                 </div>
                 <AnimatedNumber
                   value={kpis.teLaat}
                   className={cn("text-3xl font-bold tabular-nums", kpis.teLaat > 0 ? "text-red-400" : "text-autronis-text-primary")}
                 />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Te laat</p>
+                <p className={cn("text-xs mt-2", kpis.teLaat > 0 ? "text-red-400/60" : "text-autronis-text-secondary/40")}>
+                  {kpis.teLaat > 0 ? `${kpis.teLaat} factuur${kpis.teLaat > 1 ? "en" : ""} verlopen` : "Alles op tijd"}
+                </p>
               </div>
 
+              {/* Totaal */}
               <div className="kpi-gradient-facturen border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="p-2.5 bg-autronis-accent/10 rounded-xl">
-                    <FileText className="w-5 h-5 text-autronis-accent" />
+                <div className="flex items-center justify-between mb-4">
+                  <p className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider">Totaal facturen</p>
+                  <div className="p-2 bg-autronis-accent/10 rounded-lg">
+                    <FileText className="w-4 h-4 text-autronis-accent" />
                   </div>
                 </div>
                 <AnimatedNumber
                   value={kpis.totaal}
                   className="text-3xl font-bold text-autronis-text-primary tabular-nums"
                 />
-                <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">Totaal facturen</p>
+                <p className="text-xs text-autronis-text-secondary/40 mt-2">Alle facturen</p>
               </div>
             </div>
 
@@ -575,7 +590,7 @@ export default function FinancienPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedFacturen.map((factuur) => {
+                      {sortedFacturen.map((factuur, rowIdx) => {
                         const effectiveStatus = getEffectiveStatus(factuur);
                         const sc = statusConfig[effectiveStatus] || statusConfig.concept;
                         const isVerzonden = factuur.status === "verzonden";
@@ -589,8 +604,12 @@ export default function FinancienPage() {
                         return (
                           <motion.tr
                             key={factuur.id}
-                            animate={isFlashing ? { backgroundColor: "rgba(34,197,94,0.12)" } : { backgroundColor: "transparent" }}
-                            transition={{ duration: 0.4 }}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={isFlashing
+                              ? { opacity: 1, y: 0, backgroundColor: "rgba(34,197,94,0.12)" }
+                              : { opacity: 1, y: 0, backgroundColor: "transparent" }
+                            }
+                            transition={{ duration: 0.18, delay: rowIdx * 0.03 }}
                             className={cn(
                               "border-b border-autronis-border/50 border-l-2 hover:bg-autronis-bg/30 transition-colors group",
                               borderColors[effectiveStatus] ?? "border-l-slate-500/50",

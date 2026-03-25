@@ -41,9 +41,21 @@ export function MissionControl({ agents }: MissionControlProps) {
     const done = tasks.filter((t) => t.status === "completed").length;
     const running = tasks.filter((t) => t.status === "in_progress").length;
     const blocked = tasks.filter((t) => t.status === "blocked").length;
-    const agents = new Set(tasks.map((t) => t.agentId).filter(Boolean)).size;
-    return { total, done, running, blocked, agents };
-  }, [activeCommand, awaitingCommand]);
+    const agentCount = new Set(tasks.map((t) => t.agentId).filter(Boolean)).size;
+
+    // Bottleneck: an agentId with ≥3 active/queued tasks while team has idle agents
+    const activeTasks = tasks.filter((t) => t.status !== "completed" && t.agentId);
+    const loadMap = new Map<string, number>();
+    for (const t of activeTasks) {
+      if (t.agentId) loadMap.set(t.agentId, (loadMap.get(t.agentId) ?? 0) + 1);
+    }
+    const bottleneckAgent = Array.from(loadMap.entries()).find(([, n]) => n >= 3);
+    const bottleneck = bottleneckAgent && stats.idle > 0
+      ? { agentId: bottleneckAgent[0], taskCount: bottleneckAgent[1] }
+      : null;
+
+    return { total, done, running, blocked, agents: agentCount, bottleneck };
+  }, [activeCommand, awaitingCommand, stats.idle]);
 
   // Find pending approval for awaiting command
   const pendingApproval = useMemo(() => {
@@ -215,6 +227,12 @@ export function MissionControl({ agents }: MissionControlProps) {
             <span className="flex items-center gap-1 text-red-400 ml-auto font-medium">
               <AlertTriangle className="w-3 h-3" />
               {taskStats.blocked} geblokkeerd
+            </span>
+          )}
+          {taskStats?.bottleneck && (
+            <span className="flex items-center gap-1 text-amber-400 ml-auto font-medium" title={`${taskStats.bottleneck.agentId} heeft ${taskStats.bottleneck.taskCount} taken terwijl ${stats.idle} agents stand-by zijn`}>
+              <AlertTriangle className="w-3 h-3" />
+              Bottleneck: {taskStats.bottleneck.agentId} ×{taskStats.bottleneck.taskCount}
             </span>
           )}
         </div>

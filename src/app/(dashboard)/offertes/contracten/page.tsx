@@ -328,15 +328,17 @@ export default function ContractenPage() {
 
         {/* Template action cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {Object.entries(TYPE_CONFIG).map(([key, config]) => {
+          {Object.entries(TYPE_CONFIG).map(([key, config], i) => {
             const Icon = config.icon;
             const count = contracten.filter(c => c.type === key).length;
             return (
               <motion.button
                 key={key}
                 onClick={() => { setType(key); setModalOpen(true); }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
                 whileHover={{ y: -3 }}
-                transition={{ duration: 0.15 }}
+                transition={{ duration: 0.2, delay: i * 0.06 }}
                 className={cn(
                   "bg-autronis-card border border-autronis-border rounded-xl p-6 text-left transition-all duration-200 group",
                   config.glow
@@ -443,6 +445,7 @@ export default function ContractenPage() {
                     key={c.id}
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.04 }}
                     className="relative"
                   >
                     {showConfetti && (
@@ -483,7 +486,13 @@ export default function ContractenPage() {
                               {dagenVerlopen} {dagenVerlopen === 1 ? "dag" : "dagen"} verlopen
                             </span>
                           )}
-                          {!verlopen && c.verloopdatum && (
+                          {binaVerlopen && dagenTotExpiry !== null && (
+                            <span className="flex items-center gap-1 text-amber-400 font-medium">
+                              <AlertTriangle className="w-3 h-3" />
+                              Verloopt over {dagenTotExpiry} {dagenTotExpiry === 1 ? "dag" : "dagen"}
+                            </span>
+                          )}
+                          {!verlopen && !binaVerlopen && c.verloopdatum && (
                             <span className="flex items-center gap-1 text-autronis-text-secondary/60">
                               <CalendarClock className="w-3 h-3" />
                               {new Date(c.verloopdatum).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}

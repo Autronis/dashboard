@@ -408,6 +408,21 @@ function drawDesk(
     ctx.fillText("→ open", x + 2 * s, y + 30 * s);
   }
 
+  // Active desk glow — teal pulse for working/reviewing agents
+  if (isActive && !emptyDesk) {
+    const glowPulse = 0.45 + Math.sin(tick * 0.08) * 0.12;
+    const glowCx = x + 14 * s;
+    const glowCy = deskY + deskH / 2;
+    const busyGrad = ctx.createRadialGradient(glowCx, glowCy, 0, glowCx, glowCy, 28 * s);
+    busyGrad.addColorStop(0, `rgba(35, 198, 183, ${glowPulse * 0.18})`);
+    busyGrad.addColorStop(0.5, `rgba(35, 198, 183, ${glowPulse * 0.07})`);
+    busyGrad.addColorStop(1, "rgba(35, 198, 183, 0)");
+    ctx.fillStyle = busyGrad;
+    ctx.beginPath();
+    ctx.arc(glowCx, glowCy, 28 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
   // Shadow + reflection under desk
   ctx.fillStyle = pal.shadowColor;
   ctx.beginPath();

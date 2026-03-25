@@ -179,67 +179,69 @@ export default function OpsRoomPage() {
   return (
     <PageTransition>
       <div className="space-y-3">
-        {/* ===== COMPACT HEADER ===== */}
-        <div className="flex items-center justify-between gap-4">
-          {/* Left: title + command input */}
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex items-center gap-2 shrink-0">
-              <Radio className="w-4 h-4 text-autronis-accent" />
-              <h1 className="text-base font-bold text-autronis-text-primary">Ops Room</h1>
-              {isLive && (
-                <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-green-500/15 text-green-400">
-                  <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
-                  LIVE
-                </span>
-              )}
-              {isLoading && <Loader2 className="w-3 h-3 text-autronis-text-tertiary animate-spin" />}
-            </div>
-            <div className="flex-1 max-w-lg">
-              <CommandInput />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Floor switcher */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
-              {(["v1", "v2", "both"] as FloorMode[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFloor(f)}
-                  className={cn(
-                    "px-2 py-1 rounded-md text-[10px] font-semibold transition-colors",
-                    floor === f
-                      ? "bg-autronis-accent/15 text-autronis-accent"
-                      : "text-autronis-text-tertiary hover:text-autronis-text-secondary"
-                  )}
-                >
-                  {f === "v1" ? "V1 ↑" : f === "v2" ? "V2 ↓" : "Beide"}
-                </button>
-              ))}
-            </div>
-
-            {/* View toggle */}
-            <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
-            {viewOptions.map(({ mode, icon: Icon, label }) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                title={label}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors",
-                  viewMode === mode
-                    ? "bg-autronis-accent/15 text-autronis-accent"
-                    : "text-autronis-text-tertiary hover:text-autronis-text-secondary"
+        {/* ===== STICKY HEADER + COMMAND BAR ===== */}
+        <div className="sticky top-0 z-20 bg-autronis-bg space-y-2 py-2 -mt-2">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left: title + command input */}
+            <div className="flex items-center gap-3 flex-1">
+              <div className="flex items-center gap-2 shrink-0">
+                <Radio className="w-4 h-4 text-autronis-accent" />
+                <h1 className="text-base font-bold text-autronis-text-primary">Ops Room</h1>
+                {isLive && (
+                  <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-green-500/15 text-green-400">
+                    <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                    LIVE
+                  </span>
                 )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-              </button>
-            ))}
+                {isLoading && <Loader2 className="w-3 h-3 text-autronis-text-tertiary animate-spin" />}
+              </div>
+              <div className="flex-1 max-w-lg">
+                <CommandInput />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {/* Floor switcher */}
+              <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
+                {(["v1", "v2", "both"] as FloorMode[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setFloor(f)}
+                    className={cn(
+                      "px-2 py-1 rounded-md text-[10px] font-semibold transition-colors",
+                      floor === f
+                        ? "bg-autronis-accent/15 text-autronis-accent"
+                        : "text-autronis-text-tertiary hover:text-autronis-text-secondary"
+                    )}
+                  >
+                    {f === "v1" ? "V1 ↑" : f === "v2" ? "V2 ↓" : "Beide"}
+                  </button>
+                ))}
+              </div>
+
+              {/* View toggle */}
+              <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
+                {viewOptions.map(({ mode, icon: Icon, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setViewMode(mode)}
+                    title={label}
+                    className={cn(
+                      "p-1.5 rounded-md transition-colors",
+                      viewMode === mode
+                        ? "bg-autronis-accent/15 text-autronis-accent"
+                        : "text-autronis-text-tertiary hover:text-autronis-text-secondary"
+                    )}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <CommandBar agents={agents} isLive={isLive} />
+          <CommandBar agents={agents} isLive={isLive} />
+        </div>
 
         {isError && (
           <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">

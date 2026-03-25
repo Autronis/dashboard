@@ -32,23 +32,16 @@ export default function AnimatiesPage() {
     if (!ctx) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
-
-    const colors = ["#BFF549", "#00d4ff", "#a855f7", "#f472b6", "#34d399", "#fb923c"];
+    const colors = ["#23C6B7", "#4DD9CC", "#22C55E", "#F97316", "#E2E8F0"];
     const pieces = Array.from({ length: 120 }, () => ({
       x: window.innerWidth / 2 + (Math.random() - 0.5) * 200,
       y: window.innerHeight / 2,
-      vx: (Math.random() - 0.5) * 18,
-      vy: -(Math.random() * 16 + 5),
-      w: Math.random() * 10 + 4,
-      h: Math.random() * 6 + 3,
+      vx: (Math.random() - 0.5) * 18, vy: -(Math.random() * 16 + 5),
+      w: Math.random() * 10 + 4, h: Math.random() * 6 + 3,
       color: colors[Math.floor(Math.random() * colors.length)],
-      rotation: Math.random() * 360,
-      rotationSpeed: (Math.random() - 0.5) * 12,
-      gravity: 0.35,
-      opacity: 1,
-      decay: 0.01 + Math.random() * 0.008,
+      rotation: Math.random() * 360, rotationSpeed: (Math.random() - 0.5) * 12,
+      gravity: 0.35, opacity: 1, decay: 0.01 + Math.random() * 0.008,
     }));
-
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       let alive = 0;
@@ -57,8 +50,7 @@ export default function AnimatiesPage() {
         alive++;
         p.x += p.vx; p.vy += p.gravity; p.y += p.vy; p.vx *= 0.99;
         p.rotation += p.rotationSpeed; p.opacity -= p.decay;
-        ctx.save();
-        ctx.translate(p.x, p.y);
+        ctx.save(); ctx.translate(p.x, p.y);
         ctx.rotate((p.rotation * Math.PI) / 180);
         ctx.globalAlpha = Math.max(0, p.opacity);
         ctx.fillStyle = p.color;
@@ -73,45 +65,33 @@ export default function AnimatiesPage() {
 
   const generate = async () => {
     if (!input.trim()) return;
-    setLoading(true);
-    setError("");
-    setPrompts(null);
-
+    setLoading(true); setError(""); setPrompts(null);
     const body = inputType === "url" ? { url: input } : { product: input };
-
     const res = await fetch("/api/animaties/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     const data = await res.json() as Prompts & { error?: string };
     setLoading(false);
-
-    if (!res.ok || data.error) {
-      setError(data.error ?? "Er ging iets mis.");
-      return;
-    }
-
-    setPrompts(data);
-    setActiveTab("A");
+    if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
+    setPrompts(data); setActiveTab("A");
   };
 
   const copyPrompt = (openHiggsfield = false) => {
     if (!prompts) return;
     const text = activeTab === "A" ? prompts.promptA : activeTab === "B" ? prompts.promptB : prompts.promptC;
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      launchConfetti();
+      setCopied(true); launchConfetti();
       setTimeout(() => setCopied(false), 2000);
       if (openHiggsfield) window.open("https://higgsfield.ai", "_blank");
     });
   };
 
   const tabConfig = {
-    A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer als afbeelding (16:9)" },
-    B: { label: prompts?.tabBNaam ?? "Deconstructed View", icon: Layers, instruction: "Upload afbeelding A als referentie → genereer als afbeelding (16:9)" },
-    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload afbeelding A als start frame + afbeelding B als end frame → genereer video (5s)" },
+    A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer afbeelding (16:9)" },
+    B: { label: prompts?.tabBNaam ?? "Deconstructed View", icon: Layers, instruction: "Upload afbeelding A als referentie → genereer afbeelding (16:9)" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload A als start frame + B als end frame → genereer video (5s)" },
   } as const;
 
   const activePrompt = prompts
@@ -119,89 +99,87 @@ export default function AnimatiesPage() {
     : "";
 
   return (
-    <div className="flex flex-col h-full min-h-screen bg-[#02040a] text-white p-6 relative">
+    <div className="flex flex-col h-full min-h-screen p-6 relative bg-autronis-bg text-autronis-text-primary">
       <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none z-50" />
 
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-8 h-8 rounded-lg bg-[#BFF549]/10 flex items-center justify-center">
-            <Wand2 className="w-4 h-4 text-[#BFF549]" />
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-7 h-7 rounded-lg bg-autronis-accent/10 flex items-center justify-center">
+            <Wand2 className="w-3.5 h-3.5 text-autronis-accent" />
           </div>
-          <span className="text-xs font-bold uppercase tracking-widest text-[#BFF549]">Asset Generator</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-autronis-accent">Asset Generator</span>
         </div>
-        <h1 className="text-3xl font-black tracking-tight">
-          Animatie <span className="text-white/40">Prompts</span>
+        <h1 className="text-2xl font-black tracking-tight">
+          Animatie <span className="text-autronis-text-secondary">Prompts</span>
         </h1>
-        <p className="text-sm text-white/50 mt-1">Plak een product-URL of typ een productnaam — Claude genereert 3 Higgsfield Nano Banana 2 prompts.</p>
+        <p className="text-sm text-autronis-text-secondary mt-0.5">
+          Plak een product-URL of typ een productnaam — Claude genereert 3 Higgsfield Nano Banana 2 prompts.
+        </p>
       </div>
 
-      {/* Workflow guide */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        {[
-          { step: "1", icon: Image, color: "#BFF549", label: "Copy A", sub: "Plak in Higgsfield → genereer afbeelding" },
-          { step: "2", icon: Layers, color: "#00d4ff", label: "Copy B", sub: "Upload A als referentie → genereer afbeelding" },
-          { step: "3", icon: Clapperboard, color: "#a855f7", label: "Copy C", sub: "Upload A + B als frames → genereer video" },
-        ].map(({ step, icon: Icon, color, label, sub }) => (
-          <div key={step} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 flex gap-3 items-start">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
-              <Icon className="w-3.5 h-3.5" style={{ color }} />
+      {/* Workflow steps */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {([
+          { step: "1", icon: Image, label: "Copy A", sub: "Plak in Higgsfield → genereer afbeelding" },
+          { step: "2", icon: Layers, label: "Copy B", sub: "Upload A als referentie → genereer afbeelding" },
+          { step: "3", icon: Clapperboard, label: "Copy C", sub: "Upload A + B als frames → genereer video" },
+        ] as const).map(({ step, icon: Icon, label, sub }) => (
+          <div key={step} className="bg-autronis-card border border-autronis-border rounded-xl p-3 flex gap-3 items-start">
+            <div className="w-7 h-7 rounded-lg bg-autronis-accent/10 flex items-center justify-center flex-shrink-0">
+              <Icon className="w-3.5 h-3.5 text-autronis-accent" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white/70">{label}</p>
-              <p className="text-xs text-white/30 leading-snug mt-0.5">{sub}</p>
+              <p className="text-xs font-semibold text-autronis-text-primary">{label}</p>
+              <p className="text-xs text-autronis-text-tertiary leading-snug mt-0.5">{sub}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Input */}
-      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 mb-6">
-        <div className="flex gap-2 mb-4">
+      <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 mb-5">
+        <div className="flex gap-2 mb-3">
           <button
             onClick={() => setInputType("product")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               inputType === "product"
-                ? "bg-[#BFF549] text-black"
-                : "bg-white/5 text-white/50 hover:text-white"
+                ? "bg-autronis-accent text-white"
+                : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
             }`}
           >
-            <Package className="w-3.5 h-3.5" />
-            Product
+            <Package className="w-3.5 h-3.5" /> Product
           </button>
           <button
             onClick={() => setInputType("url")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               inputType === "url"
-                ? "bg-[#00d4ff] text-black"
-                : "bg-white/5 text-white/50 hover:text-white"
+                ? "bg-autronis-accent text-white"
+                : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
             }`}
           >
-            <Link className="w-3.5 h-3.5" />
-            URL scrapen
+            <Link className="w-3.5 h-3.5" /> URL scrapen
           </button>
         </div>
-
         <div className="flex gap-3">
           <input
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === "Enter" && generate()}
             placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
-            className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm placeholder:text-white/30 focus:outline-none focus:border-[#BFF549]/40 transition-colors"
+            className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
           />
           <button
             onClick={generate}
             disabled={loading || !input.trim()}
-            className="flex items-center gap-2 px-5 py-3 bg-[#BFF549] text-black rounded-xl text-sm font-bold hover:bg-[#d4ff6b] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
             {loading ? "Genereren..." : "Genereer"}
           </button>
         </div>
-
         {error && (
-          <p className="mt-3 text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-3 py-2">
+          <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">
             {error}
           </p>
         )}
@@ -209,37 +187,32 @@ export default function AnimatiesPage() {
 
       {/* Result */}
       {prompts && (
-        <div className="flex-1 flex flex-col min-h-0 bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
           {/* Tabs */}
-          <div className="flex gap-2 p-4 border-b border-white/[0.06]">
+          <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
             {(["A", "B", "C"] as Tab[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                   activeTab === tab
-                    ? tab === "A"
-                      ? "bg-[#BFF549] text-black"
-                      : tab === "B"
-                      ? "bg-[#00d4ff] text-black"
-                      : "bg-[#a855f7] text-white"
-                    : "bg-white/5 text-white/50 hover:text-white"
+                    ? "bg-autronis-accent text-white"
+                    : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
                 }`}
               >
-                <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-black ${
-                  activeTab === tab ? "bg-black/20" : "bg-white/10"
-                }`}>{tab}</span>
+                <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-black ${activeTab === tab ? "bg-white/20" : "bg-autronis-border"}`}>
+                  {tab}
+                </span>
                 {tabConfig[tab].label}
               </button>
             ))}
-
             <div className="ml-auto flex gap-2">
               <button
                 onClick={() => copyPrompt(false)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
                   copied
-                    ? "bg-[#BFF549] text-black border-[#BFF549]"
-                    : "bg-transparent text-white/50 border-white/10 hover:text-white hover:border-white/20"
+                    ? "bg-autronis-accent text-white border-autronis-accent"
+                    : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"
                 }`}
               >
                 {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
@@ -247,7 +220,7 @@ export default function AnimatiesPage() {
               </button>
               <button
                 onClick={() => copyPrompt(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all border border-white/10"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all"
               >
                 <ExternalLink className="w-4 h-4" />
                 Copy + Open Higgsfield
@@ -255,22 +228,20 @@ export default function AnimatiesPage() {
             </div>
           </div>
 
-          {/* Instructie + bron */}
-          <div className="px-5 py-2.5 border-b border-white/[0.04] flex items-center justify-between gap-4">
+          {/* Instructie */}
+          <div className="px-4 py-2 border-b border-autronis-border flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
-                activeTab === "A" ? "bg-[#BFF549]/10 text-[#BFF549]" :
-                activeTab === "B" ? "bg-[#00d4ff]/10 text-[#00d4ff]" :
-                "bg-[#a855f7]/10 text-[#a855f7]"
-              }`}>Stap {activeTab === "A" ? "1" : activeTab === "B" ? "2" : "3"}</span>
-              <span className="text-xs text-white/40">{tabConfig[activeTab].instruction}</span>
+              <span className="text-xs font-bold px-2 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent">
+                Stap {activeTab === "A" ? "1" : activeTab === "B" ? "2" : "3"}
+              </span>
+              <span className="text-xs text-autronis-text-tertiary">{tabConfig[activeTab].instruction}</span>
             </div>
-            <span className="text-xs text-white/25 truncate max-w-[200px]">{prompts.bron}</span>
+            <span className="text-xs text-autronis-text-tertiary truncate max-w-[200px]">{prompts.bron}</span>
           </div>
 
           {/* Prompt tekst */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-5">
-            <pre className="font-mono text-sm text-white/70 whitespace-pre-wrap leading-relaxed">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4">
+            <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">
               {activePrompt}
             </pre>
           </div>
@@ -281,10 +252,10 @@ export default function AnimatiesPage() {
       {!prompts && !loading && (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-4">
-              <Wand2 className="w-7 h-7 text-white/20" />
+            <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
+              <Wand2 className="w-6 h-6 text-autronis-text-tertiary" />
             </div>
-            <p className="text-white/30 text-sm">Voer een product of URL in om te beginnen</p>
+            <p className="text-autronis-text-tertiary text-sm">Voer een product of URL in om te beginnen</p>
           </div>
         </div>
       )}

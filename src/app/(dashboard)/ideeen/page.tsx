@@ -638,7 +638,14 @@ export default function IdeeenPage() {
               {topToBuild.map((idee, i) => {
                 const score = calcPriorityScore(idee);
                 return (
-                  <div key={idee.id} className="flex flex-col p-4 rounded-xl bg-autronis-bg/50 border border-autronis-border hover:border-autronis-accent/50 transition-colors group">
+                  <motion.div
+                    key={idee.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.07 }}
+                    whileHover={{ y: -2 }}
+                    className="flex flex-col p-4 rounded-xl bg-autronis-bg/50 border border-autronis-border hover:border-autronis-accent/50 transition-colors group"
+                  >
                     <button onClick={() => setDetailIdee(idee)} className="text-left flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold text-autronis-accent">#{i + 1}</span>

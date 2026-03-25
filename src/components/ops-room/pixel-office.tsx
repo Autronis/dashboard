@@ -1810,9 +1810,14 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       if (!agent.huidigeTaak || agent.status === "idle" || agent.status === "offline") return;
       if (id === hovered) return; // tooltip already showing
       const isSelected = id === selectedId;
+      const isTyping = agent.status === "working";
       const text = agent.terminal.length > 0 ? agent.terminal[agent.terminal.length - 1].tekst : agent.huidigeTaak.beschrijving;
-      const maxLen = isSelected ? 40 : 24;
-      const display = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
+      const maxLen = isSelected ? 38 : 22;
+      const truncated = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
+      // Animated dots suffix for actively working agents
+      const dotCount = isTyping ? (Math.floor(tick * 0.12) % 3) + 1 : 0;
+      const dotStr = isTyping ? " " + "•".repeat(dotCount) : "";
+      const display = truncated + dotStr;
       const fontSize = isSelected ? 12 : 10;
       ctx.font = `${fontSize}px monospace`;
       const bw = Math.max(isSelected ? 130 : 80, ctx.measureText(display).width + 20);
@@ -1824,9 +1829,15 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       ctx.beginPath(); ctx.roundRect(bx, by, bw, isSelected ? 22 : 18, 5); ctx.fill(); ctx.stroke();
       ctx.fillStyle = `#0a0f14${alpha}`;
       ctx.beginPath(); ctx.moveTo(sx + 40, by + (isSelected ? 22 : 18)); ctx.lineTo(sx + 50, by + (isSelected ? 28 : 23)); ctx.lineTo(sx + 60, by + (isSelected ? 22 : 18)); ctx.fill();
-      ctx.fillStyle = isSelected ? "#e2e8f0" : "#8a9aaa";
+      // Draw text (static part) + dots (colored)
       ctx.font = `${fontSize}px monospace`;
-      ctx.fillText(display, bx + 8, by + (isSelected ? 15 : 13));
+      ctx.fillStyle = isSelected ? "#e2e8f0" : "#8a9aaa";
+      ctx.fillText(truncated, bx + 8, by + (isSelected ? 15 : 13));
+      if (isTyping) {
+        const textW = ctx.measureText(truncated).width;
+        ctx.fillStyle = isSelected ? "#23C6B7" : "#23C6B755";
+        ctx.fillText(dotStr, bx + 8 + textW, by + (isSelected ? 15 : 13));
+      }
     });
 
     // === CONFETTI TRIGGER: check for 100% projects ===

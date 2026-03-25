@@ -433,45 +433,57 @@ export default function SecondBrainPage() {
           </div>
         )}
 
-        {/* KPI cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
-              <Brain className="w-5 h-5 text-autronis-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Totaal items</p>
-              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                {kpis?.totaal ?? "—"}
+        {/* KPI strip */}
+        <motion.div
+          className="grid grid-cols-3 gap-3"
+          variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
+          initial="hidden"
+          animate="visible"
+        >
+          {[
+            { icon: Brain, label: "Totaal items", value: kpis?.totaal ?? "—", color: "text-autronis-text-primary" },
+            { icon: TrendingUp, label: "Deze week", value: kpis?.dezeWeek ?? "—", color: "text-autronis-accent" },
+            { icon: FileText, label: "Meest gebruikt", value: meestGebruiktLabel, color: "text-purple-400" },
+          ].map(({ icon: Icon, label, value, color }) => (
+            <motion.div
+              key={label}
+              variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.22 } } }}
+              className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow"
+            >
+              <p className="text-[11px] text-autronis-text-secondary mb-1 flex items-center gap-1.5">
+                <Icon className="w-3 h-3" />
+                {label}
               </p>
-            </div>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
-              <TrendingUp className="w-5 h-5 text-autronis-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Deze week</p>
-              <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                {kpis?.dezeWeek ?? "—"}
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 flex items-center gap-4 card-glow">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-autronis-accent/10">
-              <FileText className="w-5 h-5 text-autronis-accent" />
-            </div>
-            <div>
-              <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Meest gebruikt</p>
-              <p className="text-xl font-bold text-autronis-text-primary">{meestGebruiktLabel}</p>
-            </div>
-          </div>
-        </div>
+              <p className={cn("text-xl font-bold tabular-nums", color)}>{value}</p>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* Quick-add bar — larger & more prominent */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-3">
+        <div
+          className={cn(
+            "bg-autronis-card border rounded-2xl p-5 space-y-3 relative transition-colors duration-200",
+            isDragging ? "border-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.12)]" : "border-autronis-border"
+          )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <AnimatePresence>
+            {isDragging && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 rounded-2xl bg-emerald-500/6 border-2 border-dashed border-emerald-400/60 flex items-center justify-center z-10 pointer-events-none"
+              >
+                <div className="flex items-center gap-2 text-emerald-400 font-medium">
+                  <Upload className="w-5 h-5" />
+                  Loslaten om op te slaan
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
           {/* Clipboard URL banner */}
           <AnimatePresence>
             {clipboardUrl && !nieuwInput.trim() && (
@@ -579,24 +591,15 @@ export default function SecondBrainPage() {
             </div>
           )}
 
-          {/* Drag-drop file upload zone */}
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+          {/* Upload hint */}
+          <button
+            type="button"
             onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              "border-2 border-dashed rounded-xl p-4 flex items-center justify-center gap-2 cursor-pointer transition-all duration-200",
-              isDragging
-                ? "border-emerald-400 bg-emerald-500/8 shadow-[0_0_20px_rgba(52,211,153,0.12)]"
-                : "border-autronis-border hover:border-autronis-text-secondary/40"
-            )}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs text-autronis-text-secondary/50 hover:text-autronis-text-secondary transition-colors"
           >
-            <Upload className={cn("w-4 h-4 transition-colors", isDragging ? "text-emerald-400" : "text-autronis-text-secondary")} />
-            <span className={cn("text-sm transition-colors font-medium", isDragging ? "text-emerald-400" : "text-autronis-text-secondary font-normal")}>
-              {isDragging ? "Loslaten om op te slaan" : "Sleep bestanden hierheen, of klik om te uploaden"}
-            </span>
-          </div>
+            <Upload className="w-3.5 h-3.5" />
+            Sleep bestanden hierheen of klik om te uploaden
+          </button>
 
           <input
             ref={fileInputRef}

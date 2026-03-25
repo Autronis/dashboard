@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Send, Loader2, AlertCircle, ShieldAlert, Zap } from "lucide-react";
+import { Send, Loader2, AlertCircle, ShieldAlert, Zap, History } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useOrchestrator } from "./orchestrator-store";
 
@@ -18,6 +18,7 @@ export function CommandInput() {
   const [killArmed, setKillArmed] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [isFocused, setIsFocused] = useState(false);
   const armTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { submitCommand, isProcessing, executingTaskId, killExecution } = useOrchestrator();
 
@@ -68,6 +69,7 @@ export function CommandInput() {
 
   const showSlash = value.startsWith("/") && !value.includes(" ");
   const matchingSlash = SLASH_COMMANDS.filter((c) => c.cmd.startsWith(value.toLowerCase()));
+  const showHistory = isFocused && !value.trim() && history.length > 0 && !showSlash;
 
   return (
     <div className="relative flex items-center gap-2">
@@ -77,6 +79,8 @@ export function CommandInput() {
           value={value}
           onChange={(e) => { setValue(e.target.value); setHistoryIndex(-1); }}
           onKeyDown={handleKeyDown}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setTimeout(() => setIsFocused(false), 150)}
           placeholder="Geef een opdracht... (↑ geschiedenis · / commando's)"
           disabled={isProcessing}
           className="w-full px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border/50 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 disabled:opacity-50 transition-colors"
@@ -87,6 +91,34 @@ export function CommandInput() {
             <span className="text-[10px] font-medium">Theo maakt plan...</span>
           </div>
         )}
+
+        {/* Recent commands dropdown */}
+        <AnimatePresence>
+          {showHistory && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute bottom-full left-0 right-0 mb-1.5 rounded-xl border border-autronis-border/50 bg-autronis-card shadow-xl overflow-hidden z-20"
+            >
+              <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-autronis-border/20">
+                <History className="w-3 h-3 text-autronis-text-tertiary" />
+                <span className="text-[9px] text-autronis-text-tertiary uppercase tracking-wider font-semibold">Recente opdrachten</span>
+              </div>
+              {history.slice(0, 5).map((cmd) => (
+                <button
+                  key={cmd}
+                  onMouseDown={(e) => { e.preventDefault(); setValue(cmd); setHistoryIndex(-1); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-autronis-card-hover text-left transition-colors"
+                >
+                  <span className="text-autronis-text-tertiary text-[10px] shrink-0">⟳</span>
+                  <span className="text-xs text-autronis-text-secondary truncate">{cmd}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Slash command autocomplete */}
         <AnimatePresence>

@@ -1,31 +1,18 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSalesEngineScans, useSalesEngineBatch } from "@/hooks/queries/use-sales-engine";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDatum } from "@/lib/utils";
+import { cn, formatDatum } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Rocket,
-  TrendingUp,
-  CheckCircle,
-  AlertCircle,
-  Clock,
-  ExternalLink,
-  Search,
-  ChevronDown,
-  ChevronUp,
-  Target,
-  BarChart3,
-  Loader2,
-  Upload,
-  X,
-  FileSpreadsheet,
-  Euro,
+  Rocket, TrendingUp, CheckCircle, AlertCircle, Clock, ExternalLink,
+  Search, ChevronDown, ChevronUp, Target, BarChart3, Loader2, Upload, X,
+  FileSpreadsheet, Euro, Plus, ArrowUpDown, Zap, ChevronRight, Send,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -46,6 +33,8 @@ const impactConfig: Record<string, string> = {
   midden: "text-yellow-400 bg-yellow-400/10",
   laag: "text-[var(--text-tertiary)] bg-[var(--border)]/30",
 };
+
+const impactOrder: Record<string, number> = { hoog: 0, midden: 1, laag: 2 };
 
 function useCountUp(target: number, duration = 900) {
   const [value, setValue] = useState(0);
@@ -285,6 +274,66 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ─── Compact Scan Form (inline at top when scans exist) ───
+function CompactScanForm({ onStarted }: { onStarted: (scanId: number) => void }) {
+  const { addToast } = useToast();
+  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [isScanning, setIsScanning] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!bedrijfsnaam.trim() || !websiteUrl.trim()) return;
+    let url = websiteUrl.trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) url = `https://${url}`;
+    setIsScanning(true);
+    try {
+      const res = await fetch("/api/sales-engine/handmatig", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bedrijfsnaam: bedrijfsnaam.trim(), websiteUrl: url }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addToast(data.fout || "Scan starten mislukt", "fout"); return; }
+      onStarted(data.scanId);
+    } catch {
+      addToast("Er ging iets mis bij het starten van de scan", "fout");
+    } finally {
+      setIsScanning(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex items-center gap-2 flex-wrap">
+      <input
+        type="text"
+        value={bedrijfsnaam}
+        onChange={(e) => setBedrijfsnaam(e.target.value)}
+        placeholder="Bedrijfsnaam"
+        disabled={isScanning}
+        className="flex-1 min-w-36 px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent/60 transition-colors disabled:opacity-50"
+      />
+      <input
+        type="text"
+        value={websiteUrl}
+        onChange={(e) => setWebsiteUrl(e.target.value)}
+        placeholder="https://website.nl"
+        disabled={isScanning}
+        className="flex-1 min-w-44 px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent/60 transition-colors disabled:opacity-50"
+      />
+      <button
+        type="submit"
+        disabled={isScanning || !bedrijfsnaam.trim() || !websiteUrl.trim()}
+        className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg text-sm font-semibold transition-colors disabled:opacity-50 flex-shrink-0"
+      >
+        {isScanning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+        {isScanning ? "Scannen..." : "Scan"}
+      </button>
+    </form>
+  );
+}
+
+// ─── Full Scan Form (empty state) ───
 function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
   const router = useRouter();
   const { addToast } = useToast();
@@ -292,18 +341,14 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [contactpersoon, setContactpersoon] = useState("");
   const [email, setEmail] = useState("");
-  const [meerInfoOpen, setMeerInfoOpen] = useState(true);
+  const [meerInfoOpen, setMeerInfoOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!bedrijfsnaam.trim() || !websiteUrl.trim()) return;
-
     let url = websiteUrl.trim();
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = `https://${url}`;
-    }
-
+    if (!url.startsWith("http://") && !url.startsWith("https://")) url = `https://${url}`;
     setIsScanning(true);
     try {
       const res = await fetch("/api/sales-engine/handmatig", {
@@ -316,16 +361,8 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
           ...(email.trim() ? { email: email.trim() } : {}),
         }),
       });
-
       const data = await res.json();
-
-      if (!res.ok) {
-        addToast(data.fout || "Scan starten mislukt", "fout");
-        setIsScanning(false);
-        return;
-      }
-
-      // Navigate immediately — scan processes in background, detail page polls
+      if (!res.ok) { addToast(data.fout || "Scan starten mislukt", "fout"); setIsScanning(false); return; }
       router.push(`/sales-engine/${data.scanId}`);
     } catch {
       addToast("Er ging iets mis bij het starten van de scan", "fout");
@@ -348,100 +385,59 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm text-[var(--text-secondary)] mb-1.5">Bedrijfsnaam *</label>
-            <input
-              type="text"
-              value={bedrijfsnaam}
-              onChange={(e) => setBedrijfsnaam(e.target.value)}
-              placeholder="Bijv. Bakkerij van Dam"
-              disabled={isScanning}
-              className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50"
-            />
+            <input type="text" value={bedrijfsnaam} onChange={(e) => setBedrijfsnaam(e.target.value)} placeholder="Bijv. Bakkerij van Dam" disabled={isScanning} autoFocus={prominent}
+              className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50" />
           </div>
           <div>
             <label className="block text-sm text-[var(--text-secondary)] mb-1.5">Website URL *</label>
-            <input
-              type="text"
-              value={websiteUrl}
-              onChange={(e) => setWebsiteUrl(e.target.value)}
-              placeholder="https://voorbeeld.nl"
-              disabled={isScanning}
-              className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50"
-            />
+            <input type="text" value={websiteUrl} onChange={(e) => setWebsiteUrl(e.target.value)} placeholder="https://voorbeeld.nl" disabled={isScanning}
+              className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50" />
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setMeerInfoOpen(!meerInfoOpen)}
-          className="inline-flex items-center gap-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors mt-1"
-        >
+        <button type="button" onClick={() => setMeerInfoOpen(!meerInfoOpen)}
+          className="inline-flex items-center gap-1 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors mt-1">
           {meerInfoOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           Meer info (optioneel)
         </button>
 
-        {meerInfoOpen && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
-            <div>
-              <label className="block text-sm text-[var(--text-secondary)] mb-1.5">Contactpersoon</label>
-              <input
-                type="text"
-                value={contactpersoon}
-                onChange={(e) => setContactpersoon(e.target.value)}
-                placeholder="Naam contactpersoon"
-                disabled={isScanning}
-                className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-[var(--text-secondary)] mb-1.5">E-mailadres</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@voorbeeld.nl"
-                disabled={isScanning}
-                className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50"
-              />
-            </div>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={isScanning || !bedrijfsnaam.trim() || !websiteUrl.trim()}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-        >
-          {isScanning ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Scan starten...
-            </>
-          ) : (
-            <>
-              <Rocket className="w-4 h-4" />
-              Start scan
-            </>
+        <AnimatePresence initial={false}>
+          {meerInfoOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-sm text-[var(--text-secondary)] mb-1.5">Contactpersoon</label>
+                  <input type="text" value={contactpersoon} onChange={(e) => setContactpersoon(e.target.value)} placeholder="Naam contactpersoon" disabled={isScanning}
+                    className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50" />
+                </div>
+                <div>
+                  <label className="block text-sm text-[var(--text-secondary)] mb-1.5">E-mailadres</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@voorbeeld.nl" disabled={isScanning}
+                    className="w-full px-4 py-2.5 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)] transition-colors disabled:opacity-50" />
+                </div>
+              </div>
+            </motion.div>
           )}
+        </AnimatePresence>
+
+        <button type="submit" disabled={isScanning || !bedrijfsnaam.trim() || !websiteUrl.trim()}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2">
+          {isScanning ? <><Loader2 className="w-4 h-4 animate-spin" />Scan starten...</> : <><Rocket className="w-4 h-4" />Start scan</>}
         </button>
       </form>
     </div>
   );
 }
 
-function KpiCard({
-  icon: Icon,
-  iconKleur,
-  label,
-  value,
-  sub,
-  delay = 0,
-}: {
-  icon: typeof TrendingUp;
-  iconKleur: string;
-  label: string;
-  value: number;
-  sub: string;
-  delay?: number;
+// ─── KPI Card ───
+function KpiCard({ icon: Icon, iconKleur, label, value, sub, suffix = "", delay = 0 }: {
+  icon: typeof TrendingUp; iconKleur: string; label: string; value: number; sub: string; suffix?: string; delay?: number;
 }) {
   const animated = useCountUp(value);
   return (
@@ -455,26 +451,53 @@ function KpiCard({
         <Icon className={`w-5 h-5 ${iconKleur}`} />
         <span className="text-sm text-[var(--text-secondary)]">{label}</span>
       </div>
-      <p className="text-3xl font-bold tabular-nums">{animated}</p>
+      <p className="text-3xl font-bold tabular-nums">{animated}{suffix}</p>
       <p className="text-xs text-[var(--text-tertiary)] mt-1">{sub}</p>
     </motion.div>
   );
 }
 
+type SortOption = "nieuwst" | "kansen" | "impact";
+
 export default function SalesEnginePage() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("alle");
+  const [zoekFilter, setZoekFilter] = useState("");
+  const [sorteer, setSorteer] = useState<SortOption>("nieuwst");
+  const [sorteerOpen, setSorteerOpen] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
+  const [scanFormOpen, setScanFormOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
   const { data, isLoading } = useSalesEngineScans(statusFilter);
+
+  // Auto-close sort dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) setSorteerOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Auto-refresh when pending scans exist
+  const allScans = data?.scans ?? [];
+  const hasPending = allScans.some((s) => s.status === "pending");
+  useEffect(() => {
+    if (!hasPending) return;
+    const interval = setInterval(() => {
+      void queryClient.invalidateQueries({ queryKey: ["sales-engine-scans"] });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [hasPending, queryClient]);
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="grid grid-cols-4 gap-4">
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
-          <Skeleton className="h-24" />
+          {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-40" />
         <Skeleton className="h-64" />
@@ -482,115 +505,313 @@ export default function SalesEnginePage() {
     );
   }
 
-  const scans = data?.scans ?? [];
   const kpis = data?.kpis;
+  const completedScans = allScans.filter((s) => s.status === "completed");
 
-  const completedScans = scans.filter((s) => s.status === "completed");
-  const dezeMaand = scans.filter((s) => {
+  const dezeMaand = allScans.filter((s) => {
     if (!s.aangemaaktOp) return false;
-    const maandGeleden = new Date();
-    maandGeleden.setDate(1);
-    maandGeleden.setHours(0, 0, 0, 0);
-    return s.aangemaaktOp >= maandGeleden.toISOString();
+    const maandStart = new Date();
+    maandStart.setDate(1);
+    maandStart.setHours(0, 0, 0, 0);
+    return s.aangemaaktOp >= maandStart.toISOString();
   }).length;
 
-  const totaalKansen = scans.reduce((sum, s) => sum + s.aantalKansen, 0);
-  const gemiddeldeKansen = completedScans.length > 0
-    ? Math.round((totaalKansen / completedScans.length) * 10) / 10
-    : 0;
-
-  // Rough pipeline value estimate based on impact level
+  const totaalKansen = allScans.reduce((sum, s) => sum + s.aantalKansen, 0);
+  const gemiddeldeKansen = completedScans.length > 0 ? Math.round((totaalKansen / completedScans.length) * 10) / 10 : 0;
   const pipelineWaarde = completedScans.reduce((sum, s) => {
     if (s.hoogsteImpact === "hoog") return sum + 4000;
     if (s.hoogsteImpact === "midden") return sum + 1500;
     return sum + 500;
   }, 0);
 
+  // Filter counts for badge
+  const filterCounts: Record<string, number> = {
+    alle: allScans.length,
+    completed: allScans.filter((s) => s.status === "completed").length,
+    pending: allScans.filter((s) => s.status === "pending").length,
+    failed: allScans.filter((s) => s.status === "failed").length,
+  };
+
+  // Filtered + sorted scans
+  const gefilterd = useMemo(() => {
+    let result = statusFilter === "alle" ? allScans : allScans.filter((s) => s.status === statusFilter);
+    if (zoekFilter.trim()) result = result.filter((s) => s.bedrijfsnaam?.toLowerCase().includes(zoekFilter.toLowerCase()));
+    if (sorteer === "kansen") return [...result].sort((a, b) => b.aantalKansen - a.aantalKansen);
+    if (sorteer === "impact") return [...result].sort((a, b) => (impactOrder[a.hoogsteImpact ?? ""] ?? 3) - (impactOrder[b.hoogsteImpact ?? ""] ?? 3));
+    return result;
+  }, [allScans, statusFilter, zoekFilter, sorteer]);
+
+  const sortLabels: Record<SortOption, string> = { nieuwst: "Nieuwst", kansen: "Meeste kansen", impact: "Hoogste impact" };
+
+  const hasScans = allScans.length > 0;
+
   return (
     <PageTransition>
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Rocket className="w-8 h-8 text-[var(--accent)]" />
-            <h1 className="text-3xl font-bold">Sales Engine</h1>
+            <Rocket className="w-7 h-7 text-[var(--accent)]" />
+            <div>
+              <h1 className="text-2xl font-bold">Sales Engine</h1>
+              {hasScans && (
+                <p className="text-xs text-[var(--text-secondary)]">
+                  {allScans.length} scans &middot; {completedScans.length} voltooid
+                  {hasPending && <span className="ml-1.5 inline-flex items-center gap-1 text-yellow-400"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse inline-block" />{filterCounts.pending} bezig</span>}
+                </p>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => setShowBatchModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition-colors"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            Batch scan
-          </button>
+          <div className="flex items-center gap-2">
+            {hasScans && (
+              <button
+                onClick={() => setScanFormOpen((o) => !o)}
+                className={cn("flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition-colors",
+                  scanFormOpen ? "border-autronis-accent/50 bg-autronis-accent/10 text-autronis-accent" : "border-autronis-border text-autronis-text-secondary hover:border-autronis-border/80"
+                )}
+              >
+                <Plus className="w-4 h-4" />
+                Nieuwe scan
+              </button>
+            )}
+            <button
+              onClick={() => setShowBatchModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Batch scan
+            </button>
+          </div>
         </div>
 
-        {/* Scan Formulier */}
-        <ScanFormulier prominent={scans.length === 0} />
+        {/* Compact scan form when scans exist */}
+        <AnimatePresence initial={false}>
+          {hasScans && scanFormOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="bg-autronis-card border border-autronis-accent/20 rounded-xl p-4">
+                <CompactScanForm onStarted={(id) => { setScanFormOpen(false); router.push(`/sales-engine/${id}`); }} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Full form for empty state */}
+        {!hasScans && <ScanFormulier prominent />}
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <KpiCard
-            icon={TrendingUp}
-            iconKleur="text-[var(--accent)]"
-            label="Deze week"
-            value={kpis?.dezeWeek ?? 0}
-            sub={`${dezeMaand} deze maand`}
-            delay={0}
-          />
-          <KpiCard
-            icon={CheckCircle}
-            iconKleur="text-emerald-400"
-            label="Succesratio"
-            value={kpis?.succesRatio ?? 0}
-            sub={`${completedScans.length} van ${kpis?.totaal ?? 0} scans voltooid`}
-            delay={0.06}
-          />
-          <KpiCard
-            icon={Target}
-            iconKleur="text-purple-400"
-            label="Totaal kansen"
-            value={totaalKansen}
-            sub={`gem. ${gemiddeldeKansen} per scan`}
-            delay={0.12}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.18, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
-          >
-            <div className="flex items-center gap-3 mb-2">
-              <Euro className="w-5 h-5 text-orange-400" />
-              <span className="text-sm text-[var(--text-secondary)]">Pipeline waarde</span>
-            </div>
-            <p className="text-3xl font-bold tabular-nums">
-              €{pipelineWaarde.toLocaleString("nl-NL")}
-            </p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-1">
-              schatting op basis van kansen
-            </p>
-          </motion.div>
-        </div>
-
-        {/* Filters */}
-        <div className="flex gap-2">
-          {["alle", "completed", "pending", "failed"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                statusFilter === s
-                  ? "bg-[var(--accent)] text-white"
-                  : "bg-[var(--card)] text-[var(--text-secondary)] hover:bg-[var(--card-hover)]"
-              }`}
+        {hasScans && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard icon={TrendingUp} iconKleur="text-[var(--accent)]" label="Deze week" value={kpis?.dezeWeek ?? 0} sub={`${dezeMaand} deze maand`} delay={0} />
+            <KpiCard icon={CheckCircle} iconKleur="text-emerald-400" label="Succesratio" value={kpis?.succesRatio ?? 0} suffix="%" sub={`${completedScans.length} van ${kpis?.totaal ?? 0} scans voltooid`} delay={0.06} />
+            <KpiCard icon={Target} iconKleur="text-purple-400" label="Totaal kansen" value={totaalKansen} sub={`gem. ${gemiddeldeKansen} per scan`} delay={0.12} />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
             >
-              {s === "alle" ? "Alle" : statusConfig[s]?.label ?? s}
-            </button>
-          ))}
-        </div>
+              <div className="flex items-center gap-3 mb-2">
+                <Euro className="w-5 h-5 text-orange-400" />
+                <span className="text-sm text-[var(--text-secondary)]">Pipeline waarde</span>
+              </div>
+              <p className="text-3xl font-bold tabular-nums">€{pipelineWaarde.toLocaleString("nl-NL")}</p>
+              <p className="text-xs text-[var(--text-tertiary)] mt-1">schatting op basis van kansen</p>
+            </motion.div>
+          </div>
+        )}
 
         {/* Scan List */}
-        {scans.length === 0 ? (
+        {hasScans && (
+          <>
+            {/* Filter + search + sort bar */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Status filter pills */}
+              <div className="flex items-center gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
+                {(["alle", "completed", "pending", "failed"] as const).map((s) => (
+                  <button key={s} onClick={() => setStatusFilter(s)}
+                    className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1",
+                      statusFilter === s ? "bg-[var(--accent)] text-white" : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    )}>
+                    {s === "alle" ? "Alle" : statusConfig[s]?.label ?? s}
+                    {filterCounts[s] > 0 && (
+                      <span className={cn("text-[10px] font-bold tabular-nums px-1 py-0.5 rounded-full",
+                        statusFilter === s ? "bg-white/20 text-white" : "bg-autronis-bg text-autronis-text-secondary"
+                      )}>
+                        {filterCounts[s]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search */}
+              <div className="relative flex-1 min-w-36 max-w-56">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-autronis-text-secondary/50" />
+                <input
+                  type="text"
+                  value={zoekFilter}
+                  onChange={(e) => setZoekFilter(e.target.value)}
+                  placeholder="Zoek bedrijf..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+                />
+                {zoekFilter && (
+                  <button onClick={() => setZoekFilter("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-autronis-text-secondary/50 hover:text-autronis-text-secondary transition-colors">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Sort dropdown */}
+              <div className="relative ml-auto" ref={sortRef}>
+                <button
+                  onClick={() => setSorteerOpen((o) => !o)}
+                  className="flex items-center gap-1.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary px-3 py-1.5 rounded-lg border border-autronis-border/50 hover:border-autronis-border transition-colors"
+                >
+                  <ArrowUpDown className="h-3 w-3" />
+                  {sortLabels[sorteer]}
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+                <AnimatePresence>
+                  {sorteerOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute right-0 top-full mt-1 bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-10 overflow-hidden min-w-[140px]"
+                    >
+                      {(["nieuwst", "kansen", "impact"] as SortOption[]).map((opt) => (
+                        <button key={opt} onClick={() => { setSorteer(opt); setSorteerOpen(false); }}
+                          className={cn("w-full text-left px-3 py-2 text-xs transition-colors",
+                            sorteer === opt ? "text-autronis-accent bg-autronis-accent/10" : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
+                          )}>
+                          {sortLabels[opt]}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {gefilterd.length === 0 ? (
+              <div className="bg-[var(--card)] rounded-xl p-8 text-center border border-[var(--border)]">
+                <Search className="w-8 h-8 text-[var(--text-tertiary)] mx-auto mb-3" />
+                <p className="text-sm text-[var(--text-secondary)]">Geen scans gevonden voor deze filters.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <AnimatePresence mode="popLayout">
+                  {gefilterd.map((scan, i) => {
+                    const status = statusConfig[scan.status] ?? statusConfig.pending;
+                    const StatusIcon = status.icon;
+                    const isPending = scan.status === "pending";
+
+                    return (
+                      <motion.div
+                        key={scan.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ delay: Math.min(i * 0.03, 0.25), duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                        className="group relative"
+                      >
+                        <Link
+                          href={`/sales-engine/${scan.id}`}
+                          className={cn(
+                            "block bg-[var(--card)] rounded-xl px-5 py-4 border transition-all card-glow",
+                            isPending
+                              ? "border-yellow-400/20 hover:border-yellow-400/40"
+                              : "border-[var(--border)] hover:border-[var(--accent)]/30"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2.5 mb-1 flex-wrap">
+                                <h3 className="font-semibold text-base truncate">
+                                  {scan.bedrijfsnaam ?? "Onbekend bedrijf"}
+                                </h3>
+                                <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0", status.kleur)}>
+                                  <StatusIcon className={cn("w-3 h-3", isPending && "animate-spin")} />
+                                  {status.label}
+                                </span>
+                                {scan.hoogsteImpact && (
+                                  <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0", impactConfig[scan.hoogsteImpact] ?? "", impactGlow[scan.hoogsteImpact] ?? "")}>
+                                    {scan.hoogsteImpact} impact
+                                  </span>
+                                )}
+                                {isPending && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-yellow-400/60">
+                                    <span className="w-1 h-1 rounded-full bg-yellow-400 animate-pulse" />scanning...
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)] flex-wrap">
+                                <span className="flex items-center gap-1">
+                                  <ExternalLink className="w-3 h-3" />
+                                  {(() => { try { return new URL(scan.websiteUrl).hostname; } catch { return scan.websiteUrl; } })()}
+                                </span>
+                                {scan.contactpersoon && <span>{scan.contactpersoon}</span>}
+                                {scan.aantalKansen > 0 && (
+                                  <span className="flex items-center gap-1 text-[var(--accent)] font-medium">
+                                    <Zap className="w-3 h-3" />{scan.aantalKansen} kansen
+                                  </span>
+                                )}
+                                {scan.aangemaaktOp && <span>{formatDatum(scan.aangemaaktOp)}</span>}
+                              </div>
+                            </div>
+
+                            {/* Quick actions — hover reveal */}
+                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                              {scan.status === "completed" && scan.aantalKansen > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    router.push(`/outreach?scanId=${scan.id}`);
+                                  }}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition-colors"
+                                  title="Start outreach"
+                                >
+                                  <Send className="w-3 h-3" />
+                                  Outreach
+                                </button>
+                              )}
+                              <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-bg text-autronis-text-secondary text-xs hover:bg-autronis-border/50 transition-colors">
+                                Details <ChevronRight className="w-3 h-3" />
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Pending progress bar */}
+                          {isPending && (
+                            <div className="mt-3 h-0.5 bg-autronis-bg rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-yellow-400/50 rounded-full"
+                                animate={{ x: ["-100%", "100%"] }}
+                                transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                                style={{ width: "40%" }}
+                              />
+                            </div>
+                          )}
+                        </Link>
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Empty state */}
+        {!hasScans && (
           <div className="bg-[var(--card)] rounded-xl p-12 text-center border border-[var(--border)]">
             <Rocket className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4" />
             <p className="text-lg font-medium mb-2">Nog geen scans</p>
@@ -598,75 +819,8 @@ export default function SalesEnginePage() {
               Gebruik het formulier hierboven om je eerste bedrijfsscan te starten, of scans worden automatisch aangemaakt via Cal.com.
             </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {scans.map((scan, i) => {
-                const status = statusConfig[scan.status] ?? statusConfig.pending;
-                const StatusIcon = status.icon;
-
-                return (
-                  <motion.div
-                    key={scan.id}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8, scale: 0.97 }}
-                    transition={{ delay: i * 0.04, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-                  >
-                    <Link
-                      href={`/sales-engine/${scan.id}`}
-                      className="block bg-[var(--card)] rounded-xl p-5 border border-[var(--border)] hover:border-[var(--accent)]/30 transition-all card-glow"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h3 className="font-semibold text-lg truncate">
-                              {scan.bedrijfsnaam ?? "Onbekend bedrijf"}
-                            </h3>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${status.kleur}`}
-                            >
-                              <StatusIcon className={`w-3 h-3 ${scan.status === "pending" ? "animate-spin" : ""}`} />
-                              {status.label}
-                            </span>
-                            {scan.hoogsteImpact && (
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  impactConfig[scan.hoogsteImpact] ?? ""
-                                } ${impactGlow[scan.hoogsteImpact] ?? ""}`}
-                              >
-                                {scan.hoogsteImpact} impact
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-[var(--text-secondary)]">
-                            <span className="flex items-center gap-1">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              {(() => {
-                                try {
-                                  return new URL(scan.websiteUrl).hostname;
-                                } catch {
-                                  return scan.websiteUrl;
-                                }
-                              })()}
-                            </span>
-                            {scan.contactpersoon && <span>{scan.contactpersoon}</span>}
-                            {scan.aantalKansen > 0 && (
-                              <span>{scan.aantalKansen} kansen gevonden</span>
-                            )}
-                            {scan.aangemaaktOp && (
-                              <span>{formatDatum(scan.aangemaaktOp)}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-          </div>
         )}
+
         {/* Batch Modal */}
         <AnimatePresence>
           {showBatchModal && <BatchScanModal onClose={() => setShowBatchModal(false)} />}

@@ -8,7 +8,7 @@ import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
-const UUR_HOOGTE = 60; // px per uur
+const UUR_HOOGTE = 80; // px per uur
 
 function extractMeetingUrl(text: string | null | undefined): string | null {
   if (!text) return null;
@@ -411,18 +411,29 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
                 }}
               >
-                <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{item.titel}</p>
-                <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                  <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: colors.text }} />
-                  <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
-                    {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
-                  </span>
-                  {isImminent && meetUrl && (
-                    <span className="ml-auto text-[9px] text-autronis-accent bg-autronis-accent/15 px-1.5 py-0.5 rounded-full animate-pulse font-medium">
-                      Nu
-                    </span>
-                  )}
-                </div>
+                {height < 46 ? (
+                  /* Compact single-line voor korte events */
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-semibold text-autronis-text-primary truncate flex-1 leading-tight">{item.titel}</span>
+                    <span className="text-[10px] tabular-nums flex-shrink-0 opacity-80" style={{ color: colors.text }}>{startTijd}</span>
+                    {isImminent && meetUrl && (
+                      <span className="text-[9px] text-autronis-accent bg-autronis-accent/15 px-1 py-0.5 rounded-full animate-pulse font-medium flex-shrink-0">Nu</span>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug" style={{ display: "-webkit-box", WebkitLineClamp: height < 70 ? 1 : 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{item.titel}</p>
+                    <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
+                      <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" style={{ color: colors.text }} />
+                      <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
+                        {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
+                      </span>
+                      {isImminent && meetUrl && (
+                        <span className="ml-auto text-[9px] text-autronis-accent bg-autronis-accent/15 px-1.5 py-0.5 rounded-full animate-pulse font-medium">Nu</span>
+                      )}
+                    </div>
+                  </>
+                )}
               </motion.div>
             );
           })}

@@ -120,6 +120,45 @@ export async function GET() {
       )
       .orderBy(projecten.deadline);
 
+    // Omzet vorige maand (voor trend)
+    const vorigeMaand = new Date();
+    vorigeMaand.setMonth(vorigeMaand.getMonth() - 1);
+    const vmFirstDay = new Date(vorigeMaand.getFullYear(), vorigeMaand.getMonth(), 1);
+    const vmLastDay = new Date(vorigeMaand.getFullYear(), vorigeMaand.getMonth() + 1, 0, 23, 59, 59, 999);
+    const omzetVmData = await db
+      .select({ duurMinuten: tijdregistraties.duurMinuten, uurtarief: klanten.uurtarief })
+      .from(tijdregistraties)
+      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+      .where(and(
+        gte(tijdregistraties.startTijd, vmFirstDay.toISOString()),
+        lte(tijdregistraties.startTijd, vmLastDay.toISOString()),
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+      ));
+    const omzetVorigeMaand = omzetVmData.reduce((sum, r) => sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0), 0);
+
+    // Uren vorige week (voor trend)
+    const vorigeWeekStart = new Date(week.van);
+    vorigeWeekStart.setDate(vorigeWeekStart.getDate() - 7);
+    const vorigeWeekEind = new Date(week.van);
+    vorigeWeekEind.setMilliseconds(-1);
+    const vwVanDatum = vorigeWeekStart.toISOString().slice(0, 10);
+    const vwTotDatum = vorigeWeekEind.toISOString().slice(0, 10);
+    const eigenUrenVorigeWeek = await berekenActieveUren(gebruiker.id, vwVanDatum, vwTotDatum);
+    const eigenUrenVorigeWeekMin = Math.round(eigenUrenVorigeWeek * 60);
+
+    // Taken afgerond vandaag
+    const vandaag = new Date().toISOString().slice(0, 10);
+    const [takenAfgerondResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(taken)
+      .where(and(
+        eq(taken.toegewezenAan, gebruiker.id),
+        eq(taken.status, "afgerond"),
+        gte(taken.bijgewerktOp, vandaag)
+      ));
+    const takenAfgerondVandaag = takenAfgerondResult?.count ?? 0;
+
     // === Mijn Taken ===
     const mijnTaken = await db
       .select({
@@ -265,13 +304,16 @@ export async function GET() {
       gebruiker: { id: gebruiker.id, naam: gebruiker.naam },
       kpis: {
         omzetDezeMaand: Math.round(omzetDezeMaand * 100) / 100,
+        omzetVorigeMaand: Math.round(omzetVorigeMaand * 100) / 100,
         urenDezeWeek: {
           totaal: eigenUrenTotaal + teamgenootUren,
           eigen: eigenUrenTotaal,
           teamgenoot: teamgenootUren,
         },
+        urenVorigeWeek: eigenUrenVorigeWeekMin,
         actieveProjecten: actieveProjectenCount?.count || 0,
         deadlinesDezeWeek: deadlinesDezeWeek.length,
+        takenAfgerondVandaag,
       },
       mijnTaken,
       deadlines: aankomendDeadlines,

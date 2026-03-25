@@ -53,6 +53,24 @@ function ProgressBar({ afgerond, totaal, size = "md" }: { afgerond: number; tota
   );
 }
 
+// ─── Animated Count ───
+function AnimatedCount({ value, className }: { value: number; className?: string }) {
+  const [displayed, setDisplayed] = useState(0);
+  useEffect(() => {
+    if (value === 0) { setDisplayed(0); return; }
+    const duration = 600;
+    const startTime = performance.now();
+    function step(now: number) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplayed(Math.round(eased * value));
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }, [value]);
+  return <span className={className}>{displayed}</span>;
+}
+
 // ─── Types ───
 interface GegroepeerdeData {
   projectId: number;
@@ -486,11 +504,16 @@ export default function TakenPage() {
   const [nieuwPrompt, setNieuwPrompt] = useState("");
   const [nieuwProjectMap, setNieuwProjectMap] = useState("");
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  const [hideCompleted, setHideCompleted] = useState(false);
+  const [quickAddFase, setQuickAddFase] = useState<{ projectId: number; fase: string } | null>(null);
+  const [quickAddTitel, setQuickAddTitel] = useState("");
+  const [flashedFases, setFlashedFases] = useState<Set<string>>(new Set());
   const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectSectionsRef = useRef<Map<number, HTMLDivElement>>(new Map());
 
+  const apiStatusFilter = statusFilter === "verlopen" ? "open" : statusFilter;
   const { data, isLoading: loading, refetch: fetchTaken } = useTaken({
-    status: statusFilter,
+    status: apiStatusFilter,
     zoek,
     projectId: projectFilter,
     fase: faseFilter,
@@ -512,10 +535,14 @@ export default function TakenPage() {
   const kpis = data?.kpis ?? { totaal: 0, open: 0, bezig: 0, afgerond: 0, verlopen: 0 };
   const projectVoortgang = data?.projecten ?? [];
 
+  const vandaag = new Date().toISOString().slice(0, 10);
+
   const gefilterdeTaken = useMemo(() => {
-    if (uitvoerderFilter === "alle") return taken;
-    return taken.filter((t) => (t.uitvoerder || "handmatig") === uitvoerderFilter);
-  }, [taken, uitvoerderFilter]);
+    let result = taken;
+    if (uitvoerderFilter !== "alle") result = result.filter((t) => (t.uitvoerder || "handmatig") === uitvoerderFilter);
+    if (statusFilter === "verlopen") result = result.filter((t) => t.deadline && t.deadline < vandaag && t.status !== "afgerond");
+    return result;
+  }, [taken, uitvoerderFilter, statusFilter, vandaag]);
 
   const gegroepeerd = useMemo(() => groepeerTaken(gefilterdeTaken), [gefilterdeTaken]);
 
@@ -636,12 +663,61 @@ export default function TakenPage() {
     finally { setSyncing(false); }
   };
 
-  const openNieuwModal = () => {
+  const openNieuwModal = useCallback(() => {
     setNieuwTitel(""); setNieuwProject(uniekeProjecten[0]?.id ?? ""); setNieuwFase("");
     setNieuwPrioriteit("normaal"); setNieuwDeadline(""); setNieuwOmschrijving("");
     setNieuwUitvoerder("handmatig"); setNieuwPrompt(""); setNieuwProjectMap("");
     setModalOpen(true);
+  }, [uniekeProjecten]);
+
+  // Keyboard shortcut: N opens new task modal
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "n" && !e.ctrlKey && !e.metaKey && !e.altKey && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        e.preventDefault();
+        openNieuwModal();
+      }
+      if (e.key === "Escape") {
+        setQuickAddFase(null);
+        setQuickAddTitel("");
+      }
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [openNieuwModal]);
+
+  const quickAddMutation = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const res = await fetch("/api/taken", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error();
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
+    onError: () => addToast("Kon taak niet aanmaken", "fout"),
+  });
+
+  const handleQuickAdd = (projectId: number, fase: string) => {
+    const titel = quickAddTitel.trim();
+    if (!titel) return;
+    quickAddMutation.mutate({ projectId, titel, fase: fase === "Backlog" ? null : fase, prioriteit: "normaal", uitvoerder: "handmatig" });
+    setQuickAddTitel("");
+    setQuickAddFase(null);
   };
+
+  const handleStatusToggleWithFaseCheck = useCallback((taak: Taak, newStatus: string, taken: Taak[]) => {
+    statusMutation.mutate({ id: taak.id, status: newStatus }, {
+      onSuccess: () => {
+        if (newStatus === "afgerond") {
+          const faseKey = `${taak.projectId}-${taak.fase || "Backlog"}`;
+          const faseItems = taken.filter((t) => t.projectId === taak.projectId && (t.fase || "Backlog") === (taak.fase || "Backlog"));
+          const allDone = faseItems.every((t) => t.id === taak.id || t.status === "afgerond");
+          if (allDone && faseItems.length > 1) {
+            setFlashedFases((prev) => { const next = new Set(prev); next.add(faseKey); return next; });
+            setTimeout(() => setFlashedFases((prev) => { const next = new Set(prev); next.delete(faseKey); return next; }), 1200);
+          }
+        }
+      },
+    });
+  }, [statusMutation]);
 
   const handleCreate = () => {
     if (!nieuwTitel.trim() || !nieuwProject) return;
@@ -680,8 +756,6 @@ export default function TakenPage() {
     if (taakId) statusMutation.mutate({ id: taakId, status: newStatus });
   };
 
-  const vandaag = new Date().toISOString().slice(0, 10);
-
   // Active filters count for badge
   const activeFilterCount = [
     statusFilter !== "alle",
@@ -690,6 +764,7 @@ export default function TakenPage() {
     prioriteitFilter !== "alle",
     uitvoerderFilter !== "alle",
     zoek.length > 0,
+    hideCompleted,
   ].filter(Boolean).length;
 
   if (loading) return <div className="p-4 lg:p-6"><SkeletonTaken /></div>;
@@ -701,9 +776,18 @@ export default function TakenPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-autronis-text-primary">Taken</h1>
-            <p className="text-sm text-autronis-text-secondary">
-              {kpis.open + kpis.bezig} actief &middot; {kpis.afgerond} afgerond
-              {kpis.verlopen > 0 && <span className="text-red-400 ml-1">&middot; {kpis.verlopen} verlopen</span>}
+            <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5">
+              <AnimatedCount value={kpis.open + kpis.bezig} /> actief
+              <span className="text-autronis-border/60">&middot;</span>
+              <AnimatedCount value={kpis.afgerond} /> afgerond
+              {kpis.verlopen > 0 && (
+                <>
+                  <span className="text-autronis-border/60">&middot;</span>
+                  <button onClick={() => setStatusFilter("verlopen")} className={cn("font-medium transition-colors hover:underline", statusFilter === "verlopen" ? "text-red-300" : "text-red-400")}>
+                    <AnimatedCount value={kpis.verlopen} /> verlopen
+                  </button>
+                </>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -737,10 +821,22 @@ export default function TakenPage() {
         <div className="flex flex-wrap items-center gap-1.5">
           {/* Status pills */}
           <div className="flex items-center gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
-            {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }].map((f) => (
-              <button key={f.key} onClick={() => setStatusFilter(f.key)} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === f.key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>{f.label}</button>
+            {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }, { key: "verlopen", label: "Verlopen" }].map((f) => (
+              <button key={f.key} onClick={() => setStatusFilter(f.key)} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === f.key ? (f.key === "verlopen" ? "bg-red-500/80 text-white" : "bg-autronis-accent text-autronis-bg") : (f.key === "verlopen" && kpis.verlopen > 0 ? "text-red-400/70 hover:text-red-400" : "text-autronis-text-secondary hover:text-autronis-text-primary"))}>{f.label}{f.key === "verlopen" && kpis.verlopen > 0 && <span className="ml-1 tabular-nums">{kpis.verlopen}</span>}</button>
             ))}
           </div>
+
+          {/* Hide completed fases toggle */}
+          <button
+            onClick={() => setHideCompleted((h) => !h)}
+            className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+              hideCompleted ? "border-autronis-accent/50 bg-autronis-accent/10 text-autronis-accent" : "border-autronis-border text-autronis-text-secondary hover:border-autronis-border/80"
+            )}
+            title="Verberg afgeronde fases"
+          >
+            <CheckCircle2 className="w-3 h-3" />
+            {hideCompleted ? "Afgerond verborgen" : "Verberg afgerond"}
+          </button>
 
           <div className="w-px h-5 bg-autronis-border/40 mx-1 hidden sm:block" />
 
@@ -773,7 +869,7 @@ export default function TakenPage() {
                 className="w-full bg-autronis-card border border-autronis-border rounded-lg pl-7 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
             </div>
             {activeFilterCount > 0 && (
-              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); }}
+              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); setHideCompleted(false); }}
                 className="flex items-center gap-1 px-2 py-1 text-[11px] text-autronis-text-secondary hover:text-red-400 transition-colors whitespace-nowrap">
                 <X className="w-3 h-3" /> Wis (
                 <motion.span

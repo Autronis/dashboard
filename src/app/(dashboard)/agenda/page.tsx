@@ -43,6 +43,31 @@ const typeConfig: Record<string, { icon: typeof Calendar; color: string; bg: str
   herinnering: { icon: Bell, color: "text-purple-400", bg: "bg-purple-500/15 border-purple-500/30", borderColor: "#a855f7", label: "Herinnering" },
 };
 
+// Project color palette — consistent per project name
+const PROJECT_PALET = [
+  { bg: "rgba(99,102,241,0.18)", border: "#6366f1", text: "#a5b4fc" },   // indigo
+  { bg: "rgba(16,185,129,0.18)", border: "#10b981", text: "#6ee7b7" },   // emerald
+  { bg: "rgba(245,158,11,0.18)", border: "#f59e0b", text: "#fcd34d" },   // amber
+  { bg: "rgba(239,68,68,0.18)", border: "#ef4444", text: "#fca5a5" },    // red
+  { bg: "rgba(168,85,247,0.18)", border: "#a855f7", text: "#d8b4fe" },   // purple
+  { bg: "rgba(6,182,212,0.18)", border: "#06b6d4", text: "#67e8f9" },    // cyan
+  { bg: "rgba(249,115,22,0.18)", border: "#f97316", text: "#fdba74" },   // orange
+  { bg: "rgba(236,72,153,0.18)", border: "#ec4899", text: "#f9a8d4" },   // pink
+];
+
+function hashStr(s: string): number {
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) - hash + s.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash);
+}
+
+function getProjectKleur(projectNaam: string | null) {
+  if (!projectNaam) return PROJECT_PALET[0];
+  return PROJECT_PALET[hashStr(projectNaam) % PROJECT_PALET.length];
+}
+
 // Categorize external events by content
 function getExternEventColor(event: ExternEvent): { bg: string; text: string; border: string } {
   const titel = event.titel.toLowerCase();
@@ -1362,17 +1387,19 @@ export default function AgendaPage() {
 
                     const eindTimeStr = eindStr ? new Date(eindStr).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
+                    const TypeIcon = isExtern ? null : (typeConfig[(item as AgendaItem).type] || typeConfig.afspraak).icon;
+
                     return (
                       <div
                         key={`week-${item.id}-${wd.datumStr}`}
-                        className="absolute rounded-lg px-2 py-1 overflow-hidden cursor-pointer hover:brightness-115 transition-[filter] border-l-[3px] z-10"
+                        className="absolute rounded-xl px-2 py-1.5 overflow-hidden cursor-pointer hover:brightness-110 transition-all border-l-[3px] z-10 group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
                           background: eventGradient,
                           borderLeftColor: borderColor,
                           color: textColor,
-                          boxShadow: eventGlow,
+                          boxShadow: `${eventGlow}, 0 0 0 1px ${borderColor}14`,
                           left: `calc(48px + (${dagIdx} + ${leftPct / 100}) * (100% - 48px) / 7 + 2px)`,
                           width: `calc(${widthPct / 100} * (100% - 48px) / 7 - 4px)`,
                         }}
@@ -1381,10 +1408,19 @@ export default function AgendaPage() {
                           if (!isExtern) openItemDetail(item as AgendaItem);
                         }}
                       >
-                        <p className="text-[11px] font-semibold truncate leading-tight">{titel}</p>
-                        {height > 28 && (
-                          <p className="text-[10px] opacity-70 tabular-nums mt-0.5">
+                        <div className="flex items-start gap-1">
+                          {TypeIcon && height > 22 && <TypeIcon className="w-2.5 h-2.5 flex-shrink-0 mt-0.5 opacity-80" />}
+                          <p className="text-[11px] font-semibold truncate leading-tight flex-1">{titel}</p>
+                        </div>
+                        {height > 30 && (
+                          <p className="text-[10px] opacity-75 tabular-nums mt-0.5 font-medium">
                             {startTimeStr}{eindTimeStr ? ` – ${eindTimeStr}` : ""}
+                          </p>
+                        )}
+                        {height > 52 && isExtern && (item as ExternEvent).deelnemers?.length > 0 && (
+                          <p className="text-[9px] opacity-55 mt-0.5 flex items-center gap-0.5 truncate">
+                            <Users className="w-2 h-2 flex-shrink-0" />
+                            {(item as ExternEvent).deelnemers.slice(0, 2).map(d => d.naam || d.email.split("@")[0]).join(", ")}
                           </p>
                         )}
                       </div>
@@ -1412,16 +1448,19 @@ export default function AgendaPage() {
                     const topOffset = (startUur - wStart) * slotH + (startMin / 60) * slotH;
                     const height = Math.max(24, (duurMin / 60) * slotH);
 
+                    const pk = getProjectKleur(taak.projectNaam);
+
                     return (
                       <div
                         key={`taak-plan-${taak.id}-${wd.datumStr}`}
-                        className="absolute rounded-lg px-2 py-1 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
+                        className="absolute rounded-xl px-2 py-1.5 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
-                          backgroundColor: "rgba(34,197,94,0.12)",
-                          borderLeftColor: "#22c55e",
-                          color: "#4ade80",
+                          background: `linear-gradient(160deg, ${pk.bg} 0%, rgba(14,23,25,0.05) 100%)`,
+                          borderLeftColor: pk.border,
+                          color: pk.text,
+                          boxShadow: `0 2px 8px ${pk.border}20, 0 0 0 1px ${pk.border}14`,
                           left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
                           width: `calc((100% - 48px) / 7 - 4px)`,
                         }}
@@ -1431,21 +1470,20 @@ export default function AgendaPage() {
                         }}
                       >
                         <div className="flex items-center gap-1">
-                          <CheckSquare className="w-3 h-3 flex-shrink-0" />
-                          <p className="text-[11px] font-semibold truncate leading-tight">{taak.titel}</p>
+                          <CheckSquare className="w-2.5 h-2.5 flex-shrink-0 opacity-80" />
+                          <p className="text-[11px] font-semibold truncate leading-tight flex-1">{taak.titel}</p>
                         </div>
-                        {height > 28 && (
-                          <p className="text-[10px] opacity-70 mt-0.5 tabular-nums">
+                        {height > 30 && (
+                          <p className="text-[10px] opacity-75 mt-0.5 tabular-nums font-medium">
                             {`${String(startUur).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`}
                             {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
                           </p>
                         )}
-                        {height > 42 && taak.projectNaam && (
-                          <p className="text-[9px] opacity-50 mt-0.5 truncate">{taak.projectNaam}</p>
+                        {height > 48 && taak.projectNaam && (
+                          <p className="text-[9px] opacity-55 mt-0.5 truncate">{taak.projectNaam}</p>
                         )}
-                        {/* Uitplannen knop bij hover */}
                         <button
-                          className="absolute top-1 right-1 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 p-0.5 rounded bg-black/20 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleUnplanTaak(taak.id);
@@ -1480,18 +1518,20 @@ export default function AgendaPage() {
                     const slotH = 64;
                     const topOffset = (suggestedUur - wStart) * slotH + 4;
                     const height = slotH * 0.85;
-                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                    const spk = getProjectKleur(taak.projectNaam);
+                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : spk.border;
 
                     return (
                       <div
                         key={`taak-sug-${taak.id}-${wd.datumStr}`}
-                        className="absolute rounded-lg px-2 py-1 overflow-hidden z-[4] opacity-35 hover:opacity-80 transition-all cursor-pointer"
+                        className="absolute rounded-xl px-2 py-1 overflow-hidden z-[4] opacity-30 hover:opacity-85 transition-all cursor-pointer border-l-[3px]"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
-                          backgroundColor: `${prioColor}08`,
-                          border: `1px dashed ${prioColor}40`,
-                          color: prioColor,
+                          backgroundColor: `${spk.bg}`,
+                          border: `1px dashed ${spk.border}50`,
+                          borderLeftColor: prioColor,
+                          color: spk.text,
                           left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
                           width: `calc((100% - 48px) / 7 - 4px)`,
                         }}
@@ -1501,7 +1541,7 @@ export default function AgendaPage() {
                         }}
                       >
                         <div className="flex items-center gap-1">
-                          <CheckSquare className="w-3 h-3 flex-shrink-0 opacity-60" />
+                          <CheckSquare className="w-2.5 h-2.5 flex-shrink-0 opacity-60" />
                           <p className="text-[11px] font-medium truncate leading-tight">{taak.titel}</p>
                         </div>
                         {height > 28 && (
@@ -1814,7 +1854,7 @@ export default function AgendaPage() {
                               >
                                 <div className="space-y-1 mt-1 pl-1">
                                   {groep.taken.map((taak) => {
-                                    const prioColor = taak.prioriteit === "hoog" ? "#ef4444" : taak.prioriteit === "normaal" ? "#f97316" : "#6b7280";
+                                    const gpk = getProjectKleur(taak.projectNaam);
                                     const duurLabel = taak.geschatteDuur
                                       ? taak.geschatteDuur >= 60
                                         ? `${Math.floor(taak.geschatteDuur / 60)}u${taak.geschatteDuur % 60 ? ` ${taak.geschatteDuur % 60}m` : ""}`
@@ -1831,8 +1871,8 @@ export default function AgendaPage() {
                                         }}
                                         onDragEnd={() => setDragTaak(null)}
                                         onClick={() => openPlanModal(taak)}
-                                        className="p-2 rounded-lg bg-autronis-bg/30 border border-autronis-border/30 border-l-2 hover:bg-autronis-bg/50 hover:border-autronis-accent/30 transition-colors cursor-grab active:cursor-grabbing group"
-                                        style={{ borderLeftColor: prioColor }}
+                                        className="p-2 rounded-lg border border-l-2 hover:brightness-110 transition-all cursor-grab active:cursor-grabbing group"
+                                        style={{ backgroundColor: gpk.bg, borderColor: `${gpk.border}30`, borderLeftColor: gpk.border, color: gpk.text }}
                                       >
                                         <div className="flex items-start gap-2">
                                           <div className="flex flex-col gap-px mt-1 opacity-30 group-hover:opacity-60 flex-shrink-0">
@@ -1841,10 +1881,10 @@ export default function AgendaPage() {
                                             <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
                                           </div>
                                           <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
+                                            <p className="text-xs font-medium truncate" style={{ color: gpk.text }}>{taak.titel}</p>
                                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                                               {taak.status === "bezig" && (
-                                                <span className="text-[9px] text-autronis-accent bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Bezig</span>
+                                                <span className="text-[9px] bg-black/15 px-1.5 py-0.5 rounded-full" style={{ color: gpk.text }}>Bezig</span>
                                               )}
                                               {taak.prioriteit === "hoog" && (
                                                 <span className="text-[9px] text-red-400 bg-red-500/10 px-1.5 py-0.5 rounded-full">Hoog</span>

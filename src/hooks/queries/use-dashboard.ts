@@ -4,9 +4,12 @@ interface DashboardData {
   gebruiker: { id: number; naam: string };
   kpis: {
     omzetDezeMaand: number;
+    omzetVorigeMaand: number;
     urenDezeWeek: { totaal: number; eigen: number; teamgenoot: number };
+    urenVorigeWeek: number;
     actieveProjecten: number;
     deadlinesDezeWeek: number;
+    takenAfgerondVandaag: number;
   };
   mijnTaken: {
     id: number;

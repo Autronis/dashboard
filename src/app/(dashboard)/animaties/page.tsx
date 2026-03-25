@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Wand2, Link, Package, Copy, Check, Loader2, Zap } from "lucide-react";
+import { Wand2, Link, Package, Copy, Check, Loader2, Zap, ExternalLink, Image, Clapperboard, Layers } from "lucide-react";
 
 interface Prompts {
   promptA: string;
@@ -97,20 +97,21 @@ export default function AnimatiesPage() {
     setActiveTab("A");
   };
 
-  const copyPrompt = () => {
+  const copyPrompt = (openHiggsfield = false) => {
     if (!prompts) return;
     const text = activeTab === "A" ? prompts.promptA : activeTab === "B" ? prompts.promptB : prompts.promptC;
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       launchConfetti();
       setTimeout(() => setCopied(false), 2000);
+      if (openHiggsfield) window.open("https://higgsfield.ai", "_blank");
     });
   };
 
   const tabConfig = {
-    A: { label: prompts?.tabANaam ?? "Assembled Shot", color: "lime" },
-    B: { label: prompts?.tabBNaam ?? "Deconstructed View", color: "teal" },
-    C: { label: "Video Transitie", color: "purple" },
+    A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer als afbeelding (16:9)" },
+    B: { label: prompts?.tabBNaam ?? "Deconstructed View", icon: Layers, instruction: "Upload afbeelding A als referentie → genereer als afbeelding (16:9)" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload afbeelding A als start frame + afbeelding B als end frame → genereer video (5s)" },
   } as const;
 
   const activePrompt = prompts
@@ -132,7 +133,26 @@ export default function AnimatiesPage() {
         <h1 className="text-3xl font-black tracking-tight">
           Animatie <span className="text-white/40">Prompts</span>
         </h1>
-        <p className="text-sm text-white/50 mt-1">Plak een product-URL of typ een productnaam — Claude genereert 3 Higgsfield-klare prompts.</p>
+        <p className="text-sm text-white/50 mt-1">Plak een product-URL of typ een productnaam — Claude genereert 3 Higgsfield Nano Banana 2 prompts.</p>
+      </div>
+
+      {/* Workflow guide */}
+      <div className="grid grid-cols-3 gap-3 mb-6">
+        {[
+          { step: "1", icon: Image, color: "#BFF549", label: "Copy A", sub: "Plak in Higgsfield → genereer afbeelding" },
+          { step: "2", icon: Layers, color: "#00d4ff", label: "Copy B", sub: "Upload A als referentie → genereer afbeelding" },
+          { step: "3", icon: Clapperboard, color: "#a855f7", label: "Copy C", sub: "Upload A + B als frames → genereer video" },
+        ].map(({ step, icon: Icon, color, label, sub }) => (
+          <div key={step} className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-3 flex gap-3 items-start">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
+              <Icon className="w-3.5 h-3.5" style={{ color }} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-white/70">{label}</p>
+              <p className="text-xs text-white/30 leading-snug mt-0.5">{sub}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* Input */}
@@ -213,23 +233,39 @@ export default function AnimatiesPage() {
               </button>
             ))}
 
-            <button
-              onClick={copyPrompt}
-              className={`ml-auto flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                copied
-                  ? "bg-[#BFF549] text-black border-[#BFF549]"
-                  : "bg-transparent text-white/50 border-white/10 hover:text-white hover:border-white/20"
-              }`}
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copied ? "Gekopieerd!" : "Copy"}
-            </button>
+            <div className="ml-auto flex gap-2">
+              <button
+                onClick={() => copyPrompt(false)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
+                  copied
+                    ? "bg-[#BFF549] text-black border-[#BFF549]"
+                    : "bg-transparent text-white/50 border-white/10 hover:text-white hover:border-white/20"
+                }`}
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copied ? "Gekopieerd!" : "Copy"}
+              </button>
+              <button
+                onClick={() => copyPrompt(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-all border border-white/10"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Copy + Open Higgsfield
+              </button>
+            </div>
           </div>
 
-          {/* Bron */}
-          <div className="px-5 py-2 border-b border-white/[0.04] flex items-center gap-2">
-            <span className="text-xs text-white/30 uppercase tracking-widest font-bold">Bron</span>
-            <span className="text-xs text-white/40 truncate">{prompts.bron}</span>
+          {/* Instructie + bron */}
+          <div className="px-5 py-2.5 border-b border-white/[0.04] flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                activeTab === "A" ? "bg-[#BFF549]/10 text-[#BFF549]" :
+                activeTab === "B" ? "bg-[#00d4ff]/10 text-[#00d4ff]" :
+                "bg-[#a855f7]/10 text-[#a855f7]"
+              }`}>Stap {activeTab === "A" ? "1" : activeTab === "B" ? "2" : "3"}</span>
+              <span className="text-xs text-white/40">{tabConfig[activeTab].instruction}</span>
+            </div>
+            <span className="text-xs text-white/25 truncate max-w-[200px]">{prompts.bron}</span>
           </div>
 
           {/* Prompt tekst */}

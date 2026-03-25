@@ -144,7 +144,7 @@ function RegelsSection() {
 
       {/* Inline form */}
       {toonForm && (
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-4">
+        <div ref={formRef} className="bg-autronis-card border border-autronis-accent/30 rounded-2xl p-6 space-y-4">
           <h3 className="text-base font-semibold text-autronis-text-primary">
             {editId !== null ? "Regel bewerken" : "Nieuwe regel"}
           </h3>

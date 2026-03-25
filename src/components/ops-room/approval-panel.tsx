@@ -113,6 +113,34 @@ function DependencyGraph({ tasks }: { tasks: DbTask[] }) {
   );
 }
 
+// Agent load indicator — shows how many tasks each agent has in a plan
+function AgentLoadRow({ tasks }: { tasks: DbTask[] }) {
+  const counts = new Map<string, number>();
+  for (const t of tasks) {
+    if (t.agentId) counts.set(t.agentId, (counts.get(t.agentId) ?? 0) + 1);
+  }
+  if (counts.size === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mb-2">
+      {Array.from(counts.entries()).map(([id, n]) => (
+        <span
+          key={id}
+          className={cn(
+            "flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-semibold",
+            n >= 3 ? "bg-red-500/15 text-red-400" :
+            n === 2 ? "bg-amber-500/15 text-amber-400" :
+            "bg-autronis-border/25 text-autronis-text-secondary"
+          )}
+          title={`${id}: ${n} ${n === 1 ? "taak" : "taken"}`}
+        >
+          {id} ×{n}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function timeAgo(dateString: string): string {
   const diff = Date.now() - new Date(dateString).getTime();
   const min = Math.floor(diff / 60000);
@@ -494,6 +522,7 @@ export function ApprovalPanel() {
                         </button>
                       )}
                     </div>
+                    <AgentLoadRow tasks={cmd.plan.taken} />
                     {isGraphView
                       ? <DependencyGraph tasks={cmd.plan.taken} />
                       : <TaskList tasks={cmd.plan.taken} />

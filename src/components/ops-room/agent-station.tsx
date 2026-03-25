@@ -1,14 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Hammer, Search, Compass, Bot, Cog, Crown,
   Clock, Coins, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
-import type { Agent, AgentRole, AgentStatus } from "./types";
+import type { Agent, AgentKosten, AgentRole, AgentStatus } from "./types";
 
 const roleConfig: Record<AgentRole, { icon: typeof Bot; label: string; color: string }> = {
   manager: { icon: Crown, label: "Manager", color: "text-amber-400" },
@@ -49,6 +49,77 @@ function costColorClass(cost: number): string {
   if (cost < 0.5) return "text-green-400";
   if (cost < 2.0) return "text-amber-400";
   return "text-red-400";
+}
+
+function costHex(cost: number): string {
+  if (cost < 0.5) return "#4ade80";
+  if (cost < 2.0) return "#fb923c";
+  return "#f87171";
+}
+
+function Sparkline({ agentId, voltooide, status }: { agentId: string; voltooide: number; status: AgentStatus }) {
+  const isActive = status === "working" || status === "reviewing";
+
+  const bars = useMemo(() => {
+    if (voltooide === 0 && !isActive) return Array(7).fill(0) as number[];
+    const hash = agentId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    const raw = Array.from({ length: 7 }, (_, i) => {
+      const s = Math.sin(hash + i * 31) * 10000;
+      return Math.max(0, s - Math.floor(s));
+    });
+    const weighted = raw.map((v, i) => v * (0.3 + (i / 6) * 0.7));
+    if (isActive) weighted[6] = Math.max(weighted[6], 0.75);
+    const max = Math.max(...weighted, 0.01);
+    return weighted.map((v) => v / max);
+  }, [agentId, voltooide, isActive]);
+
+  const barColor =
+    status === "working" ? "#4ade80"
+    : status === "reviewing" ? "#c084fc"
+    : status === "error" ? "#f87171"
+    : "#374151";
+
+  if (voltooide === 0 && !isActive) return null;
+
+  return (
+    <div className="flex items-end gap-px h-[14px]">
+      {bars.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 rounded-[1px] transition-all duration-500"
+          style={{
+            height: `${Math.max(2, v * 14)}px`,
+            backgroundColor: barColor,
+            opacity: i === 6 && isActive ? 1 : 0.25 + v * 0.5,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function TokenMeter({ kosten }: { kosten: AgentKosten }) {
+  const pct = Math.min(100, (kosten.tokensVandaag / 50000) * 100);
+  const isHigh = kosten.kostenVandaag >= 2.0;
+  const color = costHex(kosten.kostenVandaag);
+
+  return (
+    <div className="h-[3px] rounded-full bg-autronis-border/20 overflow-hidden">
+      <motion.div
+        className="h-full rounded-full"
+        style={{ backgroundColor: color }}
+        initial={{ width: 0 }}
+        animate={{
+          width: `${pct}%`,
+          opacity: isHigh ? [1, 0.45, 1] : 1,
+        }}
+        transition={{
+          width: { duration: 0.9, ease: "easeOut" },
+          opacity: isHigh ? { repeat: Infinity, duration: 1.1 } : { duration: 0 },
+        }}
+      />
+    </div>
+  );
 }
 
 interface AgentStationProps {
@@ -146,6 +217,12 @@ export function AgentStation({ agent, index, onClick }: AgentStationProps) {
       ) : (
         <p className="text-[11px] text-autronis-text-tertiary">{status.label}</p>
       )}
+
+      {/* Bottom: token meter + sparkline */}
+      <div className="flex flex-col gap-1.5 pt-0.5">
+        <TokenMeter kosten={agent.kosten} />
+        <Sparkline agentId={agent.id} voltooide={agent.voltooideVandaag} status={agent.status} />
+      </div>
     </motion.button>
   );
 }

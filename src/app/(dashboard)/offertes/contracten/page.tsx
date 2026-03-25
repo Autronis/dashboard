@@ -20,6 +20,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +133,7 @@ export default function ContractenPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [genStap, setGenStap] = useState<number | null>(null); // null = niet bezig
   const [confettiId, setConfettiId] = useState<number | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>("alle");
 
   // Form state
   const [type, setType] = useState("samenwerkingsovereenkomst");
@@ -262,6 +264,23 @@ export default function ContractenPage() {
   const klantIdsMetContract = new Set(contracten.map((c) => c.klantId));
   const klantZonderContract = klanten.find((k) => !klantIdsMetContract.has(k.id));
 
+  // Stats
+  const stats = {
+    totaal: contracten.length,
+    ondertekend: contracten.filter((c) => c.status === "ondertekend").length,
+    concept: contracten.filter((c) => c.status === "concept" || c.status === "verzonden").length,
+    verlopen: contracten.filter((c) => c.status === "verlopen" || (c.verloopdatum && c.verloopdatum < vandaag)).length,
+  };
+
+  // Filter
+  const gefilterdeContracten = filterStatus === "alle"
+    ? contracten
+    : filterStatus === "actief"
+      ? contracten.filter((c) => c.status === "ondertekend")
+      : filterStatus === "concept"
+        ? contracten.filter((c) => c.status === "concept" || c.status === "verzonden")
+        : contracten.filter((c) => c.status === "verlopen" || (c.verloopdatum && c.verloopdatum < vandaag));
+
   return (
     <PageTransition>
       <div className="p-4 lg:p-8 space-y-8">
@@ -279,6 +298,33 @@ export default function ContractenPage() {
             Nieuw contract
           </button>
         </div>
+
+        {/* Stats balk */}
+        {contracten.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: "Totaal", value: stats.totaal, color: "text-autronis-text-primary", bg: "bg-autronis-card" },
+              { label: "Ondertekend", value: stats.ondertekend, color: "text-green-400", bg: "bg-green-500/5" },
+              { label: "In behandeling", value: stats.concept, color: "text-blue-400", bg: "bg-blue-500/5" },
+              { label: "Verlopen", value: stats.verlopen, color: "text-red-400", bg: "bg-red-500/5" },
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: i * 0.05 }}
+                className={cn("border border-autronis-border rounded-xl p-4", stat.bg)}
+              >
+                <AnimatedNumber
+                  value={stat.value}
+                  format={(n) => Math.round(n).toString()}
+                  className={cn("text-2xl font-bold tabular-nums", stat.color)}
+                />
+                <p className="text-xs text-autronis-text-secondary mt-0.5 uppercase tracking-wide">{stat.label}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
 
         {/* Template action cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -318,11 +364,41 @@ export default function ContractenPage() {
           })}
         </div>
 
+        {/* Filter chips */}
+        {contracten.length > 0 && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { key: "alle", label: "Alle", count: contracten.length },
+              { key: "actief", label: "Ondertekend", count: stats.ondertekend },
+              { key: "concept", label: "In behandeling", count: stats.concept },
+              { key: "verlopen", label: "Verlopen", count: stats.verlopen },
+            ].map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilterStatus(f.key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                  filterStatus === f.key
+                    ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {f.label}
+                <span className="opacity-60">{f.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Contract lijst */}
         {loading ? (
           <div className="flex items-center gap-2 text-autronis-text-secondary py-12 justify-center">
             <Loader2 className="w-5 h-5 animate-spin" />
             Laden...
+          </div>
+        ) : gefilterdeContracten.length === 0 && filterStatus !== "alle" ? (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-10 text-center">
+            <p className="text-autronis-text-secondary text-sm">Geen contracten in deze categorie.</p>
           </div>
         ) : contracten.length === 0 ? (
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center space-y-4">
@@ -347,7 +423,7 @@ export default function ContractenPage() {
         ) : (
           <div className="space-y-2">
             <AnimatePresence>
-              {contracten.map((c) => {
+              {gefilterdeContracten.map((c, index) => {
                 const config = TYPE_CONFIG[c.type] || TYPE_CONFIG.samenwerkingsovereenkomst;
                 const Icon = config.icon;
                 const status = STATUS_CONFIG[c.status] || STATUS_CONFIG.concept;
@@ -355,6 +431,10 @@ export default function ContractenPage() {
                 const dagenVerlopen = verlopen && c.verloopdatum
                   ? Math.floor((Date.now() - new Date(c.verloopdatum).getTime()) / 86400000)
                   : null;
+                const dagenTotExpiry = !verlopen && c.verloopdatum
+                  ? Math.ceil((new Date(c.verloopdatum).getTime() - Date.now()) / 86400000)
+                  : null;
+                const binaVerlopen = dagenTotExpiry !== null && dagenTotExpiry <= 30;
                 const isOndertekend = c.status === "ondertekend";
                 const showConfetti = confettiId === c.id && isOndertekend;
 

@@ -337,11 +337,15 @@ export default function DocumentenPage() {
 
       {/* Snel aanmaken type knoppen */}
       <div className="flex flex-wrap gap-2">
-        {SNELLE_TYPES.map(({ subtype, notionType, icon: Icon }) => {
+        {SNELLE_TYPES.map(({ subtype, notionType, icon: Icon }, i) => {
           const config = DOCUMENT_SUBTYPE_CONFIG[subtype];
           return (
-            <button
+            <motion.button
               key={subtype}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.04, duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+              whileHover={{ y: -1, transition: { duration: 0.12 } }}
               onClick={() => openModal(notionType)}
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl text-xs font-medium transition-colors border",
@@ -351,7 +355,7 @@ export default function DocumentenPage() {
             >
               <Icon className="w-3.5 h-3.5 flex-shrink-0" />
               {config.label}
-            </button>
+            </motion.button>
           );
         })}
       </div>

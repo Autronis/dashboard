@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   BookOpen, Search, Plus, Tag, User, Clock, FolderOpen, FileText,
   Sparkles, Loader2, AlertTriangle, ArrowRight, Database, Brain,
@@ -113,17 +115,29 @@ function AiZoeken() {
         </button>
       </div>
 
+      <AnimatePresence>
       {antwoord && (
-        <div className="mt-4 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.25 }}
+          className="mt-4 space-y-3"
+        >
           <div className="bg-autronis-bg/50 border border-purple-500/10 rounded-xl p-4">
             <p className="text-sm text-autronis-text-primary leading-relaxed">{antwoord}</p>
           </div>
           {bronnen.length > 0 && (
             <div className="space-y-1.5">
               <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wider font-semibold">Bronnen</p>
-              {bronnen.map((b) => (
-                <Link
+              {bronnen.map((b, i) => (
+                <motion.div
                   key={b.id}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.2, delay: i * 0.05 }}
+                >
+                <Link
                   href={`/wiki/${b.id}`}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-autronis-bg/30 hover:bg-autronis-bg/50 transition-colors group"
                 >
@@ -132,11 +146,13 @@ function AiZoeken() {
                   <span className="text-[10px] text-autronis-text-secondary ml-auto flex-shrink-0">{b.relevantie}</span>
                   <ArrowRight className="w-3 h-3 text-autronis-text-secondary/50 group-hover:text-purple-400 transition-colors flex-shrink-0" />
                 </Link>
+                </motion.div>
               ))}
             </div>
           )}
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -188,8 +204,8 @@ export default function WikiPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-autronis-text-primary">Kennisbank</h1>
-            <p className="text-sm text-autronis-text-secondary mt-1">
-              {totaalArtikelen} artikelen
+            <p className="text-sm text-autronis-text-secondary mt-1 flex items-center gap-1">
+              <AnimatedNumber value={totaalArtikelen} format={(n) => `${Math.round(n)} artikelen`} className="inline" />
               {verouderdeArtikelen > 0 && (
                 <span className="text-orange-400 ml-2">
                   &middot; {verouderdeArtikelen} verouderd
@@ -228,8 +244,14 @@ export default function WikiPage() {
               <h3 className="text-xs font-semibold text-autronis-text-primary uppercase tracking-wide mb-3 flex items-center gap-2">
                 <FolderOpen className="w-4 h-4 text-autronis-accent" />Categorieën
               </h3>
-              <div className="space-y-0.5">
-                <button
+              <motion.div
+                className="space-y-0.5"
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.03 } } }}
+              >
+                <motion.button
+                  variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }}
                   onClick={() => setActiveCategorie(null)}
                   className={cn(
                     "w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors",
@@ -238,13 +260,14 @@ export default function WikiPage() {
                 >
                   <span>Alle</span>
                   <span className="tabular-nums">{totaalArtikelen}</span>
-                </button>
+                </motion.button>
                 {Object.entries(categorieConfig).map(([key, config]) => {
                   const count = categorieCounts.find((c) => c.categorie === key)?.aantal || 0;
                   const CatIcon = config.icon;
                   return (
-                    <button
+                    <motion.button
                       key={key}
+                      variants={{ hidden: { opacity: 0, x: -6 }, visible: { opacity: 1, x: 0 } }}
                       onClick={() => setActiveCategorie(activeCategorie === key ? null : key)}
                       className={cn(
                         "w-full flex items-center gap-2 justify-between px-3 py-2 rounded-lg text-xs transition-colors",
@@ -256,10 +279,10 @@ export default function WikiPage() {
                         {config.label}
                       </span>
                       {count > 0 && <span className="tabular-nums">{count}</span>}
-                    </button>
+                    </motion.button>
                   );
                 })}
-              </div>
+              </motion.div>
             </div>
 
             {/* Recent */}
@@ -296,7 +319,9 @@ export default function WikiPage() {
             </div>
 
             {/* Article list */}
+            <AnimatePresence mode="wait">
             {artikelen.length === 0 ? (
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <EmptyState
                 titel="Geen artikelen gevonden"
                 beschrijving={zoek || activeCategorie ? "Probeer een andere zoekterm of categorie." : "Begin met het toevoegen van je eerste artikel."}
@@ -304,8 +329,15 @@ export default function WikiPage() {
                 actieHref={!zoek && !activeCategorie ? "/wiki/nieuw" : undefined}
                 icoon={<BookOpen className="h-7 w-7 text-autronis-text-secondary" />}
               />
+              </motion.div>
             ) : (
-              <div className="space-y-2">
+              <motion.div
+                key={`${activeCategorie}-${zoek}`}
+                className="space-y-2"
+                initial="hidden"
+                animate="visible"
+                variants={{ visible: { transition: { staggerChildren: 0.04 } } }}
+              >
                 {artikelen.map((artikel) => {
                   const cat = categorieConfig[artikel.categorie || "processen"] || categorieConfig.processen;
                   const tags = parseTags(artikel.tags);
@@ -313,10 +345,15 @@ export default function WikiPage() {
                   const CatIcon = cat.icon;
 
                   return (
-                    <Link
+                    <motion.div
                       key={artikel.id}
+                      variants={{ hidden: { opacity: 0, y: 8 }, visible: { opacity: 1, y: 0, transition: { duration: 0.25 } } }}
+                      whileHover={{ y: -2 }}
+                      transition={{ duration: 0.15 }}
+                    >
+                    <Link
                       href={`/wiki/${artikel.id}`}
-                      className="block bg-autronis-card border border-autronis-border rounded-xl p-4 lg:p-5 card-glow transition-colors"
+                      className="block bg-autronis-card border border-autronis-border rounded-xl p-4 lg:p-5 card-glow transition-colors hover:border-autronis-accent/30"
                     >
                       <div className="flex items-start gap-3">
                         <div className={cn("p-2 rounded-lg flex-shrink-0 mt-0.5", cat.bg)}>
@@ -361,10 +398,12 @@ export default function WikiPage() {
                         </div>
                       </div>
                     </Link>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

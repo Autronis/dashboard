@@ -66,6 +66,7 @@ export function Leaderboard({ agents }: LeaderboardProps) {
   }, [agents]);
 
   const topAgent = rankings[0];
+  const maxTasks = topAgent?.voltooideVandaag ?? 1;
 
   if (rankings.length === 0) return null;
 
@@ -123,12 +124,21 @@ export function Leaderboard({ agents }: LeaderboardProps) {
                 </p>
               </div>
 
-              {/* Stats */}
-              <div className="text-right shrink-0">
-                <p className="text-[11px] font-bold text-autronis-text-primary flex items-center gap-1 justify-end">
+              {/* Stats + bar */}
+              <div className="flex flex-col items-end gap-1 shrink-0 min-w-[72px]">
+                <p className="text-[11px] font-bold text-autronis-text-primary flex items-center gap-1">
                   <Zap className="w-3 h-3 text-green-400" />
                   {agent.voltooideVandaag} taken
                 </p>
+                <div className="w-full h-1 rounded-full bg-autronis-border/30 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{
+                      width: `${Math.max(4, (agent.voltooideVandaag / Math.max(maxTasks, 1)) * 100)}%`,
+                      backgroundColor: medal ?? "#374151",
+                    }}
+                  />
+                </div>
                 <p className="text-[9px] text-autronis-text-tertiary">
                   {`\u20AC${agent.kosten.kostenVandaag.toFixed(2)}`}
                 </p>

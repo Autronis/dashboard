@@ -223,11 +223,15 @@ export function DocumentList() {
             </button>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
-            {recent.map((r) => {
+            {recent.map((r, i) => {
               const rConfig = DOCUMENT_TYPE_CONFIG[r.type as DocumentType];
               return (
-                <button
+                <motion.button
                   key={r.id}
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.06, duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
+                  whileHover={{ y: -2, transition: { duration: 0.15 } }}
                   onClick={() => {
                     const found = documenten?.find((d: DocumentBase) => d.notionId === r.id);
                     if (found) openPreview(found);
@@ -241,7 +245,7 @@ export function DocumentList() {
                     <p className="text-sm text-autronis-text-primary truncate mt-0.5">{r.titel}</p>
                     <p className="text-xs text-autronis-text-secondary mt-0.5">{timeAgo(r.timestamp)}</p>
                   </div>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -345,12 +349,26 @@ export function DocumentList() {
       {viewMode === "kanban" && gefilterd?.length ? (
         <DocumentKanban documenten={gefilterd} onSelect={openPreview} isPinned={isPinned} onTogglePin={handleTogglePin} />
       ) : !gefilterd?.length ? (
-        <div className="rounded-xl bg-autronis-card border border-autronis-border p-12 text-center">
-          <FileText className="w-12 h-12 mx-auto mb-3 text-autronis-text-secondary opacity-50" />
-          <p className="text-autronis-text-secondary">
-            {zoekterm || filterType !== "alle" ? "Geen documenten gevonden" : "Nog geen documenten. Maak je eerste document aan!"}
-          </p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl bg-autronis-card border border-autronis-border p-12 text-center"
+        >
+          <FileText className="w-10 h-10 mx-auto mb-3 text-autronis-text-secondary opacity-30" />
+          {anyFilterActive ? (
+            <>
+              <p className="text-sm text-autronis-text-secondary mb-3">Geen documenten gevonden voor deze filter</p>
+              <button
+                onClick={() => { setFilterType("alle"); setFilterKlant(""); setFilterDatum(""); setZoekterm(""); }}
+                className="text-xs text-autronis-accent hover:text-autronis-accent-hover transition-colors"
+              >
+                Filters wissen
+              </button>
+            </>
+          ) : (
+            <p className="text-sm text-autronis-text-secondary">Nog geen documenten. Maak je eerste document aan!</p>
+          )}
+        </motion.div>
       ) : (
         <div className="space-y-5">
           {grouped.map(({ type, config, docs }) => {
@@ -390,12 +408,13 @@ export function DocumentList() {
                               key={doc.notionId}
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
+                              whileHover={doc.isOptimistic ? undefined : { y: -1, transition: { duration: 0.15 } }}
                               transition={{ delay: docIdx * 0.03 }}
                               onMouseEnter={() => setHoverDocId(doc.notionId)}
                               onMouseLeave={() => setHoverDocId(null)}
                               onClick={() => !doc.isOptimistic && openPreview(doc)}
                               className={cn(
-                                "rounded-xl bg-autronis-card border-l-4 border border-autronis-border p-4 transition-all group cursor-pointer card-glow relative",
+                                "rounded-xl bg-autronis-card border-l-4 border border-autronis-border p-4 transition-colors group cursor-pointer card-glow relative",
                                 isFocused && "ring-1 ring-autronis-accent/50 bg-autronis-accent/5",
                                 doc.isOptimistic ? "opacity-60 pointer-events-none" : "hover:border-autronis-accent/40",
                               )}
@@ -428,7 +447,7 @@ export function DocumentList() {
                                     )}
                                   </div>
                                   {doc.samenvatting && (
-                                    <p className="text-xs text-autronis-text-secondary line-clamp-1 italic">{doc.samenvatting}</p>
+                                    <p className="text-xs text-autronis-text-secondary line-clamp-1">{doc.samenvatting}</p>
                                   )}
                                   <div className="flex items-center gap-3 mt-2 text-xs text-autronis-text-secondary">
                                     {doc.klantNaam && <span>{doc.klantNaam}</span>}

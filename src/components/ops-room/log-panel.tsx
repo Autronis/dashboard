@@ -21,10 +21,20 @@ const typeConfig: Record<LogEntry["type"], { icon: typeof Terminal; color: strin
   approval:      { icon: Clock,        color: "text-amber-400",              rowBg: "bg-amber-500/[0.04]", label: "⏸" },
 };
 
+type LogFilter = "all" | "error" | "task_complete" | "approval";
+
+const FILTER_OPTIONS: { key: LogFilter; label: string; color: string }[] = [
+  { key: "all",           label: "Alles",      color: "text-autronis-text-secondary" },
+  { key: "error",         label: "Fouten",     color: "text-red-400" },
+  { key: "task_complete", label: "Taken",      color: "text-green-400" },
+  { key: "approval",      label: "Approval",   color: "text-amber-400" },
+];
+
 export function LogPanel() {
   const logs = useOrchestrator((s) => s.logs);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isPaused, setIsPaused] = useState(false);
+  const [filter, setFilter] = useState<LogFilter>("all");
 
   // Auto-scroll to top (newest) unless paused
   useEffect(() => {
@@ -62,19 +72,45 @@ export function LogPanel() {
         {!isPaused && logs.length > 5 && (
           <button
             onClick={() => setIsPaused(true)}
-            className="ml-auto flex items-center gap-1 text-[10px] text-autronis-text-tertiary hover:text-autronis-text-secondary transition-colors"
+            className="flex items-center gap-1 text-[10px] text-autronis-text-tertiary hover:text-autronis-text-secondary transition-colors"
           >
             <PlayCircle className="w-3 h-3" />
-            Pauzeer scroll
+            Pauzeer
           </button>
         )}
       </div>
+
+      {/* Filter tabs */}
+      <div className="flex items-center gap-0 border-b border-autronis-border/20">
+        {FILTER_OPTIONS.map((opt) => {
+          const count = opt.key === "all" ? logs.length : logs.filter((l) => l.type === opt.key).length;
+          if (opt.key !== "all" && count === 0) return null;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setFilter(opt.key)}
+              className={cn(
+                "px-3 py-1.5 text-[10px] font-medium transition-colors border-b-2 -mb-px",
+                filter === opt.key
+                  ? cn("border-current", opt.color)
+                  : "border-transparent text-autronis-text-tertiary hover:text-autronis-text-secondary"
+              )}
+            >
+              {opt.label}
+              {count > 0 && (
+                <span className="ml-1 text-[8px] opacity-60 tabular-nums">{count}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       <div
         ref={scrollRef}
         onScroll={handleScroll}
         className="max-h-[220px] overflow-y-auto scrollbar-thin font-mono"
       >
-        {logs.slice(0, 30).map((log) => {
+        {logs.filter((l) => filter === "all" || l.type === filter).slice(0, 30).map((log) => {
           const cfg = typeConfig[log.type];
           const Icon = cfg.icon;
           return (

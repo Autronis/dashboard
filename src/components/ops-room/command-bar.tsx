@@ -1,13 +1,28 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import {
   AlertTriangle,
   Coins,
   TrendingUp,
+  Timer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Agent } from "./types";
+
+function useSessionTimer(): string {
+  const startRef = useRef(Date.now());
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 10000);
+    return () => clearInterval(id);
+  }, []);
+  const min = Math.floor(elapsed / 60000);
+  if (min < 1) return "<1m";
+  if (min < 60) return `${min}m`;
+  return `${Math.floor(min / 60)}u${min % 60}m`;
+}
 
 // Mini donut ring for occupancy
 function OccupancyRing({ active, idle, error, total }: { active: number; idle: number; error: number; total: number }) {
@@ -52,6 +67,7 @@ interface CommandBarProps {
 }
 
 export function CommandBar({ agents, isLive = false }: CommandBarProps) {
+  const sessionTime = useSessionTimer();
   const active = agents.filter((a) => a.status === "working" || a.status === "reviewing").length;
   const errors = agents.filter((a) => a.status === "error").length;
   // Only count real completed tasks (agents with live data have tokensVandaag > 0)
@@ -155,8 +171,13 @@ export function CommandBar({ agents, isLive = false }: CommandBarProps) {
           <span className="text-autronis-text-tertiary font-normal text-[10px]">taken</span>
         </span>
 
+        <span className="ml-auto flex items-center gap-1 text-[9px] text-autronis-text-tertiary shrink-0 tabular-nums">
+          <Timer className="w-2.5 h-2.5" />
+          {sessionTime}
+        </span>
+
         {!isLive && (
-          <span className="ml-auto text-[8px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500/70 font-semibold shrink-0">
+          <span className="text-[8px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500/70 font-semibold shrink-0">
             DEMO
           </span>
         )}

@@ -195,7 +195,7 @@ export async function POST(req: NextRequest) {
       .select()
       .from(screenTimeRegels)
       .where(eq(screenTimeRegels.isActief, 1))
-      .orderBy(screenTimeRegels.prioriteit)
+      .orderBy(desc(screenTimeRegels.prioriteit))
       .all();
 
     // Cache projects for title matching

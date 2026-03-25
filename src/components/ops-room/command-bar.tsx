@@ -2,15 +2,47 @@
 
 import { motion } from "framer-motion";
 import {
-  CircleCheck,
   AlertTriangle,
   Coins,
   TrendingUp,
-  Users,
-  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Agent } from "./types";
+
+// Mini donut ring for occupancy
+function OccupancyRing({ active, idle, error, total }: { active: number; idle: number; error: number; total: number }) {
+  const R = 13;
+  const circ = 2 * Math.PI * R;
+  const safe = total || 1;
+  const segs = [
+    { count: active, color: "#4ade80" },
+    { count: error,  color: "#f87171" },
+    { count: idle,   color: "#374151" },
+  ];
+  let offset = 0;
+  const arcs = segs.map((s) => {
+    const dash = (s.count / safe) * circ;
+    const arc = { dash, offset, color: s.color };
+    offset += dash;
+    return arc;
+  });
+  return (
+    <svg width={34} height={34} viewBox="0 0 34 34" className="shrink-0" style={{ transform: "rotate(-90deg)" }}>
+      <circle cx={17} cy={17} r={R} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={5} />
+      {arcs.map((arc, i) => arc.dash > 0 && (
+        <circle key={i} cx={17} cy={17} r={R} fill="none" stroke={arc.color} strokeWidth={5}
+          strokeDasharray={`${arc.dash} ${circ - arc.dash}`}
+          strokeDashoffset={circ / 4 - arc.offset} />
+      ))}
+    </svg>
+  );
+}
+
+function costColor(cost: number): string {
+  if (cost < 1) return "text-green-400";
+  if (cost < 5) return "text-amber-400";
+  return "text-red-400";
+}
 
 type HealthLevel = "green" | "yellow" | "red";
 

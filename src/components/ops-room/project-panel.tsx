@@ -47,16 +47,38 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     staleTime: 60_000,
   });
 
+  // Normalize project name for grouping: lowercase, strip hyphens/spaces
+  function normalizeKey(s: string): string {
+    return s.toLowerCase().replace(/[-_\s]/g, "");
+  }
+
   const activeProjects = useMemo(() => {
+    // Use normalized key for grouping, keep best display name (prefer capitalized)
+    const keyToDisplay = new Map<string, string>();
     const map = new Map<string, { agents: Agent[]; hasError: boolean; files: string[] }>();
     agents.forEach((a) => {
       if (a.huidigeTaak) {
         const proj = a.huidigeTaak.project;
-        if (!map.has(proj)) map.set(proj, { agents: [], hasError: false, files: [] });
-        const entry = map.get(proj)!;
-        entry.agents.push(a);
+        const key = normalizeKey(proj);
+        // Prefer the display name that has uppercase or spaces (more human-readable)
+        if (!keyToDisplay.has(key) || proj.match(/[A-Z\s]/)) {
+          keyToDisplay.set(key, proj);
+        }
+        const display = keyToDisplay.get(key)!;
+        if (!map.has(display)) {
+          // Move existing key if needed
+          if (map.has(proj) && display !== proj) {
+            map.set(display, map.get(proj)!);
+            map.delete(proj);
+          } else {
+            map.set(display, { agents: [], hasError: false, files: [] });
+          }
+        }
+        const entry = map.get(display)!;
+        if (!entry.agents.find((e) => e.id === a.id)) {
+          entry.agents.push(a);
+        }
         if (a.status === "error") entry.hasError = true;
-        // Extract file references from beschrijving
         const fileMatch = a.huidigeTaak.beschrijving.match(/[\w-]+\.(tsx?|jsx?|css|json|md)/g);
         if (fileMatch) entry.files.push(...fileMatch);
       }

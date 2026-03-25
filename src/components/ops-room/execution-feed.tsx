@@ -111,11 +111,9 @@ export function ExecutionFeed() {
       {/* Log entries */}
       <div ref={scrollRef} className="flex-1 max-h-[320px] overflow-y-auto">
         {logs.length === 0 ? (
-          <div className="px-4 py-10 text-center">
-            <Terminal className="w-6 h-6 text-autronis-text-tertiary mx-auto mb-2 opacity-30" />
-            <p className="text-[11px] text-autronis-text-tertiary">
-              Geef een opdracht om de executie log te starten
-            </p>
+          <div className="px-4 py-4 flex items-center gap-2 text-autronis-text-tertiary">
+            <Terminal className="w-3.5 h-3.5 opacity-30 shrink-0" />
+            <p className="text-[11px] italic opacity-50">Geef een opdracht om te starten...</p>
           </div>
         ) : (
           logs.slice(0, 40).map((log) => {

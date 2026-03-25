@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import { Users, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCharacterDef, drawSprite } from "./pixel-sprites";
@@ -26,10 +26,21 @@ function MiniSprite({ agentId, size = 24 }: { agentId: string; size?: number }) 
   return <canvas ref={ref} width={size} height={size} className="shrink-0" style={{ width: size, height: size, imageRendering: "pixelated" }} />;
 }
 
+function useLiveClock(): number {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return tick;
+}
+
 function runtimeStr(startedAt: string): string {
-  const min = Math.floor((Date.now() - new Date(startedAt).getTime()) / 60000);
-  if (min < 1) return "<1m";
-  if (min < 60) return `${min}m`;
+  const diff = Date.now() - new Date(startedAt).getTime();
+  const min = Math.floor(diff / 60000);
+  const sec = Math.floor((diff % 60000) / 1000);
+  if (min < 1) return `${sec}s`;
+  if (min < 60) return `${min}m${sec}s`;
   return `${Math.floor(min / 60)}u${min % 60}m`;
 }
 
@@ -39,6 +50,7 @@ interface AgentStatusGridProps {
 }
 
 export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
+  useLiveClock(); // triggers re-render every second for live timers
   const { working, reviewing, blocked, idle } = useMemo(() => {
     const working = agents.filter((a) => a.status === "working" && a.team === "sem");
     const reviewing = agents.filter((a) => a.status === "reviewing" && a.team === "sem");

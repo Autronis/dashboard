@@ -819,6 +819,30 @@ export default function DoelenPage() {
                               />
                             )}
                           </div>
+
+                          {/* Uren-koppeling: extra inzicht */}
+                          {kr.autoKoppeling === "uren" && (() => {
+                            const gedaan = Math.round(kr.huidigeWaarde ?? 0);
+                            const resterend = Math.max(0, kr.doelwaarde - gedaan);
+                            const werkdagenOver = wekenOver * 5;
+                            const urenPerDag = werkdagenOver > 0 ? resterend / werkdagenOver : 0;
+                            const isAchter = pct < tijdPct;
+                            return (
+                              <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-autronis-border/50 flex-wrap">
+                                <span className="text-xs text-autronis-text-secondary tabular-nums">
+                                  <span className="text-autronis-text-primary font-semibold">{gedaan}u</span> gedaan
+                                </span>
+                                <span className="text-autronis-text-secondary/30 text-xs">·</span>
+                                <span className="text-xs text-autronis-text-secondary tabular-nums">
+                                  <span className="font-semibold text-autronis-text-primary">{resterend}u</span> resterend
+                                </span>
+                                <span className="text-autronis-text-secondary/30 text-xs">·</span>
+                                <span className={cn("text-xs font-bold tabular-nums ml-auto", isAchter ? "text-amber-400" : "text-emerald-400")}>
+                                  {urenPerDag.toFixed(1)} uur/dag nodig
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </motion.div>
                       );
                     })}

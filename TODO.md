@@ -30,6 +30,12 @@
 - [x] Agent hooks (real-time activiteit tracking)
 - [x] Kosten tracking per agent/taak
 
+## ⚠️ Belangrijk: Kie.ai API integratie (Animaties)
+- [ ] Kie.ai API key aanmaken (docs.kie.ai) — pay-as-you-go
+- [ ] Animaties pagina: "Genereer afbeeldingen" knop → Kie.ai Nano Banana 2 (Prompt A + B automatisch)
+- [ ] Animaties pagina: "Genereer video" knop → Kie.ai Runway Aleph (Prompt C, start+end frame)
+- [ ] Volledige workflow geautomatiseerd: Claude prompts → Kie.ai afbeeldingen → Kie.ai video, alles in dashboard
+
 ## Fase 5: Uitbreidingen (open)
 - [ ] Offertes module
 - [ ] Proposals (ondertekenen, klant portal)

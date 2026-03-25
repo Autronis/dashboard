@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp } from "lucide-react";
+import { Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play, Loader2 } from "lucide-react";
 
 interface Prompts {
   promptA: string;
@@ -32,6 +32,13 @@ export default function AnimatiesPage() {
   );
   const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [stepsOpen, setStepsOpen] = useState(false);
+  const [kieStartFrame, setKieStartFrame] = useState("");
+  const [kieEndFrame, setKieEndFrame] = useState("");
+  const [kieDuration, setKieDuration] = useState(5);
+  const [kieLoading, setKieLoading] = useState(false);
+  const [kieVideoUrl, setKieVideoUrl] = useState<string | null>(null);
+  const [kieError, setKieError] = useState("");
+  const kiePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -115,6 +122,41 @@ export default function AnimatiesPage() {
       if (e instanceof Error && e.name === "AbortError") return;
       setLoading(false);
       setError("Er ging iets mis.");
+    }
+  };
+
+  const generateKieVideo = async () => {
+    if (!prompts) return;
+    setKieLoading(true); setKieError(""); setKieVideoUrl(null);
+    try {
+      const res = await fetch("/api/animaties/kie-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompts.promptC,
+          duration: kieDuration,
+          ...(kieStartFrame.trim() && { firstFrameImage: kieStartFrame.trim() }),
+          ...(kieEndFrame.trim() && { lastFrameImage: kieEndFrame.trim() }),
+        }),
+      });
+      const data = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
+      // Poll for result
+      kiePollingRef.current = setInterval(async () => {
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
+        if (result.status === "done" && result.videoUrl) {
+          clearInterval(kiePollingRef.current!);
+          setKieVideoUrl(result.videoUrl);
+          setKieLoading(false);
+        } else if (result.status === "failed") {
+          clearInterval(kiePollingRef.current!);
+          setKieError(result.error ?? "Generatie mislukt.");
+          setKieLoading(false);
+        }
+      }, 4000);
+    } catch {
+      setKieError("Er ging iets mis."); setKieLoading(false);
     }
   };
 
@@ -308,6 +350,44 @@ export default function AnimatiesPage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4">
                 <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
               </div>
+              {activeTab === "C" && (
+                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
+                  <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
+                    <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                      placeholder="Start frame URL (afbeelding A)"
+                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                      placeholder="End frame URL (afbeelding B)"
+                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[5, 8, 10].map(d => (
+                        <button key={d} onClick={() => setKieDuration(d)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                          {d}s
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={generateKieVideo} disabled={kieLoading}
+                      className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                    </button>
+                  </div>
+                  {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
+                  {kieVideoUrl && (
+                    <div className="mt-3">
+                      <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                      <a href={kieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5" /> Download video
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -469,6 +549,45 @@ export default function AnimatiesPage() {
               <div className="flex-1 min-h-0 overflow-y-auto p-4">
                 <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
               </div>
+              {/* Kie.ai video generator — only on Tab C */}
+              {activeTab === "C" && (
+                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
+                  <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
+                    <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                      placeholder="Start frame URL (afbeelding A)"
+                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                      placeholder="End frame URL (afbeelding B)"
+                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1">
+                      {[5, 8, 10].map(d => (
+                        <button key={d} onClick={() => setKieDuration(d)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                          {d}s
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={generateKieVideo} disabled={kieLoading}
+                      className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                    </button>
+                  </div>
+                  {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
+                  {kieVideoUrl && (
+                    <div className="mt-3">
+                      <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                      <a href={kieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                        <ExternalLink className="w-3.5 h-3.5" /> Download video
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

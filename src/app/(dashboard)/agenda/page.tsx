@@ -230,6 +230,33 @@ export default function AgendaPage() {
   // Niet ingeplande taken (voor sidebar)
   const nietIngeplandeTaken = useMemo(() => agendaTaken.filter((t) => !t.ingeplandStart), [agendaTaken]);
 
+  // Groepeer niet-ingeplande taken per project
+  const takenPerProject = useMemo(() => {
+    const filtered = nietIngeplandeTaken
+      .filter((t) => {
+        if (plannenFilter === "hoog") return t.prioriteit === "hoog";
+        if (plannenFilter === "bezig") return t.status === "bezig";
+        return true;
+      })
+      .sort((a, b) => {
+        const prioOrder: Record<string, number> = { hoog: 0, normaal: 1, laag: 2 };
+        const pa = prioOrder[a.prioriteit] ?? 1;
+        const pb = prioOrder[b.prioriteit] ?? 1;
+        if (pa !== pb) return pa - pb;
+        if (a.status === "bezig" && b.status !== "bezig") return -1;
+        if (b.status === "bezig" && a.status !== "bezig") return 1;
+        return 0;
+      });
+
+    const groups: Record<string, { projectNaam: string; taken: AgendaTaak[] }> = {};
+    for (const taak of filtered) {
+      const key = taak.projectNaam || "Zonder project";
+      if (!groups[key]) groups[key] = { projectNaam: key, taken: [] };
+      groups[key].taken.push(taak);
+    }
+    return Object.values(groups).sort((a, b) => b.taken.length - a.taken.length);
+  }, [nietIngeplandeTaken, plannenFilter]);
+
   // Ingeplande taken per dag
   const ingeplandPerDag = useMemo(() => {
     const map: Record<string, AgendaTaak[]> = {};

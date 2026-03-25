@@ -1392,7 +1392,7 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={`week-${item.id}-${wd.datumStr}`}
-                        className="absolute rounded-xl px-2 py-1.5 overflow-hidden cursor-pointer hover:brightness-110 transition-all border-l-[3px] z-10 group"
+                        className="absolute rounded-xl px-2 py-1 overflow-hidden cursor-pointer hover:brightness-110 transition-all border-l-[3px] z-10 group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
@@ -1413,7 +1413,7 @@ export default function AgendaPage() {
                           <p className="text-[11px] font-semibold overflow-hidden whitespace-nowrap leading-tight flex-1">{titel}</p>
                         </div>
                         {height > 30 && (
-                          <p className="text-[10px] opacity-75 tabular-nums mt-0.5 font-medium">
+                          <p className="text-[10px] opacity-75 tabular-nums font-medium">
                             {startTimeStr}{eindTimeStr ? ` – ${eindTimeStr}` : ""}
                           </p>
                         )}
@@ -1453,7 +1453,7 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={`taak-plan-${taak.id}-${wd.datumStr}`}
-                        className="absolute rounded-xl px-2 py-1.5 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
+                        className="absolute rounded-xl px-2 py-1 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,
@@ -1474,7 +1474,7 @@ export default function AgendaPage() {
                           <p className="text-[11px] font-semibold overflow-hidden whitespace-nowrap leading-tight flex-1">{taak.titel}</p>
                         </div>
                         {height > 30 && (
-                          <p className="text-[10px] opacity-75 mt-0.5 tabular-nums font-medium">
+                          <p className="text-[10px] opacity-75 tabular-nums font-medium">
                             {`${String(startUur).padStart(2, "0")}:${String(startMin).padStart(2, "0")}`}
                             {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
                           </p>

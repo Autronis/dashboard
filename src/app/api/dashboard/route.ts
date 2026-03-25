@@ -71,9 +71,21 @@ export async function GET() {
       return sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0);
     }, 0);
 
-    // Uren deze week - eigen (screen time, zelfde logica als Tijd pagina)
-    const weekVanDatum = week.van.slice(0, 10);
-    const weekTotDatum = week.tot.slice(0, 10);
+    // Uren deze week — NL-timezone week boundaries (ma 00:00 — zo 23:59 NL)
+    const NL_TZ = "Europe/Amsterdam";
+    const nlFmt = new Intl.DateTimeFormat("en-CA", { timeZone: NL_TZ });
+    const vandaagNl = nlFmt.format(new Date());
+    // Use noon UTC to safely determine NL day-of-week (avoids DST edge cases)
+    const noonNl = new Date(vandaagNl + "T12:00:00Z");
+    const dowNl = noonNl.getUTCDay(); // 0=Sun, 1=Mon
+    const diffToMonday = dowNl === 0 ? -6 : 1 - dowNl;
+    const mondayNl = new Date(noonNl);
+    mondayNl.setUTCDate(noonNl.getUTCDate() + diffToMonday);
+    const sundayNl = new Date(mondayNl);
+    sundayNl.setUTCDate(mondayNl.getUTCDate() + 6);
+    const weekVanDatum = nlFmt.format(mondayNl);
+    const weekTotDatum = nlFmt.format(sundayNl);
+
     const eigenScreenUren = await berekenActieveUren(gebruiker.id, weekVanDatum, weekTotDatum);
     const eigenUrenTotaal = Math.round(eigenScreenUren * 60); // convert to minutes for consistency
 
@@ -137,13 +149,13 @@ export async function GET() {
       ));
     const omzetVorigeMaand = omzetVmData.reduce((sum, r) => sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0), 0);
 
-    // Uren vorige week (voor trend)
-    const vorigeWeekStart = new Date(week.van);
-    vorigeWeekStart.setDate(vorigeWeekStart.getDate() - 7);
-    const vorigeWeekEind = new Date(week.van);
-    vorigeWeekEind.setMilliseconds(-1);
-    const vwVanDatum = vorigeWeekStart.toISOString().slice(0, 10);
-    const vwTotDatum = vorigeWeekEind.toISOString().slice(0, 10);
+    // Uren vorige week (voor trend) — ook NL-timezone
+    const prevMondayNl = new Date(mondayNl);
+    prevMondayNl.setUTCDate(mondayNl.getUTCDate() - 7);
+    const prevSundayNl = new Date(mondayNl);
+    prevSundayNl.setUTCDate(mondayNl.getUTCDate() - 1);
+    const vwVanDatum = nlFmt.format(prevMondayNl);
+    const vwTotDatum = nlFmt.format(prevSundayNl);
     const eigenUrenVorigeWeek = await berekenActieveUren(gebruiker.id, vwVanDatum, vwTotDatum);
     const eigenUrenVorigeWeekMin = Math.round(eigenUrenVorigeWeek * 60);
 

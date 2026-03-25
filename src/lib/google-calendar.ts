@@ -4,7 +4,7 @@ import { googleTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
-const REDIRECT_URI = "http://localhost:3000/api/auth/google/callback";
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000"}/api/auth/google/callback`;
 
 export function getOAuth2Client() {
   return new google.auth.OAuth2(

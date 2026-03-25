@@ -1088,12 +1088,6 @@ export default function DashboardPage() {
             {/* Learning Radar */}
             <RadarWidget />
 
-            {/* Gewoontes */}
-            <HabitWidget />
-
-            {/* Focus */}
-            <FocusWidget />
-
             {/* Second Brain */}
             <SecondBrainWidget />
 
@@ -1125,6 +1119,12 @@ export default function DashboardPage() {
               </section>
             )}
           </div>
+        </motion.div>
+
+        {/* Gewoontes + Focus — naast elkaar */}
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <HabitWidget />
+          <FocusWidget />
         </motion.div>
 
         {/* Spacer for timer bar */}

@@ -1284,3 +1284,19 @@ export const outreachOptOuts = sqliteTable("outreach_opt_outs", {
   email: text("email").notNull().unique(),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ DAGRITME ============
+export const dagritme = sqliteTable("dagritme", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  datum: text("datum").notNull(), // YYYY-MM-DD
+  type: text("type", { enum: ["ochtend", "avond", "week"] }).notNull(),
+  stemming: integer("stemming"), // 1-5
+  intentie: text("intentie"), // ochtend: focus voor de dag
+  prioriteiten: text("prioriteiten"), // JSON: [{id?, titel, gedaan?}]
+  voltooide_taken: text("voltooide_taken"), // JSON: string[]
+  reflectie: text("reflectie"), // avond/week
+  verschuivingen: text("verschuivingen"), // JSON: string[] (taken die verschuiven)
+  energie: integer("energie"), // 1-5 (avond)
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});

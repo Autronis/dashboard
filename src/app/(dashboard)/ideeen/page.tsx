@@ -832,8 +832,16 @@ export default function IdeeenPage() {
               <Plus className="w-4 h-4" />Nieuw idee
               <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", nieuwKeuzeOpen && "rotate-180")} />
             </button>
+            <AnimatePresence>
             {nieuwKeuzeOpen && (
-              <div className="absolute right-0 top-full mt-2 w-56 bg-autronis-card border border-autronis-border rounded-xl shadow-2xl overflow-hidden z-50">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-2 w-56 bg-autronis-card border border-autronis-border rounded-xl shadow-2xl overflow-hidden z-50"
+                style={{ transformOrigin: "top right" }}
+              >
                 <button
                   onClick={() => { setNieuwKeuzeOpen(false); setDaanOpen(true); setDaanStap("input"); }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm text-autronis-text-primary hover:bg-autronis-accent/10 transition-colors"
@@ -855,8 +863,9 @@ export default function IdeeenPage() {
                     <p className="text-xs text-autronis-text-secondary">Zelf alle velden invullen</p>
                   </div>
                 </button>
-              </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -1003,11 +1012,11 @@ export default function IdeeenPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {inzichtIdeeen.map((inzicht) => {
+              {inzichtIdeeen.map((inzicht, i) => {
                 const datum = new Date(inzicht.aangemaaktOp);
                 const datumStr = datum.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: datum.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined });
                 return (
-                  <div key={inzicht.id} className="group flex items-start gap-3 bg-autronis-card border border-autronis-border hover:border-amber-500/30 rounded-xl px-4 py-3 transition-colors">
+                  <motion.div key={inzicht.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: i * 0.04 }} className="group flex items-start gap-3 bg-autronis-card border border-autronis-border hover:border-amber-500/30 rounded-xl px-4 py-3 transition-colors">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-autronis-text-primary">{inzicht.omschrijving || inzicht.naam}</p>
                       {inzicht.omschrijving && inzicht.naam !== inzicht.omschrijving.slice(0, 60) && (
@@ -1023,7 +1032,7 @@ export default function IdeeenPage() {
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

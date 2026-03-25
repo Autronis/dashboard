@@ -498,28 +498,32 @@ function MustReadsSection({
           </span>
         )}
       </h2>
-      <div className="space-y-3">
-        {items.map((item, i) => (
-          <motion.div
-            key={item.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-          >
-            <ItemCard
-              item={item}
-              onToggleBewaard={onToggleBewaard}
-              onNietRelevant={onNietRelevant}
-              onVraagClaude={onVraagClaude}
-              onLeesLater={onLeesLater}
-              onDeelInzicht={onDeelInzicht}
-              isToggling={isToggling}
-              isOpened={openedIds.has(item.id)}
-              onOpen={onOpen}
-            />
-          </motion.div>
-        ))}
-      </div>
+      <AnimatePresence mode="popLayout">
+        <div className="space-y-3">
+          {items.map((item, i) => (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: -80, transition: { duration: 0.25 } }}
+              transition={{ delay: i * 0.05, duration: 0.2 }}
+            >
+              <ItemCard
+                item={item}
+                onToggleBewaard={onToggleBewaard}
+                onNietRelevant={onNietRelevant}
+                onVraagClaude={onVraagClaude}
+                onLeesLater={onLeesLater}
+                onDeelInzicht={onDeelInzicht}
+                isToggling={isToggling}
+                isOpened={openedIds.has(item.id)}
+                onOpen={onOpen}
+              />
+            </motion.div>
+          ))}
+        </div>
+      </AnimatePresence>
     </div>
   );
 }
@@ -1351,9 +1355,18 @@ export default function RadarPage() {
           ))}
         </div>
 
+        {/* ===== TAB CONTENT ===== */}
+        <AnimatePresence mode="wait">
         {/* ===== TAB: FEED ===== */}
         {activeTab === "feed" && (
-          <div className="space-y-5">
+          <motion.div
+            key="feed"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-5"
+          >
             {/* Digest banner */}
             <DigestBanner
               items={alleItems}
@@ -1382,20 +1395,29 @@ export default function RadarPage() {
             <div className="space-y-3">
               <div className="overflow-x-auto -mx-4 px-4 pb-1">
                 <div className="flex gap-2 w-max">
-                  {categorieOpties.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setCategorie(opt.value)}
-                      className={cn(
-                        "flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
-                        categorie === opt.value
-                          ? "bg-autronis-accent/15 text-autronis-accent border-autronis-accent/30"
-                          : "bg-autronis-bg text-autronis-text-secondary border-autronis-border/50 hover:text-autronis-text-primary hover:border-autronis-border"
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                  {categorieOpties.map((opt) => {
+                    const count =
+                      opt.value === ""
+                        ? alleItems.length
+                        : alleItems.filter((i) => i.categorie === opt.value).length;
+                    return (
+                      <button
+                        key={opt.value}
+                        onClick={() => setCategorie(opt.value)}
+                        className={cn(
+                          "flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
+                          categorie === opt.value
+                            ? "bg-autronis-accent/15 text-autronis-accent border-autronis-accent/30"
+                            : "bg-autronis-bg text-autronis-text-secondary border-autronis-border/50 hover:text-autronis-text-primary hover:border-autronis-border"
+                        )}
+                      >
+                        {opt.label}
+                        {count > 0 && (
+                          <span className="tabular-nums opacity-60 text-[10px]">{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1523,12 +1545,19 @@ export default function RadarPage() {
                 ))}
               </AnimatePresence>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* ===== TAB: BEWAARD ===== */}
         {activeTab === "bewaard" && (
-          <div className="space-y-3">
+          <motion.div
+            key="bewaard"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-3"
+          >
             {items.length === 0 ? (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
                 <Bookmark className="w-12 h-12 text-autronis-text-secondary/30 mx-auto mb-4" />
@@ -1564,12 +1593,19 @@ export default function RadarPage() {
                 ))}
               </AnimatePresence>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* ===== TAB: BRONNEN ===== */}
         {activeTab === "bronnen" && (
-          <div className="space-y-5">
+          <motion.div
+            key="bronnen"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="space-y-5"
+          >
             <div className="flex justify-end">
               <button
                 onClick={() => setBronFormOpen(!bronFormOpen)}
@@ -1660,8 +1696,9 @@ export default function RadarPage() {
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       {/* Vraag Claude modal */}

@@ -522,13 +522,32 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="text-lg font-semibold text-autronis-text-primary tabular-nums">{jaar}</span>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.span
+            key={jaar}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.15 }}
+            className="text-lg font-semibold text-autronis-text-primary tabular-nums w-12 text-center inline-block"
+          >
+            {jaar}
+          </motion.span>
+        </AnimatePresence>
         <button
           onClick={() => setJaar((j) => j + 1)}
           className="p-2 rounded-lg hover:bg-autronis-border text-autronis-text-secondary transition-colors"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
+        {jaar !== vandaag.getFullYear() && (
+          <button
+            onClick={() => setJaar(vandaag.getFullYear())}
+            className="px-2.5 py-1 text-xs text-autronis-text-secondary border border-autronis-border rounded-lg hover:bg-autronis-border transition-colors"
+          >
+            Huidig jaar
+          </button>
+        )}
       </div>
 
       {/* Calendar grid */}
@@ -536,15 +555,29 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
         {Array.from({ length: 12 }).map((_, maand) => {
           const daysInMonth = getDaysInMonth(jaar, maand);
           const firstDay = getFirstDayOfMonth(jaar, maand);
+          const isCurrMonth = jaar === vandaag.getFullYear() && maand === vandaag.getMonth();
 
           return (
-            <div
-              key={maand}
-              className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow"
+            <motion.div
+              key={`${jaar}-${maand}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: maand * 0.03, duration: 0.25 }}
+              className={cn(
+                "bg-autronis-card border rounded-2xl p-4 card-glow",
+                isCurrMonth
+                  ? "border-autronis-accent/40 shadow-sm shadow-autronis-accent/10"
+                  : "border-autronis-border"
+              )}
             >
-              <h3 className="text-sm font-semibold text-autronis-text-primary mb-3">
-                {MAANDEN[maand]}
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={cn("text-sm font-semibold", isCurrMonth ? "text-autronis-accent" : "text-autronis-text-primary")}>
+                  {MAANDEN[maand]}
+                </h3>
+                {isCurrMonth && (
+                  <span className="text-[10px] font-semibold text-autronis-accent/70 bg-autronis-accent/10 px-1.5 py-0.5 rounded-full">Nu</span>
+                )}
+              </div>
               <div className="grid grid-cols-7 gap-0.5">
                 {DAG_HEADERS.map((d) => (
                   <div
@@ -564,15 +597,17 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                   const entries = verlofPerDag.get(datum) ?? [];
                   const feestdagNaam = feestdagMap.get(datum);
                   const isSelected = selectedDay === datum;
+                  const isToday = datum === vandaagStr;
 
                   return (
                     <button
                       key={dag}
                       onClick={() => setSelectedDay(selectedDay === datum ? null : datum)}
                       className={cn(
-                        "w-full aspect-square rounded-sm text-[10px] font-medium flex items-center justify-center transition-all",
+                        "w-full aspect-square rounded-sm text-[10px] font-medium flex items-center justify-center transition-all relative",
                         color,
-                        isSelected && "ring-2 ring-autronis-accent ring-offset-1 ring-offset-autronis-card"
+                        isSelected && "ring-2 ring-autronis-accent ring-offset-1 ring-offset-autronis-card",
+                        isToday && !isSelected && "ring-2 ring-white/40 ring-offset-1 ring-offset-autronis-card font-bold"
                       )}
                       title={
                         feestdagNaam
@@ -584,15 +619,18 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                                   `${e.gebruikerNaam}: ${verlofTypeConfig[e.type ?? "vakantie"]?.label}`
                               )
                               .join(", ")
-                          : undefined
+                          : isToday ? "Vandaag" : undefined
                       }
                     >
                       {dag}
+                      {isToday && (
+                        <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-white/60" />
+                      )}
                     </button>
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
           );
         })}
       </div>
@@ -665,7 +703,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
             </span>
           </h3>
           <div className="space-y-3">
-            {verlofList.map((v) => {
+            {verlofList.map((v, idx) => {
               const sc = verlofStatusConfig[v.status ?? "aangevraagd"];
               const typeConf = verlofTypeConfig[v.type ?? "vakantie"];
               const TypeIcon = typeConf?.icon ?? Palmtree;
@@ -673,8 +711,11 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
               const canReview = !isOwn && v.status === "aangevraagd";
 
               return (
-                <div
+                <motion.div
                   key={v.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: idx * 0.06, duration: 0.25 }}
                   className="flex items-center gap-4 bg-autronis-bg/30 rounded-xl border border-autronis-border/50 px-5 py-4"
                 >
                   <TypeIcon className={cn("w-5 h-5 flex-shrink-0", typeConf?.color)} />
@@ -721,7 +762,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                       Wacht op {andereNaam}
                     </span>
                   )}
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -1009,7 +1050,7 @@ function DeclaratiesTab({ currentUser }: { currentUser: CurrentUser | null | und
                 </tr>
               </thead>
               <tbody>
-                {declaraties.map((d) => {
+                {declaraties.map((d, idx) => {
                   const sc = declaratieStatusConfig[d.status ?? "ingediend"];
                   const cc = categorieConfig[d.categorie ?? "overig"] ?? categorieConfig.overig;
                   const isOwn = currentUser && d.gebruikerId === currentUser.id;
@@ -1017,8 +1058,11 @@ function DeclaratiesTab({ currentUser }: { currentUser: CurrentUser | null | und
                   const canMarkPaid = d.status === "goedgekeurd";
 
                   return (
-                    <tr
+                    <motion.tr
                       key={d.id}
+                      initial={{ opacity: 0, x: -8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05, duration: 0.2 }}
                       className="border-b border-autronis-border/50 last:border-b-0 hover:bg-autronis-bg/20 transition-colors"
                     >
                       <td className="px-5 py-3.5 text-sm text-autronis-text-primary tabular-nums">
@@ -1105,7 +1149,7 @@ function DeclaratiesTab({ currentUser }: { currentUser: CurrentUser | null | und
                           )}
                         </div>
                       </td>
-                    </tr>
+                    </motion.tr>
                   );
                 })}
               </tbody>

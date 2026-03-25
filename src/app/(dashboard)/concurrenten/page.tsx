@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, useAnimation, AnimatePresence } from "framer-motion";
@@ -8,7 +8,7 @@ import {
   Plus, RefreshCw, Eye, TrendingUp, Minus, TrendingDown, ExternalLink,
   Trash2, Edit2, X, Loader2, Globe, Shield, ShieldAlert, ShieldCheck,
   Zap, BarChart3, CheckCircle2, XCircle, AlertTriangle, Sparkles, Search,
-  ArrowRight, Lightbulb, Target, Activity, Info, ChevronDown, ArrowUpDown,
+  ArrowRight, Lightbulb, Target, Activity, Info, ChevronDown,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -825,6 +825,13 @@ function VergelijkingsMatrix({ concurrenten }: { concurrenten: Concurrent[] }) {
 
 type SortOption = "overlap" | "threat" | "wijziging" | "naam";
 
+const SORT_OPTIONS: { key: SortOption; label: string }[] = [
+  { key: "overlap", label: "Overlap" },
+  { key: "threat", label: "Risico" },
+  { key: "wijziging", label: "Wijzigingen" },
+  { key: "naam", label: "Naam" },
+];
+
 // ─── Main Page ───
 export default function ConcurrentenPage() {
   const { data, isLoading } = useConcurrenten();
@@ -840,20 +847,19 @@ export default function ConcurrentenPage() {
   const [showMatrix, setShowMatrix] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>("overlap");
   const [filterHogeOverlap, setFilterHogeOverlap] = useState(false);
-  const [sortMenuOpen, setSortMenuOpen] = useState(false);
-  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  const [zoek, setZoek] = useState("");
+  const [intelOpen, setIntelOpen] = useState(true);
+
+  const [scanVoltooid, setScanVoltooid] = useState(false);
 
   useEffect(() => {
-    if (scanActive && scanStatus && !scanStatus.actief) setScanActive(false);
-  }, [scanActive, scanStatus]);
-
-  useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) setSortMenuOpen(false);
+    if (scanActive && scanStatus && !scanStatus.actief) {
+      setScanActive(false);
+      setScanVoltooid(true);
+      setTimeout(() => setScanVoltooid(false), 6000);
     }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
+  }, [scanActive, scanStatus]);
 
   function handleScanAll() {
     startScan.mutate(undefined, {
@@ -882,13 +888,26 @@ export default function ConcurrentenPage() {
 
   const kpis = data?.kpis;
   const allConcurrenten = data?.concurrenten ?? [];
+  const heeftData = allConcurrenten.length > 0;
   const hogeOverlap = allConcurrenten.filter((c) => (c.overlapScore ?? 0) >= 70).length;
   const hogeThreat = allConcurrenten.filter((c) => c.threatLevel === "hoog").length;
+
+  // Dagen sinds laatste scan
+  const dagenSindsLaatsteScan = useMemo(() => {
+    let latest: string | null = null;
+    for (const c of allConcurrenten) {
+      const d = c.laatsteScan?.aangemaaktOp;
+      if (d && (!latest || d > latest)) latest = d;
+    }
+    if (!latest) return null;
+    return Math.floor((Date.now() - new Date(latest).getTime()) / 86400000);
+  }, [allConcurrenten]);
 
   const threatOrder: Record<string, number> = { hoog: 0, medium: 1, laag: 2 };
 
   const sortedConcurrenten = [...allConcurrenten]
     .filter((c) => !filterHogeOverlap || (c.overlapScore ?? 0) >= 70)
+    .filter((c) => !zoek || c.naam.toLowerCase().includes(zoek.toLowerCase()))
     .sort((a, b) => {
       switch (sortBy) {
         case "overlap": return (b.overlapScore ?? 0) - (a.overlapScore ?? 0);
@@ -905,13 +924,6 @@ export default function ConcurrentenPage() {
         default: return 0;
       }
     });
-
-  const sortLabels: Record<SortOption, string> = {
-    overlap: "Overlap",
-    threat: "Risico",
-    wijziging: "Wijzigingen",
-    naam: "Naam",
-  };
 
   return (
     <PageTransition>
@@ -940,34 +952,87 @@ export default function ConcurrentenPage() {
           </div>
         </div>
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <div className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow">
-            <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Actief</p>
-            <AnimatedCount value={kpis?.totaal ?? 0} className="mt-1 block text-2xl font-bold tabular-nums text-autronis-text-primary" />
+        {/* KPIs — alleen tonen als er data is */}
+        {heeftData && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            {[
+              { label: "Actief", value: kpis?.totaal ?? 0, kleur: "text-autronis-text-primary" },
+              { label: "Wijzigingen", value: kpis?.wijzigingenDezeWeek ?? 0, kleur: "text-autronis-accent" },
+              { label: "Groeiend", value: kpis?.groeiend ?? 0, kleur: "text-green-400" },
+            ].map((kpi, i) => (
+              <motion.div
+                key={kpi.label}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.06 }}
+                className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow"
+              >
+                <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">{kpi.label}</p>
+                <AnimatedCount value={kpi.value} className={cn("mt-1 block text-2xl font-bold tabular-nums", kpi.kleur)} />
+              </motion.div>
+            ))}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              onClick={() => setFilterHogeOverlap((f) => !f)}
+              className={cn("rounded-2xl border bg-autronis-card p-4 card-glow text-left transition-colors",
+                filterHogeOverlap ? "border-red-500/40 bg-red-500/5" : "border-autronis-border hover:border-red-500/30"
+              )}
+            >
+              <p className={cn("text-[10px] uppercase tracking-wide", filterHogeOverlap ? "text-red-400" : "text-autronis-text-secondary")}>Hoge overlap</p>
+              <AnimatedCount value={hogeOverlap} className={cn("mt-1 block text-2xl font-bold tabular-nums", hogeOverlap > 0 ? "text-red-400" : "text-autronis-text-primary")} />
+            </motion.button>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.24 }}
+              className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow"
+            >
+              <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Hoog risico</p>
+              <AnimatedCount value={hogeThreat} className={cn("mt-1 block text-2xl font-bold tabular-nums", hogeThreat > 0 ? "text-red-400" : "text-autronis-text-primary")} />
+            </motion.div>
           </div>
-          <div className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow">
-            <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Wijzigingen</p>
-            <AnimatedCount value={kpis?.wijzigingenDezeWeek ?? 0} className="mt-1 block text-2xl font-bold tabular-nums text-autronis-accent" />
-          </div>
-          <div className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow">
-            <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Groeiend</p>
-            <AnimatedCount value={kpis?.groeiend ?? 0} className="mt-1 block text-2xl font-bold tabular-nums text-green-400" />
-          </div>
-          <button
-            onClick={() => setFilterHogeOverlap((f) => !f)}
-            className={cn("rounded-2xl border bg-autronis-card p-4 card-glow text-left transition-colors",
-              filterHogeOverlap ? "border-red-500/40 bg-red-500/5" : "border-autronis-border hover:border-red-500/30"
-            )}
+        )}
+
+        {/* Scan status banner */}
+        {heeftData && dagenSindsLaatsteScan !== null && dagenSindsLaatsteScan > 7 && !scanActive && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-3 bg-amber-500/8 border border-amber-500/20 rounded-xl px-5 py-3"
           >
-            <p className={cn("text-[10px] uppercase tracking-wide", filterHogeOverlap ? "text-red-400" : "text-autronis-text-secondary")}>Hoge overlap</p>
-            <AnimatedCount value={hogeOverlap} className={cn("mt-1 block text-2xl font-bold tabular-nums", hogeOverlap > 0 ? "text-red-400" : "text-autronis-text-primary")} />
-          </button>
-          <div className="rounded-2xl border border-autronis-border bg-autronis-card p-4 card-glow">
-            <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wide">Hoog risico</p>
-            <AnimatedCount value={hogeThreat} className={cn("mt-1 block text-2xl font-bold tabular-nums", hogeThreat > 0 ? "text-red-400" : "text-autronis-text-primary")} />
-          </div>
-        </div>
+            <AlertTriangle className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <p className="text-sm text-autronis-text-primary flex-1">
+              Laatste scan was <span className="font-semibold text-amber-400">{dagenSindsLaatsteScan} dagen</span> geleden — scan opnieuw voor actuele data
+            </p>
+            <button
+              onClick={handleScanAll}
+              disabled={startScan.isPending}
+              className="px-3 py-1.5 bg-amber-500/15 text-amber-400 rounded-lg text-xs font-semibold hover:bg-amber-500/25 transition-colors disabled:opacity-50 flex-shrink-0"
+            >
+              Scan nu
+            </button>
+          </motion.div>
+        )}
+
+        {/* Scan voltooid banner */}
+        <AnimatePresence>
+          {scanVoltooid && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center gap-3 bg-green-500/8 border border-green-500/20 rounded-xl px-5 py-3"
+            >
+              <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+              <p className="text-sm text-green-400 font-medium">Scan voltooid — data is bijgewerkt</p>
+              <button onClick={() => setScanVoltooid(false)} className="ml-auto p-1 text-green-400/50 hover:text-green-400 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {filterHogeOverlap && (
           <div className="flex items-center gap-2 text-sm text-red-400">
@@ -981,10 +1046,46 @@ export default function ConcurrentenPage() {
 
         {scanStatus?.actief && <ScanProgress />}
 
-        <IntelligenceSummary concurrenten={allConcurrenten} />
-        <PositioningOverview concurrenten={allConcurrenten} />
+        {/* Intelligence + Positioning — inklapbaar */}
+        {heeftData && (
+          <div className="space-y-5">
+            <button
+              onClick={() => setIntelOpen(!intelOpen)}
+              className="flex items-center gap-2 text-sm font-semibold text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+            >
+              <ChevronDown className={cn("w-4 h-4 transition-transform", intelOpen && "rotate-180")} />
+              Intelligence overzicht
+            </button>
+            <AnimatePresence>
+              {intelOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-5 overflow-hidden"
+                >
+                  <IntelligenceSummary concurrenten={allConcurrenten} />
+                  <PositioningOverview concurrenten={allConcurrenten} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
 
-        {showMatrix && <VergelijkingsMatrix concurrenten={allConcurrenten} />}
+        <AnimatePresence>
+          {showMatrix && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <VergelijkingsMatrix concurrenten={allConcurrenten} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Cards */}
         {allConcurrenten.length === 0 ? (
@@ -1017,49 +1118,53 @@ export default function ConcurrentenPage() {
                 <div className="text-[10px] text-red-400/70">− Geen custom development</div>
               </div>
             </div>
-            <div className="text-center">
+            <div className="flex items-center justify-center gap-3">
               <button onClick={() => { setEditConcurrent(undefined); setModalOpen(true); }}
                 className="rounded-xl bg-autronis-accent px-5 py-2.5 text-sm font-semibold text-autronis-bg hover:bg-autronis-accent-hover transition-colors">
                 Eerste concurrent toevoegen
               </button>
+              <Link href="/sales-engine"
+                className="inline-flex items-center gap-2 rounded-xl border border-autronis-border px-5 py-2.5 text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/40 transition-colors">
+                <Sparkles className="w-4 h-4" />
+                Importeer uit Sales Engine
+              </Link>
             </div>
           </div>
         ) : (
           <>
-            {/* Sort controls */}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-autronis-text-secondary">
-                {sortedConcurrenten.length} concurrent{sortedConcurrenten.length !== 1 ? "en" : ""}
-              </p>
-              <div className="relative" ref={sortMenuRef}>
-                <button
-                  onClick={() => setSortMenuOpen((o) => !o)}
-                  className="flex items-center gap-1.5 text-xs text-autronis-text-secondary hover:text-autronis-text-primary px-3 py-1.5 rounded-lg border border-autronis-border/50 hover:border-autronis-border transition-colors"
-                >
-                  <ArrowUpDown className="h-3 w-3" />
-                  {sortLabels[sortBy]}
-                  <ChevronDown className="h-3 w-3" />
-                </button>
-                <AnimatePresence>
-                  {sortMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
-                      transition={{ duration: 0.12 }}
-                      className="absolute right-0 top-full mt-1 bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-10 overflow-hidden min-w-[120px]"
+            {/* Sort + Search */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <p className="text-xs text-autronis-text-secondary">
+                  {sortedConcurrenten.length} concurrent{sortedConcurrenten.length !== 1 ? "en" : ""}
+                </p>
+                <div className="relative flex gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setSortBy(opt.key)}
+                      className={cn(
+                        "relative px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors z-10",
+                        sortBy === opt.key ? "text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                      )}
                     >
-                      {(["overlap", "threat", "wijziging", "naam"] as SortOption[]).map((opt) => (
-                        <button key={opt} onClick={() => { setSortBy(opt); setSortMenuOpen(false); }}
-                          className={cn("w-full text-left px-3 py-2 text-xs transition-colors",
-                            sortBy === opt ? "text-autronis-accent bg-autronis-accent/10" : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
-                          )}>
-                          {sortLabels[opt]}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                      {sortBy === opt.key && (
+                        <motion.div layoutId="concurrent-sort-bg" className="absolute inset-0 bg-autronis-accent rounded-md" transition={{ type: "spring", stiffness: 400, damping: 30 }} />
+                      )}
+                      <span className="relative">{opt.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="relative w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-autronis-text-secondary/50" />
+                <input
+                  type="text"
+                  value={zoek}
+                  onChange={(e) => setZoek(e.target.value)}
+                  placeholder="Zoek concurrent..."
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-lg pl-9 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 transition-colors"
+                />
               </div>
             </div>
 

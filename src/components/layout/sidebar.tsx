@@ -10,7 +10,8 @@ import {
   CheckSquare, ChevronLeft, X, Landmark, Users2, FileText,
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
-  Rocket, ChevronDown, Mail, Radio,
+  Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
+  UserCheck, Activity, CalendarDays,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,8 @@ const navSections: (NavLink | NavSection)[] = [
     items: [
       { label: "Tijd", icon: Clock, href: "/tijd" },
       { label: "Focus", icon: Focus, href: "/focus" },
+      { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
+      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
       { label: "Meetings", icon: Mic, href: "/meetings" },
       { label: "Ops Room", icon: Radio, href: "/ops-room" },
     ],
@@ -39,10 +42,13 @@ const navSections: (NavLink | NavSection)[] = [
     items: [
       { label: "Leads", icon: Zap, href: "/leads" },
       { label: "Klanten", icon: Users, href: "/klanten" },
+      { label: "Follow-up", icon: UserCheck, href: "/followup" },
+      { label: "Client Status", icon: Activity, href: "/client-status" },
       { label: "Projecten", icon: FolderKanban, href: "/projecten" },
       { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Offertes", icon: FileText, href: "/offertes" },
+      { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
       { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
     ],
   },

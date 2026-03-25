@@ -1285,6 +1285,22 @@ export const outreachOptOuts = sqliteTable("outreach_opt_outs", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ CLIENT AUTOMATIES ============
+export const clientAutomaties = sqliteTable("client_automaties", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  klantId: integer("klant_id").references(() => klanten.id).notNull(),
+  naam: text("naam").notNull(),
+  type: text("type", { enum: ["webhook", "cron", "integration", "n8n", "make", "zapier", "api", "overig"] }).default("overig"),
+  url: text("url"),
+  status: text("status", { enum: ["actief", "fout", "gepauzeerd", "onbekend"] }).default("onbekend"),
+  lastRunAt: text("last_run_at"),
+  lastRunStatus: text("last_run_status"), // "ok" | "fout" | tekst
+  notities: text("notities"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ DAGRITME ============
 export const dagritme = sqliteTable("dagritme", {
   id: integer("id").primaryKey({ autoIncrement: true }),

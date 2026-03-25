@@ -365,7 +365,13 @@ export async function GET(req: NextRequest) {
     // Deep work: merge consecutive productive sessions with gaps ≤10 min into blocks
     // A deep work block must be ≥25 min total
     const DEEP_WORK_BLOCK_MIN = 15;
-    interface DeepWorkBlock { startTijd: string; eindTijd: string; duurMin: number; beschrijvingen: string[] }
+    interface DeepWorkBlock {
+      startTijd: string;
+      eindTijd: string;
+      duurMin: number;
+      beschrijvingen: string[];
+      beschrijvingDuren: number[]; // parallel: session duration per beschrijving
+    }
     const deepWorkBlocks: DeepWorkBlock[] = [];
     let currentBlock: DeepWorkBlock | null = null;
 
@@ -380,7 +386,10 @@ export async function GET(req: NextRequest) {
             // Extend block (include gap time as part of the block span)
             currentBlock.eindTijd = sessies[i].eindTijd;
             currentBlock.duurMin = (new Date(currentBlock.eindTijd).getTime() - new Date(currentBlock.startTijd).getTime()) / 60000;
-            if (sessies[i].beschrijving) currentBlock.beschrijvingen.push(sessies[i].beschrijving);
+            if (sessies[i].beschrijving) {
+              currentBlock.beschrijvingen.push(sessies[i].beschrijving);
+              currentBlock.beschrijvingDuren.push(sessieDuurMin[i]);
+            }
           } else {
             // Gap too big — save current block and start new one
             if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
@@ -389,6 +398,7 @@ export async function GET(req: NextRequest) {
               eindTijd: sessies[i].eindTijd,
               duurMin: sessieDuurMin[i],
               beschrijvingen: sessies[i].beschrijving ? [sessies[i].beschrijving] : [],
+              beschrijvingDuren: sessies[i].beschrijving ? [sessieDuurMin[i]] : [],
             };
           }
         } else {
@@ -398,6 +408,7 @@ export async function GET(req: NextRequest) {
             eindTijd: sessies[i].eindTijd,
             duurMin: sessieDuurMin[i],
             beschrijvingen: sessies[i].beschrijving ? [sessies[i].beschrijving] : [],
+            beschrijvingDuren: sessies[i].beschrijving ? [sessieDuurMin[i]] : [],
           };
         }
       } else {
@@ -446,8 +457,17 @@ export async function GET(req: NextRequest) {
       ? deepWorkBlocks.reduce((best, b) => b.duurMin > best.duurMin ? b : best, deepWorkBlocks[0])
       : null;
     const langsteFocusMinuten = langsteBlok ? Math.round(langsteBlok.duurMin) : 0;
+    // Pick the beschrijving from the longest individual session within the block
+    const besteBeschrijving = (() => {
+      if (!langsteBlok || langsteBlok.beschrijvingen.length === 0) return "Focus blok";
+      let maxIdx = 0;
+      for (let k = 1; k < langsteBlok.beschrijvingDuren.length; k++) {
+        if (langsteBlok.beschrijvingDuren[k] > langsteBlok.beschrijvingDuren[maxIdx]) maxIdx = k;
+      }
+      return langsteBlok.beschrijvingen[maxIdx];
+    })();
     const besteFocusBlok = langsteBlok ? {
-      beschrijving: langsteBlok.beschrijvingen[0] ?? "Focus blok",
+      beschrijving: besteBeschrijving,
       startTijd: langsteBlok.startTijd,
       eindTijd: langsteBlok.eindTijd,
       duurMin: Math.round(langsteBlok.duurMin),

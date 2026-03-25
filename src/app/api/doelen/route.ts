@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { okrObjectives, okrKeyResults, facturen, tijdregistraties, taken, klanten } from "@/lib/db/schema";
+import { okrObjectives, okrKeyResults, facturen, taken, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql, gte, lt } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; end: string } {
   const startMonth = (kwartaal - 1) * 3;
@@ -17,7 +18,8 @@ function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; e
 async function calculateAutoValue(
   koppeling: string,
   kwartaal: number,
-  jaar: number
+  jaar: number,
+  gebruikerId: number
 ): Promise<number> {
   const { start, end } = getQuarterDateRange(kwartaal, jaar);
 
@@ -36,16 +38,12 @@ async function calculateAutoValue(
       return result[0]?.total ?? 0;
     }
     case "uren": {
-      const result = await db
-        .select({ total: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
-        .from(tijdregistraties)
-        .where(
-          and(
-            gte(tijdregistraties.startTijd, start),
-            lt(tijdregistraties.startTijd, end)
-          )
-        );
-      return Math.round(((result[0]?.total ?? 0) / 60) * 10) / 10;
+      // Use screen time (same source as Tijd page) filtered to current user
+      // end is exclusive (e.g. "2026-04-01"), subtract 1 day for inclusive range
+      const endDatum = new Date(end);
+      endDatum.setDate(endDatum.getDate() - 1);
+      const uren = await berekenActieveUren(gebruikerId, start, endDatum.toISOString().slice(0, 10));
+      return Math.round(uren * 10) / 10;
     }
     case "taken": {
       const result = await db
@@ -80,7 +78,7 @@ async function calculateAutoValue(
 // GET /api/doelen — list objectives with key results
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { searchParams } = new URL(req.url);
     const kwartaal = Number(searchParams.get("kwartaal") || Math.ceil((new Date().getMonth() + 1) / 3));
     const jaar = Number(searchParams.get("jaar") || new Date().getFullYear());
@@ -105,7 +103,7 @@ export async function GET(req: NextRequest) {
         const enrichedKrs = await Promise.all(
           krs.map(async (kr) => {
             if (kr.autoKoppeling && kr.autoKoppeling !== "geen") {
-              const autoWaarde = await calculateAutoValue(kr.autoKoppeling, kwartaal, jaar);
+              const autoWaarde = await calculateAutoValue(kr.autoKoppeling, kwartaal, jaar, gebruiker.id);
               // Update the stored value
               await db
                 .update(okrKeyResults)

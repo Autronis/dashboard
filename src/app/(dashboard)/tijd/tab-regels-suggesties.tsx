@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Shield,
   Lightbulb,
@@ -43,6 +43,7 @@ function RegelsSection() {
   const [formType, setFormType] = useState<ScreenTimeRegel["type"]>("app");
   const [formPatroon, setFormPatroon] = useState("");
   const [formCategorie, setFormCategorie] = useState<ScreenTimeCategorie>("development");
+  const formRef = useRef<HTMLDivElement>(null);
 
   const resetForm = useCallback(() => {
     setToonForm(false);
@@ -93,6 +94,7 @@ function RegelsSection() {
     setFormPatroon(regel.patroon);
     setFormCategorie(regel.categorie);
     setToonForm(true);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }, []);
 
   const handleCategoriseer = useCallback(async () => {

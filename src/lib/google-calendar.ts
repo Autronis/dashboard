@@ -117,6 +117,59 @@ export async function pushEventToGoogle(
   return response.data;
 }
 
+export async function updateGoogleEvent(
+  gebruikerId: number,
+  googleEventId: string,
+  event: {
+    summary: string;
+    description?: string;
+    start: string;
+    end?: string;
+    allDay?: boolean;
+  }
+) {
+  const client = await getAuthenticatedClient(gebruikerId);
+  if (!client) return null;
+
+  const calendar = google.calendar({ version: "v3", auth: client });
+  const tokens = await getTokensForUser(gebruikerId);
+  const calendarId = tokens?.calendarId ?? "primary";
+
+  const eventBody: {
+    summary: string;
+    description?: string;
+    start: { date?: string; dateTime?: string; timeZone?: string };
+    end: { date?: string; dateTime?: string; timeZone?: string };
+  } = {
+    summary: event.summary,
+    description: event.description,
+    start: {},
+    end: {},
+  };
+
+  if (event.allDay) {
+    eventBody.start = { date: event.start.slice(0, 10) };
+    const endDate = event.end ?? event.start;
+    const end = new Date(endDate);
+    end.setDate(end.getDate() + 1);
+    eventBody.end = { date: end.toISOString().slice(0, 10) };
+  } else {
+    eventBody.start = { dateTime: event.start, timeZone: "Europe/Amsterdam" };
+    eventBody.end = {
+      dateTime: event.end ?? new Date(new Date(event.start).getTime() + 3600_000).toISOString(),
+      timeZone: "Europe/Amsterdam",
+    };
+  }
+
+  const response = await calendar.events.patch({
+    calendarId,
+    eventId: googleEventId,
+    requestBody: eventBody,
+  });
+
+  return response.data;
+}
+
 export async function deleteGoogleEvent(gebruikerId: number, googleEventId: string) {
   const client = await getAuthenticatedClient(gebruikerId);
   if (!client) return;

@@ -8,6 +8,7 @@ import {
   Upload,
   FileText,
   CheckCircle2,
+  Circle,
   HelpCircle,
   MessageSquare,
   Trash2,
@@ -37,6 +38,7 @@ import {
   Check,
   Radio,
   Mail,
+  ListTodo,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -475,6 +477,7 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
   return (
     <motion.button
       onClick={onSelect}
+      variants={staggerItem}
       whileHover={{ x: 2 }}
       transition={{ duration: 0.15 }}
       className="w-full text-left bg-autronis-bg/30 rounded-xl border border-autronis-border/50 pl-4 pr-5 py-4 hover:border-autronis-accent/30 transition-colors group relative overflow-hidden"
@@ -611,6 +614,8 @@ export default function MeetingsPage() {
   const [copied, setCopied] = useState(false);
   const [notitiesText, setNotitiesText] = useState("");
   const [notitiesDirty, setNotitiesDirty] = useState(false);
+  const [doneActiepunten, setDoneActiepunten] = useState<Set<number>>(new Set());
+  const [maakTakenLoading, setMaakTakenLoading] = useState(false);
   const { data: meetings = [], isLoading } = useMeetings(filterKlant ?? undefined);
   const selectedNumericId = typeof selectedId === "number" ? selectedId : 0;
   const { data: selectedMeeting } = useMeeting(selectedNumericId);
@@ -630,12 +635,13 @@ export default function MeetingsPage() {
       .catch(() => {});
   }, []);
 
-  // When selecting a DB meeting, populate notities
+  // When selecting a DB meeting, populate notities + reset done actiepunten
   useEffect(() => {
     if (selectedMeeting) {
       setNotitiesText(selectedMeeting.samenvatting || "");
       setNotitiesDirty(false);
     }
+    setDoneActiepunten(new Set());
   }, [selectedMeeting]);
 
   // Split meetings into upcoming and recent
@@ -702,6 +708,43 @@ export default function MeetingsPage() {
       });
     },
     [deleteMutation, addToast, selectedId]
+  );
+
+  const handleToggleDone = useCallback((index: number) => {
+    setDoneActiepunten((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }, []);
+
+  const handleMaakTaken = useCallback(
+    async (actiepunten: Array<{ tekst: string; verantwoordelijke: string }>, meetingTitel: string) => {
+      setMaakTakenLoading(true);
+      let aangemaakt = 0;
+      try {
+        for (const ap of actiepunten) {
+          const res = await fetch("/api/taken", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              titel: ap.tekst,
+              omschrijving: `Actiepunt uit meeting: ${meetingTitel}`,
+              status: "open",
+              prioriteit: "normaal",
+            }),
+          });
+          if (res.ok) aangemaakt++;
+        }
+        addToast(`${aangemaakt} taken aangemaakt`, "succes");
+      } catch {
+        addToast("Kon taken niet aanmaken", "fout");
+      } finally {
+        setMaakTakenLoading(false);
+      }
+    },
+    [addToast]
   );
 
   const handleSaveNotities = useCallback(
@@ -919,7 +962,12 @@ export default function MeetingsPage() {
           )}
 
           {/* Samenvatting / Notities */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24, delay: 0.05 }}
+            className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
                 <FileText className="w-5 h-5 text-autronis-accent" />
@@ -956,29 +1004,60 @@ export default function MeetingsPage() {
                 Opslaan
               </button>
             )}
-          </div>
+          </motion.div>
 
           {/* Actiepunten + Besluiten grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {m.actiepunten.length > 0 && (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow">
-                <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2 mb-4">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  Actiepunten
-                  <span className="text-sm font-normal text-autronis-text-secondary">({m.actiepunten.length})</span>
-                </h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-autronis-text-primary flex items-center gap-2">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    Actiepunten
+                    <span className="text-sm font-normal text-autronis-text-secondary">
+                      {doneActiepunten.size > 0 ? `(${doneActiepunten.size}/${m.actiepunten.length} gedaan)` : `(${m.actiepunten.length})`}
+                    </span>
+                  </h2>
+                  <button
+                    onClick={() => handleMaakTaken(m.actiepunten, m.titel)}
+                    disabled={maakTakenLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors disabled:opacity-50"
+                  >
+                    {maakTakenLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ListTodo className="w-3.5 h-3.5" />}
+                    Maak taken aan
+                  </button>
+                </div>
                 <motion.div
-                  className="space-y-2.5"
+                  className="space-y-2"
                   variants={staggerContainer}
                   initial="hidden"
                   animate="visible"
                 >
                   {m.actiepunten.map((ap, i) => {
                     const style = getVerantwoordelijkeStyle(ap.verantwoordelijke);
+                    const isDone = doneActiepunten.has(i);
                     return (
-                      <motion.div key={i} variants={staggerItem} className="flex items-start gap-3 bg-autronis-bg/30 rounded-xl px-4 py-3">
-                        <CheckCircle2 className="w-4 h-4 text-autronis-text-secondary mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-autronis-text-primary flex-1">{ap.tekst}</span>
+                      <motion.div
+                        key={i}
+                        variants={staggerItem}
+                        className={cn(
+                          "flex items-start gap-3 rounded-xl px-4 py-3 transition-colors",
+                          isDone ? "bg-emerald-500/5 border border-emerald-500/10" : "bg-autronis-bg/30"
+                        )}
+                      >
+                        <button
+                          onClick={() => handleToggleDone(i)}
+                          className="mt-0.5 flex-shrink-0 hover:scale-110 transition-transform"
+                        >
+                          {isDone ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Circle className="w-4 h-4 text-autronis-text-secondary/40 hover:text-autronis-text-secondary transition-colors" />
+                          )}
+                        </button>
+                        <span className={cn("text-sm flex-1", isDone ? "line-through text-autronis-text-secondary/50" : "text-autronis-text-primary")}>
+                          {ap.tekst}
+                        </span>
                         <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0", style.bg, style.color)}>
                           {ap.verantwoordelijke}
                         </span>
@@ -986,6 +1065,15 @@ export default function MeetingsPage() {
                     );
                   })}
                 </motion.div>
+                {doneActiepunten.size === m.actiepunten.length && m.actiepunten.length > 0 && (
+                  <motion.p
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mt-3 text-xs text-emerald-400 text-center"
+                  >
+                    Alle actiepunten afgevinkt
+                  </motion.p>
+                )}
               </div>
             )}
 
@@ -1290,24 +1378,24 @@ export default function MeetingsPage() {
         </div>
 
         {/* Smart stats — show AI output value */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
-            <p className="text-xl font-bold text-autronis-text-primary tabular-nums">{kpis.dezeWeek}</p>
-            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Meetings deze week</p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
-            <p className="text-xl font-bold text-autronis-accent tabular-nums">{kpis.totaalActiepunten}</p>
-            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Actiepunten gegenereerd</p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
-            <p className="text-xl font-bold text-emerald-400 tabular-nums">{kpis.verwerkt}</p>
-            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Meetings geanalyseerd</p>
-          </div>
-          <div className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
-            <p className="text-xl font-bold text-purple-400 tabular-nums">{kpis.totaalMinuten > 0 ? formatDuur(kpis.totaalMinuten) : "—"}</p>
-            <p className="text-[11px] text-autronis-text-secondary mt-0.5">Totale tijd opgenomen</p>
-          </div>
-        </div>
+        <motion.div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          {[
+            { value: kpis.dezeWeek, label: "Meetings deze week", color: "text-autronis-text-primary" },
+            { value: kpis.totaalActiepunten, label: "Actiepunten gegenereerd", color: "text-autronis-accent" },
+            { value: kpis.verwerkt, label: "Meetings geanalyseerd", color: "text-emerald-400" },
+            { value: kpis.totaalMinuten > 0 ? formatDuur(kpis.totaalMinuten) : "—", label: "Totale tijd opgenomen", color: "text-purple-400" },
+          ].map(({ value, label, color }) => (
+            <motion.div key={label} variants={staggerItem} className="bg-autronis-card border border-autronis-border rounded-xl p-3.5 card-glow">
+              <p className={cn("text-xl font-bold tabular-nums", color)}>{value}</p>
+              <p className="text-[11px] text-autronis-text-secondary mt-0.5">{label}</p>
+            </motion.div>
+          ))}
+        </motion.div>
 
         {/* Next meeting hero — only if upcoming */}
         {nextMeeting && (
@@ -1393,15 +1481,22 @@ export default function MeetingsPage() {
               <option key={k.id} value={k.id}>{k.bedrijfsnaam}</option>
             ))}
           </select>
-          <select
-            value={filterPeriode}
-            onChange={(e) => setFilterPeriode(e.target.value as "alles" | "week" | "maand")}
-            className="bg-autronis-card border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
-          >
-            <option value="alles">Alle tijd</option>
-            <option value="week">Deze week</option>
-            <option value="maand">Deze maand</option>
-          </select>
+          <div className="flex items-center gap-1.5">
+            {(["alles", "week", "maand"] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setFilterPeriode(p)}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-sm transition-colors",
+                  filterPeriode === p
+                    ? "bg-autronis-accent text-autronis-bg font-semibold"
+                    : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/50 hover:text-autronis-text-primary"
+                )}
+              >
+                {p === "alles" ? "Alles" : p === "week" ? "Week" : "Maand"}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Upcoming meetings (if more than 1) */}
@@ -1450,8 +1545,14 @@ export default function MeetingsPage() {
             <h2 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
               <Clock className="w-4 h-4 text-autronis-text-secondary" />
               Recente meetings
+              <span className="text-autronis-text-secondary/50 font-normal">({recent.length})</span>
             </h2>
-            <div className="space-y-2">
+            <motion.div
+              className="space-y-2"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               {recent.map((m) => (
                 <MeetingListItem
                   key={String(m.id)}
@@ -1460,7 +1561,7 @@ export default function MeetingsPage() {
                   onDelete={() => { if (typeof m.id === "number") handleDelete(m.id); }}
                 />
               ))}
-            </div>
+            </motion.div>
           </div>
         ) : null}
 

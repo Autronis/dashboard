@@ -87,59 +87,79 @@ export function CommandBar({ agents, isLive = false }: CommandBarProps) {
     red: "bg-red-400",
   }[health];
 
+  const idle = agents.filter((a) => a.status === "idle" || a.status === "offline").length;
+  const teamSem = agents.filter((a) => a.team === "sem");
+  const teamSyb = agents.filter((a) => a.team === "syb");
+  const activeSem = teamSem.filter((a) => a.status === "working" || a.status === "reviewing").length;
+  const activeSyb = teamSyb.filter((a) => a.status === "working" || a.status === "reviewing").length;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: -8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
       className={cn(
-        "flex items-center gap-5 px-5 py-3.5 rounded-xl border transition-colors overflow-x-auto",
+        "flex items-center gap-4 px-4 py-2.5 rounded-xl border transition-colors overflow-x-auto",
         borderColor, bgColor
       )}
     >
-      {/* Health dot */}
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="relative flex h-2.5 w-2.5">
-          <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-60", dotColor)} />
-          <span className={cn("relative inline-flex rounded-full h-2.5 w-2.5", dotColor)} />
+      {/* Occupancy ring */}
+      <div className="relative flex items-center justify-center shrink-0">
+        <OccupancyRing active={active} idle={idle} error={errors} total={agents.length} />
+        <span className="absolute text-[9px] font-bold text-white tabular-nums" style={{ transform: "translateY(-1px)" }}>
+          {active}
         </span>
-        {!isLive && (
-          <span className="text-[8px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500/70 font-semibold">
-            DEMO
-          </span>
+      </div>
+
+      {/* Team breakdown */}
+      <div className="flex flex-col gap-0.5 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-autronis-accent shrink-0" />
+          <span className="text-[10px] text-autronis-text-tertiary">Sem</span>
+          <span className="text-[10px] font-semibold text-autronis-text-primary tabular-nums">{activeSem}/{teamSem.length}</span>
+        </div>
+        {teamSyb.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+            <span className="text-[10px] text-autronis-text-tertiary">Syb</span>
+            <span className="text-[10px] font-semibold text-autronis-text-primary tabular-nums">{activeSyb}/{teamSyb.length}</span>
+          </div>
         )}
       </div>
 
       <div className="h-5 w-px bg-autronis-border/50 shrink-0" />
 
       {/* Metrics */}
-      <div className="flex items-center gap-5 text-[13px] font-medium">
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-green-400">
-          <Users className="w-3.5 h-3.5" />
-          <strong>{active}</strong>
-          <span className="text-autronis-text-tertiary font-normal text-xs">agents actief</span>
-        </span>
+      <div className="flex items-center gap-4 text-[12px] font-medium flex-1 flex-wrap">
+        {errors > 0 && (
+          <motion.span
+            animate={{ opacity: [1, 0.5, 1] }}
+            transition={{ repeat: Infinity, duration: 1 }}
+            className="flex items-center gap-1.5 whitespace-nowrap text-red-400"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            <strong>{errors}</strong>
+            <span className="font-normal text-[10px]">fouten</span>
+          </motion.span>
+        )}
 
-        <span className={cn(
-          "flex items-center gap-1.5 whitespace-nowrap",
-          errors > 0 ? "text-red-400" : "text-autronis-text-tertiary"
-        )}>
-          <AlertTriangle className="w-3.5 h-3.5" />
-          <strong>{errors}</strong>
-          <span className="font-normal text-xs">errors</span>
-        </span>
-
-        <span className="flex items-center gap-1.5 whitespace-nowrap text-amber-400">
-          <Coins className="w-3.5 h-3.5" />
+        <span className={cn("flex items-center gap-1.5 whitespace-nowrap tabular-nums", costColor(totalKosten))}>
+          <Coins className="w-3 h-3" />
           <strong>{"\u20AC"}{totalKosten.toFixed(2)}</strong>
-          <span className="text-autronis-text-tertiary font-normal text-xs">vandaag</span>
+          <span className="text-autronis-text-tertiary font-normal text-[10px]">vandaag</span>
         </span>
 
         <span className="flex items-center gap-1.5 whitespace-nowrap text-autronis-accent">
-          <TrendingUp className="w-3.5 h-3.5" />
+          <TrendingUp className="w-3 h-3" />
           <strong>{totalTasks}</strong>
-          <span className="text-autronis-text-tertiary font-normal text-xs">taken voltooid</span>
+          <span className="text-autronis-text-tertiary font-normal text-[10px]">taken</span>
         </span>
+
+        {!isLive && (
+          <span className="ml-auto text-[8px] px-1 py-0.5 rounded bg-amber-500/15 text-amber-500/70 font-semibold shrink-0">
+            DEMO
+          </span>
+        )}
       </div>
     </motion.div>
   );

@@ -1509,8 +1509,8 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       // If a project is hovered in sidebar, highlight its connections, dim others
       const isHighlighted = hoveredProject === proj;
       const isDimmed = hoveredProject !== null && !isHighlighted;
-      const lineAlpha = isDimmed ? "08" : isHighlighted ? "50" : "20";
-      const dotAlpha = isDimmed ? "10" : isHighlighted ? "80" : "40";
+      const lineAlpha = isDimmed ? "08" : isHighlighted ? "60" : "30";
+      const dotAlpha = isDimmed ? "10" : isHighlighted ? "cc" : "70";
 
       ctx.strokeStyle = `${color}${lineAlpha}`;
       ctx.lineWidth = isHighlighted ? 2 : 1;
@@ -1523,15 +1523,22 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       }
       ctx.setLineDash([]);
 
-      // Moving data dot
+      // Moving data dots (bidirectional)
       if (group.length >= 2 && !isDimmed) {
-        const t = (tick * 0.04) % 1;
-        const dotX = group[0].x + (group[1].x - group[0].x) * t;
-        const dotY = group[0].y + (group[1].y - group[0].y) * t;
+        const speed = isHighlighted ? 0.05 : 0.035;
+        const t1 = (tick * speed) % 1;
+        const t2 = ((tick * speed) + 0.5) % 1; // offset dot going back
+        const r = isHighlighted ? 3.5 : 2.5;
+        // Forward dot
+        const d1x = group[0].x + (group[1].x - group[0].x) * t1;
+        const d1y = group[0].y + (group[1].y - group[0].y) * t1;
         ctx.fillStyle = `${color}${dotAlpha}`;
-        ctx.beginPath();
-        ctx.arc(dotX, dotY, isHighlighted ? 3.5 : 2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(d1x, d1y, r, 0, Math.PI * 2); ctx.fill();
+        // Return dot (dimmer, smaller)
+        const d2x = group[1].x + (group[0].x - group[1].x) * t2;
+        const d2y = group[1].y + (group[0].y - group[1].y) * t2;
+        ctx.fillStyle = `${color}${isDimmed ? "10" : isHighlighted ? "55" : "35"}`;
+        ctx.beginPath(); ctx.arc(d2x, d2y, r * 0.7, 0, Math.PI * 2); ctx.fill();
       }
     });
 
@@ -1783,24 +1790,29 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       }
     }
 
-    // === Speech bubble ===
-    if (selectedId && selectedId !== hovered) {
-      const sel = positions.get(selectedId);
-      if (sel && sel.agent.huidigeTaak) {
-        const { x: sx, y: sy, agent } = sel;
-        const task = agent.huidigeTaak;
-        const text = agent.terminal.length > 0 ? agent.terminal[agent.terminal.length - 1].tekst : task?.beschrijving ?? "";
-        const display = text.length > 40 ? text.slice(0, 39) + "..." : text;
-        const bw = Math.max(130, display.length * 7.5 + 24);
-        const bx = Math.max(8, Math.min(sx + 50 - bw / 2, CANVAS_W - bw - 8));
-        const by = sy - 34;
-        ctx.fillStyle = "#0a0f14ee"; ctx.strokeStyle = "#23C6B7"; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.roundRect(bx, by, bw, 22, 6); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = "#0a0f14ee";
-        ctx.beginPath(); ctx.moveTo(sx + 40, by + 22); ctx.lineTo(sx + 50, by + 28); ctx.lineTo(sx + 60, by + 22); ctx.fill();
-        ctx.fillStyle = "#e2e8f0"; ctx.font = "12px monospace"; ctx.fillText(display, bx + 8, by + 15);
-      }
-    }
+    // === Speech bubbles — all active agents (selected = highlighted) ===
+    positions.forEach(({ x: sx, y: sy, agent }, id) => {
+      if (!agent.huidigeTaak || agent.status === "idle" || agent.status === "offline") return;
+      if (id === hovered) return; // tooltip already showing
+      const isSelected = id === selectedId;
+      const text = agent.terminal.length > 0 ? agent.terminal[agent.terminal.length - 1].tekst : agent.huidigeTaak.beschrijving;
+      const maxLen = isSelected ? 40 : 24;
+      const display = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
+      const fontSize = isSelected ? 12 : 10;
+      ctx.font = `${fontSize}px monospace`;
+      const bw = Math.max(isSelected ? 130 : 80, ctx.measureText(display).width + 20);
+      const bx = Math.max(8, Math.min(sx + 50 - bw / 2, CANVAS_W - bw - 8));
+      const by = sy - (isSelected ? 34 : 28);
+      const alpha = isSelected ? "ee" : "88";
+      const borderColor = isSelected ? "#23C6B7" : `${getProjectColor(agent.huidigeTaak.project)}aa`;
+      ctx.fillStyle = `#0a0f14${alpha}`; ctx.strokeStyle = borderColor; ctx.lineWidth = isSelected ? 1.5 : 0.8;
+      ctx.beginPath(); ctx.roundRect(bx, by, bw, isSelected ? 22 : 18, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = `#0a0f14${alpha}`;
+      ctx.beginPath(); ctx.moveTo(sx + 40, by + (isSelected ? 22 : 18)); ctx.lineTo(sx + 50, by + (isSelected ? 28 : 23)); ctx.lineTo(sx + 60, by + (isSelected ? 22 : 18)); ctx.fill();
+      ctx.fillStyle = isSelected ? "#e2e8f0" : "#8a9aaa";
+      ctx.font = `${fontSize}px monospace`;
+      ctx.fillText(display, bx + 8, by + (isSelected ? 15 : 13));
+    });
 
     // === CONFETTI TRIGGER: check for 100% projects ===
     const projectProgress = new Map<string, number>();
@@ -1948,17 +1960,18 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative"
       onClick={() => { if (contextMenu) setContextMenu(null); }}
     >
-      <canvas
-        ref={canvasRef}
-        width={CANVAS_W}
-        height={CANVAS_H}
-        className="w-full"
-        style={{  }}
-        onMouseMove={handleMove}
-        onMouseLeave={() => { setHovered(null); }}
-        onClick={handleClick}
-        onContextMenu={handleContextMenu}
-      />
+      <div className="overflow-hidden" style={{ maxHeight: "63vh" }}>
+        <canvas
+          ref={canvasRef}
+          width={CANVAS_W}
+          height={CANVAS_H}
+          className="w-full"
+          onMouseMove={handleMove}
+          onMouseLeave={() => { setHovered(null); }}
+          onClick={handleClick}
+          onContextMenu={handleContextMenu}
+        />
+      </div>
 
       {/* Context menu */}
       {contextMenu && <ContextMenuOverlay

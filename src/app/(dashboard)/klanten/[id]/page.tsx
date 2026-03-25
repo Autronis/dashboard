@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -201,6 +203,8 @@ export default function KlantDetailPage() {
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("overzicht");
   const [tijdlijnFilter, setTijdlijnFilter] = useState<TijdlijnFilter>("alles");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 100); return () => clearTimeout(t); }, []);
 
   const archiveMutation = useMutation({
     mutationFn: async () => {
@@ -371,31 +375,43 @@ export default function KlantDetailPage() {
         {[
           {
             label: "Projecten",
-            waarde: kpis.aantalProjecten.toString(),
+            value: kpis.aantalProjecten,
+            format: (n: number) => Math.round(n).toString(),
             icon: FolderKanban,
+            accent: false,
+            warn: false,
           },
           {
             label: "Totaal uren",
-            waarde: formatUren(kpis.totaalMinuten),
+            value: kpis.totaalMinuten,
+            format: (n: number) => formatUren(Math.round(n)),
             icon: Clock,
+            accent: false,
+            warn: false,
           },
           {
             label: "Omzet",
-            waarde: formatBedrag(kpis.omzet),
+            value: kpis.omzet,
+            format: (n: number) => formatBedrag(n),
             icon: Euro,
             accent: true,
+            warn: false,
           },
           {
             label: "Openstaand",
-            waarde: formatBedrag(kpis.openstaand),
+            value: kpis.openstaand,
+            format: (n: number) => formatBedrag(n),
             icon: Receipt,
+            accent: false,
             warn: kpis.openstaand > 0,
           },
           {
             label: "Uurtarief",
-            waarde: formatBedrag(kpis.uurtarief),
+            value: kpis.uurtarief,
+            format: (n: number) => formatBedrag(n),
             icon: TrendingUp,
             accent: true,
+            warn: false,
           },
         ].map((kpi) => (
           <div
@@ -407,12 +423,14 @@ export default function KlantDetailPage() {
                 <kpi.icon className="w-4 h-4 text-autronis-accent" />
               </div>
             </div>
-            <p className={cn(
-              "text-2xl font-bold tabular-nums",
-              kpi.warn ? "text-amber-400" : kpi.accent ? "text-autronis-accent" : "text-autronis-text-primary"
-            )}>
-              {kpi.waarde}
-            </p>
+            <AnimatedNumber
+              value={kpi.value}
+              format={kpi.format}
+              className={cn(
+                "text-2xl font-bold tabular-nums",
+                kpi.warn ? "text-amber-400" : kpi.accent ? "text-autronis-accent" : "text-autronis-text-primary"
+              )}
+            />
             <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
               {kpi.label}
             </p>
@@ -498,8 +516,11 @@ export default function KlantDetailPage() {
                 .slice(0, 4).map((action: NextAction, i: number) => {
                 const ActionIcon = nextActionIcons[action.type] || ArrowRight;
                 return (
-                  <div
+                  <motion.div
                     key={i}
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.05 }}
                     className={cn(
                       "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
                       action.urgentie === "hoog"
@@ -520,7 +541,7 @@ export default function KlantDetailPage() {
                     {action.urgentie === "hoog" && (
                       <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>
@@ -552,7 +573,9 @@ export default function KlantDetailPage() {
       </div>
 
       {/* Tab content */}
+      <AnimatePresence mode="wait">
       {activeTab === "overzicht" && (
+      <motion.div key="overzicht" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left column */}
           <div className="space-y-8">
@@ -699,11 +722,14 @@ export default function KlantDetailPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {notities.slice(0, 5).map((notitie) => {
+                  {notities.slice(0, 5).map((notitie, i) => {
                     const config = notitieTypeConfig[notitie.type] || notitieTypeConfig.notitie;
                     return (
-                      <div
+                      <motion.div
                         key={notitie.id}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2, delay: i * 0.05 }}
                         className={cn(
                           "border-l-4 rounded-xl bg-autronis-bg/50 p-5",
                           config.border
@@ -720,7 +746,7 @@ export default function KlantDetailPage() {
                         <p className="text-base text-autronis-text-primary leading-relaxed">
                           {notitie.inhoud}
                         </p>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -774,9 +800,11 @@ export default function KlantDetailPage() {
                         )}
                         {/* Progress bar */}
                         <div className="w-full bg-autronis-border rounded-full h-2">
-                          <div
-                            className="bg-autronis-accent h-2 rounded-full transition-all"
-                            style={{ width: `${Math.min(voortgang, 100)}%` }}
+                          <motion.div
+                            className="bg-autronis-accent h-2 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: mounted ? `${Math.min(voortgang, 100)}%` : 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
                           />
                         </div>
                         <div className="flex items-center justify-between text-sm text-autronis-text-secondary">
@@ -808,9 +836,12 @@ export default function KlantDetailPage() {
                 </p>
               ) : (
                 <div className="space-y-3">
-                  {recenteTijdregistraties.slice(0, 5).map((registratie) => (
-                    <div
+                  {recenteTijdregistraties.slice(0, 5).map((registratie, i) => (
+                    <motion.div
                       key={registratie.id}
+                      initial={{ opacity: 0, x: 6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ duration: 0.2, delay: i * 0.04 }}
                       className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4"
                     >
                       <div className="min-w-0 flex-1">
@@ -831,17 +862,19 @@ export default function KlantDetailPage() {
                       <span className="text-base font-bold text-autronis-text-primary flex-shrink-0 tabular-nums">
                         {formatUren(registratie.duurMinuten)}
                       </span>
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               )}
             </div>
           </div>
         </div>
+      </motion.div>
       )}
 
       {/* Timeline tab */}
       {activeTab === "tijdlijn" && (
+      <motion.div key="tijdlijn" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <h2 className="text-lg font-semibold text-autronis-text-primary">Interactie-tijdlijn</h2>
@@ -929,10 +962,12 @@ export default function KlantDetailPage() {
             </div>
           )}
         </div>
+      </motion.div>
       )}
 
       {/* Financial tab */}
       {activeTab === "financieel" && (
+      <motion.div key="financieel" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
         <div className="space-y-8">
           {/* Financial KPIs - 6 cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -1147,10 +1182,12 @@ export default function KlantDetailPage() {
             </div>
           </div>
         </div>
+      </motion.div>
       )}
 
       {/* Documents tab */}
       {activeTab === "documenten" && (
+      <motion.div key="documenten" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold text-autronis-text-primary">
@@ -1217,7 +1254,9 @@ export default function KlantDetailPage() {
             </div>
           )}
         </div>
+      </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Modals */}
       <KlantModal

@@ -21,11 +21,13 @@ import {
   AlertTriangle,
   AlertCircle,
   Play,
+  Square,
   Zap,
 } from "lucide-react";
 import { cn, formatDatum, formatUren } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
+import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
 
 // ============ Types ============
@@ -189,13 +191,16 @@ function FaseSection({ fase, onStatusToggle }: { fase: Fase; onStatusToggle?: (t
             className="overflow-hidden"
           >
             <div className="border-t border-autronis-border">
-              {fase.taken.map((taak) => {
+              {fase.taken.map((taak, idx) => {
                 const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/30" : "border-l-transparent";
                 const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
                 const nextStatus = taak.status === "open" ? "bezig" : taak.status === "bezig" ? "afgerond" : "open";
                 return (
-                  <div
+                  <motion.div
                     key={taak.id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.18, delay: idx * 0.03 }}
                     className={cn(
                       "flex items-center gap-2.5 px-4 py-2 border-b border-autronis-border/30 last:border-b-0 border-l-[3px] transition-colors group",
                       prioColor,
@@ -360,7 +365,7 @@ function StatusIntelligence({ project, fases }: { project: ProjectDetail; fases:
   );
 }
 
-function WatNuBlok({ fases }: { fases: Fase[] }) {
+function WatNuBlok({ fases, onStatusToggle }: { fases: Fase[]; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
   // Get top open tasks sorted by priority
   const alleTaken = fases.flatMap((f) => f.taken.map((t) => ({ ...t, fase: f.naam })));
   const openTaken = alleTaken
@@ -393,8 +398,14 @@ function WatNuBlok({ fases }: { fases: Fase[] }) {
         {openTaken.map((taak) => {
           const prioColor = taak.prioriteit === "hoog" ? "border-l-red-500" : taak.prioriteit === "normaal" ? "border-l-yellow-500/50" : "border-l-slate-500/30";
           return (
-            <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-2 bg-autronis-bg/40 rounded-lg border-l-[3px]", prioColor)}>
-              <TaakStatusIcon status={taak.status} />
+            <div key={taak.id} className={cn("flex items-center gap-2.5 px-3 py-2 bg-autronis-bg/40 rounded-lg border-l-[3px] group/watnu", prioColor)}>
+              <button
+                onClick={() => onStatusToggle?.(taak.id, taak.status)}
+                className="flex-shrink-0 hover:scale-110 transition-transform"
+                title={`Zet naar: ${taak.status === "open" ? "bezig" : taak.status === "bezig" ? "afgerond" : "open"}`}
+              >
+                <TaakStatusIcon status={taak.status} />
+              </button>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
                 <p className="text-[10px] text-autronis-text-secondary">{taak.fase}</p>
@@ -444,6 +455,7 @@ export default function ProjectDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { addToast } = useToast();
+  const timer = useTimer();
 
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [fases, setFases] = useState<Fase[]>([]);
@@ -548,6 +560,32 @@ export default function ProjectDetailPage() {
     setOpeningVSCode(false);
   }, [project, addToast]);
 
+  const handleStartTimer = useCallback(async () => {
+    if (!project) return;
+    if (timer.isRunning && timer.projectId === project.id) {
+      timer.stop();
+      addToast("Timer gestopt", "succes");
+      return;
+    }
+    if (timer.isRunning) {
+      addToast("Stop eerst de huidige timer", "fout");
+      return;
+    }
+    try {
+      const res = await fetch("/api/tijdregistraties", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: project.id, omschrijving: project.naam, startTijd: new Date().toISOString() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout);
+      timer.start(project.id, project.naam, "development", data.registratie.id);
+      addToast(`Timer gestart voor ${project.naam}`, "succes");
+    } catch {
+      addToast("Kon timer niet starten", "fout");
+    }
+  }, [project, timer, addToast]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -613,6 +651,40 @@ export default function ProjectDetailPage() {
                   </span>
                 )}
               </div>
+
+              {/* Action buttons — in header so always visible */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  onClick={handleStartTimer}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-xl transition-colors",
+                    timer.isRunning && timer.projectId === project.id
+                      ? "bg-red-500/15 text-red-400 hover:bg-red-500/25 border border-red-500/25"
+                      : "bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20 border border-autronis-accent/20"
+                  )}
+                >
+                  {timer.isRunning && timer.projectId === project.id
+                    ? <><Square className="w-3.5 h-3.5" />Stop timer</>
+                    : <><Play className="w-3.5 h-3.5" />Start timer</>
+                  }
+                </button>
+                <button
+                  onClick={handleOpenVSCode}
+                  disabled={openingVSCode}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-blue-600/15 text-blue-400 hover:bg-blue-600/25 border border-blue-500/20 text-xs font-medium rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <Code2 className={cn("w-3.5 h-3.5", openingVSCode && "animate-spin")} />
+                  {openingVSCode ? "Openen..." : "VS Code"}
+                </button>
+                <button
+                  onClick={syncTaken}
+                  disabled={syncing}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/30 text-xs font-medium rounded-xl transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+                  {syncing ? "Syncing..." : "Sync taken"}
+                </button>
+              </div>
             </div>
 
             <VoortgangRing percentage={project.voortgang} size={90} />
@@ -625,7 +697,7 @@ export default function ProjectDetailPage() {
             <StatusIntelligence project={project} fases={fases} />
           </div>
           <div className="lg:col-span-2">
-            <WatNuBlok fases={fases} />
+            <WatNuBlok fases={fases} onStatusToggle={handleTaakStatusToggle} />
           </div>
         </div>
 
@@ -694,25 +766,6 @@ export default function ProjectDetailPage() {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleOpenVSCode}
-            disabled={openingVSCode}
-            className="flex items-center gap-2 px-5 py-3 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            <Code2 className={cn("w-4 h-4", openingVSCode && "animate-spin")} />
-            {openingVSCode ? "Openen..." : "Open in VS Code + Claude"}
-          </button>
-          <button
-            onClick={syncTaken}
-            disabled={syncing}
-            className="flex items-center gap-2 px-5 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-            {syncing ? "Syncing..." : "Sync taken"}
-          </button>
-        </div>
       </div>
     </PageTransition>
   );

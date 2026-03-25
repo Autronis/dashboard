@@ -17,12 +17,14 @@ type Tab = "A" | "B" | "C";
 
 export default function AnimatiesPage() {
   const [input, setInput] = useState("");
-  const [inputType, setInputType] = useState<"url" | "product">("product");
+  const [inputType, setInputType] = useState<"url" | "product" | "image">("product");
   const [loading, setLoading] = useState(false);
   const [prompts, setPrompts] = useState<Prompts | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("A");
   const [copied, setCopied] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const confettiRef = useRef<HTMLCanvasElement>(null);
 
   const launchConfetti = useCallback(() => {
@@ -63,10 +65,28 @@ export default function AnimatiesPage() {
     animate();
   }, []);
 
+  const handleFileUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      const base64 = result.split(",")[1];
+      setUploadedImage({ base64, mediaType: file.type, preview: result });
+    };
+    reader.readAsDataURL(file);
+  };
+
   const generate = async () => {
-    if (!input.trim()) return;
+    if (inputType === "image" && !uploadedImage) return;
+    if (inputType !== "image" && !input.trim()) return;
     setLoading(true); setError(""); setPrompts(null);
-    const body = inputType === "url" ? { url: input } : { product: input };
+
+    let body: Record<string, string> = {};
+    if (inputType === "url") body = { url: input };
+    else if (inputType === "product") body = { product: input };
+    else if (inputType === "image" && uploadedImage) {
+      body = { imageBase64: uploadedImage.base64, mediaType: uploadedImage.mediaType };
+    }
+
     const res = await fetch("/api/animaties/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,44 +160,73 @@ export default function AnimatiesPage() {
       {/* Input */}
       <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 mb-5">
         <div className="flex gap-2 mb-3">
-          <button
-            onClick={() => setInputType("product")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              inputType === "product"
-                ? "bg-autronis-accent text-white"
-                : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" /> Product
-          </button>
-          <button
-            onClick={() => setInputType("url")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              inputType === "url"
-                ? "bg-autronis-accent text-white"
-                : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
-            }`}
-          >
-            <Link className="w-3.5 h-3.5" /> URL scrapen
-          </button>
+          {(["product", "url", "image"] as const).map(type => (
+            <button
+              key={type}
+              onClick={() => setInputType(type)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                inputType === type
+                  ? "bg-autronis-accent text-white"
+                  : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"
+              }`}
+            >
+              {type === "product" && <><Package className="w-3.5 h-3.5" /> Product</>}
+              {type === "url" && <><Link className="w-3.5 h-3.5" /> URL scrapen</>}
+              {type === "image" && <><Upload className="w-3.5 h-3.5" /> Afbeelding</>}
+            </button>
+          ))}
         </div>
-        <div className="flex gap-3">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === "Enter" && generate()}
-            placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
-            className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
-          />
-          <button
-            onClick={generate}
-            disabled={loading || !input.trim()}
-            className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {loading ? "Genereren..." : "Genereer"}
-          </button>
-        </div>
+
+        {inputType === "image" ? (
+          <div className="flex gap-3 items-start">
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
+              onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+            {uploadedImage ? (
+              <div className="flex-1 flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5">
+                <img src={uploadedImage.preview} alt="upload" className="w-10 h-10 object-contain rounded" />
+                <span className="text-sm text-autronis-text-primary flex-1">Afbeelding geladen</span>
+                <button onClick={() => setUploadedImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 flex flex-col items-center gap-2 py-6 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
+              >
+                <Upload className="w-6 h-6" />
+                <span className="text-sm">Klik om een afbeelding te uploaden</span>
+                <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
+              </button>
+            )}
+            <button
+              onClick={generate}
+              disabled={loading || !uploadedImage}
+              className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {loading ? "Genereren..." : "Genereer"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-3">
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && generate()}
+              placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
+              className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
+            />
+            <button
+              onClick={generate}
+              disabled={loading || !input.trim()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              {loading ? "Genereren..." : "Genereer"}
+            </button>
+          </div>
+        )}
         {error && (
           <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">
             {error}

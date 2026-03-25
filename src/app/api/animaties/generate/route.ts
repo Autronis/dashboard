@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -72,33 +73,47 @@ Return ONLY a JSON object with these exact fields, no markdown, no explanation:
 }`;
 
 export async function POST(req: NextRequest) {
-  const { url, product } = await req.json() as { url?: string; product?: string };
+  const { url, product, imageBase64, mediaType } = await req.json() as {
+    url?: string;
+    product?: string;
+    imageBase64?: string;
+    mediaType?: string;
+  };
 
-  let context = "";
-  let bronLabel = product ?? "";
+  let bronLabel = product ?? url ?? "afbeelding";
+  let userContent: MessageParam["content"] = [];
 
-  if (url) {
+  if (imageBase64 && mediaType) {
+    userContent = [
+      {
+        type: "image",
+        source: { type: "base64", media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imageBase64 },
+      },
+      {
+        type: "text",
+        text: "Analyseer dit product/logo en genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2. Gebruik de exacte kleuren, materialen en vormen die je ziet in de afbeelding.",
+      },
+    ];
+    bronLabel = "geüploade afbeelding";
+  } else if (url) {
     try {
       const scraped = await scrapeUrl(url);
-      context = `Website content:\n${scraped}`;
+      userContent = [{ type: "text", text: `Genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2 op basis van:\n\nWebsite content:\n${scraped}` }];
       bronLabel = url;
     } catch {
       return NextResponse.json({ error: "Kon URL niet scrapen. Probeer een productnaam." }, { status: 400 });
     }
   } else if (product) {
-    context = `Product: ${product}`;
+    userContent = [{ type: "text", text: `Genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2 op basis van:\n\nProduct: ${product}` }];
   } else {
-    return NextResponse.json({ error: "Geef een URL of productnaam op." }, { status: 400 });
+    return NextResponse.json({ error: "Geef een URL, productnaam of afbeelding op." }, { status: 400 });
   }
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 2000,
     system: SYSTEM_PROMPT,
-    messages: [{
-      role: "user",
-      content: `Genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2 op basis van:\n\n${context}`,
-    }],
+    messages: [{ role: "user", content: userContent }],
   });
 
   const raw = message.content[0].type === "text" ? message.content[0].text : "";

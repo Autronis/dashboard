@@ -37,6 +37,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
 
+function CountUp({ to, suffix = "" }: { to: number; suffix?: string }) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (to === 0) { setVal(0); return; }
+    let current = 0;
+    const step = Math.max(1, Math.ceil(to / 25));
+    const id = setInterval(() => {
+      current = Math.min(current + step, to);
+      setVal(current);
+      if (current >= to) clearInterval(id);
+    }, 24);
+    return () => clearInterval(id);
+  }, [to]);
+  return <>{val}{suffix}</>;
+}
+
 // Auto-detect icon based on project name or tech stack
 function getProjectIcon(project: Project) {
   const naam = project.naam.toLowerCase();
@@ -332,7 +348,7 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: P
         </div>
         <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Sparkline data={project.sparkline} className="opacity-60 group-hover:opacity-100 transition-opacity" />
+            <Sparkline data={project.sparkline} />
             <StatusBadge status={project.status ?? "actief"} />
           </div>
           {project.status === "actief" && <HealthBadge project={project} />}
@@ -595,10 +611,10 @@ export default function ProjectenPage() {
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: "Totaal", value: kpis.totaal, icon: FolderKanban, color: "text-autronis-text-primary", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
-            { label: "Actief", value: kpis.actief, icon: Loader2, color: "text-blue-400", iconBg: "bg-blue-500/10 text-blue-400" },
-            { label: "Taken open", value: kpis.takenOpen, icon: ListTodo, color: "text-amber-400", iconBg: "bg-amber-500/10 text-amber-400" },
-            { label: "Totale uren", value: `${Math.round(kpis.totaleUren / 60)}u`, icon: Clock, color: "text-autronis-accent", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
+            { label: "Totaal", to: kpis.totaal, suffix: "", icon: FolderKanban, color: "text-autronis-text-primary", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
+            { label: "Actief", to: kpis.actief, suffix: "", icon: Loader2, color: "text-blue-400", iconBg: "bg-blue-500/10 text-blue-400" },
+            { label: "Taken open", to: kpis.takenOpen, suffix: "", icon: ListTodo, color: "text-amber-400", iconBg: "bg-amber-500/10 text-amber-400" },
+            { label: "Totale uren", to: Math.round(kpis.totaleUren / 60), suffix: "u", icon: Clock, color: "text-autronis-accent", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
           ].map((kpi) => (
             <div key={kpi.label} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
@@ -606,7 +622,7 @@ export default function ProjectenPage() {
                   <kpi.icon className="w-4 h-4" />
                 </div>
               </div>
-              <p className={cn("text-2xl font-bold tabular-nums", kpi.color)}>{kpi.value}</p>
+              <p className={cn("text-2xl font-bold tabular-nums", kpi.color)}><CountUp to={kpi.to} suffix={kpi.suffix} /></p>
               <p className="text-xs text-autronis-text-secondary mt-1">{kpi.label}</p>
             </div>
           ))}
@@ -697,10 +713,11 @@ export default function ProjectenPage() {
               {sorted.map((project, i) => (
                 <motion.div
                   key={project.id}
+                  layout
                   initial={{ opacity: 0, y: 16, scale: 0.97 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4) }}
+                  transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4), layout: { duration: 0.22 } }}
                 >
                   <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} zoek={zoek} />
                 </motion.div>

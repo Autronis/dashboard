@@ -26,19 +26,23 @@ import {
   ArrowRight,
   Server,
   AlertTriangle,
+  Search,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import type { SequentieListItem } from "@/hooks/queries/use-outreach";
 
 // ============ STATUS CONFIG ============
 
 const statusConfig: Record<string, { label: string; kleur: string; icon: typeof Clock }> = {
-  draft: { label: "Concept", kleur: "text-[var(--text-tertiary)] bg-[var(--border)]/30", icon: Clock },
-  actief: { label: "Actief", kleur: "text-emerald-400 bg-emerald-400/10", icon: Play },
-  gepauzeerd: { label: "Gepauzeerd", kleur: "text-yellow-400 bg-yellow-400/10", icon: Pause },
-  voltooid: { label: "Voltooid", kleur: "text-blue-400 bg-blue-400/10", icon: CheckCircle },
-  gestopt: { label: "Gestopt (reply)", kleur: "text-purple-400 bg-purple-400/10", icon: MessageCircle },
+  draft:       { label: "Concept",        kleur: "text-[var(--text-tertiary)] bg-[var(--border)]/30", icon: Clock },
+  actief:      { label: "Actief",         kleur: "text-emerald-400 bg-emerald-400/10", icon: Play },
+  gepauzeerd:  { label: "Gepauzeerd",     kleur: "text-yellow-400 bg-yellow-400/10", icon: Pause },
+  voltooid:    { label: "Voltooid",       kleur: "text-blue-400 bg-blue-400/10", icon: CheckCircle },
+  gestopt:     { label: "Gestopt (reply)", kleur: "text-purple-400 bg-purple-400/10", icon: MessageCircle },
 };
 
 // ============ ANIMATED COUNT ============
@@ -64,7 +68,7 @@ function AnimatedCount({ value, suffix = "" }: { value: number; suffix?: string 
     prev.current = target;
   }, [value]);
 
-  return <>{display}{suffix}</>
+  return <>{display}{suffix}</>;
 }
 
 // ============ VOORTGANG BLOKJES ============
@@ -72,16 +76,22 @@ function AnimatedCount({ value, suffix = "" }: { value: number; suffix?: string 
 function VoortgangBlokjes({ verstuurd, totaal }: { verstuurd: number; totaal: number }) {
   if (totaal === 0) return null;
   return (
-    <div className="flex items-center gap-0.5" title={`${verstuurd}/${totaal} verstuurd`}>
+    <div
+      className="flex items-center gap-0.5"
+      title={`${verstuurd}/${totaal} e-mails verstuurd`}
+    >
       {Array.from({ length: totaal }).map((_, i) => (
         <div
           key={i}
           className={cn(
-            "w-2.5 h-2.5 rounded-sm transition-colors",
+            "w-2 h-2 rounded-sm transition-colors",
             i < verstuurd ? "bg-[var(--accent)]" : "bg-[var(--border)]"
           )}
         />
       ))}
+      <span className="ml-1 text-[10px] text-[var(--text-tertiary)] tabular-nums">
+        {verstuurd}/{totaal}
+      </span>
     </div>
   );
 }
@@ -102,15 +112,20 @@ function DomeinDot({
   const verstuurd = vandaagVerstuurd ?? 0;
   const limiet = dagLimiet ?? 50;
   const pct = limiet > 0 ? verstuurd / limiet : 0;
-
   const dotColor =
     pct >= 1 ? "bg-red-500" : pct >= 0.8 ? "bg-amber-400" : "bg-emerald-400";
 
   return (
-    <span className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
-      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} title={`${verstuurd}/${limiet} vandaag`} />
+    <span
+      className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]"
+      title={`${verstuurd}/${limiet} vandaag verstuurd via ${domein}`}
+    >
+      <span className={cn("w-1.5 h-1.5 rounded-full shrink-0", dotColor)} />
       <ExternalLink className="w-3 h-3" />
       {domein}
+      <span className="text-[10px] tabular-nums">
+        ({verstuurd}/{limiet})
+      </span>
     </span>
   );
 }
@@ -127,8 +142,14 @@ function VolgendeEmail({ geplandOp }: { geplandOp: string | null }) {
   const dagen = Math.floor(diffMs / 86400000);
   const uren = Math.floor((diffMs % 86400000) / 3600000);
 
+  const isVandaag = dagen === 0 && uren < 24;
   const label = dagen > 0 ? `over ${dagen}d` : `over ${uren}u`;
-  return <span className="text-xs text-[var(--text-tertiary)]">Volgende {label}</span>;
+
+  return (
+    <span className={cn("text-xs", isVandaag ? "text-amber-400 font-medium" : "text-[var(--text-tertiary)]")}>
+      {isVandaag && "📧 "}Volgende {label}
+    </span>
+  );
 }
 
 // ============ ACTIVEER KNOP (arm → confirm) ============
@@ -149,7 +170,9 @@ function ActiveerKnop({ seqId, onSuccess }: { seqId: number; onSuccess: () => vo
     }
   }
 
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   return (
     <button
@@ -163,7 +186,9 @@ function ActiveerKnop({ seqId, onSuccess }: { seqId: number; onSuccess: () => vo
       )}
       title={armed ? "Klik nogmaals om te bevestigen" : "Activeren"}
     >
-      {armed ? "Bevestig?" : <Play className="w-4 h-4" />}
+      {mutation.isPending ? (
+        <span className="w-4 h-4 block border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+      ) : armed ? "Bevestig?" : <Play className="w-4 h-4" />}
     </button>
   );
 }
@@ -187,40 +212,50 @@ function SequentieRij({
   const isActief = seq.status === "actief";
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.04 }}
       className={cn(
-        "relative rounded-xl border transition-all",
-        "opacity-0 animate-[fadeSlideIn_0.3s_ease_forwards]",
+        "relative rounded-xl border transition-colors",
         isGestopt
-          ? "border-emerald-500/20 bg-emerald-500/3 hover:border-emerald-500/30 gestopt-shimmer"
+          ? "border-emerald-500/25 bg-emerald-500/[0.03] hover:border-emerald-500/40 shadow-[0_0_16px_2px_rgba(52,211,153,0.05)]"
           : "bg-[var(--card)] border-[var(--border)] hover:border-[var(--accent)]/30"
       )}
-      style={{ animationDelay: `${index * 50}ms` }}
     >
       <div className="p-5">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <Link href={`/outreach/${seq.id}`} className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-1.5 flex-wrap">
               <h3 className="font-semibold text-lg truncate">
                 {seq.bedrijfsnaam ?? "Onbekend"}
               </h3>
-              {/* Status badge */}
-              <span className={cn(
-                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors duration-500",
-                status.kleur
-              )}>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium",
+                  status.kleur
+                )}
+              >
                 <StatusIcon className="w-3 h-3" />
                 {status.label}
               </span>
-              {/* A/B badge */}
               {seq.abVariant && (
-                <span className={cn(
-                  "px-2 py-0.5 rounded text-xs font-bold font-mono",
-                  seq.abVariant === "a"
-                    ? "bg-[var(--accent)]/15 text-[var(--accent)]"
-                    : "bg-purple-500/15 text-purple-400"
-                )}>
+                <span
+                  className={cn(
+                    "px-2 py-0.5 rounded text-xs font-bold font-mono",
+                    seq.abVariant === "a"
+                      ? "bg-[var(--accent)]/15 text-[var(--accent)]"
+                      : "bg-purple-500/15 text-purple-400"
+                  )}
+                >
                   {seq.abVariant.toUpperCase()}
+                </span>
+              )}
+              {/* Bounced warning */}
+              {seq.bounced > 0 && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-400/10 text-red-400">
+                  <AlertCircle className="w-3 h-3" />
+                  {seq.bounced} bounce
                 </span>
               )}
             </div>
@@ -238,17 +273,21 @@ function SequentieRij({
                 <span className="text-xs text-purple-400">{seq.geopend} geopend</span>
               )}
               {seq.beantwoord > 0 && (
-                <span className="text-xs text-emerald-400 font-medium">{seq.beantwoord} reply</span>
+                <span className="text-xs text-emerald-400 font-medium">
+                  ✓ {seq.beantwoord} reply
+                </span>
               )}
               {isActief && <VolgendeEmail geplandOp={seq.volgendeGeplandEmail} />}
               {seq.aangemaaktOp && (
-                <span className="text-xs text-[var(--text-tertiary)]">{formatDatum(seq.aangemaaktOp)}</span>
+                <span className="text-xs text-[var(--text-tertiary)]">
+                  {formatDatum(seq.aangemaaktOp)}
+                </span>
               )}
             </div>
           </Link>
 
           {/* Actie knoppen */}
-          <div className="flex items-center gap-2 ml-4 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             {(seq.status === "draft" || seq.status === "gepauzeerd") && (
               <ActiveerKnop seqId={seq.id} onSuccess={onActivate} />
             )}
@@ -261,9 +300,132 @@ function SequentieRij({
                 <Pause className="w-4 h-4" />
               </button>
             )}
+            <Link
+              href={`/outreach/${seq.id}`}
+              className="p-2 rounded-lg text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:bg-[var(--border)]/40 transition-colors"
+              title="Bekijken"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// ============ FUNNEL KPI ROW ============
+
+function FunnelKpis({
+  verstuurd,
+  geopend,
+  geklikt,
+  beantwoord,
+  openRate,
+  clickRate,
+  replyRate,
+}: {
+  verstuurd: number;
+  geopend: number;
+  geklikt: number;
+  beantwoord: number;
+  openRate: number;
+  clickRate: number;
+  replyRate: number;
+}) {
+  const stappen = [
+    {
+      icon: Send,
+      iconColor: "text-[var(--accent)]",
+      iconBg: "bg-[var(--accent)]/10",
+      label: "Verstuurd",
+      value: verstuurd,
+      sub: null as string | null,
+      barPct: 100,
+      barColor: "bg-[var(--accent)]",
+    },
+    {
+      icon: Eye,
+      iconColor: "text-blue-400",
+      iconBg: "bg-blue-400/10",
+      label: "Open Rate",
+      value: openRate,
+      suffix: "%",
+      sub: `${geopend} geopend`,
+      barPct: openRate,
+      barColor: "bg-blue-400",
+    },
+    {
+      icon: MousePointerClick,
+      iconColor: "text-purple-400",
+      iconBg: "bg-purple-400/10",
+      label: "Click Rate",
+      value: clickRate,
+      suffix: "%",
+      sub: `${geklikt} geklikt`,
+      barPct: clickRate,
+      barColor: "bg-purple-400",
+    },
+    {
+      icon: MessageCircle,
+      iconColor: replyRate > 0 ? "text-emerald-400" : "text-[var(--text-tertiary)]",
+      iconBg: replyRate > 0 ? "bg-emerald-400/10" : "bg-[var(--border)]/20",
+      label: "Reply Rate",
+      value: replyRate,
+      suffix: "%",
+      sub: `${beantwoord} ${beantwoord === 1 ? "reply" : "replies"}`,
+      barPct: replyRate,
+      barColor: "bg-emerald-400",
+      highlight: replyRate > 0,
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {stappen.map((stap, i) => {
+        const Icon = stap.icon;
+        return (
+          <motion.div
+            key={stap.label}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: i * 0.07 }}
+            className={cn(
+              "bg-[var(--card)] rounded-xl p-5 border transition-colors",
+              stap.highlight
+                ? "border-emerald-500/30 shadow-[0_0_20px_2px_rgba(52,211,153,0.06)]"
+                : "border-[var(--border)]"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className={cn("p-1.5 rounded-lg", stap.iconBg)}>
+                <Icon className={cn("w-3.5 h-3.5", stap.iconColor)} />
+              </div>
+              <span className="text-xs text-[var(--text-secondary)]">{stap.label}</span>
+              {/* Funnel arrow connector — hidden on last */}
+              {i < stappen.length - 1 && (
+                <ChevronDown className="w-3 h-3 text-[var(--border)] ml-auto md:hidden" />
+              )}
+            </div>
+            <p className="text-2xl font-bold tabular-nums">
+              <AnimatedCount value={stap.value} suffix={"suffix" in stap ? stap.suffix : ""} />
+            </p>
+            {stap.sub && (
+              <p className="text-xs text-[var(--text-tertiary)] mt-0.5">{stap.sub}</p>
+            )}
+            {/* Conversion bar */}
+            <div className="mt-3 h-1 bg-[var(--border)]/30 rounded-full overflow-hidden">
+              <motion.div
+                className={cn("h-full rounded-full", stap.barColor)}
+                initial={{ width: "0%" }}
+                animate={{ width: `${Math.min(stap.barPct, 100)}%` }}
+                transition={{ duration: 0.7, ease: "easeOut", delay: i * 0.1 + 0.2 }}
+              />
+            </div>
+          </motion.div>
+        );
+      })}
     </div>
   );
 }
@@ -308,7 +470,7 @@ function MailboxenTab() {
             key={d.id}
             className={cn(
               "bg-[var(--card)] rounded-xl p-5 border transition-colors",
-              actief ? "border-[var(--border)]" : "border-[var(--border)]/40 opacity-60"
+              actief ? "border-[var(--border)] hover:border-[var(--accent)]/30" : "border-[var(--border)]/40 opacity-60"
             )}
           >
             <div className="flex items-start justify-between mb-3">
@@ -325,8 +487,9 @@ function MailboxenTab() {
                     SES ✓
                   </span>
                 ) : (
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-400/10 text-red-400">
-                    SES ✗
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-400/10 text-red-400 flex items-center gap-1">
+                    <AlertTriangle className="w-2.5 h-2.5" />
+                    SES
                   </span>
                 )}
                 {!actief && (
@@ -339,16 +502,18 @@ function MailboxenTab() {
 
             {/* Daglimiet balk */}
             <div className="mb-1">
-              <div className="flex items-center justify-between text-[11px] mb-1">
+              <div className="flex items-center justify-between text-[11px] mb-1.5">
                 <span className="text-[var(--text-tertiary)]">Vandaag verstuurd</span>
                 <span className="tabular-nums text-[var(--text-secondary)] font-medium">
                   {verstuurd} / {limiet}
                 </span>
               </div>
-              <div className="h-1.5 bg-[var(--border)]/30 rounded-full overflow-hidden">
-                <div
-                  className={cn("h-full rounded-full transition-all duration-500", barColor)}
-                  style={{ width: `${pct * 100}%` }}
+              <div className="h-2 bg-[var(--border)]/30 rounded-full overflow-hidden">
+                <motion.div
+                  className={cn("h-full rounded-full", barColor)}
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${pct * 100}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
                 />
               </div>
             </div>
@@ -360,6 +525,24 @@ function MailboxenTab() {
   );
 }
 
+// ============ SORT TYPES ============
+
+type SorteerOptie = "datum" | "naam" | "status";
+
+function sorteerSequenties(lijst: SequentieListItem[], optie: SorteerOptie): SequentieListItem[] {
+  return [...lijst].sort((a, b) => {
+    if (optie === "naam") {
+      return (a.bedrijfsnaam ?? "").localeCompare(b.bedrijfsnaam ?? "");
+    }
+    if (optie === "status") {
+      const order = ["actief", "gepauzeerd", "draft", "gestopt", "voltooid"];
+      return order.indexOf(a.status) - order.indexOf(b.status);
+    }
+    // datum (default: nieuwste eerst)
+    return (b.aangemaaktOp ?? "").localeCompare(a.aangemaaktOp ?? "");
+  });
+}
+
 // ============ MAIN PAGE ============
 
 type PageTab = "sequenties" | "mailboxen";
@@ -367,26 +550,58 @@ type PageTab = "sequenties" | "mailboxen";
 export default function OutreachPage() {
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [pageTab, setPageTab] = useState<PageTab>("sequenties");
+  const [zoek, setZoek] = useState("");
+  const [sorteer, setSorteer] = useState<SorteerOptie>("datum");
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
   const { data, isLoading } = useOutreach(statusFilter);
   const pauseMutation = usePauseSequentie();
   const { addToast } = useToast();
+
+  // Close sort dropdown on outside click
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown);
+    return () => document.removeEventListener("mousedown", handleMouseDown);
+  }, []);
 
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-48" />
         <div className="grid grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24" />)}
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
         </div>
         <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const sequenties = data?.sequenties ?? [];
+  const alleSequenties = data?.sequenties ?? [];
   const kpis = data?.kpis;
   const statusCounts = kpis?.statusCounts;
   const scansZonderOutreach = kpis?.scansZonderOutreach ?? 0;
+
+  // Filter + sort
+  const zoekTerm = zoek.toLowerCase().trim();
+  const gefilterdeSequenties = sorteerSequenties(
+    zoekTerm
+      ? alleSequenties.filter(
+          (s) =>
+            s.bedrijfsnaam?.toLowerCase().includes(zoekTerm) ||
+            s.email?.toLowerCase().includes(zoekTerm) ||
+            s.domein?.toLowerCase().includes(zoekTerm)
+        )
+      : alleSequenties,
+    sorteer
+  );
 
   const STATUS_TABS: { id: string; label: string; count?: number }[] = [
     { id: "alle", label: "Alle", count: kpis?.totaalSequenties },
@@ -396,6 +611,12 @@ export default function OutreachPage() {
     { id: "gestopt", label: "Gestopt", count: statusCounts?.gestopt },
     { id: "voltooid", label: "Voltooid", count: statusCounts?.voltooid },
   ];
+
+  const SORTEER_LABELS: Record<SorteerOptie, string> = {
+    datum: "Nieuwste eerst",
+    naam: "Naam A-Z",
+    status: "Status",
+  };
 
   function handlePause(id: number) {
     pauseMutation.mutate(id, {
@@ -411,7 +632,14 @@ export default function OutreachPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Mail className="w-8 h-8 text-[var(--accent)]" />
-            <h1 className="text-3xl font-bold">Outreach</h1>
+            <div>
+              <h1 className="text-3xl font-bold">Outreach</h1>
+              {kpis && kpis.actief > 0 && (
+                <p className="text-xs text-[var(--text-tertiary)] mt-0.5">
+                  {kpis.actief} actieve {kpis.actief === 1 ? "sequentie" : "sequenties"} · {kpis.totaalSequenties} totaal
+                </p>
+              )}
+            </div>
           </div>
           {/* Page tab toggle */}
           <div className="flex bg-[var(--card)] border border-[var(--border)] rounded-xl p-1 gap-1">
@@ -445,92 +673,155 @@ export default function OutreachPage() {
           <MailboxenTab />
         ) : (
           <>
-            {/* KPI Cards */}
+            {/* KPI Funnel */}
             {kpis && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Send className="w-4 h-4 text-[var(--accent)]" />
-                    <span className="text-xs text-[var(--text-secondary)]">Verstuurd</span>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums">
-                    <AnimatedCount value={kpis.verstuurd} />
-                  </p>
-                </div>
-                <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Eye className="w-4 h-4 text-blue-400" />
-                    <span className="text-xs text-[var(--text-secondary)]">Open Rate</span>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums">
-                    <AnimatedCount value={kpis.openRate} suffix="%" />
-                  </p>
-                  <p className="text-xs text-[var(--text-tertiary)]">{kpis.geopend} geopend</p>
-                </div>
-                <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MousePointerClick className="w-4 h-4 text-purple-400" />
-                    <span className="text-xs text-[var(--text-secondary)]">Click Rate</span>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums">
-                    <AnimatedCount value={kpis.clickRate} suffix="%" />
-                  </p>
-                  <p className="text-xs text-[var(--text-tertiary)]">{kpis.geklikt} geklikt</p>
-                </div>
-                <div className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <MessageCircle className="w-4 h-4 text-emerald-400" />
-                    <span className="text-xs text-[var(--text-secondary)]">Reply Rate</span>
-                  </div>
-                  <p className="text-2xl font-bold tabular-nums">
-                    <AnimatedCount value={kpis.replyRate} suffix="%" />
-                  </p>
-                  <p className="text-xs text-[var(--text-tertiary)]">{kpis.beantwoord} replies</p>
-                </div>
-              </div>
+              <FunnelKpis
+                verstuurd={kpis.verstuurd}
+                geopend={kpis.geopend}
+                geklikt={kpis.geklikt}
+                beantwoord={kpis.beantwoord}
+                openRate={kpis.openRate}
+                clickRate={kpis.clickRate}
+                replyRate={kpis.replyRate}
+              />
             )}
 
-            {/* Status filter tabs met counts */}
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {STATUS_TABS.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setStatusFilter(tab.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
-                    statusFilter === tab.id
-                      ? "bg-[var(--accent)] text-white"
-                      : "bg-[var(--card)] text-[var(--text-secondary)] hover:bg-[var(--card-hover)]"
+            {/* Zoek + Sort + Status filter row */}
+            <div className="space-y-3">
+              {/* Search + Sort */}
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)]" />
+                  <input
+                    type="text"
+                    value={zoek}
+                    onChange={(e) => setZoek(e.target.value)}
+                    placeholder="Zoek op bedrijf, e-mail of domein..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-sm text-[var(--text-primary)] placeholder:text-[var(--text-tertiary)] focus:outline-none focus:border-[var(--accent)]/50 transition-colors"
+                  />
+                  {zoek && (
+                    <button
+                      onClick={() => setZoek("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                    >
+                      ×
+                    </button>
                   )}
-                >
-                  {tab.label}
-                  {tab.count !== undefined && tab.count > 0 && (
-                    <span className={cn(
-                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center",
+                </div>
+
+                {/* Sort dropdown */}
+                <div className="relative" ref={sortRef}>
+                  <button
+                    onClick={() => setSortDropdownOpen((o) => !o)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  >
+                    {SORTEER_LABELS[sorteer]}
+                    {sortDropdownOpen ? (
+                      <ChevronUp className="w-3.5 h-3.5" />
+                    ) : (
+                      <ChevronDown className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                  <AnimatePresence>
+                    {sortDropdownOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                        transition={{ duration: 0.12 }}
+                        className="absolute right-0 top-full mt-1 z-20 bg-[var(--card)] border border-[var(--border)] rounded-xl shadow-xl overflow-hidden min-w-[160px]"
+                      >
+                        {(Object.keys(SORTEER_LABELS) as SorteerOptie[]).map((opt) => (
+                          <button
+                            key={opt}
+                            onClick={() => { setSorteer(opt); setSortDropdownOpen(false); }}
+                            className={cn(
+                              "w-full text-left px-4 py-2.5 text-sm transition-colors",
+                              sorteer === opt
+                                ? "bg-[var(--accent)]/10 text-[var(--accent)]"
+                                : "text-[var(--text-secondary)] hover:bg-[var(--border)]/30 hover:text-[var(--text-primary)]"
+                            )}
+                          >
+                            {SORTEER_LABELS[opt]}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              {/* Status filter tabs */}
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {STATUS_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setStatusFilter(tab.id)}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
                       statusFilter === tab.id
-                        ? "bg-white/20 text-white"
-                        : "bg-[var(--border)] text-[var(--text-tertiary)]"
-                    )}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              ))}
+                        ? "bg-[var(--accent)] text-white"
+                        : "bg-[var(--card)] text-[var(--text-secondary)] hover:bg-[var(--card-hover)] hover:text-[var(--text-primary)]"
+                    )}
+                  >
+                    {tab.label}
+                    {tab.count !== undefined && tab.count > 0 && (
+                      <span
+                        className={cn(
+                          "text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center",
+                          statusFilter === tab.id
+                            ? "bg-white/20 text-white"
+                            : "bg-[var(--border)] text-[var(--text-tertiary)]"
+                        )}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Sequentie list */}
-            {sequenties.length === 0 ? (
+            {gefilterdeSequenties.length === 0 ? (
               <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] overflow-hidden">
                 <div className="p-12 text-center">
-                  <Mail className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4 opacity-40" />
-                  {scansZonderOutreach > 0 ? (
+                  {zoek ? (
                     <>
+                      <Search className="w-10 h-10 text-[var(--text-tertiary)] mx-auto mb-3 opacity-40" />
                       <p className="text-[var(--text-primary)] font-medium mb-1">
-                        Je hebt {scansZonderOutreach} Sales Engine {scansZonderOutreach === 1 ? "scan" : "scans"} klaarstaan zonder outreach
+                        Geen resultaten voor &ldquo;{zoek}&rdquo;
                       </p>
-                      <p className="text-[var(--text-secondary)] text-sm mb-5">
-                        Genereer sequenties vanuit de Sales Engine pagina
-                      </p>
+                      <button
+                        onClick={() => setZoek("")}
+                        className="text-sm text-[var(--accent)] hover:opacity-80 transition-opacity"
+                      >
+                        Zoekopdracht wissen
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4 opacity-40" />
+                      {scansZonderOutreach > 0 ? (
+                        <>
+                          <p className="text-[var(--text-primary)] font-medium mb-1">
+                            {scansZonderOutreach} Sales Engine{" "}
+                            {scansZonderOutreach === 1 ? "scan" : "scans"} klaarstaan
+                          </p>
+                          <p className="text-[var(--text-secondary)] text-sm mb-5">
+                            Genereer sequenties vanuit de Sales Engine pagina
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[var(--text-primary)] font-medium mb-1">
+                            Nog geen outreach sequenties
+                          </p>
+                          <p className="text-[var(--text-secondary)] text-sm mb-5">
+                            Scan een bedrijf via Sales Engine om een sequentie te genereren
+                          </p>
+                        </>
+                      )}
                       <Link
                         href="/sales-engine"
                         className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--accent)]/10 text-[var(--accent)] rounded-lg text-sm font-medium hover:bg-[var(--accent)]/20 transition-colors"
@@ -539,43 +830,32 @@ export default function OutreachPage() {
                         <ArrowRight className="w-4 h-4" />
                       </Link>
                     </>
-                  ) : (
-                    <p className="text-[var(--text-secondary)]">
-                      Nog geen outreach sequenties. Genereer er een vanuit een Sales Engine scan.
-                    </p>
                   )}
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
-                {sequenties.map((seq, i) => (
-                  <SequentieRij
-                    key={seq.id}
-                    seq={seq}
-                    index={i}
-                    onPause={handlePause}
-                    onActivate={() => addToast("Sequentie geactiveerd", "succes")}
-                  />
-                ))}
+                {zoek && (
+                  <p className="text-xs text-[var(--text-tertiary)] px-1">
+                    {gefilterdeSequenties.length} resultaat{gefilterdeSequenties.length !== 1 ? "en" : ""} voor &ldquo;{zoek}&rdquo;
+                  </p>
+                )}
+                <AnimatePresence>
+                  {gefilterdeSequenties.map((seq, i) => (
+                    <SequentieRij
+                      key={seq.id}
+                      seq={seq}
+                      index={i}
+                      onPause={handlePause}
+                      onActivate={() => addToast("Sequentie geactiveerd", "succes")}
+                    />
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </>
         )}
       </div>
-
-      <style>{`
-        @keyframes fadeSlideIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes gestoptShimmer {
-          0%, 100% { box-shadow: 0 0 0 0 transparent; }
-          50% { box-shadow: 0 0 12px 2px rgba(52, 211, 153, 0.08); }
-        }
-        .gestopt-shimmer {
-          animation: gestoptShimmer 3s ease-in-out infinite;
-        }
-      `}</style>
     </PageTransition>
   );
 }

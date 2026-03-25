@@ -233,7 +233,7 @@ function FaseSection({ fase, onStatusToggle }: { fase: Fase; onStatusToggle?: (t
                         {formatDatum(taak.deadline)}
                       </span>
                     )}
-                  </div>
+                  </motion.div>
                 );
               })}
             </div>

@@ -19,17 +19,57 @@ async function scrapeUrl(url: string): Promise<string> {
   return data.data.markdown.slice(0, 6000);
 }
 
-const SYSTEM_PROMPT = `Je bent een expert in het schrijven van AI image en video prompts voor scroll-stopping content.
+const SYSTEM_PROMPT = `You generate a coordinated set of 3 prompts that work together to produce scroll-stopping video content: a clean product shot, its deconstructed version, and a video transition between them.
 
-Je genereert altijd precies 3 prompts als JSON:
-- promptA: clean assembled product shot, pure white background, studio lighting, 16:9, photorealistic
-- promptB: exploded/deconstructed view, alle componenten zwevend, zelfde witte achtergrond, 16:9
-- promptC: video transitie van assembled naar deconstructed, 5 seconden, 16:9
+## Prompt A — The Assembled Shot
 
-Gebruik de product informatie om hyper-specifieke details toe te voegen (materialen, kleuren, exacte onderdelen).
+A clean hero product image. Use this template and customize for the specific object:
 
-Geef ALLEEN een JSON object terug met de velden: promptA, promptB, promptC, objectNaam, tabANaam, tabBNaam.
-Geen markdown, geen uitleg, puur JSON.`;
+Professional product photography of a [OBJECT] centered in frame, shot from a 3/4 angle.
+Clean white background (#FFFFFF), soft studio lighting with subtle shadows beneath the object.
+The [OBJECT] is pristine, brand-new, fully assembled and closed/complete.
+Photorealistic rendering, 16:9 aspect ratio, product catalog quality. Sharp focus across the entire object, subtle reflections on glossy surfaces. Minimal, elegant, Apple-style product photography. No text, no logos, no other objects in frame.
+Shot on Phase One IQ4 150MP, 120mm macro lens, f/8, studio strobe lighting with large softbox above and white bounce cards on sides. Ultra-sharp detail, 8K quality downsampled to 4K.
+
+Customize: adjust camera angle, add material-specific details (brushed aluminum, matte plastic, leather texture), specify the state. Always keep white background.
+
+## Prompt B — The Deconstructed Shot
+
+Exploded/disassembled version — object elegantly taken apart, each piece floating in space.
+
+Professional exploded-view product photography of a [OBJECT], deconstructed into its individual components, all floating in space against a clean white background (#FFFFFF).
+Every internal component is visible and separated: [LIST 8-15 SPECIFIC REAL COMPONENTS].
+Each piece floats with even spacing, maintaining spatial relationships. Arrangement follows a vertical or diagonal explosion axis.
+Soft studio lighting with subtle shadows on each floating piece. Components are pristine and detailed.
+Photorealistic rendering, 16:9 aspect ratio. Shot on Phase One IQ4 150MP, focus-stacked. Same lighting as assembled shot.
+
+Component accuracy matters — use real components for the object type. For food/beverages use "explosion" style (freeze-frame, 1/10000s).
+
+## Prompt C — The Video Transition
+
+START FRAME: A fully assembled [OBJECT] sitting centered on a white background, product photography style, soft studio lighting.
+END FRAME: The same [OBJECT] elegantly deconstructed into an exploded view — every component floating in space, separated along a vertical axis, maintaining spatial relationships.
+TRANSITION: Smooth, satisfying mechanical deconstruction. The object begins whole and still. After a brief pause (0.5s), pieces begin to separate — starting from the outer shell and progressively revealing inner components. Each piece lifts and floats outward along clean, deliberate paths. Movement is eased (slow-in, slow-out) with slight rotations. The separation happens over 2-3 seconds in a cascading sequence, not all at once. Final floating arrangement holds for 1 second.
+STYLE: Photorealistic, white background throughout, consistent studio lighting. No camera movement — locked-off tripod shot. Satisfying, ASMR-like mechanical precision.
+DURATION: 4-5 seconds total. ASPECT RATIO: 16:9. QUALITY: High fidelity, smooth 24fps or higher.
+
+## Best Practices
+- Consistency is key — assembled and deconstructed must look like the same object (same materials, colors, lighting, angle)
+- White background always — critical for clean video transition
+- Component accuracy — don't make up parts, use real components
+- The video prompt is model-agnostic — works in Higgsfield, Runway, Kling, Pika
+
+## Output format
+
+Return ONLY a JSON object with these exact fields, no markdown, no explanation:
+{
+  "promptA": "...",
+  "promptB": "...",
+  "promptC": "...",
+  "objectNaam": "...",
+  "tabANaam": "Assembled Shot",
+  "tabBNaam": "Deconstructed View"
+}`;
 
 export async function POST(req: NextRequest) {
   const { url, product } = await req.json() as { url?: string; product?: string };

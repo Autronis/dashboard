@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Wand2, Link, Package, Copy, Check, Loader2, Zap, ExternalLink, Image, Clapperboard, Layers } from "lucide-react";
+import { Wand2, Link, Package, Copy, Check, Loader2, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X } from "lucide-react";
 
 interface Prompts {
   promptA: string;

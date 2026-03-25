@@ -8,7 +8,7 @@ import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
-const UUR_HOOGTE = 80; // px per uur
+const UUR_HOOGTE = 100; // px per uur
 
 function extractMeetingUrl(text: string | null | undefined): string | null {
   if (!text) return null;
@@ -411,7 +411,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
                 }}
               >
-                {height < 46 ? (
+                {height < 36 ? (
                   /* Compact single-line voor korte events */
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-xs font-semibold text-autronis-text-primary truncate flex-1 leading-tight">{item.titel}</span>
@@ -466,7 +466,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 }}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               >
-                {height < 46 ? (
+                {height < 36 ? (
                   <div className="flex items-center gap-1.5 min-w-0">
                     <CheckSquare className="w-3 h-3 text-green-400 flex-shrink-0" />
                     <span className="text-xs font-semibold text-autronis-text-primary truncate flex-1 leading-tight">{taak.titel}</span>

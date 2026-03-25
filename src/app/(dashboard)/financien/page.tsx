@@ -141,6 +141,18 @@ export default function FinancienPage() {
     return mul * a.factuurnummer.localeCompare(b.factuurnummer);
   });
 
+  const inlineVerzondenMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/facturen/${id}/verstuur`, { method: "POST" });
+      if (!res.ok) throw new Error();
+    },
+    onSuccess: () => {
+      invalidateFacturen();
+      addToast("Factuur gemarkeerd als verzonden", "succes");
+    },
+    onError: () => addToast("Kon factuur niet bijwerken", "fout"),
+  });
+
   const inlineBetaaldMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await fetch(`/api/facturen/${id}/betaald`, { method: "PUT" });
@@ -408,31 +420,42 @@ export default function FinancienPage() {
               <div className="flex flex-col gap-3">
                 <button
                   onClick={() => setHerinneringPreviewOpen(true)}
-                  className="inline-flex items-center justify-between gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors"
+                  className="group flex flex-col gap-2 px-5 py-4 bg-autronis-card border border-autronis-border rounded-xl hover:border-orange-500/40 hover:bg-orange-500/5 transition-all text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    <Bell className="w-4 h-4 text-orange-400" />
-                    Herinneringen versturen
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-orange-500/10 rounded-lg">
+                        <Bell className="w-3.5 h-3.5 text-orange-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-autronis-text-primary">Herinneringen</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-autronis-text-secondary/40 group-hover:text-orange-400 transition-colors" />
                   </div>
-                  {(herinneringPreview?.aantal ?? 0) > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 font-semibold">
-                      {herinneringPreview?.aantal}
-                    </span>
-                  )}
+                  <p className="text-xs text-autronis-text-secondary pl-8">
+                    {(herinneringPreview?.aantal ?? 0) > 0
+                      ? <span className="text-orange-400 font-medium">{herinneringPreview?.aantal} te late facturen</span>
+                      : "Geen openstaande herinneringen"}
+                  </p>
                 </button>
+
                 <button
                   onClick={() => setPeriodiekPreviewOpen(true)}
-                  className="inline-flex items-center justify-between gap-3 px-5 py-3.5 bg-autronis-card border border-autronis-border rounded-xl text-sm font-semibold text-autronis-text-primary hover:border-autronis-accent/50 hover:bg-autronis-accent/5 transition-colors"
+                  className="group flex flex-col gap-2 px-5 py-4 bg-autronis-card border border-autronis-border rounded-xl hover:border-blue-500/40 hover:bg-blue-500/5 transition-all text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    <RefreshCw className="w-4 h-4 text-blue-400" />
-                    Periodieke facturen
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-1.5 bg-blue-500/10 rounded-lg">
+                        <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
+                      </div>
+                      <span className="text-sm font-semibold text-autronis-text-primary">Periodiek</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-autronis-text-secondary/40 group-hover:text-blue-400 transition-colors" />
                   </div>
-                  {(periodiekPreview?.aantal ?? 0) > 0 && (
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold">
-                      {periodiekPreview?.aantal} klaar
-                    </span>
-                  )}
+                  <p className="text-xs text-autronis-text-secondary pl-8">
+                    {(periodiekPreview?.aantal ?? 0) > 0
+                      ? <span className="text-blue-400 font-medium">{periodiekPreview?.aantal} klaar om te genereren</span>
+                      : "Geen facturen klaar"}
+                  </p>
                 </button>
               </div>
 
@@ -647,6 +670,16 @@ export default function FinancienPage() {
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex items-center justify-end gap-2">
+                                {factuur.status === "concept" && (
+                                  <button
+                                    onClick={() => inlineVerzondenMutation.mutate(factuur.id)}
+                                    disabled={inlineVerzondenMutation.isPending}
+                                    className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-lg text-xs font-semibold transition-all"
+                                  >
+                                    <Send className="w-3.5 h-3.5" />
+                                    Verstuur
+                                  </button>
+                                )}
                                 {isVerzonden && (
                                   <button
                                     onClick={() => inlineBetaaldMutation.mutate(factuur.id)}

@@ -88,6 +88,17 @@ const DOEL_RIJ: Record<string, string> = {
   boekhouder: "bg-orange-500/[0.04] hover:bg-orange-500/[0.08]",
 };
 
+// Per-doeltype chip colors
+const DOEL_CHIP: Record<string, { bg: string; text: string }> = {
+  klantbezoek: { bg: "bg-teal-500/15", text: "text-teal-400" },
+  meeting: { bg: "bg-blue-500/15", text: "text-blue-400" },
+  inkoop: { bg: "bg-amber-500/15", text: "text-amber-400" },
+  netwerk: { bg: "bg-purple-500/15", text: "text-purple-400" },
+  training: { bg: "bg-green-500/15", text: "text-green-400" },
+  boekhouder: { bg: "bg-orange-500/15", text: "text-orange-400" },
+  overig: { bg: "bg-slate-500/15", text: "text-slate-400" },
+};
+
 const slideVariants = {
   enter: (dir: number) => ({ x: dir > 0 ? "30%" : "-30%", opacity: 0 }),
   center: {
@@ -274,6 +285,10 @@ export default function KilometersPage() {
   // Bar chart hover
   const [hoveredBar, setHoveredBar] = useState<number | null>(null);
 
+  // Table filter
+  const [zoek, setZoek] = useState("");
+  const [doelFilter, setDoelFilter] = useState<string | null>(null);
+
   // Data
   const { data: rittenData, isLoading: loading } = useRitten(maand, jaar);
   const ritten = rittenData?.ritten ?? [];
@@ -298,9 +313,27 @@ export default function KilometersPage() {
   const prevKm = prevData?.totaalKm ?? 0;
   const kmVerschil = prevKm > 0 ? ((totaalKm - prevKm) / prevKm * 100) : 0;
 
-  // Column sort
+  // Column sort + filter
   const sortedRitten = useMemo(() => {
-    const copy = [...ritten];
+    let copy = [...ritten];
+
+    // Apply doeltype filter
+    if (doelFilter) {
+      copy = copy.filter((r) => r.doelType === doelFilter);
+    }
+
+    // Apply search filter
+    if (zoek.trim()) {
+      const q = zoek.trim().toLowerCase();
+      copy = copy.filter(
+        (r) =>
+          r.vanLocatie.toLowerCase().includes(q) ||
+          r.naarLocatie.toLowerCase().includes(q) ||
+          (r.klantNaam?.toLowerCase().includes(q) ?? false) ||
+          (r.zakelijkDoel?.toLowerCase().includes(q) ?? false)
+      );
+    }
+
     copy.sort((a, b) => {
       let va: number | string = 0;
       let vb: number | string = 0;
@@ -314,7 +347,16 @@ export default function KilometersPage() {
       return sortRichting === "asc" ? (va as number) - (vb as number) : (vb as number) - (va as number);
     });
     return copy;
-  }, [ritten, sortKolom, sortRichting]);
+  }, [ritten, sortKolom, sortRichting, doelFilter, zoek]);
+
+  // Unique doeltypes present in this month's ritten (for filter chips)
+  const aanwezigeDoelTypes = useMemo(() => {
+    const seen = new Set<string>();
+    for (const r of ritten) {
+      if (r.doelType) seen.add(r.doelType);
+    }
+    return Array.from(seen);
+  }, [ritten]);
 
   const handleSort = useCallback((kolom: string) => {
     if (sortKolom === kolom) {

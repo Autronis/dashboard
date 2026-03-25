@@ -599,6 +599,16 @@ export default function BelastingPage() {
     ? kiaGrens - totaalInvestering
     : null;
 
+  // Optimalisatie score
+  const optimalisatieOk = [
+    urenCriterium?.voldoet ?? false,
+    (urenCriterium?.mkbVrijstelling ?? 0) > 0,
+    totaalInvestering >= 2801,
+    (wvData?.kmAftrek ?? 0) > 0,
+    (wvData?.afschrijvingen ?? 0) > 0,
+    totaalGereserveerd >= geschatteBelasting * 0.9,
+  ].filter(Boolean).length;
+
   // ---- LOADING STATE ----
 
   if (loadingBelasting) {
@@ -677,6 +687,38 @@ export default function BelastingPage() {
           </div>
         </div>
 
+        {/* Belasting gezondheid score */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-autronis-text-primary">Belastinggezonheid</span>
+              <span className={cn(
+                "text-sm font-bold tabular-nums",
+                optimalisatieOk >= 5 ? "text-green-400" : optimalisatieOk >= 3 ? "text-yellow-400" : "text-red-400"
+              )}>
+                {optimalisatieOk}/6
+              </span>
+            </div>
+            <div className="h-2 bg-autronis-bg rounded-full overflow-hidden">
+              <motion.div
+                className={cn(
+                  "h-full rounded-full",
+                  optimalisatieOk >= 5 ? "bg-green-500" : optimalisatieOk >= 3 ? "bg-yellow-500" : "bg-red-500"
+                )}
+                initial={{ width: 0 }}
+                animate={{ width: `${(optimalisatieOk / 6) * 100}%` }}
+                transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveTab("optimalisatie")}
+            className="flex-shrink-0 text-xs font-semibold text-autronis-text-secondary hover:text-autronis-accent transition-colors flex items-center gap-1"
+          >
+            Bekijk tips <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+
         {/* Urgent deadline banner */}
         {urgentDeadlines.length > 0 && (
           <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 flex items-center gap-3">
@@ -726,6 +768,11 @@ export default function BelastingPage() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const badge =
+              tab.id === "acties" && openDeadlines.length > 0 ? openDeadlines.length :
+              tab.id === "optimalisatie" ? optimalisatieOk :
+              null;
+            const badgeMax = tab.id === "optimalisatie" ? 6 : undefined;
             return (
               <button
                 key={tab.id}
@@ -742,12 +789,34 @@ export default function BelastingPage() {
                   <span className={cn("text-sm font-bold", isActive ? "text-autronis-accent" : "text-autronis-text-primary")}>
                     {tab.label}
                   </span>
+                  {badge !== null && badge !== undefined && (
+                    <span className={cn(
+                      "text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums leading-none",
+                      tab.id === "acties"
+                        ? (isActive ? "bg-red-400/20 text-red-300" : "bg-red-500/15 text-red-400")
+                        : badge === badgeMax
+                        ? (isActive ? "bg-green-400/20 text-green-300" : "bg-green-500/15 text-green-400")
+                        : (isActive ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary")
+                    )}>
+                      {badgeMax ? `${badge}/${badgeMax}` : badge}
+                    </span>
+                  )}
                 </div>
                 <span className="text-xs text-autronis-text-secondary">{tab.description}</span>
               </button>
             );
           })}
         </div>
+
+        {/* ===== TAB CONTENT ===== */}
+        <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.18, ease: "easeOut" }}
+        >
 
         {/* ===== TAB: OVERZICHT ===== */}
         {activeTab === "overzicht" && (
@@ -757,7 +826,11 @@ export default function BelastingPage() {
               <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Jouw situatie nu</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* BTW Status */}
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05, duration: 0.3 }}
+                  whileHover={{ scale: 1.02 }}
                   className={cn(
                     "p-5 rounded-xl border transition-all duration-300",
                     btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
@@ -783,10 +856,14 @@ export default function BelastingPage() {
                       Aangifte doen <ArrowRight className="w-3 h-3" />
                     </button>
                   )}
-                </div>
+                </motion.div>
 
                 {/* Belasting reservering */}
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.3 }}
+                  whileHover={{ scale: 1.02 }}
                   className={cn(
                     "p-5 rounded-xl border transition-all duration-300",
                     reserveringStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
@@ -809,10 +886,14 @@ export default function BelastingPage() {
                       Nog {formatBedrag(reserveringTekort)} reserveren
                     </p>
                   )}
-                </div>
+                </motion.div>
 
                 {/* Urencriterium */}
-                <div
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.19, duration: 0.3 }}
+                  whileHover={{ scale: 1.02 }}
                   className={cn(
                     "p-5 rounded-xl border transition-all duration-300",
                     urenStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
@@ -837,7 +918,7 @@ export default function BelastingPage() {
                       {urenPerDagNodig} uur/dag nodig
                     </p>
                   )}
-                </div>
+                </motion.div>
               </div>
             </div>
 
@@ -865,7 +946,7 @@ export default function BelastingPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {openDeadlines.slice(0, 5).map((deadline) => {
+                  {openDeadlines.slice(0, 5).map((deadline, idx) => {
                     const config = typeConfig[deadline.type] ?? typeConfig.btw;
                     const Icon = config.icon;
                     const deadlineDatum = new Date(deadline.datum);
@@ -874,8 +955,11 @@ export default function BelastingPage() {
                     const isUrgent = dagen >= 0 && dagen < 14;
 
                     return (
-                      <div
+                      <motion.div
                         key={deadline.id}
+                        initial={{ opacity: 0, x: -12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.07, duration: 0.25 }}
                         className={cn(
                           "flex items-center gap-4 p-4 rounded-xl border transition-colors cursor-pointer group",
                           isOverdue
@@ -916,7 +1000,7 @@ export default function BelastingPage() {
                             </div>
                           )}
                         </div>
-                      </div>
+                      </motion.div>
                     );
                   })}
                 </div>
@@ -925,38 +1009,58 @@ export default function BelastingPage() {
 
             {/* Snelle cijfers */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.3 }}
+                className="bg-gradient-to-br from-emerald-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow"
+              >
                 <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Omzet {jaar}</p>
                 <AnimatedNumber
                   value={wvData?.brutoOmzet ?? 0}
                   format={formatBedrag}
                   className="text-2xl font-bold text-emerald-400 tabular-nums"
                 />
-              </div>
-              <div className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.14, duration: 0.3 }}
+                className="bg-gradient-to-br from-orange-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow"
+              >
                 <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Kosten {jaar}</p>
                 <AnimatedNumber
                   value={wvData?.totaleKosten ?? 0}
                   format={formatBedrag}
                   className="text-2xl font-bold text-orange-400 tabular-nums"
                 />
-              </div>
-              <div className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.20, duration: 0.3 }}
+                className="bg-gradient-to-br from-autronis-accent/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow"
+              >
                 <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Winst {jaar}</p>
                 <AnimatedNumber
                   value={wvData?.brutowinst ?? 0}
                   format={formatBedrag}
                   className="text-2xl font-bold text-autronis-accent tabular-nums"
                 />
-              </div>
-              <div className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.26, duration: 0.3 }}
+                className="bg-gradient-to-br from-purple-500/10 to-autronis-card border border-autronis-border rounded-2xl p-5 card-glow"
+              >
                 <p className="text-xs text-autronis-text-secondary uppercase tracking-wide mb-2">Gereserveerd</p>
                 <AnimatedNumber
                   value={totaalGereserveerd}
                   format={formatBedrag}
                   className="text-2xl font-bold text-purple-400 tabular-nums"
                 />
-              </div>
+              </motion.div>
             </div>
           </div>
         )}
@@ -1696,7 +1800,7 @@ export default function BelastingPage() {
                 </div>
               </div>
               <div className="space-y-3">
-                {[
+                {([
                   {
                     ok: urenCriterium?.voldoet ?? false,
                     label: "Zelfstandigenaftrek",
@@ -1748,11 +1852,14 @@ export default function BelastingPage() {
                       : `${formatBedrag(Math.max(0, geschatteBelasting - totaalGereserveerd))} tekort`,
                     icon: PiggyBank,
                   },
-                ].map((item) => {
+                ] as { ok: boolean; label: string; desc: string; icon: typeof Timer; highlight?: boolean }[]).map((item, idx) => {
                   const Icon = item.icon;
                   return (
-                    <div
+                    <motion.div
                       key={item.label}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.06, duration: 0.25 }}
                       className={cn(
                         "flex items-start gap-3 p-4 rounded-xl border transition-colors",
                         item.ok ? "border-green-500/20 bg-green-500/5" : "border-autronis-border/50 bg-autronis-bg/20",
@@ -1768,14 +1875,16 @@ export default function BelastingPage() {
                       </div>
                       <div className="flex-shrink-0">
                         {item.ok ? (
-                          <CheckCircle2 className="w-5 h-5 text-green-400" />
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20, delay: idx * 0.06 + 0.1 }}>
+                            <CheckCircle2 className="w-5 h-5 text-green-400" />
+                          </motion.div>
                         ) : item.highlight ? (
                           <AlertTriangle className="w-5 h-5 text-yellow-400" />
                         ) : (
                           <Square className="w-5 h-5 text-autronis-text-secondary/40" />
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -1982,6 +2091,9 @@ export default function BelastingPage() {
             )}
           </div>
         )}
+
+        </motion.div>
+        </AnimatePresence>
       </div>
 
       <Confetti active={showConfetti} />

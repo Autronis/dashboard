@@ -16,6 +16,9 @@ import {
   ArrowRight,
   CalendarClock,
   AlertTriangle,
+  Building,
+  UserCheck,
+  Briefcase,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -76,6 +79,30 @@ const TYPE_CONFIG: Record<string, {
     kleur: "#A855F7",
     glow: "hover:shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:border-purple-500/40",
     beschrijving: "Geheimhoudingsovereenkomst voor vertrouwelijke informatie.",
+  },
+  onderhuurovereenkomst: {
+    label: "Onderhuurovereenkomst",
+    shortLabel: "Onderhuur",
+    icon: Building,
+    kleur: "#F59E0B",
+    glow: "hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:border-amber-500/40",
+    beschrijving: "Overeenkomst voor het onderverhuren van kantoor- of werkruimte.",
+  },
+  freelance: {
+    label: "Freelance overeenkomst",
+    shortLabel: "Freelance",
+    icon: UserCheck,
+    kleur: "#EC4899",
+    glow: "hover:shadow-[0_0_20px_rgba(236,72,153,0.15)] hover:border-pink-500/40",
+    beschrijving: "Overeenkomst voor freelance opdrachten en inhuur.",
+  },
+  projectovereenkomst: {
+    label: "Projectovereenkomst",
+    shortLabel: "Project",
+    icon: Briefcase,
+    kleur: "#06B6D4",
+    glow: "hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/40",
+    beschrijving: "Overeenkomst voor een specifiek project met vaste scope en prijs.",
   },
 };
 

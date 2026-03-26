@@ -28,6 +28,10 @@ export async function POST(req: NextRequest) {
         bedrijfsnaam: klanten.bedrijfsnaam,
         contactpersoon: klanten.contactpersoon,
         uurtarief: klanten.uurtarief,
+        adres: klanten.adres,
+        email: klanten.email,
+        kvkNummer: klanten.kvkNummer,
+        btwNummer: klanten.btwNummer,
       })
       .from(klanten)
       .where(eq(klanten.id, klantId))
@@ -67,20 +71,43 @@ Gebaseerd op offerte ${offerte.offertenummer}:
 
     // Klant-specifieke context
     const klantContext = [
-      klant.uurtarief ? `Uurtarief: €${klant.uurtarief}/uur` : "",
       klant.contactpersoon ? `Contactpersoon: ${klant.contactpersoon}` : "",
+      klant.adres ? `Adres klant: ${klant.adres}` : "",
+      klant.email ? `E-mail klant: ${klant.email}` : "",
+      klant.kvkNummer ? `KvK-nummer klant: ${klant.kvkNummer}` : "",
+      klant.btwNummer ? `BTW-nummer klant: ${klant.btwNummer}` : "",
+      klant.uurtarief ? `Uurtarief: €${klant.uurtarief}/uur` : "",
       details || "",
       offerteContext,
     ]
       .filter(Boolean)
       .join("\n");
 
+    // Bedrijfsgegevens context
+    const bedrijfContext = [
+      `Bedrijfsnaam opdrachtnemer: ${bedrijfsnaam}`,
+      bedrijf?.adres ? `Adres: ${bedrijf.adres}` : "",
+      bedrijf?.kvkNummer ? `KvK-nummer: ${bedrijf.kvkNummer}` : "",
+      bedrijf?.btwNummer ? `BTW-nummer: ${bedrijf.btwNummer}` : "",
+      bedrijf?.email ? `E-mail: ${bedrijf.email}` : "",
+      bedrijf?.iban ? `IBAN: ${bedrijf.iban}` : "",
+    ].filter(Boolean).join("\n");
+
     const prompt = generateContractPrompt(type, bedrijfsnaam, klant.bedrijfsnaam, klant.contactpersoon, klantContext);
 
     const { text: inhoud } = await aiComplete({
       provider: "anthropic",
       system:
-        "Je bent een juridisch assistent die professionele Nederlandse contracten schrijft voor een AI- en automatiseringsbureau. Schrijf beknopt, professioneel en in goed Nederlands. Gebruik markdown formatting met ## voor artikelkoppen. Vul namen, tarieven en specifieke details altijd concreet in — gebruik geen placeholders zoals [NAAM] of [BEDRAG].",
+        `Je bent een top-tier juridisch specialist die professionele Nederlandse contracten schrijft. Je contracten zijn waterdicht, volledig en juridisch correct.
+
+BELANGRIJK:
+- Vul ALLE gegevens concreet in — NOOIT placeholders zoals [adres], [KvK-nummer], [bedrag] etc.
+- Gebruik de onderstaande bedrijfsgegevens van de opdrachtnemer:
+${bedrijfContext}
+- Schrijf in correct juridisch Nederlands
+- Gebruik markdown ## voor artikelkoppen
+- Elk contract moet minstens bevatten: partijen met volledige gegevens, definities, scope, looptijd, beëindiging, betaling, aansprakelijkheid, geheimhouding, toepasselijk recht
+- Als gegevens ontbreken (bijv. KvK klant), laat die regel dan weg — vul NOOIT fictieve gegevens in`,
       prompt,
       maxTokens: 4000,
     });

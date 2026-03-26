@@ -627,7 +627,7 @@ export default function IdeeenPage() {
       </div>
 
       <AnimatePresence mode="wait">
-      {activeTab === "alle" && (<motion.div key="alle" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}><>
+      {activeTab === "alle" && (<motion.div key="alle" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }} className="space-y-6">
         {/* === "WHAT SHOULD I BUILD NEXT?" BLOCK === */}
         {topToBuild.length > 0 && (
           <div className="bg-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
@@ -974,7 +974,7 @@ export default function IdeeenPage() {
             })}
           </motion.div>
         )}
-      </></motion.div>)}
+      </motion.div>)}
 
       {/* Notities Tab */}
       {activeTab === "inzichten" && (

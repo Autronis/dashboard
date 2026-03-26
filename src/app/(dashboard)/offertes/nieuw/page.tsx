@@ -207,6 +207,7 @@ export default function NieuweOffertePage() {
       }
 
       const { offerte } = await res.json();
+      localStorage.removeItem(DRAFT_KEY);
       addToast("Offerte aangemaakt", "succes");
       router.push(`/offertes/${offerte.id}`);
     } catch (error) {

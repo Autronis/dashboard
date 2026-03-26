@@ -113,7 +113,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: Library,
         children: [
           { label: "Wiki", icon: BookOpen, href: "/wiki" },
-          { label: "Documenten", icon: FileText, href: "/documenten" },
           { label: "Second Brain", icon: Brain, href: "/second-brain" },
           { label: "Learning Radar", icon: Radar, href: "/radar" },
         ],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Mail,
   Upload,
@@ -32,14 +32,41 @@ export default function MailPage() {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [preview, setPreview] = useState<string | null>(null);
+  const DRAFT_KEY = "mail-assistent-draft";
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) return JSON.parse(raw) as { reply: MailReply; antwoord: string; preview: string | null };
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  const draft = typeof window !== "undefined" ? loadDraft() : null;
+
+  const [preview, setPreview] = useState<string | null>(draft?.preview ?? null);
   const [file, setFile] = useState<File | null>(null);
   const [context, setContext] = useState("");
   const [toon, setToon] = useState<Toon>("professioneel");
   const [bezig, setBezig] = useState(false);
-  const [reply, setReply] = useState<MailReply | null>(null);
-  const [antwoord, setAntwoord] = useState("");
+  const [reply, setReply] = useState<MailReply | null>(draft?.reply ?? null);
+  const [antwoord, setAntwoord] = useState(draft?.antwoord ?? "");
   const [gekopieerd, setGekopieerd] = useState(false);
+
+  // Persist reply to localStorage
+  useEffect(() => {
+    if (reply) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ reply, antwoord, preview }));
+    }
+  }, [reply, antwoord, preview]);
+
+  function clearDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+    setReply(null);
+    setAntwoord("");
+    setPreview(null);
+    setFile(null);
+  }
 
   const handleFile = useCallback((f: File) => {
     setFile(f);
@@ -283,6 +310,13 @@ export default function MailPage() {
                         >
                           {gekopieerd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                           {gekopieerd ? "Gekopieerd" : "Kopieer"}
+                        </button>
+                        <button
+                          onClick={() => { clearDraft(); addToast("Antwoord afgevinkt", "succes"); }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          Verstuurd
                         </button>
                       </div>
                     </div>

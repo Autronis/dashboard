@@ -222,13 +222,18 @@ function getTypeLabel(type: string): string {
     case "samenwerkingsovereenkomst": return "SAMENWERKINGSOVEREENKOMST";
     case "sla": return "SERVICE LEVEL AGREEMENT";
     case "nda": return "GEHEIMHOUDINGSOVEREENKOMST";
+    case "onderhuurovereenkomst": return "ONDERHUUROVEREENKOMST";
+    case "freelance": return "FREELANCE OVEREENKOMST";
+    case "projectovereenkomst": return "PROJECTOVEREENKOMST";
+    case "vof": return "VOF-OVEREENKOMST";
     default: return "CONTRACT";
   }
 }
 
 function parseMarkdownToElements(markdown: string): React.ReactElement[] {
   const lines = markdown.split("\n");
-  const elements: React.ReactElement[] = [];
+  const sections: { heading: string | null; content: React.ReactElement[] }[] = [];
+  let current: { heading: string | null; content: React.ReactElement[] } = { heading: null, content: [] };
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -237,37 +242,64 @@ function parseMarkdownToElements(markdown: string): React.ReactElement[] {
     if (!trimmed) continue;
 
     if (trimmed.startsWith("## ")) {
-      elements.push(
-        <Text key={i} style={styles.articleHeading}>
-          {trimmed.replace("## ", "")}
-        </Text>
-      );
+      // Start new section
+      if (current.heading || current.content.length > 0) {
+        sections.push(current);
+      }
+      current = {
+        heading: trimmed.replace("## ", ""),
+        content: [],
+      };
     } else if (trimmed.startsWith("### ")) {
-      elements.push(
+      current.content.push(
         <Text key={i} style={styles.subHeading}>
           {trimmed.replace("### ", "")}
         </Text>
       );
     } else if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
-      elements.push(
+      current.content.push(
         <Text key={i} style={styles.listItem}>
           {"\u2022"} {trimmed.replace(/^[-*]\s/, "").replace(/\*\*(.*?)\*\*/g, "$1")}
         </Text>
       );
     } else if (/^\d+\.\s/.test(trimmed)) {
-      elements.push(
+      current.content.push(
         <Text key={i} style={styles.listItem}>
           {trimmed.replace(/\*\*(.*?)\*\*/g, "$1")}
         </Text>
       );
     } else {
-      elements.push(
+      current.content.push(
         <Text key={i} style={styles.paragraph}>
           {trimmed.replace(/\*\*(.*?)\*\*/g, "$1")}
         </Text>
       );
     }
   }
+
+  // Push last section
+  if (current.heading || current.content.length > 0) {
+    sections.push(current);
+  }
+
+  // Wrap each section in a View that tries to keep heading + first few lines together
+  const elements: React.ReactElement[] = [];
+  sections.forEach((section, idx) => {
+    if (section.heading) {
+      elements.push(
+        <View key={`section-${idx}`} minPresenceAhead={40}>
+          <Text style={styles.articleHeading}>{section.heading}</Text>
+          {section.content}
+        </View>
+      );
+    } else {
+      elements.push(
+        <View key={`section-${idx}`}>
+          {section.content}
+        </View>
+      );
+    }
+  });
 
   return elements;
 }

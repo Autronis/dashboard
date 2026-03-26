@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         kvkNummer: klanten.kvkNummer,
         btwNummer: klanten.btwNummer,
         aantalMedewerkers: klanten.aantalMedewerkers,
+        taal: klanten.taal,
         klantSinds: klanten.klantSinds,
         aangemaaktOp: klanten.aangemaaktOp,
       })

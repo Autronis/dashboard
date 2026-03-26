@@ -290,11 +290,11 @@ export function DocumentPreview({
         <table className="w-full mb-5">
           <thead>
             <tr className="text-[10px] font-semibold uppercase tracking-wider border-b-2 border-gray-200 text-gray-500">
-              <th className="text-left py-2.5 px-3">Omschrijving</th>
-              <th className="text-center py-2.5 px-2 w-14">Aantal</th>
-              <th className="text-right py-2.5 px-2 w-20">Prijs</th>
-              <th className="text-center py-2.5 px-2 w-14">BTW</th>
-              <th className="text-right py-2.5 px-3 w-22">Totaal</th>
+              <th className="text-left py-2.5 px-3">{t.description}</th>
+              <th className="text-center py-2.5 px-2 w-14">{t.quantity}</th>
+              <th className="text-right py-2.5 px-2 w-20">{t.price}</th>
+              <th className="text-center py-2.5 px-2 w-14">{t.vat}</th>
+              <th className="text-right py-2.5 px-3 w-22">{t.total}</th>
             </tr>
           </thead>
           <tbody>
@@ -332,7 +332,7 @@ export function DocumentPreview({
                   colSpan={5}
                   className="py-5 text-xs text-gray-400 text-center italic"
                 >
-                  Voeg een regel toe...
+                  {t.addLine}
                 </td>
               </tr>
             )}
@@ -343,13 +343,13 @@ export function DocumentPreview({
         <div className="flex justify-end mb-5">
           <div className="w-64 space-y-1.5">
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">Subtotaal</span>
+              <span className="text-gray-500">{t.subtotal}</span>
               <span className="text-gray-800 tabular-nums">
                 {formatBedrag(subtotaal)}
               </span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-gray-500">BTW ({btwPercentage}%)</span>
+              <span className="text-gray-500">{t.vat} ({btwPercentage}%)</span>
               <span className="text-gray-800 tabular-nums">
                 {formatBedrag(btwBedrag)}
               </span>
@@ -358,7 +358,7 @@ export function DocumentPreview({
               className="flex justify-between pt-2.5 mt-1.5"
               style={{ borderTop: `2px solid ${TEAL}` }}
             >
-              <span className="text-sm font-bold text-gray-800">Totaal</span>
+              <span className="text-sm font-bold text-gray-800">{t.total}</span>
               <span
                 className="text-sm font-bold tabular-nums"
                 style={{ color: TEAL }}
@@ -379,7 +379,7 @@ export function DocumentPreview({
               className="text-[10px] font-semibold uppercase tracking-wider mb-1"
               style={{ color: TEAL }}
             >
-              Opmerkingen
+              {t.notes}
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">{notities}</p>
           </div>
@@ -389,17 +389,16 @@ export function DocumentPreview({
         {isFactuur && (
           <div className="mb-5 p-3 rounded-lg border border-emerald-100 bg-emerald-50/50">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 mb-1">
-              Betaalinstructies
+              {t.paymentInstructions}
             </p>
             <p className="text-xs text-emerald-700 leading-relaxed">
-              Gelieve het totaalbedrag binnen{" "}
-              {berekendeTermijn} dagen over te maken
+              {t.paymentText(berekendeTermijn)}
               {vervaldatum && (
-                <>, uiterlijk op <span className="font-semibold">{formatDatum(vervaldatum)}</span></>
+                <>{t.paymentDue(formatDatum(vervaldatum))} <span className="font-semibold">{formatDatum(vervaldatum)}</span></>
               )}
               .
               <br />
-              Vermeld bij uw betaling: <span className="font-semibold">{nummer || "factuurnummer"}</span>
+              {t.paymentRef(nummer || (taal === "en" ? "invoice number" : "factuurnummer"))}<span className="font-semibold">{nummer || (taal === "en" ? "invoice number" : "factuurnummer")}</span>
             </p>
           </div>
         )}
@@ -411,7 +410,7 @@ export function DocumentPreview({
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-xs font-medium">
-              Betaald op {formatDatum(betaaldOp)}
+              {t.paidOn(formatDatum(betaaldOp))}
             </span>
           </div>
         )}

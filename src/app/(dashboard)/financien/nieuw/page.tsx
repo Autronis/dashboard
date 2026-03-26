@@ -16,6 +16,7 @@ interface Klant {
   contactpersoon: string | null;
   email: string | null;
   adres: string | null;
+  taal?: "nl" | "en" | null;
 }
 
 interface Project {
@@ -64,6 +65,7 @@ function FactuurPreview({
       btwBedrag={btwBedrag}
       totaal={totaal}
       notities={notities}
+      taal={klant?.taal === "en" ? "en" : "nl"}
       sticky
     />
   );

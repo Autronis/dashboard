@@ -159,6 +159,11 @@ function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void
             <h3 className="text-base font-semibold text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">
               <HighlightMatch text={klant.bedrijfsnaam} zoek={zoek} />
             </h3>
+            {klant.type === "facturatie" && (
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-medium flex-shrink-0">
+                FACTURATIE
+              </span>
+            )}
             {klant.isDemo ? (
               <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 font-medium flex-shrink-0">
                 DEMO
@@ -284,6 +289,7 @@ function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void
 type SorteerOptie = "gezondheid" | "omzet" | "contact" | "naam";
 type StatusFilter = "alles" | "actief" | "stil" | "aandacht_nodig" | "inactief";
 type GezondheidFilter = "alles" | "groen" | "oranje" | "rood";
+type TypeFilter = "alles" | "klant" | "facturatie";
 
 export default function KlantenPage() {
   const router = useRouter();
@@ -296,6 +302,7 @@ export default function KlantenPage() {
 
   const [zoekterm, setZoekterm] = useState("");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("alles");
+  const [filterType, setFilterType] = useState<TypeFilter>("alles");
   const [filterGezondheid, setFilterGezondheid] = useState<GezondheidFilter>("alles");
   const [sorteer, setSorteer] = useState<SorteerOptie>("gezondheid");
   const [modalOpen, setModalOpen] = useState(false);
@@ -319,6 +326,7 @@ export default function KlantenPage() {
           if (k.relatieStatus !== filterStatus) return false;
         }
         if (filterGezondheid !== "alles" && k.gezondheid !== filterGezondheid) return false;
+        if (filterType !== "alles" && (k.type || "klant") !== filterType) return false;
         if (zoek) {
           return (
             k.bedrijfsnaam.toLowerCase().includes(zoek) ||
@@ -344,7 +352,7 @@ export default function KlantenPage() {
         if (aH !== bH) return aH - bH;
         return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
       });
-  }, [klanten, zoekterm, filterStatus, filterGezondheid, sorteer]);
+  }, [klanten, zoekterm, filterStatus, filterGezondheid, filterType, sorteer]);
 
   return (
     <PageTransition>
@@ -478,8 +486,36 @@ export default function KlantenPage() {
           </button>
         </div>
 
-        {/* Status filter chips */}
+        {/* Type + Status filter chips */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Type filter */}
+          {(["alles", "klant", "facturatie"] as TypeFilter[]).map((t) => {
+            const typeLabels: Record<TypeFilter, string> = { alles: "Alle types", klant: "Klanten", facturatie: "Facturatie" };
+            const typeCounts: Record<TypeFilter, number> = {
+              alles: klanten.filter((k) => k.isActief).length,
+              klant: klanten.filter((k) => k.isActief && (k.type || "klant") === "klant").length,
+              facturatie: klanten.filter((k) => k.isActief && k.type === "facturatie").length,
+            };
+            return (
+              <button
+                key={t}
+                onClick={() => setFilterType(t)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                  filterType === t
+                    ? t === "facturatie"
+                      ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                      : "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {typeLabels[t]}
+                <span className="opacity-60">{typeCounts[t]}</span>
+              </button>
+            );
+          })}
+          <div className="w-px h-5 bg-autronis-border mx-1" />
+          {/* Status filter */}
           {(["alles", "actief", "stil", "aandacht_nodig", "inactief"] as StatusFilter[]).map((status) => {
             const labels: Record<StatusFilter, string> = {
               alles: "Alle",

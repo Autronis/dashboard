@@ -9,6 +9,7 @@ export interface Klant {
   adres: string | null;
   notities: string | null;
   uurtarief: number | null;
+  type: "klant" | "facturatie";
   isActief: number;
   isDemo: number | null;
   website: string | null;

@@ -21,6 +21,7 @@ interface KlantModalProps {
     branche?: string | null;
     kvkNummer?: string | null;
     btwNummer?: string | null;
+    type?: "klant" | "facturatie" | null;
   } | null;
   onOpgeslagen: () => void;
 }
@@ -43,6 +44,7 @@ const leegFormulier = {
   branche: "",
   kvkNummer: "",
   btwNummer: "",
+  type: "klant" as "klant" | "facturatie",
 };
 
 export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalProps) {
@@ -66,6 +68,7 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
           branche: klant.branche ?? "",
           kvkNummer: klant.kvkNummer ?? "",
           btwNummer: klant.btwNummer ?? "",
+          type: klant.type ?? "klant",
         });
       } else {
         setFormulier(leegFormulier);
@@ -110,6 +113,7 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
         branche: formulier.branche.trim() || null,
         kvkNummer: formulier.kvkNummer.trim() || null,
         btwNummer: formulier.btwNummer.trim() || null,
+        type: formulier.type,
       };
 
       const url = klant ? `/api/klanten/${klant.id}` : "/api/klanten";
@@ -169,6 +173,28 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
       }
     >
       <div className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-autronis-text-secondary">Type</label>
+          <div className="flex gap-2">
+            {(["klant", "facturatie"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => updateVeld("type", t)}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  formulier.type === t
+                    ? t === "klant"
+                      ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                      : "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                    : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                }`}
+              >
+                {t === "klant" ? "Klant" : "Alleen facturatie"}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <FormField
           label="Bedrijfsnaam"
           verplicht

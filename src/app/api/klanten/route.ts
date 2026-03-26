@@ -27,6 +27,7 @@ export async function GET(req: NextRequest) {
         uurtarief: klanten.uurtarief,
         notities: klanten.notities,
         isActief: klanten.isActief,
+        type: klanten.type,
         isDemo: klanten.isDemo,
         website: klanten.website,
         branche: klanten.branche,
@@ -274,7 +275,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst, website, branche } = body;
+    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst, website, branche, type } = body;
 
     if (!bedrijfsnaam?.trim()) {
       return NextResponse.json({ fout: "Bedrijfsnaam is verplicht." }, { status: 400 });
@@ -300,6 +301,7 @@ export async function POST(req: NextRequest) {
         notities: notitiesTekst?.trim() || null,
         website: website?.trim() || null,
         branche: branche?.trim() || null,
+        type: type === "facturatie" ? "facturatie" : "klant",
         klantSinds: new Date().toISOString().substring(0, 10),
         aangemaaktDoor: gebruiker.id,
       })

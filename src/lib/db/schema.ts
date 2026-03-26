@@ -25,6 +25,7 @@ export const klanten = sqliteTable("klanten", {
   adres: text("adres"),
   uurtarief: real("uurtarief"),
   notities: text("notities"),
+  type: text("type", { enum: ["klant", "facturatie"] }).default("klant"),
   isActief: integer("is_actief").default(1),
   isDemo: integer("is_demo").default(0),
   website: text("website"),

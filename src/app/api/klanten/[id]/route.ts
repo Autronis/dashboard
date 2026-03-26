@@ -413,7 +413,7 @@ export async function PUT(
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }
 
-    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst, website, branche, kvkNummer, btwNummer } = body;
+    const { bedrijfsnaam, contactpersoon, email, telefoon, adres, uurtarief, notities: notitiesTekst, website, branche, kvkNummer, btwNummer, type } = body;
 
     if (bedrijfsnaam !== undefined && !bedrijfsnaam?.trim()) {
       return NextResponse.json({ fout: "Bedrijfsnaam is verplicht." }, { status: 400 });
@@ -435,6 +435,7 @@ export async function PUT(
     if (branche !== undefined) updateData.branche = branche?.trim() || null;
     if (kvkNummer !== undefined) updateData.kvkNummer = kvkNummer?.trim() || null;
     if (btwNummer !== undefined) updateData.btwNummer = btwNummer?.trim() || null;
+    if (type !== undefined) updateData.type = type === "facturatie" ? "facturatie" : "klant";
 
     const [bijgewerkt] = await db
       .update(klanten)

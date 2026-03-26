@@ -75,7 +75,7 @@ ${profiel.tone_of_voice}
 - caption: Instagram bijschrift bij een afbeelding
 - thought_leadership: uitgesproken standpunt over de industrie
 - tip: concrete, direct bruikbare tip
-- storytelling: kort verhaal vanuit eigen ervaring
+- storytelling: kort verhaal vanuit eigen ervaring. Structuur: pakkende one-liner als hook → persoonlijk verhaal met concreet voorbeeld → eerlijk over het probleem dat het oplost → geen hype, juist understateren → eindig met open vraag aan de lezer
 - how_to: stapsgewijze uitleg van een aanpak
 - vraag: post die eindigt met een prikkelende vraag
 

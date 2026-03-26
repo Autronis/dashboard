@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -12,93 +12,141 @@ import {
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
-  Receipt, CreditCard,
+  Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
+  PlusCircle, Compass,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 
+// ─── Types ──────────────────────────────────────────────────────
 interface NavLink { label: string; icon: typeof LayoutDashboard; href: string }
-interface NavSection { section: string; items: NavLink[] }
+interface LauncherLink {
+  label: string;
+  icon: typeof LayoutDashboard;
+  children: NavLink[];
+}
+interface NavSection { section: string; items: (NavLink | LauncherLink)[] }
 
-const navSections: (NavLink | NavSection)[] = [
-  // Top-level (always visible)
+function isLauncher(item: NavLink | LauncherLink): item is LauncherLink {
+  return "children" in item;
+}
+
+// ─── Navigation structure ───────────────────────────────────────
+const navSections: (NavLink | NavSection | "divider")[] = [
+  // Top-level
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
 
-  // Workflow-based sections
+  // Mijn dag
   {
-    section: "Operatie",
+    section: "Mijn dag",
     items: [
       { label: "Tijd", icon: Clock, href: "/tijd" },
       { label: "Focus", icon: Focus, href: "/focus" },
       { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
-      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
       { label: "Meetings", icon: Mic, href: "/meetings" },
-      { label: "Ops Room", icon: Radio, href: "/ops-room" },
     ],
   },
+
+  // Sales & Klanten
   {
     section: "Sales & Klanten",
     items: [
-      { label: "Leads", icon: Zap, href: "/leads" },
-      { label: "Klanten", icon: Users, href: "/klanten" },
-      { label: "Follow-up", icon: UserCheck, href: "/followup" },
-      { label: "Client Status", icon: Activity, href: "/client-status" },
-      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
-      { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
+      {
+        label: "Overzicht",
+        icon: Layers,
+        children: [
+          { label: "Leads", icon: Zap, href: "/leads" },
+          { label: "Klanten", icon: Users, href: "/klanten" },
+          { label: "Follow-up", icon: UserCheck, href: "/followup" },
+          { label: "Client Status", icon: Activity, href: "/client-status" },
+          { label: "Projecten", icon: FolderKanban, href: "/projecten" },
+          { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
+        ],
+      },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
     ],
   },
+
+  // Geld
   {
-    section: "Facturatie",
+    section: "Geld",
     items: [
-      { label: "Facturen", icon: Euro, href: "/facturen" },
-      { label: "Offertes", icon: FileText, href: "/offertes" },
-      { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
-    ],
-  },
-  {
-    section: "Finance",
-    items: [
+      {
+        label: "Opstellen",
+        icon: PenLine,
+        children: [
+          { label: "Offerte", icon: FileText, href: "/offertes" },
+          { label: "Contract", icon: FileText, href: "/offertes/contracten" },
+          { label: "Factuur", icon: Euro, href: "/facturen" },
+        ],
+      },
       { label: "Financiën", icon: Euro, href: "/financien" },
       { label: "Belasting", icon: Landmark, href: "/belasting" },
       { label: "Kilometers", icon: Car, href: "/kilometers" },
     ],
   },
-  {
-    section: "Insights & Groei",
-    items: [
-      { label: "Analytics", icon: BarChart3, href: "/analytics" },
-      { label: "Doelen", icon: Crosshair, href: "/doelen" },
-      { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
-    ],
-  },
+
+  // Kennis & Content
   {
     section: "Kennis & Content",
     items: [
-      { label: "Content", icon: Megaphone, href: "/content" },
-      { label: "Animaties", icon: Wand2, href: "/animaties" },
-      { label: "Case Studies", icon: Video, href: "/case-studies" },
-      { label: "Documenten", icon: FileText, href: "/documenten" },
+      {
+        label: "Nieuw",
+        icon: PlusCircle,
+        children: [
+          { label: "Content", icon: Megaphone, href: "/content" },
+          { label: "Animatie", icon: Wand2, href: "/animaties" },
+          { label: "Case Study", icon: Video, href: "/case-studies" },
+        ],
+      },
+      {
+        label: "Bibliotheek",
+        icon: Library,
+        children: [
+          { label: "Wiki", icon: BookOpen, href: "/wiki" },
+          { label: "Documenten", icon: FileText, href: "/documenten" },
+          { label: "Second Brain", icon: Brain, href: "/second-brain" },
+          { label: "Learning Radar", icon: Radar, href: "/radar" },
+        ],
+      },
       { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
-      { label: "Wiki", icon: BookOpen, href: "/wiki" },
-      { label: "Learning Radar", icon: Radar, href: "/radar" },
-      { label: "Second Brain", icon: Brain, href: "/second-brain" },
     ],
   },
+
+  // Inzicht & Strategie
   {
-    section: "Overig",
+    section: "Inzicht & Strategie",
     items: [
-      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-      { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
+      {
+        label: "Vastleggen",
+        icon: Compass,
+        children: [
+          { label: "Idee", icon: Lightbulb, href: "/ideeen" },
+          { label: "Doel", icon: Crosshair, href: "/doelen" },
+          { label: "Gewoonte", icon: Flame, href: "/gewoontes" },
+          { label: "Concurrent", icon: Eye, href: "/concurrenten" },
+        ],
+      },
+      { label: "Analytics", icon: BarChart3, href: "/analytics" },
+      { label: "Ops Room", icon: Radio, href: "/ops-room" },
+    ],
+  },
+
+  // Beheer
+  {
+    section: "Beheer",
+    items: [
+      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
       { label: "Team", icon: Users2, href: "/team" },
       { label: "Instellingen", icon: Settings, href: "/instellingen" },
     ],
   },
 ];
 
+// ─── NavItem ────────────────────────────────────────────────────
 function NavItem({ item, isCollapsed, isActive }: { item: NavLink; isCollapsed: boolean; isActive: boolean }) {
   const Icon = item.icon;
   const { setOpen } = useSidebar();
@@ -128,6 +176,111 @@ function NavItem({ item, isCollapsed, isActive }: { item: NavLink; isCollapsed: 
   );
 }
 
+// ─── LauncherItem ───────────────────────────────────────────────
+function LauncherItem({
+  item,
+  isCollapsed,
+  isActive,
+  pathname,
+}: {
+  item: LauncherLink;
+  isCollapsed: boolean;
+  isActive: boolean;
+  pathname: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const Icon = item.icon;
+  const { setOpen: setSidebarOpen } = useSidebar();
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  // Close on route change
+  useEffect(() => { setOpen(false); }, [pathname]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group relative",
+          isActive
+            ? "bg-autronis-accent/10 text-autronis-text-primary font-semibold"
+            : "text-autronis-text-secondary hover:bg-autronis-border/30 hover:text-autronis-text-primary"
+        )}
+        title={isCollapsed ? item.label : undefined}
+      >
+        {isActive && (
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-autronis-accent rounded-r" />
+        )}
+        <Icon className={cn(
+          "w-[18px] h-[18px] transition-colors flex-shrink-0",
+          isActive ? "text-autronis-accent" : "text-autronis-text-secondary group-hover:text-autronis-text-primary"
+        )} />
+        {!isCollapsed && (
+          <>
+            <span className="text-[13px] truncate flex-1 text-left">{item.label}</span>
+            <ChevronRight className={cn(
+              "w-3 h-3 transition-transform duration-200 flex-shrink-0",
+              open && "rotate-90",
+              isActive ? "text-autronis-accent/50" : "text-autronis-text-secondary/40"
+            )} />
+          </>
+        )}
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.97 }}
+            transition={{ duration: 0.15, ease: "easeOut" }}
+            className={cn(
+              "z-50 bg-autronis-card border border-autronis-border rounded-xl shadow-2xl shadow-black/40 overflow-hidden",
+              isCollapsed
+                ? "absolute left-full top-0 ml-2 min-w-[180px]"
+                : "mt-1 ml-6 mr-1"
+            )}
+          >
+            <div className="py-1.5">
+              {item.children.map((child) => {
+                const ChildIcon = child.icon;
+                const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                return (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    onClick={() => { setOpen(false); setSidebarOpen(false); }}
+                    className={cn(
+                      "flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors",
+                      childActive
+                        ? "text-autronis-accent bg-autronis-accent/10 font-medium"
+                        : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/30"
+                    )}
+                  >
+                    <ChildIcon className={cn("w-3.5 h-3.5 flex-shrink-0", childActive ? "text-autronis-accent" : "text-autronis-text-secondary/70")} />
+                    {child.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─── Section state ──────────────────────────────────────────────
 const SIDEBAR_SECTIONS_KEY = "autronis-sidebar-sections";
 
 function useSectionState(section: string, defaultOpen: boolean) {
@@ -161,6 +314,11 @@ function useSectionState(section: string, defaultOpen: boolean) {
   return { expanded: loaded ? expanded : defaultOpen, toggle };
 }
 
+// ─── CollapsibleSection ─────────────────────────────────────────
+function getAllHrefs(items: (NavLink | LauncherLink)[]): string[] {
+  return items.flatMap((item) => isLauncher(item) ? item.children.map((c) => c.href) : [item.href]);
+}
+
 function CollapsibleSection({
   section,
   items,
@@ -168,37 +326,43 @@ function CollapsibleSection({
   pathname,
 }: {
   section: string;
-  items: NavLink[];
+  items: (NavLink | LauncherLink)[];
   isCollapsed: boolean;
   pathname: string;
 }) {
-  const hasActiveChild = items.some((item) =>
-    item.href === "/" ? pathname === "/" : pathname.startsWith(item.href)
+  const allHrefs = getAllHrefs(items);
+  const hasActiveChild = allHrefs.some((href) =>
+    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
   );
   const { expanded, toggle } = useSectionState(section, true);
 
-  function isActive(href: string) {
+  function isItemActive(href: string) {
     if (href === "/") return pathname === "/";
-    // Exact match first, then prefix match only if the next char is "/" or end of string
-    // This prevents /offertes matching when on /offertes/contracten
     if (pathname === href) return true;
     if (pathname.startsWith(href + "/")) {
-      // Check no sibling route is a better match
-      const betterMatch = items.some(
-        (other) => other.href !== href && other.href.startsWith(href + "/") && pathname.startsWith(other.href)
+      const betterMatch = allHrefs.some(
+        (other) => other !== href && other.startsWith(href + "/") && pathname.startsWith(other)
       );
       return !betterMatch;
     }
     return false;
   }
 
+  function isLauncherActive(launcher: LauncherLink) {
+    return launcher.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+  }
+
   if (isCollapsed) {
     return (
       <>
         <div className="my-1.5 mx-3 border-t border-autronis-border/30" />
-        {items.map((item) => (
-          <NavItem key={item.href} item={item} isCollapsed isActive={isActive(item.href)} />
-        ))}
+        {items.map((item) =>
+          isLauncher(item) ? (
+            <LauncherItem key={item.label} item={item} isCollapsed isActive={isLauncherActive(item)} pathname={pathname} />
+          ) : (
+            <NavItem key={item.href} item={item} isCollapsed isActive={isItemActive(item.href)} />
+          )
+        )}
       </>
     );
   }
@@ -216,7 +380,7 @@ function CollapsibleSection({
         <div className="flex items-center gap-2">
           <span className={cn(
             "text-[10px] font-bold uppercase tracking-widest transition-colors",
-            hasActiveChild ? "text-autronis-accent/80" : "text-autronis-text-secondary/50 group-hover:text-autronis-text-secondary/70"
+            hasActiveChild ? "text-autronis-accent/80" : "text-autronis-text-secondary/50"
           )}>
             {section}
           </span>
@@ -245,9 +409,13 @@ function CollapsibleSection({
             className="overflow-hidden"
           >
             <div className="space-y-0.5 pt-0.5 pb-1">
-              {items.map((item) => (
-                <NavItem key={item.href} item={item} isCollapsed={false} isActive={isActive(item.href)} />
-              ))}
+              {items.map((item) =>
+                isLauncher(item) ? (
+                  <LauncherItem key={item.label} item={item} isCollapsed={false} isActive={isLauncherActive(item)} pathname={pathname} />
+                ) : (
+                  <NavItem key={item.href} item={item} isCollapsed={false} isActive={isItemActive(item.href)} />
+                )
+              )}
             </div>
           </motion.div>
         )}
@@ -256,6 +424,7 @@ function CollapsibleSection({
   );
 }
 
+// ─── Sidebar ────────────────────────────────────────────────────
 export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
@@ -312,6 +481,9 @@ export function Sidebar() {
         {/* Navigation */}
         <nav className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin pb-20 max-lg:pb-24">
           {navSections.map((entry, idx) => {
+            if (entry === "divider") {
+              return <div key={`div-${idx}`} className="my-1.5 mx-3 border-t border-autronis-border/30" />;
+            }
             if ("section" in entry) {
               return (
                 <CollapsibleSection
@@ -329,7 +501,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Keyboard shortcut hint (desktop only) */}
+        {/* Keyboard shortcut hint */}
         {!isCollapsed && (
           <div className="hidden lg:block border-t border-autronis-border p-3">
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-autronis-border/20 text-autronis-text-secondary/40">

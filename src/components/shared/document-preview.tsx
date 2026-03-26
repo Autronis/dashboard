@@ -16,6 +16,16 @@ interface Regel {
   totaal?: number;
 }
 
+interface Bedrijf {
+  bedrijfsnaam?: string | null;
+  email?: string | null;
+  adres?: string | null;
+  kvkNummer?: string | null;
+  btwNummer?: string | null;
+  iban?: string | null;
+  telefoon?: string | null;
+}
+
 interface DocumentPreviewProps {
   type: "FACTUUR" | "OFFERTE";
   klant: Klant | null;
@@ -33,6 +43,7 @@ interface DocumentPreviewProps {
   btwPercentage?: number;
   betaaldOp?: string | null;
   sticky?: boolean;
+  bedrijf?: Bedrijf | null;
 }
 
 const TEAL = "#17B8A5";
@@ -54,6 +65,7 @@ export function DocumentPreview({
   btwPercentage = 21,
   betaaldOp,
   sticky = false,
+  bedrijf,
 }: DocumentPreviewProps) {
   const isFactuur = type === "FACTUUR";
   const dateLabel = isFactuur ? "Factuurdatum" : "Offertedatum";
@@ -111,11 +123,17 @@ export function DocumentPreview({
               Van
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Autronis
+              {bedrijf?.bedrijfsnaam || "Autronis"}
               <br />
-              zakelijk@autronis.com
+              {bedrijf?.email || "zakelijk@autronis.com"}
               <br />
               autronis.nl
+              {bedrijf?.adres && (
+                <>
+                  <br />
+                  {bedrijf.adres}
+                </>
+              )}
             </p>
           </div>
           <div>

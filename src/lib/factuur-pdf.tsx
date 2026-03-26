@@ -38,10 +38,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
   },
   headerBand: {
-    backgroundColor: DARK_BG,
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 50,
-    paddingTop: 35,
-    paddingBottom: 30,
+    paddingTop: 40,
+    paddingBottom: 25,
   },
   headerContent: {
     flexDirection: "row",
@@ -49,29 +49,29 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   bedrijfsnaam: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 700,
-    color: TEAL,
-    letterSpacing: 1.5,
+    color: "#111827",
+    letterSpacing: 2,
   },
   tagline: {
     fontSize: 7,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
     letterSpacing: 0.8,
-    marginTop: 3,
+    marginTop: 2,
   },
   headerRight: {
     alignItems: "flex-end",
   },
   documentType: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 700,
-    color: TEXT_PRIMARY,
+    color: TEAL,
     letterSpacing: 2,
   },
   factuurNummer: {
     fontSize: 9,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
     marginTop: 4,
   },
   accentLine: {
@@ -289,7 +289,7 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
         <View style={styles.headerBand}>
           <View style={styles.headerContent}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Image src={getLogoSrc()} style={{ width: 36, height: 36 }} />
+              <Image src={getLogoSrc()} style={{ width: 36, height: 18 }} />
               <View>
                 <Text style={styles.bedrijfsnaam}>
                   {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}

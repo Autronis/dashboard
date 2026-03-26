@@ -347,6 +347,52 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
         onConfirm={handleAfwijzen}
         loading={updatePost.isPending}
       />
+
+      {/* Preview modal */}
+      <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} titel={post.titel} breedte="lg">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <PlatformBadge platform={post.platform} />
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${formatBadge.className}`}>
+              {formatBadge.label}
+            </span>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusBadge.className}`}>
+              {statusBadge.label}
+            </span>
+          </div>
+          <p className="text-sm text-autronis-text-primary leading-relaxed whitespace-pre-line">
+            {activeInhoud}
+          </p>
+          {post.hashtags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-2 border-t border-autronis-border">
+              {post.hashtags.map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs bg-autronis-accent/10 text-autronis-accent rounded-full px-2 py-0.5"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2 pt-2 border-t border-autronis-border">
+            <button
+              onClick={() => { handleCopy(); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+            >
+              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? "Gekopieerd" : "Kopieer"}
+            </button>
+            <button
+              onClick={() => { setPreviewOpen(false); setEditMode(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Bewerken
+            </button>
+          </div>
+        </div>
+      </Modal>
     </>
   );
 }

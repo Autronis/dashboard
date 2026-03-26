@@ -203,7 +203,9 @@ const styles = StyleSheet.create({
     lineHeight: 1.7,
   },
   footer: {
-    backgroundColor: DARK_BG,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
     paddingHorizontal: 50,
     paddingVertical: 20,
     marginTop: "auto",
@@ -225,7 +227,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 8,
-    color: TEXT_SECONDARY,
+    color: "#6B7280",
     lineHeight: 1.6,
   },
 });
@@ -289,7 +291,7 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
         <View style={styles.headerBand}>
           <View style={styles.headerContent}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Image src={getLogoSrc()} style={{ width: 36, height: 18 }} />
+              <Image src={getLogoSrc()} style={{ width: 50, height: 25 }} />
               <View>
                 <Text style={styles.bedrijfsnaam}>
                   {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}

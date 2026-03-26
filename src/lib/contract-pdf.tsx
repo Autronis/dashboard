@@ -297,7 +297,7 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
               <View style={styles.headerBand}>
                 <View style={styles.headerContent}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <Image src={getLogoSrc()} style={{ width: 36, height: 36 }} />
+                    <Image src={getLogoSrc()} style={{ width: 50, height: 25 }} />
                     <View>
                       <Text style={styles.bedrijfsnaam}>{bedrijfsnaam.toUpperCase()}</Text>
                       <Text style={styles.tagline}>AI & Automatisering</Text>

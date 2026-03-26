@@ -59,8 +59,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   logoImage: {
-    width: 36,
-    height: 36,
+    width: 50,
+    height: 25,
   },
   logoTextWrap: {},
   bedrijfsnaam: {

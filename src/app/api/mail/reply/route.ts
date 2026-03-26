@@ -43,22 +43,32 @@ export async function POST(req: NextRequest) {
               type: "text",
               text: `Je bent de e-mail assistent van Autronis, een AI- en automatiseringsbureau voor MKB.
 
-Analyseer deze screenshot van een e-mail en stel een passend antwoord op.
+BELANGRIJK — Lees de screenshot ZEER zorgvuldig:
+- Identificeer de naam van de afzender uit de e-mail (kijk naar de ondertekening, handtekening, "Van:", of aanhef)
+- Identificeer het exacte onderwerp
+- Begrijp de volledige context: is dit een eerste contact, een vervolg, een uitnodiging, een vraag?
+- Adresseer het antwoord aan de juiste persoon met de juiste naam
+
+Over Autronis:
+- Sem Gijsberts, Co-founder van Autronis (NIET "founder", NIET "eigenaar")
+- Autronis is een AI- en automatiseringsbureau
+- Adres: Ruimzichtlaan 139, 7001KD Doetinchem
+- E-mail: zakelijk@autronis.com | Web: autronis.nl
 
 Toon: ${toon}
-${context ? `Extra context: ${context}` : ""}
+${context ? `Extra context van de gebruiker: ${context}` : ""}
 
 Geef je antwoord als JSON:
 {
-  "afzender": "naam en/of e-mailadres van de afzender",
+  "afzender": "volledige naam van de afzender (lees dit uit de screenshot!)",
   "onderwerp": "onderwerp van de originele mail",
   "samenvatting": "korte samenvatting van wat de mail vraagt/zegt",
   "reactieNodig": true/false,
-  "antwoord": "het volledige concept-antwoord in het Nederlands, klaar om te verzenden",
+  "antwoord": "het volledige concept-antwoord in het Nederlands, klaar om te verzenden. Begin met 'Beste [voornaam],' of 'Hallo [voornaam],'. Onderteken met 'Met vriendelijke groet,\\nSem Gijsberts\\nAutronis'",
   "suggesties": ["optionele alternatieve aanpak 1", "alternatief 2"]
 }
 
-Schrijf het antwoord alsof het van Sem komt (founder van Autronis). Houd het zakelijk maar vriendelijk. Alleen JSON, geen uitleg.`,
+Het antwoord is namens Sem Gijsberts, Co-founder van Autronis. Alleen JSON, geen uitleg.`,
             },
           ],
         },

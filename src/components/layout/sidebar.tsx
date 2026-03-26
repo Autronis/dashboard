@@ -48,6 +48,7 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Offertes", icon: FileText, href: "/offertes" },
+      { label: "Facturen", icon: Euro, href: "/financien" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
       { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
     ],

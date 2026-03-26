@@ -38,6 +38,13 @@ if (isTurso) {
   const sqliteDb = new Database(path.join(dbDir, "autronis.db"));
   sqliteDb.pragma("journal_mode = WAL");
   sqliteDb.pragma("foreign_keys = ON");
+
+  // Auto-migrate: add type column to klanten if missing
+  const cols = sqliteDb.prepare("PRAGMA table_info(klanten)").all() as { name: string }[];
+  if (!cols.some((c: { name: string }) => c.name === "type")) {
+    sqliteDb.exec("ALTER TABLE klanten ADD COLUMN type TEXT DEFAULT 'klant'");
+  }
+
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });
 }

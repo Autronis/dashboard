@@ -139,6 +139,48 @@ export function HabitWidget({ compact = false }: { compact?: boolean }) {
     );
   }
 
+  if (compact) {
+    return (
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <Flame className="w-4 h-4 text-orange-400 flex-shrink-0" />
+            <span className="text-sm font-semibold text-white">Gewoontes</span>
+            <span className={cn(
+              "text-xs font-bold tabular-nums",
+              voltooid === totaal ? "text-emerald-400" : "text-autronis-text-secondary"
+            )}>
+              {voltooid}/{totaal}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-1 justify-center flex-wrap">
+            {gewoontes.map((g) => {
+              const Icon = ICON_MAP[g.icoon] || Target;
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => toggleGewoonte(g.id)}
+                  title={g.naam}
+                  className={cn(
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
+                    g.voltooidVandaag
+                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                      : "bg-autronis-bg/40 text-autronis-text-secondary hover:bg-autronis-bg/60 border border-transparent"
+                  )}
+                >
+                  {g.voltooidVandaag ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
+                </button>
+              );
+            })}
+          </div>
+          <Link href="/gewoontes" className="text-xs text-autronis-accent hover:text-autronis-accent-hover transition-colors flex-shrink-0">
+            Alles &rarr;
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow card-gradient">
       {/* Header */}

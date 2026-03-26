@@ -106,6 +106,17 @@ export function HabitWidget({ compact = false }: { compact?: boolean }) {
   };
 
   if (loading) {
+    if (compact) {
+      return (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
+          <div className="flex items-center gap-3">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <span className="text-sm font-semibold text-white">Gewoontes</span>
+            <Loader2 className="w-3.5 h-3.5 text-autronis-accent animate-spin" />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7 flex items-center justify-center min-h-[200px]">
         <Loader2 className="w-5 h-5 text-autronis-accent animate-spin" />

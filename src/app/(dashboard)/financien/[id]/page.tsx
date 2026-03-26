@@ -119,6 +119,10 @@ export default function FactuurDetailPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [verstuurLaden, setVerstuurLaden] = useState(false);
+  const [verstuurModalOpen, setVerstuurModalOpen] = useState(false);
+  const [emailAan, setEmailAan] = useState("");
+  const [emailOnderwerp, setEmailOnderwerp] = useState("");
+  const [emailBericht, setEmailBericht] = useState("");
   const [dupliceerLaden, setDupliceerLaden] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -158,13 +162,29 @@ export default function FactuurDetailPage() {
     }
   };
 
+  const openVerstuurModal = () => {
+    if (!factuur) return;
+    const bedrag = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(factuur.bedragInclBtw || 0);
+    setEmailAan(factuur.klantEmail || "");
+    setEmailOnderwerp(`Factuur ${factuur.factuurnummer} — Autronis`);
+    setEmailBericht(
+      `Beste ${factuur.klantContactpersoon || factuur.klantNaam},\n\nHierbij ontvangt u factuur ${factuur.factuurnummer} ter hoogte van ${bedrag}.\n\nDe factuur is als PDF bijgevoegd bij deze e-mail.\n\nMet vriendelijke groet,\nAutronis`
+    );
+    setVerstuurModalOpen(true);
+  };
+
   const handleVerstuur = async () => {
     setVerstuurLaden(true);
     try {
-      const res = await fetch(`/api/facturen/${id}/verstuur`, { method: "POST" });
+      const res = await fetch(`/api/facturen/${id}/verstuur`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aan: emailAan, onderwerp: emailOnderwerp, bericht: emailBericht }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Onbekende fout");
       addToast("Factuur verstuurd per e-mail", "succes");
+      setVerstuurModalOpen(false);
       fetchData();
     } catch (error) {
       addToast(error instanceof Error ? error.message : "Kon factuur niet versturen", "fout");
@@ -284,12 +304,11 @@ export default function FactuurDetailPage() {
             </a>
             {(factuur.status === "concept" || factuur.status === "verzonden") && (
               <button
-                onClick={handleVerstuur}
-                disabled={verstuurLaden}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+                onClick={openVerstuurModal}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
               >
                 <Mail className="w-4 h-4" />
-                {verstuurLaden ? "Versturen..." : "Verstuur per e-mail"}
+                Verstuur per e-mail
               </button>
             )}
             {factuur.status === "verzonden" && (

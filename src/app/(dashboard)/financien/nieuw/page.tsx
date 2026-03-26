@@ -378,7 +378,7 @@ export default function NieuweFactuurPage() {
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
-            { label: "Financiën", href: "/financien" },
+            { label: "Facturen", href: "/facturen" },
             { label: "Nieuwe factuur" },
           ]}
         />

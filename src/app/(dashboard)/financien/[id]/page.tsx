@@ -276,7 +276,7 @@ export default function FactuurDetailPage() {
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
-            { label: "Financiën", href: "/financien" },
+            { label: "Facturen", href: "/facturen" },
             { label: factuur.factuurnummer },
           ]}
         />

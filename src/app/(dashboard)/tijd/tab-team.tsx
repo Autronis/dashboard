@@ -146,10 +146,12 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
             <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center">
               <Briefcase className="w-4.5 h-4.5 text-purple-400" />
             </div>
-            <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Schermtijd</p>
+            <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Gem. per persoon</p>
           </div>
           <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-            {formatTijd(teamTotalen.totaalSchermtijd)}
+            {perGebruiker.length > 0
+              ? formatMinuten(Math.round(teamTotalen.totaalGewerkt / perGebruiker.length))
+              : "0m"}
           </p>
         </div>
       </div>

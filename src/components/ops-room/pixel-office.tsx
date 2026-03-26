@@ -1805,41 +1805,6 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       }
     }
 
-    // === Speech bubbles — all active agents (selected = highlighted) ===
-    positions.forEach(({ x: sx, y: sy, agent }, id) => {
-      if (!agent.huidigeTaak || agent.status === "idle" || agent.status === "offline") return;
-      if (id === hovered) return; // tooltip already showing
-      const isSelected = id === selectedId;
-      const isTyping = agent.status === "working";
-      const text = agent.terminal.length > 0 ? agent.terminal[agent.terminal.length - 1].tekst : agent.huidigeTaak.beschrijving;
-      const maxLen = isSelected ? 38 : 22;
-      const truncated = text.length > maxLen ? text.slice(0, maxLen - 1) + "…" : text;
-      // Animated dots suffix for actively working agents
-      const dotCount = isTyping ? (Math.floor(tick * 0.12) % 3) + 1 : 0;
-      const dotStr = isTyping ? " " + "•".repeat(dotCount) : "";
-      const display = truncated + dotStr;
-      const fontSize = isSelected ? 12 : 10;
-      ctx.font = `${fontSize}px monospace`;
-      const bw = Math.max(isSelected ? 130 : 80, ctx.measureText(display).width + 20);
-      const bx = Math.max(8, Math.min(sx + 50 - bw / 2, CANVAS_W - bw - 8));
-      const by = sy - (isSelected ? 34 : 28);
-      const alpha = isSelected ? "ee" : "88";
-      const borderColor = isSelected ? "#23C6B7" : `${getProjectColor(agent.huidigeTaak.project)}aa`;
-      ctx.fillStyle = `#0a0f14${alpha}`; ctx.strokeStyle = borderColor; ctx.lineWidth = isSelected ? 1.5 : 0.8;
-      ctx.beginPath(); ctx.roundRect(bx, by, bw, isSelected ? 22 : 18, 5); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = `#0a0f14${alpha}`;
-      ctx.beginPath(); ctx.moveTo(sx + 40, by + (isSelected ? 22 : 18)); ctx.lineTo(sx + 50, by + (isSelected ? 28 : 23)); ctx.lineTo(sx + 60, by + (isSelected ? 22 : 18)); ctx.fill();
-      // Draw text (static part) + dots (colored)
-      ctx.font = `${fontSize}px monospace`;
-      ctx.fillStyle = isSelected ? "#e2e8f0" : "#8a9aaa";
-      ctx.fillText(truncated, bx + 8, by + (isSelected ? 15 : 13));
-      if (isTyping) {
-        const textW = ctx.measureText(truncated).width;
-        ctx.fillStyle = isSelected ? "#23C6B7" : "#23C6B755";
-        ctx.fillText(dotStr, bx + 8 + textW, by + (isSelected ? 15 : 13));
-      }
-    });
-
     // === CONFETTI TRIGGER: check for 100% projects ===
     const projectProgress = new Map<string, number>();
     agents.forEach((a) => {

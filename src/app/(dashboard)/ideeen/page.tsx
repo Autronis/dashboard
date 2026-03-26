@@ -621,7 +621,7 @@ export default function IdeeenPage() {
           {aiTotaal > 0 && <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-full", activeTab === "ai" ? "bg-autronis-bg/20 text-autronis-bg" : "bg-autronis-accent/15 text-autronis-accent")}>{aiTotaal}</span>}
         </button>
         <button onClick={() => setActiveTab("inzichten")} className={cn("inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === "inzichten" ? "bg-amber-500 text-white" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
-          <PenLine className="w-4 h-4" />Inzichten
+          <PenLine className="w-4 h-4" />Notities
           {inzichtIdeeen.length > 0 && <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-full", activeTab === "inzichten" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-400")}>{inzichtIdeeen.length}</span>}
         </button>
       </div>
@@ -976,7 +976,7 @@ export default function IdeeenPage() {
         )}
       </></motion.div>)}
 
-      {/* Inzichten Tab */}
+      {/* Notities Tab */}
       {activeTab === "inzichten" && (
       <motion.div key="inzichten" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }}>
         <div className="space-y-4">
@@ -1004,7 +1004,7 @@ export default function IdeeenPage() {
             <p className="text-xs text-autronis-text-secondary/50 mt-2 ml-1">Enter om op te slaan · Eerste 60 tekens worden de titel</p>
           </div>
 
-          {/* Inzichten lijst */}
+          {/* Notities lijst */}
           {inzichtIdeeen.length === 0 ? (
             <div className="text-center py-12">
               <PenLine className="w-10 h-10 text-autronis-text-secondary/20 mx-auto mb-3" />

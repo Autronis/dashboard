@@ -38,6 +38,7 @@ interface FactuurDetail {
   klantContactpersoon: string | null;
   klantEmail: string | null;
   klantAdres: string | null;
+  klantTaal: "nl" | "en" | null;
 }
 
 interface Regel {
@@ -375,6 +376,7 @@ export default function FactuurDetailPage() {
           totaal={factuur.bedragInclBtw || 0}
           notities={factuur.notities}
           betaaldOp={factuur.betaaldOp}
+          taal={factuur.klantTaal === "en" ? "en" : "nl"}
         />
 
         {/* Delete dialog */}

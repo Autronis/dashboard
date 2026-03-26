@@ -33,6 +33,7 @@ export async function GET(
         klantContactpersoon: klanten.contactpersoon,
         klantEmail: klanten.email,
         klantAdres: klanten.adres,
+        klantTaal: klanten.taal,
       })
       .from(facturen)
       .innerJoin(klanten, eq(facturen.klantId, klanten.id))

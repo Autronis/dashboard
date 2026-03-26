@@ -10,6 +10,7 @@ interface Project {
 
 interface Registratie {
   id: number;
+  gebruikerId: number | null;
   projectId: number;
   omschrijving: string | null;
   startTijd: string;
@@ -28,8 +29,9 @@ async function fetchProjecten(): Promise<Project[]> {
   return data.projecten || [];
 }
 
-async function fetchRegistraties(van: string, tot: string): Promise<Registratie[]> {
-  const res = await fetch(`/api/tijdregistraties?van=${van}&tot=${tot}`);
+async function fetchRegistraties(van: string, tot: string, team = false): Promise<Registratie[]> {
+  const teamParam = team ? "&team=true" : "";
+  const res = await fetch(`/api/tijdregistraties?van=${van}&tot=${tot}${teamParam}`);
   if (!res.ok) throw new Error("Kon registraties niet laden");
   const data = await res.json();
   return data.registraties || [];
@@ -48,6 +50,14 @@ export function useRegistraties(van: string, tot: string) {
     queryKey: ["registraties", van, tot],
     queryFn: () => fetchRegistraties(van, tot),
     staleTime: 30_000,
+  });
+}
+
+export function useTeamRegistraties(van: string, tot: string) {
+  return useQuery({
+    queryKey: ["registraties", "team", van, tot],
+    queryFn: () => fetchRegistraties(van, tot, true),
+    staleTime: 60_000,
   });
 }
 

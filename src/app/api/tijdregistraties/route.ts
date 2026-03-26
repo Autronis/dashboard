@@ -12,7 +12,8 @@ export async function GET(req: NextRequest) {
     const van = searchParams.get("van");
     const tot = searchParams.get("tot");
 
-    const conditions = [eq(tijdregistraties.gebruikerId, gebruiker.id)];
+    const team = searchParams.get("team") === "true";
+    const conditions = team ? [] : [eq(tijdregistraties.gebruikerId, gebruiker.id)];
 
     if (van) {
       conditions.push(gte(tijdregistraties.startTijd, van));

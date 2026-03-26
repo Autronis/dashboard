@@ -2,7 +2,9 @@ import React from "react";
 import path from "path";
 import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
 
-const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
+import fs from "fs";
+const LOGO_BUFFER = fs.readFileSync(path.join(process.cwd(), "public", "logo.png"));
+const LOGO_SRC = `data:image/png;base64,${LOGO_BUFFER.toString("base64")}`;
 
 Font.register({
   family: "Inter",
@@ -397,7 +399,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
         <View style={styles.headerBand}>
           <View style={styles.headerContent}>
             <View style={styles.logoSection}>
-              <Image src={LOGO_PATH} style={styles.logoImage} />
+              <Image src={LOGO_SRC} style={styles.logoImage} />
               <View style={styles.logoTextWrap}>
                 <Text style={styles.bedrijfsnaam}>
                   {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}

@@ -11,7 +11,7 @@ import {
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
-  UserCheck, Activity, CalendarDays, Wand2, ShieldAlert,
+  UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";

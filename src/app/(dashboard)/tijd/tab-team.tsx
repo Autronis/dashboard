@@ -33,16 +33,28 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
         perCategorie[e.categorie] = (perCategorie[e.categorie] ?? 0) + e.duurSeconden;
       }
 
-      // Time registration data
+      // Time registration data — calculate live duration for active timers
+      const now = Date.now();
       const userRegs = (registraties ?? []).filter((r) => r.gebruikerId === g.id);
-      const gewerktMin = userRegs.reduce((s, r) => s + (r.duurMinuten ?? 0), 0);
+      const gewerktMin = userRegs.reduce((s, r) => {
+        if (r.duurMinuten != null) return s + r.duurMinuten;
+        // Active timer: calculate from startTijd to now
+        if (!r.eindTijd && r.startTijd) {
+          return s + Math.round((now - new Date(r.startTijd).getTime()) / 60000);
+        }
+        return s;
+      }, 0);
 
       // Per project breakdown
       const perProject: Record<string, { minuten: number; categorie: string }> = {};
       for (const r of userRegs) {
         const proj = r.projectNaam ?? "Onbekend project";
         if (!perProject[proj]) perProject[proj] = { minuten: 0, categorie: r.categorie };
-        perProject[proj].minuten += r.duurMinuten ?? 0;
+        if (r.duurMinuten != null) {
+          perProject[proj].minuten += r.duurMinuten;
+        } else if (!r.eindTijd && r.startTijd) {
+          perProject[proj].minuten += Math.round((now - new Date(r.startTijd).getTime()) / 60000);
+        }
       }
       const topProjecten = Object.entries(perProject)
         .sort(([, a], [, b]) => b.minuten - a.minuten)
@@ -51,7 +63,8 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
       // Per category breakdown (registraties)
       const perRegCategorie: Record<string, number> = {};
       for (const r of userRegs) {
-        perRegCategorie[r.categorie] = (perRegCategorie[r.categorie] ?? 0) + (r.duurMinuten ?? 0);
+        const min = r.duurMinuten ?? (!r.eindTijd && r.startTijd ? Math.round((now - new Date(r.startTijd).getTime()) / 60000) : 0);
+        perRegCategorie[r.categorie] = (perRegCategorie[r.categorie] ?? 0) + min;
       }
 
       const aantalRegistraties = userRegs.length;

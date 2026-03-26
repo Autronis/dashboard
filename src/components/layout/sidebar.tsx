@@ -12,6 +12,7 @@ import {
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
+  Receipt, CreditCard,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -48,9 +49,16 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Offertes", icon: FileText, href: "/offertes" },
-      { label: "Facturen", icon: Euro, href: "/facturen" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
       { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
+    ],
+  },
+  {
+    section: "Facturatie",
+    items: [
+      { label: "Facturen", icon: Euro, href: "/facturen" },
+      { label: "Uitgaven", icon: Receipt, href: "/financien?tab=uitgaven" },
+      { label: "Abonnementen", icon: CreditCard, href: "/financien?tab=abonnementen" },
     ],
   },
   {

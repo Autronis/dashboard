@@ -139,7 +139,7 @@ export function DocumentPreview({
               Van
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
-              {b?.bedrijfsnaam || "Autronis"}
+              <span className="font-semibold text-gray-800">{b?.bedrijfsnaam || "Autronis"}</span>
               <br />
               {b?.email || "zakelijk@autronis.com"}
               <br />

@@ -427,16 +427,16 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Van</Text>
               <Text style={styles.infoValue}>
-                {bedrijf.bedrijfsnaam || "Autronis"}
-                {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
+                <Text style={{ fontWeight: 700 }}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
                 {bedrijf.email ? `\n${bedrijf.email}` : "\nzakelijk@autronis.com"}
                 {"\nautronis.nl"}
+                {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
               </Text>
             </View>
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Offerte aan</Text>
               <Text style={styles.infoValue}>
-                {offerte.klantNaam}
+                <Text style={{ fontWeight: 700 }}>{offerte.klantNaam}</Text>
                 {offerte.klantContactpersoon ? `\nt.a.v. ${offerte.klantContactpersoon}` : ""}
                 {offerte.klantAdres ? `\n${offerte.klantAdres}` : ""}
                 {offerte.klantEmail ? `\n${offerte.klantEmail}` : ""}

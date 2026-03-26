@@ -331,6 +331,8 @@ export async function GET() {
       deadlines: aankomendDeadlines,
       teamgenoot: teamgenootData,
       projecten: projectenLijst,
+    }, {
+      headers: { "Cache-Control": "private, max-age=15, stale-while-revalidate=60" },
     });
   } catch (error) {
     return NextResponse.json(

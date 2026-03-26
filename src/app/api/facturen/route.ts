@@ -85,7 +85,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ facturen: lijst, kpis });
+    return NextResponse.json({ facturen: lijst, kpis }, {
+      headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=600" },
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

@@ -260,6 +260,8 @@ export async function GET(req: NextRequest) {
         totaalOpenstaand,
         gezondheid: gezondheidsVerdeling,
       },
+    }, {
+      headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=600" },
     });
   } catch (error) {
     return NextResponse.json(

@@ -975,6 +975,11 @@ export default function DashboardPage() {
         )}
 
         {/* Main 2-column layout */}
+        {/* Gewoontes — compact */}
+        <motion.div variants={sectionVariants}>
+          <HabitWidget compact />
+        </motion.div>
+
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3 min-w-0">
           {/* Left column */}
           <div className="space-y-3 min-w-0 overflow-hidden">
@@ -1119,11 +1124,6 @@ export default function DashboardPage() {
               </section>
             )}
           </div>
-        </motion.div>
-
-        {/* Gewoontes — compact */}
-        <motion.div variants={sectionVariants}>
-          <HabitWidget compact />
         </motion.div>
 
         {/* Spacer for timer bar */}

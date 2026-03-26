@@ -25,6 +25,8 @@ export async function GET() {
         betalingstermijnDagen: 30,
         herinneringNaDagen: 7,
       },
+    }, {
+      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=1800" },
     });
   } catch (error) {
     return NextResponse.json(

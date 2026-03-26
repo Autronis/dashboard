@@ -214,7 +214,9 @@ export async function GET() {
     }
 
     // Limit to 5 insights max
-    return NextResponse.json({ inzichten: inzichten.slice(0, 5) });
+    return NextResponse.json({ inzichten: inzichten.slice(0, 5) }, {
+      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=1800" },
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

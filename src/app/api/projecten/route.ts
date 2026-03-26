@@ -181,6 +181,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       projecten: projectenMetTaken,
       kpis: { totaal, actief, afgerond, onHold, takenOpen: takenOpenTotaal, totaleUren },
+    }, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=300" },
     });
   } catch (error) {
     return NextResponse.json(

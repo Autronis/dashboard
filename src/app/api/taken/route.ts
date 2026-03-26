@@ -118,6 +118,8 @@ export async function GET(req: NextRequest) {
       taken: rows,
       kpis: { totaal, open, bezig, afgerond, verlopen },
       projecten: projectVoortgang,
+    }, {
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
     });
   } catch (error) {
     return NextResponse.json(

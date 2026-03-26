@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: DARK_BG,
+    backgroundColor: "#F3F4F6",
     padding: 10,
     borderRadius: 4,
   },
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   headerText: {
     fontSize: 7,
     fontWeight: 600,
-    color: TEXT_PRIMARY,
+    color: "#374151",
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },

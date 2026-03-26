@@ -1,8 +1,18 @@
 import React from "react";
 import path from "path";
+import fs from "fs";
 import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
 
-const LOGO_PATH = path.join(process.cwd(), "public", "logo.png");
+let _logoSrc: string | null = null;
+function getLogoSrc(): string {
+  if (!_logoSrc) {
+    try {
+      const buf = fs.readFileSync(path.join(process.cwd(), "public", "logo.png"));
+      _logoSrc = `data:image/png;base64,${buf.toString("base64")}`;
+    } catch { _logoSrc = ""; }
+  }
+  return _logoSrc;
+}
 
 Font.register({
   family: "Inter",
@@ -277,7 +287,7 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
         <View style={styles.headerBand}>
           <View style={styles.headerContent}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <Image src={LOGO_PATH} style={{ width: 36, height: 36 }} />
+              <Image src={getLogoSrc()} style={{ width: 36, height: 36 }} />
               <View>
                 <Text style={styles.bedrijfsnaam}>
                   {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}

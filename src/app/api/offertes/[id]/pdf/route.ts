@@ -73,8 +73,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    console.error("PDF generation error:", error);
     return NextResponse.json(
-      { fout: error instanceof Error ? error.message : "Kon PDF niet genereren" },
+      { fout: error instanceof Error ? error.message : "Kon PDF niet genereren", stack: error instanceof Error ? error.stack : undefined },
       { status: 500 }
     );
   }

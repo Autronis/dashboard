@@ -35,6 +35,7 @@ function isLauncher(item: NavLink | LauncherLink): item is LauncherLink {
 const navSections: (NavLink | NavSection | "divider")[] = [
   // Top-level
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
+  { label: "Ops Room", icon: Radio, href: "/ops-room" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
 
@@ -46,6 +47,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
       { label: "Focus", icon: Focus, href: "/focus" },
       { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
       { label: "Meetings", icon: Mic, href: "/meetings" },
+      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
     ],
   },
 
@@ -124,14 +126,12 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         label: "Vastleggen",
         icon: Compass,
         children: [
-          { label: "Idee", icon: Lightbulb, href: "/ideeen" },
           { label: "Doel", icon: Crosshair, href: "/doelen" },
           { label: "Gewoonte", icon: Flame, href: "/gewoontes" },
           { label: "Concurrent", icon: Eye, href: "/concurrenten" },
         ],
       },
       { label: "Analytics", icon: BarChart3, href: "/analytics" },
-      { label: "Ops Room", icon: Radio, href: "/ops-room" },
     ],
   },
 

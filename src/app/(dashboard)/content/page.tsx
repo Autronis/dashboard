@@ -149,6 +149,7 @@ export default function ContentPage() {
   const { data: inzichten = [] } = useContentInzichten();
   const genereerBatch = useGenerateBatch();
   const genereerLinkedin = useGenerateBatch();
+  const genereerStorytelling = useGenerateBatch();
   const genereerWeek = useGenerateBatch();
   const updatePost = useUpdatePost();
 

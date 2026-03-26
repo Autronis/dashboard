@@ -17,8 +17,9 @@ export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
 
-    const body = await req.json() as { count?: number; platforms?: string[] };
+    const body = await req.json() as { count?: number; platforms?: string[]; format?: string };
     const count = typeof body.count === "number" && body.count > 0 ? body.count : 7;
+    const format = typeof body.format === "string" ? body.format : undefined;
     const platforms = (
       Array.isArray(body.platforms) && body.platforms.length > 0
         ? body.platforms.filter((p): p is "linkedin" | "instagram" =>
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
     }));
 
     // Generate via AI
-    const generated = await generateContentBatch(profiel, inzichtenInput, count, platforms);
+    const generated = await generateContentBatch(profiel, inzichtenInput, count, platforms, format);
 
     // Save posts to DB
     const batchId = crypto.randomUUID();

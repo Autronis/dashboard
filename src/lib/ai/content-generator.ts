@@ -89,7 +89,8 @@ ${profiel.tone_of_voice}
 function buildUserPrompt(
   inzichten: InzichtInput[],
   count: number,
-  platforms: ("linkedin" | "instagram")[]
+  platforms: ("linkedin" | "instagram")[],
+  format?: string
 ): string {
   const inzichtenText = inzichten.length > 0
     ? inzichten.map((i, idx) => `Inzicht ${idx + 1} [${i.categorie}]: ${i.titel}\n${i.inhoud}`).join("\n\n")
@@ -104,7 +105,7 @@ function buildUserPrompt(
   return `Genereer precies ${count} social media posts voor Autronis.
 
 ${platformVerdeling}
-Gebruik een mix van formats: vraag, statement, storytelling, lijst, how_to, tip, thought_leadership.
+${format ? `Alle posts moeten het format "${format}" gebruiken.` : "Gebruik een mix van formats: vraag, statement, storytelling, lijst, how_to, tip, thought_leadership."}
 
 ## Inspiratie (gebruik deze inzichten als basis voor de posts)
 ${inzichtenText}
@@ -129,7 +130,8 @@ export async function generateContentBatch(
   profiel: ProfielData,
   inzichten: InzichtInput[],
   count: number = 7,
-  platforms: ("linkedin" | "instagram")[] = ["linkedin", "instagram"]
+  platforms: ("linkedin" | "instagram")[] = ["linkedin", "instagram"],
+  format?: string
 ): Promise<GeneratedPost[]> {
   const client = new Anthropic();
 
@@ -142,7 +144,7 @@ export async function generateContentBatch(
     messages: [
       {
         role: "user",
-        content: buildUserPrompt(selectedInzichten, count, platforms),
+        content: buildUserPrompt(selectedInzichten, count, platforms, format),
       },
     ],
   });

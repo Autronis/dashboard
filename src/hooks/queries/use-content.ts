@@ -155,7 +155,7 @@ export function useGenerateBatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (payload?: { count?: number; platforms?: string[] }) => {
+    mutationFn: async (payload?: { count?: number; platforms?: string[]; format?: string }) => {
       const res = await fetch("/api/content/genereer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

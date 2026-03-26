@@ -24,6 +24,7 @@ export async function POST(
         klantEmail: klanten.email,
         klantNaam: klanten.bedrijfsnaam,
         klantContactpersoon: klanten.contactpersoon,
+        klantTaal: klanten.taal,
       })
       .from(facturen)
       .leftJoin(klanten, eq(facturen.klantId, klanten.id))
@@ -68,42 +69,66 @@ export async function POST(
     const fromEmail = bedrijf?.email || "zakelijk@autronis.com";
     const iban = bedrijf?.iban;
 
-    const bedragFormatted = new Intl.NumberFormat("nl-NL", {
+    const taal = (factuur.klantTaal === "en" ? "en" : "nl") as "nl" | "en";
+    const locale = taal === "en" ? "en-GB" : "nl-NL";
+
+    const bedragFormatted = new Intl.NumberFormat(locale, {
       style: "currency",
       currency: "EUR",
     }).format(factuur.bedragInclBtw || 0);
 
     const vervaldatumFormatted = factuur.vervaldatum
-      ? new Date(factuur.vervaldatum).toLocaleDateString("nl-NL", {
+      ? new Date(factuur.vervaldatum).toLocaleDateString(locale, {
           day: "numeric",
           month: "long",
           year: "numeric",
         })
-      : "onbekend";
+      : taal === "en" ? "unknown" : "onbekend";
 
     const resend = new Resend(apiKey);
+    const naam = factuur.klantContactpersoon || factuur.klantNaam;
+
+    const subject = taal === "en"
+      ? `Reminder: Invoice ${factuur.factuurnummer} — ${bedrijfNaam}`
+      : `Herinnering: Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`;
+
+    const textLines = taal === "en"
+      ? [
+          `Dear ${naam},`,
+          "",
+          `We would like to kindly remind you that invoice ${factuur.factuurnummer} for the amount of ${bedragFormatted} has not yet been paid.`,
+          `The due date was ${vervaldatumFormatted}.`,
+          "",
+          iban
+            ? `Please transfer the amount to:\nIBAN: ${iban}\nIn the name of: ${bedrijfNaam}\nReference: ${factuur.factuurnummer}`
+            : "",
+          "",
+          "If you have already made this payment, please disregard this reminder.",
+          "",
+          "Kind regards,",
+          bedrijfNaam,
+        ]
+      : [
+          `Beste ${naam},`,
+          "",
+          `Wij willen u er vriendelijk aan herinneren dat factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted} nog niet is voldaan.`,
+          `De vervaldatum was ${vervaldatumFormatted}.`,
+          "",
+          iban
+            ? `Gelieve het bedrag over te maken op:\nIBAN: ${iban}\nT.n.v.: ${bedrijfNaam}\nO.v.v.: ${factuur.factuurnummer}`
+            : "",
+          "",
+          "Indien u deze factuur reeds heeft betaald, kunt u deze herinnering als niet verzonden beschouwen.",
+          "",
+          "Met vriendelijke groet,",
+          bedrijfNaam,
+        ];
 
     await resend.emails.send({
       from: `${bedrijfNaam} <${fromEmail}>`,
       to: factuur.klantEmail,
-      subject: `Herinnering: Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`,
-      text: [
-        `Beste ${factuur.klantContactpersoon || factuur.klantNaam},`,
-        "",
-        `Wij willen u er vriendelijk aan herinneren dat factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted} nog niet is voldaan.`,
-        `De vervaldatum was ${vervaldatumFormatted}.`,
-        "",
-        iban
-          ? `Gelieve het bedrag over te maken op:\nIBAN: ${iban}\nT.n.v.: ${bedrijfNaam}\nO.v.v.: ${factuur.factuurnummer}`
-          : "",
-        "",
-        "Indien u deze factuur reeds heeft betaald, kunt u deze herinnering als niet verzonden beschouwen.",
-        "",
-        "Met vriendelijke groet,",
-        bedrijfNaam,
-      ]
-        .filter(Boolean)
-        .join("\n"),
+      subject,
+      text: textLines.filter(Boolean).join("\n"),
     });
 
     // Update status to te_laat

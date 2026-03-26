@@ -22,6 +22,7 @@ interface KlantModalProps {
     kvkNummer?: string | null;
     btwNummer?: string | null;
     type?: "klant" | "facturatie" | null;
+    taal?: "nl" | "en" | null;
   } | null;
   onOpgeslagen: () => void;
 }
@@ -45,6 +46,7 @@ const leegFormulier = {
   kvkNummer: "",
   btwNummer: "",
   type: "klant" as "klant" | "facturatie",
+  taal: "nl" as "nl" | "en",
 };
 
 export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalProps) {
@@ -69,6 +71,7 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
           kvkNummer: klant.kvkNummer ?? "",
           btwNummer: klant.btwNummer ?? "",
           type: klant.type ?? "klant",
+          taal: klant.taal ?? "nl",
         });
       } else {
         setFormulier(leegFormulier);
@@ -114,6 +117,7 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
         kvkNummer: formulier.kvkNummer.trim() || null,
         btwNummer: formulier.btwNummer.trim() || null,
         type: formulier.type,
+        taal: formulier.taal,
       };
 
       const url = klant ? `/api/klanten/${klant.id}` : "/api/klanten";
@@ -190,6 +194,26 @@ export function KlantModal({ open, onClose, klant, onOpgeslagen }: KlantModalPro
                 }`}
               >
                 {t === "klant" ? "Klant" : "Alleen facturatie"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="block text-sm font-medium text-autronis-text-secondary">Taal (facturen & e-mails)</label>
+          <div className="flex gap-2">
+            {(["nl", "en"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => updateVeld("taal", t)}
+                className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                  formulier.taal === t
+                    ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                    : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                }`}
+              >
+                {t === "nl" ? "🇳🇱 Nederlands" : "🇬🇧 English"}
               </button>
             ))}
           </div>

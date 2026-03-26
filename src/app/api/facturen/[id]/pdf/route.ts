@@ -32,6 +32,7 @@ export async function GET(
         klantContactpersoon: klanten.contactpersoon,
         klantEmail: klanten.email,
         klantAdres: klanten.adres,
+        klantTaal: klanten.taal,
       })
       .from(facturen)
       .innerJoin(klanten, eq(facturen.klantId, klanten.id))
@@ -48,6 +49,8 @@ export async function GET(
 
     const [bedrijf] = await db.select().from(bedrijfsinstellingen).limit(1);
 
+    const taal = (factuur.klantTaal === "en" ? "en" : "nl") as "nl" | "en";
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfBuffer = await renderToBuffer(
       React.createElement(FactuurPDF, {
@@ -62,13 +65,14 @@ export async function GET(
           telefoon: null,
           iban: null,
         },
+        taal,
       }) as any
     );
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="Autronis_Factuur_${factuur.factuurnummer}.pdf"`,
+        "Content-Disposition": `attachment; filename="Autronis_${taal === "en" ? "Invoice" : "Factuur"}_${factuur.factuurnummer}.pdf"`,
       },
     });
   } catch (error) {

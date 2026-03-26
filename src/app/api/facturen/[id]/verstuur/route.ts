@@ -44,6 +44,7 @@ export async function POST(
         klantContactpersoon: klanten.contactpersoon,
         klantEmail: klanten.email,
         klantAdres: klanten.adres,
+        klantTaal: klanten.taal,
       })
       .from(facturen)
       .innerJoin(klanten, eq(facturen.klantId, klanten.id))
@@ -77,6 +78,8 @@ export async function POST(
       iban: null,
     };
 
+    const taal = (factuur.klantTaal === "en" ? "en" : "nl") as "nl" | "en";
+
     // Generate PDF
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfBuffer = await renderToBuffer(
@@ -84,10 +87,11 @@ export async function POST(
         factuur,
         regels,
         bedrijf: bedrijfData,
+        taal,
       }) as any
     );
 
-    const bedragFormatted = new Intl.NumberFormat("nl-NL", {
+    const bedragFormatted = new Intl.NumberFormat(taal === "en" ? "en-GB" : "nl-NL", {
       style: "currency",
       currency: "EUR",
     }).format(factuur.bedragInclBtw || 0);
@@ -96,15 +100,20 @@ export async function POST(
     const resend = new Resend(apiKey);
     const fromEmail = bedrijfData.email || "zakelijk@autronis.com";
 
+    const locale = taal === "en" ? "en-GB" : "nl-NL";
     const vervaldatumFormatted = factuur.vervaldatum
-      ? new Date(factuur.vervaldatum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })
+      ? new Date(factuur.vervaldatum).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" })
       : null;
     const naam = factuur.klantContactpersoon || factuur.klantNaam;
     const bedrijfNaam = bedrijfData.bedrijfsnaam || "Autronis";
 
     const toEmail = body.aan || factuur.klantEmail;
-    const subject = body.onderwerp || `Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`;
-    const emailText = body.bericht || `Beste ${naam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted}.\n\nMet vriendelijke groet,\n${bedrijfNaam}`;
+    const subject = body.onderwerp || (taal === "en"
+      ? `Invoice ${factuur.factuurnummer} — ${bedrijfNaam}`
+      : `Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`);
+    const emailText = body.bericht || (taal === "en"
+      ? `Dear ${naam},\n\nPlease find attached invoice ${factuur.factuurnummer} for the amount of ${bedragFormatted}.\n\nKind regards,\n${bedrijfNaam}`
+      : `Beste ${naam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted}.\n\nMet vriendelijke groet,\n${bedrijfNaam}`);
 
     const signature = `
 <table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#1F2937;line-height:1.5;margin-top:24px;">
@@ -138,7 +147,7 @@ export async function POST(
       text: emailText,
       attachments: [
         {
-          filename: `Autronis_Factuur_${factuur.factuurnummer}.pdf`,
+          filename: `Autronis_${taal === "en" ? "Invoice" : "Factuur"}_${factuur.factuurnummer}.pdf`,
           content: pdfBuffer.toString("base64"),
         },
       ],

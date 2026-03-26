@@ -26,9 +26,6 @@ Font.register({
 });
 
 const TEAL = "#17B8A5";
-const DARK_BG = "#0E1719";
-const TEXT_PRIMARY = "#E8ECED";
-const TEXT_SECONDARY = "#8A9BA0";
 
 const styles = StyleSheet.create({
   page: {
@@ -232,6 +229,53 @@ const styles = StyleSheet.create({
   },
 });
 
+const translations = {
+  nl: {
+    documentType: "FACTUUR",
+    invoiceTo: "Factuur aan",
+    attn: "t.a.v.",
+    invoiceDate: "Factuurdatum",
+    dueDate: "Vervaldatum",
+    description: "Omschrijving",
+    quantity: "Aantal",
+    price: "Prijs",
+    vat: "BTW",
+    total: "Totaal",
+    subtotal: "Subtotaal",
+    notes: "Opmerkingen",
+    payTo: (iban: string, name: string) => `Gelieve te betalen op IBAN ${iban} t.n.v. ${name}`,
+    paymentTerm: (date: string) => `Betalingstermijn: voor ${date}`,
+    reference: (nr: string) => `O.v.v. ${nr}`,
+    contact: "Contact",
+    reachable: "Bereikbaar",
+    details: "Gegevens",
+    tagline: "AI & Automatisering",
+  },
+  en: {
+    documentType: "INVOICE",
+    invoiceTo: "Invoice to",
+    attn: "Attn.",
+    invoiceDate: "Invoice date",
+    dueDate: "Due date",
+    description: "Description",
+    quantity: "Qty",
+    price: "Price",
+    vat: "VAT",
+    total: "Total",
+    subtotal: "Subtotal",
+    notes: "Notes",
+    payTo: (iban: string, name: string) => `Please transfer to IBAN ${iban} in the name of ${name}`,
+    paymentTerm: (date: string) => `Payment due: before ${date}`,
+    reference: (nr: string) => `Reference: ${nr}`,
+    contact: "Contact",
+    reachable: "Reach us",
+    details: "Details",
+    tagline: "AI & Automation",
+  },
+} as const;
+
+type Taal = "nl" | "en";
+
 interface Regel {
   omschrijving: string;
   aantal: number | null;
@@ -265,29 +309,32 @@ interface FactuurPDFProps {
     telefoon: string | null;
     iban: string | null;
   };
+  taal?: Taal;
 }
 
-function formatBedragPDF(bedrag: number): string {
-  return new Intl.NumberFormat("nl-NL", {
+function formatBedragPDF(bedrag: number, taal: Taal): string {
+  return new Intl.NumberFormat(taal === "en" ? "en-GB" : "nl-NL", {
     style: "currency",
     currency: "EUR",
     minimumFractionDigits: 2,
   }).format(bedrag);
 }
 
-function formatDatumPDF(datum: string): string {
-  return new Date(datum).toLocaleDateString("nl-NL", {
+function formatDatumPDF(datum: string, taal: Taal): string {
+  return new Date(datum).toLocaleDateString(taal === "en" ? "en-GB" : "nl-NL", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
 }
 
-export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
+export function FactuurPDF({ factuur, regels, bedrijf, taal = "nl" }: FactuurPDFProps) {
+  const t = translations[taal];
+
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* ===== DARK HEADER ===== */}
+        {/* ===== HEADER ===== */}
         <View style={styles.headerBand}>
           <View style={styles.headerContent}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
@@ -296,11 +343,11 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
                 <Text style={styles.bedrijfsnaam}>
                   {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}
                 </Text>
-                <Text style={styles.tagline}>AI & Automatisering</Text>
+                <Text style={styles.tagline}>{t.tagline}</Text>
               </View>
             </View>
             <View style={styles.headerRight}>
-              <Text style={styles.documentType}>FACTUUR</Text>
+              <Text style={styles.documentType}>{t.documentType}</Text>
               <Text style={styles.factuurNummer}>{factuur.factuurnummer}</Text>
             </View>
           </View>
@@ -312,22 +359,22 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
         <View style={styles.body}>
           <View style={styles.infoRow}>
             <View style={styles.infoBlock}>
-              <Text style={styles.infoLabel}>Factuur aan</Text>
+              <Text style={styles.infoLabel}>{t.invoiceTo}</Text>
               <Text style={styles.infoValue}>
                 {factuur.klantNaam}
-                {factuur.klantContactpersoon ? `\nt.a.v. ${factuur.klantContactpersoon}` : ""}
+                {factuur.klantContactpersoon ? `\n${t.attn} ${factuur.klantContactpersoon}` : ""}
                 {factuur.klantAdres ? `\n${factuur.klantAdres}` : ""}
                 {factuur.klantEmail ? `\n${factuur.klantEmail}` : ""}
               </Text>
             </View>
             <View style={[styles.infoBlock, { alignItems: "flex-end" }]}>
-              <Text style={styles.infoLabel}>Factuurdatum</Text>
+              <Text style={styles.infoLabel}>{t.invoiceDate}</Text>
               <Text style={styles.infoValue}>
-                {factuur.factuurdatum ? formatDatumPDF(factuur.factuurdatum) : "\u2014"}
+                {factuur.factuurdatum ? formatDatumPDF(factuur.factuurdatum, taal) : "\u2014"}
               </Text>
-              <Text style={[styles.infoLabel, { marginTop: 12 }]}>Vervaldatum</Text>
+              <Text style={[styles.infoLabel, { marginTop: 12 }]}>{t.dueDate}</Text>
               <Text style={styles.infoValue}>
-                {factuur.vervaldatum ? formatDatumPDF(factuur.vervaldatum) : "\u2014"}
+                {factuur.vervaldatum ? formatDatumPDF(factuur.vervaldatum, taal) : "\u2014"}
               </Text>
             </View>
           </View>
@@ -335,19 +382,19 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
           {/* Table */}
           <View style={styles.table}>
             <View style={styles.tableHeader}>
-              <Text style={[styles.headerText, styles.colOmschrijving]}>Omschrijving</Text>
-              <Text style={[styles.headerText, styles.colAantal]}>Aantal</Text>
-              <Text style={[styles.headerText, styles.colPrijs]}>Prijs</Text>
-              <Text style={[styles.headerText, styles.colBtw]}>BTW</Text>
-              <Text style={[styles.headerText, styles.colTotaal]}>Totaal</Text>
+              <Text style={[styles.headerText, styles.colOmschrijving]}>{t.description}</Text>
+              <Text style={[styles.headerText, styles.colAantal]}>{t.quantity}</Text>
+              <Text style={[styles.headerText, styles.colPrijs]}>{t.price}</Text>
+              <Text style={[styles.headerText, styles.colBtw]}>{t.vat}</Text>
+              <Text style={[styles.headerText, styles.colTotaal]}>{t.total}</Text>
             </View>
             {regels.map((regel, i) => (
               <View key={i} style={[styles.tableRow, i % 2 === 1 ? styles.tableRowAlt : {}]}>
                 <Text style={[styles.regelText, styles.colOmschrijving]}>{regel.omschrijving}</Text>
                 <Text style={[styles.regelText, styles.colAantal]}>{regel.aantal || 1}</Text>
-                <Text style={[styles.regelText, styles.colPrijs]}>{formatBedragPDF(regel.eenheidsprijs || 0)}</Text>
+                <Text style={[styles.regelText, styles.colPrijs]}>{formatBedragPDF(regel.eenheidsprijs || 0, taal)}</Text>
                 <Text style={[styles.regelText, styles.colBtw]}>{regel.btwPercentage ?? 21}%</Text>
-                <Text style={[styles.regelText, styles.colTotaal]}>{formatBedragPDF(regel.totaal || 0)}</Text>
+                <Text style={[styles.regelText, styles.colTotaal]}>{formatBedragPDF(regel.totaal || 0, taal)}</Text>
               </View>
             ))}
           </View>
@@ -355,67 +402,67 @@ export function FactuurPDF({ factuur, regels, bedrijf }: FactuurPDFProps) {
           {/* Totals */}
           <View style={styles.totalen}>
             <View style={styles.totalenRij}>
-              <Text style={styles.totalenLabel}>Subtotaal</Text>
-              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.bedragExclBtw)}</Text>
+              <Text style={styles.totalenLabel}>{t.subtotal}</Text>
+              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.bedragExclBtw, taal)}</Text>
             </View>
             <View style={styles.totalenRij}>
-              <Text style={styles.totalenLabel}>BTW ({factuur.btwPercentage || 21}%)</Text>
-              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.btwBedrag || 0)}</Text>
+              <Text style={styles.totalenLabel}>{t.vat} ({factuur.btwPercentage || 21}%)</Text>
+              <Text style={styles.totalenWaarde}>{formatBedragPDF(factuur.btwBedrag || 0, taal)}</Text>
             </View>
             <View style={[styles.totalenRij, styles.totalenDivider]}>
-              <Text style={[styles.totalenLabel, styles.totalenGroot]}>Totaal</Text>
+              <Text style={[styles.totalenLabel, styles.totalenGroot]}>{t.total}</Text>
               <Text style={[styles.totalenWaarde, styles.totalenGroot]}>
-                {formatBedragPDF(factuur.bedragInclBtw || 0)}
+                {formatBedragPDF(factuur.bedragInclBtw || 0, taal)}
               </Text>
             </View>
           </View>
 
-          {/* Notities */}
+          {/* Notes */}
           {factuur.notities && (
             <View style={styles.notities}>
-              <Text style={styles.notitiesLabel}>Opmerkingen</Text>
+              <Text style={styles.notitiesLabel}>{t.notes}</Text>
               <Text style={{ fontSize: 9, lineHeight: 1.7, color: "#374151" }}>
                 {factuur.notities}
               </Text>
             </View>
           )}
 
-          {/* Betaalinstructies */}
+          {/* Payment instructions */}
           <View style={styles.betaling}>
             <Text style={styles.betalingText}>
               {bedrijf.iban
-                ? `Gelieve te betalen op IBAN ${bedrijf.iban} t.n.v. ${bedrijf.bedrijfsnaam || "Autronis"}`
+                ? t.payTo(bedrijf.iban, bedrijf.bedrijfsnaam || "Autronis")
                 : ""}
               {factuur.vervaldatum
-                ? `\nBetalingstermijn: voor ${formatDatumPDF(factuur.vervaldatum)}`
+                ? `\n${t.paymentTerm(formatDatumPDF(factuur.vervaldatum, taal))}`
                 : ""}
-              {`\nO.v.v. ${factuur.factuurnummer}`}
+              {`\n${t.reference(factuur.factuurnummer)}`}
             </Text>
           </View>
         </View>
 
-        {/* ===== DARK FOOTER ===== */}
+        {/* ===== FOOTER ===== */}
         <View style={styles.footer}>
           <View style={styles.footerContent}>
             <View style={styles.footerCol}>
-              <Text style={styles.footerLabel}>Contact</Text>
+              <Text style={styles.footerLabel}>{t.contact}</Text>
               <Text style={styles.footerText}>
                 {bedrijf.bedrijfsnaam || "Autronis"}
                 {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
               </Text>
             </View>
             <View style={styles.footerCol}>
-              <Text style={styles.footerLabel}>Bereikbaar</Text>
+              <Text style={styles.footerLabel}>{t.reachable}</Text>
               <Text style={styles.footerText}>
                 {bedrijf.email || "zakelijk@autronis.com"}
                 {bedrijf.telefoon ? `\n${bedrijf.telefoon}` : ""}
               </Text>
             </View>
             <View style={styles.footerCol}>
-              <Text style={styles.footerLabel}>Gegevens</Text>
+              <Text style={styles.footerLabel}>{t.details}</Text>
               <Text style={styles.footerText}>
                 {bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}` : ""}
-                {bedrijf.btwNummer ? `\nBTW: ${bedrijf.btwNummer}` : ""}
+                {bedrijf.btwNummer ? `\nVAT: ${bedrijf.btwNummer}` : ""}
                 {bedrijf.iban ? `\nIBAN: ${bedrijf.iban}` : ""}
               </Text>
             </View>

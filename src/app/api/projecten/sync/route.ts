@@ -409,14 +409,12 @@ export async function POST() {
       for (const task of tasks) {
         const existing = existingMap.get(task.titel);
         if (!existing) {
-          // Auto-detect if code exists for this task
-          const autoDetected = !task.done && detectTaskCompletion(dirPath, task.titel);
           await db.insert(taken).values({
             projectId: project.id,
             toegewezenAan: gebruiker.id,
             aangemaaktDoor: gebruiker.id,
             titel: task.titel,
-            status: task.done || autoDetected ? "afgerond" : "open",
+            status: task.done ? "afgerond" : "open",
             prioriteit: "normaal",
             fase: task.fase || null,
             volgorde: task.volgorde,
@@ -424,14 +422,11 @@ export async function POST() {
           });
           toegevoegd++;
         } else {
-          // Auto-detect completion for open tasks
-          const autoDetected = !task.done && existing.status !== "afgerond" && detectTaskCompletion(dirPath, task.titel);
-
-          if ((task.done || autoDetected) && existing.status !== "afgerond") {
+          // TODO.md checkbox is the source of truth
+          if (task.done && existing.status !== "afgerond") {
             await db.update(taken).set({ status: "afgerond" }).where(eq(taken.id, existing.id));
             bijgewerkt++;
-          } else if (!task.done && !autoDetected && existing.status === "afgerond") {
-            // Task was un-checked in TODO.md and code doesn't exist
+          } else if (!task.done && existing.status === "afgerond") {
             await db.update(taken).set({ status: "open" }).where(eq(taken.id, existing.id));
             bijgewerkt++;
           }

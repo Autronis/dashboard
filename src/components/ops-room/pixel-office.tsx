@@ -1505,58 +1505,6 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
       drawDesk(ctx, pos.x, pos.y, agent, pc, tick, selectedId === id, hovered === id, true, S, false, pal);
     });
 
-    // === System connections between agents ===
-    // Build project groups for connections
-    const projectGroups: Record<string, { x: number; y: number; id: string }[]> = {};
-    Object.entries(DESK_POSITIONS).forEach(([id, pos]) => {
-      const agent = agents.find((a) => a.id === id);
-      if (!agent || !agent.huidigeTaak || agent.status === "idle" || agent.status === "offline") return;
-      if (agent.rol === "manager") return;
-      const proj = agent.huidigeTaak.project;
-      if (!projectGroups[proj]) projectGroups[proj] = [];
-      projectGroups[proj].push({ x: pos.x + 14 * S, y: pos.y + 14 * S, id });
-    });
-
-    // Draw thin connections between related desks
-    Object.entries(projectGroups).forEach(([proj, group]) => {
-      if (group.length < 2) return;
-      const color = getProjectColor(proj);
-      // If a project is hovered in sidebar, highlight its connections, dim others
-      const isHighlighted = hoveredProject === proj;
-      const isDimmed = hoveredProject !== null && !isHighlighted;
-      const lineAlpha = isDimmed ? "08" : isHighlighted ? "60" : "30";
-      const dotAlpha = isDimmed ? "10" : isHighlighted ? "cc" : "70";
-
-      ctx.strokeStyle = `${color}${lineAlpha}`;
-      ctx.lineWidth = isHighlighted ? 2 : 1;
-      ctx.setLineDash([3, 5]);
-      for (let i = 0; i < group.length - 1; i++) {
-        ctx.beginPath();
-        ctx.moveTo(group[i].x, group[i].y);
-        ctx.lineTo(group[i + 1].x, group[i + 1].y);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
-
-      // Moving data dots (bidirectional)
-      if (group.length >= 2 && !isDimmed) {
-        const speed = isHighlighted ? 0.05 : 0.035;
-        const t1 = (tick * speed) % 1;
-        const t2 = ((tick * speed) + 0.5) % 1; // offset dot going back
-        const r = isHighlighted ? 3.5 : 2.5;
-        // Forward dot
-        const d1x = group[0].x + (group[1].x - group[0].x) * t1;
-        const d1y = group[0].y + (group[1].y - group[0].y) * t1;
-        ctx.fillStyle = `${color}${dotAlpha}`;
-        ctx.beginPath(); ctx.arc(d1x, d1y, r, 0, Math.PI * 2); ctx.fill();
-        // Return dot (dimmer, smaller)
-        const d2x = group[1].x + (group[0].x - group[1].x) * t2;
-        const d2y = group[1].y + (group[0].y - group[1].y) * t2;
-        ctx.fillStyle = `${color}${isDimmed ? "10" : isHighlighted ? "55" : "35"}`;
-        ctx.beginPath(); ctx.arc(d2x, d2y, r * 0.7, 0, Math.PI * 2); ctx.fill();
-      }
-    });
-
     // === 3D table with coffee machine + water cooler next to bottom-right plant ===
     const sbTX = CANVAS_W - 190;
     const sbTW = 80;

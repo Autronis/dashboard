@@ -44,6 +44,7 @@ export async function POST() {
         klantEmail: klanten.email,
         klantNaam: klanten.bedrijfsnaam,
         klantContactpersoon: klanten.contactpersoon,
+        klantTaal: klanten.taal,
       })
       .from(facturen)
       .leftJoin(klanten, eq(facturen.klantId, klanten.id))
@@ -71,44 +72,69 @@ export async function POST() {
     const resultaten: Array<{ factuurId: number; factuurnummer: string; klant: string | null; emailVerstuurd: boolean }> = [];
 
     for (const f of overdueFacturen) {
-      const bedragFormatted = new Intl.NumberFormat("nl-NL", {
+      const taal = (f.klantTaal === "en" ? "en" : "nl") as "nl" | "en";
+      const locale = taal === "en" ? "en-GB" : "nl-NL";
+
+      const bedragFormatted = new Intl.NumberFormat(locale, {
         style: "currency",
         currency: "EUR",
       }).format(f.bedragInclBtw || 0);
 
       const vervaldatumFormatted = f.vervaldatum
-        ? new Date(f.vervaldatum).toLocaleDateString("nl-NL", {
+        ? new Date(f.vervaldatum).toLocaleDateString(locale, {
             day: "numeric",
             month: "long",
             year: "numeric",
           })
-        : "onbekend";
+        : taal === "en" ? "unknown" : "onbekend";
+
+      const naam = f.klantContactpersoon || f.klantNaam;
 
       let emailVerstuurd = false;
 
       if (resend && f.klantEmail) {
         try {
+          const subject = taal === "en"
+            ? `Reminder: Invoice ${f.factuurnummer} — ${bedrijfNaam}`
+            : `Herinnering: Factuur ${f.factuurnummer} — ${bedrijfNaam}`;
+
+          const textLines = taal === "en"
+            ? [
+                `Dear ${naam},`,
+                "",
+                `We would like to kindly remind you that invoice ${f.factuurnummer} for the amount of ${bedragFormatted} has not yet been paid.`,
+                `The due date was ${vervaldatumFormatted}.`,
+                "",
+                iban
+                  ? `Please transfer the amount to:\nIBAN: ${iban}\nIn the name of: ${bedrijfNaam}\nReference: ${f.factuurnummer}`
+                  : "",
+                "",
+                "If you have already made this payment, please disregard this reminder.",
+                "",
+                "Kind regards,",
+                bedrijfNaam,
+              ]
+            : [
+                `Beste ${naam},`,
+                "",
+                `Wij willen u er vriendelijk aan herinneren dat factuur ${f.factuurnummer} ter hoogte van ${bedragFormatted} nog niet is voldaan.`,
+                `De vervaldatum was ${vervaldatumFormatted}.`,
+                "",
+                iban
+                  ? `Gelieve het bedrag over te maken op:\nIBAN: ${iban}\nT.n.v.: ${bedrijfNaam}\nO.v.v.: ${f.factuurnummer}`
+                  : "",
+                "",
+                "Indien u deze factuur reeds heeft betaald, kunt u deze herinnering als niet verzonden beschouwen.",
+                "",
+                "Met vriendelijke groet,",
+                bedrijfNaam,
+              ];
+
           await resend.emails.send({
             from: `${bedrijfNaam} <${fromEmail}>`,
             to: f.klantEmail,
-            subject: `Herinnering: Factuur ${f.factuurnummer} — ${bedrijfNaam}`,
-            text: [
-              `Beste ${f.klantContactpersoon || f.klantNaam},`,
-              "",
-              `Wij willen u er vriendelijk aan herinneren dat factuur ${f.factuurnummer} ter hoogte van ${bedragFormatted} nog niet is voldaan.`,
-              `De vervaldatum was ${vervaldatumFormatted}.`,
-              "",
-              iban
-                ? `Gelieve het bedrag over te maken op:\nIBAN: ${iban}\nT.n.v.: ${bedrijfNaam}\nO.v.v.: ${f.factuurnummer}`
-                : "",
-              "",
-              "Indien u deze factuur reeds heeft betaald, kunt u deze herinnering als niet verzonden beschouwen.",
-              "",
-              "Met vriendelijke groet,",
-              bedrijfNaam,
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            subject,
+            text: textLines.filter(Boolean).join("\n"),
           });
           emailVerstuurd = true;
         } catch {

@@ -48,17 +48,15 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Projecten", icon: FolderKanban, href: "/projecten" },
       { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
-      { label: "Offertes", icon: FileText, href: "/offertes" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
-      { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
     ],
   },
   {
     section: "Facturatie",
     items: [
       { label: "Facturen", icon: Euro, href: "/facturen" },
-      { label: "Uitgaven", icon: Receipt, href: "/financien?tab=uitgaven" },
-      { label: "Abonnementen", icon: CreditCard, href: "/financien?tab=abonnementen" },
+      { label: "Offertes", icon: FileText, href: "/offertes" },
+      { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
     ],
   },
   {

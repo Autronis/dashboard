@@ -11,7 +11,7 @@ import {
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
   Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
-  UserCheck, Activity, CalendarDays, Wand2,
+  UserCheck, Activity, CalendarDays, Wand2, ShieldAlert,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -75,6 +75,7 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Animaties", icon: Wand2, href: "/animaties" },
       { label: "Case Studies", icon: Video, href: "/case-studies" },
       { label: "Documenten", icon: FileText, href: "/documenten" },
+      { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
       { label: "Wiki", icon: BookOpen, href: "/wiki" },
       { label: "Learning Radar", icon: Radar, href: "/radar" },
       { label: "Second Brain", icon: Brain, href: "/second-brain" },

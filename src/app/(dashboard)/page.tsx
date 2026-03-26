@@ -1121,10 +1121,9 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        {/* Gewoontes + Focus — naast elkaar */}
-        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <HabitWidget />
-          <FocusWidget />
+        {/* Gewoontes — compact */}
+        <motion.div variants={sectionVariants}>
+          <HabitWidget compact />
         </motion.div>
 
         {/* Spacer for timer bar */}

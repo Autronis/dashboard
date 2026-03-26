@@ -56,7 +56,7 @@ interface HabitStat {
   huidigeStreak: number;
 }
 
-export function HabitWidget() {
+export function HabitWidget({ compact = false }: { compact?: boolean }) {
   const [gewoontes, setGewoontes] = useState<Gewoonte[]>([]);
   const [statistieken, setStatistieken] = useState<HabitStat[]>([]);
   const [loading, setLoading] = useState(true);

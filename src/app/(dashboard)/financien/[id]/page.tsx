@@ -387,6 +387,71 @@ export default function FactuurDetailPage() {
           bevestigTekst="Verwijderen"
           variant="danger"
         />
+
+        {/* Verstuur e-mail modal */}
+        {verstuurModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={(e) => { if (e.target === e.currentTarget) setVerstuurModalOpen(false); }}>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-lg shadow-2xl">
+              <div className="flex items-center justify-between p-5 border-b border-autronis-border">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-autronis-accent/10 rounded-xl">
+                    <Mail className="w-5 h-5 text-autronis-accent" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-autronis-text-primary">Factuur versturen</h3>
+                    <p className="text-xs text-autronis-text-secondary">{factuur.factuurnummer} · PDF wordt bijgevoegd</p>
+                  </div>
+                </div>
+                <button onClick={() => setVerstuurModalOpen(false)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors">
+                  <span className="text-lg">&times;</span>
+                </button>
+              </div>
+              <div className="p-5 space-y-4">
+                <div>
+                  <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Aan</label>
+                  <input
+                    type="email"
+                    value={emailAan}
+                    onChange={(e) => setEmailAan(e.target.value)}
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Onderwerp</label>
+                  <input
+                    type="text"
+                    value={emailOnderwerp}
+                    onChange={(e) => setEmailOnderwerp(e.target.value)}
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Bericht</label>
+                  <textarea
+                    value={emailBericht}
+                    onChange={(e) => setEmailBericht(e.target.value)}
+                    rows={8}
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none leading-relaxed"
+                  />
+                </div>
+                <p className="text-xs text-autronis-text-secondary/60">De factuur-PDF wordt automatisch als bijlage meegestuurd.</p>
+              </div>
+              <div className="flex items-center justify-end gap-3 p-5 border-t border-autronis-border">
+                <button onClick={() => setVerstuurModalOpen(false)} className="px-4 py-2.5 text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">
+                  Annuleren
+                </button>
+                <button
+                  onClick={handleVerstuur}
+                  disabled={verstuurLaden || !emailAan}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+                >
+                  <Mail className="w-4 h-4" />
+                  {verstuurLaden ? "Versturen..." : "Versturen"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </PageTransition>
   );

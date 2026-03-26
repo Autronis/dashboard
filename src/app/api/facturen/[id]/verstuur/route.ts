@@ -10,12 +10,15 @@ import React from "react";
 
 // POST /api/facturen/[id]/verstuur
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await requireAuth();
     const { id } = await params;
+    const body = await req.json().catch(() => ({})) as {
+      aan?: string; onderwerp?: string; bericht?: string;
+    };
 
     const apiKey = process.env.RESEND_API_KEY;
     if (!apiKey) {
@@ -168,12 +171,16 @@ export async function POST(
 </body>
 </html>`;
 
+    const toEmail = body.aan || factuur.klantEmail;
+    const subject = body.onderwerp || `Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`;
+    const customBericht = body.bericht;
+
     await resend.emails.send({
       from: `${bedrijfNaam} <${fromEmail}>`,
-      to: factuur.klantEmail,
-      subject: `Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`,
+      to: toEmail,
+      subject,
       html: htmlBody,
-      text: `Beste ${naam},\n\nHierbij ontvangt u factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted}.\n\n${bedrijfData.iban ? `IBAN: ${bedrijfData.iban}\nT.n.v.: ${bedrijfNaam}\nKenmerk: ${factuur.factuurnummer}` : ""}${vervaldatumFormatted ? `\nUiterlijk: ${vervaldatumFormatted}` : ""}\n\nDe factuur is als PDF bijgevoegd.\n\nMet vriendelijke groet,\n${bedrijfNaam}`,
+      text: customBericht || `Beste ${naam},\n\nHierbij ontvangt u factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted}.\n\n${bedrijfData.iban ? `IBAN: ${bedrijfData.iban}\nT.n.v.: ${bedrijfNaam}\nKenmerk: ${factuur.factuurnummer}` : ""}${vervaldatumFormatted ? `\nUiterlijk: ${vervaldatumFormatted}` : ""}\n\nDe factuur is als PDF bijgevoegd.\n\nMet vriendelijke groet,\n${bedrijfNaam}`,
       attachments: [
         {
           filename: `Autronis_Factuur_${factuur.factuurnummer}.pdf`,

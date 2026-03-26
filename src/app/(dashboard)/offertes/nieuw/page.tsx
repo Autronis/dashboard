@@ -80,16 +80,28 @@ export default function NieuweOffertePage() {
   const [laden, setLaden] = useState(false);
   const [mobileView, setMobileView] = useState<"formulier" | "preview">("formulier");
 
-  const [klantId, setKlantId] = useState<string>("");
-  const [projectId, setProjectId] = useState<string>("");
-  const [titel, setTitel] = useState("");
-  const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
-  const [geldigTotDagen, setGeldigTotDagen] = useState(30);
-  const [notities, setNotities] = useState("");
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
-  const [regels, setRegels] = useState<Regel[]>([
-    { omschrijving: "", aantal: 1, eenheidsprijs: 0, btwPercentage: 21 },
-  ]);
+  const DRAFT_KEY = "offerte-draft";
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  const draft = typeof window !== "undefined" ? loadDraft() : null;
+
+  const [klantId, setKlantId] = useState<string>(draft?.klantId ?? "");
+  const [projectId, setProjectId] = useState<string>(draft?.projectId ?? "");
+  const [titel, setTitel] = useState(draft?.titel ?? "");
+  const [datum, setDatum] = useState(draft?.datum ?? new Date().toISOString().slice(0, 10));
+  const [geldigTotDagen, setGeldigTotDagen] = useState(draft?.geldigTotDagen ?? 30);
+  const [notities, setNotities] = useState(draft?.notities ?? "");
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(draft?.selectedTemplate ?? null);
+  const [regels, setRegels] = useState<Regel[]>(
+    draft?.regels ?? [{ omschrijving: "", aantal: 1, eenheidsprijs: 0, btwPercentage: 21 }]
+  );
 
   function applyTemplate(templateId: string) {
     const template = offerteTemplates.find((t) => t.id === templateId);
@@ -109,6 +121,16 @@ export default function NieuweOffertePage() {
     "ai-integratie": Bot,
     "dashboard-rapportage": BarChart3,
   };
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    const haContent = klantId || titel || regels.some((r) => r.omschrijving.trim());
+    if (haContent) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        klantId, projectId, titel, datum, geldigTotDagen, notities, selectedTemplate, regels,
+      }));
+    }
+  }, [klantId, projectId, titel, datum, geldigTotDagen, notities, selectedTemplate, regels]);
 
   useEffect(() => {
     fetch("/api/klanten").then((r) => r.json()).then((d) => setKlanten(d.klanten || []));

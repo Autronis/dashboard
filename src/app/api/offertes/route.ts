@@ -154,6 +154,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Klant is verplicht." }, { status: 400 });
     }
 
+    const [klant] = await db.select({ id: klanten.id }).from(klanten).where(eq(klanten.id, klantId));
+    if (!klant) {
+      return NextResponse.json({ fout: "Klant bestaat niet. Maak deze eerst aan via Klanten." }, { status: 400 });
+    }
+
     if (!regels || regels.length === 0) {
       return NextResponse.json({ fout: "Minimaal een offerteregel is verplicht." }, { status: 400 });
     }

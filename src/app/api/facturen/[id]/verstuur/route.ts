@@ -106,7 +106,29 @@ export async function POST(
     const subject = body.onderwerp || `Factuur ${factuur.factuurnummer} — ${bedrijfNaam}`;
     const emailText = body.bericht || `Beste ${naam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedragFormatted}.\n\nMet vriendelijke groet,\n${bedrijfNaam}`;
 
-    const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:#1F2937;line-height:1.6;">${emailText.replace(/\n/g, "<br>")}</body></html>`;
+    const signature = `
+<table cellpadding="0" cellspacing="0" border="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;color:#1F2937;line-height:1.5;margin-top:24px;">
+  <tr><td style="padding-bottom:16px;border-bottom:2px solid #17B8A5;">
+    <table cellpadding="0" cellspacing="0" border="0"><tr>
+      <td style="padding-right:20px;vertical-align:middle;"><img src="https://dashboard.autronis.nl/logo.png" alt="Autronis" width="80" height="40" style="display:block;" /></td>
+      <td style="border-left:2px solid #17B8A5;padding-left:20px;vertical-align:middle;">
+        <span style="font-size:17px;font-weight:700;color:#0E1719;letter-spacing:0.5px;">${bedrijfNaam}</span><br>
+        <span style="font-size:11px;color:#17B8A5;font-weight:600;">AI & Automatisering</span>
+      </td>
+    </tr></table>
+  </td></tr>
+  <tr><td style="padding-top:14px;">
+    <table cellpadding="0" cellspacing="0" border="0" style="font-size:12px;color:#6B7280;line-height:1.8;">
+      ${bedrijfData.adres ? `<tr><td style="padding-right:8px;color:#9CA3AF;">Adres:</td><td style="color:#1F2937;">${bedrijfData.adres}</td></tr>` : ""}
+      ${bedrijfData.telefoon ? `<tr><td style="padding-right:8px;color:#9CA3AF;">Tel:</td><td><a href="tel:${bedrijfData.telefoon.replace(/\s/g, "")}" style="color:#1F2937;text-decoration:none;">${bedrijfData.telefoon}</a></td></tr>` : ""}
+      <tr><td style="padding-right:8px;color:#9CA3AF;">E-mail:</td><td><a href="mailto:${fromEmail}" style="color:#17B8A5;text-decoration:none;">${fromEmail}</a></td></tr>
+      <tr><td style="padding-right:8px;color:#9CA3AF;">Web:</td><td><a href="https://autronis.nl" style="color:#17B8A5;text-decoration:none;font-weight:600;">autronis.nl</a></td></tr>
+    </table>
+  </td></tr>
+  ${bedrijfData.kvkNummer ? `<tr><td style="padding-top:12px;font-size:10px;color:#9CA3AF;">KvK: ${bedrijfData.kvkNummer}</td></tr>` : ""}
+</table>`;
+
+    const htmlBody = `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:#1F2937;line-height:1.6;">${emailText.replace(/\n/g, "<br>")}${signature}</body></html>`;
 
     await resend.emails.send({
       from: `${bedrijfNaam} <${fromEmail}>`,

@@ -88,7 +88,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Factuur", icon: Euro, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
         ],
       },
-      { label: "Financiën", icon: Euro, href: "/financien" },
+      { label: "Financiën", icon: Euro, href: "/financien", alsoMatches: [] },
       { label: "Belasting", icon: Landmark, href: "/belasting" },
       { label: "Kilometers", icon: Car, href: "/kilometers" },
     ],
@@ -255,7 +255,7 @@ function LauncherItem({
             <div className="py-1.5">
               {item.children.map((child) => {
                 const ChildIcon = child.icon;
-                const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
+                const childActive = isNavLinkActive(child, pathname);
                 return (
                   <Link
                     key={child.href}
@@ -315,9 +315,28 @@ function useSectionState(section: string, defaultOpen: boolean) {
   return { expanded: loaded ? expanded : defaultOpen, toggle };
 }
 
+// ─── Active matching ────────────────────────────────────────────
+function isNavLinkActive(link: NavLink, pathname: string): boolean {
+  if (link.href === "/") return pathname === "/";
+  // Exact match on alsoMatches: [] means exact-only
+  if (link.alsoMatches !== undefined && link.alsoMatches.length === 0) {
+    return pathname === link.href || pathname === link.href + "/";
+  }
+  // Check alsoMatches prefixes
+  if (link.alsoMatches?.some((prefix) => pathname.startsWith(prefix))) return true;
+  // Standard match
+  if (pathname === link.href) return true;
+  if (pathname.startsWith(link.href + "/")) return true;
+  return false;
+}
+
 // ─── CollapsibleSection ─────────────────────────────────────────
 function getAllHrefs(items: (NavLink | LauncherLink)[]): string[] {
   return items.flatMap((item) => isLauncher(item) ? item.children.map((c) => c.href) : [item.href]);
+}
+
+function getAllNavLinks(items: (NavLink | LauncherLink)[]): NavLink[] {
+  return items.flatMap((item) => isLauncher(item) ? item.children : [item]);
 }
 
 function CollapsibleSection({
@@ -331,26 +350,16 @@ function CollapsibleSection({
   isCollapsed: boolean;
   pathname: string;
 }) {
-  const allHrefs = getAllHrefs(items);
-  const hasActiveChild = allHrefs.some((href) =>
-    href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/")
-  );
+  const allLinks = getAllNavLinks(items);
+  const hasActiveChild = allLinks.some((link) => isNavLinkActive(link, pathname));
   const { expanded, toggle } = useSectionState(section, true);
 
-  function isItemActive(href: string) {
-    if (href === "/") return pathname === "/";
-    if (pathname === href) return true;
-    if (pathname.startsWith(href + "/")) {
-      const betterMatch = allHrefs.some(
-        (other) => other !== href && other.startsWith(href + "/") && pathname.startsWith(other)
-      );
-      return !betterMatch;
-    }
-    return false;
+  function isItemActive(item: NavLink) {
+    return isNavLinkActive(item, pathname);
   }
 
   function isLauncherActive(launcher: LauncherLink) {
-    return launcher.children.some((c) => pathname === c.href || pathname.startsWith(c.href + "/"));
+    return launcher.children.some((c) => isNavLinkActive(c, pathname));
   }
 
   if (isCollapsed) {
@@ -361,7 +370,7 @@ function CollapsibleSection({
           isLauncher(item) ? (
             <LauncherItem key={item.label} item={item} isCollapsed isActive={isLauncherActive(item)} pathname={pathname} />
           ) : (
-            <NavItem key={item.href} item={item} isCollapsed isActive={isItemActive(item.href)} />
+            <NavItem key={item.href} item={item} isCollapsed isActive={isItemActive(item)} />
           )
         )}
       </>
@@ -414,7 +423,7 @@ function CollapsibleSection({
                 isLauncher(item) ? (
                   <LauncherItem key={item.label} item={item} isCollapsed={false} isActive={isLauncherActive(item)} pathname={pathname} />
                 ) : (
-                  <NavItem key={item.href} item={item} isCollapsed={false} isActive={isItemActive(item.href)} />
+                  <NavItem key={item.href} item={item} isCollapsed={false} isActive={isItemActive(item)} />
                 )
               )}
             </div>

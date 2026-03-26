@@ -208,8 +208,8 @@ export function DocumentPreview({
           {isFactuur && vervaldatum && (
             <MetaItem label="Vervaldatum" value={formatDatum(vervaldatum)} />
           )}
-          {isFactuur && betalingstermijn !== undefined && (
-            <MetaItem label="Betalingstermijn" value={`${betalingstermijn} dagen`} />
+          {isFactuur && (
+            <MetaItem label="Betalingstermijn" value={`${berekendeTermijn} dagen`} />
           )}
           {!isFactuur && geldigTot && (
             <MetaItem label="Geldig tot" value={formatDatum(geldigTot)} />

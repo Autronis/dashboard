@@ -1,4 +1,4 @@
-export type ContractType = "samenwerkingsovereenkomst" | "sla" | "nda" | "onderhuurovereenkomst" | "freelance" | "projectovereenkomst";
+export type ContractType = "samenwerkingsovereenkomst" | "sla" | "nda" | "onderhuurovereenkomst" | "freelance" | "projectovereenkomst" | "vof";
 
 export interface ContractTemplate {
   id: ContractType;
@@ -36,6 +36,11 @@ export const contractTemplates: ContractTemplate[] = [
     id: "projectovereenkomst",
     naam: "Projectovereenkomst",
     beschrijving: "Overeenkomst voor een specifiek project met vaste scope en prijs",
+  },
+  {
+    id: "vof",
+    naam: "VOF-overeenkomst",
+    beschrijving: "Vennootschap onder firma overeenkomst tussen vennoten",
   },
 ];
 
@@ -171,6 +176,43 @@ Dit is een projectovereenkomst voor een specifiek project. Neem de volgende arti
 15. Slotbepalingen
 
 Maak concrete afspraken over scope, prijs en planning.`;
+
+    case "vof":
+      return `Genereer een professionele en juridisch waterdichte VOF-overeenkomst (Vennootschap onder Firma) in het Nederlands.
+
+Dit contract is GEEN standaard klantcontract. Het is een interne overeenkomst tussen de vennoten van ${bedrijfsnaam}.
+
+De vennoten zijn:
+- Sem Gijsberts (geboren: invullen, woonachtig: Doetinchem)
+- Syb Sprenkeler (geboren: invullen, woonachtig: invullen)
+
+Handelsnaam: ${bedrijfsnaam}
+Vestigingsadres: Ruimzichtlaan 139, 7001KD Doetinchem
+
+${details || ""}
+
+Neem de volgende artikelen op (dit is een COMPLEET VOF-contract conform Nederlands recht):
+
+1. **Naam en zetel** — handelsnaam, vestigingsadres, eventuele nevenvestigingen
+2. **Doel van de vennootschap** — AI-oplossingen, automatisering en consultancy voor het MKB
+3. **Duur** — ingangsdatum, onbepaalde tijd, opzegtermijn
+4. **Inbreng** — wat brengt elke vennoot in (kennis, arbeid, kapitaal, middelen)
+5. **Winst- en verliesverdeling** — verdeelsleutel (bijv. 50/50), uitkeringsbeleid, privéopnames
+6. **Bevoegdheden en vertegenwoordiging** — wie mag tekenen, maximumbedragen zonder overleg, gezamenlijke beslissingen
+7. **Taken en verantwoordelijkheden** — taakverdeling tussen vennoten, minimale inzet
+8. **Boekjaar en administratie** — boekjaar = kalenderjaar, administratieplicht, jaarrekening
+9. **Kapitaalrekeningen** — bijhouden per vennoot, rente, minimaal saldo
+10. **Arbeidsongeschiktheid en afwezigheid** — regeling bij ziekte, vervanging, doorlopende verplichtingen
+11. **Concurrentie- en relatiebeding** — tijdens en na de VOF, duur, boeteclausule
+12. **Geheimhouding** — vertrouwelijke bedrijfsinformatie, ook na uittreding
+13. **Toetreding en uittreding** — procedure, waardering, goodwill, uitkoopregeling
+14. **Overlijden en arbeidsongeschiktheid** — voortzetting, uitkering aan erfgenamen
+15. **Ontbinding en vereffening** — wanneer, hoe, verdeling activa/passiva
+16. **Geschillen** — eerst mediation, dan arbitrage of rechtbank, toepasselijk recht
+17. **Slotbepalingen** — wijzigingen schriftelijk, nietigheid deelbepaling, ondertekening
+
+Format: gebruik markdown met ## voor artikelkoppen. Geen HTML.
+Schrijf elk artikel volledig uit met concrete bepalingen. Dit moet een professioneel contract zijn dat direct ondertekend kan worden.`;
   }
 }
 
@@ -182,5 +224,6 @@ function getTypeNaam(type: ContractType): string {
     case "onderhuurovereenkomst": return "onderhuurovereenkomst";
     case "freelance": return "freelance overeenkomst (overeenkomst van opdracht)";
     case "projectovereenkomst": return "projectovereenkomst";
+    case "vof": return "VOF-overeenkomst (vennootschap onder firma)";
   }
 }

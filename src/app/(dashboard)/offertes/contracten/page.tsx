@@ -19,6 +19,7 @@ import {
   Building,
   UserCheck,
   Briefcase,
+  Users2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/hooks/use-toast";
@@ -103,6 +104,14 @@ const TYPE_CONFIG: Record<string, {
     kleur: "#06B6D4",
     glow: "hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:border-cyan-500/40",
     beschrijving: "Overeenkomst voor een specifiek project met vaste scope en prijs.",
+  },
+  vof: {
+    label: "VOF-overeenkomst",
+    shortLabel: "VOF",
+    icon: Users2,
+    kleur: "#10B981",
+    glow: "hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:border-emerald-500/40",
+    beschrijving: "Vennootschap onder firma overeenkomst tussen vennoten.",
   },
 };
 

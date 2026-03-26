@@ -1254,7 +1254,7 @@ export const contracten = sqliteTable("contracten", {
   klantId: integer("klant_id").references(() => klanten.id),
   offerteId: integer("offerte_id").references(() => offertes.id),
   titel: text("titel").notNull(),
-  type: text("type", { enum: ["samenwerkingsovereenkomst", "sla", "nda"] }).notNull(),
+  type: text("type", { enum: ["samenwerkingsovereenkomst", "sla", "nda", "onderhuurovereenkomst", "freelance", "projectovereenkomst", "vof"] }).notNull(),
   inhoud: text("inhoud").default(""),
   status: text("status", { enum: ["concept", "verzonden", "ondertekend", "verlopen"] }).default("concept"),
   verloopdatum: text("verloopdatum"),

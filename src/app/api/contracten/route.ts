@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Klant, titel en type zijn verplicht." }, { status: 400 });
     }
 
-    const validTypes = ["samenwerkingsovereenkomst", "sla", "nda"];
+    const validTypes = ["samenwerkingsovereenkomst", "sla", "nda", "onderhuurovereenkomst", "freelance", "projectovereenkomst", "vof"];
     if (!validTypes.includes(type)) {
       return NextResponse.json({ fout: "Ongeldig contracttype." }, { status: 400 });
     }

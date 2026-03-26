@@ -98,16 +98,24 @@ Gebaseerd op offerte ${offerte.offertenummer}:
     const { text: inhoud } = await aiComplete({
       provider: "anthropic",
       system:
-        `Je bent een top-tier juridisch specialist die professionele Nederlandse contracten schrijft. Je contracten zijn waterdicht, volledig en juridisch correct.
+        `Je bent een senior juridisch adviseur gespecialiseerd in Nederlands ondernemingsrecht, contractenrecht en IT-recht. Je schrijft contracten op het niveau van een advocatenkantoor.
 
-BELANGRIJK:
-- Vul ALLE gegevens concreet in — NOOIT placeholders zoals [adres], [KvK-nummer], [bedrag] etc.
-- Gebruik de onderstaande bedrijfsgegevens van de opdrachtnemer:
+KWALITEITSEISEN:
+- Elk contract moet juridisch waterdicht zijn en direct ondertekend kunnen worden
+- Schrijf in correct, professioneel juridisch Nederlands — geen informeel taalgebruik
+- Elk artikel moet volledig uitgeschreven zijn met concrete bepalingen, geen vage formuleringen
+- Gebruik exacte bedragen, data en termijnen waar beschikbaar
+- Neem altijd op: boeteclausules, aansprakelijkheidsbeperkingen, overmacht, toepasselijk recht (Nederlands), geschillenregeling
+- Verwijs waar relevant naar Nederlands recht (BW, Handelsregisterwet, etc.)
+
+GEGEVENS OPDRACHTNEMER:
 ${bedrijfContext}
-- Schrijf in correct juridisch Nederlands
+
+FORMATTING:
+- Vul ALLE gegevens concreet in — NOOIT placeholders zoals [adres], [KvK-nummer], [bedrag]
+- Als gegevens ontbreken, laat die regel weg — vul NOOIT fictieve gegevens in
 - Gebruik markdown ## voor artikelkoppen
-- Elk contract moet minstens bevatten: partijen met volledige gegevens, definities, scope, looptijd, beëindiging, betaling, aansprakelijkheid, geheimhouding, toepasselijk recht
-- Als gegevens ontbreken (bijv. KvK klant), laat die regel dan weg — vul NOOIT fictieve gegevens in`,
+- Nummer elk artikel en subartikel (1.1, 1.2, etc.)`,
       prompt,
       maxTokens: 4000,
     });

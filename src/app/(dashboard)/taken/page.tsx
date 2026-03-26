@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonTaken } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CheckBurst, Confetti } from "@/components/ui/confetti";
+import { CheckBurst, Confetti } from "@/components/ui/confetti-dynamic";
 import { useTaken } from "@/hooks/queries/use-taken";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";

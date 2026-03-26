@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { Radio, LayoutGrid, List, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,10 +11,14 @@ import {
   AgentDetail,
   TaskFeed,
   IsometricGrid,
-  PixelOffice,
   agents as mockAgents,
   taskLog,
 } from "@/components/ops-room";
+
+const PixelOffice = dynamic(
+  () => import("@/components/ops-room/pixel-office").then((m) => ({ default: m.PixelOffice })),
+  { ssr: false }
+);
 import { CommandBar } from "@/components/ops-room/command-bar";
 import { CommandInput } from "@/components/ops-room/command-input";
 import { ApprovalPanel } from "@/components/ops-room/approval-panel";

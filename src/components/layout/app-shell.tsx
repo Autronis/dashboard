@@ -1,24 +1,37 @@
 "use client";
 
 import { useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { BottomNav } from "./bottom-nav";
 import { WavesBackground } from "./waves-background";
 import { ToastContainer } from "@/components/ui/toast";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
-import { CommandPalette } from "@/components/ui/command-palette";
 import { KeyboardShortcutsOverlay } from "@/components/ui/keyboard-shortcuts-overlay";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { FocusSetupModal } from "@/components/focus/focus-setup-modal";
-import { FocusOverlay } from "@/components/focus/focus-overlay";
 import { FocusReflectieModal } from "@/components/focus/focus-reflectie-modal";
-import { AriWidget } from "@/components/ai/ari-widget";
 import { useFocus, loadFocusFromStorage } from "@/hooks/use-focus";
 import { cn } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import type { SessionGebruiker } from "@/types";
+
+const CommandPalette = dynamic(
+  () => import("@/components/ui/command-palette").then((m) => ({ default: m.CommandPalette })),
+  { ssr: false }
+);
+
+const FocusOverlay = dynamic(
+  () => import("@/components/focus/focus-overlay").then((m) => ({ default: m.FocusOverlay })),
+  { ssr: false }
+);
+
+const AriWidget = dynamic(
+  () => import("@/components/ai/ari-widget").then((m) => ({ default: m.AriWidget })),
+  { ssr: false }
+);
 
 interface AppShellProps {
   gebruiker: SessionGebruiker;

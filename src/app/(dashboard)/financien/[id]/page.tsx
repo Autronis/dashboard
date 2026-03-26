@@ -16,7 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { Confetti } from "@/components/ui/confetti";
+import { Confetti } from "@/components/ui/confetti-dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DocumentPreview } from "@/components/shared/document-preview";
 

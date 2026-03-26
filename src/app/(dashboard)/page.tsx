@@ -52,7 +52,7 @@ import { SkeletonDashboard } from "@/components/ui/skeleton";
 import { KPICard } from "@/components/ui/kpi-card";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
-import { CheckBurst } from "@/components/ui/confetti";
+import { CheckBurst } from "@/components/ui/confetti-dynamic";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { HabitWidget } from "@/components/gewoontes/habit-widget";

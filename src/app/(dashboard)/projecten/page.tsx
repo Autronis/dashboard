@@ -32,7 +32,7 @@ import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useProjecten } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
-import { Confetti } from "@/components/ui/confetti";
+import { Confetti } from "@/components/ui/confetti-dynamic";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";

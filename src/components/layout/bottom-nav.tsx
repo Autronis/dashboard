@@ -7,12 +7,14 @@ import {
   LayoutDashboard,
   Clock,
   CheckSquare,
-  Target,
+  Lightbulb,
   MoreHorizontal,
   Euro,
   BarChart3,
   Calendar,
   Settings,
+  Users,
+  FileText,
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,14 +24,15 @@ const mainTabs = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Timer", icon: Clock, href: "/tijd" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
-  { label: "CRM", icon: Target, href: "/crm" },
+  { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
 ];
 
 const moreTabs = [
-  { label: "Klanten", icon: Target, href: "/klanten" },
-  { label: "Financiën", icon: Euro, href: "/financien" },
-  { label: "Analytics", icon: BarChart3, href: "/analytics" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
+  { label: "Klanten", icon: Users, href: "/klanten" },
+  { label: "Facturen", icon: Euro, href: "/facturen" },
+  { label: "Offertes", icon: FileText, href: "/offertes" },
+  { label: "Analytics", icon: BarChart3, href: "/analytics" },
   { label: "Instellingen", icon: Settings, href: "/instellingen" },
 ];
 

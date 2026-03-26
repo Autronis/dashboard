@@ -452,16 +452,15 @@ export function Sidebar() {
         )}
       >
         {/* Logo */}
-        <div className={cn("flex items-center justify-between h-16 border-b border-autronis-border flex-shrink-0 pt-[env(safe-area-inset-top)]", isCollapsed ? "px-2" : "px-4")}>
+        <div className={cn("flex items-center justify-between h-14 border-b border-autronis-border flex-shrink-0 pt-[env(safe-area-inset-top)]", isCollapsed ? "px-2" : "px-4")}>
           <Link href="/" className={cn("flex items-center gap-2 flex-shrink-0", isCollapsed && "mx-auto")}>
             <Image
               src="/logo.png"
               alt="Autronis"
-              width={isCollapsed ? 32 : 34}
-              height={isCollapsed ? 16 : 17}
-              className={cn("object-contain transition-all duration-300", isCollapsed ? "h-6 w-auto" : "h-8 w-auto")}
+              width={isCollapsed ? 28 : 40}
+              height={isCollapsed ? 14 : 20}
+              className={cn("object-contain transition-all duration-300", isCollapsed ? "h-5 w-auto" : "h-7 w-auto")}
               priority
-              unoptimized
             />
             {!isCollapsed && (
               <span className="text-lg font-bold text-autronis-text-primary tracking-tight">Autronis</span>

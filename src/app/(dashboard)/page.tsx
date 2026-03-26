@@ -685,7 +685,10 @@ export default function DashboardPage() {
   // Dynamic navigation
   const topNavLinks = useMemo(() => getTopNavLinks(), []);
 
+  // Lower-priority data: only fetch on desktop (>= 768px) to reduce mobile load
   useEffect(() => {
+    if (window.innerWidth < 768) return;
+
     fetch(`/api/belasting/deadlines?jaar=${new Date().getFullYear()}`)
       .then(r => r.json())
       .then(data => {

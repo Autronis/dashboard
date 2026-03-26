@@ -5,7 +5,10 @@ import dynamic from "next/dynamic";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
 import { BottomNav } from "./bottom-nav";
-import { WavesBackground } from "./waves-background";
+const WavesBackground = dynamic(
+  () => import("./waves-background").then((m) => ({ default: m.WavesBackground })),
+  { ssr: false }
+);
 import { ToastContainer } from "@/components/ui/toast";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { KeyboardShortcutsOverlay } from "@/components/ui/keyboard-shortcuts-overlay";

@@ -168,7 +168,7 @@ export default function FactuurDetailPage() {
     setEmailAan(factuur.klantEmail || "");
     setEmailOnderwerp(`Factuur ${factuur.factuurnummer} — Autronis`);
     setEmailBericht(
-      `Beste ${factuur.klantContactpersoon || factuur.klantNaam},\n\nHierbij ontvangt u factuur ${factuur.factuurnummer} ter hoogte van ${bedrag}.\n\nDe factuur is als PDF bijgevoegd bij deze e-mail.\n\nMet vriendelijke groet,\nAutronis`
+      `Beste ${factuur.klantContactpersoon || factuur.klantNaam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedrag}.\n\nMet vriendelijke groet,\nAutronis`
     );
     setVerstuurModalOpen(true);
   };

@@ -36,8 +36,10 @@ const navSections: (NavLink | NavSection | "divider")[] = [
   // Top-level
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Ops Room", icon: Radio, href: "/ops-room" },
+  { label: "Analytics", icon: BarChart3, href: "/analytics" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
+  { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
 
   // Mijn dag
   {
@@ -132,7 +134,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Concurrent", icon: Eye, href: "/concurrenten" },
         ],
       },
-      { label: "Analytics", icon: BarChart3, href: "/analytics" },
     ],
   },
 
@@ -140,7 +141,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
   {
     section: "Beheer",
     items: [
-      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
       { label: "Team", icon: Users2, href: "/team" },
       { label: "Instellingen", icon: Settings, href: "/instellingen" },
     ],

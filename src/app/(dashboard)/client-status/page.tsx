@@ -79,9 +79,13 @@ export default function ClientStatusPage() {
         fetch("/api/client-status"),
         fetch("/api/klanten"),
       ]);
-      const statusJson = await statusRes.json() as StatusData;
+      const statusJson = await statusRes.json();
       const klantJson = await klantRes.json() as { klanten: typeof klanten };
-      setData(statusJson);
+      if (!statusRes.ok || !statusJson.kpis) {
+        addToast(statusJson.fout ?? "Kon status niet laden", "fout");
+        return;
+      }
+      setData(statusJson as StatusData);
       setKlanten(klantJson.klanten ?? []);
     } catch {
       addToast("Kon data niet laden", "fout");
@@ -185,10 +189,10 @@ export default function ClientStatusPage() {
         {/* KPI strip */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: "Totaal", value: data?.kpis.totaal ?? 0, color: "text-autronis-text-primary", icon: Activity },
-            { label: "Actief", value: data?.kpis.actief ?? 0, color: "text-emerald-400", icon: CheckCircle2 },
-            { label: "Fouten", value: data?.kpis.fouten ?? 0, color: "text-red-400", icon: AlertTriangle },
-            { label: "Onbekend", value: data?.kpis.onbekend ?? 0, color: "text-autronis-text-secondary", icon: HelpCircle },
+            { label: "Totaal", value: data?.kpis?.totaal ?? 0, color: "text-autronis-text-primary", icon: Activity },
+            { label: "Actief", value: data?.kpis?.actief ?? 0, color: "text-emerald-400", icon: CheckCircle2 },
+            { label: "Fouten", value: data?.kpis?.fouten ?? 0, color: "text-red-400", icon: AlertTriangle },
+            { label: "Onbekend", value: data?.kpis?.onbekend ?? 0, color: "text-autronis-text-secondary", icon: HelpCircle },
           ].map(({ label, value, color, icon: Icon }) => (
             <div key={label} className="bg-autronis-card border border-autronis-border rounded-xl p-3.5">
               <p className="text-[11px] text-autronis-text-secondary flex items-center gap-1 mb-1">

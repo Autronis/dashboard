@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Euro,
   CheckCircle2,
@@ -71,7 +72,9 @@ type SortDir = "asc" | "desc";
 export default function FinancienPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<Tab>("facturen");
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as Tab) || "facturen";
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [zoek, setZoek] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());

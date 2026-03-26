@@ -41,8 +41,8 @@ if (isTurso) {
 
   // Auto-migrate: add type column to klanten if missing
   const cols = sqliteDb.prepare("PRAGMA table_info(klanten)").all() as { name: string }[];
-  if (!cols.some((c: { name: string }) => c.name === "type")) {
-    sqliteDb.exec("ALTER TABLE klanten ADD COLUMN type TEXT DEFAULT 'klant'");
+  if (!cols.some((c: { name: string }) => c.name === "klant_type")) {
+    sqliteDb.exec("ALTER TABLE klanten ADD COLUMN klant_type TEXT DEFAULT 'klant'");
   }
 
   sqlite = sqliteDb;

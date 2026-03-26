@@ -40,9 +40,9 @@ const styles = StyleSheet.create({
   },
   // ===== HEADER =====
   headerBand: {
-    backgroundColor: DARK_BG,
+    backgroundColor: "#FFFFFF",
     paddingHorizontal: 50,
-    paddingTop: 30,
+    paddingTop: 35,
     paddingBottom: 25,
   },
   headerContent: {
@@ -51,14 +51,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bedrijfsnaam: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 700,
-    color: TEAL,
-    letterSpacing: 1.5,
+    color: "#111827",
+    letterSpacing: 2,
   },
   tagline: {
     fontSize: 7,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
     letterSpacing: 0.8,
     marginTop: 2,
   },
@@ -68,12 +68,12 @@ const styles = StyleSheet.create({
   documentType: {
     fontSize: 18,
     fontWeight: 700,
-    color: TEXT_PRIMARY,
+    color: TEAL,
     letterSpacing: 1.5,
   },
   documentSubtype: {
     fontSize: 8,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
     marginTop: 3,
   },
   accentLine: {
@@ -173,7 +173,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: DARK_BG,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
     paddingHorizontal: 50,
     paddingVertical: 12,
     flexDirection: "row",
@@ -182,11 +184,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 7,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
   },
   footerCenter: {
     fontSize: 7,
-    color: TEXT_SECONDARY,
+    color: "#9CA3AF",
   },
 });
 

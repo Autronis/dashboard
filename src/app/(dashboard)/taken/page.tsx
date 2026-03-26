@@ -773,7 +773,7 @@ export default function TakenPage() {
     <PageTransition>
       <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-3">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-autronis-text-primary">Taken</h1>
             <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5">
@@ -892,7 +892,7 @@ export default function TakenPage() {
 
         {/* ─── KANBAN VIEW ─── */}
         {weergave === "kanban" && (
-          <div className="grid grid-cols-3 gap-3" style={{ minHeight: 400 }}>
+          <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:overflow-visible md:pb-0" style={{ minHeight: 400 }}>
             {kanbanKolommen.map((kolom) => {
               const kolomTaken = gefilterdeTaken.filter((t) => t.status === kolom.status);
               return (
@@ -900,7 +900,7 @@ export default function TakenPage() {
                   onDragOver={(e) => { e.preventDefault(); setDragOverStatus(kolom.status); }}
                   onDragLeave={() => setDragOverStatus(null)}
                   onDrop={(e) => handleDrop(e, kolom.status)}
-                  className={cn("border rounded-xl p-3 transition-all duration-200", kolom.tint, dragOverStatus === kolom.status ? "border-autronis-accent bg-autronis-accent/5 scale-[1.01]" : "border-autronis-border")}>
+                  className={cn("border rounded-xl p-3 transition-all duration-200 flex-shrink-0 w-72 md:w-auto", kolom.tint, dragOverStatus === kolom.status ? "border-autronis-accent bg-autronis-accent/5 scale-[1.01]" : "border-autronis-border")}>
                   <div className="flex items-center gap-2 mb-3 px-1">
                     <div className={cn("w-2 h-2 rounded-full", kolom.bg.replace("/10", ""))} />
                     <span className={cn("text-sm font-semibold", kolom.color)}>{kolom.label}</span>

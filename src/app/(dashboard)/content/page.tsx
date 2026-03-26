@@ -666,7 +666,7 @@ export default function ContentPage() {
           </div>
 
           {/* Kanban columns — adaptive width */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="flex gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-4 md:overflow-visible md:pb-0">
             {KOLOM_CONFIG.map((kolom) => {
               const items = pipelineItems.filter((i) => i.kolom === kolom.key);
               const isDragOver = dragOverKolom === kolom.key;
@@ -674,7 +674,7 @@ export default function ContentPage() {
                 <div
                   key={kolom.key}
                   className={cn(
-                    "border rounded-2xl p-4 min-h-[200px] transition-all",
+                    "border rounded-2xl p-4 min-h-[200px] transition-all flex-shrink-0 w-72 md:w-auto",
                     kolom.tint,
                     isDragOver && "ring-2 ring-autronis-accent/40 bg-autronis-accent/5"
                   )}

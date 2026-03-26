@@ -239,17 +239,19 @@ export default function TijdPage() {
                   inzicht.type === "goed" ? "bg-emerald-500/6 border-emerald-500/15" :
                   "bg-autronis-card border-autronis-border"
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${
-                      inzicht.type === "goed" ? "bg-emerald-400" :
-                      inzicht.type === "waarschuwing" ? "bg-amber-400" :
-                      "bg-autronis-text-secondary/40"
-                    }`} />
-                    <p className="text-sm text-autronis-text-primary">
-                      {inzicht.tekst}
-                    </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${
+                        inzicht.type === "goed" ? "bg-emerald-400" :
+                        inzicht.type === "waarschuwing" ? "bg-amber-400" :
+                        "bg-autronis-text-secondary/40"
+                      }`} />
+                      <p className="text-sm text-autronis-text-primary">
+                        {inzicht.tekst}
+                      </p>
+                    </div>
                     {secondair.length > 0 && (
-                      <div className="flex items-center gap-3 ml-auto shrink-0">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 sm:ml-auto shrink-0 pl-5 sm:pl-0">
                         {secondair.map((s, i) => (
                           <span key={i} className="flex items-center gap-1 text-[11px] text-autronis-text-secondary">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${s.type === "goed" ? "bg-emerald-400" : "bg-amber-400"}`} />

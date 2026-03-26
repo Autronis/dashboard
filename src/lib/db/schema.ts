@@ -35,6 +35,7 @@ export const klanten = sqliteTable("klanten", {
   aantalMedewerkers: text("aantal_medewerkers"),
   diensten: text("diensten"), // JSON array
   techStack: text("tech_stack"), // JSON array
+  taal: text("taal", { enum: ["nl", "en"] }).default("nl"),
   klantSinds: text("klant_sinds"),
   aiVerrijktOp: text("ai_verrijkt_op"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),

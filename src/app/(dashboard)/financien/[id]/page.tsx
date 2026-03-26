@@ -165,11 +165,17 @@ export default function FactuurDetailPage() {
 
   const openVerstuurModal = () => {
     if (!factuur) return;
-    const bedrag = new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR" }).format(factuur.bedragInclBtw || 0);
+    const isEn = factuur.klantTaal === "en";
+    const locale = isEn ? "en-GB" : "nl-NL";
+    const bedrag = new Intl.NumberFormat(locale, { style: "currency", currency: "EUR" }).format(factuur.bedragInclBtw || 0);
+    const naam = factuur.klantContactpersoon || factuur.klantNaam;
     setEmailAan(factuur.klantEmail || "");
-    setEmailOnderwerp(`Factuur ${factuur.factuurnummer} — Autronis`);
-    setEmailBericht(
-      `Beste ${factuur.klantContactpersoon || factuur.klantNaam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedrag}.\n\nMet vriendelijke groet,\nAutronis`
+    setEmailOnderwerp(isEn
+      ? `Invoice ${factuur.factuurnummer} — Autronis`
+      : `Factuur ${factuur.factuurnummer} — Autronis`);
+    setEmailBericht(isEn
+      ? `Dear ${naam},\n\nPlease find attached invoice ${factuur.factuurnummer} for the amount of ${bedrag}.\n\nKind regards,\nAutronis`
+      : `Beste ${naam},\n\nIn de bijlage vindt u factuur ${factuur.factuurnummer} ter hoogte van ${bedrag}.\n\nMet vriendelijke groet,\nAutronis`
     );
     setVerstuurModalOpen(true);
   };

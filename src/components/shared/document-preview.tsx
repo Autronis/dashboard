@@ -83,6 +83,18 @@ export function DocumentPreview({
 
   const b = bedrijf || fetchedBedrijf;
 
+  // Bereken betalingstermijn uit datum en vervaldatum als die niet expliciet is meegegeven
+  const berekendeTermijn = (() => {
+    if (betalingstermijn) return betalingstermijn;
+    if (datum && vervaldatum) {
+      const diff = Math.round(
+        (new Date(vervaldatum).getTime() - new Date(datum).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (diff > 0) return diff;
+    }
+    return 30;
+  })();
+
   const isFactuur = type === "FACTUUR";
   const dateLabel = isFactuur ? "Factuurdatum" : "Offertedatum";
   const nummerLabel = isFactuur ? "Factuurnummer" : "Offertenummer";
@@ -312,7 +324,7 @@ export function DocumentPreview({
             </p>
             <p className="text-xs text-emerald-700 leading-relaxed">
               Gelieve het totaalbedrag binnen{" "}
-              {betalingstermijn || 30} dagen over te maken
+              {berekendeTermijn} dagen over te maken
               {vervaldatum && (
                 <>, uiterlijk op <span className="font-semibold">{formatDatum(vervaldatum)}</span></>
               )}

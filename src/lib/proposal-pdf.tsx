@@ -1,12 +1,15 @@
 import React from "react";
+import path from "path";
 import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+
+const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
 Font.register({
   family: "Inter",
   fonts: [
-    { src: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuLyfAZ9hiA.woff2", fontWeight: 400 },
-    { src: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuI6fAZ9hiA.woff2", fontWeight: 600 },
-    { src: "https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKoduKmMEVuFuYAZ9hiA.woff2", fontWeight: 700 },
+    { src: path.join(FONT_DIR, "Inter-400.ttf"), fontWeight: 400 },
+    { src: path.join(FONT_DIR, "Inter-600.ttf"), fontWeight: 600 },
+    { src: path.join(FONT_DIR, "Inter-700.ttf"), fontWeight: 700 },
   ],
 });
 

@@ -87,6 +87,7 @@ const navSections: (NavLink | NavSection)[] = [
       { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
       { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
       { label: "Team", icon: Users2, href: "/team" },
+      { label: "Instellingen", icon: Settings, href: "/instellingen" },
     ],
   },
 ];

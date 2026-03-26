@@ -13,6 +13,7 @@ import {
   CheckSquare,
   Square,
   XCircle,
+  Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useContentPosts, useGenerateBatch, useUpdatePost, useDeletePost } from "@/hooks/queries/use-content";
@@ -129,6 +130,7 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
   const [editText, setEditText] = useState(post.bewerkteInhoud ?? post.inhoud);
   const [copied, setCopied] = useState(false);
   const [afwijsOpen, setAfwijsOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const activeInhoud = post.bewerkteInhoud ?? post.inhoud;
   const preview = activeInhoud.length > 200 ? activeInhoud.slice(0, 200) + "..." : activeInhoud;
@@ -245,9 +247,21 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
             </div>
           </div>
         ) : (
-          <p className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-line">
-            {preview}
-          </p>
+          <button
+            type="button"
+            onClick={() => setPreviewOpen(true)}
+            className="text-left w-full group"
+          >
+            <p className="text-sm text-autronis-text-secondary leading-relaxed whitespace-pre-line group-hover:text-autronis-text-primary transition-colors">
+              {preview}
+            </p>
+            {activeInhoud.length > 200 && (
+              <span className="inline-flex items-center gap-1 text-xs text-autronis-accent mt-1.5 group-hover:underline">
+                <Eye className="w-3 h-3" />
+                Lees meer
+              </span>
+            )}
+          </button>
         )}
 
         {/* Hashtags */}

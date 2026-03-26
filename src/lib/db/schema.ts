@@ -453,6 +453,21 @@ export const belastingAuditLog = sqliteTable("belasting_audit_log", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ REVOLUT INTEGRATIE ============
+export const revolutVerbinding = sqliteTable("revolut_verbinding", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenVerlooptOp: text("token_verloopt_op"),
+  accountId: text("account_id"),
+  webhookId: text("webhook_id"),
+  webhookSecret: text("webhook_secret"),
+  laatsteSyncOp: text("laatste_sync_op"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ MODULE 2: GEAVANCEERDE BOEKHOUDING ============
 
 export const bankTransacties = sqliteTable("bank_transacties", {
@@ -466,6 +481,9 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   status: text("status", { enum: ["onbekend", "gecategoriseerd", "gematcht"] }).default("onbekend"),
   bank: text("bank"),
   tegenrekening: text("tegenrekening"),
+  revolutTransactieId: text("revolut_transactie_id"),
+  merchantNaam: text("merchant_naam"),
+  merchantCategorie: text("merchant_categorie"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 

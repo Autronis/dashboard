@@ -11,8 +11,13 @@ import {
   Bell,
   FolderSync,
   Loader2,
+  Landmark,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  ExternalLink,
 } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useInstellingen, type Bedrijf, type Profiel } from "@/hooks/queries/use-instellingen";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -120,6 +125,51 @@ export default function InstellingenPage() {
     },
     onError: (error: Error) => {
       addToast(error.message || "Kon wachtwoord niet wijzigen", "fout");
+    },
+  });
+
+  // Revolut bank koppeling
+  const revolutStatus = useQuery({
+    queryKey: ["revolut-status"],
+    queryFn: async () => {
+      const res = await fetch("/api/revolut");
+      if (!res.ok) throw new Error("Kon status niet ophalen");
+      return res.json() as Promise<{
+        gekoppeld: boolean;
+        laatsteSyncOp?: string;
+        accountId?: string;
+        configured: boolean;
+        authUrl?: string;
+      }>;
+    },
+    staleTime: 60_000,
+  });
+
+  const revolutSyncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/revolut/sync", { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.fout || "Sync mislukt");
+      }
+      return res.json() as Promise<{
+        nieuweTransacties: number;
+        gedetecteerdeAbonnementen: string[];
+      }>;
+    },
+    onSuccess: (data) => {
+      addToast(
+        data.nieuweTransacties > 0
+          ? `${data.nieuweTransacties} transactie${data.nieuweTransacties === 1 ? "" : "s"} gesynchroniseerd${data.gedetecteerdeAbonnementen.length > 0 ? `, ${data.gedetecteerdeAbonnementen.length} abonnement(en) gedetecteerd` : ""}`
+          : "Alles is up-to-date",
+        "succes"
+      );
+      queryClient.invalidateQueries({ queryKey: ["revolut-status"] });
+      queryClient.invalidateQueries({ queryKey: ["bank-transacties"] });
+      queryClient.invalidateQueries({ queryKey: ["abonnementen"] });
+    },
+    onError: (error: Error) => {
+      addToast(error.message || "Revolut sync mislukt", "fout");
     },
   });
 
@@ -468,6 +518,96 @@ export default function InstellingenPage() {
             {wachtwoordMutation.isPending ? "Wijzigen..." : "Wachtwoord wijzigen"}
           </button>
         </div>
+      </div>
+
+      {/* Bank Koppeling (Revolut) */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="p-2.5 bg-blue-500/10 rounded-xl">
+            <Landmark className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-autronis-text-primary">Bank koppeling</h2>
+            <p className="text-sm text-autronis-text-secondary">
+              Koppel je Revolut Business account om transacties automatisch te synchroniseren en abonnementen te detecteren.
+            </p>
+          </div>
+        </div>
+
+        {revolutStatus.isLoading ? (
+          <Skeleton className="h-20 rounded-xl" />
+        ) : !revolutStatus.data?.configured ? (
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <XCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-400">Nog niet geconfigureerd</p>
+                <p className="text-xs text-autronis-text-secondary mt-1">
+                  Voeg <code className="px-1.5 py-0.5 bg-autronis-bg rounded text-autronis-accent">REVOLUT_CLIENT_ID</code> en <code className="px-1.5 py-0.5 bg-autronis-bg rounded text-autronis-accent">REVOLUT_PRIVATE_KEY</code> toe aan je .env.local.
+                  Je hebt hiervoor een Revolut Business Grow plan nodig (€30/maand).
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : revolutStatus.data?.gekoppeld ? (
+          <div className="space-y-4">
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-emerald-400">Revolut gekoppeld</p>
+                  {revolutStatus.data.laatsteSyncOp && (
+                    <p className="text-xs text-autronis-text-secondary mt-0.5">
+                      Laatste sync: {new Date(revolutStatus.data.laatsteSyncOp).toLocaleString("nl-NL")}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => revolutSyncMutation.mutate()}
+                  disabled={revolutSyncMutation.isPending}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {revolutSyncMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  {revolutSyncMutation.isPending ? "Syncing..." : "Sync nu"}
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-autronis-bg rounded-xl p-3 border border-autronis-border">
+                <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wider">Status</p>
+                <p className="text-sm font-semibold text-emerald-400 mt-1">Actief</p>
+              </div>
+              <div className="bg-autronis-bg rounded-xl p-3 border border-autronis-border">
+                <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wider">Account</p>
+                <p className="text-sm font-semibold text-autronis-text-primary mt-1">EUR</p>
+              </div>
+              <div className="bg-autronis-bg rounded-xl p-3 border border-autronis-border">
+                <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wider">Sync</p>
+                <p className="text-sm font-semibold text-autronis-text-primary mt-1">Automatisch</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="bg-autronis-bg/50 border border-autronis-border rounded-xl p-4">
+              <p className="text-sm text-autronis-text-secondary">
+                API credentials zijn geconfigureerd. Klik op de knop om je Revolut account te koppelen.
+              </p>
+            </div>
+            <a
+              href={revolutStatus.data.authUrl}
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-blue-500/20"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Koppel Revolut
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Project Synchronisatie */}

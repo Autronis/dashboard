@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const projectIdFilter = searchParams.get("projectId");
     const faseFilter = searchParams.get("fase");
 
-    const conditions = [];
+    const conditions = [sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`];
     if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));
     if (prioriteit && prioriteit !== "alle") conditions.push(eq(taken.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
     if (toegewezenAan) conditions.push(eq(taken.toegewezenAan, Number(toegewezenAan)));

@@ -7,6 +7,9 @@ import {
   projecten,
   taken,
   tijdregistraties,
+  bankTransacties,
+  abonnementen,
+  revolutVerbinding,
 } from "@/lib/db/schema";
 import { eq, and, ne, gte, lte, lt, sql, desc } from "drizzle-orm";
 
@@ -306,6 +309,108 @@ export async function GET() {
         omschrijving: `${waardevollLeads.map((l) => `${l.bedrijfsnaam} (€${Math.round(l.waarde ?? 0).toLocaleString("nl-NL")}, ${l.status})`).join(", ")}.`,
         actie: { label: "Ga naar CRM", link: "/crm" },
       });
+    }
+
+    // 9. Revolut: Uitgaven trend (deze maand vs vorige maand)
+    try {
+      const [revolutActive] = await db
+        .select({ id: revolutVerbinding.id })
+        .from(revolutVerbinding)
+        .where(eq(revolutVerbinding.isActief, 1))
+        .limit(1);
+
+      if (revolutActive) {
+        const uitgavenDezeMaand = await db
+          .select({ totaal: sql<number>`COALESCE(SUM(${bankTransacties.bedrag}), 0)` })
+          .from(bankTransacties)
+          .where(
+            and(
+              eq(bankTransacties.type, "af"),
+              eq(bankTransacties.bank, "revolut"),
+              gte(bankTransacties.datum, datumISO(eersteVandeMaand))
+            )
+          )
+          .get();
+
+        const uitgavenVorigeMaand = await db
+          .select({ totaal: sql<number>`COALESCE(SUM(${bankTransacties.bedrag}), 0)` })
+          .from(bankTransacties)
+          .where(
+            and(
+              eq(bankTransacties.type, "af"),
+              eq(bankTransacties.bank, "revolut"),
+              gte(bankTransacties.datum, datumISO(eersteVorigeMaand)),
+              lte(bankTransacties.datum, datumISO(laatsteVorigeMaand))
+            )
+          )
+          .get();
+
+        const uitDeze = uitgavenDezeMaand?.totaal ?? 0;
+        const uitVorige = uitgavenVorigeMaand?.totaal ?? 0;
+
+        if (uitVorige > 0 && uitDeze > uitVorige * 1.15) {
+          const pct = Math.round(((uitDeze - uitVorige) / uitVorige) * 100);
+          inzichten.push({
+            id: "revolut-uitgaven-stijging",
+            type: "waarschuwing",
+            prioriteit: 3,
+            titel: `Uitgaven ${pct}% hoger dan vorige maand`,
+            omschrijving: `Via Revolut: €${Math.round(uitDeze).toLocaleString("nl-NL")} deze maand vs €${Math.round(uitVorige).toLocaleString("nl-NL")} vorige maand.`,
+            actie: { label: "Bekijk uitgaven", link: "/financien?tab=uitgaven" },
+          });
+        }
+
+        // 10. Nieuw gedetecteerde abonnementen (afgelopen 7 dagen)
+        const nieuweAbonnementen = await db
+          .select({ naam: abonnementen.naam, bedrag: abonnementen.bedrag })
+          .from(abonnementen)
+          .where(
+            and(
+              eq(abonnementen.isActief, 1),
+              gte(abonnementen.aangemaaktOp, eenWeekGeleden.toISOString()),
+              sql`${abonnementen.notities} LIKE '%Automatisch gedetecteerd%'`
+            )
+          );
+
+        if (nieuweAbonnementen.length > 0) {
+          const totaal = nieuweAbonnementen.reduce((s, a) => s + a.bedrag, 0);
+          inzichten.push({
+            id: "revolut-nieuwe-abonnementen",
+            type: "tip",
+            prioriteit: 4,
+            titel: `${nieuweAbonnementen.length} nieuw${nieuweAbonnementen.length > 1 ? "e" : ""} abonnement${nieuweAbonnementen.length > 1 ? "en" : ""} gedetecteerd`,
+            omschrijving: `${nieuweAbonnementen.map((a) => `${a.naam} (€${a.bedrag.toFixed(2)})`).join(", ")} — totaal €${totaal.toFixed(2)}/maand.`,
+            actie: { label: "Bekijk abonnementen", link: "/financien?tab=abonnementen" },
+          });
+        }
+
+        // 11. Totale abonnementenkosten inzicht
+        const totaalAbonnementen = await db
+          .select({
+            maandelijks: sql<number>`COALESCE(SUM(CASE
+              WHEN ${abonnementen.frequentie} = 'maandelijks' THEN ${abonnementen.bedrag}
+              WHEN ${abonnementen.frequentie} = 'per_kwartaal' THEN ${abonnementen.bedrag} / 3.0
+              WHEN ${abonnementen.frequentie} = 'jaarlijks' THEN ${abonnementen.bedrag} / 12.0
+              ELSE 0 END), 0)`,
+          })
+          .from(abonnementen)
+          .where(eq(abonnementen.isActief, 1))
+          .get();
+
+        const maandKosten = totaalAbonnementen?.maandelijks ?? 0;
+        if (maandKosten > 200) {
+          inzichten.push({
+            id: "abonnementen-kosten",
+            type: "tip",
+            prioriteit: 7,
+            titel: `€${Math.round(maandKosten)}/maand aan abonnementen`,
+            omschrijving: `Je vaste lasten zijn €${Math.round(maandKosten)}/maand (€${Math.round(maandKosten * 12)}/jaar). Check of alles nog nodig is.`,
+            actie: { label: "Bekijk abonnementen", link: "/financien?tab=abonnementen" },
+          });
+        }
+      }
+    } catch {
+      // Revolut insights are optional, don't break the whole endpoint
     }
 
     // Sorteer op prioriteit

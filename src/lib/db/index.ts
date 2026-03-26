@@ -39,10 +39,27 @@ if (isTurso) {
   sqliteDb.pragma("journal_mode = WAL");
   sqliteDb.pragma("foreign_keys = ON");
 
-  // Auto-migrate: add type column to klanten if missing
-  const cols = sqliteDb.prepare("PRAGMA table_info(klanten)").all() as { name: string }[];
-  if (!cols.some((c: { name: string }) => c.name === "klant_type")) {
+  // Auto-migrate
+  const klantCols = sqliteDb.prepare("PRAGMA table_info(klanten)").all() as { name: string }[];
+  if (!klantCols.some((c: { name: string }) => c.name === "klant_type")) {
     sqliteDb.exec("ALTER TABLE klanten ADD COLUMN klant_type TEXT DEFAULT 'klant'");
+  }
+
+  // Revolut integration tables
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS revolut_verbinding (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    access_token TEXT, refresh_token TEXT, token_verloopt_op TEXT,
+    account_id TEXT, webhook_id TEXT, webhook_secret TEXT,
+    laatste_sync_op TEXT, is_actief INTEGER DEFAULT 1,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  const bankCols = sqliteDb.prepare("PRAGMA table_info(bank_transacties)").all() as { name: string }[];
+  if (!bankCols.some((c: { name: string }) => c.name === "revolut_transactie_id")) {
+    sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN revolut_transactie_id TEXT");
+    sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_naam TEXT");
+    sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_categorie TEXT");
   }
 
   sqlite = sqliteDb;

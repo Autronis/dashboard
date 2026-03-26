@@ -47,7 +47,73 @@ interface DocumentPreviewProps {
   betaaldOp?: string | null;
   sticky?: boolean;
   bedrijf?: Bedrijf | null;
+  taal?: "nl" | "en";
 }
+
+const previewTranslations = {
+  nl: {
+    from: "Van",
+    invoiceTo: "Factuur aan",
+    quoteTo: "Offerte aan",
+    invoiceNumber: "Factuurnummer",
+    quoteNumber: "Offertenummer",
+    invoiceDate: "Factuurdatum",
+    quoteDate: "Offertedatum",
+    dueDate: "Vervaldatum",
+    validUntil: "Geldig tot",
+    paymentTerm: "Betalingstermijn",
+    days: "dagen",
+    title: "Titel",
+    description: "Omschrijving",
+    quantity: "Aantal",
+    price: "Prijs",
+    vat: "BTW",
+    total: "Totaal",
+    subtotal: "Subtotaal",
+    notes: "Opmerkingen",
+    addLine: "Voeg een regel toe...",
+    selectClient: "Selecteer een klant...",
+    attn: "t.a.v.",
+    paymentInstructions: "Betaalinstructies",
+    paymentText: (term: number) => `Gelieve het totaalbedrag binnen ${term} dagen over te maken`,
+    paymentDue: (date: string) => `, uiterlijk op`,
+    paymentRef: (nr: string) => `Vermeld bij uw betaling: `,
+    paidOn: (date: string) => `Betaald op ${date}`,
+    tagline: "AI & Automatisering",
+    docType: { FACTUUR: "FACTUUR", OFFERTE: "OFFERTE" },
+  },
+  en: {
+    from: "From",
+    invoiceTo: "Invoice to",
+    quoteTo: "Quote to",
+    invoiceNumber: "Invoice number",
+    quoteNumber: "Quote number",
+    invoiceDate: "Invoice date",
+    quoteDate: "Quote date",
+    dueDate: "Due date",
+    validUntil: "Valid until",
+    paymentTerm: "Payment term",
+    days: "days",
+    title: "Title",
+    description: "Description",
+    quantity: "Qty",
+    price: "Price",
+    vat: "VAT",
+    total: "Total",
+    subtotal: "Subtotal",
+    notes: "Notes",
+    addLine: "Add a line item...",
+    selectClient: "Select a client...",
+    attn: "Attn.",
+    paymentInstructions: "Payment instructions",
+    paymentText: (term: number) => `Please transfer the total amount within ${term} days`,
+    paymentDue: (date: string) => `, no later than`,
+    paymentRef: (nr: string) => `Reference: `,
+    paidOn: (date: string) => `Paid on ${date}`,
+    tagline: "AI & Automation",
+    docType: { FACTUUR: "INVOICE", OFFERTE: "QUOTE" },
+  },
+} as const;
 
 const TEAL = "#17B8A5";
 
@@ -69,8 +135,10 @@ export function DocumentPreview({
   betaaldOp,
   sticky = false,
   bedrijf,
+  taal = "nl",
 }: DocumentPreviewProps) {
   const [fetchedBedrijf, setFetchedBedrijf] = useState<Bedrijf | null>(null);
+  const t = previewTranslations[taal];
 
   useEffect(() => {
     if (!bedrijf) {
@@ -96,9 +164,10 @@ export function DocumentPreview({
   })();
 
   const isFactuur = type === "FACTUUR";
-  const dateLabel = isFactuur ? "Factuurdatum" : "Offertedatum";
-  const nummerLabel = isFactuur ? "Factuurnummer" : "Offertenummer";
-  const aanLabel = isFactuur ? "Factuur aan" : "Offerte aan";
+  const dateLabel = isFactuur ? t.invoiceDate : t.quoteDate;
+  const nummerLabel = isFactuur ? t.invoiceNumber : t.quoteNumber;
+  const aanLabel = isFactuur ? t.invoiceTo : t.quoteTo;
+  const displayType = t.docType[type];
 
   return (
     <div
@@ -118,7 +187,7 @@ export function DocumentPreview({
                 AUTRONIS
               </p>
               <p className="text-[10px] text-gray-400 tracking-wide mt-0.5">
-                AI & Automatisering
+                {t.tagline}
               </p>
             </div>
           </div>
@@ -127,7 +196,7 @@ export function DocumentPreview({
               className="text-xl font-bold tracking-wider"
               style={{ color: TEAL }}
             >
-              {type}
+              {displayType}
             </p>
             {nummer && (
               <p className="text-[11px] text-gray-400 mt-1">{nummer}</p>
@@ -148,7 +217,7 @@ export function DocumentPreview({
               className="text-[10px] font-semibold uppercase tracking-wider mb-2"
               style={{ color: TEAL }}
             >
-              Van
+              {t.from}
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
               <span className="font-semibold text-gray-800">{b?.bedrijfsnaam || "Autronis"}</span>
@@ -177,7 +246,7 @@ export function DocumentPreview({
                 {klant.contactpersoon && (
                   <>
                     <br />
-                    t.a.v. {klant.contactpersoon}
+                    {t.attn} {klant.contactpersoon}
                   </>
                 )}
                 {klant.adres && (
@@ -195,7 +264,7 @@ export function DocumentPreview({
               </p>
             ) : (
               <p className="text-xs text-gray-400 italic">
-                Selecteer een klant...
+                {t.selectClient}
               </p>
             )}
           </div>
@@ -206,15 +275,15 @@ export function DocumentPreview({
           <MetaItem label={nummerLabel} value={nummer || "Auto"} muted={!nummer} />
           <MetaItem label={dateLabel} value={datum ? formatDatum(datum) : "\u2014"} />
           {isFactuur && vervaldatum && (
-            <MetaItem label="Vervaldatum" value={formatDatum(vervaldatum)} />
+            <MetaItem label={t.dueDate} value={formatDatum(vervaldatum)} />
           )}
           {isFactuur && (
-            <MetaItem label="Betalingstermijn" value={`${berekendeTermijn} dagen`} />
+            <MetaItem label={t.paymentTerm} value={`${berekendeTermijn} ${t.days}`} />
           )}
           {!isFactuur && geldigTot && (
-            <MetaItem label="Geldig tot" value={formatDatum(geldigTot)} />
+            <MetaItem label={t.validUntil} value={formatDatum(geldigTot)} />
           )}
-          {titel && <MetaItem label="Titel" value={titel} />}
+          {titel && <MetaItem label={t.title} value={titel} />}
         </div>
 
         {/* ═══ Table ═══ */}

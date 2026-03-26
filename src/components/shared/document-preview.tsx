@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { formatBedrag, formatDatum } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -67,6 +70,19 @@ export function DocumentPreview({
   sticky = false,
   bedrijf,
 }: DocumentPreviewProps) {
+  const [fetchedBedrijf, setFetchedBedrijf] = useState<Bedrijf | null>(null);
+
+  useEffect(() => {
+    if (!bedrijf) {
+      fetch("/api/instellingen")
+        .then((r) => r.json())
+        .then((d) => { if (d.bedrijf) setFetchedBedrijf(d.bedrijf); })
+        .catch(() => {});
+    }
+  }, [bedrijf]);
+
+  const b = bedrijf || fetchedBedrijf;
+
   const isFactuur = type === "FACTUUR";
   const dateLabel = isFactuur ? "Factuurdatum" : "Offertedatum";
   const nummerLabel = isFactuur ? "Factuurnummer" : "Offertenummer";
@@ -123,15 +139,15 @@ export function DocumentPreview({
               Van
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
-              {bedrijf?.bedrijfsnaam || "Autronis"}
+              {b?.bedrijfsnaam || "Autronis"}
               <br />
-              {bedrijf?.email || "zakelijk@autronis.com"}
+              {b?.email || "zakelijk@autronis.com"}
               <br />
               autronis.nl
-              {bedrijf?.adres && (
+              {b?.adres && (
                 <>
                   <br />
-                  {bedrijf.adres}
+                  {b.adres}
                 </>
               )}
             </p>
@@ -325,12 +341,16 @@ export function DocumentPreview({
       <div className="px-8 py-4 flex justify-between items-start text-[10px]">
         <div className="text-gray-400 leading-relaxed">
           <span style={{ color: TEAL }} className="font-semibold">
-            Autronis
+            {bedrijf?.bedrijfsnaam || "Autronis"}
           </span>{" "}
-          | zakelijk@autronis.com | autronis.nl
+          | {bedrijf?.email || "zakelijk@autronis.com"} | autronis.nl
         </div>
         <div className="text-gray-400 text-right leading-relaxed">
-          KvK &middot; BTW &middot; IBAN
+          {[
+            b?.kvkNummer ? `KvK: ${b.kvkNummer}` : null,
+            b?.btwNummer ? `BTW: ${b.btwNummer}` : null,
+            b?.iban ? `IBAN: ${b.iban}` : null,
+          ].filter(Boolean).join(" · ") || "KvK · BTW · IBAN"}
         </div>
       </div>
     </div>

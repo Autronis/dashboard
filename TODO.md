@@ -37,6 +37,7 @@
 - [ ] Volledige workflow geautomatiseerd: Claude prompts → Kie.ai afbeeldingen → Kie.ai video, alles in dashboard
 
 ## Fase 5: Uitbreidingen (open)
+- [ ] Dagelijkse updates via WhatsApp/mail (project status, content live, agent activiteit samenvatting)
 - [ ] Offertes module
 - [ ] Proposals (ondertekenen, klant portal)
 - [ ] Wiki / Kennisbank

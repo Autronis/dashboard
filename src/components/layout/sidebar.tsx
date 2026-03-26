@@ -19,7 +19,7 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────
-interface NavLink { label: string; icon: typeof LayoutDashboard; href: string }
+interface NavLink { label: string; icon: typeof LayoutDashboard; href: string; alsoMatches?: string[] }
 interface LauncherLink {
   label: string;
   icon: typeof LayoutDashboard;
@@ -85,7 +85,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         children: [
           { label: "Offerte", icon: FileText, href: "/offertes" },
           { label: "Contract", icon: FileText, href: "/offertes/contracten" },
-          { label: "Factuur", icon: Euro, href: "/facturen" },
+          { label: "Factuur", icon: Euro, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
         ],
       },
       { label: "Financiën", icon: Euro, href: "/financien" },

@@ -294,6 +294,13 @@ export default function ContentPage() {
     });
   }
 
+  function handleGenereerStorytelling() {
+    genereerStorytelling.mutate({ count: 1, platforms: ["linkedin"], format: "storytelling" }, {
+      onSuccess: () => addToast("LinkedIn storytelling post gegenereerd", "succes"),
+      onError: (err) => addToast(err.message || "Genereren mislukt", "fout"),
+    });
+  }
+
   function handleBevestigWeek() {
     setWeekBriefOpen(false);
     genereerWeek.mutate({ count: 7 }, {
@@ -500,6 +507,14 @@ export default function ContentPage() {
           >
             {genereerLinkedin.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Newspaper className="w-4 h-4" />}
             Genereer LinkedIn post
+          </button>
+          <button
+            onClick={handleGenereerStorytelling}
+            disabled={genereerStorytelling.isPending}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {genereerStorytelling.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flame className="w-4 h-4" />}
+            {genereerStorytelling.isPending ? "Bezig..." : "Storytelling post"}
           </button>
           <Link href="/content/banners?nieuw=1" className="inline-flex items-center gap-2 px-4 py-2.5 bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 rounded-xl text-sm font-medium transition-colors">
             <ImageIcon className="w-4 h-4" />

@@ -404,6 +404,7 @@ export const kilometerRegistraties = sqliteTable("kilometer_registraties", {
   projectId: integer("project_id").references(() => projecten.id),
   opgeslagenRouteId: integer("opgeslagen_route_id"),
   tariefPerKm: real("tarief_per_km").default(0.23),
+  terugkerendeRitId: integer("terugkerende_rit_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -1364,5 +1365,62 @@ export const dagritme = sqliteTable("dagritme", {
   reflectie: text("reflectie"), // avond/week
   verschuivingen: text("verschuivingen"), // JSON: string[] (taken die verschuiven)
   energie: integer("energie"), // 1-5 (avond)
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ KM-STANDEN ============
+export const kmStanden = sqliteTable("km_standen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  jaar: integer("jaar").notNull(),
+  maand: integer("maand").notNull(),
+  beginStand: real("begin_stand").notNull(),
+  eindStand: real("eind_stand").notNull(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("km_standen_gebruiker_jaar_maand").on(table.gebruikerId, table.jaar, table.maand),
+]);
+
+// ============ AUTO-INSTELLINGEN ============
+export const autoInstellingen = sqliteTable("auto_instellingen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull().unique(),
+  zakelijkPercentage: real("zakelijk_percentage").default(75.0),
+  tariefPerKm: real("tarief_per_km").default(0.23),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ TERUGKERENDE RITTEN ============
+export const terugkerendeRitten = sqliteTable("terugkerende_ritten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  naam: text("naam").notNull(),
+  vanLocatie: text("van_locatie").notNull(),
+  naarLocatie: text("naar_locatie").notNull(),
+  kilometers: real("kilometers").notNull(),
+  isRetour: integer("is_retour").default(0),
+  doelType: text("doel_type", { enum: ["klantbezoek", "meeting", "inkoop", "netwerk", "training", "boekhouder", "overig"] }),
+  klantId: integer("klant_id").references(() => klanten.id),
+  projectId: integer("project_id").references(() => projecten.id),
+  frequentie: text("frequentie", { enum: ["dagelijks", "wekelijks", "maandelijks"] }).notNull(),
+  dagVanWeek: integer("dag_van_week"), // 0=ma, 6=zo
+  dagVanMaand: integer("dag_van_maand"), // 1-31
+  startDatum: text("start_datum").notNull(),
+  eindDatum: text("eind_datum"),
+  isActief: integer("is_actief").default(1),
+  laatsteGeneratie: text("laatste_generatie"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ BRANDSTOFKOSTEN ============
+export const brandstofKosten = sqliteTable("brandstof_kosten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  datum: text("datum").notNull(),
+  bedrag: real("bedrag").notNull(),
+  liters: real("liters"),
+  kmStand: real("km_stand"),
+  bankTransactieId: integer("bank_transactie_id").references(() => bankTransacties.id),
+  notitie: text("notitie"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

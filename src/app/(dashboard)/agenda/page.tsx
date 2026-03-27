@@ -382,7 +382,7 @@ export default function AgendaPage() {
       map[dag].push(item);
     }
     // Dedup: skip externe events die al als lokaal item of ingeplande taak bestaan
-    const stripEmoji = (s: string) => s.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]/gu, "").trim();
+    const stripEmoji = (s: string) => s.replace(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu, "").trim();
     const toLocalKey = (titel: string, datum: string) => {
       // Normaliseer naar lokale datum+uur zodat UTC en lokale tijden matchen
       const d = new Date(datum);
@@ -609,7 +609,7 @@ export default function AgendaPage() {
   const toLocalKeyUp = (titel: string, datum: string) => {
     const d = new Date(datum);
     const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-    const strip = (s: string) => s.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]/gu, "").trim();
+    const strip = (s: string) => s.replace(/\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu, "").trim();
     return `${strip(titel)}|${local}`;
   };
   const lokaleKeysUpcoming = new Set([

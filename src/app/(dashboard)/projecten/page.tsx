@@ -544,14 +544,8 @@ export default function ProjectenPage() {
   const projecten = data?.projecten ?? [];
   const kpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
 
-  // Confetti bij eerste 100% project op load
-  useEffect(() => {
-    if (!confettiFired.current && projecten.some((p) => p.takenVoortgang >= 100 && p.status === "actief")) {
-      confettiFired.current = true;
-      const t = setTimeout(() => { setShowConfetti(true); setTimeout(() => setShowConfetti(false), 2200); }, 600);
-      return () => clearTimeout(t);
-    }
-  }, [projecten]);
+  // Confetti disabled
+  void confettiFired;
 
   const filtered = useMemo(() => {
     return projecten.filter((p) => {

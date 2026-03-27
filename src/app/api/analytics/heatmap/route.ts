@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { sql, and, gte, lte } from "drizzle-orm";
+import { getUniqueScreenTimePerDay } from "@/lib/screen-time-utils";
 
-// GET /api/analytics/heatmap — daily hours for the last 365 days (screen time)
+// GET /api/analytics/heatmap — daily hours for the last 365 days (screen time, merged)
 export async function GET() {
   try {
     await requireAuth();
@@ -16,24 +14,11 @@ export async function GET() {
     const startStr = start.toISOString().slice(0, 10) + "T00:00:00";
     const eindStr = nu.toISOString().slice(0, 10) + "T23:59:59";
 
-    const rows = await db
-      .select({
-        datum: sql<string>`date(${screenTimeEntries.startTijd})`.as("datum"),
-        totaalSeconden: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal_seconden"),
-      })
-      .from(screenTimeEntries)
-      .where(
-        and(
-          gte(screenTimeEntries.startTijd, startStr),
-          lte(screenTimeEntries.startTijd, eindStr),
-          sql`${screenTimeEntries.categorie} != 'inactief'`
-        )
-      )
-      .groupBy(sql`date(${screenTimeEntries.startTijd})`);
+    const perDay = await getUniqueScreenTimePerDay(startStr, eindStr);
 
-    const data = rows.map((r) => ({
-      datum: r.datum,
-      uren: Math.round((r.totaalSeconden / 3600) * 100) / 100,
+    const data = [...perDay.entries()].map(([datum, sec]) => ({
+      datum,
+      uren: Math.round((sec / 3600) * 100) / 100,
     }));
 
     return NextResponse.json({ data });

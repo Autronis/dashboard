@@ -11,6 +11,7 @@ import {
   gebruikers,
   screenTimeEntries,
 } from "@/lib/db/schema";
+import { getUniqueScreenTimeSeconds } from "@/lib/screen-time-utils";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, ne, or } from "drizzle-orm";
 

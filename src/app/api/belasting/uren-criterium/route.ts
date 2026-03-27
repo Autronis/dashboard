@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { urenCriterium, tijdregistraties } from "@/lib/db/schema";
+import { urenCriterium } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 // GET /api/belasting/uren-criterium?jaar=2026
 export async function GET(req: NextRequest) {
@@ -38,25 +39,8 @@ export async function GET(req: NextRequest) {
       record = nieuw;
     }
 
-    // Auto-calculate behaald uren from tijdregistraties
-    const startJaar = `${jaar}-01-01T00:00:00`;
-    const eindJaar = `${jaar}-12-31T23:59:59`;
-
-    const result = await db
-      .select({
-        totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
-      })
-      .from(tijdregistraties)
-      .where(
-        and(
-          eq(tijdregistraties.gebruikerId, gebruiker.id),
-          gte(tijdregistraties.startTijd, startJaar),
-          lte(tijdregistraties.startTijd, eindJaar)
-        )
-      )
-      .get();
-
-    const behaaldUren = Math.round(((result?.totaalMinuten ?? 0) / 60) * 10) / 10;
+    // Auto-calculate behaald uren from screen time (actieve uren)
+    const behaaldUren = await berekenActieveUren(gebruiker.id, `${jaar}-01-01`, `${jaar}-12-31`);
     const doelUren = record.doelUren ?? 1225;
     const voldoet = behaaldUren >= doelUren;
 

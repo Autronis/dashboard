@@ -67,6 +67,7 @@ export function useTaken(filters: TakenFilters) {
   return useQuery({
     queryKey: ["taken", filters],
     queryFn: () => fetchTaken(filters),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 5_000, // Auto-sync elke 5 seconden voor team awareness
   });
 }

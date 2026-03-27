@@ -587,11 +587,14 @@ export default function TakenPage() {
   const statusMutation = useMutation({
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { fout?: string };
+        throw new Error(data.fout || "Kon status niet bijwerken");
+      }
       return status;
     },
     onSuccess: (status, { id }) => { if (status === "afgerond") showCheckBurst(id); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
-    onError: () => addToast("Kon status niet bijwerken", "fout"),
+    onError: (error) => addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout"),
   });
 
   const deleteMutation = useMutation({

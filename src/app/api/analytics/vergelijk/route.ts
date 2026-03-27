@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { tijdregistraties, projecten, klanten, gebruikers, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 interface GebruikerVergelijk {
   id: number;
@@ -30,22 +31,11 @@ export async function GET() {
     const result: GebruikerVergelijk[] = [];
 
     for (const gebruiker of alleGebruikers) {
-      // Screen time uren deze maand
-      const screenResult = await db
-        .select({
-          totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal"),
-        })
-        .from(screenTimeEntries)
-        .where(
-          and(
-            eq(screenTimeEntries.gebruikerId, gebruiker.id),
-            gte(screenTimeEntries.startTijd, maandStart),
-            lte(screenTimeEntries.startTijd, maandEind),
-            sql`${screenTimeEntries.categorie} != 'inactief'`
-          )
-        );
-
-      const urenDezeMaand = (screenResult[0]?.totaal || 0) / 3600;
+      // Screen time uren deze maand (via slot-merging voor correcte telling)
+      const maandVanDatum = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(nu.getFullYear(), nu.getMonth() + 1, 0).getDate();
+      const maandTotDatum = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
+      const urenDezeMaand = await berekenActieveUren(gebruiker.id, maandVanDatum, maandTotDatum);
 
       // Omzet uit tijdregistraties
       const omzetEntries = await db

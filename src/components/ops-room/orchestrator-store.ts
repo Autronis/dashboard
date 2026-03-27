@@ -312,8 +312,9 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       };
 
       const dbCommandId = data.commandId as number | null;
+      const dbProjectId = data.projectId as number | null;
       set((s) => ({
-        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, dbId: dbCommandId, status: "awaiting_approval" as const } : c),
+        commands: s.commands.map((c) => c.id === cmdId ? { ...c, plan, dbId: dbCommandId, projectId: dbProjectId ?? c.projectId, status: "awaiting_approval" as const } : c),
         isProcessing: false,
       }));
 
@@ -656,13 +657,14 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         if (controller.signal.aborted) throw new Error("Gestopt");
 
+        const currentCmd = get().commands.find((c) => c.id === commandId);
         const execRes = await fetch("/api/ops-room/execute", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-ops-token": "autronis-ops-2026",
           },
-          body: JSON.stringify({ task, context, mode: "execute" }),
+          body: JSON.stringify({ task, context, mode: "execute", projectId: currentCmd?.projectId }),
           signal: controller.signal,
         });
 

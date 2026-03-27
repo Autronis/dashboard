@@ -429,20 +429,12 @@ export async function GET() {
     const restDagen = dagenInMaand - dag;
     const werkdagenRest = Math.round(restDagen * 5 / 7);
 
-    // Uren deze maand uit screen time (actieve uren)
-    const screenUrenMaand = await db
-      .select({
-        totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal"),
-      })
-      .from(screenTimeEntries)
-      .where(
-        and(
-          gte(screenTimeEntries.startTijd, huidigeMaandStr + "-01T00:00:00"),
-          lte(screenTimeEntries.startTijd, huidigeMaandStr + "-31T23:59:59"),
-          sql`${screenTimeEntries.categorie} != 'inactief'`
-        )
-      );
-    const urenDezeMaand = (screenUrenMaand[0]?.totaal || 0) / 3600;
+    // Uren deze maand uit screen time (merged intervals)
+    const urenDezeMaandSec = await getUniqueScreenTimeSeconds(
+      huidigeMaandStr + "-01T00:00:00",
+      huidigeMaandStr + "-31T23:59:59"
+    );
+    const urenDezeMaand = urenDezeMaandSec / 3600;
 
     const OMZET_DOEL = 10000;
     const UREN_DOEL = 160;

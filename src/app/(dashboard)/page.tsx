@@ -833,7 +833,7 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-      <motion.div className="max-w-[1240px] mx-auto space-y-2.5" variants={pageVariants} initial="hidden" animate="visible">
+      <motion.div className="max-w-[1240px] mx-auto space-y-5" variants={pageVariants} initial="hidden" animate="visible">
 
         {/* Begroeting + dag voortgang */}
         <motion.div variants={sectionVariants} className="flex items-center justify-between gap-4">
@@ -920,15 +920,21 @@ export default function DashboardPage() {
           <HabitWidget compact />
         </motion.div>
 
-        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3 min-w-0">
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">
           {/* Left column */}
-          <div className="space-y-3 min-w-0 overflow-hidden">
+          <div className="space-y-5 min-w-0 overflow-hidden">
             {/* Dagbriefing */}
             <DailyBriefing />
+
+            {/* Idee van de dag + Learning Radar */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <IdeeVanDeDag />
+              <RadarWidget />
+            </div>
           </div>
 
           {/* Right column */}
-          <div className="space-y-3 min-w-0">
+          <div className="space-y-4 min-w-0">
             {/* Dynamic snelle navigatie */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
               <h3 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Snelle navigatie</h3>
@@ -966,12 +972,6 @@ export default function DashboardPage() {
             {/* Documenten */}
             <DocumentWidget />
 
-            {/* Idee van de dag */}
-            <IdeeVanDeDag />
-
-            {/* Learning Radar */}
-            <RadarWidget />
-
             {/* Second Brain */}
             <SecondBrainWidget />
 
@@ -1006,13 +1006,13 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* Spacer for timer bar */}
-        <div className={cn("transition-all", timer.isRunning ? "h-4 md:h-20" : "h-4 md:h-14")} />
+        {timer.isRunning && <div className="h-4 md:h-20 transition-all" />}
       </motion.div>
 
-      {/* Fixed timer bar — collapsible when idle */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 hidden md:block">
-        <div className="max-w-[1400px] mx-auto">
-          {timer.isRunning ? (
+      {/* Fixed timer bar — only visible when timer is running */}
+      {timer.isRunning && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-autronis-card/95 backdrop-blur-md border-t border-autronis-border shadow-2xl shadow-black/40 hidden md:block">
+          <div className="max-w-[1400px] mx-auto">
             <div className="p-2.5">
               <div className="bg-autronis-card border border-autronis-border rounded-xl p-2.5 card-glow">
                 <div className="flex items-center gap-3">
@@ -1028,39 +1028,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          ) : timerCollapsed ? (
-            <button onClick={() => setTimerCollapsed(false)} className="w-full flex items-center justify-center gap-2 py-2 text-xs text-autronis-text-secondary hover:text-autronis-accent transition-colors">
-              <Clock className="w-3.5 h-3.5" />
-              <span>Timer starten</span>
-            </button>
-          ) : (
-            <div className="p-2.5">
-              <div className="bg-autronis-card border border-autronis-border rounded-xl p-2.5 card-glow">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-autronis-accent flex-shrink-0" />
-                  <select value={timerProjectId} onChange={(e) => setTimerProjectId(e.target.value)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-3 pr-7 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent flex-1 min-w-0 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
-                    <option value="">Project...</option>
-                    {projecten.map((p) => <option key={p.id} value={p.id}>{p.naam} &mdash; {p.klantNaam}</option>)}
-                  </select>
-                  <input type="text" value={timerOmschrijving} onChange={(e) => setTimerOmschrijving(e.target.value)} placeholder="Waar werk je aan?" className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent flex-1 min-w-0" onKeyDown={(e) => e.key === "Enter" && handleStartTimer()} />
-                  <select value={timerCategorie} onChange={(e) => setTimerCategorie(e.target.value as TijdCategorie)} className="appearance-none bg-autronis-bg border border-autronis-border rounded-lg px-2 pr-6 py-2 text-sm text-autronis-text-primary focus:outline-none focus:border-autronis-accent w-auto hidden sm:block bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%238A9BA0%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22/%3E%3C/svg%3E')] bg-[length:12px] bg-[right_8px_center] bg-no-repeat">
-                    <option value="development">Development</option>
-                    <option value="meeting">Meeting</option>
-                    <option value="administratie">Administratie</option>
-                    <option value="overig">Overig</option>
-                  </select>
-                  <button onClick={handleStartTimer} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors btn-press flex-shrink-0">
-                    <Play className="w-3.5 h-3.5" /> Start
-                  </button>
-                  <button onClick={() => setTimerCollapsed(true)} className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors flex-shrink-0">
-                    <ChevronDown className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </PageTransition>
   );
 }

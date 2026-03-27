@@ -18,6 +18,31 @@ const AGENT_NAMES: Record<string, string> = {
   brent: "Brent",
 };
 
+// Opus: architecture, database, complex multi-file, security, orchestration
+// Sonnet: styling, simple CRUD, config, small UI changes, reviews
+const OPUS_PATTERNS = [
+  /architect/i, /database.*schema/i, /migratie/i, /auth/i, /security/i,
+  /orchestrat/i, /pipeline/i, /engine/i, /algorithm/i, /complex/i,
+  /integratie/i, /api.*design/i, /webhook/i, /real.?time/i, /websocket/i,
+  /state.*management/i, /caching/i, /performance/i, /refactor.*groot/i,
+];
+
+function selectModel(task: PlanTask, mode: string): string {
+  // Reviews always use Sonnet (fast, cheap)
+  if (mode === "review") return "claude-sonnet-4-6";
+
+  const text = `${task.titel} ${task.beschrijving}`.toLowerCase();
+
+  // Many files = complex task
+  if (task.bestanden.length > 4) return "claude-opus-4-6";
+
+  // Pattern match for complex tasks
+  if (OPUS_PATTERNS.some((p) => p.test(text))) return "claude-opus-4-6";
+
+  // Default to Sonnet
+  return "claude-sonnet-4-6";
+}
+
 function buildAgentPrompt(agentId: string, task: PlanTask, context: string): string {
   const name = AGENT_NAMES[agentId] ?? agentId;
   const spec = AGENT_SPECIALIZATIONS[agentId] ?? "frontend";
@@ -111,8 +136,11 @@ export async function POST(req: NextRequest) {
       ? buildReviewPrompt(task, context)
       : buildAgentPrompt(task.agentId ?? "wout", task, context);
 
+    // Auto-select model based on task complexity
+    const model = selectModel(task, mode);
+
     const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model,
       max_tokens: 8000,
       system: systemPrompt,
       messages: [
@@ -177,7 +205,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ result, tokens: message.usage });
+    return NextResponse.json({ result, tokens: message.usage, model });
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Onbekend";
     if (msg.includes("credit balance") || msg.includes("billing")) {

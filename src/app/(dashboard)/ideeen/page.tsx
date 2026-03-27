@@ -167,6 +167,12 @@ export default function IdeeenPage() {
   const genereerMutation = useGenereerIdeeen();
   const promoveerMutation = usePromoveerIdee();
   const regenereerPlanMutation = useRegenereerPlan();
+  const verwerkMutation = useVerwerkNotitie();
+  const { data: projectenData } = useProjecten();
+  const projectenLijst = projectenData?.projecten ?? [];
+
+  const [verwerkResult, setVerwerkResult] = useState<{ notitieId: number; suggestie: VerwerkSuggestie } | null>(null);
+  const [koppelNotitieId, setKoppelNotitieId] = useState<number | null>(null);
 
   const [detailIdee, setDetailIdee] = useState<Idee | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -1007,6 +1013,60 @@ export default function IdeeenPage() {
             <p className="text-xs text-autronis-text-secondary/50 mt-2 ml-1">Enter om op te slaan · Eerste 60 tekens worden de titel</p>
           </div>
 
+          {/* Verwerk suggestie panel */}
+          <AnimatePresence>
+            {verwerkResult && (
+              <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="bg-autronis-card border border-autronis-accent/40 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bot className="w-4 h-4 text-autronis-accent" />
+                    <span className="text-sm font-medium text-autronis-text-primary">AI Suggestie</span>
+                  </div>
+                  <button onClick={() => setVerwerkResult(null)} className="text-autronis-text-secondary/40 hover:text-autronis-text-primary"><X className="w-4 h-4" /></button>
+                </div>
+                <p className="text-xs text-autronis-text-secondary">{verwerkResult.suggestie.reden}</p>
+                <div className="flex gap-2">
+                  {verwerkResult.suggestie.project.id && (
+                    <button
+                      onClick={async () => {
+                        const s = verwerkResult.suggestie;
+                        await fetch("/api/taken", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ projectId: s.project.id, titel: s.project.taakTitel }),
+                        });
+                        deleteMutation.mutate(verwerkResult.notitieId);
+                        setVerwerkResult(null);
+                        addToast(`Taak toegevoegd aan ${s.project.naam}`);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-lg text-xs font-medium transition-colors"
+                    >
+                      <ArrowRight className="w-3 h-3" />
+                      Koppel aan {verwerkResult.suggestie.project.naam}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      const s = verwerkResult.suggestie;
+                      updateMutation.mutate({ id: verwerkResult.notitieId, body: {
+                        naam: s.idee.naam,
+                        omschrijving: s.idee.omschrijving,
+                        categorie: s.idee.categorie,
+                        prioriteit: s.idee.prioriteit,
+                      }});
+                      setVerwerkResult(null);
+                      addToast(`Omgezet naar idee: ${s.idee.naam}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Lightbulb className="w-3 h-3" />
+                    Maak idee ({verwerkResult.suggestie.idee.categorie.replace("_", "/")})
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Notities lijst */}
           {inzichtIdeeen.length === 0 ? (
             <div className="text-center py-12">
@@ -1018,22 +1078,90 @@ export default function IdeeenPage() {
               {inzichtIdeeen.map((inzicht, i) => {
                 const datum = new Date(inzicht.aangemaaktOp);
                 const datumStr = datum.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: datum.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined });
+                const isVerwerken = verwerkMutation.isPending && verwerkMutation.variables === inzicht.id;
                 return (
-                  <motion.div key={inzicht.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: i * 0.04 }} className="group flex items-start gap-3 bg-autronis-card border border-autronis-border hover:border-amber-500/30 rounded-xl px-4 py-3 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-autronis-text-primary">{inzicht.omschrijving || inzicht.naam}</p>
-                      {inzicht.omschrijving && inzicht.naam !== inzicht.omschrijving.slice(0, 60) && (
-                        <p className="text-xs text-amber-400/70 mt-0.5">{inzicht.naam}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-[11px] text-autronis-text-secondary/50">{datumStr}</span>
-                      <button
-                        onClick={() => deleteMutation.mutate(inzicht.id)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-autronis-text-secondary/40 hover:text-red-400"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                  <motion.div key={inzicht.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: i * 0.04 }} className="group bg-autronis-card border border-autronis-border hover:border-amber-500/30 rounded-xl px-4 py-3 transition-colors">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-autronis-text-primary">{inzicht.omschrijving || inzicht.naam}</p>
+                        {inzicht.omschrijving && inzicht.naam !== inzicht.omschrijving.slice(0, 60) && (
+                          <p className="text-xs text-amber-400/70 mt-0.5">{inzicht.naam}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-[11px] text-autronis-text-secondary/50 mr-1">{datumStr}</span>
+                        {/* AI Verwerk knop */}
+                        <button
+                          onClick={async () => {
+                            const result = await verwerkMutation.mutateAsync(inzicht.id);
+                            setVerwerkResult({ notitieId: inzicht.id, suggestie: result.suggestie });
+                          }}
+                          disabled={isVerwerken}
+                          title="AI verwerkt deze notitie"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-autronis-accent/15 text-autronis-text-secondary/40 hover:text-autronis-accent"
+                        >
+                          {isVerwerken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
+                        </button>
+                        {/* Koppel aan project knop */}
+                        <div className="relative">
+                          <button
+                            onClick={() => setKoppelNotitieId(koppelNotitieId === inzicht.id ? null : inzicht.id)}
+                            title="Koppel aan project"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-blue-500/15 text-autronis-text-secondary/40 hover:text-blue-400"
+                          >
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                          {koppelNotitieId === inzicht.id && (
+                            <div className="absolute right-0 top-8 z-50 w-56 bg-autronis-card border border-autronis-border rounded-xl shadow-xl py-1 max-h-48 overflow-y-auto">
+                              {projectenLijst.filter((p) => p.status === "actief").map((project) => (
+                                <button
+                                  key={project.id}
+                                  onClick={async () => {
+                                    const titel = (inzicht.naam.length > 60 ? inzicht.naam.slice(0, 57) + "..." : inzicht.naam);
+                                    await fetch("/api/taken", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ projectId: project.id, titel }),
+                                    });
+                                    deleteMutation.mutate(inzicht.id);
+                                    setKoppelNotitieId(null);
+                                    addToast(`Taak toegevoegd aan ${project.naam}`);
+                                  }}
+                                  className="w-full text-left px-3 py-2 text-xs text-autronis-text-primary hover:bg-autronis-accent/10 transition-colors"
+                                >
+                                  {project.naam}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Maak idee knop */}
+                        <button
+                          onClick={() => {
+                            const naam = inzicht.naam;
+                            const omschrijving = inzicht.omschrijving || inzicht.naam;
+                            updateMutation.mutate({ id: inzicht.id, body: {
+                              naam,
+                              omschrijving,
+                              categorie: "experimenteel",
+                              prioriteit: "normaal",
+                            }});
+                            addToast("Omgezet naar idee");
+                          }}
+                          title="Maak idee"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-amber-500/15 text-autronis-text-secondary/40 hover:text-amber-400"
+                        >
+                          <Lightbulb className="w-3.5 h-3.5" />
+                        </button>
+                        {/* Verwijder */}
+                        <button
+                          onClick={() => deleteMutation.mutate(inzicht.id)}
+                          title="Verwijderen"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/15 text-autronis-text-secondary/40 hover:text-red-400"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 );

@@ -55,14 +55,14 @@ export async function PUT(
       // Deadline sync
       if (nieuweDeadline && huidig.googleEventId) {
         updateGoogleEvent(gebruiker.id, huidig.googleEventId, {
-          summary: `📋 ${nieuweTitel}`,
+          summary: nieuweTitel,
           description: nieuweOmschrijving ?? undefined,
           start: nieuweDeadline,
           allDay: true,
         }).catch(() => {});
       } else if (nieuweDeadline && !huidig.googleEventId) {
         pushEventToGoogle(gebruiker.id, {
-          summary: `📋 ${nieuweTitel}`,
+          summary: nieuweTitel,
           description: nieuweOmschrijving ?? undefined,
           start: nieuweDeadline,
           allDay: true,
@@ -83,7 +83,7 @@ export async function PUT(
       if (ingeplandChanged) {
         if (nieuweIngeplandStart && huidig.googlePlanEventId) {
           updateGoogleEvent(gebruiker.id, huidig.googlePlanEventId, {
-            summary: `⏰ ${nieuweTitel}`,
+            summary: nieuweTitel,
             description: nieuweOmschrijving ?? undefined,
             start: nieuweIngeplandStart,
             end: nieuweIngeplandEind ?? undefined,
@@ -91,7 +91,7 @@ export async function PUT(
           }).catch(() => {});
         } else if (nieuweIngeplandStart && !huidig.googlePlanEventId) {
           pushEventToGoogle(gebruiker.id, {
-            summary: `⏰ ${nieuweTitel}`,
+            summary: nieuweTitel,
             description: nieuweOmschrijving ?? undefined,
             start: nieuweIngeplandStart,
             end: nieuweIngeplandEind ?? undefined,

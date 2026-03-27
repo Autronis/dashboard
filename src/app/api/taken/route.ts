@@ -166,7 +166,7 @@ export async function POST(req: NextRequest) {
     // Push to Google Calendar if task has deadline
     if (deadline) {
       pushEventToGoogle(gebruiker.id, {
-        summary: `📋 ${titel.trim()}`,
+        summary: titel.trim(),
         description: omschrijving?.trim() || undefined,
         start: deadline,
         allDay: true,

@@ -1482,7 +1482,10 @@ export default function AgendaPage() {
                     const topOffset = (startUur - wStart) * slotH + (startMin / 60) * slotH;
                     const height = Math.max(24, (duurMin / 60) * slotH);
 
-                    const pk = getProjectKleur(taak.projectNaam);
+                    const kKleur = taak.kalenderKleur;
+                    const pk = kKleur
+                      ? { bg: `${kKleur}24`, border: kKleur, text: `${kKleur}CC` }
+                      : getProjectKleur(taak.projectNaam);
 
                     return (
                       <div
@@ -1493,7 +1496,7 @@ export default function AgendaPage() {
                           height: `${height}px`,
                           background: `linear-gradient(160deg, ${pk.bg} 0%, rgba(14,23,25,0.05) 100%)`,
                           borderLeftColor: pk.border,
-                          color: pk.text,
+                          color: kKleur || pk.text,
                           boxShadow: `0 2px 8px ${pk.border}20, 0 0 0 1px ${pk.border}14`,
                           left: `calc(48px + ${dagIdx} * (100% - 48px) / 7 + 2px)`,
                           width: `calc((100% - 48px) / 7 - 4px)`,
@@ -1964,18 +1967,22 @@ export default function AgendaPage() {
                         .map((taak) => (
                           <div
                             key={taak.id}
-                            className="p-2.5 rounded-lg bg-green-500/5 border border-green-500/20 border-l-2 group"
-                            style={{ borderLeftColor: "#22c55e" }}
+                            className="p-2.5 rounded-lg border border-l-2 group"
+                            style={{
+                              borderLeftColor: taak.kalenderKleur || "#22c55e",
+                              backgroundColor: (taak.kalenderKleur || "#22c55e") + "0D",
+                              borderColor: (taak.kalenderKleur || "#22c55e") + "33",
+                            }}
                           >
                             <div className="flex items-start gap-2">
-                              <CheckSquare className="w-3.5 h-3.5 mt-0.5 text-green-400 flex-shrink-0" />
+                              <CheckSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: taak.kalenderKleur || "#22c55e" }} />
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
                                 {taak.projectNaam && (
                                   <p className="text-[9px] text-autronis-text-secondary truncate mt-0.5">{taak.projectNaam}</p>
                                 )}
                                 <div className="flex items-center gap-1.5 mt-1">
-                                  <span className="text-[9px] text-green-400/80 tabular-nums font-medium">
+                                  <span className="text-[9px] tabular-nums font-medium" style={{ color: (taak.kalenderKleur || "#22c55e") + "CC" }}>
                                     {taak.ingeplandStart && new Date(taak.ingeplandStart).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}
                                     {taak.ingeplandEind && ` – ${new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })}`}
                                   </span>

@@ -1030,11 +1030,15 @@ export default function IdeeenPage() {
                     <button
                       onClick={async () => {
                         const s = verwerkResult.suggestie;
-                        await fetch("/api/taken", {
+                        const res = await fetch("/api/taken", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ projectId: s.project.id, titel: s.project.taakTitel }),
                         });
+                        if (!res.ok) {
+                          addToast("Fout bij toevoegen taak", "fout");
+                          return;
+                        }
                         deleteMutation.mutate(verwerkResult.notitieId);
                         setVerwerkResult(null);
                         addToast(`Taak toegevoegd aan ${s.project.naam}`);
@@ -1118,11 +1122,16 @@ export default function IdeeenPage() {
                                   key={project.id}
                                   onClick={async () => {
                                     const titel = (inzicht.naam.length > 60 ? inzicht.naam.slice(0, 57) + "..." : inzicht.naam);
-                                    await fetch("/api/taken", {
+                                    const res = await fetch("/api/taken", {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({ projectId: project.id, titel }),
                                     });
+                                    if (!res.ok) {
+                                      addToast("Fout bij toevoegen taak", "fout");
+                                      setKoppelNotitieId(null);
+                                      return;
+                                    }
                                     deleteMutation.mutate(inzicht.id);
                                     setKoppelNotitieId(null);
                                     addToast(`Taak toegevoegd aan ${project.naam}`);

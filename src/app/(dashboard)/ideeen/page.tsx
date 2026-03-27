@@ -1098,7 +1098,7 @@ export default function IdeeenPage() {
                           }}
                           disabled={isVerwerken}
                           title="AI verwerkt deze notitie"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-autronis-accent/15 text-autronis-text-secondary/40 hover:text-autronis-accent"
+                          className="p-1.5 rounded-lg bg-autronis-accent/10 text-autronis-accent/70 hover:bg-autronis-accent/25 hover:text-autronis-accent transition-colors"
                         >
                           {isVerwerken ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Bot className="w-3.5 h-3.5" />}
                         </button>
@@ -1107,7 +1107,7 @@ export default function IdeeenPage() {
                           <button
                             onClick={() => setKoppelNotitieId(koppelNotitieId === inzicht.id ? null : inzicht.id)}
                             title="Koppel aan project"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-blue-500/15 text-autronis-text-secondary/40 hover:text-blue-400"
+                            className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400/70 hover:bg-blue-500/25 hover:text-blue-400 transition-colors"
                           >
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
@@ -1149,7 +1149,7 @@ export default function IdeeenPage() {
                             addToast("Omgezet naar idee");
                           }}
                           title="Maak idee"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-amber-500/15 text-autronis-text-secondary/40 hover:text-amber-400"
+                          className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400/70 hover:bg-amber-500/25 hover:text-amber-400 transition-colors"
                         >
                           <Lightbulb className="w-3.5 h-3.5" />
                         </button>
@@ -1157,7 +1157,7 @@ export default function IdeeenPage() {
                         <button
                           onClick={() => deleteMutation.mutate(inzicht.id)}
                           title="Verwijderen"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-red-500/15 text-autronis-text-secondary/40 hover:text-red-400"
+                          className="p-1.5 rounded-lg bg-red-500/10 text-red-400/70 hover:bg-red-500/25 hover:text-red-400 transition-colors"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

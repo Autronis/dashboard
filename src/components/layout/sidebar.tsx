@@ -59,7 +59,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
   {
     section: "Sales & Klanten",
     items: [
-      { label: "Klanten", icon: Users, href: "/klanten" },
       {
         label: "Overzicht",
         icon: Layers,
@@ -70,6 +69,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
         ],
       },
+      { label: "Klanten", icon: Users, href: "/klanten" },
       { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Mail Assistent", icon: Sparkles, href: "/mail" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },

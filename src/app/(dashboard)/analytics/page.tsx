@@ -566,7 +566,9 @@ function ActionableGoalsSectie({ goals }: { goals: DecisionEngineData["actionabl
                 <p className="text-sm font-medium text-autronis-text-primary">{g.doel}</p>
               </div>
               <p className="text-xs text-autronis-text-secondary mt-1 tabular-nums">
-                {formatBedrag(g.huidig)} / {formatBedrag(g.target)}
+                {g.doel === "Uren"
+                  ? `${g.huidig.toFixed(1)}u / ${g.target}u`
+                  : `${formatBedrag(g.huidig)} / ${formatBedrag(g.target)}`}
               </p>
               <p className="text-xs text-autronis-accent mt-1.5 font-medium leading-tight">{g.actie}</p>
             </div>

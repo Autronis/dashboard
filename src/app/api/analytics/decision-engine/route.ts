@@ -9,6 +9,7 @@ import {
   offertes,
   leads,
   gebruikers,
+  screenTimeEntries,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, ne, or } from "drizzle-orm";
@@ -427,9 +428,20 @@ export async function GET() {
     const restDagen = dagenInMaand - dag;
     const werkdagenRest = Math.round(restDagen * 5 / 7);
 
-    const urenDezeMaand = entriesJaar
-      .filter((e) => e.startTijd?.startsWith(huidigeMaandStr))
-      .reduce((s, e) => s + (e.duurMinuten ?? 0) / 60, 0);
+    // Uren deze maand uit screen time (actieve uren)
+    const screenUrenMaand = await db
+      .select({
+        totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal"),
+      })
+      .from(screenTimeEntries)
+      .where(
+        and(
+          gte(screenTimeEntries.startTijd, huidigeMaandStr + "-01T00:00:00"),
+          lte(screenTimeEntries.startTijd, huidigeMaandStr + "-31T23:59:59"),
+          sql`${screenTimeEntries.categorie} != 'inactief'`
+        )
+      );
+    const urenDezeMaand = (screenUrenMaand[0]?.totaal || 0) / 3600;
 
     const OMZET_DOEL = 10000;
     const UREN_DOEL = 160;

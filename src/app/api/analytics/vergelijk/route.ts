@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties, projecten, klanten, gebruikers, taken } from "@/lib/db/schema";
+import { tijdregistraties, projecten, klanten, gebruikers, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -30,8 +30,25 @@ export async function GET() {
     const result: GebruikerVergelijk[] = [];
 
     for (const gebruiker of alleGebruikers) {
-      // Hours + revenue this month
-      const urenEntries = await db
+      // Screen time uren deze maand
+      const screenResult = await db
+        .select({
+          totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal"),
+        })
+        .from(screenTimeEntries)
+        .where(
+          and(
+            eq(screenTimeEntries.gebruikerId, gebruiker.id),
+            gte(screenTimeEntries.startTijd, maandStart),
+            lte(screenTimeEntries.startTijd, maandEind),
+            sql`${screenTimeEntries.categorie} != 'inactief'`
+          )
+        );
+
+      const urenDezeMaand = (screenResult[0]?.totaal || 0) / 3600;
+
+      // Omzet uit tijdregistraties
+      const omzetEntries = await db
         .select({
           duurMinuten: tijdregistraties.duurMinuten,
           uurtarief: klanten.uurtarief,
@@ -48,12 +65,9 @@ export async function GET() {
           )
         );
 
-      let urenDezeMaand = 0;
       let omzetDezeMaand = 0;
-      for (const e of urenEntries) {
-        const u = (e.duurMinuten || 0) / 60;
-        urenDezeMaand += u;
-        omzetDezeMaand += u * (e.uurtarief || 0);
+      for (const e of omzetEntries) {
+        omzetDezeMaand += ((e.duurMinuten || 0) / 60) * (e.uurtarief || 0);
       }
 
       // Tasks completed this month
@@ -69,18 +83,17 @@ export async function GET() {
           )
         );
 
-      // Active projects (assigned via time entries)
+      // Active projects (from screen time + tijdregistraties)
       const actieveProjectenResult = await db
         .select({
-          count: sql<number>`COUNT(DISTINCT ${tijdregistraties.projectId})`.as("count"),
+          count: sql<number>`COUNT(DISTINCT ${screenTimeEntries.projectId})`.as("count"),
         })
-        .from(tijdregistraties)
-        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .from(screenTimeEntries)
         .where(
           and(
-            eq(tijdregistraties.gebruikerId, gebruiker.id),
-            eq(projecten.status, "actief"),
-            sql`${tijdregistraties.eindTijd} IS NOT NULL`
+            eq(screenTimeEntries.gebruikerId, gebruiker.id),
+            sql`${screenTimeEntries.projectId} IS NOT NULL`,
+            sql`${screenTimeEntries.categorie} != 'inactief'`
           )
         );
 

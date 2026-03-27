@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
 import { Radio, LayoutGrid, List, Building2, Loader2 } from "lucide-react";
@@ -45,6 +45,10 @@ export default function OpsRoomPage() {
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
   const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
   const orchestratorLogs = useOrchestrator((s) => s.logs);
+  const loadFromDb = useOrchestrator((s) => s.loadFromDb);
+
+  // Load pending/in_progress commands from DB on mount
+  useEffect(() => { loadFromDb(); }, [loadFromDb]);
 
   // Poll DB for active commands → extract working agent IDs (survives refresh)
   const { data: dbCommands } = useQuery({

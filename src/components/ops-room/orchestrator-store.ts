@@ -38,6 +38,7 @@ interface OrchestratorState {
   autoApproveTimers: Map<string, ReturnType<typeof setTimeout>>; // yellow auto-approve timers
 
   // Actions
+  loadFromDb: () => Promise<void>;
   submitCommand: (opdracht: string) => Promise<void>;
   answerIntake: (commandId: string, antwoorden: string[]) => Promise<void>;
   answerIdee: (commandId: string, antwoorden: string[]) => Promise<void>;
@@ -74,6 +75,74 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   activeAgents: new Set<string>(),
   abortControllers: new Map<string, AbortController>(),
   autoApproveTimers: new Map<string, ReturnType<typeof setTimeout>>(),
+
+  loadFromDb: async () => {
+    try {
+      const res = await fetch("/api/ops-room/orchestrate");
+      if (!res.ok) return;
+      const data = await res.json();
+      const dbCommands = data.commands as Array<{
+        id: number; opdracht: string; status: string; plan: { beschrijving: string; taken: PlanTask[] } | null;
+        bron: string; projectId: number | null; feedback: string | null; aangemaakt: string;
+      }>;
+
+      if (!dbCommands || dbCommands.length === 0) return;
+
+      const existingIds = new Set(get().commands.map((c) => c.dbId).filter(Boolean));
+      const newCommands: Command[] = [];
+
+      for (const dbCmd of dbCommands) {
+        if (existingIds.has(dbCmd.id)) continue;
+        if (dbCmd.status === "completed" || dbCmd.status === "rejected") continue;
+
+        const plan: Plan | null = dbCmd.plan ? {
+          id: genId("plan"),
+          commandId: `db-${dbCmd.id}`,
+          beschrijving: dbCmd.plan.beschrijving,
+          taken: dbCmd.plan.taken,
+          goedgekeurd: dbCmd.status === "in_progress" || dbCmd.status === "approved" ? true : null,
+          goedgekeurdOp: dbCmd.status === "in_progress" ? dbCmd.aangemaakt : null,
+        } : null;
+
+        newCommands.push({
+          id: `db-${dbCmd.id}`,
+          dbId: dbCmd.id,
+          opdracht: dbCmd.opdracht,
+          status: dbCmd.status as Command["status"],
+          plan,
+          aangemaakt: dbCmd.aangemaakt,
+          feedback: dbCmd.feedback,
+          intakeVragen: null,
+          intakeAntwoorden: null,
+          daanMode: null,
+          branch: null,
+          projectId: dbCmd.projectId,
+        });
+      }
+
+      if (newCommands.length > 0) {
+        set((s) => ({
+          commands: [...newCommands, ...s.commands],
+        }));
+
+        // Auto-execute any in_progress commands that haven't started
+        for (const cmd of newCommands) {
+          if (cmd.status === "in_progress" && cmd.plan) {
+            const planAgents = new Set(cmd.plan.taken.map((t) => t.agentId).filter(Boolean) as string[]);
+            set((s) => {
+              const next = new Set(s.activeAgents);
+              planAgents.forEach((a) => next.add(a));
+              return { activeAgents: next, activeCommandId: cmd.id };
+            });
+            addLog(set, "theo", "info", `Hervat opdracht: ${cmd.opdracht.slice(0, 50)}`);
+            get().executePlan(cmd.id);
+          }
+        }
+      }
+    } catch {
+      // DB load failed silently
+    }
+  },
 
   submitCommand: async (opdracht: string) => {
     const cmdId = genId("cmd");

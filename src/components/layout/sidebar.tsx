@@ -50,6 +50,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
       { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
       { label: "Meetings", icon: Mic, href: "/meetings" },
       { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
       { label: "Documenten", icon: FileText, href: "/documenten" },
     ],
   },

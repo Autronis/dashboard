@@ -23,6 +23,7 @@ import {
   Play,
   Square,
   Zap,
+  Copy,
 } from "lucide-react";
 import { cn, formatDatum, formatUren } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -148,7 +149,11 @@ function TaakStatusIcon({ status }: { status: string }) {
   return <Circle className="w-4 h-4 text-autronis-text-secondary/40 flex-shrink-0" />;
 }
 
-function FaseSection({ fase, onStatusToggle }: { fase: Fase; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
+function genPrompt(taak: FaseTaak, projectNaam: string, fase: string): string {
+  return `Werk aan taak "${taak.titel}" in project ${projectNaam}. Dit valt onder ${fase}. Check de TODO.md en bestaande code. Vink de taak af in TODO.md als je klaar bent.`;
+}
+
+function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projectNaam: string; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
   const [open, setOpen] = useState(fase.afgerond < fase.totaal);
   const percentage = fase.totaal > 0 ? Math.round((fase.afgerond / fase.totaal) * 100) : 0;
   const isComplete = percentage >= 100;
@@ -232,6 +237,18 @@ function FaseSection({ fase, onStatusToggle }: { fase: Fase; onStatusToggle?: (t
                         {isVerlopen && <AlertTriangle className="w-2.5 h-2.5 inline mr-0.5" />}
                         {formatDatum(taak.deadline)}
                       </span>
+                    )}
+                    {taak.status !== "afgerond" && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(genPrompt(taak, projectNaam, fase.naam));
+                        }}
+                        className="flex-shrink-0 opacity-0 group-hover:opacity-100 p-1 text-autronis-text-secondary/40 hover:text-autronis-accent transition-all"
+                        title="Kopieer prompt"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
                     )}
                   </motion.div>
                 );
@@ -760,7 +777,7 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="space-y-3">
               {fases.map((fase) => (
-                <FaseSection key={fase.naam} fase={fase} onStatusToggle={handleTaakStatusToggle} />
+                <FaseSection key={fase.naam} fase={fase} projectNaam={project.naam} onStatusToggle={handleTaakStatusToggle} />
               ))}
             </div>
           )}

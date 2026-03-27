@@ -104,6 +104,17 @@ function groepeerTaken(taken: Taak[]): GegroepeerdeData[] {
 }
 
 // ─── Copy Prompt ───
+function generateTaskPrompt(taak: { titel: string; omschrijving?: string | null; prompt?: string | null; fase?: string | null; projectNaam?: string | null; projectMap?: string | null }): string {
+  if (taak.prompt) return taak.prompt;
+  const parts: string[] = [];
+  parts.push(`Werk aan taak "${taak.titel}" in project ${taak.projectNaam || "onbekend"}.`);
+  if (taak.fase) parts.push(`Dit valt onder ${taak.fase}.`);
+  if (taak.omschrijving) parts.push(taak.omschrijving);
+  if (taak.projectMap) parts.push(`Projectmap: ${taak.projectMap}`);
+  parts.push("Check de TODO.md en bestaande code. Vink de taak af in TODO.md als je klaar bent.");
+  return parts.join(" ");
+}
+
 function CopyPromptButton({ prompt }: { prompt: string }) {
   const { addToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -1129,7 +1140,7 @@ export default function TakenPage() {
                                                   <button onClick={(e) => { e.stopPropagation(); handleStartTimer(taak); }} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>
                                                 </>
                                               )}
-                                              {isClaude && taak.prompt && taak.status !== "afgerond" && <CopyPromptButton prompt={taak.prompt} />}
+                                              {taak.status !== "afgerond" && <CopyPromptButton prompt={generateTaskPrompt(taak)} />}
                                               <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit))}
                                                 className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>
                                               {(taak.omschrijving || taak.prompt || taak.projectMap) && <button onClick={() => setExpandedId(isExp ? null : taak.id)} className="flex-shrink-0 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">{isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</button>}

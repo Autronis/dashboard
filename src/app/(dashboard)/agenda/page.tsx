@@ -1517,7 +1517,7 @@ export default function AgendaPage() {
                           <p className="text-[9px] opacity-55 mt-0.5 truncate">{taak.projectNaam}</p>
                         )}
                         <button
-                          className="absolute top-1 right-1 p-0.5 rounded bg-black/20 text-white/60 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="absolute top-1 right-1 p-0.5 rounded bg-black/20 text-white/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleUnplanTaak(taak.id);

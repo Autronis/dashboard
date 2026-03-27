@@ -469,7 +469,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 )}
                 {onUnplanTaak && (
                   <button
-                    className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                     onClick={(e) => {
                       e.stopPropagation();
                       onUnplanTaak(taak.id);

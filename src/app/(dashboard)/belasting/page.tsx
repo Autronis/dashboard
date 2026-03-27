@@ -299,6 +299,7 @@ export default function BelastingPage() {
     onSuccess: (bericht: string) => {
       addToast(bericht, "succes");
       queryClient.invalidateQueries({ queryKey: ["belasting"] });
+      queryClient.invalidateQueries({ queryKey: ["belasting-tips"] });
     },
     onError: (err: Error) => {
       addToast(err.message ?? "Kon gegevens niet aanmaken", "fout");
@@ -805,11 +806,11 @@ export default function BelastingPage() {
                       "text-[10px] font-bold px-1.5 py-0.5 rounded-full tabular-nums leading-none",
                       tab.id === "acties"
                         ? (isActive ? "bg-red-400/20 text-red-300" : "bg-red-500/15 text-red-400")
-                        : badge === badgeMax
+                        : tab.id === "optimalisatie" && tipsData && tipsData.toegepast === tipsData.totaal && tipsData.totaal > 0
                         ? (isActive ? "bg-green-400/20 text-green-300" : "bg-green-500/15 text-green-400")
                         : (isActive ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary")
                     )}>
-                      {badgeMax ? `${badge}/${badgeMax}` : badge}
+                      {badge}
                     </span>
                   )}
                 </div>
@@ -1987,29 +1988,167 @@ export default function BelastingPage() {
               </div>
             </div>
 
-            {/* Belasting tips */}
+            {/* Belasting tips & weetjes — dynamisch met afvink-mogelijkheid */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <div className="flex items-center gap-3 mb-5">
-                <Lightbulb className="w-5 h-5 text-yellow-400" />
-                <h2 className="text-xl font-bold text-autronis-text-primary">Belastingtips</h2>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {[
-                  "Investeer slim: doe aankopen boven 2.800 voor KIA-aftrek",
-                  "Vraag een voorlopige aanslag aan zodat je niet alles in een keer betaalt",
-                  "Reserveer maandelijks 30% van je winst voor belasting",
-                  "Houd je uren nauwkeurig bij voor het urencriterium (1.225 uur)",
-                  "Overweeg FOR-opbouw als extra pensioenvoorziening",
-                  "Check of je in aanmerking komt voor WBSO (R&D aftrek)",
-                  "Plan facturen strategisch rond het jaareinde",
-                  "Vergeet de thuiswerkplek-aftrek niet als je vanuit huis werkt",
-                ].map((tip, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-xl">
-                    <Lightbulb className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                    <span className="text-sm text-autronis-text-primary">{tip}</span>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <Lightbulb className="w-5 h-5 text-yellow-400" />
+                  <div>
+                    <h2 className="text-xl font-bold text-autronis-text-primary">Tips & Weetjes</h2>
+                    <p className="text-xs text-autronis-text-secondary mt-0.5">
+                      {tipsData ? `${tipsData.toegepast} van ${tipsData.totaal} toegepast` : "Tips laden..."}
+                    </p>
                   </div>
-                ))}
+                </div>
+                <button
+                  onClick={() => {
+                    const toegepasteTips = (tipsData?.tips ?? [])
+                      .filter((t) => t.toegepast === 1)
+                      .map((t) => t.titel);
+                    genereerTipsMutation.mutate({
+                      omzet: wvData?.brutoOmzet,
+                      kosten: wvData?.totaleKosten,
+                      winst: wvData?.brutowinst,
+                      urenBehaald: urenCriterium?.behaaldUren,
+                      investeringen: totaalInvestering,
+                      branche: "IT / AI & Automatisering",
+                      toegepasteTips,
+                      jaar,
+                    }, {
+                      onSuccess: (data) => {
+                        addToast(`${data.gegenereerd} nieuwe tips gegenereerd`, "succes");
+                      },
+                      onError: (err) => {
+                        addToast(err.message, "fout");
+                      },
+                    });
+                  }}
+                  disabled={genereerTipsMutation.isPending}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-yellow-500/15 text-yellow-400 rounded-lg text-xs font-semibold hover:bg-yellow-500/25 transition-colors disabled:opacity-50"
+                >
+                  <Sparkles className={cn("w-3.5 h-3.5", genereerTipsMutation.isPending && "animate-spin")} />
+                  {genereerTipsMutation.isPending ? "Genereren..." : "Nieuwe tips genereren"}
+                </button>
               </div>
+
+              {/* Categorie filters */}
+              {tipsData && tipsData.tips.length > 0 && (
+                <div className="space-y-4">
+                  {(["aftrekpost", "regeling", "subsidie", "optimalisatie", "weetje"] as const)
+                    .filter((cat) => tipsData.tips.some((t) => t.categorie === cat))
+                    .map((categorie) => {
+                      const catTips = tipsData.tips.filter((t) => t.categorie === categorie);
+                      const catLabels: Record<string, { label: string; icon: typeof Lightbulb; color: string }> = {
+                        aftrekpost: { label: "Aftrekposten", icon: Receipt, color: "text-emerald-400" },
+                        regeling: { label: "Regelingen", icon: BookOpen, color: "text-blue-400" },
+                        subsidie: { label: "Subsidies", icon: Gift, color: "text-purple-400" },
+                        optimalisatie: { label: "Optimalisatie", icon: Target, color: "text-autronis-accent" },
+                        weetje: { label: "Weetjes", icon: Lightbulb, color: "text-yellow-400" },
+                      };
+                      const catConfig = catLabels[categorie];
+                      const CatIcon = catConfig.icon;
+
+                      return (
+                        <div key={categorie}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <CatIcon className={cn("w-4 h-4", catConfig.color)} />
+                            <h3 className="text-sm font-semibold text-autronis-text-secondary">{catConfig.label}</h3>
+                            <span className="text-xs text-autronis-text-secondary/60">
+                              ({catTips.filter((t) => t.toegepast === 1).length}/{catTips.length})
+                            </span>
+                          </div>
+                          <div className="space-y-2">
+                            {catTips.map((tip) => (
+                              <motion.div
+                                key={tip.id}
+                                layout
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className={cn(
+                                  "group flex items-start gap-3 p-3 rounded-xl border transition-all",
+                                  tip.toegepast
+                                    ? "bg-green-500/5 border-green-500/20"
+                                    : "bg-autronis-bg/20 border-autronis-border/50 hover:border-autronis-border"
+                                )}
+                              >
+                                <button
+                                  onClick={() => toggleTipMutation.mutate(
+                                    { id: tip.id, toegepast: !tip.toegepast },
+                                    {
+                                      onSuccess: () => {
+                                        addToast(
+                                          tip.toegepast ? "Tip gemarkeerd als niet-toegepast" : "Tip toegepast!",
+                                          "succes"
+                                        );
+                                      },
+                                    }
+                                  )}
+                                  className="flex-shrink-0 mt-0.5"
+                                >
+                                  {tip.toegepast ? (
+                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                  ) : (
+                                    <Square className="w-5 h-5 text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors" />
+                                  )}
+                                </button>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className={cn(
+                                      "text-sm font-medium",
+                                      tip.toegepast ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary"
+                                    )}>
+                                      {tip.titel}
+                                    </p>
+                                    {tip.isAiGegenereerd === 1 && (
+                                      <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/15 text-purple-400 rounded font-medium">AI</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-autronis-text-secondary mt-0.5">{tip.beschrijving}</p>
+                                  <div className="flex items-center gap-3 mt-1.5">
+                                    {tip.voordeel && (
+                                      <span className="text-xs font-semibold text-autronis-accent">{tip.voordeel}</span>
+                                    )}
+                                    {tip.bron && (
+                                      <a
+                                        href={tip.bron}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[11px] text-autronis-text-secondary hover:text-autronis-accent transition-colors flex items-center gap-1"
+                                      >
+                                        {tip.bronNaam || "Bron"} <ExternalLink className="w-2.5 h-2.5" />
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                                {tip.isAiGegenereerd === 1 && (
+                                  <button
+                                    onClick={() => {
+                                      deleteTipMutation.mutate(tip.id, {
+                                        onSuccess: () => addToast("Tip verwijderd", "succes"),
+                                      });
+                                    }}
+                                    className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Verwijder tip"
+                                  >
+                                    <Trash2 className="w-4 h-4 text-autronis-text-secondary hover:text-red-400 transition-colors" />
+                                  </button>
+                                )}
+                              </motion.div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+
+              {(!tipsData || tipsData.tips.length === 0) && (
+                <div className="text-center py-8">
+                  <Lightbulb className="w-8 h-8 text-autronis-text-secondary/30 mx-auto mb-2" />
+                  <p className="text-sm text-autronis-text-secondary">Nog geen tips geladen</p>
+                  <p className="text-xs text-autronis-text-secondary/60 mt-1">Klik op &quot;Gegevens aanmaken&quot; of genereer tips met AI</p>
+                </div>
+              )}
             </div>
 
             {/* Jaaroverzicht export */}

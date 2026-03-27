@@ -1,9 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { urenCriterium } from "@/lib/db/schema";
+import { urenCriterium, tijdregistraties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql } from "drizzle-orm";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
+
+/**
+ * Calculate total hours from tijdregistraties for a user in a given year.
+ * This uses actual time registrations, not screen time.
+ */
+async function berekenUrenUitRegistraties(
+  gebruikerId: number,
+  jaar: number
+): Promise<{ totaalUren: number; perCategorie: Record<string, number>; aantalRegistraties: number }> {
+  const jaarStart = `${jaar}-01-01`;
+  const jaarEind = `${jaar}-12-31`;
+
+  const registraties = await db
+    .select({
+      duurMinuten: tijdregistraties.duurMinuten,
+      categorie: tijdregistraties.categorie,
+      startTijd: tijdregistraties.startTijd,
+      eindTijd: tijdregistraties.eindTijd,
+    })
+    .from(tijdregistraties)
+    .where(
+      and(
+        eq(tijdregistraties.gebruikerId, gebruikerId),
+        sql`SUBSTR(${tijdregistraties.startTijd}, 1, 10) >= ${jaarStart}`,
+        sql`SUBSTR(${tijdregistraties.startTijd}, 1, 10) <= ${jaarEind}`,
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+      )
+    )
+    .all();
+
+  let totaalMinuten = 0;
+  const perCategorie: Record<string, number> = {};
+
+  for (const reg of registraties) {
+    const minuten = reg.duurMinuten ?? 0;
+    totaalMinuten += minuten;
+    const cat = reg.categorie ?? "overig";
+    perCategorie[cat] = (perCategorie[cat] ?? 0) + minuten;
+  }
+
+  // Convert categorie minutes to hours
+  const perCategorieUren: Record<string, number> = {};
+  for (const [cat, min] of Object.entries(perCategorie)) {
+    perCategorieUren[cat] = Math.round((min / 60) * 100) / 100;
+  }
+
+  return {
+    totaalUren: Math.round((totaalMinuten / 60) * 100) / 100,
+    perCategorie: perCategorieUren,
+    aantalRegistraties: registraties.length,
+  };
+}
 
 // GET /api/belasting/uren-criterium?jaar=2026
 export async function GET(req: NextRequest) {
@@ -39,8 +90,9 @@ export async function GET(req: NextRequest) {
       record = nieuw;
     }
 
-    // Auto-calculate behaald uren from screen time (actieve uren)
-    const behaaldUren = await berekenActieveUren(gebruiker.id, `${jaar}-01-01`, `${jaar}-12-31`);
+    // Calculate uren from tijdregistraties (actual work hours, not screen time)
+    const urenData = await berekenUrenUitRegistraties(gebruiker.id, jaar);
+    const behaaldUren = urenData.totaalUren;
     const doelUren = record.doelUren ?? 1225;
     const voldoet = behaaldUren >= doelUren;
 
@@ -58,6 +110,8 @@ export async function GET(req: NextRequest) {
         voldoet,
         doelUren,
         voortgangPercentage: Math.min(Math.round((behaaldUren / doelUren) * 100), 100),
+        perCategorie: urenData.perCategorie,
+        aantalRegistraties: urenData.aantalRegistraties,
       },
     });
   } catch (error) {

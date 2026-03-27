@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties, projecten, klanten, gebruikers, taken, screenTimeEntries } from "@/lib/db/schema";
+import { tijdregistraties, projecten, klanten, gebruikers, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -30,22 +30,22 @@ export async function GET() {
     const result: GebruikerVergelijk[] = [];
 
     for (const gebruiker of alleGebruikers) {
-      // Screen time uren deze maand
-      const screenResult = await db
+      // Uren uit tijdregistraties (echte werkuren)
+      const urenResult = await db
         .select({
-          totaal: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal"),
+          totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`.as("totaal"),
         })
-        .from(screenTimeEntries)
+        .from(tijdregistraties)
         .where(
           and(
-            eq(screenTimeEntries.gebruikerId, gebruiker.id),
-            gte(screenTimeEntries.startTijd, maandStart),
-            lte(screenTimeEntries.startTijd, maandEind),
-            sql`${screenTimeEntries.categorie} != 'inactief'`
+            eq(tijdregistraties.gebruikerId, gebruiker.id),
+            gte(tijdregistraties.startTijd, maandStart),
+            lte(tijdregistraties.startTijd, maandEind),
+            sql`${tijdregistraties.eindTijd} IS NOT NULL`
           )
         );
 
-      const urenDezeMaand = (screenResult[0]?.totaal || 0) / 3600;
+      const urenDezeMaand = (urenResult[0]?.totaal || 0) / 60;
 
       // Omzet uit tijdregistraties
       const omzetEntries = await db
@@ -83,17 +83,18 @@ export async function GET() {
           )
         );
 
-      // Active projects (from screen time + tijdregistraties)
+      // Active projects (from tijdregistraties this month)
       const actieveProjectenResult = await db
         .select({
-          count: sql<number>`COUNT(DISTINCT ${screenTimeEntries.projectId})`.as("count"),
+          count: sql<number>`COUNT(DISTINCT ${tijdregistraties.projectId})`.as("count"),
         })
-        .from(screenTimeEntries)
+        .from(tijdregistraties)
         .where(
           and(
-            eq(screenTimeEntries.gebruikerId, gebruiker.id),
-            sql`${screenTimeEntries.projectId} IS NOT NULL`,
-            sql`${screenTimeEntries.categorie} != 'inactief'`
+            eq(tijdregistraties.gebruikerId, gebruiker.id),
+            gte(tijdregistraties.startTijd, maandStart),
+            lte(tijdregistraties.startTijd, maandEind),
+            sql`${tijdregistraties.eindTijd} IS NOT NULL`
           )
         );
 

@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Car, Plus, ChevronLeft, ChevronRight, Download, MapPin, Pencil, Trash2,
   BookmarkPlus, Bookmark, BarChart3, TrendingUp, TrendingDown, X, ChevronDown,
-  ChevronUp, Copy, Search, Star, ArrowUpDown, Info,
+  ChevronUp, Copy, Search, Star, ArrowUpDown, Info, Repeat,
 } from "lucide-react";
 import { cn, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -12,8 +12,13 @@ import { useQueryClient, useMutation } from "@tanstack/react-query";
 import {
   useRitten, useKlantenProjecten, useOpgeslagenRoutes,
   useSaveRoute, useDeleteRoute, useUseRoute, useJaaroverzicht,
+  useGenereerTerugkerendeRitten,
   type Rit, type OpgeslagenRoute,
 } from "@/hooks/queries/use-kilometers";
+import { KmStandPanel } from "./components/KmStandPanel";
+import { DonutChart } from "./components/DonutChart";
+import { TerugkerendeRittenModal } from "./components/TerugkerendeRittenModal";
+import { BelastingrapportKnop } from "./components/BelastingrapportKnop";
 import { PageTransition } from "@/components/ui/page-transition";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Modal } from "@/components/ui/modal";
@@ -271,6 +276,8 @@ export default function KilometersPage() {
   // Panel state
   const [showJaar, setShowJaar] = useState(false);
   const [showSnelForm, setShowSnelForm] = useState(false);
+  const [showTerugkerend, setShowTerugkerend] = useState(false);
+  const [showKmStand, setShowKmStand] = useState(false);
 
   // Month navigation
   const [maand, setMaand] = useState(new Date().getMonth() + 1);
@@ -305,6 +312,22 @@ export default function KilometersPage() {
   const deleteRouteMutation = useDeleteRoute();
   const useRouteMutation = useUseRoute();
   const { data: jaarData } = useJaaroverzicht(jaar);
+
+  // Generate recurring trips on mount
+  const genereerMutation = useGenereerTerugkerendeRitten();
+  const hasGenerated = useRef(false);
+  useEffect(() => {
+    if (!hasGenerated.current) {
+      hasGenerated.current = true;
+      genereerMutation.mutate(undefined, {
+        onSuccess: (data) => {
+          if (data.aangemaakt > 0) {
+            addToast(`${data.aangemaakt} terugkerende rit(ten) toegevoegd`, "succes");
+          }
+        },
+      });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Vorige maand vergelijking
   const prevMaand = maand === 1 ? 12 : maand - 1;
@@ -673,6 +696,14 @@ export default function KilometersPage() {
               Jaaroverzicht
             </button>
             <button
+              onClick={() => setShowTerugkerend(true)}
+              className="inline-flex items-center gap-2 px-3 py-2.5 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary rounded-xl text-sm font-medium transition-colors hover:bg-autronis-card"
+            >
+              <Repeat className="w-4 h-4" />
+              Terugkerend
+            </button>
+            <BelastingrapportKnop jaar={jaar} />
+            <button
               onClick={handleKopieerTabel}
               className="inline-flex items-center gap-2 px-3 py-2.5 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary rounded-xl text-sm font-medium transition-colors hover:bg-autronis-card"
               title="Kopieer als tabel (voor Excel / Notion)"
@@ -860,6 +891,9 @@ export default function KilometersPage() {
           )}
         </AnimatePresence>
 
+        {/* Km-stand panel */}
+        <KmStandPanel maand={maand} jaar={jaar} zakelijkeKm={totaalKm} />
+
         {/* Month selector */}
         <div className="flex items-center justify-center gap-4">
           <button
@@ -905,7 +939,7 @@ export default function KilometersPage() {
             >
 
               {/* KPI cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                 {/* Totaal km */}
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
@@ -1005,6 +1039,15 @@ export default function KilometersPage() {
                       </span>
                     )}
                   </p>
+                </motion.div>
+
+                {/* Donut chart — privé/zakelijk */}
+                <motion.div
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.24, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+                >
+                  <DonutChart totaalKm={totaalKm} zakelijkeKm={totaalKm} />
                 </motion.div>
               </div>
 
@@ -1601,6 +1644,9 @@ export default function KilometersPage() {
           bevestigTekst="Verwijderen"
           variant="danger"
         />
+
+        {/* Terugkerende ritten modal */}
+        <TerugkerendeRittenModal open={showTerugkerend} onClose={() => setShowTerugkerend(false)} />
       </div>
     </PageTransition>
   );

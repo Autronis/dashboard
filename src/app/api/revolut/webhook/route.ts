@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankTransacties, revolutVerbinding } from "@/lib/db/schema";
+import { bankTransacties, revolutVerbinding, brandstofKosten } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { verifyWebhookSignature } from "@/lib/revolut";
 
@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         const isUitgaand = leg.amount < 0;
         const merchantNaam = tx.merchant?.name || leg.description || tx.reference || "Onbekend";
 
-        await db.insert(bankTransacties).values({
+        const [inserted] = await db.insert(bankTransacties).values({
           datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
           omschrijving: leg.description || tx.reference || merchantNaam,
           bedrag: Math.abs(leg.amount),
@@ -82,7 +82,19 @@ export async function POST(req: NextRequest) {
           merchantNaam: isUitgaand ? merchantNaam : null,
           merchantCategorie: tx.merchant?.category_code || null,
           status: "onbekend",
-        });
+        }).returning();
+
+        // Auto-detect fuel transactions (MCC 5541/5542 = gas stations)
+        const mcc = tx.merchant?.category_code;
+        if (inserted && isUitgaand && (mcc === "5541" || mcc === "5542")) {
+          await db.insert(brandstofKosten).values({
+            gebruikerId: 1, // Default to Sem; will be linked to Revolut account owner
+            datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
+            bedrag: Math.abs(leg.amount),
+            bankTransactieId: inserted.id,
+            notitie: `Auto: ${merchantNaam}`,
+          });
+        }
       }
     }
 

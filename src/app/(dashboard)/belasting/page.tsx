@@ -706,6 +706,11 @@ export default function BelastingPage() {
                 optimalisatieOk >= 5 ? "text-green-400" : optimalisatieOk >= 3 ? "text-yellow-400" : "text-red-400"
               )}>
                 {optimalisatieOk}/6
+                {tipsData && tipsData.totaal > 0 && (
+                  <span className="text-autronis-text-secondary font-normal text-xs ml-2">
+                    · {tipsData.toegepast}/{tipsData.totaal} tips
+                  </span>
+                )}
               </span>
             </div>
             <div className="h-2 bg-autronis-bg rounded-full overflow-hidden">
@@ -921,13 +926,25 @@ export default function BelastingPage() {
                     />
                   </div>
                   <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-                    {urenCriterium ? `${urenCriterium.voortgangPercentage}%` : "—"}
+                    {urenCriterium ? `${Math.round(urenCriterium.behaaldUren)}u` : "—"}
                   </p>
-                  <p className="text-sm text-autronis-text-secondary mt-1">Urencriterium</p>
-                  {urenAchterstand > 0 && (
-                    <p className="mt-2 text-xs text-yellow-400 font-medium">
-                      {urenPerDagNodig} uur/dag nodig
-                    </p>
+                  <p className="text-sm text-autronis-text-secondary mt-1">
+                    {urenCriterium ? `van ${urenCriterium.doelUren}u — ${urenCriterium.voortgangPercentage}%` : "Urencriterium"}
+                  </p>
+                  {urenCriterium && !urenCriterium.voldoet && (
+                    <div className="mt-2">
+                      <div className="h-1.5 bg-autronis-bg/50 rounded-full overflow-hidden mb-1.5">
+                        <div
+                          className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-green-500" : "bg-autronis-accent")}
+                          style={{ width: `${Math.min(100, urenCriterium.voortgangPercentage)}%` }}
+                        />
+                      </div>
+                      {urenAchterstand > 0 && (
+                        <p className="text-xs text-yellow-400 font-medium">
+                          {urenPerDagNodig} uur/dag nodig
+                        </p>
+                      )}
+                    </div>
                   )}
                 </motion.div>
               </div>

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties, projecten, klanten, gebruikers, screenTimeEntries } from "@/lib/db/schema";
+import { tijdregistraties, projecten, klanten, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 const MAAND_LABELS = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
 
@@ -19,40 +18,7 @@ export async function GET(req: NextRequest) {
     const vorigJaarStart = `${jaar - 1}-01-01T00:00:00`;
     const vorigJaarEind = `${jaar - 1}-12-31T23:59:59`;
 
-    // ── Screen time entries (actieve uren) ──
-    const screenEntries = await db
-      .select({
-        duurSeconden: screenTimeEntries.duurSeconden,
-        startTijd: screenTimeEntries.startTijd,
-        gebruikerId: screenTimeEntries.gebruikerId,
-        projectId: screenTimeEntries.projectId,
-        klantId: screenTimeEntries.klantId,
-        categorie: screenTimeEntries.categorie,
-      })
-      .from(screenTimeEntries)
-      .where(
-        and(
-          gte(screenTimeEntries.startTijd, jaarStart),
-          lte(screenTimeEntries.startTijd, jaarEind),
-          sql`${screenTimeEntries.categorie} != 'inactief'`
-        )
-      );
-
-    // Previous year screen time
-    const vorigJaarScreen = await db
-      .select({
-        duurSeconden: screenTimeEntries.duurSeconden,
-      })
-      .from(screenTimeEntries)
-      .where(
-        and(
-          gte(screenTimeEntries.startTijd, vorigJaarStart),
-          lte(screenTimeEntries.startTijd, vorigJaarEind),
-          sql`${screenTimeEntries.categorie} != 'inactief'`
-        )
-      );
-
-    // ── Tijdregistraties (voor omzet berekening via uurtarief) ──
+    // ── Tijdregistraties (uren + omzet) ──
     const entries = await db
       .select({
         duurMinuten: tijdregistraties.duurMinuten,
@@ -92,27 +58,26 @@ export async function GET(req: NextRequest) {
         )
       );
 
-    // ── Gebruiker namen ophalen ──
-    const gebruikersList = await db
-      .select({ id: gebruikers.id, naam: gebruikers.naam })
-      .from(gebruikers);
-    const gebruikerNamen = new Map(gebruikersList.map((g) => [g.id, g.naam]));
+    // === KPIs (uren uit tijdregistraties) ===
+    const [urenDitJaarResult] = await db
+      .select({ totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
+      .from(tijdregistraties)
+      .where(and(
+        gte(tijdregistraties.startTijd, jaarStart),
+        lte(tijdregistraties.startTijd, jaarEind),
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+      ));
+    const urenDitJaar = (urenDitJaarResult?.totaal || 0) / 60;
 
-    // ── Project/klant namen ophalen voor screen time ──
-    const projectList = await db
-      .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
-      .from(projecten);
-    const projectNamen = new Map(projectList.map((p) => [p.id, p]));
-
-    const klantList = await db
-      .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief })
-      .from(klanten);
-    const klantData = new Map(klantList.map((k) => [k.id, k]));
-
-    // === KPIs (uren uit screen time via berekenActieveUren) ===
-    // gebruikerId 1 = Sem (primary user) — TODO: support multi-user
-    const urenDitJaar = await berekenActieveUren(1, `${jaar}-01-01`, `${jaar}-12-31`);
-    const urenVorigJaar = await berekenActieveUren(1, `${jaar - 1}-01-01`, `${jaar - 1}-12-31`);
+    const [urenVorigJaarResult] = await db
+      .select({ totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
+      .from(tijdregistraties)
+      .where(and(
+        gte(tijdregistraties.startTijd, vorigJaarStart),
+        lte(tijdregistraties.startTijd, vorigJaarEind),
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+      ));
+    const urenVorigJaar = (urenVorigJaarResult?.totaal || 0) / 60;
 
     let omzetDitJaar = 0;
     for (const e of entries) {
@@ -127,22 +92,29 @@ export async function GET(req: NextRequest) {
 
     const gemiddeldUurtarief = urenDitJaar > 0 ? omzetDitJaar / urenDitJaar : 0;
 
-    // Actieve klanten: uit screen time + tijdregistraties
+    // Actieve klanten: uit tijdregistraties
     const actieveKlantIds = new Set<number>();
-    for (const e of screenEntries) {
-      if (e.klantId) actieveKlantIds.add(e.klantId);
-    }
     for (const e of entries) {
       if (e.klantId) actieveKlantIds.add(e.klantId);
     }
 
-    // === Maanden (uren uit screen time via berekenActieveUren per maand) ===
+    // === Maanden (uren uit tijdregistraties per maand) ===
+    const maandUrenResult = await db
+      .select({
+        maand: sql<string>`SUBSTR(${tijdregistraties.startTijd}, 1, 7)`.as("maand"),
+        totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`.as("totaalMinuten"),
+      })
+      .from(tijdregistraties)
+      .where(and(
+        gte(tijdregistraties.startTijd, jaarStart),
+        lte(tijdregistraties.startTijd, jaarEind),
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+      ))
+      .groupBy(sql`SUBSTR(${tijdregistraties.startTijd}, 1, 7)`);
+
     const maandUren = new Map<string, number>();
-    for (let m = 0; m < 12; m++) {
-      const maandStr = `${jaar}-${String(m + 1).padStart(2, "0")}`;
-      const lastDay = new Date(jaar, m + 1, 0).getDate();
-      const uren = await berekenActieveUren(1, `${maandStr}-01`, `${maandStr}-${lastDay}`);
-      maandUren.set(maandStr, uren);
+    for (const row of maandUrenResult) {
+      maandUren.set(row.maand, (row.totaalMinuten || 0) / 60);
     }
 
     const maanden = MAAND_LABELS.map((label, i) => {
@@ -161,25 +133,14 @@ export async function GET(req: NextRequest) {
       return { maand: maandStr, label, omzet: Math.round(omzet * 100) / 100, uren: Math.round(uren * 100) / 100 };
     });
 
-    // === Top projecten (uren uit screen time) ===
+    // === Top projecten (uren + omzet uit tijdregistraties) ===
     const projectMap = new Map<string, { projectNaam: string; klantNaam: string; uren: number; omzet: number }>();
 
-    // Screen time per project
-    for (const e of screenEntries) {
-      if (!e.projectId) continue;
-      const proj = projectNamen.get(e.projectId);
-      const key = proj?.naam || "Onbekend";
-      const kl = proj?.klantId ? klantData.get(proj.klantId) : null;
-      const existing = projectMap.get(key) || { projectNaam: key, klantNaam: kl?.bedrijfsnaam || "", uren: 0, omzet: 0 };
-      existing.uren += (e.duurSeconden || 0) / 3600;
-      projectMap.set(key, existing);
-    }
-
-    // Omzet per project uit tijdregistraties
     for (const e of entries) {
       const key = e.projectNaam || "Onbekend";
       const existing = projectMap.get(key) || { projectNaam: key, klantNaam: e.klantNaam || "", uren: 0, omzet: 0 };
       const u = (e.duurMinuten || 0) / 60;
+      existing.uren += u;
       existing.omzet += u * (e.uurtarief || 0);
       projectMap.set(key, existing);
     }
@@ -189,21 +150,14 @@ export async function GET(req: NextRequest) {
       .slice(0, 10)
       .map((p) => ({ ...p, uren: Math.round(p.uren * 100) / 100, omzet: Math.round(p.omzet * 100) / 100 }));
 
-    // === Per gebruiker (uren uit screen time) ===
+    // === Per gebruiker (uren + omzet uit tijdregistraties) ===
     const gebruikerMap = new Map<string, { naam: string; uren: number; omzet: number }>();
 
-    for (const e of screenEntries) {
-      const naam = (e.gebruikerId ? gebruikerNamen.get(e.gebruikerId) : null) || "Onbekend";
-      const existing = gebruikerMap.get(naam) || { naam, uren: 0, omzet: 0 };
-      existing.uren += (e.duurSeconden || 0) / 3600;
-      gebruikerMap.set(naam, existing);
-    }
-
-    // Omzet per gebruiker uit tijdregistraties
     for (const e of entries) {
       const naam = e.gebruikerNaam || "Onbekend";
       const existing = gebruikerMap.get(naam) || { naam, uren: 0, omzet: 0 };
       const u = (e.duurMinuten || 0) / 60;
+      existing.uren += u;
       existing.omzet += u * (e.uurtarief || 0);
       gebruikerMap.set(naam, existing);
     }

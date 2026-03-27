@@ -9,7 +9,6 @@ import {
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, isNull, ne, desc } from "drizzle-orm";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 function getWeekRange(): { van: string; tot: string } {
   const now = new Date();
@@ -71,23 +70,19 @@ export async function GET() {
       return sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0);
     }, 0);
 
-    // Uren deze week — NL-timezone week boundaries (ma 00:00 — zo 23:59 NL)
-    const NL_TZ = "Europe/Amsterdam";
-    const nlFmt = new Intl.DateTimeFormat("en-CA", { timeZone: NL_TZ });
-    const vandaagNl = nlFmt.format(new Date());
-    // Use noon UTC to safely determine NL day-of-week (avoids DST edge cases)
-    const noonNl = new Date(vandaagNl + "T12:00:00Z");
-    const dowNl = noonNl.getUTCDay(); // 0=Sun, 1=Mon
-    const diffToMonday = dowNl === 0 ? -6 : 1 - dowNl;
-    const mondayNl = new Date(noonNl);
-    mondayNl.setUTCDate(noonNl.getUTCDate() + diffToMonday);
-    const sundayNl = new Date(mondayNl);
-    sundayNl.setUTCDate(mondayNl.getUTCDate() + 6);
-    const weekVanDatum = nlFmt.format(mondayNl);
-    const weekTotDatum = nlFmt.format(sundayNl);
-
-    const eigenScreenUren = await berekenActieveUren(gebruiker.id, weekVanDatum, weekTotDatum);
-    const eigenUrenTotaal = Math.round(eigenScreenUren * 60); // convert to minutes for consistency
+    // Uren deze week uit tijdregistraties (eigen)
+    const [eigenUrenResult] = await db
+      .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
+      .from(tijdregistraties)
+      .where(
+        and(
+          eq(tijdregistraties.gebruikerId, gebruiker.id),
+          gte(tijdregistraties.startTijd, week.van),
+          lte(tijdregistraties.startTijd, week.tot),
+          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+        )
+      );
+    const eigenUrenTotaal = eigenUrenResult?.totaal || 0;
 
     // Uren deze week - teamgenoot
     let teamgenootUren = 0;
@@ -149,15 +144,27 @@ export async function GET() {
       ));
     const omzetVorigeMaand = omzetVmData.reduce((sum, r) => sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0), 0);
 
-    // Uren vorige week (voor trend) — ook NL-timezone
-    const prevMondayNl = new Date(mondayNl);
-    prevMondayNl.setUTCDate(mondayNl.getUTCDate() - 7);
-    const prevSundayNl = new Date(mondayNl);
-    prevSundayNl.setUTCDate(mondayNl.getUTCDate() - 1);
-    const vwVanDatum = nlFmt.format(prevMondayNl);
-    const vwTotDatum = nlFmt.format(prevSundayNl);
-    const eigenUrenVorigeWeek = await berekenActieveUren(gebruiker.id, vwVanDatum, vwTotDatum);
-    const eigenUrenVorigeWeekMin = Math.round(eigenUrenVorigeWeek * 60);
+    // Uren vorige week (voor trend) uit tijdregistraties
+    const weekVanDate = new Date(week.van);
+    const prevMonday = new Date(weekVanDate);
+    prevMonday.setDate(weekVanDate.getDate() - 7);
+    const prevSunday = new Date(weekVanDate);
+    prevSunday.setDate(weekVanDate.getDate() - 1);
+    prevSunday.setHours(23, 59, 59, 999);
+    const vwVan = prevMonday.toISOString();
+    const vwTot = prevSunday.toISOString();
+    const [vwResult] = await db
+      .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
+      .from(tijdregistraties)
+      .where(
+        and(
+          eq(tijdregistraties.gebruikerId, gebruiker.id),
+          gte(tijdregistraties.startTijd, vwVan),
+          lte(tijdregistraties.startTijd, vwTot),
+          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+        )
+      );
+    const eigenUrenVorigeWeekMin = vwResult?.totaal || 0;
 
     // Taken afgerond vandaag
     const vandaag = new Date().toISOString().slice(0, 10);

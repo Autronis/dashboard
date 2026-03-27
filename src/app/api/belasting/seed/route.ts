@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { belastingDeadlines, btwAangiftes } from "@/lib/db/schema";
+import { belastingDeadlines, btwAangiftes, belastingTips } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 // POST /api/belasting/seed — Seeds deadlines + BTW aangiftes for 2026 and 2027
 export async function POST() {

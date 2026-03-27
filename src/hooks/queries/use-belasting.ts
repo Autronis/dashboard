@@ -378,3 +378,103 @@ export function useAuditLog(entiteitType?: string) {
     staleTime: 30_000,
   });
 }
+
+// --- Belasting Tips ---
+
+export interface BelastingTip {
+  id: number;
+  categorie: "aftrekpost" | "regeling" | "subsidie" | "optimalisatie" | "weetje";
+  titel: string;
+  beschrijving: string;
+  voordeel: string | null;
+  bron: string | null;
+  bronNaam: string | null;
+  jaar: number | null;
+  isAiGegenereerd: number;
+  toegepast: number;
+  toegepastOp: string | null;
+  aangemaaktOp: string;
+}
+
+interface BelastingTipsData {
+  tips: BelastingTip[];
+  totaal: number;
+  toegepast: number;
+}
+
+export function useBelastingTips(jaar: number) {
+  return useQuery<BelastingTipsData>({
+    queryKey: ["belasting-tips", jaar],
+    queryFn: async () => {
+      const res = await fetch(`/api/belasting/tips?jaar=${jaar}`);
+      if (!res.ok) throw new Error("Kon tips niet laden");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useToggleTip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, toegepast }: { id: number; toegepast: boolean }) => {
+      const res = await fetch(`/api/belasting/tips/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toegepast }),
+      });
+      if (!res.ok) throw new Error("Kon tip niet bijwerken");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["belasting-tips"] });
+    },
+  });
+}
+
+export function useGenereerTips() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (context: {
+      omzet?: number;
+      kosten?: number;
+      winst?: number;
+      urenBehaald?: number;
+      investeringen?: number;
+      branche?: string;
+      toegepasteTips?: string[];
+      jaar?: number;
+    }) => {
+      const res = await fetch("/api/belasting/tips/genereer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(context),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.fout || "Kon geen tips genereren");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["belasting-tips"] });
+    },
+  });
+}
+
+export function useDeleteTip() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/belasting/tips/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Kon tip niet verwijderen");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["belasting-tips"] });
+    },
+  });
+}

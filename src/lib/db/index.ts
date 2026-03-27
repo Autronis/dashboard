@@ -62,6 +62,22 @@ if (isTurso) {
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_categorie TEXT");
   }
 
+  // Belasting tips table
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS belasting_tips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    categorie TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    beschrijving TEXT NOT NULL,
+    voordeel TEXT,
+    bron TEXT,
+    bron_naam TEXT,
+    jaar INTEGER,
+    is_ai_gegenereerd INTEGER DEFAULT 0,
+    toegepast INTEGER DEFAULT 0,
+    toegepast_op TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });
 }

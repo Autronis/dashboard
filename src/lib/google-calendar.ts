@@ -78,9 +78,16 @@ export async function pushEventToGoogle(
   const client = await getAuthenticatedClient(gebruikerId);
   if (!client) return null;
 
+  // Verify we can actually list events — if not, skip to avoid orphaned duplicates
   const calendar = google.calendar({ version: "v3", auth: client });
   const tokens = await getTokensForUser(gebruikerId);
   const calendarId = tokens?.calendarId ?? "primary";
+
+  try {
+    await calendar.events.list({ calendarId, maxResults: 1, timeMin: new Date().toISOString() });
+  } catch {
+    return null; // Calendar not accessible, skip push
+  }
 
   const eventBody: {
     summary: string;

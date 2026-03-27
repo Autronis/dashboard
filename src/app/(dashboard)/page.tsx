@@ -912,71 +912,7 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Focus Card — Wat moet je nu doen? (merged with Mijn taken) */}
-        {mijnTaken.length > 0 && (
-          <motion.div variants={sectionVariants} className="bg-gradient-to-r from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <Zap className="w-4 h-4 text-autronis-accent shrink-0" />
-              <h2 className="text-sm font-bold text-autronis-text-primary">Wat moet je nu doen?</h2>
-              <div className="flex items-center gap-2 ml-auto">
-                {critical.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-red-500/15 text-red-400 tabular-nums animate-pulse">{critical.length} urgent</span>
-                )}
-                <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-autronis-bg/60 text-autronis-text-secondary tabular-nums">{mijnTaken.length} open</span>
-              </div>
-            </div>
-
-            {/* Hero task */}
-            {nextTask && (
-              <div className="flex items-center gap-3 bg-autronis-accent/10 border border-autronis-accent/20 rounded-xl px-4 py-3 mb-2.5">
-                <Play className="w-4 h-4 text-autronis-accent shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-autronis-text-primary truncate">{nextTask.titel}</p>
-                  {nextTask.projectNaam && <p className="text-xs text-autronis-text-secondary">{nextTask.projectNaam}</p>}
-                </div>
-                <button onClick={() => handleTaakAfvinken(nextTask.id)} className="px-3 py-1.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-xs font-semibold transition-colors shrink-0">
-                  Afvinken
-                </button>
-              </div>
-            )}
-
-            {/* Remaining tasks */}
-            <AnimatePresence mode="popLayout">
-              {visibleTasks.map((taak, idx) => {
-                const prio = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
-                return (
-                  <motion.div
-                    key={taak.id}
-                    layout
-                    initial={{ opacity: 0, x: -6 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -40, height: 0, marginBottom: 0, transition: { duration: 0.25 } }}
-                    transition={{ duration: 0.18, delay: idx * 0.04 }}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-autronis-bg/40 transition-all",
-                      completingTaskId === taak.id && "opacity-40 line-through"
-                    )}
-                  >
-                    <button onClick={() => handleTaakAfvinken(taak.id)} className={cn("w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 transition-colors hover:bg-green-500/20", prio.border)} />
-                    <span className="text-sm text-autronis-text-primary truncate flex-1">{taak.titel}</span>
-                    {taak.projectNaam && <span className="text-xs text-autronis-text-secondary hidden sm:inline truncate max-w-[120px]">{taak.projectNaam}</span>}
-                    {taak.prioriteit === "hoog" && <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />}
-                    {taak.deadline && <span className={cn("text-[11px] shrink-0 hidden md:inline", deadlineKleur(taak.deadline))}>{deadlineLabel(taak.deadline)}</span>}
-                    <CheckBurst active={completedTaskId === taak.id} />
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
-
-            {/* Expand/collapse */}
-            {mijnTaken.length > 4 && (
-              <button onClick={() => setTakenExpanded(!takenExpanded)} className="flex items-center gap-1 text-xs text-autronis-accent font-medium px-3 pt-1.5 hover:text-autronis-accent-hover transition-colors">
-                <ChevronDown className={cn("w-3 h-3 transition-transform", takenExpanded && "rotate-180")} />
-                {takenExpanded ? "Minder tonen" : `+${mijnTaken.length - 4} meer taken`}
-              </button>
-            )}
-          </motion.div>
-        )}
+        {/* Taken staan al in de Dagbriefing */}
 
         {/* Main 2-column layout */}
         {/* Gewoontes — compact */}
@@ -987,44 +923,6 @@ export default function DashboardPage() {
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-3 min-w-0">
           {/* Left column */}
           <div className="space-y-3 min-w-0 overflow-hidden">
-            {/* Projecten */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
-              <div className="flex items-center justify-between mb-2.5">
-                <h2 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-2">
-                  <FolderKanban className="w-4 h-4 text-autronis-accent" />
-                  Projecten
-                </h2>
-                <Link href="/projecten" className="text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium">
-                  Alles <ArrowRight className="w-3 h-3 inline" />
-                </Link>
-              </div>
-              <div className="space-y-1">
-                {projecten.filter((p) => p.status === "actief").slice(0, 5).map((p) => {
-                  const pct = p.voortgang ?? 0;
-                  return (
-                    <motion.div key={p.id} whileHover={{ x: 2 }} transition={{ duration: 0.15 }}>
-                      <Link href={`/projecten/${p.id}`} className={cn(
-                        "flex items-center gap-3 px-2.5 py-1.5 rounded-lg hover:bg-autronis-bg/50 transition-colors group",
-                        pct >= 90 && "border-l-2 border-l-emerald-400/60 pl-2"
-                      )}>
-                        <span className="text-sm text-autronis-text-primary group-hover:text-autronis-accent truncate flex-1">{p.naam}</span>
-                        {pct >= 90 && <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full flex-shrink-0">Bijna af!</span>}
-                        <div className="w-16 h-1.5 bg-autronis-border rounded-full overflow-hidden shrink-0">
-                          <motion.div
-                            className={cn("h-full rounded-full", pct >= 80 ? "bg-emerald-400" : pct >= 40 ? "bg-autronis-accent" : "bg-amber-400")}
-                            initial={{ width: 0 }}
-                            animate={{ width: `${pct}%` }}
-                            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-                          />
-                        </div>
-                        <span className="text-[11px] text-autronis-text-secondary tabular-nums w-8 text-right shrink-0">{pct}%</span>
-                      </Link>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
             {/* Dagbriefing */}
             <DailyBriefing />
           </div>
@@ -1067,9 +965,6 @@ export default function DashboardPage() {
 
             {/* Documenten */}
             <DocumentWidget />
-
-            {/* Team Live */}
-            <TeamLiveWidget />
 
             {/* Idee van de dag */}
             <IdeeVanDeDag />

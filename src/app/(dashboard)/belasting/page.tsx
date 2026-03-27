@@ -67,9 +67,14 @@ import {
   useUpdateVoorlopigeAanslag,
   useJaaroverzicht,
   useAuditLog,
+  useBelastingTips,
+  useToggleTip,
+  useGenereerTips,
+  useDeleteTip,
   type Deadline,
   type BtwAangifte,
   type Investering,
+  type BelastingTip,
 } from "@/hooks/queries/use-belasting";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonKPI } from "@/components/ui/skeleton";
@@ -277,6 +282,10 @@ export default function BelastingPage() {
   const { data: aanslagenData, isLoading: loadingAanslagen } = useVoorlopigeAanslagen(jaar);
   const { data: jaaroverzichtData, isLoading: loadingJaar } = useJaaroverzicht(jaar);
   const { data: auditLogData } = useAuditLog();
+  const { data: tipsData } = useBelastingTips(jaar);
+  const toggleTipMutation = useToggleTip();
+  const genereerTipsMutation = useGenereerTips();
+  const deleteTipMutation = useDeleteTip();
 
   // ---- MUTATIONS ----
 
@@ -768,11 +777,13 @@ export default function BelastingPage() {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            const tipsToegepast = tipsData?.toegepast ?? 0;
+            const tipsTotaal = tipsData?.totaal ?? 0;
             const badge =
               tab.id === "acties" && openDeadlines.length > 0 ? openDeadlines.length :
-              tab.id === "optimalisatie" ? optimalisatieOk :
+              tab.id === "optimalisatie" ? `${tipsToegepast}/${tipsTotaal}` :
               null;
-            const badgeMax = tab.id === "optimalisatie" ? 6 : undefined;
+            const badgeMax = undefined;
             return (
               <button
                 key={tab.id}

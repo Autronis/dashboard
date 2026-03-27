@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties, projecten, klanten, gebruikers } from "@/lib/db/schema";
+import { tijdregistraties, projecten, klanten, gebruikers, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -18,7 +18,40 @@ export async function GET(req: NextRequest) {
     const vorigJaarStart = `${jaar - 1}-01-01T00:00:00`;
     const vorigJaarEind = `${jaar - 1}-12-31T23:59:59`;
 
-    // All time entries for this year with project/klant data
+    // ── Screen time entries (actieve uren) ──
+    const screenEntries = await db
+      .select({
+        duurSeconden: screenTimeEntries.duurSeconden,
+        startTijd: screenTimeEntries.startTijd,
+        gebruikerId: screenTimeEntries.gebruikerId,
+        projectId: screenTimeEntries.projectId,
+        klantId: screenTimeEntries.klantId,
+        categorie: screenTimeEntries.categorie,
+      })
+      .from(screenTimeEntries)
+      .where(
+        and(
+          gte(screenTimeEntries.startTijd, jaarStart),
+          lte(screenTimeEntries.startTijd, jaarEind),
+          sql`${screenTimeEntries.categorie} != 'inactief'`
+        )
+      );
+
+    // Previous year screen time
+    const vorigJaarScreen = await db
+      .select({
+        duurSeconden: screenTimeEntries.duurSeconden,
+      })
+      .from(screenTimeEntries)
+      .where(
+        and(
+          gte(screenTimeEntries.startTijd, vorigJaarStart),
+          lte(screenTimeEntries.startTijd, vorigJaarEind),
+          sql`${screenTimeEntries.categorie} != 'inactief'`
+        )
+      );
+
+    // ── Tijdregistraties (voor omzet berekening via uurtarief) ──
     const entries = await db
       .select({
         duurMinuten: tijdregistraties.duurMinuten,
@@ -42,7 +75,6 @@ export async function GET(req: NextRequest) {
         )
       );
 
-    // Previous year for comparison
     const vorigJaarEntries = await db
       .select({
         duurMinuten: tijdregistraties.duurMinuten,
@@ -59,12 +91,37 @@ export async function GET(req: NextRequest) {
         )
       );
 
-    // === KPIs ===
-    let omzetDitJaar = 0;
+    // ── Gebruiker namen ophalen ──
+    const gebruikersList = await db
+      .select({ id: gebruikers.id, naam: gebruikers.naam })
+      .from(gebruikers);
+    const gebruikerNamen = new Map(gebruikersList.map((g) => [g.id, g.naam]));
+
+    // ── Project/klant namen ophalen voor screen time ──
+    const projectList = await db
+      .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
+      .from(projecten);
+    const projectNamen = new Map(projectList.map((p) => [p.id, p]));
+
+    const klantList = await db
+      .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief })
+      .from(klanten);
+    const klantData = new Map(klantList.map((k) => [k.id, k]));
+
+    // === KPIs (uren uit screen time, omzet uit tijdregistraties) ===
     let urenDitJaar = 0;
+    for (const e of screenEntries) {
+      urenDitJaar += (e.duurSeconden || 0) / 3600;
+    }
+
+    let urenVorigJaar = 0;
+    for (const e of vorigJaarScreen) {
+      urenVorigJaar += (e.duurSeconden || 0) / 3600;
+    }
+
+    let omzetDitJaar = 0;
     for (const e of entries) {
       const uren = (e.duurMinuten || 0) / 60;
-      urenDitJaar += uren;
       omzetDitJaar += uren * (e.uurtarief || 0);
     }
 
@@ -74,47 +131,87 @@ export async function GET(req: NextRequest) {
     }
 
     const gemiddeldUurtarief = urenDitJaar > 0 ? omzetDitJaar / urenDitJaar : 0;
-    const actieveKlanten = new Set(entries.map((e) => e.klantId)).size;
 
-    // === Maanden ===
+    // Actieve klanten: uit screen time + tijdregistraties
+    const actieveKlantIds = new Set<number>();
+    for (const e of screenEntries) {
+      if (e.klantId) actieveKlantIds.add(e.klantId);
+    }
+    for (const e of entries) {
+      if (e.klantId) actieveKlantIds.add(e.klantId);
+    }
+
+    // === Maanden (uren uit screen time) ===
     const maanden = MAAND_LABELS.map((label, i) => {
       const maandStr = `${jaar}-${String(i + 1).padStart(2, "0")}`;
-      const maandEntries = entries.filter((e) => e.startTijd?.startsWith(maandStr));
-      let omzet = 0;
+
+      // Screen time uren
       let uren = 0;
-      for (const e of maandEntries) {
-        const u = (e.duurMinuten || 0) / 60;
-        uren += u;
-        omzet += u * (e.uurtarief || 0);
+      for (const e of screenEntries) {
+        if (e.startTijd?.startsWith(maandStr)) {
+          uren += (e.duurSeconden || 0) / 3600;
+        }
       }
+
+      // Omzet uit tijdregistraties
+      let omzet = 0;
+      for (const e of entries) {
+        if (e.startTijd?.startsWith(maandStr)) {
+          const u = (e.duurMinuten || 0) / 60;
+          omzet += u * (e.uurtarief || 0);
+        }
+      }
+
       return { maand: maandStr, label, omzet: Math.round(omzet * 100) / 100, uren: Math.round(uren * 100) / 100 };
     });
 
-    // === Top projecten ===
+    // === Top projecten (uren uit screen time) ===
     const projectMap = new Map<string, { projectNaam: string; klantNaam: string; uren: number; omzet: number }>();
+
+    // Screen time per project
+    for (const e of screenEntries) {
+      if (!e.projectId) continue;
+      const proj = projectNamen.get(e.projectId);
+      const key = proj?.naam || "Onbekend";
+      const kl = proj?.klantId ? klantData.get(proj.klantId) : null;
+      const existing = projectMap.get(key) || { projectNaam: key, klantNaam: kl?.bedrijfsnaam || "", uren: 0, omzet: 0 };
+      existing.uren += (e.duurSeconden || 0) / 3600;
+      projectMap.set(key, existing);
+    }
+
+    // Omzet per project uit tijdregistraties
     for (const e of entries) {
       const key = e.projectNaam || "Onbekend";
       const existing = projectMap.get(key) || { projectNaam: key, klantNaam: e.klantNaam || "", uren: 0, omzet: 0 };
       const u = (e.duurMinuten || 0) / 60;
-      existing.uren += u;
       existing.omzet += u * (e.uurtarief || 0);
       projectMap.set(key, existing);
     }
+
     const topProjecten = [...projectMap.values()]
       .sort((a, b) => b.uren - a.uren)
       .slice(0, 10)
       .map((p) => ({ ...p, uren: Math.round(p.uren * 100) / 100, omzet: Math.round(p.omzet * 100) / 100 }));
 
-    // === Per gebruiker ===
+    // === Per gebruiker (uren uit screen time) ===
     const gebruikerMap = new Map<string, { naam: string; uren: number; omzet: number }>();
-    for (const e of entries) {
-      const key = e.gebruikerNaam || "Onbekend";
-      const existing = gebruikerMap.get(key) || { naam: key, uren: 0, omzet: 0 };
-      const u = (e.duurMinuten || 0) / 60;
-      existing.uren += u;
-      existing.omzet += u * (e.uurtarief || 0);
-      gebruikerMap.set(key, existing);
+
+    for (const e of screenEntries) {
+      const naam = (e.gebruikerId ? gebruikerNamen.get(e.gebruikerId) : null) || "Onbekend";
+      const existing = gebruikerMap.get(naam) || { naam, uren: 0, omzet: 0 };
+      existing.uren += (e.duurSeconden || 0) / 3600;
+      gebruikerMap.set(naam, existing);
     }
+
+    // Omzet per gebruiker uit tijdregistraties
+    for (const e of entries) {
+      const naam = e.gebruikerNaam || "Onbekend";
+      const existing = gebruikerMap.get(naam) || { naam, uren: 0, omzet: 0 };
+      const u = (e.duurMinuten || 0) / 60;
+      existing.omzet += u * (e.uurtarief || 0);
+      gebruikerMap.set(naam, existing);
+    }
+
     const perGebruiker = [...gebruikerMap.values()]
       .sort((a, b) => b.uren - a.uren)
       .map((g) => ({ ...g, uren: Math.round(g.uren * 100) / 100, omzet: Math.round(g.omzet * 100) / 100 }));
@@ -125,7 +222,7 @@ export async function GET(req: NextRequest) {
         omzetVorigJaar: Math.round(omzetVorigJaar * 100) / 100,
         urenDitJaar: Math.round(urenDitJaar * 100) / 100,
         gemiddeldUurtarief: Math.round(gemiddeldUurtarief * 100) / 100,
-        actieveKlanten,
+        actieveKlanten: actieveKlantIds.size,
       },
       maanden,
       topProjecten,

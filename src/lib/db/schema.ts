@@ -323,6 +323,18 @@ export const auditLog = sqliteTable("audit_log", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ TEAM ACTIVITEIT (live feed) ============
+export const teamActiviteit = sqliteTable("team_activiteit", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  type: text("type", { enum: ["taak_gepakt", "taak_afgerond", "taak_update", "status_wijziging", "bezig_met"] }).notNull(),
+  taakId: integer("taak_id").references(() => taken.id),
+  projectId: integer("project_id").references(() => projecten.id),
+  bericht: text("bericht").notNull(),
+  metadata: text("metadata"), // JSON: extra context
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ BEDRIJFSINSTELLINGEN ============
 export const bedrijfsinstellingen = sqliteTable("bedrijfsinstellingen", {
   id: integer("id").primaryKey(),

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { taken } from "@/lib/db/schema";
+import { taken, teamActiviteit } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
@@ -18,7 +18,21 @@ export async function PUT(
     // Fetch current state for Google Calendar sync comparison
     const [huidig] = await db.select().from(taken).where(eq(taken.id, Number(id))).limit(1);
 
+    // Task locking: als taak al toegewezen is aan iemand anders, blokkeer claim
+    if (body.toegewezenAan !== undefined && huidig?.toegewezenAan && huidig.toegewezenAan !== gebruiker.id && body.toegewezenAan === gebruiker.id) {
+      return NextResponse.json(
+        { fout: "Deze taak is al opgepakt door iemand anders." },
+        { status: 409 }
+      );
+    }
+
+    // Als status naar "bezig" gaat en nog niet toegewezen, wijs automatisch toe
+    if (body.status === "bezig" && !huidig?.toegewezenAan) {
+      body.toegewezenAan = gebruiker.id;
+    }
+
     const updateData: Record<string, unknown> = { bijgewerktOp: new Date().toISOString() };
+    if (body.toegewezenAan !== undefined) updateData.toegewezenAan = body.toegewezenAan || null;
     if (body.titel !== undefined) updateData.titel = body.titel.trim();
     if (body.omschrijving !== undefined) updateData.omschrijving = body.omschrijving?.trim() || null;
     if (body.status !== undefined) updateData.status = body.status;
@@ -42,6 +56,34 @@ export async function PUT(
 
     if (!bijgewerkt) {
       return NextResponse.json({ fout: "Taak niet gevonden." }, { status: 404 });
+    }
+
+    // Log activiteit voor team awareness
+    if (huidig) {
+      let actieType: "taak_gepakt" | "taak_afgerond" | "taak_update" | "status_wijziging" = "taak_update";
+      let bericht = `heeft "${bijgewerkt.titel}" bijgewerkt`;
+
+      if (body.status === "bezig" && huidig.status !== "bezig") {
+        actieType = "taak_gepakt";
+        bericht = `is begonnen aan "${bijgewerkt.titel}"`;
+      } else if (body.status === "afgerond" && huidig.status !== "afgerond") {
+        actieType = "taak_afgerond";
+        bericht = `heeft "${bijgewerkt.titel}" afgerond`;
+      } else if (body.status !== undefined && body.status !== huidig.status) {
+        actieType = "status_wijziging";
+        bericht = `heeft "${bijgewerkt.titel}" op ${body.status} gezet`;
+      } else if (body.toegewezenAan === gebruiker.id && huidig.toegewezenAan !== gebruiker.id) {
+        actieType = "taak_gepakt";
+        bericht = `heeft "${bijgewerkt.titel}" opgepakt`;
+      }
+
+      db.insert(teamActiviteit).values({
+        gebruikerId: gebruiker.id,
+        type: actieType,
+        taakId: Number(id),
+        projectId: huidig.projectId,
+        bericht,
+      }).execute().catch(() => {});
     }
 
     // Sync with Google Calendar in the background

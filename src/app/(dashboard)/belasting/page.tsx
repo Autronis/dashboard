@@ -74,7 +74,6 @@ import {
   type Deadline,
   type BtwAangifte,
   type Investering,
-  type BelastingTip,
 } from "@/hooks/queries/use-belasting";
 import { PageTransition } from "@/components/ui/page-transition";
 import { SkeletonKPI } from "@/components/ui/skeleton";

@@ -1896,10 +1896,10 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
   return (
     <div
-      className="w-full rounded-2xl border border-autronis-border bg-[#0d1520] overflow-hidden relative"
+      className="w-full rounded-2xl bg-[#0d1520] overflow-hidden relative"
       onClick={() => { if (contextMenu) setContextMenu(null); }}
     >
-      <div className="overflow-hidden" style={{ maxHeight: "63vh" }}>
+      <div className="overflow-hidden" style={{ maxHeight: "80vh" }}>
         <canvas
           ref={canvasRef}
           width={CANVAS_W}

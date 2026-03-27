@@ -55,6 +55,7 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { CheckBurst } from "@/components/ui/confetti-dynamic";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
+import { TeamLiveWidget } from "@/components/team/team-live-widget";
 import { HabitWidget } from "@/components/gewoontes/habit-widget";
 import { FocusWidget } from "@/components/focus/focus-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
@@ -1067,28 +1068,8 @@ export default function DashboardPage() {
             {/* Documenten */}
             <DocumentWidget />
 
-            {/* Teamgenoot — alleen als actief */}
-            {teamgenoot?.actieveTimer && (
-              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 card-glow">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-autronis-accent flex items-center justify-center text-xs font-bold text-autronis-bg">
-                    {teamgenoot.naam.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-autronis-text-primary">{teamgenoot.naam}</p>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500 status-pulse" />
-                      <span className="text-xs text-green-400">Aan het werk</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-autronis-bg/50 rounded-xl p-3 border-l-3 border-autronis-accent" style={{ borderLeftWidth: "3px" }}>
-                  <p className="text-xs text-autronis-text-secondary">Bezig met</p>
-                  <p className="text-sm font-medium text-autronis-text-primary mt-0.5">{teamgenoot.actieveTimer.omschrijving || "Geen omschrijving"}</p>
-                  <p className="text-xs text-autronis-text-secondary mt-0.5">{teamgenoot.actieveTimer.projectNaam}</p>
-                </div>
-              </div>
-            )}
+            {/* Team Live */}
+            <TeamLiveWidget />
 
             {/* Idee van de dag */}
             <IdeeVanDeDag />

@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { opdracht, projectId, bron, mode } = body;
+    const { opdracht, projectId, bron, mode, team: requestTeam } = body;
+    const team: "sem" | "syb" = requestTeam === "syb" ? "syb" : "sem";
 
     if (!opdracht || typeof opdracht !== "string") {
       return NextResponse.json({ fout: "Opdracht is verplicht" }, { status: 400 });
@@ -238,7 +239,7 @@ Reageer ALLEEN met JSON:
         model: "claude-sonnet-4-6",
         max_tokens: 4096,
         system: THEO_SYSTEM_PROMPT,
-        messages: [{ role: "user", content: `Sem geeft de volgende opdracht: "${opdracht}"${busyNote}${lockedFilesNote}\n\nMaak een uitvoeringsplan.` }],
+        messages: [{ role: "user", content: `${team === "syb" ? "Syb" : "Sem"} geeft de volgende opdracht: "${opdracht}"\n\nDit is voor TEAM ${team.toUpperCase()}. Wijs ALLEEN agents uit Team ${team === "syb" ? "Syb (V2)" : "Sem (V1)"} toe.${busyNote}${lockedFilesNote}\n\nMaak een uitvoeringsplan.` }],
       });
 
       const rawText = message.content

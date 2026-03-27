@@ -55,9 +55,19 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    alleEvents.sort((a, b) => a.startDatum.localeCompare(b.startDatum));
+    // Dedup: events with same title + start time are duplicates
+    const seen = new Set<string>();
+    const unieke: ExternEvent[] = [];
+    for (const event of alleEvents) {
+      const key = `${event.titel}|${event.startDatum}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unieke.push(event);
+    }
 
-    return NextResponse.json({ events: alleEvents });
+    unieke.sort((a, b) => a.startDatum.localeCompare(b.startDatum));
+
+    return NextResponse.json({ events: unieke });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

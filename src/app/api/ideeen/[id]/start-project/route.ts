@@ -4,10 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
 import { db } from "@/lib/db";
-import { ideeen, projecten, klanten } from "@/lib/db/schema";
+import { ideeen, projecten, klanten, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, like } from "drizzle-orm";
+import { eq, like, sql } from "drizzle-orm";
 import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
+import Anthropic from "@anthropic-ai/sdk";
 
 const PROJECTS_BASE = "c:/Users/semmi/OneDrive/Claude AI/Projects";
 
@@ -97,13 +98,24 @@ export async function POST(
       const projectBrief = generateProjectBrief(idee);
       const masterPrompt = generateMasterPrompt(idee, slug);
       const rules = generateRules();
-      const todo = generateTodo(idee);
+
+      // AI-generated detailed plan
+      let todoContent: string;
+      try {
+        const plan = await generateDetailedPlan(idee);
+        todoContent = plan.todoMd;
+        // Sync fases + taken to database
+        await syncPlanToDatabase(project.id, gebruiker.id, plan.fases);
+      } catch {
+        // Fallback to simple plan
+        todoContent = generateSimpleTodo(idee);
+      }
 
       await Promise.all([
         writeFile(path.join(projectDir, "PROJECT_BRIEF.md"), projectBrief, "utf-8"),
         writeFile(path.join(projectDir, "MASTER_PROMPT.md"), masterPrompt, "utf-8"),
         writeFile(path.join(projectDir, "RULES.md"), rules, "utf-8"),
-        writeFile(path.join(projectDir, "TODO.md"), todo, "utf-8"),
+        writeFile(path.join(projectDir, "TODO.md"), todoContent, "utf-8"),
       ]);
     } catch {
       // Directory aanmaken mislukt — project is wel aangemaakt in DB
@@ -227,27 +239,119 @@ function generateRules(): string {
 `;
 }
 
-function generateTodo(idee: { naam: string; uitwerking: string | null }): string {
-  let todoItems = "- [ ] Project opzetten\n- [ ] Basis structuur bouwen\n";
+async function generateDetailedPlan(idee: { naam: string; omschrijving: string | null; uitwerking: string | null }): Promise<{ todoMd: string; fases: Array<{ naam: string; taken: Array<{ titel: string; uitvoerder: "claude" | "handmatig" }> }> }> {
+  const client = new Anthropic();
+  const context = [idee.omschrijving, idee.uitwerking].filter(Boolean).join("\n\n");
 
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 4096,
+    messages: [{
+      role: "user",
+      content: `Je bent een senior software architect bij Autronis, een AI- en automatiseringsbureau.
+
+Maak een gedetailleerd stappenplan voor dit project:
+
+PROJECT: ${idee.naam}
+CONTEXT: ${context || "Geen extra context beschikbaar."}
+
+REGELS:
+- Maak 4-8 fases met duidelijke namen
+- Elke fase heeft 3-8 concrete taken
+- Taken moeten specifiek en uitvoerbaar zijn (geen vage taken als "project opzetten")
+- Begin met setup/architectuur, eindig met testen/deploy/polish
+- Tech stack: Next.js, TypeScript, Tailwind, Drizzle ORM, SQLite/Turso
+- Markeer taken als "claude" (automatiseerbaar) of "handmatig" (vereist menselijke actie)
+- Handmatige taken: API keys aanmaken, design review, content schrijven, accounts registreren, deploy naar productie
+- Totaal 15-30 taken
+
+Antwoord als JSON:
+{
+  "fases": [
+    {
+      "naam": "Fase 1: Setup & Architectuur",
+      "taken": [
+        { "titel": "Database schema ontwerpen met tabellen voor X, Y, Z", "uitvoerder": "claude" },
+        { "titel": "API routes opzetten: GET/POST /api/...", "uitvoerder": "claude" }
+      ]
+    }
+  ]
+}
+
+Alleen JSON, geen uitleg.`,
+    }],
+  });
+
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Geen AI response");
+
+  const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Ongeldige AI response");
+
+  const plan = JSON.parse(jsonMatch[0]) as { fases: Array<{ naam: string; taken: Array<{ titel: string; uitvoerder: "claude" | "handmatig" }> }> };
+
+  // Generate TODO.md
+  let todoMd = `# TODO — ${idee.naam}\n\n`;
+  for (const fase of plan.fases) {
+    todoMd += `## ${fase.naam}\n\n`;
+    for (const taak of fase.taken) {
+      todoMd += `- [ ] ${taak.titel}\n`;
+    }
+    todoMd += "\n";
+  }
+
+  return { todoMd, fases: plan.fases };
+}
+
+async function syncPlanToDatabase(
+  projectId: number,
+  userId: number,
+  fases: Array<{ naam: string; taken: Array<{ titel: string; uitvoerder: "claude" | "handmatig" }> }>
+) {
+  let volgorde = 0;
+  for (const fase of fases) {
+    for (const taak of fase.taken) {
+      await db.insert(taken).values({
+        projectId,
+        toegewezenAan: userId,
+        aangemaaktDoor: userId,
+        titel: taak.titel,
+        status: "open",
+        prioriteit: "normaal",
+        fase: fase.naam,
+        volgorde: volgorde++,
+        uitvoerder: taak.uitvoerder,
+      });
+    }
+  }
+
+  // Calculate and set progress
+  const stats = await db
+    .select({
+      totaal: sql<number>`COUNT(*)`,
+      af: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+    })
+    .from(taken)
+    .where(eq(taken.projectId, projectId))
+    .get();
+
+  const voortgang = stats && stats.totaal > 0 ? Math.round(((stats.af ?? 0) / stats.totaal) * 100) : 0;
+  await db.update(projecten).set({ voortgangPercentage: voortgang }).where(eq(projecten.id, projectId));
+}
+
+// Fallback if AI fails
+function generateSimpleTodo(idee: { naam: string; uitwerking: string | null }): string {
+  let todoItems = "- [ ] Project opzetten\n- [ ] Basis structuur bouwen\n";
   if (idee.uitwerking) {
     const lines = idee.uitwerking.split("\n");
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.startsWith("-") || trimmed.startsWith("*") || /^\d+\./.test(trimmed)) {
         const item = trimmed.replace(/^[-*]\s*/, "").replace(/^\d+\.\s*/, "");
-        if (item.length > 3) {
-          todoItems += `- [ ] ${item}\n`;
-        }
+        if (item.length > 3) todoItems += `- [ ] ${item}\n`;
       }
     }
   }
-
   todoItems += "- [ ] Testen\n- [ ] Deployen\n";
-
-  return `# TODO — ${idee.naam}
-
-## Fases
-
-${todoItems}`;
+  return `# TODO — ${idee.naam}\n\n## Fases\n\n${todoItems}`;
 }

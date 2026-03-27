@@ -109,6 +109,30 @@ export async function pushEventToGoogle(
     };
   }
 
+  // Check of er al een event bestaat met dezelfde titel en starttijd
+  const timeMin = event.allDay
+    ? new Date(event.start.slice(0, 10)).toISOString()
+    : new Date(event.start).toISOString();
+  const timeMax = event.allDay
+    ? new Date(new Date(event.start.slice(0, 10)).getTime() + 86400_000).toISOString()
+    : new Date(new Date(event.start).getTime() + 60_000).toISOString();
+
+  const existing = await calendar.events.list({
+    calendarId,
+    timeMin,
+    timeMax,
+    q: event.summary,
+    singleEvents: true,
+    maxResults: 5,
+  });
+
+  const duplicate = existing.data.items?.find(
+    (e) => e.summary === event.summary
+  );
+  if (duplicate) {
+    return duplicate;
+  }
+
   const response = await calendar.events.insert({
     calendarId,
     requestBody: eventBody,

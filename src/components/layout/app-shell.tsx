@@ -36,6 +36,11 @@ const AriWidget = dynamic(
   { ssr: false }
 );
 
+const TeamFloat = dynamic(
+  () => import("@/components/team/team-float").then((m) => ({ default: m.TeamFloat })),
+  { ssr: false }
+);
+
 interface AppShellProps {
   gebruiker: SessionGebruiker;
   children: React.ReactNode;
@@ -110,6 +115,9 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
       <FocusSetupModal />
       <FocusOverlay />
       <FocusReflectieModal />
+
+      {/* Team awareness floating widget */}
+      <TeamFloat />
 
       {/* A.R.I. floating chat widget */}
       <AriWidget />

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { taken, projecten } from "@/lib/db/schema";
+import { taken, projecten, externeKalenders } from "@/lib/db/schema";
 import { eq, or, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
@@ -21,9 +21,13 @@ export async function GET() {
         ingeplandEind: taken.ingeplandEind,
         toegewezenAanId: taken.toegewezenAan,
         projectNaam: projecten.naam,
+        kalenderId: taken.kalenderId,
+        kalenderNaam: externeKalenders.naam,
+        kalenderKleur: externeKalenders.kleur,
       })
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))
+      .leftJoin(externeKalenders, eq(taken.kalenderId, externeKalenders.id))
       .where(
         or(
           eq(taken.status, "open"),

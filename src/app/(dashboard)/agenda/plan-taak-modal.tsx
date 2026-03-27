@@ -25,17 +25,24 @@ interface AiResult {
   stappen: string[];
 }
 
+interface KalenderOptie {
+  id: number;
+  naam: string;
+  kleur: string;
+}
+
 interface PlanTaakModalProps {
   taak: AgendaTaak;
   onClose: () => void;
-  onPlan: (id: number, start: string, eind: string, duur: number) => void;
+  onPlan: (id: number, start: string, eind: string, duur: number, kalenderId?: number) => void;
   onUnplan?: (id: number) => void;
   isPending: boolean;
   prefillDatum?: string;
   prefillTijd?: string;
+  kalenders?: KalenderOptie[];
 }
 
-export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, prefillDatum, prefillTijd }: PlanTaakModalProps) {
+export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, prefillDatum, prefillTijd, kalenders = [] }: PlanTaakModalProps) {
   const vandaag = new Date();
   const defaultDatum = prefillDatum || `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, "0")}-${String(vandaag.getDate()).padStart(2, "0")}`;
   const defaultTijd = prefillTijd || "09:00";
@@ -43,6 +50,7 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
   const [datum, setDatum] = useState(defaultDatum);
   const [tijd, setTijd] = useState(defaultTijd);
   const [duur, setDuur] = useState(taak.geschatteDuur || 30);
+  const [kalenderId, setKalenderId] = useState<number | undefined>(kalenders[0]?.id);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
 
@@ -80,7 +88,7 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
     const startDate = new Date(startStr);
     const eindDate = new Date(startDate.getTime() + duur * 60000);
     const eindStr = eindDate.toISOString();
-    onPlan(taak.id, startStr, eindStr, duur);
+    onPlan(taak.id, startStr, eindStr, duur, kalenderId);
   }
 
   return (
@@ -189,6 +197,41 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
               />
             </div>
           </div>
+
+          {/* Kalender keuze */}
+          {kalenders.length > 1 && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-autronis-text-secondary flex items-center gap-1.5">
+                <Calendar className="w-3 h-3" />
+                Agenda
+              </label>
+              <div className="flex gap-2">
+                {kalenders.map((k) => (
+                  <button
+                    key={k.id}
+                    onClick={() => setKalenderId(k.id)}
+                    className={cn(
+                      "flex-1 px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors flex items-center justify-center gap-2",
+                      kalenderId === k.id
+                        ? "border-transparent"
+                        : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
+                    )}
+                    style={kalenderId === k.id ? {
+                      backgroundColor: `${k.kleur}15`,
+                      borderColor: `${k.kleur}60`,
+                      color: k.kleur,
+                    } : undefined}
+                  >
+                    <span
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: k.kleur }}
+                    />
+                    {k.naam}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Duur */}
           <div className="space-y-1.5">

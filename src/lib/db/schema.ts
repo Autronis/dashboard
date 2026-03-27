@@ -278,6 +278,7 @@ export const taken = sqliteTable("taken", {
   geschatteDuur: integer("geschatte_duur"), // minuten (30, 60, 120, etc.)
   ingeplandStart: text("ingepland_start"), // ISO datetime wanneer ingepland in agenda
   ingeplandEind: text("ingepland_eind"),   // ISO datetime einde van ingepland blok
+  kalenderId: integer("kalender_id").references(() => externeKalenders.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });

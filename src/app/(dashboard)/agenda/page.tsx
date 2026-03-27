@@ -224,9 +224,9 @@ export default function AgendaPage() {
   const [plannenFilter, setPlannenFilter] = useState<"alle" | "hoog" | "bezig">("alle");
   const [expandedProjecten, setExpandedProjecten] = useState<Set<string>>(new Set());
 
-  function handlePlanTaak(id: number, start: string, eind: string, duur: number) {
+  function handlePlanTaak(id: number, start: string, eind: string, duur: number, kalenderId?: number) {
     planTaak.mutate(
-      { id, ingeplandStart: start, ingeplandEind: eind, geschatteDuur: duur },
+      { id, ingeplandStart: start, ingeplandEind: eind, geschatteDuur: duur, kalenderId },
       {
         onSuccess: () => {
           addToast("Taak ingepland", "succes");
@@ -2329,6 +2329,7 @@ export default function AgendaPage() {
           isPending={planTaak.isPending}
           prefillDatum={planPrefillDatum}
           prefillTijd={planPrefillTijd}
+          kalenders={kalenders.map((k) => ({ id: k.id, naam: k.naam, kleur: k.kleur || "#17B8A5" }))}
         />
       )}
       {/* Kalender Settings Modal */}

@@ -446,9 +446,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  background: "linear-gradient(135deg, rgba(34,197,94,0.14) 40%, rgba(14,23,25,0.1) 100%)",
-                  borderLeftColor: "#22c55e",
-                  boxShadow: "0 2px 10px rgba(34,197,94,0.15), inset 0 1px 0 rgba(34,197,94,0.15)",
+                  background: `linear-gradient(135deg, ${taak.kalenderKleur ? taak.kalenderKleur + "24" : "rgba(34,197,94,0.14)"} 40%, rgba(14,23,25,0.1) 100%)`,
+                  borderLeftColor: taak.kalenderKleur || "#22c55e",
+                  boxShadow: `0 2px 10px ${taak.kalenderKleur || "#22c55e"}25, inset 0 1px 0 ${taak.kalenderKleur || "#22c55e"}25`,
                 }}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               >
@@ -458,8 +458,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 </div>
                 {height >= 36 && (
                   <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-green-400/70" />
-                    <span className="text-[10px] sm:text-xs tabular-nums text-green-400/70">
+                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: (taak.kalenderKleur || "#22c55e") + "B3" }} />
+                    <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: (taak.kalenderKleur || "#22c55e") + "B3" }}>
                       {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
                     </span>
                     {taak.projectNaam && (

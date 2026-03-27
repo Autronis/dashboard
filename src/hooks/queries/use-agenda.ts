@@ -191,6 +191,9 @@ export interface AgendaTaak {
   projectNaam: string | null;
   klantNaam: string | null;
   toegewezenAanId: number | null;
+  kalenderId: number | null;
+  kalenderNaam: string | null;
+  kalenderKleur: string | null;
 }
 
 async function fetchAgendaTaken(): Promise<AgendaTaak[]> {
@@ -212,6 +215,7 @@ export interface PlanTaakPayload {
   ingeplandStart: string;
   ingeplandEind: string;
   geschatteDuur?: number;
+  kalenderId?: number;
 }
 
 export function usePlanTaak() {

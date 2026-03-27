@@ -32,6 +32,7 @@ export async function PUT(
     if (body.geschatteDuur !== undefined) updateData.geschatteDuur = body.geschatteDuur || null;
     if (body.ingeplandStart !== undefined) updateData.ingeplandStart = body.ingeplandStart || null;
     if (body.ingeplandEind !== undefined) updateData.ingeplandEind = body.ingeplandEind || null;
+    if (body.kalenderId !== undefined) updateData.kalenderId = body.kalenderId || null;
 
     const [bijgewerkt] = await db
       .update(taken)

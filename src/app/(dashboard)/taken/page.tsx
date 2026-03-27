@@ -544,7 +544,12 @@ export default function TakenPage() {
     return result;
   }, [taken, uitvoerderFilter, statusFilter, vandaag]);
 
-  const gegroepeerd = useMemo(() => groepeerTaken(gefilterdeTaken), [gefilterdeTaken]);
+  const gegroepeerd = useMemo(() => {
+    const groepen = groepeerTaken(gefilterdeTaken);
+    // Toon alleen projecten met open/bezig taken, tenzij we op "afgerond" filteren
+    if (statusFilter === "afgerond" || statusFilter === "alle") return groepen;
+    return groepen.filter((p) => p.totaal > p.afgerond);
+  }, [gefilterdeTaken, statusFilter]);
 
   // "Vandaag doen" — top 5 niet-afgeronde taken
   const vandaagTaken = useMemo(() => {
@@ -821,44 +826,30 @@ export default function TakenPage() {
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} />
 
-        {/* 2. STATUS TABS — groot en duidelijk */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-1.5">
-          <div className="grid grid-cols-4 gap-1.5">
-            {[
-              { key: "alle", label: "Alle", count: kpis.totaal, color: "text-autronis-accent", activeBg: "bg-autronis-accent" },
-              { key: "open", label: "Open", count: kpis.open, color: "text-slate-400", activeBg: "bg-slate-500" },
-              { key: "bezig", label: "Bezig", count: kpis.bezig, color: "text-blue-400", activeBg: "bg-blue-500" },
-              { key: "afgerond", label: "Afgerond", count: kpis.afgerond, color: "text-green-400", activeBg: "bg-green-500" },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setStatusFilter(tab.key)}
-                className={cn(
-                  "relative flex flex-col items-center gap-0.5 px-3 py-2.5 rounded-xl text-center transition-all",
-                  statusFilter === tab.key
-                    ? `${tab.activeBg} text-white shadow-lg`
-                    : "hover:bg-autronis-bg/50 text-autronis-text-secondary"
-                )}
-              >
-                <span className="text-lg font-bold tabular-nums">{tab.count}</span>
-                <span className="text-[10px] font-medium uppercase tracking-wider">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-          {kpis.verlopen > 0 && (
+        {/* 2. STATUS TABS */}
+        <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+          {[
+            { key: "alle", label: "Alle", count: kpis.totaal, dot: "bg-autronis-accent", activeBg: "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent" },
+            { key: "open", label: "Open", count: kpis.open, dot: "bg-slate-400", activeBg: "bg-slate-500/15 border-slate-400/40 text-slate-300" },
+            { key: "bezig", label: "Bezig", count: kpis.bezig, dot: "bg-blue-400", activeBg: "bg-blue-500/15 border-blue-400/40 text-blue-400" },
+            { key: "afgerond", label: "Afgerond", count: kpis.afgerond, dot: "bg-green-400", activeBg: "bg-green-500/15 border-green-400/40 text-green-400" },
+            ...(kpis.verlopen > 0 ? [{ key: "verlopen", label: "Verlopen", count: kpis.verlopen, dot: "bg-red-400", activeBg: "bg-red-500/15 border-red-400/40 text-red-400" }] : []),
+          ].map((tab) => (
             <button
-              onClick={() => setStatusFilter("verlopen")}
+              key={tab.key}
+              onClick={() => setStatusFilter(tab.key)}
               className={cn(
-                "w-full mt-1.5 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors",
-                statusFilter === "verlopen"
-                  ? "bg-red-500 text-white"
-                  : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border",
+                statusFilter === tab.key
+                  ? tab.activeBg
+                  : "border-transparent text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
               )}
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              {kpis.verlopen} verlopen
+              <span className={cn("w-2 h-2 rounded-full flex-shrink-0", tab.dot)} />
+              {tab.label}
+              <span className="tabular-nums font-semibold">{tab.count}</span>
             </button>
-          )}
+          ))}
         </div>
 
         {/* FILTER BAR — compact */}

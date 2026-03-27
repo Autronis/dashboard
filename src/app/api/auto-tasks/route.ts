@@ -283,6 +283,34 @@ export async function POST() {
       results.overzichtError = e instanceof Error ? e.message : "onbekend";
     }
 
+    // Auto-complete: projecten met 100% taken afgerond → status afgerond
+    const actieveProjecten = await db
+      .select({ id: projecten.id, naam: projecten.naam })
+      .from(projecten)
+      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1)))
+      .all();
+
+    let projectenAfgerond = 0;
+    for (const p of actieveProjecten) {
+      const stats = await db
+        .select({
+          totaal: sql<number>`COUNT(*)`,
+          afgerond: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+        })
+        .from(taken)
+        .where(eq(taken.projectId, p.id))
+        .get();
+
+      if (stats && stats.totaal > 0 && stats.totaal === stats.afgerond) {
+        await db.update(projecten)
+          .set({ status: "afgerond", bijgewerktOp: new Date().toISOString() })
+          .where(eq(projecten.id, p.id))
+          .run();
+        projectenAfgerond++;
+      }
+    }
+    results.projectenAutoAfgerond = projectenAfgerond;
+
     return NextResponse.json({ succes: true, results });
   } catch (error) {
     return NextResponse.json(

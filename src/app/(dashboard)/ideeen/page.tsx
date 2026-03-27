@@ -49,8 +49,11 @@ import {
   useGenereerIdeeen,
   usePromoveerIdee,
   useRegenereerPlan,
+  useVerwerkNotitie,
   type Idee,
+  type VerwerkSuggestie,
 } from "@/hooks/queries/use-ideeen";
+import { useProjecten } from "@/hooks/queries/use-projecten";
 import { PageTransition } from "@/components/ui/page-transition";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { motion, AnimatePresence } from "framer-motion";

@@ -219,6 +219,39 @@ export function useRegenereerPlan() {
   });
 }
 
+export interface VerwerkSuggestie {
+  actie: "project" | "idee";
+  reden: string;
+  project: {
+    id: number | null;
+    naam: string;
+    taakTitel: string;
+  };
+  idee: {
+    naam: string;
+    omschrijving: string;
+    categorie: string;
+    prioriteit: string;
+  };
+}
+
+export function useVerwerkNotitie() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/ideeen/${id}/verwerk`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "Verwerken mislukt");
+      }
+      return res.json() as Promise<{
+        notitieId: number;
+        notitieTekst: string;
+        suggestie: VerwerkSuggestie;
+      }>;
+    },
+  });
+}
+
 export function useSyncBacklog() {
   const queryClient = useQueryClient();
 

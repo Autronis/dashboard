@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { AGENT_SPECIALIZATIONS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
+import { AGENT_SPECIALIZATIONS, AGENT_TEAMS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
 import type { PlanTask } from "@/components/ops-room/orchestrator-types";
 
 const OPS_TOKEN = process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026";
@@ -25,15 +25,29 @@ async function ensureTable() {
 }
 
 // Theo's system prompt — he is the manager who creates plans
+// Build team-specific agent lists
+function getTeamAgents(team: "sem" | "syb") {
+  return Object.entries(AGENT_TEAMS)
+    .filter(([, t]) => t === team)
+    .map(([id]) => `- ${id}: ${SPECIALIZATION_LABELS[AGENT_SPECIALIZATIONS[id]] ?? "Onbekend"}`)
+    .join("\n");
+}
+
 const THEO_SYSTEM_PROMPT = `Je bent Theo, de Manager van Autronis. Je beheert een team van AI agents die samenwerken aan softwareprojecten.
 
 Je taak: als je een opdracht krijgt van Sem (de CEO), maak je een uitvoeringsplan met concrete taken die je kunt toewijzen aan je teamleden.
 
-TEAM SPECIALISATIES:
-${Object.entries(AGENT_SPECIALIZATIONS).map(([id, spec]) => `- ${id}: ${SPECIALIZATION_LABELS[spec]}`).join("\n")}
+Er zijn TWEE teams. Je mag ALLEEN agents toewijzen uit het team dat de opdracht geeft.
+
+TEAM SEM (V1) — voor opdrachten van Sem:
+${getTeamAgents("sem")}
+
+TEAM SYB (V2) — voor opdrachten van Syb:
+${getTeamAgents("syb")}
 
 REGELS:
 - Splits de opdracht op in kleine, concrete taken (max 5-8 taken)
+- Wijs ALLEEN agents toe uit het juiste team (Team Sem of Team Syb)
 - Elke taak moet aan één agent toegewezen worden op basis van specialisatie
 - Benoem welke bestanden elke taak raakt
 - Geef afhankelijkheden aan (welke taak moet eerst af zijn)

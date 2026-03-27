@@ -106,13 +106,26 @@ export const AGENT_SPECIALIZATIONS: Record<string, AgentSpecialization> = {
   // Team Syb
   autro: "orchestrator",
   daan: "interviewer",
-  // Note: coen already exists in Team Sem pool
   finn: "frontend",
   "wout-syb": "automation",
   "ari-syb": "research",
   "bas-syb": "prompts",
   leo: "reviewer",
   "gabriel-syb": "documentation",
+};
+
+// Agent team mapping — bepaalt welke agents bij welk team horen
+export const AGENT_TEAMS: Record<string, AgentTeam> = {
+  // Team Sem (V1)
+  wout: "sem", bas: "sem", gabriel: "sem", tijmen: "sem", pedro: "sem", vincent: "sem",
+  adam: "sem", noah: "sem", jack: "sem", nikkie: "sem", xia: "sem", thijs: "sem",
+  leonard: "sem", rijk: "sem", coen: "sem", senna: "sem",
+  jones: "sem", toby: "sem", object51: "sem",
+  ari: "sem", rodi: "sem", brent: "sem",
+  // Team Syb (V2)
+  autro: "syb", daan: "syb", finn: "syb",
+  "wout-syb": "syb", "ari-syb": "syb", "bas-syb": "syb",
+  leo: "syb", "gabriel-syb": "syb",
 };
 
 export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {

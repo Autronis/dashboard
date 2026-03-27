@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { AGENT_SPECIALIZATIONS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
 import type { PlanTask, AgentSpecialization } from "@/components/ops-room/orchestrator-types";
+import { db } from "@/lib/db";
+import { taken, projecten } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 const OPS_TOKEN = process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026";
 
@@ -135,6 +138,43 @@ export async function POST(req: NextRequest) {
       result = JSON.parse(jsonMatch[0]);
     } catch {
       return NextResponse.json({ fout: "Output parsing mislukt", raw: rawText }, { status: 500 });
+    }
+
+    // Auto-sync: mark task as completed in database if execution succeeded
+    if (mode === "execute" && body.projectId && task.titel) {
+      try {
+        const projectId = Number(body.projectId);
+        // Find matching open task by fuzzy title match
+        const openTaken = await db
+          .select()
+          .from(taken)
+          .where(and(eq(taken.projectId, projectId), sql`${taken.status} != 'afgerond'`))
+          .all();
+
+        const lower = task.titel.toLowerCase();
+        const match = openTaken.find(
+          (t) => t.titel.toLowerCase().includes(lower) || lower.includes(t.titel.toLowerCase())
+        );
+
+        if (match) {
+          await db.update(taken).set({ status: "afgerond", bijgewerktOp: sql`(datetime('now'))` }).where(eq(taken.id, match.id));
+
+          // Recalculate project progress
+          const stats = await db
+            .select({
+              totaal: sql<number>`COUNT(*)`,
+              af: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+            })
+            .from(taken)
+            .where(eq(taken.projectId, projectId))
+            .get();
+
+          const voortgang = stats && stats.totaal > 0 ? Math.round(((stats.af ?? 0) / stats.totaal) * 100) : 0;
+          await db.update(projecten).set({ voortgangPercentage: voortgang, bijgewerktOp: sql`(datetime('now'))` }).where(eq(projecten.id, projectId));
+        }
+      } catch {
+        // Sync failed silently — don't break the response
+      }
     }
 
     return NextResponse.json({ result, tokens: message.usage });

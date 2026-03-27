@@ -381,12 +381,19 @@ export default function AgendaPage() {
       if (!map[dag]) map[dag] = [];
       map[dag].push(item);
     }
-    // Dedup: skip externe events die al als lokaal item bestaan (zelfde titel + zelfde starttijd)
+    // Dedup: skip externe events die al als lokaal item bestaan
     const lokaleKeys = new Set(items.map((i) => `${i.titel}|${i.startDatum.slice(0, 16)}`));
+    const lokaleGoogleIds = new Set(
+      items
+        .map((i) => (i as AgendaItem & { googleEventId?: string | null }).googleEventId)
+        .filter(Boolean)
+    );
     for (const event of externeEvents) {
       if (filterType !== "alle" && filterType !== "extern") continue;
       const key = `${event.titel}|${event.startDatum.slice(0, 16)}`;
+      // Skip als titel+tijd matcht of als google event ID matcht
       if (lokaleKeys.has(key)) continue;
+      if (event.id && lokaleGoogleIds.has(event.id.replace(/^google-/, "").split("-")[0])) continue;
       const dag = event.startDatum.slice(0, 10);
       if (!map[dag]) map[dag] = [];
       map[dag].push(event);

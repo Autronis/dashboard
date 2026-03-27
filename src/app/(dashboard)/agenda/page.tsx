@@ -381,8 +381,12 @@ export default function AgendaPage() {
       if (!map[dag]) map[dag] = [];
       map[dag].push(item);
     }
+    // Dedup: skip externe events die al als lokaal item bestaan (zelfde titel + zelfde starttijd)
+    const lokaleKeys = new Set(items.map((i) => `${i.titel}|${i.startDatum.slice(0, 16)}`));
     for (const event of externeEvents) {
       if (filterType !== "alle" && filterType !== "extern") continue;
+      const key = `${event.titel}|${event.startDatum.slice(0, 16)}`;
+      if (lokaleKeys.has(key)) continue;
       const dag = event.startDatum.slice(0, 10);
       if (!map[dag]) map[dag] = [];
       map[dag].push(event);
@@ -581,10 +585,11 @@ export default function AgendaPage() {
     return null;
   }, []);
 
-  // Merge internal + external upcoming events
+  // Merge internal + external upcoming events (dedup externe die al lokaal bestaan)
+  const lokaleKeysUpcoming = new Set(items.map((i) => `${i.titel}|${i.startDatum.slice(0, 16)}`));
   const aankomend = [
     ...items.filter((i) => i.startDatum.slice(0, 10) >= vandaagStr).map((i) => ({ ...i, isExtern: false as const })),
-    ...externeEvents.filter((e) => e.startDatum.slice(0, 10) >= vandaagStr).map((e) => ({ ...e, isExtern: true as const })),
+    ...externeEvents.filter((e) => e.startDatum.slice(0, 10) >= vandaagStr && !lokaleKeysUpcoming.has(`${e.titel}|${e.startDatum.slice(0, 16)}`)).map((e) => ({ ...e, isExtern: true as const })),
   ]
     .sort((a, b) => a.startDatum.localeCompare(b.startDatum))
     .slice(0, 10);
@@ -952,7 +957,7 @@ export default function AgendaPage() {
             <JaarView
               jaar={jaar}
               onNavigeer={(r) => { setNavRichting(r); setViewKey((k) => k + 1); setJaar((j) => j + r); }}
-              items={[...items, ...externeEvents]}
+              items={[...items, ...externeEvents.filter((e) => !lokaleKeysUpcoming.has(`${e.titel}|${e.startDatum.slice(0, 16)}`))].sort((a, b) => a.startDatum.localeCompare(b.startDatum))}
               onMaandClick={(m) => { setNavRichting(1); setViewKey((k) => k + 1); setMaand(m); setWeergave("maand"); }}
             />
           ) : weergave === "maand" ? (

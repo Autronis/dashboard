@@ -11,7 +11,7 @@ import {
   gebruikers,
   screenTimeEntries,
 } from "@/lib/db/schema";
-import { getUniqueScreenTimeSeconds } from "@/lib/screen-time-utils";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, ne, or } from "drizzle-orm";
 
@@ -429,12 +429,9 @@ export async function GET() {
     const restDagen = dagenInMaand - dag;
     const werkdagenRest = Math.round(restDagen * 5 / 7);
 
-    // Uren deze maand uit screen time (merged intervals)
-    const urenDezeMaandSec = await getUniqueScreenTimeSeconds(
-      huidigeMaandStr + "-01T00:00:00",
-      huidigeMaandStr + "-31T23:59:59"
-    );
-    const urenDezeMaand = urenDezeMaandSec / 3600;
+    // Uren deze maand uit screen time (berekenActieveUren)
+    const lastDayOfMonth = new Date(jaar, maand + 1, 0).getDate();
+    const urenDezeMaand = await berekenActieveUren(1, `${huidigeMaandStr}-01`, `${huidigeMaandStr}-${lastDayOfMonth}`);
 
     const OMZET_DOEL = 10000;
     const UREN_DOEL = 160;

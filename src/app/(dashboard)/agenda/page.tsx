@@ -2325,6 +2325,7 @@ export default function AgendaPage() {
           taak={planModalTaak}
           onClose={() => setPlanModalTaak(null)}
           onPlan={handlePlanTaak}
+          onUnplan={handleUnplanTaak}
           isPending={planTaak.isPending}
           prefillDatum={planPrefillDatum}
           prefillTijd={planPrefillTijd}

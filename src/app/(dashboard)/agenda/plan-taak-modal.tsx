@@ -29,12 +29,13 @@ interface PlanTaakModalProps {
   taak: AgendaTaak;
   onClose: () => void;
   onPlan: (id: number, start: string, eind: string, duur: number) => void;
+  onUnplan?: (id: number) => void;
   isPending: boolean;
   prefillDatum?: string;
   prefillTijd?: string;
 }
 
-export function PlanTaakModal({ taak, onClose, onPlan, isPending, prefillDatum, prefillTijd }: PlanTaakModalProps) {
+export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, prefillDatum, prefillTijd }: PlanTaakModalProps) {
   const vandaag = new Date();
   const defaultDatum = prefillDatum || `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, "0")}-${String(vandaag.getDate()).padStart(2, "0")}`;
   const defaultTijd = prefillTijd || "09:00";
@@ -237,6 +238,15 @@ export function PlanTaakModal({ taak, onClose, onPlan, isPending, prefillDatum, 
 
         {/* Acties */}
         <div className="flex items-center justify-end gap-3 mt-5">
+          {taak.ingeplandStart && onUnplan && (
+            <button
+              onClick={() => { onUnplan(taak.id); onClose(); }}
+              disabled={isPending}
+              className="px-4 py-2.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-colors mr-auto disabled:opacity-50"
+            >
+              Uitplannen
+            </button>
+          )}
           <button
             onClick={onClose}
             className="px-4 py-2.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
@@ -248,7 +258,7 @@ export function PlanTaakModal({ taak, onClose, onPlan, isPending, prefillDatum, 
             disabled={isPending || !datum || !tijd}
             className="px-6 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
           >
-            {isPending ? "Inplannen..." : "Inplannen"}
+            {isPending ? "Inplannen..." : taak.ingeplandStart ? "Herplannen" : "Inplannen"}
           </button>
         </div>
       </div>

@@ -89,6 +89,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       intakeAntwoorden: null,
       daanMode: null,
       branch: null,
+      projectId: null,
     };
 
     set((s) => ({

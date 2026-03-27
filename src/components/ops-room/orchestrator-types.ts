@@ -36,6 +36,7 @@ export interface Command {
   intakeAntwoorden: string[] | null; // User's answers to intake questions
   daanMode: DaanMode | null; // null = not yet determined, "taak" = task intake, "idee" = idea sparring
   branch: string | null; // git branch for this command's changes
+  projectId: number | null; // linked project for auto-sync
 }
 
 export interface Plan {

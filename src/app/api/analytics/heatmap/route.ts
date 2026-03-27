@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties } from "@/lib/db/schema";
+import { screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { sql, and, gte, lte } from "drizzle-orm";
 
-// GET /api/analytics/heatmap — daily hours for the last 365 days
+// GET /api/analytics/heatmap — daily hours for the last 365 days (screen time)
 export async function GET() {
   try {
     await requireAuth();
@@ -18,22 +18,22 @@ export async function GET() {
 
     const rows = await db
       .select({
-        datum: sql<string>`date(${tijdregistraties.startTijd})`.as("datum"),
-        totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`.as("totaal_minuten"),
+        datum: sql<string>`date(${screenTimeEntries.startTijd})`.as("datum"),
+        totaalSeconden: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`.as("totaal_seconden"),
       })
-      .from(tijdregistraties)
+      .from(screenTimeEntries)
       .where(
         and(
-          gte(tijdregistraties.startTijd, startStr),
-          lte(tijdregistraties.startTijd, eindStr),
-          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+          gte(screenTimeEntries.startTijd, startStr),
+          lte(screenTimeEntries.startTijd, eindStr),
+          sql`${screenTimeEntries.categorie} != 'inactief'`
         )
       )
-      .groupBy(sql`date(${tijdregistraties.startTijd})`);
+      .groupBy(sql`date(${screenTimeEntries.startTijd})`);
 
     const data = rows.map((r) => ({
       datum: r.datum,
-      uren: Math.round((r.totaalMinuten / 60) * 100) / 100,
+      uren: Math.round((r.totaalSeconden / 3600) * 100) / 100,
     }));
 
     return NextResponse.json({ data });

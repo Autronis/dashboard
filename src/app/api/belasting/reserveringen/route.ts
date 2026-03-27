@@ -70,7 +70,8 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   const brutowinst = brutoOmzet - totaleKosten - totaleAfschrijvingen - kmAftrek;
 
   // Uren criterium
-  const totaalUren = await berekenActieveUren(gebruiker.id, `${jaar}-01-01`, `${jaar}-12-31`);
+  // gebruikerId 1 = Sem (primary user)
+  const totaalUren = await berekenActieveUren(1, `${jaar}-01-01`, `${jaar}-12-31`);
 
   const voldoet = totaalUren >= 1225;
   const za = voldoet ? 3750 : 0;

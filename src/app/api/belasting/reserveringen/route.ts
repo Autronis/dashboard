@@ -8,10 +8,10 @@ import {
   investeringen,
   kilometerRegistraties,
   urenCriterium,
-  tijdregistraties,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 function berekenBelasting2026(belastbaarInkomen: number): number {
   if (belastbaarInkomen <= 0) return 0;
@@ -70,16 +70,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   const brutowinst = brutoOmzet - totaleKosten - totaleAfschrijvingen - kmAftrek;
 
   // Uren criterium
-  const urenRecord = await db.select().from(urenCriterium).where(eq(urenCriterium.jaar, jaar)).limit(1).get();
-  let totaalUren = urenRecord?.behaaldUren ?? 0;
-  if (!urenRecord) {
-    const urenResult = await db
-      .select({ totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)` })
-      .from(tijdregistraties)
-      .where(and(gte(tijdregistraties.startTijd, jaarStart), lte(tijdregistraties.startTijd, jaarEind)))
-      .get();
-    totaalUren = (urenResult?.totaal ?? 0) / 60;
-  }
+  const totaalUren = await berekenActieveUren(gebruiker.id, `${jaar}-01-01`, `${jaar}-12-31`);
 
   const voldoet = totaalUren >= 1225;
   const za = voldoet ? 3750 : 0;

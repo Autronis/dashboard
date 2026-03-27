@@ -6,10 +6,10 @@ import {
   investeringen,
   kilometerRegistraties,
   urenCriterium,
-  tijdregistraties,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 interface KwartaalData {
   kwartaal: number;
@@ -171,23 +171,9 @@ export async function GET(req: NextRequest) {
       .limit(1)
       .get();
 
-    // If no urenCriterium record, calculate from tijdregistraties
-    let totaalUren = urenRecord?.behaaldUren ?? 0;
-    if (!urenRecord) {
-      const urenResult = await db
-        .select({
-          totaal: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
-        })
-        .from(tijdregistraties)
-        .where(
-          and(
-            gte(tijdregistraties.startTijd, jaarStart),
-            lte(tijdregistraties.startTijd, jaarEind)
-          )
-        )
-        .get();
-      totaalUren = Math.round(((urenResult?.totaal ?? 0) / 60) * 100) / 100;
-    }
+    // Bereken uren uit screen time
+    const gebruiker = await requireAuth();
+    const totaalUren = await berekenActieveUren(gebruiker.id, `${jaar}-01-01`, `${jaar}-12-31`);
 
     const urenCriteriumVoldoet = totaalUren >= 1225;
 

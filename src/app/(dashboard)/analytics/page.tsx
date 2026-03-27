@@ -1049,11 +1049,6 @@ export default function AnalyticsPage() {
           />
         )}
 
-        {/* === AI INSIGHTS + NEXT ACTIONS === */}
-        {decisionData && (
-          <InsightsPanel insights={decisionData.aiInsights} actions={decisionData.nextActions} />
-        )}
-
         {/* KPI balk — animates on year switch */}
         <AnimatePresence mode="wait">
           <motion.div
@@ -1140,8 +1135,25 @@ export default function AnalyticsPage() {
           </motion.div>
         </AnimatePresence>
 
-        {/* === EFFICIENCY METRICS === */}
+        {/* ═══════════ BLOK 1: OVERZICHT ═══════════ */}
+
+        {/* === AI INSIGHTS + NEXT ACTIONS (eerst: wat moet je weten?) === */}
+        {decisionData && (
+          <InsightsPanel insights={decisionData.aiInsights} actions={decisionData.nextActions} />
+        )}
+
+        {/* === DOELEN + TEAM === */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {decisionData?.actionableGoals && decisionData.actionableGoals.length > 0 ? (
+            <ActionableGoalsSectie goals={decisionData.actionableGoals} />
+          ) : null}
+          <TeamVergelijking gebruikers={vergelijkData ?? []} />
+        </div>
+
+        {/* === EFFICIENCY === */}
         {decisionData && <EfficiencySectie eff={decisionData.efficiency} />}
+
+        {/* ═══════════ BLOK 2: WERK ═══════════ */}
 
         {/* Omzet/Uren chart with metric toggle */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
@@ -1325,13 +1337,7 @@ export default function AnalyticsPage() {
           </div>
         </motion.div>
 
-        {/* === ACTIONABLE GOALS + Team vergelijking === */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {decisionData?.actionableGoals && decisionData.actionableGoals.length > 0 ? (
-            <ActionableGoalsSectie goals={decisionData.actionableGoals} />
-          ) : null}
-          <TeamVergelijking gebruikers={vergelijkData ?? []} />
-        </div>
+        {/* ═══════════ BLOK 3: GELD ═══════════ */}
       </div>
     </PageTransition>
   );

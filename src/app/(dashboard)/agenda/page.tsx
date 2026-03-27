@@ -381,16 +381,29 @@ export default function AgendaPage() {
       if (!map[dag]) map[dag] = [];
       map[dag].push(item);
     }
-    // Dedup: skip externe events die al als lokaal item bestaan
-    const lokaleKeys = new Set(items.map((i) => `${i.titel}|${i.startDatum.slice(0, 16)}`));
+    // Dedup: skip externe events die al als lokaal item of ingeplande taak bestaan
+    const stripEmoji = (s: string) => s.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]/gu, "").trim();
+    const toLocalKey = (titel: string, datum: string) => {
+      // Normaliseer naar lokale datum+uur zodat UTC en lokale tijden matchen
+      const d = new Date(datum);
+      const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+      return `${stripEmoji(titel)}|${local}`;
+    };
+    const lokaleKeys = new Set(items.map((i) => toLocalKey(i.titel, i.startDatum)));
     const lokaleGoogleIds = new Set(
       items
         .map((i) => (i as AgendaItem & { googleEventId?: string | null }).googleEventId)
         .filter(Boolean)
     );
+    // Ingeplande taken ook meenemen voor dedup
+    for (const taak of agendaTaken) {
+      if (taak.ingeplandStart) {
+        lokaleKeys.add(toLocalKey(taak.titel, taak.ingeplandStart));
+      }
+    }
     for (const event of externeEvents) {
       if (filterType !== "alle" && filterType !== "extern") continue;
-      const key = `${event.titel}|${event.startDatum.slice(0, 16)}`;
+      const key = toLocalKey(event.titel, event.startDatum);
       // Skip als titel+tijd matcht of als google event ID matcht
       if (lokaleKeys.has(key)) continue;
       if (event.id && lokaleGoogleIds.has(event.id.replace(/^google-/, "").split("-")[0])) continue;
@@ -593,10 +606,19 @@ export default function AgendaPage() {
   }, []);
 
   // Merge internal + external upcoming events (dedup externe die al lokaal bestaan)
-  const lokaleKeysUpcoming = new Set(items.map((i) => `${i.titel}|${i.startDatum.slice(0, 16)}`));
+  const toLocalKeyUp = (titel: string, datum: string) => {
+    const d = new Date(datum);
+    const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}T${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    const strip = (s: string) => s.replace(/[\u{1F000}-\u{1FFFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FEFF}]/gu, "").trim();
+    return `${strip(titel)}|${local}`;
+  };
+  const lokaleKeysUpcoming = new Set([
+    ...items.map((i) => toLocalKeyUp(i.titel, i.startDatum)),
+    ...agendaTaken.filter((t) => t.ingeplandStart).map((t) => toLocalKeyUp(t.titel, t.ingeplandStart!)),
+  ]);
   const aankomend = [
     ...items.filter((i) => i.startDatum.slice(0, 10) >= vandaagStr).map((i) => ({ ...i, isExtern: false as const })),
-    ...externeEvents.filter((e) => e.startDatum.slice(0, 10) >= vandaagStr && !lokaleKeysUpcoming.has(`${e.titel}|${e.startDatum.slice(0, 16)}`)).map((e) => ({ ...e, isExtern: true as const })),
+    ...externeEvents.filter((e) => e.startDatum.slice(0, 10) >= vandaagStr && !lokaleKeysUpcoming.has(toLocalKeyUp(e.titel, e.startDatum))).map((e) => ({ ...e, isExtern: true as const })),
   ]
     .sort((a, b) => a.startDatum.localeCompare(b.startDatum))
     .slice(0, 10);
@@ -964,7 +986,7 @@ export default function AgendaPage() {
             <JaarView
               jaar={jaar}
               onNavigeer={(r) => { setNavRichting(r); setViewKey((k) => k + 1); setJaar((j) => j + r); }}
-              items={[...items, ...externeEvents.filter((e) => !lokaleKeysUpcoming.has(`${e.titel}|${e.startDatum.slice(0, 16)}`))].sort((a, b) => a.startDatum.localeCompare(b.startDatum))}
+              items={[...items, ...externeEvents.filter((e) => !lokaleKeysUpcoming.has(toLocalKeyUp(e.titel, e.startDatum)))].sort((a, b) => a.startDatum.localeCompare(b.startDatum))}
               onMaandClick={(m) => { setNavRichting(1); setViewKey((k) => k + 1); setMaand(m); setWeergave("maand"); }}
             />
           ) : weergave === "maand" ? (

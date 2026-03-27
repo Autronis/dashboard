@@ -21,6 +21,22 @@ if (isTurso) {
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
 
+  // Auto-migrate Turso
+  client.execute(`CREATE TABLE IF NOT EXISTS belasting_tips (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    categorie TEXT NOT NULL,
+    titel TEXT NOT NULL,
+    beschrijving TEXT NOT NULL,
+    voordeel TEXT,
+    bron TEXT,
+    bron_naam TEXT,
+    jaar INTEGER,
+    is_ai_gegenereerd INTEGER DEFAULT 0,
+    toegepast INTEGER DEFAULT 0,
+    toegepast_op TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => { /* table may already exist */ });
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

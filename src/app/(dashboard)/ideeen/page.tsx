@@ -1034,8 +1034,9 @@ export default function IdeeenPage() {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ projectId: s.project.id, titel: s.project.taakTitel }),
-                        });
-                        if (!res.ok) {
+                          redirect: "error",
+                        }).catch(() => null);
+                        if (!res || !res.ok) {
                           addToast("Fout bij toevoegen taak", "fout");
                           return;
                         }
@@ -1126,8 +1127,9 @@ export default function IdeeenPage() {
                                       method: "POST",
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({ projectId: project.id, titel }),
-                                    });
-                                    if (!res.ok) {
+                                      redirect: "error",
+                                    }).catch(() => null);
+                                    if (!res || !res.ok) {
                                       addToast("Fout bij toevoegen taak", "fout");
                                       setKoppelNotitieId(null);
                                       return;

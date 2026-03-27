@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { tijdregistraties, projecten, klanten, gebruikers, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { getUniqueScreenTimeSeconds, getUniqueScreenTimePerMonth } from "@/lib/screen-time-utils";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 const MAAND_LABELS = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
 
@@ -109,12 +109,10 @@ export async function GET(req: NextRequest) {
       .from(klanten);
     const klantData = new Map(klantList.map((k) => [k.id, k]));
 
-    // === KPIs (uren uit screen time met merged intervals, omzet uit tijdregistraties) ===
-    const urenDitJaarSec = await getUniqueScreenTimeSeconds(jaarStart, jaarEind);
-    const urenDitJaar = urenDitJaarSec / 3600;
-
-    const urenVorigJaarSec = await getUniqueScreenTimeSeconds(vorigJaarStart, vorigJaarEind);
-    const urenVorigJaar = urenVorigJaarSec / 3600;
+    // === KPIs (uren uit screen time via berekenActieveUren) ===
+    // gebruikerId 1 = Sem (primary user) — TODO: support multi-user
+    const urenDitJaar = await berekenActieveUren(1, `${jaar}-01-01`, `${jaar}-12-31`);
+    const urenVorigJaar = await berekenActieveUren(1, `${jaar - 1}-01-01`, `${jaar - 1}-12-31`);
 
     let omzetDitJaar = 0;
     for (const e of entries) {
@@ -138,12 +136,18 @@ export async function GET(req: NextRequest) {
       if (e.klantId) actieveKlantIds.add(e.klantId);
     }
 
-    // === Maanden (uren uit screen time met merged intervals) ===
-    const screenTimePerMaand = await getUniqueScreenTimePerMonth(jaar);
+    // === Maanden (uren uit screen time via berekenActieveUren per maand) ===
+    const maandUren = new Map<string, number>();
+    for (let m = 0; m < 12; m++) {
+      const maandStr = `${jaar}-${String(m + 1).padStart(2, "0")}`;
+      const lastDay = new Date(jaar, m + 1, 0).getDate();
+      const uren = await berekenActieveUren(1, `${maandStr}-01`, `${maandStr}-${lastDay}`);
+      maandUren.set(maandStr, uren);
+    }
 
     const maanden = MAAND_LABELS.map((label, i) => {
       const maandStr = `${jaar}-${String(i + 1).padStart(2, "0")}`;
-      const uren = (screenTimePerMaand.get(maandStr) || 0) / 3600;
+      const uren = maandUren.get(maandStr) || 0;
 
       // Omzet uit tijdregistraties
       let omzet = 0;

@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
         eindDatum: agendaItems.eindDatum,
         heleDag: agendaItems.heleDag,
         herinneringMinuten: agendaItems.herinneringMinuten,
+        googleEventId: agendaItems.googleEventId,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))

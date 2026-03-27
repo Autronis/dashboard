@@ -467,6 +467,22 @@ export const belastingAuditLog = sqliteTable("belasting_audit_log", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ BELASTING TIPS ============
+export const belastingTips = sqliteTable("belasting_tips", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  categorie: text("categorie", { enum: ["aftrekpost", "regeling", "subsidie", "optimalisatie", "weetje"] }).notNull(),
+  titel: text("titel").notNull(),
+  beschrijving: text("beschrijving").notNull(),
+  voordeel: text("voordeel"), // e.g. "€3.750 aftrek", "32% loonkostenaftrek"
+  bron: text("bron"), // URL naar officiële bron (belastingdienst, rvo, etc.)
+  bronNaam: text("bron_naam"), // "Belastingdienst", "RVO", etc.
+  jaar: integer("jaar"), // belastingjaar (null = altijd geldig)
+  isAiGegenereerd: integer("is_ai_gegenereerd").default(0),
+  toegepast: integer("toegepast").default(0),
+  toegepastOp: text("toegepast_op"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ REVOLUT INTEGRATIE ============
 export const revolutVerbinding = sqliteTable("revolut_verbinding", {
   id: integer("id").primaryKey({ autoIncrement: true }),

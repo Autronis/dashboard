@@ -774,7 +774,7 @@ export default function TakenPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-3">
+      <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-5">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -821,71 +821,86 @@ export default function TakenPage() {
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} />
 
-        {/* 2. FILTER BAR — één compacte rij met groepen */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {/* Status pills */}
-          <div className="flex items-center gap-0.5 bg-autronis-card border border-autronis-border rounded-lg p-0.5">
-            {[{ key: "alle", label: "Alle" }, { key: "open", label: "Open" }, { key: "bezig", label: "Bezig" }, { key: "afgerond", label: "Afgerond" }, { key: "verlopen", label: "Verlopen" }].map((f) => (
-              <button key={f.key} onClick={() => setStatusFilter(f.key)} className={cn("px-2.5 py-1 rounded-md text-xs font-medium transition-colors", statusFilter === f.key ? (f.key === "verlopen" ? "bg-red-500/80 text-white" : "bg-autronis-accent text-autronis-bg") : (f.key === "verlopen" && kpis.verlopen > 0 ? "text-red-400/70 hover:text-red-400" : "text-autronis-text-secondary hover:text-autronis-text-primary"))}>{f.label}{f.key === "verlopen" && kpis.verlopen > 0 && <span className="ml-1 tabular-nums">{kpis.verlopen}</span>}</button>
+        {/* 2. STATUS TABS — groot en duidelijk */}
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-1.5">
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { key: "alle", label: "Alle", count: kpis.totaal, color: "text-autronis-accent", activeBg: "bg-autronis-accent" },
+              { key: "open", label: "Open", count: kpis.open, color: "text-slate-400", activeBg: "bg-slate-500" },
+              { key: "bezig", label: "Bezig", count: kpis.bezig, color: "text-blue-400", activeBg: "bg-blue-500" },
+              { key: "afgerond", label: "Afgerond", count: kpis.afgerond, color: "text-green-400", activeBg: "bg-green-500" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={cn(
+                  "relative flex flex-col items-center gap-0.5 px-3 py-2.5 rounded-xl text-center transition-all",
+                  statusFilter === tab.key
+                    ? `${tab.activeBg} text-white shadow-lg`
+                    : "hover:bg-autronis-bg/50 text-autronis-text-secondary"
+                )}
+              >
+                <span className="text-lg font-bold tabular-nums">{tab.count}</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider">{tab.label}</span>
+              </button>
             ))}
           </div>
+          {kpis.verlopen > 0 && (
+            <button
+              onClick={() => setStatusFilter("verlopen")}
+              className={cn(
+                "w-full mt-1.5 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors",
+                statusFilter === "verlopen"
+                  ? "bg-red-500 text-white"
+                  : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+              )}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              {kpis.verlopen} verlopen
+            </button>
+          )}
+        </div>
 
-          {/* Hide completed fases toggle */}
+        {/* FILTER BAR — compact */}
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+            <option value="alle">Alle projecten</option>
+            {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
+          </select>
+          <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+            <option value="alle">Alle prioriteiten</option>
+            <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
+          </select>
+          <select value={uitvoerderFilter} onChange={(e) => setUitvoerderFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+            <option value="alle">Alle uitvoerders</option>
+            <option value="claude">Claude</option>
+            <option value="handmatig">Handmatig</option>
+          </select>
+          <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+            <option value="alle">Alle fases</option>
+            {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+
           <button
             onClick={() => setHideCompleted((h) => !h)}
-            className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-              hideCompleted ? "border-autronis-accent/50 bg-autronis-accent/10 text-autronis-accent" : "border-autronis-border text-autronis-text-secondary hover:border-autronis-border/80"
+            className={cn("flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition-colors",
+              hideCompleted ? "border-autronis-accent/50 bg-autronis-accent/10 text-autronis-accent" : "border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
             )}
-            title="Verberg afgeronde fases"
           >
             <CheckCircle2 className="w-3 h-3" />
             {hideCompleted ? "Afgerond verborgen" : "Verberg afgerond"}
           </button>
 
-          <div className="w-px h-5 bg-autronis-border/40 mx-1 hidden sm:block" />
-
-          {/* Dropdowns groep */}
-          <div className="flex items-center gap-1.5">
-            <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Project</option>
-              {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
-            </select>
-            <select value={prioriteitFilter} onChange={(e) => setPrioriteitFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Prioriteit</option>
-              <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
-            </select>
-            <select value={uitvoerderFilter} onChange={(e) => setUitvoerderFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Uitvoerder</option>
-              <option value="claude">Claude</option>
-              <option value="handmatig">Handmatig</option>
-            </select>
-            <select value={faseFilter} onChange={(e) => setFaseFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
-              <option value="alle">Fase</option>
-              {uniekeFases.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
-
-          {/* Search + clear */}
           <div className="flex items-center gap-1.5 sm:ml-auto">
-            <div className="relative sm:w-40">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-autronis-text-secondary/50" />
-              <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoeken..."
-                className="w-full bg-autronis-card border border-autronis-border rounded-lg pl-7 pr-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+            <div className="relative sm:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-autronis-text-secondary/50" />
+              <input type="text" value={zoek} onChange={(e) => setZoek(e.target.value)} placeholder="Zoek taken..."
+                className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-8 pr-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
             </div>
             {activeFilterCount > 0 && (
               <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); setHideCompleted(false); }}
-                className="flex items-center gap-1 px-2 py-1 text-[11px] text-autronis-text-secondary hover:text-red-400 transition-colors whitespace-nowrap">
-                <X className="w-3 h-3" /> Wis (
-                <motion.span
-                  key={activeFilterCount}
-                  initial={{ scale: 1.6, color: "#17B8A5" }}
-                  animate={{ scale: 1, color: "currentColor" }}
-                  transition={{ type: "spring", stiffness: 600, damping: 18 }}
-                  className="inline-block tabular-nums"
-                >
-                  {activeFilterCount}
-                </motion.span>
-                )
+                className="flex items-center gap-1 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap">
+                <X className="w-3.5 h-3.5" /> Wis filters
               </button>
             )}
           </div>
@@ -944,6 +959,9 @@ export default function TakenPage() {
                     </button>
                     <p onClick={() => setSelectedTaak(taak)} className={cn("flex-1 text-xs truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                     <span className="text-[10px] text-autronis-text-secondary truncate max-w-24">{taak.projectNaam}</span>
+                    {taak.toegewezenAanNaam && (
+                      <span className="text-[10px] text-autronis-text-secondary/60 flex-shrink-0">{taak.toegewezenAanNaam.split(" ")[0]}</span>
+                    )}
                     <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                     {taak.uitvoerder === "claude" && <Bot className="w-3 h-3 text-purple-400 flex-shrink-0" />}
                     {isVerlopen && <AlertTriangle className="w-3 h-3 text-red-400 flex-shrink-0" />}
@@ -1098,6 +1116,12 @@ export default function TakenPage() {
                                             <div className="flex-1 min-w-0">
                                               <p onClick={() => setSelectedTaak(taak)} className={cn("text-xs font-medium truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                                             </div>
+                                            {taak.toegewezenAanNaam && (
+                                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-bg border border-autronis-border font-medium text-autronis-text-secondary flex-shrink-0 flex items-center gap-1">
+                                                <User className="w-2.5 h-2.5" />
+                                                {taak.toegewezenAanNaam.split(" ")[0]}
+                                              </span>
+                                            )}
                                             {isClaude && <span className="badge-claude-shimmer flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                                             {taak.deadline && (

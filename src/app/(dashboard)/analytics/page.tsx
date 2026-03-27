@@ -1246,81 +1246,51 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* === FORECAST UPGRADED + PIPELINE === */}
-        {decisionData && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ForecastUpgradedSectie forecast={decisionData.forecast} />
-            <PipelineSectie pipeline={decisionData.pipeline} />
-          </div>
-        )}
-
-        {/* === CASHFLOW UPGRADED === */}
-        {decisionData && <CashflowSectie cf={decisionData.cashflow} />}
-
-        {/* Omzet per klant + Client dependency */}
+        {/* Tijdsbesteding + Per medewerker */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <TijdsbestedingSectie topProjecten={data.topProjecten} heatmapData={heatmapData ?? []} />
+
+          {/* Per medewerker */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
             <div className="flex items-center gap-3 mb-6">
-              <PieChart className="w-5 h-5 text-autronis-accent" />
-              <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Omzet per klant</h2>
+              <PieChart className="w-5 h-5 text-purple-400" />
+              <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Per medewerker</h2>
               <span className="text-xs text-autronis-text-secondary ml-auto">{jaar}</span>
             </div>
-            <DonutChart segments={omzetPerKlant} />
-          </div>
-
-          {/* === CLIENT DEPENDENCY === */}
-          {decisionData && <ClientDependencySectie dep={decisionData.clientDependency} />}
-        </div>
-
-        {/* === RATE ANALYSIS === */}
-        {decisionData && <RateAnalysisSectie rates={decisionData.rateAnalysis} />}
-
-        {/* === PROJECT INSIGHTS (sortable) === */}
-        {decisionData && <ProjectInsightsSectie projects={decisionData.projectInsights} />}
-
-        {/* Tijdsbesteding */}
-        <TijdsbestedingSectie topProjecten={data.topProjecten} heatmapData={heatmapData ?? []} />
-
-        {/* Per medewerker */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
-          <div className="flex items-center gap-3 mb-6">
-            <PieChart className="w-5 h-5 text-purple-400" />
-            <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Per medewerker</h2>
-            <span className="text-xs text-autronis-text-secondary ml-auto">{jaar}</span>
-          </div>
-          {data.perGebruiker.length === 0 ? (
-            <p className="text-sm text-autronis-text-secondary">Geen data beschikbaar.</p>
-          ) : (
-            <div className="space-y-5">
-              {data.perGebruiker.map((g, i) => {
-                const totaalUren = data.perGebruiker.reduce((s, x) => s + x.uren, 0);
-                const percentage = totaalUren > 0 ? (g.uren / totaalUren) * 100 : 0;
-                const kleuren = ["bg-autronis-accent", "bg-blue-400", "bg-purple-400", "bg-yellow-400"];
-                return (
-                  <div key={g.naam}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-autronis-text-primary">{g.naam}</span>
-                      <div className="flex items-center gap-4 text-sm text-autronis-text-secondary tabular-nums">
-                        <span>{Math.round(g.uren)}u</span>
-                        <span>{formatBedrag(g.omzet)}</span>
+            {data.perGebruiker.length === 0 ? (
+              <p className="text-sm text-autronis-text-secondary">Geen data beschikbaar.</p>
+            ) : (
+              <div className="space-y-5">
+                {data.perGebruiker.map((g, i) => {
+                  const totaalUren = data.perGebruiker.reduce((s, x) => s + x.uren, 0);
+                  const percentage = totaalUren > 0 ? (g.uren / totaalUren) * 100 : 0;
+                  const kleuren = ["bg-autronis-accent", "bg-blue-400", "bg-purple-400", "bg-yellow-400"];
+                  return (
+                    <div key={g.naam}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-autronis-text-primary">{g.naam}</span>
+                        <div className="flex items-center gap-4 text-sm text-autronis-text-secondary tabular-nums">
+                          <span>{Math.round(g.uren)}u</span>
+                          <span>{formatBedrag(g.omzet)}</span>
+                        </div>
+                      </div>
+                      <div className="w-full h-3 bg-autronis-bg rounded-full overflow-hidden">
+                        <motion.div
+                          className={cn("h-full rounded-full", kleuren[i % kleuren.length])}
+                          initial={{ width: "0%" }}
+                          animate={{ width: `${percentage}%` }}
+                          transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
+                        />
                       </div>
                     </div>
-                    <div className="w-full h-3 bg-autronis-bg rounded-full overflow-hidden">
-                      <motion.div
-                        className={cn("h-full rounded-full", kleuren[i % kleuren.length])}
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${percentage}%` }}
-                        transition={{ duration: 0.6, delay: i * 0.1, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Activiteit heatmap — with fade-in */}
+        {/* Activiteit heatmap */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -1338,6 +1308,34 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* ═══════════ BLOK 3: GELD ═══════════ */}
+
+        {/* Forecast + Pipeline */}
+        {decisionData && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ForecastUpgradedSectie forecast={decisionData.forecast} />
+            <PipelineSectie pipeline={decisionData.pipeline} />
+          </div>
+        )}
+
+        {/* Cashflow */}
+        {decisionData && <CashflowSectie cf={decisionData.cashflow} />}
+
+        {/* Omzet per klant + Client dependency */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 sm:p-6 lg:p-7">
+            <div className="flex items-center gap-3 mb-6">
+              <PieChart className="w-5 h-5 text-autronis-accent" />
+              <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Omzet per klant</h2>
+              <span className="text-xs text-autronis-text-secondary ml-auto">{jaar}</span>
+            </div>
+            <DonutChart segments={omzetPerKlant} />
+          </div>
+          {decisionData && <ClientDependencySectie dep={decisionData.clientDependency} />}
+        </div>
+
+        {/* Rate analysis + Project insights */}
+        {decisionData && <RateAnalysisSectie rates={decisionData.rateAnalysis} />}
+        {decisionData && <ProjectInsightsSectie projects={decisionData.projectInsights} />}
       </div>
     </PageTransition>
   );

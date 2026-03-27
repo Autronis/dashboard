@@ -69,6 +69,33 @@ NEXT_PUBLIC_URL=...       # Publieke URL voor webhooks/links
 NOTION_API_KEY=...        # Notion integratie
 ```
 
+## Team Sync (VERPLICHT)
+Dit project wordt gedeeld door Sem (id=1) en Syb (id=2). Gebruik de team sync API bij ELKE sessie.
+
+### Bij start van sessie
+Check wie waar aan werkt en welke taken vrij zijn:
+```bash
+curl -H "x-api-key: $SESSION_SECRET" "https://dashboard.autronis.nl/api/team/sync?projectId=9"
+```
+
+### Bij start van een taak
+Claim de taak zodat de ander hem niet pakt (409 = al bezet, pak een andere):
+```bash
+curl -X POST -H "x-api-key: $SESSION_SECRET" -H "Content-Type: application/json" \
+  "https://dashboard.autronis.nl/api/team/sync" \
+  -d '{"gebruikerId": ID, "type": "taak_gepakt", "taakId": TAAK_ID, "projectId": 9, "bericht": "Begonnen aan TITEL", "taakStatus": "bezig"}'
+```
+
+### Bij afronding
+```bash
+curl -X POST -H "x-api-key: $SESSION_SECRET" -H "Content-Type: application/json" \
+  "https://dashboard.autronis.nl/api/team/sync" \
+  -d '{"gebruikerId": ID, "type": "taak_afgerond", "taakId": TAAK_ID, "projectId": 9, "bericht": "Afgerond: TITEL", "taakStatus": "afgerond"}'
+```
+
+### Nieuwe taken aanmaken
+Als je features bouwt die niet als taak bestaan, maak ze aan via POST /api/taken en gebruik de sync API.
+
 ## Regels
 - Code altijd in het Engels, UI-teksten in het Nederlands
 - Nooit `any` in TypeScript

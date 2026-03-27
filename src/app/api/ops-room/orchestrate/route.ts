@@ -181,6 +181,60 @@ Reageer ALLEEN met JSON:
       }
     }
 
+    // === FAST-TRACK: Projects started from Ideeën already have a plan ===
+    if (bron === "ideeen" && projectId) {
+      await ensureTable();
+      const now = new Date().toISOString();
+
+      // Build plan from existing tasks in the database
+      const existingTaken = await db.all(sql`
+        SELECT titel, fase, volgorde, uitvoerder FROM taken
+        WHERE project_id = ${projectId} ORDER BY volgorde ASC
+      `) as { titel: string; fase: string | null; volgorde: number; uitvoerder: string | null }[];
+
+      if (existingTaken.length > 0) {
+        // Map tasks to Ops Room plan format with agent assignment
+        const agentPool = team === "syb"
+          ? ["vincent", "adam", "noah", "nikkie", "xia", "thijs", "leonard", "rijk", "coen", "senna"]
+          : ["wout", "bas", "jack", "gabriel", "tijmen", "pedro", "finn", "rodi", "coen", "brent"];
+
+        const planTaken = existingTaken.map((t, i) => ({
+          id: `task-${Date.now()}-${i}`,
+          titel: t.titel,
+          beschrijving: t.titel,
+          bestanden: [] as string[],
+          agentId: agentPool[i % agentPool.length],
+          specialisatie: "fullstack",
+          afhankelijkVan: [] as string[],
+          status: "queued" as const,
+          resultaat: null,
+          reviewStatus: null,
+        }));
+
+        const planData = {
+          beschrijving: opdracht,
+          taken: planTaken,
+        };
+
+        // Save as already in_progress — no intake, no approval needed
+        await db.run(sql`
+          INSERT INTO orchestrator_commands (opdracht, status, plan_json, bron, project_id, bijgewerkt)
+          VALUES (${opdracht}, 'in_progress', ${JSON.stringify(planData)}, 'ideeen', ${projectId}, ${now})
+        `);
+
+        const inserted = await db.all(sql`SELECT id FROM orchestrator_commands ORDER BY id DESC LIMIT 1`) as { id: number }[];
+        const cmdId = inserted[0]?.id;
+
+        return NextResponse.json({
+          plan: planData,
+          commandId: cmdId,
+          projectId,
+          bron: "ideeen",
+          autoStart: true,
+        });
+      }
+    }
+
     // Always save command to DB first (so it shows up in ApprovalPanel even if plan fails)
     await ensureTable();
     const now = new Date().toISOString();

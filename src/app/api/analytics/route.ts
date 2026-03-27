@@ -109,16 +109,12 @@ export async function GET(req: NextRequest) {
       .from(klanten);
     const klantData = new Map(klantList.map((k) => [k.id, k]));
 
-    // === KPIs (uren uit screen time, omzet uit tijdregistraties) ===
-    let urenDitJaar = 0;
-    for (const e of screenEntries) {
-      urenDitJaar += (e.duurSeconden || 0) / 3600;
-    }
+    // === KPIs (uren uit screen time met merged intervals, omzet uit tijdregistraties) ===
+    const urenDitJaarSec = await getUniqueScreenTimeSeconds(jaarStart, jaarEind);
+    const urenDitJaar = urenDitJaarSec / 3600;
 
-    let urenVorigJaar = 0;
-    for (const e of vorigJaarScreen) {
-      urenVorigJaar += (e.duurSeconden || 0) / 3600;
-    }
+    const urenVorigJaarSec = await getUniqueScreenTimeSeconds(vorigJaarStart, vorigJaarEind);
+    const urenVorigJaar = urenVorigJaarSec / 3600;
 
     let omzetDitJaar = 0;
     for (const e of entries) {
@@ -142,17 +138,12 @@ export async function GET(req: NextRequest) {
       if (e.klantId) actieveKlantIds.add(e.klantId);
     }
 
-    // === Maanden (uren uit screen time) ===
+    // === Maanden (uren uit screen time met merged intervals) ===
+    const screenTimePerMaand = await getUniqueScreenTimePerMonth(jaar);
+
     const maanden = MAAND_LABELS.map((label, i) => {
       const maandStr = `${jaar}-${String(i + 1).padStart(2, "0")}`;
-
-      // Screen time uren
-      let uren = 0;
-      for (const e of screenEntries) {
-        if (e.startTijd?.startsWith(maandStr)) {
-          uren += (e.duurSeconden || 0) / 3600;
-        }
-      }
+      const uren = (screenTimePerMaand.get(maandStr) || 0) / 3600;
 
       // Omzet uit tijdregistraties
       let omzet = 0;

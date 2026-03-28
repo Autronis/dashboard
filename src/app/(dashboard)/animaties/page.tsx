@@ -626,19 +626,14 @@ export default function AnimatiesPage() {
       setKieError("Genereer eerst afbeelding A en B. De video gaat van B (start) → A (eind).");
       return;
     }
-    const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
-    const defaultPrompts: Record<string, string> = {
-      exploded: "Floating deconstructed product parts each individually glide and snap precisely into their correct positions, piece by piece mechanical assembly. Each component maintains its shape and slides into place with precision. No morphing, no dissolving, no recreation. Static camera, white background, photorealistic.",
-      buildup: "Scattered product components each float independently toward center, each piece maintains its exact shape and locks into its correct position one by one. Mechanical snap-fit assembly, no melting or morphing. Static camera, white background, photorealistic.",
-      scatter: "Hundreds of small product fragments drift inward from all directions, each piece finding its exact position and clicking into place. Reverse shatter effect, precise reassembly. Static camera, white background, photorealistic.",
-      glowup: "Dark product silhouette gradually illuminates from within, internal glow spreading through seams and edges until fully lit and visible. No shape change, only lighting transition. Static camera, white background.",
-      wireframe: "Wireframe mesh gradually fills with solid materials, each polygon face becoming opaque with correct material texture. Digital to physical transformation. Static camera, white background.",
-      xray: "Transparent x-ray view of product gradually becomes opaque, outer shell materializing while internal components remain briefly visible then covered. Static camera, white background.",
-      liquid: "Liquid metal pools rise and solidify into precise product components, each pool forming a specific part. No random morphing. Static camera, white background.",
-      context: "Product floating on white background gently descends onto a real desk surface as the environment fades in around it. Static camera, smooth transition.",
-      material: "Product surface material smoothly transitions from glass to brushed metal to warm wood, maintaining exact same shape throughout. Static camera, white background.",
-    };
-    const videoPrompt = kieVideoPrompt.trim() || defaultPrompts[eindEffect] || `Each deconstructed component individually slides and snaps into its correct position, precise mechanical assembly, no morphing. Static camera, white background, photorealistic.`;
+    // Get prompt from preset or custom input
+    let videoPrompt: string;
+    if (kieVideoPrompt.trim()) {
+      videoPrompt = kieVideoPrompt.trim();
+    } else {
+      const preset = VIDEO_TRANSITIE_PRESETS.find(p => p.key === videoTransitiePreset);
+      videoPrompt = (preset && "prompt" in preset) ? preset.prompt : "Each component glides precisely into its correct position, mechanical snap-fit assembly. Static camera, white background, photorealistic.";
+    }
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/fal-video", {
@@ -1469,16 +1464,38 @@ export default function AnimatiesPage() {
                       </div>
                     </div>
                   </div>
-                  {/* Video prompt */}
+                  {/* Transitie preset dropdown */}
                   <div className="mb-2">
-                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Transitie prompt (optioneel — stuurt de beweging aan)</label>
-                    <input
-                      value={kieVideoPrompt}
-                      onChange={e => setKieVideoPrompt(e.target.value)}
-                      placeholder="Laat leeg voor standaard prompt, of typ je eigen transitie beschrijving..."
-                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
-                    />
+                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Transitie stijl</label>
+                    <div className="relative">
+                      <button onClick={() => setVideoTransitieDropdownOpen(v => !v)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary hover:border-autronis-accent/50 transition-all">
+                        <span className="font-semibold">{VIDEO_TRANSITIE_PRESETS.find(p => p.key === videoTransitiePreset)?.label}</span>
+                        <ChevronDown className="w-3.5 h-3.5 text-autronis-text-tertiary" />
+                      </button>
+                      {videoTransitieDropdownOpen && (
+                        <div className="absolute bottom-full left-0 mb-1 w-full bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-40 py-1 max-h-72 overflow-y-auto">
+                          {VIDEO_TRANSITIE_PRESETS.map(p => (
+                            <button key={p.key} onClick={() => { setVideoTransitiePreset(p.key); setVideoTransitieDropdownOpen(false); setKieVideoPrompt(""); }}
+                              className={`w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-autronis-bg transition-all ${videoTransitiePreset === p.key ? "bg-autronis-accent/10" : ""}`}>
+                              <div className="flex-1">
+                                <p className={`text-sm font-semibold ${videoTransitiePreset === p.key ? "text-autronis-accent" : "text-autronis-text-primary"}`}>{p.label}</p>
+                                <p className="text-xs text-autronis-text-tertiary">{p.desc}</p>
+                              </div>
+                              {videoTransitiePreset === p.key && <Check className="w-4 h-4 text-autronis-accent shrink-0" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                  {videoTransitiePreset === "custom" && (
+                    <div className="mb-2">
+                      <input value={kieVideoPrompt} onChange={e => setKieVideoPrompt(e.target.value)}
+                        placeholder="Beschrijf je eigen transitie..."
+                        className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {[5, 10].map(d => (
@@ -1541,11 +1558,39 @@ export default function AnimatiesPage() {
                       className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
                   </div>
                 </div>
+                {/* Transitie preset dropdown */}
                 <div className="mb-2">
-                  <input value={kieVideoPrompt} onChange={e => setKieVideoPrompt(e.target.value)}
-                    placeholder="Transitie prompt (optioneel)"
-                    className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Transitie stijl</label>
+                  <div className="relative">
+                    <button onClick={() => setVideoTransitieDropdownOpen(v => !v)}
+                      className="w-full flex items-center justify-between px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary hover:border-autronis-accent/50 transition-all">
+                      <span className="font-semibold">{VIDEO_TRANSITIE_PRESETS.find(p => p.key === videoTransitiePreset)?.label}</span>
+                      <ChevronDown className="w-3.5 h-3.5 text-autronis-text-tertiary" />
+                    </button>
+                    {videoTransitieDropdownOpen && (
+                      <div className="absolute top-full left-0 mt-1 w-full bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-40 py-1 max-h-72 overflow-y-auto">
+                        {VIDEO_TRANSITIE_PRESETS.map(p => (
+                          <button key={p.key} onClick={() => { setVideoTransitiePreset(p.key); setVideoTransitieDropdownOpen(false); setKieVideoPrompt(""); }}
+                            className={`w-full text-left px-3 py-2.5 flex items-center gap-3 hover:bg-autronis-bg transition-all ${videoTransitiePreset === p.key ? "bg-autronis-accent/10" : ""}`}>
+                            <div className="flex-1">
+                              <p className={`text-sm font-semibold ${videoTransitiePreset === p.key ? "text-autronis-accent" : "text-autronis-text-primary"}`}>{p.label}</p>
+                              <p className="text-xs text-autronis-text-tertiary">{p.desc}</p>
+                            </div>
+                            {videoTransitiePreset === p.key && <Check className="w-4 h-4 text-autronis-accent shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
+                {/* Custom prompt input (only for "custom" preset or to override) */}
+                {videoTransitiePreset === "custom" && (
+                  <div className="mb-2">
+                    <input value={kieVideoPrompt} onChange={e => setKieVideoPrompt(e.target.value)}
+                      placeholder="Beschrijf je eigen transitie..."
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  </div>
+                )}
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1">
                     {[5, 10].map(d => (

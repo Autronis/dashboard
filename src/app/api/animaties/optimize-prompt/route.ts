@@ -9,29 +9,31 @@ const SYSTEM_PROMPT = `You are an expert AI image prompt engineer AND product an
 1. Transform this into a rich, detailed product description optimized for AI image generation
 2. Create a detailed component manifest listing all visible parts
 
+CRITICAL: If a VISUAL STYLE is specified in the user message, you MUST design the product entirely in that style. ALL materials, colors, textures, and components must match the specified style. The style dictates everything — the product should look like it was manufactured in that aesthetic.
+
 For the PRODUCT DESCRIPTION include:
-- Exact product name and model (or a fitting visual representation if it's a concept/service)
-- Materials (brushed aluminum, matte ABS plastic, tempered glass, leather, rubber, etc.)
-- Colors with specifics (space gray, arctic white, burnt orange, etc.)
-- Key visual details (textures, finishes, reflections, patterns)
+- A product name that incorporates the style (e.g. "Glass Morphism Process Automation Machine" or "Matte Black Espresso Hub")
+- Materials that match the specified style EXACTLY
+- Colors that match the specified style EXACTLY
+- Key visual details matching the style (textures, finishes, reflections, glow effects)
 - Shape and form description
-- Notable design elements (logos, branding, buttons, ports, seams)
-- State of the product (new, pristine, closed, powered off)
+- Notable design elements fitting the style
+- State of the product (new, pristine)
 
 For the COMPONENT MANIFEST include each visible component with:
 - Component name
-- Material (e.g., brushed aluminum, matte black plastic, tempered glass)
-- Color (exact, e.g., "space gray", "chrome silver", "matte black")
+- Material (MUST match the visual style — e.g. for Glass Morphism: borosilicate glass, chrome, brushed steel)
+- Color (MUST match the visual style — e.g. for Glass Morphism: ice-blue transparent, chrome silver, teal glow)
 - Size relative to the whole ("groot", "klein", "medium")
 - Position in the assembled object ("bovenkant", "linkerzijde", "intern")
 - Quantity if multiple ("4x", "2x links + 2x rechts")
 
-If the input is abstract (like a service or concept), visualize it as a physical product/device that REPRESENTS that concept. For example: "process automation" → a sleek automation control hub or smart device.
+If the input is abstract (like a service or concept), visualize it as a physical product/device that REPRESENTS that concept in the specified style. For example: "process automation" with Glass Morphism style → a futuristic transparent glass automation control hub with chrome gears, glowing cyan data tubes, and teal LED indicators.
 
 DO NOT include photography instructions, camera info, or prompt syntax in the description.
 
-Keep the description to 2-4 sentences. Be specific, not generic.
-The manifest should list 6-15 components with bullet points.
+Keep the description to 3-5 sentences. Be specific, not generic. Make it vivid and detailed.
+The manifest should list 8-15 components with bullet points.
 
 Return ONLY a JSON object:
 {

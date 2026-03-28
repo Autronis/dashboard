@@ -1,21 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { prompt, firstFrameImage, lastFrameImage, duration } = await req.json() as {
+  const { prompt } = await req.json() as {
     prompt?: string;
     firstFrameImage?: string;
     lastFrameImage?: string;
     duration?: number;
   };
 
-  if (!firstFrameImage) {
-    return NextResponse.json({ error: "Start frame afbeelding (A) is verplicht." }, { status: 400 });
+  if (!prompt?.trim()) {
+    return NextResponse.json({ error: "Prompt is verplicht." }, { status: 400 });
   }
 
-  // Kie.ai Runway supports ONE input image (start frame) via imageUrl.
-  // The prompt guides the transition. Keep it short and focused on motion.
-  const videoPrompt = prompt?.trim() || "smooth satisfying mechanical transition, white background, product photography";
-
+  // Kie.ai runway/generate is text-to-video only.
+  // imageUrl and duration are accepted but ignored by the API.
   const res = await fetch("https://api.kie.ai/api/v1/runway/generate", {
     method: "POST",
     headers: {
@@ -23,10 +21,9 @@ export async function POST(req: NextRequest) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: videoPrompt.slice(0, 200),
-      duration: duration ?? 5,
+      prompt: prompt.slice(0, 500),
+      duration: 10,
       quality: "720p",
-      imageUrl: firstFrameImage,
     }),
   });
 

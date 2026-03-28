@@ -552,33 +552,16 @@ export default function AnimatiesPage() {
 
   // ── KIE: Video generation
   const generateKieVideo = async () => {
-    if (!kieStartFrame.trim()) {
-      setKieError("Genereer eerst afbeelding A (start frame) via tab A hierboven.");
-      return;
-    }
-    // Video flow: B (deconstructed/effect) → A (assembled)
-    // Use image B as start frame, prompt describes assembly/transition back to whole
-    const startFrame = kieEndFrame.trim() || kieStartFrame.trim();
-    const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
-    const motionPrompt = eindEffect === "buildup" || eindEffect === "scatter" || eindEffect === "liquid"
-      ? "particles and pieces smoothly converge and assemble into a complete pristine product, white background, satisfying mechanical assembly"
-      : eindEffect === "exploded"
-      ? "floating deconstructed pieces smoothly come together and snap into a fully assembled product, white background, satisfying precision assembly"
-      : eindEffect === "glowup"
-      ? "dark silhouette gradually illuminates from within, glowing brighter until fully lit, white background"
-      : eindEffect === "wireframe"
-      ? "wireframe mesh gradually fills in with solid materials, transforming into a real product, white background"
-      : `smooth ${effectLabel.toLowerCase()} reverse transition into fully assembled product, white background, satisfying motion`;
+    if (!prompts) return;
+    // Kie.ai runway = text-to-video only (no image input support)
+    // Use the editable video prompt
+    const videoPrompt = kieVideoPrompt.trim() || prompts.promptC.slice(0, 500);
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/kie-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: motionPrompt,
-          duration: kieDuration,
-          firstFrameImage: startFrame,
-        }),
+        body: JSON.stringify({ prompt: videoPrompt }),
       });
       const data = await res.json() as { taskId?: string; error?: string };
       if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }

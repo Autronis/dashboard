@@ -13,7 +13,7 @@ import {
 } from "@/lib/db/schema";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql, ne, or } from "drizzle-orm";
+import { eq, and, gte, lte, sql, ne, or, isNull } from "drizzle-orm";
 
 // ============ HELPERS ============
 
@@ -64,7 +64,8 @@ export async function GET() {
       .where(
         and(
           gte(tijdregistraties.startTijd, dag90geleden),
-          lte(tijdregistraties.startTijd, vandaag + "T23:59:59")
+          lte(tijdregistraties.startTijd, vandaag + "T23:59:59"),
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       )
       .all();
@@ -87,7 +88,8 @@ export async function GET() {
       .where(
         and(
           gte(tijdregistraties.startTijd, jaarStart),
-          lte(tijdregistraties.startTijd, jaarEind + "T23:59:59")
+          lte(tijdregistraties.startTijd, jaarEind + "T23:59:59"),
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       )
       .all();
@@ -107,14 +109,14 @@ export async function GET() {
       })
       .from(projecten)
       .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1)))
+      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
       .all();
 
     // All clients
     const alleKlanten = await db
       .select()
       .from(klanten)
-      .where(eq(klanten.isActief, 1))
+      .where(and(eq(klanten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
       .all();
 
     // Open invoices (verzonden + te_laat)

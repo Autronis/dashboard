@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tijdregistraties, projecten, klanten, gebruikers, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, or, isNull } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 const MAAND_LABELS = ["Jan", "Feb", "Mrt", "Apr", "Mei", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dec"];
@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
         and(
           gte(tijdregistraties.startTijd, jaarStart),
           lte(tijdregistraties.startTijd, jaarEind),
-          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+          sql`${tijdregistraties.eindTijd} IS NOT NULL`,
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       );
 
@@ -55,7 +56,8 @@ export async function GET(req: NextRequest) {
         and(
           gte(tijdregistraties.startTijd, vorigJaarStart),
           lte(tijdregistraties.startTijd, vorigJaarEind),
-          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+          sql`${tijdregistraties.eindTijd} IS NOT NULL`,
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       );
 
@@ -92,7 +94,8 @@ export async function GET(req: NextRequest) {
 
     const klantList = await db
       .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief })
-      .from(klanten);
+      .from(klanten)
+      .where(or(eq(klanten.isDemo, 0), isNull(klanten.isDemo)));
     const klantData = new Map(klantList.map((k) => [k.id, k]));
 
     // === KPIs (uren uit screen time via berekenActieveUren) ===
@@ -112,10 +115,11 @@ export async function GET(req: NextRequest) {
 
     const gemiddeldUurtarief = urenDitJaar > 0 ? omzetDitJaar / urenDitJaar : 0;
 
-    // Actieve klanten: uit screen time + tijdregistraties
+    // Actieve klanten: uit screen time + tijdregistraties (excl. demo)
+    const echteKlantIds = new Set(klantList.map((k) => k.id));
     const actieveKlantIds = new Set<number>();
     for (const e of screenEntries) {
-      if (e.klantId) actieveKlantIds.add(e.klantId);
+      if (e.klantId && echteKlantIds.has(e.klantId)) actieveKlantIds.add(e.klantId);
     }
     for (const e of entries) {
       if (e.klantId) actieveKlantIds.add(e.klantId);

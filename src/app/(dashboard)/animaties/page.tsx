@@ -1314,13 +1314,16 @@ export default function AnimatiesPage() {
                   <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
                     <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
                   </p>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
-                      placeholder="Start frame URL (afbeelding A)"
-                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
-                      placeholder="End frame URL (afbeelding B)"
-                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2">
+                      <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                        placeholder="Start frame URL (afbeelding A) — wordt automatisch ingevuld"
+                        className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                      {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                    </div>
+                    <p className="text-[10px] text-autronis-text-tertiary mt-1">
+                      Afbeelding A is het startframe. De AI animeert het product vanuit deze foto in de geselecteerde stijl ({EIND_EFFECTEN.find(e => e.key === eindEffect)?.label}).
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">

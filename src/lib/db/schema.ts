@@ -515,6 +515,9 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   revolutTransactieId: text("revolut_transactie_id"),
   merchantNaam: text("merchant_naam"),
   merchantCategorie: text("merchant_categorie"),
+  aiBeschrijving: text("ai_beschrijving"),
+  isAbonnement: integer("is_abonnement").default(0),
+  overdodigheidScore: text("overbodigheid_score", { enum: ["noodzakelijk", "nuttig", "overbodig"] }),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 

@@ -1274,7 +1274,7 @@ export default function AnimatiesPage() {
             {logoKieError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoKieError}</p>}
             {logoKieVideoUrl && (
               <div className="mt-3 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden p-4">
-                <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" onError={() => setLogoKieVideoUrl(null)} />
                 <a href={logoKieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
                   <ExternalLink className="w-3.5 h-3.5" /> Download video
                 </a>
@@ -1363,7 +1363,7 @@ export default function AnimatiesPage() {
                 {logoKieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoKieError}</p>}
                 {logoKieVideoUrl && (
                   <div className="mt-3">
-                    <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                    <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" onError={() => setLogoKieVideoUrl(null)} />
                     <a href={logoKieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
                       <ExternalLink className="w-3.5 h-3.5" /> Download video
                     </a>
@@ -1847,7 +1847,7 @@ export default function AnimatiesPage() {
                   {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
                   {kieVideoUrl && (
                     <div className="mt-3">
-                      <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                      <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" onError={() => setKieVideoUrl(null)} />
                       <a href={kieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
                         <ExternalLink className="w-3.5 h-3.5" /> Download video
                       </a>

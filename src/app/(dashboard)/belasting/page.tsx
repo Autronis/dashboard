@@ -81,15 +81,17 @@ import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { Modal } from "@/components/ui/modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FiscaleVoordelenTab } from "./fiscale-voordelen-tab";
 
 // ============ CONSTANTS ============
 
-type TabId = "overzicht" | "acties" | "analyse" | "optimalisatie";
+type TabId = "overzicht" | "acties" | "analyse" | "optimalisatie" | "fiscaal";
 
 const tabs: { id: TabId; label: string; icon: typeof Receipt; description: string }[] = [
   { id: "overzicht", label: "Overzicht", icon: Target, description: "Jouw situatie nu" },
   { id: "acties", label: "Acties", icon: Zap, description: "Wat moet je doen" },
   { id: "analyse", label: "Analyse", icon: BarChart3, description: "Inzicht in je cijfers" },
+  { id: "fiscaal", label: "Fiscale Voordelen", icon: PiggyBank, description: "KIA, BTW, subsidies" },
   { id: "optimalisatie", label: "Optimalisatie", icon: Sparkles, description: "Bespaar meer" },
 ];
 
@@ -1816,6 +1818,8 @@ export default function BelastingPage() {
         )}
 
         {/* ===== TAB: OPTIMALISATIE ===== */}
+        {activeTab === "fiscaal" && <FiscaleVoordelenTab />}
+
         {activeTab === "optimalisatie" && (
           <div className="space-y-6">
             {/* Personal checklist */}

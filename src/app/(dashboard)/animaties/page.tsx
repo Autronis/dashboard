@@ -1807,9 +1807,9 @@ export default function AnimatiesPage() {
                         )}
                         <button
                           onClick={async () => {
-                            if (!input.trim()) return;
+                            const productDesc = input.trim() || manifestObjectNaam || "product";
                             const stijlP = getStijlPrompt();
-                            const fullPrompt = `Professional product photography of ${input.trim()} centered in frame, shot from a 3/4 angle. Clean white background (#FFFFFF), fully assembled, pristine. ${stijlP} Photorealistic, 16:9, sharp focus, Apple-style product photography. No text, no other objects.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
+                            const fullPrompt = `Professional product photography of ${productDesc} centered in frame, shot from a 3/4 angle. Clean white background (#FFFFFF), fully assembled, pristine. ${stijlP} Photorealistic, 16:9, sharp focus, Apple-style product photography. No text, no other objects.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
                             setKieImgLoading(prev => ({ ...prev, A: true }));
                             setKieImgError(prev => ({ ...prev, A: "" }));
                             const res = await fetch("/api/animaties/kie-image", {
@@ -1834,7 +1834,7 @@ export default function AnimatiesPage() {
                               }
                             }, 4000);
                           }}
-                          disabled={kieImgLoading.A || !input.trim()}
+                          disabled={kieImgLoading.A}
                           className="flex items-center gap-1 px-2 py-1 bg-autronis-accent text-white rounded-md text-[10px] font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40"
                         >
                           {kieImgLoading.A ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Genereer

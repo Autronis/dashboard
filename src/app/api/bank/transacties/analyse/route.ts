@@ -19,15 +19,36 @@ interface TransactieContext {
   gemiddeldBedrag: number;
 }
 
-async function analyseTransactie(tx: TransactieContext): Promise<{
+interface AnalyseResult {
   aiBeschrijving: string;
   isAbonnement: boolean;
   overdodigheidScore: "noodzakelijk" | "nuttig" | "overbodig";
-}> {
-  const prompt = `Analyseer deze banktransactie voor een klein AI-bureau (Autronis) en geef:
-1. Een korte Nederlandse beschrijving: wat is het, waarvoor wordt het gebruikt
-2. Is dit een abonnement? (dezelfde merchant komt ${tx.aantalKeerGezien}x voor, gemiddeld €${tx.gemiddeldBedrag.toFixed(2)})
-3. Overbodigheid score: noodzakelijk (essentieel voor bedrijfsvoering), nuttig (handig maar niet kritiek), overbodig (niet zakelijk of er zijn gratis alternatieven)
+  fiscaalType: "investering" | "kosten" | "prive";
+  subsidieMogelijkheden: string[];
+  btwBedrag: number;
+  kiaAftrek: number;
+}
+
+// KIA 2026 staffel
+function berekenKIA(bedrag: number): number {
+  if (bedrag < 2801 || bedrag > 69764) return 0;
+  // Vereenvoudigd: ~28% aftrek
+  return Math.round(bedrag * 0.28);
+}
+
+async function analyseTransactie(tx: TransactieContext): Promise<AnalyseResult> {
+  const prompt = `Analyseer deze banktransactie voor een klein AI-bureau (Autronis). Geef:
+
+1. beschrijving: Korte NL beschrijving (max 1 zin) — wat is het, waarvoor
+2. isAbonnement: true/false (merchant komt ${tx.aantalKeerGezien}x voor, gem €${tx.gemiddeldBedrag.toFixed(2)})
+3. score: noodzakelijk/nuttig/overbodig voor een AI-bureau
+4. fiscaalType: "investering" (hardware, software, apparatuur > €450), "kosten" (operationele uitgaven), of "prive" (persoonlijk)
+5. subsidieMogelijkheden: array van regelingen waarvoor dit mogelijk in aanmerking komt:
+   - "WBSO" — als het R&D/innovatie betreft (software development, AI research)
+   - "MIA" — milieu-investeringen
+   - "VAMIL" — willekeurige afschrijving milieu-investeringen
+   - "EIA" — energie-investeringen
+   - [] als geen van toepassing
 
 Transactie:
 - Merchant: ${tx.merchantNaam || tx.omschrijving}
@@ -35,49 +56,74 @@ Transactie:
 - Bedrag: €${tx.bedrag.toFixed(2)}
 - Type: ${tx.type === "af" ? "uitgave" : "inkomst"}
 - Datum: ${tx.datum}
-- Aantal keer gezien: ${tx.aantalKeerGezien}x in 90 dagen
+- Frequentie: ${tx.aantalKeerGezien}x in 90 dagen
 
-Context: Autronis is een AI- en automatiseringsbureau. Zakelijke tools (hosting, AI, development) zijn noodzakelijk. Persoonlijke uitgaven zijn overbodig.
+Context: Autronis is een AI- en automatiseringsbureau (ZZP/VOF). Zakelijke tools/hosting/AI = noodzakelijk.
 
 Antwoord ALLEEN als JSON:
 {
-  "beschrijving": "Korte Nederlandse beschrijving, max 1 zin",
+  "beschrijving": "...",
   "isAbonnement": true/false,
-  "score": "noodzakelijk" | "nuttig" | "overbodig"
+  "score": "noodzakelijk"|"nuttig"|"overbodig",
+  "fiscaalType": "investering"|"kosten"|"prive",
+  "subsidieMogelijkheden": ["WBSO"] of []
 }`;
 
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 300,
+    max_tokens: 400,
     messages: [{ role: "user", content: prompt }],
   });
 
   const raw = message.content[0].type === "text" ? message.content[0].text : "";
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    return { aiBeschrijving: "", isAbonnement: false, overdodigheidScore: "nuttig" };
+    return {
+      aiBeschrijving: "",
+      isAbonnement: false,
+      overdodigheidScore: "nuttig",
+      fiscaalType: "kosten",
+      subsidieMogelijkheden: [],
+      btwBedrag: 0,
+      kiaAftrek: 0,
+    };
   }
 
   const result = JSON.parse(jsonMatch[0]) as {
     beschrijving: string;
     isAbonnement: boolean;
     score: "noodzakelijk" | "nuttig" | "overbodig";
+    fiscaalType: "investering" | "kosten" | "prive";
+    subsidieMogelijkheden: string[];
   };
+
+  // Calculate BTW (21% standard, reverse calculation from incl.)
+  const btwBedrag = result.fiscaalType !== "prive"
+    ? Math.round((tx.bedrag / 1.21) * 0.21 * 100) / 100
+    : 0;
+
+  // Calculate KIA for investments
+  const kiaAftrek = result.fiscaalType === "investering"
+    ? berekenKIA(tx.bedrag)
+    : 0;
 
   return {
     aiBeschrijving: result.beschrijving,
     isAbonnement: result.isAbonnement,
     overdodigheidScore: result.score,
+    fiscaalType: result.fiscaalType,
+    subsidieMogelijkheden: result.subsidieMogelijkheden ?? [],
+    btwBedrag,
+    kiaAftrek,
   };
 }
 
-// POST: Analyse all unanalysed transactions (bulk)
+// POST: Analyse unanalysed transactions
 export async function POST(req: NextRequest) {
   await requireAuth();
 
   const { ids } = await req.json() as { ids?: number[] };
 
-  // Get transactions that need analysis
   let transacties;
   if (ids?.length) {
     transacties = await db
@@ -106,7 +152,6 @@ export async function POST(req: NextRequest) {
   let geanalyseerd = 0;
 
   for (const tx of transacties) {
-    // Count how often this merchant appears
     const merchantKey = tx.merchantNaam || tx.omschrijving;
     const [freq] = await db
       .select({
@@ -143,22 +188,27 @@ export async function POST(req: NextRequest) {
           aiBeschrijving: analyse.aiBeschrijving,
           isAbonnement: analyse.isAbonnement ? 1 : 0,
           overdodigheidScore: analyse.overdodigheidScore,
+          fiscaalType: analyse.fiscaalType,
+          subsidieMogelijkheden: JSON.stringify(analyse.subsidieMogelijkheden),
+          btwBedrag: analyse.btwBedrag,
+          kiaAftrek: analyse.kiaAftrek,
         })
         .where(eq(bankTransacties.id, tx.id));
 
       geanalyseerd++;
     } catch {
-      // Skip failed analyses, continue with next
+      // Skip failed, continue
     }
   }
 
   return NextResponse.json({ geanalyseerd, totaal: transacties.length });
 }
 
-// GET: Get AI-detected subscriptions overview
+// GET: AI-detected subscriptions + fiscal overview
 export async function GET() {
   await requireAuth();
 
+  // Subscriptions
   const abos = await db
     .select({
       merchantNaam: bankTransacties.merchantNaam,
@@ -182,21 +232,72 @@ export async function GET() {
 
   const totaalMaand = abos.reduce((sum, a) => sum + a.gemiddeldBedrag, 0);
 
-  // Count unanalysed
+  // Unanalysed count
   const [unanalysed] = await db
     .select({ count: sql<number>`COUNT(*)` })
     .from(bankTransacties)
+    .where(and(isNull(bankTransacties.aiBeschrijving), eq(bankTransacties.type, "af")));
+
+  // Fiscal overview: investments this year
+  const jaar = new Date().getFullYear();
+  const investeringen = await db
+    .select()
+    .from(bankTransacties)
     .where(
       and(
-        isNull(bankTransacties.aiBeschrijving),
-        eq(bankTransacties.type, "af")
+        eq(bankTransacties.type, "af"),
+        eq(bankTransacties.fiscaalType, "investering"),
+        sql`${bankTransacties.datum} >= '${jaar}-01-01'`
+      )
+    )
+    .orderBy(sql`${bankTransacties.datum} DESC`);
+
+  const totaalInvesteringen = investeringen.reduce((s, t) => s + t.bedrag, 0);
+  const totaalKIA = investeringen.reduce((s, t) => s + (t.kiaAftrek ?? 0), 0);
+  const totaalBTWTerug = await db
+    .select({ totaal: sql<number>`SUM(${bankTransacties.btwBedrag})` })
+    .from(bankTransacties)
+    .where(
+      and(
+        eq(bankTransacties.type, "af"),
+        sql`${bankTransacties.fiscaalType} != 'prive' OR ${bankTransacties.fiscaalType} IS NULL`,
+        sql`${bankTransacties.btwBedrag} > 0`,
+        sql`${bankTransacties.datum} >= '${jaar}-01-01'`
       )
     );
+
+  // Subsidie mogelijkheden
+  const subsidieTransacties = investeringen.filter(t => {
+    if (!t.subsidieMogelijkheden) return false;
+    try {
+      const arr = JSON.parse(t.subsidieMogelijkheden) as string[];
+      return arr.length > 0;
+    } catch { return false; }
+  });
 
   return NextResponse.json({
     abonnementen: abos,
     totaalMaand,
     totaalJaar: totaalMaand * 12,
     ongeanalyseerd: unanalysed?.count ?? 0,
+    fiscaal: {
+      investeringen: investeringen.map(t => ({
+        id: t.id,
+        naam: t.merchantNaam || t.omschrijving,
+        bedrag: t.bedrag,
+        datum: t.datum,
+        aiBeschrijving: t.aiBeschrijving,
+        kiaAftrek: t.kiaAftrek ?? 0,
+        btwBedrag: t.btwBedrag ?? 0,
+        subsidieMogelijkheden: t.subsidieMogelijkheden ? JSON.parse(t.subsidieMogelijkheden) as string[] : [],
+      })),
+      totaalInvesteringen,
+      totaalKIA,
+      totaalBTWTerug: totaalBTWTerug[0]?.totaal ?? 0,
+      kiaRuimte: Math.max(0, 69764 - totaalInvesteringen),
+      kiaMinimum: 2801,
+      kiaMaximum: 69764,
+      subsidieTransacties: subsidieTransacties.length,
+    },
   });
 }

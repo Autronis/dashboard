@@ -125,7 +125,7 @@ async function analyseerTransacties(transactieIds: number[]): Promise<number> {
     try {
       const message = await anthropic.messages.create({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 300,
+        max_tokens: 400,
         messages: [{
           role: "user",
           content: `Analyseer deze banktransactie voor een klein AI-bureau (Autronis):
@@ -135,8 +135,14 @@ async function analyseerTransacties(transactieIds: number[]): Promise<number> {
 - Datum: ${tx.datum}
 - Frequentie: ${freq?.aantal ?? 1}x in 90 dagen, gemiddeld €${(freq?.gemiddeld ?? tx.bedrag).toFixed(2)}
 
-Geef: 1) Korte NL beschrijving (max 1 zin), 2) Is dit een abonnement? 3) Score: noodzakelijk/nuttig/overbodig voor een AI-bureau.
-Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score":"noodzakelijk"|"nuttig"|"overbodig"}`,
+Geef:
+1) beschrijving: Korte NL beschrijving (max 1 zin)
+2) isAbonnement: true/false
+3) score: noodzakelijk/nuttig/overbodig
+4) fiscaalType: "investering" (hardware/software/apparatuur > €450), "kosten" (operationeel), "prive" (persoonlijk)
+5) subsidieMogelijkheden: ["WBSO","MIA","VAMIL","EIA"] of []
+
+Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score":"...","fiscaalType":"...","subsidieMogelijkheden":[]}`,
         }],
       });
 
@@ -147,7 +153,14 @@ Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score
           beschrijving: string;
           isAbonnement: boolean;
           score: "noodzakelijk" | "nuttig" | "overbodig";
+          fiscaalType?: "investering" | "kosten" | "prive";
+          subsidieMogelijkheden?: string[];
         };
+
+        const fiscaalType = result.fiscaalType ?? "kosten";
+        const btwBedrag = fiscaalType !== "prive" ? Math.round((tx.bedrag / 1.21) * 0.21 * 100) / 100 : 0;
+        const kiaAftrek = fiscaalType === "investering" && tx.bedrag >= 2801 && tx.bedrag <= 69764
+          ? Math.round(tx.bedrag * 0.28) : 0;
 
         await db
           .update(bankTransacties)
@@ -155,6 +168,10 @@ Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score
             aiBeschrijving: result.beschrijving,
             isAbonnement: result.isAbonnement ? 1 : 0,
             overdodigheidScore: result.score,
+            fiscaalType,
+            subsidieMogelijkheden: JSON.stringify(result.subsidieMogelijkheden ?? []),
+            btwBedrag,
+            kiaAftrek,
           })
           .where(eq(bankTransacties.id, id));
 

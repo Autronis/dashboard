@@ -146,6 +146,9 @@ export default function AnimatiesPage() {
   const [kieCleanBg, setKieCleanBg] = useState(true);
   const [kieExtraPrompt, setKieExtraPrompt] = useState("");
 
+  // ── Kie.ai video prompt (editable)
+  const [kieVideoPrompt, setKieVideoPrompt] = useState("");
+
   // ── Kie.ai state
   const [kieStartFrame, setKieStartFrame] = useState("");
   const [kieEndFrame, setKieEndFrame] = useState("");
@@ -672,7 +675,7 @@ export default function AnimatiesPage() {
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
     B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
-    C: { label: "Video Transitie", icon: Clapperboard, instruction: kieImgUrl.B ? "Afbeelding B → A: de video begint bij het effect en assembleert naar het product" : "Genereer eerst afbeelding A en B" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Text-to-video — pas de prompt aan en genereer" },
   } as const;
 
   const activePrompt = prompts
@@ -1314,39 +1317,21 @@ export default function AnimatiesPage() {
                   <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
                     <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
                   </p>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div>
-                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — {EIND_EFFECTEN.find(e => e.key === eindEffect)?.label})</label>
-                      <div className="flex items-center gap-2">
-                        <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
-                          placeholder="URL afbeelding B"
-                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                        {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — Assembled)</label>
-                      <div className="flex items-center gap-2">
-                        <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
-                          placeholder="URL afbeelding A"
-                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                        {kieEndFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
-                      </div>
-                    </div>
+                  <div className="mb-2">
+                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Video prompt (bewerkbaar — dit stuurt de video aan)</label>
+                    <textarea
+                      value={kieVideoPrompt || (prompts?.promptC?.slice(0, 500) ?? "")}
+                      onChange={e => setKieVideoPrompt(e.target.value)}
+                      rows={3}
+                      placeholder="Beschrijf de video transitie..."
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 resize-y"
+                    />
+                    <p className="text-[10px] text-autronis-text-tertiary mt-1">
+                      Kie.ai genereert video puur op basis van tekst (geen image input). Pas de prompt aan voor het beste resultaat. Video duurt ~10 seconden.
+                    </p>
                   </div>
-                  <p className="text-[10px] text-autronis-text-tertiary mb-2">
-                    Video gaat van B → A. Kie.ai gebruikt alleen het startframe (B) — het eindframe is ter referentie voor de prompt.
-                  </p>
                   <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {[5, 8, 10].map(d => (
-                        <button key={d} onClick={() => setKieDuration(d)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
-                          {d}s
-                        </button>
-                      ))}
-                    </div>
-                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim()}
+                    <button onClick={generateKieVideo} disabled={kieLoading || !prompts}
                       className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                       {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                     </button>

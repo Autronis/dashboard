@@ -368,7 +368,8 @@ export async function GET(req: NextRequest) {
     interface DeepWorkBlock {
       startTijd: string;
       eindTijd: string;
-      duurMin: number;
+      duurMin: number;       // total span (start to end, including gaps)
+      actieveMin: number;    // only actual productive session time (excluding gaps)
       beschrijvingen: string[];
       beschrijvingDuren: number[]; // parallel: session duration per beschrijving
     }
@@ -383,20 +384,22 @@ export async function GET(req: NextRequest) {
           // Check gap from previous block end to this session start
           const gapMin = (new Date(sessies[i].startTijd).getTime() - new Date(currentBlock.eindTijd).getTime()) / 60000;
           if (gapMin <= DEEP_WORK_GAP_MAX_MIN) {
-            // Extend block (include gap time as part of the block span)
+            // Extend block
             currentBlock.eindTijd = sessies[i].eindTijd;
             currentBlock.duurMin = (new Date(currentBlock.eindTijd).getTime() - new Date(currentBlock.startTijd).getTime()) / 60000;
+            currentBlock.actieveMin += sessieDuurMin[i];
             if (sessies[i].beschrijving) {
               currentBlock.beschrijvingen.push(sessies[i].beschrijving);
               currentBlock.beschrijvingDuren.push(sessieDuurMin[i]);
             }
           } else {
             // Gap too big — save current block and start new one
-            if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
+            if (currentBlock.actieveMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
             currentBlock = {
               startTijd: sessies[i].startTijd,
               eindTijd: sessies[i].eindTijd,
               duurMin: sessieDuurMin[i],
+              actieveMin: sessieDuurMin[i],
               beschrijvingen: sessies[i].beschrijving ? [sessies[i].beschrijving] : [],
               beschrijvingDuren: sessies[i].beschrijving ? [sessieDuurMin[i]] : [],
             };
@@ -407,21 +410,21 @@ export async function GET(req: NextRequest) {
             startTijd: sessies[i].startTijd,
             eindTijd: sessies[i].eindTijd,
             duurMin: sessieDuurMin[i],
+            actieveMin: sessieDuurMin[i],
             beschrijvingen: sessies[i].beschrijving ? [sessies[i].beschrijving] : [],
             beschrijvingDuren: sessies[i].beschrijving ? [sessieDuurMin[i]] : [],
           };
         }
       } else {
         // Non-productive session — only breaks the block if it's longer than the interrupt threshold
-        // Short interruptions (≤5 min like checking Slack, quick email) don't break deep work flow
         if (currentBlock) {
           const interruptMin = sessieDuurMin[i];
           if (interruptMin > DEEP_WORK_INTERRUPT_MAX_MIN) {
-            // Long interruption or distraction — break the block
-            if (currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
+            // Long interruption — break the block
+            if (currentBlock.actieveMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
             currentBlock = null;
           } else {
-            // Short interruption — extend the block through it
+            // Short interruption — extend span but DON'T add to active time
             currentBlock.eindTijd = sessies[i].eindTijd;
             currentBlock.duurMin = (new Date(currentBlock.eindTijd).getTime() - new Date(currentBlock.startTijd).getTime()) / 60000;
           }
@@ -429,9 +432,10 @@ export async function GET(req: NextRequest) {
       }
     }
     // Don't forget the last block
-    if (currentBlock && currentBlock.duurMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
+    if (currentBlock && currentBlock.actieveMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
 
-    const deepWorkMinuten = Math.round(deepWorkBlocks.reduce((sum, b) => sum + b.duurMin, 0));
+    // Use actieveMin (actual productive time) instead of duurMin (span including gaps)
+    const deepWorkMinuten = Math.round(deepWorkBlocks.reduce((sum, b) => sum + b.actieveMin, 0));
     const deepWorkTarget = 4 * 60; // 4 hours target per day
 
     // Focus sessions: productive sessions of any length

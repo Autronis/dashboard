@@ -1535,6 +1535,128 @@ export default function AnimatiesPage() {
                 </div>
               </div>
 
+              {/* Quick image generator — generate A and B without full prompt flow */}
+              <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
+                <p className="text-sm font-semibold text-autronis-text-primary mb-1 flex items-center gap-2">
+                  <Image className="w-4 h-4 text-autronis-accent" />
+                  Snelle foto generator
+                </p>
+                <p className="text-xs text-autronis-text-tertiary mb-3">
+                  Beschrijf je product kort → genereer A (assembled) en B (deconstructed) direct.
+                </p>
+                <div className="flex gap-2 mb-3">
+                  <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="Bijv: glass morphism automation cube with chrome buttons and teal cables"
+                    className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Generate A */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold text-autronis-text-secondary">A — Assembled</span>
+                      <button
+                        onClick={async () => {
+                          if (!input.trim()) return;
+                          const stijlP = getStijlPrompt();
+                          const fullPrompt = `Professional product photography of ${input.trim()} centered in frame, shot from a 3/4 angle. Clean white background (#FFFFFF), fully assembled, pristine. ${stijlP} Photorealistic, 16:9, sharp focus, Apple-style product photography. No text, no other objects.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
+                          setKieImgLoading(prev => ({ ...prev, A: true }));
+                          setKieImgError(prev => ({ ...prev, A: "" }));
+                          const res = await fetch("/api/animaties/kie-image", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ prompt: fullPrompt }),
+                          });
+                          const data = await res.json() as { taskId?: string; error?: string };
+                          if (!res.ok || data.error) { setKieImgError(prev => ({ ...prev, A: data.error ?? "Fout" })); setKieImgLoading(prev => ({ ...prev, A: false })); return; }
+                          kieImgPollingRef.current.A = setInterval(async () => {
+                            const poll = await fetch(`/api/animaties/kie-image-status?taskId=${data.taskId}`);
+                            const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
+                            if (result.status === "done" && result.imageUrl) {
+                              clearInterval(kieImgPollingRef.current.A!);
+                              setKieImgUrl(prev => ({ ...prev, A: result.imageUrl! }));
+                              setKieImgLoading(prev => ({ ...prev, A: false }));
+                              saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
+                            } else if (result.status === "failed") {
+                              clearInterval(kieImgPollingRef.current.A!);
+                              setKieImgError(prev => ({ ...prev, A: result.error ?? "Mislukt" }));
+                              setKieImgLoading(prev => ({ ...prev, A: false }));
+                            }
+                          }, 4000);
+                        }}
+                        disabled={kieImgLoading.A || !input.trim()}
+                        className="flex items-center gap-1 px-2 py-1 bg-autronis-accent text-white rounded-md text-[10px] font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40"
+                      >
+                        {kieImgLoading.A ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Genereer A
+                      </button>
+                    </div>
+                    {kieImgError.A && <p className="text-[10px] text-red-400 mb-1">{kieImgError.A}</p>}
+                    {kieImgUrl.A ? (
+                      <img src={kieImgUrl.A} alt="A" className="w-full aspect-video object-contain bg-white rounded-lg border border-autronis-border" />
+                    ) : (
+                      <div className="w-full aspect-video bg-autronis-bg rounded-lg border border-dashed border-autronis-border flex items-center justify-center">
+                        <span className="text-[10px] text-autronis-text-tertiary">Nog geen foto A</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Generate B */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold text-autronis-text-secondary">B — Deconstructed</span>
+                      <button
+                        onClick={async () => {
+                          if (!input.trim()) return;
+                          const stijlP = getStijlPrompt();
+                          let fullPrompt = `Professional product photography of ${input.trim()} fully deconstructed into individual floating components on white background (#FFFFFF). Every component separated and floating in space — same materials, colors, proportions as assembled version. ${stijlP} Each piece maintains its exact shape. Photorealistic, 16:9, same lighting as assembled shot.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
+                          if (kieImgUrl.A) {
+                            fullPrompt += "\n\nCRITICAL: Use the EXACT same components from the reference image. Same shapes, sizes, proportions, materials. Each piece must be recognizable. Components float apart so they could cleanly reassemble.";
+                          }
+                          setKieImgLoading(prev => ({ ...prev, B: true }));
+                          setKieImgError(prev => ({ ...prev, B: "" }));
+                          const body: Record<string, string | number> = { prompt: fullPrompt };
+                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.75; }
+                          const res = await fetch("/api/animaties/kie-image", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(body),
+                          });
+                          const data = await res.json() as { taskId?: string; error?: string };
+                          if (!res.ok || data.error) { setKieImgError(prev => ({ ...prev, B: data.error ?? "Fout" })); setKieImgLoading(prev => ({ ...prev, B: false })); return; }
+                          kieImgPollingRef.current.B = setInterval(async () => {
+                            const poll = await fetch(`/api/animaties/kie-image-status?taskId=${data.taskId}`);
+                            const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
+                            if (result.status === "done" && result.imageUrl) {
+                              clearInterval(kieImgPollingRef.current.B!);
+                              setKieImgUrl(prev => ({ ...prev, B: result.imageUrl! }));
+                              setKieImgLoading(prev => ({ ...prev, B: false }));
+                              saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
+                            } else if (result.status === "failed") {
+                              clearInterval(kieImgPollingRef.current.B!);
+                              setKieImgError(prev => ({ ...prev, B: result.error ?? "Mislukt" }));
+                              setKieImgLoading(prev => ({ ...prev, B: false }));
+                            }
+                          }, 4000);
+                        }}
+                        disabled={kieImgLoading.B || !input.trim()}
+                        className="flex items-center gap-1 px-2 py-1 bg-purple-500 text-white rounded-md text-[10px] font-semibold hover:bg-purple-600 transition-all disabled:opacity-40"
+                      >
+                        {kieImgLoading.B ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Genereer B
+                      </button>
+                    </div>
+                    {kieImgError.B && <p className="text-[10px] text-red-400 mb-1">{kieImgError.B}</p>}
+                    {kieImgUrl.B ? (
+                      <img src={kieImgUrl.B} alt="B" className="w-full aspect-video object-contain bg-white rounded-lg border border-autronis-border" />
+                    ) : (
+                      <div className="w-full aspect-video bg-autronis-bg rounded-lg border border-dashed border-autronis-border flex items-center justify-center">
+                        <span className="text-[10px] text-autronis-text-tertiary">{kieImgUrl.A ? "Klaar — genereer B met A als referentie" : "Genereer eerst A"}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               {/* Standalone video generator — always accessible */}
               <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
                 <p className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">

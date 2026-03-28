@@ -385,14 +385,18 @@ export default function AnimatiesPage() {
   const generateKieImage = async (tab: "A" | "B") => {
     if (!prompts) return;
     const prompt = tab === "A" ? prompts.promptA : prompts.promptB;
+    // When generating B, use A's image as reference for consistency
+    const refImageUrl = tab === "B" ? kieImgUrl.A : null;
     setKieImgLoading(prev => ({ ...prev, [tab]: true }));
     setKieImgError(prev => ({ ...prev, [tab]: "" }));
     setKieImgUrl(prev => ({ ...prev, [tab]: null }));
     try {
+      const body: Record<string, string> = { prompt };
+      if (refImageUrl) body.referenceImageUrl = refImageUrl;
       const res = await fetch("/api/animaties/kie-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify(body),
       });
       const data = await res.json() as { taskId?: string; error?: string };
       if (!res.ok || data.error) {
@@ -540,8 +544,8 @@ export default function AnimatiesPage() {
   // ── Scroll-stop tab config
   const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "Deconstructed View";
   const tabConfig = {
-    A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer afbeelding (16:9)" },
-    B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: "Upload afbeelding A als referentie → genereer afbeelding (16:9)" },
+    A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
+    B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
     C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload A als start frame + B als end frame → genereer video (5s)" },
   } as const;
 
@@ -551,7 +555,7 @@ export default function AnimatiesPage() {
 
   const allSteps = [
     { n: "1", icon: Image, label: "Copy A → Higgsfield", sub: "Genereer assembled shot (afbeelding)" },
-    { n: "2", icon: Layers, label: "Copy B → Higgsfield", sub: `Upload A als referentie → genereer ${effectLabel.toLowerCase()}` },
+    { n: "2", icon: Layers, label: "Genereer B", sub: `Afbeelding A wordt automatisch als referentie meegegeven` },
     { n: "3", icon: Clapperboard, label: "Copy C → Higgsfield", sub: "Upload A + B als frames → genereer video (5s)" },
     { n: "4", icon: Globe, label: "Download video", sub: "Sla de video op van Higgsfield" },
     { n: "5", icon: Code2, label: "VSCode → scroll-stop build", sub: "Zeg in Claude Code: \"scroll-stop build\" + geef het videobestand" },

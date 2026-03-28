@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { prompt } = await req.json() as { prompt: string };
+  const { prompt, referenceImageUrl } = await req.json() as {
+    prompt: string;
+    referenceImageUrl?: string;
+  };
 
   if (!prompt?.trim()) {
     return NextResponse.json({ error: "Prompt is verplicht." }, { status: 400 });
+  }
+
+  const input: Record<string, string | number> = {
+    prompt,
+    aspect_ratio: "16:9",
+    resolution: "1K",
+    output_format: "jpg",
+  };
+
+  // If a reference image URL is provided (e.g. image A for generating B),
+  // include it as reference for style/content consistency
+  if (referenceImageUrl) {
+    input.ref_image = referenceImageUrl;
+    input.ref_strength = 0.35;
   }
 
   const res = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
@@ -15,12 +32,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: "nano-banana-2",
-      input: {
-        prompt,
-        aspect_ratio: "16:9",
-        resolution: "1K",
-        output_format: "jpg",
-      },
+      input,
     }),
   });
 

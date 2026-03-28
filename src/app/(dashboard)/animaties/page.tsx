@@ -171,11 +171,11 @@ export default function AnimatiesPage() {
 
   useEffect(() => { loadGallery(); }, [loadGallery]);
 
-  // ── Save to gallery
+  // ── Save to gallery (use ref to avoid stale closure in setInterval callbacks)
   const saveToGallery = useCallback(async (imageUrl: string, type: "scroll-stop" | "logo-animatie") => {
     const body: Record<string, string | undefined> = {
       type,
-      productNaam: type === "scroll-stop" ? (prompts?.objectNaam ?? input) : (logoResult?.objectNaam ?? "Logo"),
+      productNaam: type === "scroll-stop" ? (prompts?.objectNaam ?? (input || "Scroll-Stop")) : (logoResult?.objectNaam ?? "Logo"),
       afbeeldingUrl: imageUrl,
     };
     if (type === "scroll-stop" && prompts) {
@@ -189,14 +189,16 @@ export default function AnimatiesPage() {
       body.promptVideo = logoResult.videoPrompt;
     }
     try {
-      await fetch("/api/assets/gallery", {
+      const res = await fetch("/api/assets/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      loadGallery();
+      if (res.ok) loadGallery();
     } catch { /* ignore */ }
   }, [prompts, logoResult, eindEffect, manifest, input, loadGallery]);
+  const saveToGalleryRef = useRef(saveToGallery);
+  useEffect(() => { saveToGalleryRef.current = saveToGallery; }, [saveToGallery]);
 
   // ── Delete from gallery
   const deleteGalleryItem = useCallback(async (id: number) => {
@@ -411,7 +413,7 @@ export default function AnimatiesPage() {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! }));
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
-          saveToGallery(result.imageUrl!, "scroll-stop");
+          saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
         } else if (result.status === "failed") {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));

@@ -134,12 +134,16 @@ DURATION: 4-5 seconds total. ASPECT RATIO: 16:9. QUALITY: High fidelity, smooth 
   },
 };
 
-function buildSystemPrompt(eindEffect: string, manifest?: string): string {
+function buildSystemPrompt(eindEffect: string, manifest?: string, stylePrompt?: string): string {
   const effect = EIND_EFFECTEN[eindEffect] || EIND_EFFECTEN.exploded;
 
   return `You generate a coordinated set of 3 prompts that work together to produce scroll-stopping video content: a clean product shot, its ${effect.label} version, and a video transition between them.
 
-${manifest ? `## COMPONENT MANIFEST (VERPLICHT)
+${stylePrompt ? `## VISUAL STYLE (VERPLICHT)
+Apply this visual style to ALL prompts. All materials, colors, lighting, and atmosphere MUST match this style:
+${stylePrompt}
+
+` : ""}${manifest ? `## COMPONENT MANIFEST (VERPLICHT)
 You MUST use EXACTLY these components in ALL prompts. Every component listed must appear in both prompt A (assembled) and prompt B (${effect.label}). Do not add, remove, or change any components.
 
 ${manifest}
@@ -188,13 +192,14 @@ Return ONLY a JSON object with these exact fields, no markdown, no explanation:
 }
 
 export async function POST(req: NextRequest) {
-  const { url, product, imageBase64, mediaType, eindEffect, manifest } = await req.json() as {
+  const { url, product, imageBase64, mediaType, eindEffect, manifest, stylePrompt } = await req.json() as {
     url?: string;
     product?: string;
     imageBase64?: string;
     mediaType?: string;
     eindEffect?: string;
     manifest?: string;
+    stylePrompt?: string;
   };
 
   const effectKey = eindEffect && eindEffect in EIND_EFFECTEN ? eindEffect : "exploded";
@@ -233,7 +238,7 @@ export async function POST(req: NextRequest) {
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4096,
-    system: buildSystemPrompt(effectKey, manifest),
+    system: buildSystemPrompt(effectKey, manifest, stylePrompt),
     messages: [{ role: "user", content: userContent }],
   });
 

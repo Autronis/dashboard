@@ -56,6 +56,17 @@ const EIND_EFFECTEN = [
   { key: "material", label: "Materiaal Switch", desc: "Transformeert van glas → metaal → hout" },
 ] as const;
 
+const VISUELE_STIJLEN = [
+  { key: "glass-morphism", label: "Glass Morphism", desc: "Frosted glas, chrome accenten, teal glow", prompt: "Frosted borosilicate glass construction with chrome/brushed stainless steel accents. Translucent ice-blue tinted panels revealing internal components. Teal (#23C6B7) bioluminescent glow from internal elements. Clean white background (#FFFFFF). Premium, futuristic, Apple-meets-laboratory aesthetic." },
+  { key: "matte-black", label: "Matte Black", desc: "Premium zwart metaal, gouden accenten", prompt: "Matte black anodized aluminum and dark gunmetal construction. Subtle gold/brass accent lines and details. Dark charcoal background with dramatic rim lighting. Premium, luxury, stealth aesthetic. Soft specular highlights on edges." },
+  { key: "neon-cyberpunk", label: "Neon Cyberpunk", desc: "Donker + felle neon, futuristisch", prompt: "Dark matte carbon fiber and black polycarbonate base materials. Vivid neon accent lighting in hot pink (#FF2D78), electric blue (#00D4FF), and acid green (#39FF14). Glitch-effect edges, holographic stickers, LED strip accents. Dark background with neon reflections. Cyberpunk, futuristic, high-tech rave aesthetic." },
+  { key: "minimal-white", label: "Minimal White", desc: "Wit keramiek, Apple-stijl", prompt: "Pure white matte ceramic and frosted glass construction. No color accents — monochrome white, off-white, and light grey only. Ultra-soft shadows, diffused lighting. Clean white background. Apple product photography style — minimal, elegant, pristine." },
+  { key: "industrial", label: "Industrial", desc: "Ruw staal, koper, steampunk", prompt: "Raw brushed steel, aged copper with green patina, and cast iron construction. Visible hex bolts, weld seams, and rivets. Exposed mechanical components and piping. Warm workshop lighting. Steampunk-industrial aesthetic with functional, utilitarian beauty." },
+  { key: "holographic", label: "Holographic", desc: "Iriserende/regenboog, prisma", prompt: "Iridescent holographic materials shifting between rainbow colors. Prismatic glass panels casting spectrum light. Chrome mirror surfaces with rainbow reflections. Transparent and semi-transparent layered construction. Clean white background. Ethereal, otherworldly, futuristic fashion aesthetic." },
+  { key: "wooden-craft", label: "Wooden Craft", desc: "Hout, leer, messing, warm", prompt: "Rich walnut and oak wood with visible grain texture. Saddle-brown leather panels and straps. Polished brass fittings, hinges, and accents. Warm amber lighting. Artisanal, handcrafted, premium workshop aesthetic. Natural materials, organic warmth." },
+  { key: "custom", label: "Custom", desc: "Eigen stijl beschrijving" },
+] as const;
+
 const ANIMATIE_CHIPS = [
   "Opstijgen", "Vleugels flappen", "360° draai", "Oplichten",
   "Zweven", "Landen", "Particle build-up", "Materiaal transformatie", "Schudden",
@@ -88,6 +99,15 @@ export default function AnimatiesPage() {
     return localStorage.getItem("scrollstop-effect") ?? "exploded";
   });
   const [effectDropdownOpen, setEffectDropdownOpen] = useState(false);
+  const [stijl, setStijl] = useState(() => {
+    if (typeof window === "undefined") return "glass-morphism";
+    return localStorage.getItem("scrollstop-stijl") ?? "glass-morphism";
+  });
+  const [stijlDropdownOpen, setStijlDropdownOpen] = useState(false);
+  const [customStijl, setCustomStijl] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("scrollstop-custom-stijl") ?? "";
+  });
   const [optimizing, setOptimizing] = useState(false);
 
   // ── Manifest state (restored from localStorage)
@@ -108,6 +128,11 @@ export default function AnimatiesPage() {
   // ── Persist to localStorage
   useEffect(() => { localStorage.setItem("scrollstop-input", input); }, [input]);
   useEffect(() => { localStorage.setItem("scrollstop-effect", eindEffect); }, [eindEffect]);
+  useEffect(() => { localStorage.setItem("scrollstop-stijl", stijl); }, [stijl]);
+  useEffect(() => {
+    if (customStijl) localStorage.setItem("scrollstop-custom-stijl", customStijl);
+    else localStorage.removeItem("scrollstop-custom-stijl");
+  }, [customStijl]);
   useEffect(() => {
     if (manifest) localStorage.setItem("scrollstop-manifest", manifest);
     else localStorage.removeItem("scrollstop-manifest");
@@ -356,9 +381,20 @@ export default function AnimatiesPage() {
     setKieExtraPrompt("");
     setGallerySaveStatus("idle");
     setActiveTab("A");
+    setStijl("glass-morphism");
+    setCustomStijl("");
     localStorage.removeItem("scrollstop-input");
     localStorage.removeItem("scrollstop-manifest");
     localStorage.removeItem("scrollstop-manifest-naam");
+    localStorage.removeItem("scrollstop-stijl");
+    localStorage.removeItem("scrollstop-custom-stijl");
+  };
+
+  // ── Get current style prompt text
+  const getStijlPrompt = (): string => {
+    if (stijl === "custom") return customStijl.trim();
+    const found = VISUELE_STIJLEN.find(s => s.key === stijl);
+    return found && "prompt" in found ? found.prompt : "";
   };
 
   // ── AI OPTIMIZE: Enrich input prompt + generate manifest in one call
@@ -367,6 +403,8 @@ export default function AnimatiesPage() {
     setOptimizing(true); setError("");
     const body: Record<string, string> = {};
     if (input.trim()) body.description = input;
+    const stijlPrompt = getStijlPrompt();
+    if (stijlPrompt) body.stylePrompt = stijlPrompt;
     if (inputType === "image" && uploadedImage) { body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType; }
     if (inputType === "product" && productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; if (input.trim()) body.description = input; }
     try {
@@ -424,7 +462,9 @@ export default function AnimatiesPage() {
     abortRef.current = new AbortController();
     setLoading(true); setError(""); setPrompts(null);
 
+    const stijlPrompt = getStijlPrompt();
     let body: Record<string, string> = { eindEffect };
+    if (stijlPrompt) body.stylePrompt = stijlPrompt;
     if (manifest) body.manifest = manifest;
     if (inputType === "url") body.url = input;
     else if (inputType === "product") {
@@ -993,7 +1033,7 @@ export default function AnimatiesPage() {
               {/* Eindeffect dropdown */}
               <div className="relative">
                 <button
-                  onClick={() => setEffectDropdownOpen(v => !v)}
+                  onClick={() => { setEffectDropdownOpen(v => !v); setStijlDropdownOpen(false); }}
                   className="flex items-center gap-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-sm text-autronis-text-primary hover:border-autronis-accent/50 transition-all"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-autronis-accent" />
@@ -1020,6 +1060,47 @@ export default function AnimatiesPage() {
                   </div>
                 )}
               </div>
+
+              {/* Stijl dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => { setStijlDropdownOpen(v => !v); setEffectDropdownOpen(false); }}
+                  className="flex items-center gap-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-sm text-autronis-text-primary hover:border-autronis-accent/50 transition-all"
+                >
+                  <Layers className="w-3.5 h-3.5 text-purple-400" />
+                  <span className="font-semibold">{VISUELE_STIJLEN.find(s => s.key === stijl)?.label}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-autronis-text-tertiary" />
+                </button>
+                {stijlDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-80 bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-40 py-1 max-h-80 overflow-y-auto">
+                    {VISUELE_STIJLEN.map(s => (
+                      <button
+                        key={s.key}
+                        onClick={() => { setStijl(s.key); setStijlDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-autronis-bg transition-all ${
+                          stijl === s.key ? "bg-purple-500/10" : ""
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <p className={`text-sm font-semibold ${stijl === s.key ? "text-purple-400" : "text-autronis-text-primary"}`}>{s.label}</p>
+                          <p className="text-xs text-autronis-text-tertiary">{s.desc}</p>
+                        </div>
+                        {stijl === s.key && <Check className="w-4 h-4 text-purple-400 flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Custom stijl tekstveld */}
+              {stijl === "custom" && (
+                <input
+                  value={customStijl}
+                  onChange={e => setCustomStijl(e.target.value)}
+                  placeholder="Beschrijf je eigen stijl (materialen, kleuren, sfeer...)"
+                  className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-purple-400/50"
+                />
+              )}
 
               {/* Manifest generate button */}
               {inputType !== "url" && (

@@ -42,10 +42,11 @@ Return ONLY a JSON object:
 }`;
 
 export async function POST(req: NextRequest) {
-  const { description, imageBase64, mediaType } = await req.json() as {
+  const { description, imageBase64, mediaType, stylePrompt } = await req.json() as {
     description?: string;
     imageBase64?: string;
     mediaType?: string;
+    stylePrompt?: string;
   };
 
   if (!description?.trim() && !imageBase64) {
@@ -53,6 +54,8 @@ export async function POST(req: NextRequest) {
   }
 
   let userContent: MessageParam["content"] = [];
+
+  const styleContext = stylePrompt ? `\n\nVISUAL STYLE (VERPLICHT — pas alle materialen, kleuren en sfeer aan op deze stijl):\n${stylePrompt}` : "";
 
   if (imageBase64 && mediaType) {
     userContent = [
@@ -62,13 +65,13 @@ export async function POST(req: NextRequest) {
       },
       {
         type: "text",
-        text: description
+        text: (description
           ? `Beschrijf dit product in detail en maak een onderdelen manifest. Extra context: ${description}`
-          : "Beschrijf dit product in detail en maak een onderdelen manifest.",
+          : "Beschrijf dit product in detail en maak een onderdelen manifest.") + styleContext,
       },
     ];
   } else {
-    userContent = [{ type: "text", text: `Beschrijf dit product in detail en maak een onderdelen manifest: ${description}` }];
+    userContent = [{ type: "text", text: `Beschrijf dit product in detail en maak een onderdelen manifest: ${description}${styleContext}` }];
   }
 
   const message = await anthropic.messages.create({

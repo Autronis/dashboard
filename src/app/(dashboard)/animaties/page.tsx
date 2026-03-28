@@ -545,17 +545,19 @@ export default function AnimatiesPage() {
 
   // ── KIE: Video generation
   const generateKieVideo = async () => {
-    if (!prompts) return;
+    if (!kieStartFrame.trim() || !kieEndFrame.trim()) {
+      setKieError("Upload eerst afbeelding A (start) en B (eind) via de tabs hierboven.");
+      return;
+    }
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/kie-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: prompts.promptC,
           duration: kieDuration,
-          ...(kieStartFrame.trim() && { firstFrameImage: kieStartFrame.trim() }),
-          ...(kieEndFrame.trim() && { lastFrameImage: kieEndFrame.trim() }),
+          firstFrameImage: kieStartFrame.trim(),
+          lastFrameImage: kieEndFrame.trim(),
         }),
       });
       const data = await res.json() as { taskId?: string; error?: string };
@@ -1326,7 +1328,7 @@ export default function AnimatiesPage() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={generateKieVideo} disabled={kieLoading}
+                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
                       className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                       {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                     </button>

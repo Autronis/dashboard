@@ -232,16 +232,18 @@ export async function POST(req: NextRequest) {
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 2000,
+    max_tokens: 4096,
     system: buildSystemPrompt(effectKey, manifest),
     messages: [{ role: "user", content: userContent }],
   });
 
   const raw = message.content[0].type === "text" ? message.content[0].text : "";
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
+  // Strip markdown code fences if present
+  const cleaned = raw.replace(/```(?:json)?\s*/g, "").replace(/```\s*$/g, "").trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return NextResponse.json({ error: "Geen geldige prompts gegenereerd." }, { status: 500 });
 
-  const prompts = JSON.parse(jsonMatch[0]) as {
+  let prompts: {
     promptA: string;
     promptB: string;
     promptC: string;
@@ -249,6 +251,11 @@ export async function POST(req: NextRequest) {
     tabANaam: string;
     tabBNaam: string;
   };
+  try {
+    prompts = JSON.parse(jsonMatch[0]);
+  } catch {
+    return NextResponse.json({ error: "Kon JSON niet parsen uit response." }, { status: 500 });
+  }
 
   return NextResponse.json({ ...prompts, bron: bronLabel });
 }

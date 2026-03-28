@@ -1795,6 +1795,14 @@ export default function AnimatiesPage() {
                     className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
                   />
                 </div>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-[10px] text-autronis-text-tertiary">Referentie sterkte:</span>
+                  <input type="range" min="0.5" max="0.95" step="0.01" value={kieRefStrength}
+                    onChange={e => setKieRefStrength(parseFloat(e.target.value))}
+                    className="w-32 h-1 accent-autronis-accent" />
+                  <span className="text-[10px] font-mono text-autronis-text-secondary w-8">{kieRefStrength.toFixed(2)}</span>
+                  <span className="text-[9px] text-autronis-text-tertiary">← meer uit elkaar | meer zoals origineel →</span>
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   {/* A — Assembled: select from gallery, paste URL, or generate */}
                   <div>
@@ -1810,12 +1818,15 @@ export default function AnimatiesPage() {
                             const productDesc = input.trim() || manifestObjectNaam || "product";
                             const stijlP = getStijlPrompt();
                             const fullPrompt = `Professional product photography of ${productDesc} centered in frame, shot from a 3/4 angle. Clean white background (#FFFFFF), fully assembled, pristine. ${stijlP} Photorealistic, 16:9, sharp focus, Apple-style product photography. No text, no other objects.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
+                            const currentRef = kieImgUrl.A;
                             setKieImgLoading(prev => ({ ...prev, A: true }));
                             setKieImgError(prev => ({ ...prev, A: "" }));
+                            const body: Record<string, string | number> = { prompt: fullPrompt };
+                            if (currentRef) { body.referenceImageUrl = currentRef; body.refStrength = kieRefStrength; }
                             const res = await fetch("/api/animaties/kie-image", {
                               method: "POST",
                               headers: { "Content-Type": "application/json" },
-                              body: JSON.stringify({ prompt: fullPrompt }),
+                              body: JSON.stringify(body),
                             });
                             const data = await res.json() as { taskId?: string; error?: string };
                             if (!res.ok || data.error) { setKieImgError(prev => ({ ...prev, A: data.error ?? "Fout" })); setKieImgLoading(prev => ({ ...prev, A: false })); return; }
@@ -1868,12 +1879,6 @@ export default function AnimatiesPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] font-semibold text-autronis-text-secondary">B — Deconstructed</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-autronis-text-tertiary">Ref: {kieRefStrength.toFixed(2)}</span>
-                        <input type="range" min="0.5" max="0.95" step="0.01" value={kieRefStrength}
-                          onChange={e => setKieRefStrength(parseFloat(e.target.value))}
-                          className="w-20 h-1 accent-purple-500" title={`Referentie sterkte: ${kieRefStrength} — lager = meer uit elkaar, hoger = meer zoals A`} />
-                      </div>
                       <button
                         onClick={async () => {
                           if (!input.trim() && !kieImgUrl.A) return;

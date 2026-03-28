@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  Receipt, Landmark, TrendingUp, BarChart3, CreditCard, Euro,
+  Receipt, Landmark, TrendingUp, BarChart3, CreditCard, Euro, Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -12,14 +12,16 @@ import { BankImportTab } from "./bank-import-tab";
 import { LiquiditeitTab } from "./liquiditeit-tab";
 import { AbonnementenTab } from "./abonnementen-tab";
 import { ProfitProjectenTab } from "./profit-projecten-tab";
+import { NietGematchtTab } from "./niet-gematcht-tab";
 
-type Tab = "uitgaven" | "abonnementen" | "profit" | "bank" | "liquiditeit";
+type Tab = "uitgaven" | "abonnementen" | "profit" | "bank" | "matching" | "liquiditeit";
 
 const TABS: { key: Tab; label: string; icon: typeof Euro }[] = [
   { key: "uitgaven", label: "Uitgaven", icon: Receipt },
   { key: "abonnementen", label: "Abonnementen", icon: CreditCard },
   { key: "profit", label: "Profit / Project", icon: TrendingUp },
   { key: "bank", label: "Bank Import", icon: Landmark },
+  { key: "matching", label: "Matching", icon: Link2 },
   { key: "liquiditeit", label: "Liquiditeit", icon: BarChart3 },
 ];
 
@@ -66,6 +68,7 @@ export default function FinancienPage() {
         {activeTab === "abonnementen" && <AbonnementenTab />}
         {activeTab === "profit" && <ProfitProjectenTab />}
         {activeTab === "bank" && <BankImportTab />}
+        {activeTab === "matching" && <NietGematchtTab />}
         {activeTab === "liquiditeit" && <LiquiditeitTab />}
       </div>
     </PageTransition>

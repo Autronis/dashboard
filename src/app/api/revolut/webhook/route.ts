@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankTransacties, revolutVerbinding, brandstofKosten } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { bankTransacties, revolutVerbinding, brandstofKosten, facturen, klanten } from "@/lib/db/schema";
+import { eq, desc, and, or } from "drizzle-orm";
 import { verifyWebhookSignature } from "@/lib/revolut";
 
 interface WebhookPayload {
@@ -30,6 +30,80 @@ interface WebhookPayload {
       country?: string;
     };
   };
+}
+
+// Try to auto-match an incoming payment to an open invoice
+async function autoMatchFactuur(transactieId: number, bedrag: number, omschrijving: string): Promise<boolean> {
+  // Find open invoices (verzonden or te_laat) with matching amount (incl BTW)
+  const openFacturen = await db
+    .select({
+      id: facturen.id,
+      bedragInclBtw: facturen.bedragInclBtw,
+      bedragExclBtw: facturen.bedragExclBtw,
+      factuurdatum: facturen.factuurdatum,
+      klantNaam: klanten.bedrijfsnaam,
+    })
+    .from(facturen)
+    .innerJoin(klanten, eq(facturen.klantId, klanten.id))
+    .where(
+      and(
+        eq(facturen.isActief, 1),
+        or(eq(facturen.status, "verzonden"), eq(facturen.status, "te_laat"))
+      )
+    )
+    .orderBy(facturen.factuurdatum); // FIFO: oudste eerst
+
+  if (openFacturen.length === 0) return false;
+
+  const omschrijvingLower = omschrijving.toLowerCase();
+
+  // Score each invoice: exact bedrag match + bedrijfsnaam in omschrijving
+  const matches = openFacturen
+    .map((f) => {
+      let score = 0;
+
+      // Check bedrag match (incl BTW first, then excl BTW, with small tolerance for rounding)
+      const bedragIncl = f.bedragInclBtw ?? 0;
+      const bedragExcl = f.bedragExclBtw ?? 0;
+      if (Math.abs(bedragIncl - bedrag) < 0.02) score += 10;
+      else if (Math.abs(bedragExcl - bedrag) < 0.02) score += 8;
+      else return null; // No bedrag match at all → skip
+
+      // Check bedrijfsnaam in omschrijving
+      const klantNaamLower = (f.klantNaam || "").toLowerCase();
+      if (klantNaamLower.length > 2 && omschrijvingLower.includes(klantNaamLower)) {
+        score += 5;
+      }
+
+      return { factuurId: f.id, score };
+    })
+    .filter((m): m is { factuurId: number; score: number } => m !== null)
+    .sort((a, b) => b.score - a.score); // Highest score first
+
+  if (matches.length === 0) return false;
+
+  // Take the best match (highest score, FIFO for same score since we sorted by factuurdatum)
+  const bestMatch = matches[0];
+  const vandaag = new Date().toISOString().slice(0, 10);
+
+  // Update factuur: betaald
+  await db.update(facturen)
+    .set({
+      status: "betaald",
+      betaaldOp: vandaag,
+      bijgewerktOp: new Date().toISOString(),
+    })
+    .where(eq(facturen.id, bestMatch.factuurId));
+
+  // Update bank transactie: gematcht + koppeling
+  await db.update(bankTransacties)
+    .set({
+      gekoppeldFactuurId: bestMatch.factuurId,
+      status: "gematcht",
+    })
+    .where(eq(bankTransacties.id, transactieId));
+
+  return true;
 }
 
 // POST /api/revolut/webhook — Receive real-time transaction notifications
@@ -84,16 +158,27 @@ export async function POST(req: NextRequest) {
           status: "onbekend",
         }).returning();
 
-        // Auto-detect fuel transactions (MCC 5541/5542 = gas stations)
-        const mcc = tx.merchant?.category_code;
-        if (inserted && isUitgaand && (mcc === "5541" || mcc === "5542")) {
-          await db.insert(brandstofKosten).values({
-            gebruikerId: 1, // Default to Sem; will be linked to Revolut account owner
-            datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
-            bedrag: Math.abs(leg.amount),
-            bankTransactieId: inserted.id,
-            notitie: `Auto: ${merchantNaam}`,
-          });
+        if (!inserted) continue;
+
+        if (isUitgaand) {
+          // Auto-detect fuel transactions (MCC 5541/5542 = gas stations)
+          const mcc = tx.merchant?.category_code;
+          if (mcc === "5541" || mcc === "5542") {
+            await db.insert(brandstofKosten).values({
+              gebruikerId: 1,
+              datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
+              bedrag: Math.abs(leg.amount),
+              bankTransactieId: inserted.id,
+              notitie: `Auto: ${merchantNaam}`,
+            });
+          }
+        } else {
+          // Inkomende betaling → probeer automatisch te matchen aan factuur
+          await autoMatchFactuur(
+            inserted.id,
+            Math.abs(leg.amount),
+            leg.description || tx.reference || ""
+          );
         }
       }
     }

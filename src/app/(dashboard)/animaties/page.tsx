@@ -1542,20 +1542,60 @@ export default function AnimatiesPage() {
                   Direct video genereren (FAL.ai — Kling O3)
                 </p>
                 <p className="text-xs text-autronis-text-tertiary mb-3">
-                  Plak de URLs van je foto&apos;s hieronder. Geen prompts nodig — alleen twee afbeeldingen.
+                  Klik op een foto uit je galerij of plak een URL.
                 </p>
-                <div className="grid grid-cols-2 gap-2 mb-2">
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                  {/* Start frame picker */}
                   <div>
                     <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — effect)</label>
-                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
-                      placeholder="Plak URL afbeelding B"
-                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    {kieStartFrame ? (
+                      <div className="relative group">
+                        <img src={kieStartFrame} alt="Start frame" className="w-full aspect-video object-contain bg-white rounded-lg border border-autronis-accent" />
+                        <button onClick={() => setKieStartFrame("")} className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-all">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                          placeholder="Plak URL of klik een foto hieronder"
+                          className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        <div className="flex gap-1 overflow-x-auto pb-1">
+                          {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 8).map(g => (
+                            <button key={g.id} onClick={() => setKieStartFrame(g.afbeeldingUrl!)}
+                              className="shrink-0 w-16 h-10 rounded border border-autronis-border hover:border-autronis-accent overflow-hidden transition-all">
+                              <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-contain bg-white" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                  {/* End frame picker */}
                   <div>
                     <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — assembled)</label>
-                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
-                      placeholder="Plak URL afbeelding A"
-                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    {kieEndFrame ? (
+                      <div className="relative group">
+                        <img src={kieEndFrame} alt="End frame" className="w-full aspect-video object-contain bg-white rounded-lg border border-green-500/50" />
+                        <button onClick={() => setKieEndFrame("")} className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-all">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5">
+                        <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                          placeholder="Plak URL of klik een foto hieronder"
+                          className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        <div className="flex gap-1 overflow-x-auto pb-1">
+                          {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 8).map(g => (
+                            <button key={g.id} onClick={() => setKieEndFrame(g.afbeeldingUrl!)}
+                              className="shrink-0 w-16 h-10 rounded border border-autronis-border hover:border-green-500 overflow-hidden transition-all">
+                              <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-contain bg-white" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
                 {/* Transitie preset dropdown */}

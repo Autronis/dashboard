@@ -174,6 +174,51 @@ export default function IdeeenPage() {
   const [verwerkResult, setVerwerkResult] = useState<{ notitieId: number; suggestie: VerwerkSuggestie } | null>(null);
   const [koppelNotitieId, setKoppelNotitieId] = useState<number | null>(null);
 
+  // Analyse state
+  const [analyseLoading, setAnalyseLoading] = useState(false);
+  const [analyseResult, setAnalyseResult] = useState<{
+    gebouwd: Array<{ id: number; reden: string }>;
+    duplicaten: Array<{ behouden_id: number; verwijder_id: number; reden: string; nieuwe_naam?: string; nieuwe_omschrijving?: string }>;
+    verouderd: Array<{ id: number; reden: string }>;
+    notities_bij_project: Array<{ id: number; project: string; reden: string }>;
+    samenvatting: string;
+  } | null>(null);
+
+  const runAnalyse = async () => {
+    setAnalyseLoading(true);
+    try {
+      const res = await fetch("/api/ideeen/analyse", { method: "POST" });
+      if (!res.ok) throw new Error("Analyse mislukt");
+      const data = await res.json();
+      setAnalyseResult(data.analyse);
+    } catch {
+      addToast("Analyse mislukt", "fout");
+    } finally {
+      setAnalyseLoading(false);
+    }
+  };
+
+  const applyAnalyse = async () => {
+    if (!analyseResult) return;
+    // Mark as built
+    for (const item of analyseResult.gebouwd) {
+      updateMutation.mutate({ id: item.id, body: { status: "gebouwd" } });
+    }
+    // Delete duplicates
+    for (const item of analyseResult.duplicaten) {
+      deleteMutation.mutate(item.verwijder_id);
+      if (item.nieuwe_naam || item.nieuwe_omschrijving) {
+        updateMutation.mutate({ id: item.behouden_id, body: { naam: item.nieuwe_naam, omschrijving: item.nieuwe_omschrijving } });
+      }
+    }
+    // Delete outdated
+    for (const item of analyseResult.verouderd) {
+      deleteMutation.mutate(item.id);
+    }
+    setAnalyseResult(null);
+    addToast("Backlog opgeschoond");
+  };
+
   const [detailIdee, setDetailIdee] = useState<Idee | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editIdee, setEditIdee] = useState<Idee | null>(null);
@@ -622,7 +667,8 @@ export default function IdeeenPage() {
         <p className="text-sm sm:text-base text-autronis-text-secondary mt-1">Van idee naar executie</p>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs + Analyse */}
+      <div className="flex items-center gap-3 flex-wrap">
       <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1 w-fit">
         <button onClick={() => setActiveTab("alle")} className={cn("px-5 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === "alle" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>Alle Ideeën</button>
         <button onClick={() => setActiveTab("ai")} className={cn("inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors", activeTab === "ai" ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
@@ -634,6 +680,73 @@ export default function IdeeenPage() {
           {inzichtIdeeen.length > 0 && <span className={cn("text-xs font-bold px-1.5 py-0.5 rounded-full", activeTab === "inzichten" ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-400")}>{inzichtIdeeen.length}</span>}
         </button>
       </div>
+      <button
+        onClick={runAnalyse}
+        disabled={analyseLoading}
+        className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 rounded-xl text-sm font-medium transition-colors disabled:opacity-40"
+      >
+        {analyseLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+        {analyseLoading ? "Analyseren..." : "Backlog opschonen"}
+      </button>
+      </div>
+
+      {/* Analyse resultaat */}
+      <AnimatePresence>
+        {analyseResult && (
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="bg-autronis-card border border-purple-500/30 rounded-2xl p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-medium text-autronis-text-primary">AI Analyse</span>
+              </div>
+              <button onClick={() => setAnalyseResult(null)} className="text-autronis-text-secondary/40 hover:text-autronis-text-primary"><X className="w-4 h-4" /></button>
+            </div>
+            <p className="text-xs text-autronis-text-secondary">{analyseResult.samenvatting}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {analyseResult.gebouwd.length > 0 && (
+                <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                  <p className="text-xs font-medium text-emerald-400 mb-2">Al gebouwd ({analyseResult.gebouwd.length})</p>
+                  {analyseResult.gebouwd.map((item) => {
+                    const idee = ideeen.find((i) => i.id === item.id);
+                    return <p key={item.id} className="text-[11px] text-autronis-text-secondary">{idee?.naam || `#${item.id}`} — {item.reden}</p>;
+                  })}
+                </div>
+              )}
+              {analyseResult.duplicaten.length > 0 && (
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                  <p className="text-xs font-medium text-amber-400 mb-2">Duplicaten ({analyseResult.duplicaten.length})</p>
+                  {analyseResult.duplicaten.map((item) => {
+                    const verwijder = ideeen.find((i) => i.id === item.verwijder_id);
+                    return <p key={item.verwijder_id} className="text-[11px] text-autronis-text-secondary">Verwijder: {verwijder?.naam || `#${item.verwijder_id}`} — {item.reden}</p>;
+                  })}
+                </div>
+              )}
+              {analyseResult.verouderd.length > 0 && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                  <p className="text-xs font-medium text-red-400 mb-2">Verouderd ({analyseResult.verouderd.length})</p>
+                  {analyseResult.verouderd.map((item) => {
+                    const idee = ideeen.find((i) => i.id === item.id);
+                    return <p key={item.id} className="text-[11px] text-autronis-text-secondary">{idee?.naam || `#${item.id}`} — {item.reden}</p>;
+                  })}
+                </div>
+              )}
+              {analyseResult.notities_bij_project.length > 0 && (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
+                  <p className="text-xs font-medium text-blue-400 mb-2">Hoort bij project ({analyseResult.notities_bij_project.length})</p>
+                  {analyseResult.notities_bij_project.map((item) => {
+                    const idee = ideeen.find((i) => i.id === item.id);
+                    return <p key={item.id} className="text-[11px] text-autronis-text-secondary">{idee?.naam || `#${item.id}`} → {item.project}</p>;
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={applyAnalyse} className="px-4 py-2 bg-purple-500 hover:bg-purple-400 text-white rounded-xl text-xs font-medium transition-colors">Alles toepassen</button>
+              <button onClick={() => setAnalyseResult(null)} className="px-4 py-2 bg-autronis-border hover:bg-autronis-border/80 text-autronis-text-secondary rounded-xl text-xs font-medium transition-colors">Annuleren</button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence mode="wait">
       {activeTab === "alle" && (<motion.div key="alle" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.18 }} className="space-y-6">

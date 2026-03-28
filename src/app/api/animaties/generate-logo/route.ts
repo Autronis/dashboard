@@ -4,53 +4,58 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You generate a set of 3 AI image/video prompts for a logo animation sequence, based on the user's description of what they want.
+const SYSTEM_PROMPT = `You generate a single AI video prompt for animating a logo, icon, or product image. The user provides:
+1. An image of their logo/icon/product
+2. A text description of the desired animation
+3. Optionally, one or more animation type tags (e.g., "Opstijgen", "360° draai", "Oplichten")
 
-The 3 prompts follow whatever animation flow the user describes — do NOT default to an exploded/deconstructed format unless the user asks for it.
+Your job is to create ONE detailed video prompt that:
+- Describes the START FRAME (the uploaded image as-is, centered on white background)
+- Describes the END FRAME (the result after the animation)
+- Describes the TRANSITION in precise, step-by-step detail
+- Is optimized for AI video generators (Runway, Kling, Higgsfield, Pika)
 
-## Prompt A — The Starting State
-The first image in the sequence. Could be assembled, deconstructed, floating, tilted — whatever the user describes as the starting point.
-Always: clean white background (#FFFFFF), photorealistic CGI, soft studio lighting, 16:9 aspect ratio.
+## Animation Tag Reference
+When the user selects animation tags, incorporate them:
+- Opstijgen: object lifts off the ground, hovers in the air
+- Vleugels flappen: wings (if present) flap gracefully
+- 360° draai: object rotates 360 degrees around its vertical axis
+- Oplichten: object illuminates, glows from within
+- Zweven: object floats weightlessly with subtle up/down motion
+- Landen: object descends from above and lands gently
+- Particle build-up: particles swirl and assemble into the object
+- Materiaal transformatie: material changes (e.g., metal → glass → wood)
+- Schudden: object shakes/vibrates energetically
 
-## Prompt B — The Middle / Key State
-The second image in the sequence. An important intermediate or final state. Could be assembled, mid-animation, upright, etc.
-Always: same white background and lighting as Prompt A, matching materials and colors.
-
-## Prompt C — The Video Transition
-A video prompt that animates between the states the user described. Be very explicit about:
-- START FRAME: exact description of the opening state
-- END FRAME: exact description of the final state
-- TRANSITION: step-by-step description of the animation stages IN ORDER
-- IMPORTANT notes (things to avoid, camera locked, no extra hardware, etc.)
-Always: photorealistic CGI, white background, no camera movement, smooth eased motion.
+Multiple tags can be combined into a fluid sequence.
 
 ## Rules
-- Follow the user's animation description exactly — do NOT impose the scroll-stop exploded/assembled format
-- Keep materials, colors, and lighting consistent across all 3 prompts
-- Be specific about what makes each stage visually distinct
-- tabANaam and tabBNaam should describe the actual states (e.g. "Liggend Samengesteld", "Rechtopstaand", "Exploded View", etc.)
+- Keep the white background (#FFFFFF) throughout
+- No camera movement — locked-off tripod shot
+- Be specific about timing (e.g., "over 1.5 seconds", "brief 0.3s pause")
+- Reference exact visual details from the image (colors, materials, shapes)
+- The prompt should be self-contained and copy-pasteable into any AI video tool
 
 ## Output format
 Return ONLY a JSON object, no markdown, no explanation:
 {
-  "promptA": "...",
-  "promptB": "...",
-  "promptC": "...",
-  "objectNaam": "...",
-  "tabANaam": "...",
-  "tabBNaam": "..."
+  "videoPrompt": "The complete video animation prompt",
+  "objectNaam": "Name of the logo/object"
 }`;
 
 export async function POST(req: NextRequest) {
-  const { description, imageBase64, mediaType } = await req.json() as {
+  const { description, imageBase64, mediaType, animatieTags } = await req.json() as {
     description?: string;
     imageBase64?: string;
     mediaType?: string;
+    animatieTags?: string[];
   };
 
   if (!description?.trim() && !imageBase64) {
     return NextResponse.json({ error: "Geef een beschrijving op." }, { status: 400 });
   }
+
+  const tagsText = animatieTags?.length ? `\n\nGeselecteerde animatie types: ${animatieTags.join(", ")}` : "";
 
   let userContent: MessageParam["content"] = [];
 
@@ -63,33 +68,29 @@ export async function POST(req: NextRequest) {
       {
         type: "text",
         text: description
-          ? `Genereer 3 animatie prompts op basis van dit logo en de volgende beschrijving:\n\n${description}`
-          : "Genereer 3 animatie prompts op basis van dit logo. Maak een mooie vloeiende animatie.",
+          ? `Genereer een video animatie prompt op basis van dit logo/afbeelding en de volgende beschrijving:\n\n${description}${tagsText}`
+          : `Genereer een video animatie prompt op basis van dit logo/afbeelding. Maak een mooie vloeiende animatie.${tagsText}`,
       },
     ];
   } else {
-    userContent = [{ type: "text", text: `Genereer 3 animatie prompts op basis van:\n\n${description}` }];
+    userContent = [{ type: "text", text: `Genereer een video animatie prompt op basis van:\n\n${description}${tagsText}` }];
   }
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 2000,
+    max_tokens: 1500,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userContent }],
   });
 
   const raw = message.content[0].type === "text" ? message.content[0].text : "";
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return NextResponse.json({ error: "Geen geldige prompts gegenereerd." }, { status: 500 });
+  if (!jsonMatch) return NextResponse.json({ error: "Geen geldige prompt gegenereerd." }, { status: 500 });
 
-  const prompts = JSON.parse(jsonMatch[0]) as {
-    promptA: string;
-    promptB: string;
-    promptC: string;
+  const result = JSON.parse(jsonMatch[0]) as {
+    videoPrompt: string;
     objectNaam: string;
-    tabANaam: string;
-    tabBNaam: string;
   };
 
-  return NextResponse.json({ ...prompts, bron: description ?? "logo afbeelding" });
+  return NextResponse.json({ ...result, bron: description ?? "logo afbeelding" });
 }

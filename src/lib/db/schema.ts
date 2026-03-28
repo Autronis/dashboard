@@ -1424,3 +1424,18 @@ export const brandstofKosten = sqliteTable("brandstof_kosten", {
   notitie: text("notitie"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ ASSET GALLERY ============
+export const assetGallery = sqliteTable("asset_gallery", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type", { enum: ["scroll-stop", "logo-animatie"] }).notNull(),
+  productNaam: text("product_naam").notNull(),
+  eindEffect: text("eind_effect"),
+  manifest: text("manifest"),
+  promptA: text("prompt_a"),
+  promptB: text("prompt_b"),
+  promptVideo: text("prompt_video"),
+  afbeeldingUrl: text("afbeelding_url"),
+  lokaalPad: text("lokaal_pad"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});

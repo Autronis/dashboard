@@ -1132,6 +1132,35 @@ export default function AnimatiesPage() {
                     <span className="text-sm">Upload je logo, icoon of product afbeelding</span>
                     <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
                   </button>
+                  {/* URL input */}
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Of plak een afbeelding URL..."
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          const url = (e.target as HTMLInputElement).value.trim();
+                          if (url) {
+                            setLogoImage({ base64: "", mediaType: "image/png", preview: url });
+                            (e.target as HTMLInputElement).value = "";
+                          }
+                        }
+                      }}
+                      className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
+                    />
+                    <button
+                      onClick={() => {
+                        const input = document.querySelector<HTMLInputElement>('input[placeholder="Of plak een afbeelding URL..."]');
+                        const url = input?.value.trim();
+                        if (url) {
+                          setLogoImage({ base64: "", mediaType: "image/png", preview: url });
+                          if (input) input.value = "";
+                        }
+                      }}
+                      className="px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/50 transition-all"
+                    >
+                      <Link className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                   {/* Pick from gallery */}
                   {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).length > 0 && (
                     <div>

@@ -307,7 +307,6 @@ export default function AnimatiesPage() {
     else localStorage.removeItem("scrollstop-prompts");
   }, [prompts]);
   useEffect(() => { localStorage.setItem("scrollstop-tab", activeTab); }, [activeTab]);
-  useEffect(() => { localStorage.setItem("scrollstop-kie-imgs", JSON.stringify(kieImgUrl)); }, [kieImgUrl]);
 
   // ── Kie.ai image tweaks
   const [kieCleanBg, setKieCleanBg] = useState(true);
@@ -334,6 +333,9 @@ export default function AnimatiesPage() {
   });
   const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
+
+  // Persist kieImgUrl to localStorage
+  useEffect(() => { localStorage.setItem("scrollstop-kie-imgs", JSON.stringify(kieImgUrl)); }, [kieImgUrl]);
 
   // Auto-fill video frame URLs when images are generated
   // Video flow: B → A, so B = start frame, A = end frame

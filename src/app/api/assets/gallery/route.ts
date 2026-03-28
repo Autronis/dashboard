@@ -10,10 +10,17 @@ export async function GET() {
   try {
     await requireAuth();
   } catch {
-    // Allow unauthenticated reads — proxy handles auth
+    // Allow — proxy handles auth
   }
-  const items = await db.select().from(assetGallery).orderBy(desc(assetGallery.aangemaaktOp));
-  return NextResponse.json({ items });
+  try {
+    const items = await db.select().from(assetGallery).orderBy(desc(assetGallery.aangemaaktOp));
+    return NextResponse.json({ items });
+  } catch (error) {
+    return NextResponse.json(
+      { items: [], fout: error instanceof Error ? error.message : "Kon galerij niet laden" },
+      { status: 200 }
+    );
+  }
 }
 
 export async function POST(req: NextRequest) {

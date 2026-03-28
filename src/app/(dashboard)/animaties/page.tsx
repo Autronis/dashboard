@@ -872,6 +872,20 @@ export default function AnimatiesPage() {
   };
 
   // ── FAL: Video generation (Kling O3 — start + end frame)
+  const stopAllPolling = () => {
+    if (kiePollingRef.current) { clearInterval(kiePollingRef.current); kiePollingRef.current = null; }
+    if (logoKiePollingRef.current) { clearInterval(logoKiePollingRef.current); logoKiePollingRef.current = null; }
+    if (kieImgPollingRef.current.A) { clearInterval(kieImgPollingRef.current.A); kieImgPollingRef.current.A = null; }
+    if (kieImgPollingRef.current.B) { clearInterval(kieImgPollingRef.current.B); kieImgPollingRef.current.B = null; }
+    setKieLoading(false);
+    setLogoKieLoading(false);
+    setKieImgLoading({ A: false, B: false });
+    localStorage.removeItem("fal-video-pending");
+    localStorage.removeItem("logo-video-pending");
+    localStorage.removeItem("kie-img-pending-A");
+    localStorage.removeItem("kie-img-pending-B");
+  };
+
   const generateKieVideo = async () => {
     if (!kieStartFrame.trim() || !kieEndFrame.trim()) {
       setKieError("Genereer eerst afbeelding A en B. De video gaat van B (start) → A (eind).");
@@ -2009,10 +2023,17 @@ export default function AnimatiesPage() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
-                      className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren (~6 min)...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
-                    </button>
+                    <div className="ml-auto flex items-center gap-2">
+                      {kieLoading && (
+                        <button onClick={stopAllPolling} className="flex items-center gap-1.5 px-3 py-2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                          <X className="w-4 h-4" /> Stop
+                        </button>
+                      )}
+                      <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
+                        className="flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                      </button>
+                    </div>
                   </div>
                   {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
                   {kieVideoUrl && (
@@ -2338,7 +2359,7 @@ export default function AnimatiesPage() {
                   </div>
                   <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
                     className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren (~6 min)...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                    {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                   </button>
                 </div>
                 {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}

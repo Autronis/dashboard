@@ -587,7 +587,7 @@ export default function AnimatiesPage() {
       const body: Record<string, string | number> = { prompt };
       if (refImageUrl) {
         body.referenceImageUrl = refImageUrl;
-        body.refStrength = 0.82;
+        body.refStrength = 0.84;
       }
       const res = await fetch("/api/animaties/kie-image", {
         method: "POST",
@@ -1693,7 +1693,7 @@ export default function AnimatiesPage() {
                           }
 
                           const body: Record<string, string | number> = { prompt: fullPrompt };
-                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.82; }
+                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.84; }
                           const res = await fetch("/api/animaties/kie-image", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },

@@ -902,19 +902,32 @@ export default function AnimatiesPage() {
   // ── LOGO KIE: Video generation (image-to-video via Kie.ai runway with imageUrl)
   const generateLogoKieVideo = async () => {
     if (!logoResult) return;
-    const startFrameUrl = logoKieFirstFrame.trim();
-    if (!startFrameUrl) {
-      setLogoKieError("Plak een afbeelding URL als startframe. Upload je logo naar een image host of genereer het eerst via Kie.ai.");
-      return;
-    }
     setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
     try {
+      // Get start frame URL — from manual input, uploaded image, or gallery pick
+      let startFrameUrl = logoKieFirstFrame.trim();
+      if (!startFrameUrl && logoImage?.base64) {
+        // Upload the base64 image to get a public URL
+        const uploadRes = await fetch("/api/assets/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64: logoImage.base64, mediaType: logoImage.mediaType }),
+        });
+        const uploadData = await uploadRes.json() as { url?: string };
+        if (uploadData.url) startFrameUrl = uploadData.url;
+      }
+      if (!startFrameUrl && logoImage?.preview?.startsWith("http")) {
+        startFrameUrl = logoImage.preview;
+      }
+
+      const finalPrompt = `${logoResult.videoPrompt.slice(0, 450)}. CRITICAL: Clean white background (#FFFFFF) throughout. The object must match the reference image exactly.`;
+
       const res = await fetch("/api/animaties/kie-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: logoResult.videoPrompt.slice(0, 200),
-          imageUrl: startFrameUrl,
+          prompt: finalPrompt,
+          ...(startFrameUrl && { imageUrl: startFrameUrl }),
         }),
       });
       const data = await res.json() as { taskId?: string; error?: string };

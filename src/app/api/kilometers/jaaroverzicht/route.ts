@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { kilometerRegistraties, klanten } from "@/lib/db/schema";
+import { kilometerRegistraties, klanten, brandstofKosten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -77,6 +77,55 @@ export async function GET(req: NextRequest) {
 
     const vorigJaarKm = Math.round((vorigResult?.totaalKm ?? 0) * 100) / 100;
 
+    // Brandstofkosten dit jaar
+    const brandstofResult = await db
+      .select({
+        totaalBedrag: sql<number>`COALESCE(SUM(${brandstofKosten.bedrag}), 0)`,
+        totaalLiters: sql<number>`COALESCE(SUM(${brandstofKosten.liters}), 0)`,
+        aantalTankbeurten: sql<number>`COUNT(*)`,
+      })
+      .from(brandstofKosten)
+      .where(and(
+        eq(brandstofKosten.gebruikerId, gebruiker.id),
+        gte(brandstofKosten.datum, jaarStart),
+        lte(brandstofKosten.datum, jaarEind),
+      ))
+      .get();
+
+    // Brandstof per maand
+    const brandstofPerMaand = await db
+      .select({
+        maand: sql<number>`CAST(SUBSTR(${brandstofKosten.datum}, 6, 2) AS INTEGER)`,
+        bedrag: sql<number>`COALESCE(SUM(${brandstofKosten.bedrag}), 0)`,
+        liters: sql<number>`COALESCE(SUM(${brandstofKosten.liters}), 0)`,
+        tankbeurten: sql<number>`COUNT(*)`,
+      })
+      .from(brandstofKosten)
+      .where(and(
+        eq(brandstofKosten.gebruikerId, gebruiker.id),
+        gte(brandstofKosten.datum, jaarStart),
+        lte(brandstofKosten.datum, jaarEind),
+      ))
+      .groupBy(sql`SUBSTR(${brandstofKosten.datum}, 6, 2)`)
+      .orderBy(sql`SUBSTR(${brandstofKosten.datum}, 6, 2)`)
+      .all();
+
+    // Recente brandstofkosten (laatste 10)
+    const recenteBrandstof = await db
+      .select()
+      .from(brandstofKosten)
+      .where(and(
+        eq(brandstofKosten.gebruikerId, gebruiker.id),
+        gte(brandstofKosten.datum, jaarStart),
+        lte(brandstofKosten.datum, jaarEind),
+      ))
+      .orderBy(sql`${brandstofKosten.datum} DESC`)
+      .limit(10);
+
+    const kostenPerKm = totaalKm > 0
+      ? Math.round(((brandstofResult?.totaalBedrag ?? 0) / totaalKm) * 100) / 100
+      : 0;
+
     return NextResponse.json({
       jaar: parseInt(jaar),
       totaalKm,
@@ -98,6 +147,27 @@ export async function GET(req: NextRequest) {
       })),
       vorigJaarKm,
       verschilVorigJaar: totaalKm - vorigJaarKm,
+      brandstof: {
+        totaalBedrag: Math.round((brandstofResult?.totaalBedrag ?? 0) * 100) / 100,
+        totaalLiters: Math.round((brandstofResult?.totaalLiters ?? 0) * 100) / 100,
+        aantalTankbeurten: brandstofResult?.aantalTankbeurten ?? 0,
+        kostenPerKm,
+        perMaand: brandstofPerMaand.map((m) => ({
+          maand: m.maand,
+          bedrag: Math.round(m.bedrag * 100) / 100,
+          liters: Math.round(m.liters * 100) / 100,
+          tankbeurten: m.tankbeurten,
+        })),
+        recent: recenteBrandstof.map((k) => ({
+          id: k.id,
+          datum: k.datum,
+          bedrag: k.bedrag,
+          liters: k.liters,
+          kmStand: k.kmStand,
+          notitie: k.notitie,
+          isAutomatisch: k.bankTransactieId != null,
+        })),
+      },
     });
   } catch (error) {
     return NextResponse.json(

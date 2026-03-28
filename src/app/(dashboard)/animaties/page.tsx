@@ -574,11 +574,13 @@ export default function AnimatiesPage() {
           duration: String(kieDuration),
         }),
       });
-      const data = await res.json() as { requestId?: string; error?: string };
+      const data = await res.json() as { requestId?: string; statusUrl?: string; responseUrl?: string; error?: string };
       if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
-      // Poll FAL for completion
+      // Poll FAL for completion using the status_url and response_url
+      const statusUrl = encodeURIComponent(data.statusUrl ?? "");
+      const responseUrl = encodeURIComponent(data.responseUrl ?? "");
       kiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/fal-video-status?requestId=${data.requestId}`);
+        const poll = await fetch(`/api/animaties/fal-video-status?statusUrl=${statusUrl}&responseUrl=${responseUrl}`);
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string; queuePosition?: number };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(kiePollingRef.current!);
@@ -1393,7 +1395,7 @@ export default function AnimatiesPage() {
                       {[5, 10].map(d => (
                         <button key={d} onClick={() => setKieDuration(d)}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
-                          {d}s {d === 5 ? "(~€0.56)" : "(~€1.12)"}
+                          {d}s {d === 5 ? "(~$0.56)" : "(~$1.12)"}
                         </button>
                       ))}
                     </div>

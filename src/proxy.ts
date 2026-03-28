@@ -23,6 +23,7 @@ const PUBLIC_PATHS = [
   "/api/ops-room/orchestrate",
   "/api/ops-room/execute",
   "/api/ops-room/write-files",
+  "/api/assets/gallery",
   "/api/team/sync",
   "/api/team/activiteit",
   "/api/team/live",

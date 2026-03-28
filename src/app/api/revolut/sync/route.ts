@@ -5,9 +5,14 @@ import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
 import { eq, sql, and } from "drizzle-orm";
 
+import Anthropic from "@anthropic-ai/sdk";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
 interface SyncResultaat {
   nieuweTransacties: number;
   gedetecteerdeAbonnementen: string[];
+  geanalyseerd: number;
 }
 
 // Detect subscriptions: find recurring payments to the same merchant/description
@@ -91,6 +96,78 @@ async function detecteerAbonnementen(): Promise<string[]> {
   return nieuw;
 }
 
+// AI analyse: beschrijving, abonnement detectie, overbodigheid score
+async function analyseerTransacties(transactieIds: number[]): Promise<number> {
+  if (transactieIds.length === 0) return 0;
+
+  let geanalyseerd = 0;
+
+  for (const id of transactieIds) {
+    const [tx] = await db.select().from(bankTransacties).where(eq(bankTransacties.id, id));
+    if (!tx || tx.type !== "af") continue;
+
+    // Count frequency of this merchant
+    const merchantKey = tx.merchantNaam || tx.omschrijving;
+    const [freq] = await db
+      .select({
+        aantal: sql<number>`COUNT(*)`,
+        gemiddeld: sql<number>`AVG(ABS(${bankTransacties.bedrag}))`,
+      })
+      .from(bankTransacties)
+      .where(
+        and(
+          eq(bankTransacties.type, "af"),
+          sql`(${bankTransacties.merchantNaam} = ${merchantKey} OR ${bankTransacties.omschrijving} = ${merchantKey})`,
+          sql`${bankTransacties.datum} >= date('now', '-90 days')`
+        )
+      );
+
+    try {
+      const message = await anthropic.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [{
+          role: "user",
+          content: `Analyseer deze banktransactie voor een klein AI-bureau (Autronis):
+- Merchant: ${merchantKey}
+- Categorie: ${tx.merchantCategorie || "onbekend"}
+- Bedrag: €${tx.bedrag.toFixed(2)}
+- Datum: ${tx.datum}
+- Frequentie: ${freq?.aantal ?? 1}x in 90 dagen, gemiddeld €${(freq?.gemiddeld ?? tx.bedrag).toFixed(2)}
+
+Geef: 1) Korte NL beschrijving (max 1 zin), 2) Is dit een abonnement? 3) Score: noodzakelijk/nuttig/overbodig voor een AI-bureau.
+Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score":"noodzakelijk"|"nuttig"|"overbodig"}`,
+        }],
+      });
+
+      const raw = message.content[0].type === "text" ? message.content[0].text : "";
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const result = JSON.parse(jsonMatch[0]) as {
+          beschrijving: string;
+          isAbonnement: boolean;
+          score: "noodzakelijk" | "nuttig" | "overbodig";
+        };
+
+        await db
+          .update(bankTransacties)
+          .set({
+            aiBeschrijving: result.beschrijving,
+            isAbonnement: result.isAbonnement ? 1 : 0,
+            overdodigheidScore: result.score,
+          })
+          .where(eq(bankTransacties.id, id));
+
+        geanalyseerd++;
+      }
+    } catch {
+      // Skip failed, continue
+    }
+  }
+
+  return geanalyseerd;
+}
+
 // POST /api/revolut/sync — Sync transactions from Revolut
 export async function POST() {
   try {
@@ -112,6 +189,7 @@ export async function POST() {
     });
 
     let nieuweTransacties = 0;
+    const nieuweIds: number[] = [];
 
     for (const tx of transacties) {
       if (tx.state !== "completed") continue;
@@ -129,7 +207,7 @@ export async function POST() {
         const isUitgaand = leg.amount < 0;
         const merchantNaam = tx.merchant?.name || leg.description || tx.reference || "Onbekend";
 
-        await db.insert(bankTransacties).values({
+        const [inserted] = await db.insert(bankTransacties).values({
           datum: (tx.completed_at || tx.created_at).split("T")[0],
           omschrijving: leg.description || tx.reference || merchantNaam,
           bedrag: Math.abs(leg.amount),
@@ -139,9 +217,10 @@ export async function POST() {
           merchantNaam: isUitgaand ? merchantNaam : null,
           merchantCategorie: tx.merchant?.category_code || null,
           status: "onbekend",
-        });
+        }).returning({ id: bankTransacties.id });
 
         nieuweTransacties++;
+        if (inserted && isUitgaand) nieuweIds.push(inserted.id);
       }
     }
 
@@ -157,9 +236,13 @@ export async function POST() {
     // Detect new subscriptions
     const gedetecteerdeAbonnementen = await detecteerAbonnementen();
 
+    // AI analyse of new transactions (max 20 per sync to keep fast)
+    const geanalyseerd = await analyseerTransacties(nieuweIds.slice(0, 20));
+
     const resultaat: SyncResultaat = {
       nieuweTransacties,
       gedetecteerdeAbonnementen,
+      geanalyseerd,
     };
 
     return NextResponse.json(resultaat);

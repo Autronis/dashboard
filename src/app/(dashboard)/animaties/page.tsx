@@ -553,36 +553,44 @@ export default function AnimatiesPage() {
     }
   };
 
-  // ── KIE: Video generation
+  // ── FAL: Video generation (Kling O3 — start + end frame)
   const generateKieVideo = async () => {
     if (!prompts) return;
-    // Kie.ai runway = text-to-video only (no image input support)
-    // Use the editable video prompt
-    const videoPrompt = kieVideoPrompt.trim() || prompts.promptC.slice(0, 500);
+    if (!kieStartFrame.trim() || !kieEndFrame.trim()) {
+      setKieError("Genereer eerst afbeelding A en B. De video gaat van B (start) → A (eind).");
+      return;
+    }
+    const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
+    const videoPrompt = kieVideoPrompt.trim() || `Smooth ${effectLabel.toLowerCase()} to assembled transition, satisfying mechanical precision, white background`;
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
-      const res = await fetch("/api/animaties/kie-video", {
+      const res = await fetch("/api/animaties/fal-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: videoPrompt }),
+        body: JSON.stringify({
+          prompt: videoPrompt,
+          startFrameUrl: kieStartFrame.trim(),
+          endFrameUrl: kieEndFrame.trim(),
+          duration: String(kieDuration),
+        }),
       });
-      const data = await res.json() as { taskId?: string; error?: string };
+      const data = await res.json() as { requestId?: string; error?: string };
       if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
+      // Poll FAL for completion
       kiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
-        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
+        const poll = await fetch(`/api/animaties/fal-video-status?requestId=${data.requestId}`);
+        const result = await poll.json() as { status: string; videoUrl?: string; error?: string; queuePosition?: number };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(kiePollingRef.current!);
           setKieVideoUrl(result.videoUrl);
           setKieLoading(false);
-          // Save video to gallery
           saveVideoToGalleryRef.current(result.videoUrl);
         } else if (result.status === "failed") {
           clearInterval(kiePollingRef.current!);
           setKieError(result.error ?? "Generatie mislukt.");
           setKieLoading(false);
         }
-      }, 4000);
+      }, 5000);
     } catch {
       setKieError("Er ging iets mis."); setKieLoading(false);
     }
@@ -675,7 +683,7 @@ export default function AnimatiesPage() {
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
     B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
-    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Text-to-video — pas de prompt aan en genereer" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: kieStartFrame && kieEndFrame ? "B → A: Kling O3 animeert van start naar eindframe" : "Genereer eerst afbeelding A en B" },
   } as const;
 
   const activePrompt = prompts
@@ -1343,25 +1351,51 @@ export default function AnimatiesPage() {
               {activeTab === "C" && (
                 <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
                   <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
-                    <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
+                    <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via FAL.ai (Kling O3 Pro)
                   </p>
+                  {/* Start + End frame */}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — {EIND_EFFECTEN.find(e => e.key === eindEffect)?.label})</label>
+                      <div className="flex items-center gap-2">
+                        <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                          placeholder="URL afbeelding B"
+                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — Assembled)</label>
+                      <div className="flex items-center gap-2">
+                        <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                          placeholder="URL afbeelding A"
+                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        {kieEndFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Video prompt */}
                   <div className="mb-2">
-                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Video prompt (bewerkbaar — dit stuurt de video aan)</label>
-                    <textarea
-                      value={kieVideoPrompt || (prompts?.promptC?.slice(0, 500) ?? "")}
+                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Transitie prompt (optioneel — stuurt de beweging aan)</label>
+                    <input
+                      value={kieVideoPrompt}
                       onChange={e => setKieVideoPrompt(e.target.value)}
-                      rows={3}
-                      placeholder="Beschrijf de video transitie..."
-                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 resize-y"
+                      placeholder={`Smooth ${EIND_EFFECTEN.find(e => e.key === eindEffect)?.label?.toLowerCase() ?? ''} to assembled transition...`}
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
                     />
-                    <p className="text-[10px] text-autronis-text-tertiary mt-1">
-                      Kie.ai genereert video puur op basis van tekst (geen image input). Pas de prompt aan voor het beste resultaat. Video duurt ~10 seconden.
-                    </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={generateKieVideo} disabled={kieLoading || !prompts}
+                    <div className="flex gap-1">
+                      {[5, 10].map(d => (
+                        <button key={d} onClick={() => setKieDuration(d)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                          {d}s {d === 5 ? "(~€0.56)" : "(~€1.12)"}
+                        </button>
+                      ))}
+                    </div>
+                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
                       className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren (~6 min)...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                     </button>
                   </div>
                   {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}

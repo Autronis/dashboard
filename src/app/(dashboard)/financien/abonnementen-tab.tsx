@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CreditCard,
   Plus,
@@ -9,6 +9,12 @@ import {
   ExternalLink,
   CalendarClock,
   AlertTriangle,
+  Brain,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  MinusCircle,
+  Sparkles,
 } from "lucide-react";
 import { cn, formatBedrag } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +31,29 @@ import {
   useDeleteAbonnement,
   type Abonnement,
 } from "@/hooks/queries/use-abonnementen";
+
+interface AIAbonnement {
+  merchantNaam: string | null;
+  aiBeschrijving: string | null;
+  overdodigheidScore: string | null;
+  aantal: number;
+  gemiddeldBedrag: number;
+  laatsteDatum: string;
+  eersteDatum: string;
+}
+
+interface AIAnalyseData {
+  abonnementen: AIAbonnement[];
+  totaalMaand: number;
+  totaalJaar: number;
+  ongeanalyseerd: number;
+}
+
+const SCORE_CONFIG = {
+  noodzakelijk: { label: "Noodzakelijk", icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15", border: "border-green-500/20" },
+  nuttig: { label: "Nuttig", icon: MinusCircle, color: "text-yellow-400", bg: "bg-yellow-500/15", border: "border-yellow-500/20" },
+  overbodig: { label: "Overbodig", icon: AlertCircle, color: "text-red-400", bg: "bg-red-500/15", border: "border-red-500/20" },
+} as const;
 
 const CATEGORIE_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   tools: { label: "Tools", color: "text-blue-400", bg: "bg-blue-500/15" },

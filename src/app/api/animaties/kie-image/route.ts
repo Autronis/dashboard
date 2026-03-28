@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const { prompt, referenceImageUrl } = await req.json() as {
+  const { prompt, referenceImageUrl, refStrength } = await req.json() as {
     prompt: string;
     referenceImageUrl?: string;
+    refStrength?: number;
   };
 
   if (!prompt?.trim()) {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
   // include it as reference for style/content consistency
   if (referenceImageUrl) {
     input.ref_image = referenceImageUrl;
-    input.ref_strength = 0.35;
+    input.ref_strength = refStrength ?? 0.6;
   }
 
   const res = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {

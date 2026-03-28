@@ -400,6 +400,22 @@ export default function AnimatiesPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Resume Logo Kie.ai video polling after refresh
+  useEffect(() => {
+    const pending = localStorage.getItem("logo-video-pending");
+    if (pending) {
+      try {
+        const { taskId } = JSON.parse(pending) as { taskId: string };
+        if (taskId) {
+          setMode("logo-animatie");
+          startLogoVideoPolling(taskId);
+        }
+      } catch {
+        localStorage.removeItem("logo-video-pending");
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Save to gallery (use ref to avoid stale closure in setInterval callbacks)
   const [gallerySaveStatus, setGallerySaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveToGallery = useCallback(async (url: string, type: "scroll-stop" | "logo-animatie", isVideo = false) => {
@@ -903,23 +919,34 @@ export default function AnimatiesPage() {
       });
       const data = await res.json() as { taskId?: string; error?: string };
       if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
-      logoKiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+      // Persist task for page refresh recovery
+      localStorage.setItem("logo-video-pending", JSON.stringify({ taskId: data.taskId }));
+      startLogoVideoPolling(data.taskId!);
+    } catch {
+      setLogoKieError("Er ging iets mis."); setLogoKieLoading(false);
+    }
+  };
+
+  const startLogoVideoPolling = (taskId: string) => {
+    setLogoKieLoading(true);
+    logoKiePollingRef.current = setInterval(async () => {
+      try {
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${taskId}`);
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(logoKiePollingRef.current!);
           setLogoKieVideoUrl(result.videoUrl);
           setLogoKieLoading(false);
-          saveToGalleryRef.current(result.videoUrl, "logo-animatie");
+          localStorage.removeItem("logo-video-pending");
+          saveToGalleryRef.current(result.videoUrl, "logo-animatie", true);
         } else if (result.status === "failed") {
           clearInterval(logoKiePollingRef.current!);
           setLogoKieError(result.error ?? "Generatie mislukt.");
           setLogoKieLoading(false);
+          localStorage.removeItem("logo-video-pending");
         }
-      }, 4000);
-    } catch {
-      setLogoKieError("Er ging iets mis."); setLogoKieLoading(false);
-    }
+      } catch { /* retry next interval */ }
+    }, 4000);
   };
 
   // ── Copy helpers
@@ -1307,20 +1334,8 @@ export default function AnimatiesPage() {
                         });
                         const data = await res.json() as { taskId?: string; error?: string };
                         if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
-                        logoKiePollingRef.current = setInterval(async () => {
-                          const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
-                          const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
-                          if (result.status === "done" && result.videoUrl) {
-                            clearInterval(logoKiePollingRef.current!);
-                            setLogoKieVideoUrl(result.videoUrl);
-                            setLogoKieLoading(false);
-                            saveToGalleryRef.current(result.videoUrl, "logo-animatie");
-                          } else if (result.status === "failed") {
-                            clearInterval(logoKiePollingRef.current!);
-                            setLogoKieError(result.error ?? "Generatie mislukt.");
-                            setLogoKieLoading(false);
-                          }
-                        }, 4000);
+                        localStorage.setItem("logo-video-pending", JSON.stringify({ taskId: data.taskId }));
+                        startLogoVideoPolling(data.taskId!);
                       } catch {
                         setLogoKieError("Er ging iets mis."); setLogoKieLoading(false);
                       }

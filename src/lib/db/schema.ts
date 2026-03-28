@@ -518,6 +518,10 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   aiBeschrijving: text("ai_beschrijving"),
   isAbonnement: integer("is_abonnement").default(0),
   overdodigheidScore: text("overbodigheid_score", { enum: ["noodzakelijk", "nuttig", "overbodig"] }),
+  fiscaalType: text("fiscaal_type", { enum: ["investering", "kosten", "prive"] }),
+  subsidieMogelijkheden: text("subsidie_mogelijkheden"), // JSON array
+  btwBedrag: real("btw_bedrag"),
+  kiaAftrek: real("kia_aftrek"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -1441,5 +1445,8 @@ export const assetGallery = sqliteTable("asset_gallery", {
   afbeeldingUrl: text("afbeelding_url"),
   videoUrl: text("video_url"),
   lokaalPad: text("lokaal_pad"),
+  projectId: integer("project_id").references(() => projecten.id),
+  tags: text("tags"),
+  isFavoriet: integer("is_favoriet").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

@@ -47,6 +47,7 @@ if (isTurso) {
     prompt_b TEXT,
     prompt_video TEXT,
     afbeelding_url TEXT,
+    video_url TEXT,
     lokaal_pad TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
@@ -106,6 +107,12 @@ if (isTurso) {
     lokaal_pad TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
+
+  // Asset gallery: add video_url column if missing
+  const galleryCols = sqliteDb.prepare("PRAGMA table_info(asset_gallery)").all() as { name: string }[];
+  if (galleryCols.length > 0 && !galleryCols.some((c: { name: string }) => c.name === "video_url")) {
+    sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN video_url TEXT");
+  }
 
   // Belasting tips table
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS belasting_tips (

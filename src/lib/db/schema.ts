@@ -1436,6 +1436,7 @@ export const assetGallery = sqliteTable("asset_gallery", {
   promptB: text("prompt_b"),
   promptVideo: text("prompt_video"),
   afbeeldingUrl: text("afbeelding_url"),
+  videoUrl: text("video_url"),
   lokaalPad: text("lokaal_pad"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

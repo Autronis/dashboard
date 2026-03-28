@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
       promptB?: string;
       promptVideo?: string;
       afbeeldingUrl?: string;
+      videoUrl?: string;
     };
 
     if (!body.productNaam || !body.type) {
@@ -67,6 +68,7 @@ export async function POST(req: NextRequest) {
       promptB: body.promptB,
       promptVideo: body.promptVideo,
       afbeeldingUrl: body.afbeeldingUrl,
+      videoUrl: body.videoUrl,
       lokaalPad,
     }).returning();
 

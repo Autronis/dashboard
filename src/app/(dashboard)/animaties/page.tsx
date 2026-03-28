@@ -35,6 +35,7 @@ interface GalleryItem {
   promptB: string | null;
   promptVideo: string | null;
   afbeeldingUrl: string | null;
+  videoUrl: string | null;
   lokaalPad: string | null;
   aangemaaktOp: string | null;
 }
@@ -307,6 +308,34 @@ export default function AnimatiesPage() {
     abortRef.current?.abort();
     setLoading(false);
     setLogoLoading(false);
+  };
+
+  // ── Reset: clear all state, keep gallery
+  const resetScrollStop = () => {
+    setInput("");
+    setPrompts(null);
+    setError("");
+    setManifest("");
+    setManifestObjectNaam("");
+    setManifestStep("idle");
+    setManifestOpen(true);
+    setUploadedImage(null);
+    setProductRefImage(null);
+    setEindEffect("exploded");
+    setOptimizing(false);
+    setKieImgUrl({ A: null, B: null });
+    setKieImgLoading({ A: false, B: false });
+    setKieImgError({ A: "", B: "" });
+    setKieStartFrame("");
+    setKieEndFrame("");
+    setKieVideoUrl(null);
+    setKieError("");
+    setKieExtraPrompt("");
+    setGallerySaveStatus("idle");
+    setActiveTab("A");
+    localStorage.removeItem("scrollstop-input");
+    localStorage.removeItem("scrollstop-manifest");
+    localStorage.removeItem("scrollstop-manifest-naam");
   };
 
   // ── AI OPTIMIZE: Enrich input prompt + generate manifest in one call
@@ -982,8 +1011,13 @@ export default function AnimatiesPage() {
                 </button>
               )}
 
-              {/* Generate prompts button (right side) */}
+              {/* Generate prompts + reset buttons (right side) */}
               <div className="ml-auto flex gap-2">
+                {(input.trim() || prompts || manifest) && (
+                  <button onClick={resetScrollStop} className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border border-autronis-border text-autronis-text-secondary rounded-lg text-sm font-semibold hover:text-autronis-text-primary hover:border-autronis-text-tertiary transition-all">
+                    <RotateCcw className="w-4 h-4" /> Reset
+                  </button>
+                )}
                 {loading ? (
                   <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
                     <X className="w-4 h-4" /> Stop

@@ -8,7 +8,7 @@ import {
   taken,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql, isNull, ne, desc } from "drizzle-orm";
+import { eq, and, gte, lte, sql, isNull, ne, desc, or } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 function getWeekRange(): { van: string; tot: string } {
@@ -63,7 +63,8 @@ export async function GET() {
         and(
           gte(tijdregistraties.startTijd, maand.van),
           lte(tijdregistraties.startTijd, maand.tot),
-          sql`${tijdregistraties.eindTijd} IS NOT NULL`
+          sql`${tijdregistraties.eindTijd} IS NOT NULL`,
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       );
 
@@ -117,7 +118,8 @@ export async function GET() {
         and(
           eq(projecten.isActief, 1),
           sql`${projecten.deadline} IS NOT NULL`,
-          lte(projecten.deadline, week.tot.slice(0, 10))
+          lte(projecten.deadline, week.tot.slice(0, 10)),
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       )
       .orderBy(projecten.deadline);
@@ -135,7 +137,8 @@ export async function GET() {
       .where(and(
         gte(tijdregistraties.startTijd, vmFirstDay.toISOString()),
         lte(tijdregistraties.startTijd, vmLastDay.toISOString()),
-        sql`${tijdregistraties.eindTijd} IS NOT NULL`
+        sql`${tijdregistraties.eindTijd} IS NOT NULL`,
+        or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
       ));
     const omzetVorigeMaand = omzetVmData.reduce((sum, r) => sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0), 0);
 
@@ -204,7 +207,8 @@ export async function GET() {
       .where(
         and(
           eq(projecten.isActief, 1),
-          sql`${projecten.deadline} IS NOT NULL`
+          sql`${projecten.deadline} IS NOT NULL`,
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
         )
       )
       .orderBy(projecten.deadline)
@@ -299,7 +303,7 @@ export async function GET() {
       })
       .from(projecten)
       .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(and(eq(projecten.isActief, 1), eq(projecten.status, "actief")))
+      .where(and(eq(projecten.isActief, 1), eq(projecten.status, "actief"), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
       .orderBy(projecten.naam);
 
     return NextResponse.json({

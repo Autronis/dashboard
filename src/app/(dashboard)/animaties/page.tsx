@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard, Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play, Loader2 } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import {
+  Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard,
+  Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
+  Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff,
+} from "lucide-react";
 
-interface Prompts {
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface ScrollStopPrompts {
   promptA: string;
   promptB: string;
   promptC: string;
@@ -13,25 +19,76 @@ interface Prompts {
   bron: string;
 }
 
+interface LogoResult {
+  videoPrompt: string;
+  objectNaam: string;
+  bron: string;
+}
+
+interface GalleryItem {
+  id: number;
+  type: "scroll-stop" | "logo-animatie";
+  productNaam: string;
+  eindEffect: string | null;
+  manifest: string | null;
+  promptA: string | null;
+  promptB: string | null;
+  promptVideo: string | null;
+  afbeeldingUrl: string | null;
+  lokaalPad: string | null;
+  aangemaaktOp: string | null;
+}
+
 type Tab = "A" | "B" | "C";
 type Mode = "scroll-stop" | "logo-animatie";
+type ManifestStep = "idle" | "generating" | "ready" | "editing";
 
+const EIND_EFFECTEN = [
+  { key: "exploded", label: "Exploded/Deconstructed", desc: "Onderdelen zweven uit elkaar" },
+  { key: "buildup", label: "Build-up", desc: "Particles komen samen en vormen het object" },
+  { key: "xray", label: "X-ray/Cutaway", desc: "Doorzicht, binnenkant zichtbaar" },
+  { key: "wireframe", label: "Wireframe Dissolve", desc: "Object lost op in wireframe mesh" },
+  { key: "glowup", label: "Glow Up", desc: "Object begint donker, licht op van binnenuit" },
+  { key: "liquid", label: "Liquid Morph", desc: "Object smelt/morpht naar vloeibare vorm" },
+  { key: "scatter", label: "Scatter", desc: "Object valt uiteen in honderden kleine stukjes" },
+  { key: "context", label: "Context Placement", desc: "Object verschijnt in een echte werkplek" },
+  { key: "material", label: "Materiaal Switch", desc: "Transformeert van glas → metaal → hout" },
+] as const;
+
+const ANIMATIE_CHIPS = [
+  "Opstijgen", "Vleugels flappen", "360° draai", "Oplichten",
+  "Zweven", "Landen", "Particle build-up", "Materiaal transformatie", "Schudden",
+] as const;
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AnimatiesPage() {
+  // ── Shared state
   const [mode, setMode] = useState<Mode>("scroll-stop");
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const confettiRef = useRef<HTMLCanvasElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // ── Scroll-Stop state
   const [input, setInput] = useState("");
   const [inputType, setInputType] = useState<"url" | "product" | "image">("product");
   const [loading, setLoading] = useState(false);
-  const [prompts, setPrompts] = useState<Prompts | null>(null);
+  const [prompts, setPrompts] = useState<ScrollStopPrompts | null>(null);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<Tab>("A");
-  const [copied, setCopied] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [logoInput, setLogoInput] = useState(
-    "Autronis butterfly logo sculpture: black matte gear body, translucent glass wings with silver circuit traces and nodes, teal (#23C6B7) ring, white orb center, two black curved antennae.\n\nAnimatie: begint als exploded view met alle losse onderdelen zwevend → onderdelen komen logisch en clean samen → logo kantelt rechtop → vleugels flappen zachtjes."
-  );
-  const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [stepsOpen, setStepsOpen] = useState(false);
+  const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [eindEffect, setEindEffect] = useState("exploded");
+  const [effectDropdownOpen, setEffectDropdownOpen] = useState(false);
+
+  // ── Manifest state
+  const [manifestStep, setManifestStep] = useState<ManifestStep>("idle");
+  const [manifest, setManifest] = useState("");
+  const [manifestObjectNaam, setManifestObjectNaam] = useState("");
+  const [manifestOpen, setManifestOpen] = useState(true);
+
+  // ── Kie.ai state
   const [kieStartFrame, setKieStartFrame] = useState("");
   const [kieEndFrame, setKieEndFrame] = useState("");
   const [kieDuration, setKieDuration] = useState(5);
@@ -43,13 +100,105 @@ export default function AnimatiesPage() {
   const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>({ A: null, B: null });
   const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
-  const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+
+  // ── Logo Animatie state
+  const [logoInput, setLogoInput] = useState("");
+  const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [logoTags, setLogoTags] = useState<string[]>([]);
+  const [logoLoading, setLogoLoading] = useState(false);
+  const [logoResult, setLogoResult] = useState<LogoResult | null>(null);
+  const [logoError, setLogoError] = useState("");
+  const [logoCopied, setLogoCopied] = useState(false);
+
+  // ── Gallery state
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [galleryFilter, setGalleryFilter] = useState<"all" | "scroll-stop" | "logo-animatie">("all");
+  const [galleryLoading, setGalleryLoading] = useState(false);
+
+  // ── Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const productRefInputRef = useRef<HTMLInputElement>(null);
-  const confettiRef = useRef<HTMLCanvasElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
+  // ── Load gallery
+  const loadGallery = useCallback(async () => {
+    setGalleryLoading(true);
+    try {
+      const res = await fetch("/api/assets/gallery");
+      if (res.ok) {
+        const data = await res.json() as { items: GalleryItem[] };
+        setGallery(data.items);
+      }
+    } catch { /* ignore */ }
+    setGalleryLoading(false);
+  }, []);
+
+  useEffect(() => { loadGallery(); }, [loadGallery]);
+
+  // ── Save to gallery
+  const saveToGallery = useCallback(async (imageUrl: string, type: "scroll-stop" | "logo-animatie") => {
+    const body: Record<string, string | undefined> = {
+      type,
+      productNaam: type === "scroll-stop" ? (prompts?.objectNaam ?? input) : (logoResult?.objectNaam ?? "Logo"),
+      afbeeldingUrl: imageUrl,
+    };
+    if (type === "scroll-stop" && prompts) {
+      body.eindEffect = eindEffect;
+      body.manifest = manifest || undefined;
+      body.promptA = prompts.promptA;
+      body.promptB = prompts.promptB;
+      body.promptVideo = prompts.promptC;
+    }
+    if (type === "logo-animatie" && logoResult) {
+      body.promptVideo = logoResult.videoPrompt;
+    }
+    try {
+      await fetch("/api/assets/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      loadGallery();
+    } catch { /* ignore */ }
+  }, [prompts, logoResult, eindEffect, manifest, input, loadGallery]);
+
+  // ── Delete from gallery
+  const deleteGalleryItem = useCallback(async (id: number) => {
+    try {
+      await fetch(`/api/assets/gallery?id=${id}`, { method: "DELETE" });
+      setGallery(prev => prev.filter(item => item.id !== id));
+    } catch { /* ignore */ }
+  }, []);
+
+  // ── Load gallery item into generator
+  const loadGalleryItem = useCallback((item: GalleryItem) => {
+    if (item.type === "scroll-stop") {
+      setMode("scroll-stop");
+      setInput(item.productNaam);
+      setInputType("product");
+      if (item.eindEffect) setEindEffect(item.eindEffect);
+      if (item.manifest) { setManifest(item.manifest); setManifestStep("ready"); }
+      if (item.promptA && item.promptB && item.promptVideo) {
+        setPrompts({
+          promptA: item.promptA,
+          promptB: item.promptB,
+          promptC: item.promptVideo,
+          objectNaam: item.productNaam,
+          tabANaam: "Assembled Shot",
+          tabBNaam: EIND_EFFECTEN.find(e => e.key === item.eindEffect)?.label ?? "Deconstructed View",
+          bron: item.productNaam,
+        });
+      }
+    } else {
+      setMode("logo-animatie");
+      if (item.promptVideo) {
+        setLogoResult({ videoPrompt: item.promptVideo, objectNaam: item.productNaam, bron: item.productNaam });
+      }
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
+  // ── Confetti
   const launchConfetti = useCallback(() => {
     const canvas = confettiRef.current;
     if (!canvas) return;
@@ -88,33 +237,65 @@ export default function AnimatiesPage() {
     animate();
   }, []);
 
-  const handleFileUpload = (file: File) => {
+  // ── File upload handler
+  const handleFileUpload = (file: File, setter: (v: { base64: string; mediaType: string; preview: string }) => void) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const result = e.target?.result as string;
-      setUploadedImage({ base64: result.split(",")[1], mediaType: file.type, preview: result });
+      setter({ base64: result.split(",")[1], mediaType: file.type, preview: result });
     };
     reader.readAsDataURL(file);
   };
 
+  // ── Stop generation
   const stopGenerate = () => {
     abortRef.current?.abort();
     setLoading(false);
+    setLogoLoading(false);
   };
 
+  // ── MANIFEST: Generate
+  const generateManifest = async () => {
+    setManifestStep("generating");
+    setManifest("");
+    const body: Record<string, string> = {};
+    if (inputType === "product") body.product = input;
+    if (inputType === "image" && uploadedImage) { body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType; }
+    if (inputType === "product" && productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; if (input) body.product = input; }
+    try {
+      const res = await fetch("/api/animaties/generate-manifest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json() as { manifest?: string; objectNaam?: string; error?: string };
+      if (!res.ok || data.error) { setError(data.error ?? "Manifest generatie mislukt."); setManifestStep("idle"); return; }
+      setManifest(data.manifest ?? "");
+      setManifestObjectNaam(data.objectNaam ?? "");
+      setManifestStep("ready");
+      setManifestOpen(true);
+    } catch {
+      setError("Manifest generatie mislukt.");
+      setManifestStep("idle");
+    }
+  };
+
+  // ── SCROLL-STOP: Generate prompts (with manifest)
   const generate = async () => {
     if (inputType === "image" && !uploadedImage) return;
     if (inputType !== "image" && !input.trim()) return;
     abortRef.current = new AbortController();
     setLoading(true); setError(""); setPrompts(null);
 
-    let body: Record<string, string> = {};
-    if (inputType === "url") body = { url: input };
+    let body: Record<string, string> = { eindEffect };
+    if (manifest) body.manifest = manifest;
+    if (inputType === "url") body.url = input;
     else if (inputType === "product") {
-      body = { product: input };
+      body.product = input;
       if (productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; }
+    } else if (inputType === "image" && uploadedImage) {
+      body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType;
     }
-    else if (inputType === "image" && uploadedImage) body = { imageBase64: uploadedImage.base64, mediaType: uploadedImage.mediaType };
 
     try {
       const res = await fetch("/api/animaties/generate", {
@@ -123,7 +304,7 @@ export default function AnimatiesPage() {
         body: JSON.stringify(body),
         signal: abortRef.current.signal,
       });
-      const data = await res.json() as Prompts & { error?: string };
+      const data = await res.json() as ScrollStopPrompts & { error?: string };
       setLoading(false);
       if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
       setPrompts(data); setActiveTab("A");
@@ -134,41 +315,7 @@ export default function AnimatiesPage() {
     }
   };
 
-  const generateKieVideo = async () => {
-    if (!prompts) return;
-    setKieLoading(true); setKieError(""); setKieVideoUrl(null);
-    try {
-      const res = await fetch("/api/animaties/kie-video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: prompts.promptC,
-          duration: kieDuration,
-          ...(kieStartFrame.trim() && { firstFrameImage: kieStartFrame.trim() }),
-          ...(kieEndFrame.trim() && { lastFrameImage: kieEndFrame.trim() }),
-        }),
-      });
-      const data = await res.json() as { taskId?: string; error?: string };
-      if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
-      // Poll for result
-      kiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
-        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
-        if (result.status === "done" && result.videoUrl) {
-          clearInterval(kiePollingRef.current!);
-          setKieVideoUrl(result.videoUrl);
-          setKieLoading(false);
-        } else if (result.status === "failed") {
-          clearInterval(kiePollingRef.current!);
-          setKieError(result.error ?? "Generatie mislukt.");
-          setKieLoading(false);
-        }
-      }, 4000);
-    } catch {
-      setKieError("Er ging iets mis."); setKieLoading(false);
-    }
-  };
-
+  // ── KIE: Image generation
   const generateKieImage = async (tab: "A" | "B") => {
     if (!prompts) return;
     const prompt = tab === "A" ? prompts.promptA : prompts.promptB;
@@ -194,6 +341,7 @@ export default function AnimatiesPage() {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! }));
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+          saveToGallery(result.imageUrl!, "scroll-stop");
         } else if (result.status === "failed") {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));
@@ -206,13 +354,50 @@ export default function AnimatiesPage() {
     }
   };
 
+  // ── KIE: Video generation
+  const generateKieVideo = async () => {
+    if (!prompts) return;
+    setKieLoading(true); setKieError(""); setKieVideoUrl(null);
+    try {
+      const res = await fetch("/api/animaties/kie-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: prompts.promptC,
+          duration: kieDuration,
+          ...(kieStartFrame.trim() && { firstFrameImage: kieStartFrame.trim() }),
+          ...(kieEndFrame.trim() && { lastFrameImage: kieEndFrame.trim() }),
+        }),
+      });
+      const data = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
+      kiePollingRef.current = setInterval(async () => {
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
+        if (result.status === "done" && result.videoUrl) {
+          clearInterval(kiePollingRef.current!);
+          setKieVideoUrl(result.videoUrl);
+          setKieLoading(false);
+        } else if (result.status === "failed") {
+          clearInterval(kiePollingRef.current!);
+          setKieError(result.error ?? "Generatie mislukt.");
+          setKieLoading(false);
+        }
+      }, 4000);
+    } catch {
+      setKieError("Er ging iets mis."); setKieLoading(false);
+    }
+  };
+
+  // ── LOGO: Generate
   const generateLogo = async () => {
     if (!logoInput.trim() && !logoImage) return;
     abortRef.current = new AbortController();
-    setLoading(true); setError(""); setPrompts(null);
-    const body: Record<string, string> = logoImage
-      ? { imageBase64: logoImage.base64, mediaType: logoImage.mediaType, description: logoInput }
-      : { description: logoInput };
+    setLogoLoading(true); setLogoError(""); setLogoResult(null);
+    const body: Record<string, string | string[]> = {};
+    if (logoImage) { body.imageBase64 = logoImage.base64; body.mediaType = logoImage.mediaType; }
+    if (logoInput.trim()) body.description = logoInput;
+    if (logoTags.length > 0) body.animatieTags = logoTags;
     try {
       const res = await fetch("/api/animaties/generate-logo", {
         method: "POST",
@@ -220,18 +405,19 @@ export default function AnimatiesPage() {
         body: JSON.stringify(body),
         signal: abortRef.current.signal,
       });
-      const data = await res.json() as Prompts & { error?: string };
-      setLoading(false);
-      if (!res.ok || data.error) { setError(data.error ?? "Er ging iets mis."); return; }
-      setPrompts(data); setActiveTab("A");
+      const data = await res.json() as LogoResult & { error?: string };
+      setLogoLoading(false);
+      if (!res.ok || data.error) { setLogoError(data.error ?? "Er ging iets mis."); return; }
+      setLogoResult(data);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") return;
-      setLoading(false);
-      setError("Er ging iets mis.");
+      setLogoLoading(false);
+      setLogoError("Er ging iets mis.");
     }
   };
 
-  const copyPrompt = (openHiggsfield = false) => {
+  // ── Copy helpers
+  const copyScrollStop = (openHiggsfield = false) => {
     if (!prompts) return;
     const text = activeTab === "A" ? prompts.promptA : activeTab === "B" ? prompts.promptB : prompts.promptC;
     navigator.clipboard.writeText(text).then(() => {
@@ -241,9 +427,21 @@ export default function AnimatiesPage() {
     });
   };
 
+  const copyLogoPrompt = (openTarget?: string) => {
+    if (!logoResult) return;
+    navigator.clipboard.writeText(logoResult.videoPrompt).then(() => {
+      setLogoCopied(true); launchConfetti();
+      setTimeout(() => setLogoCopied(false), 2000);
+      if (openTarget === "runway") window.open("https://app.runwayml.com", "_blank");
+      if (openTarget === "higgsfield") window.open("https://higgsfield.ai", "_blank");
+    });
+  };
+
+  // ── Scroll-stop tab config
+  const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "Deconstructed View";
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Plak in Higgsfield → genereer afbeelding (16:9)" },
-    B: { label: prompts?.tabBNaam ?? "Deconstructed View", icon: Layers, instruction: "Upload afbeelding A als referentie → genereer afbeelding (16:9)" },
+    B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: "Upload afbeelding A als referentie → genereer afbeelding (16:9)" },
     C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload A als start frame + B als end frame → genereer video (5s)" },
   } as const;
 
@@ -253,12 +451,17 @@ export default function AnimatiesPage() {
 
   const allSteps = [
     { n: "1", icon: Image, label: "Copy A → Higgsfield", sub: "Genereer assembled shot (afbeelding)" },
-    { n: "2", icon: Layers, label: "Copy B → Higgsfield", sub: "Upload A als referentie → genereer exploded view" },
+    { n: "2", icon: Layers, label: "Copy B → Higgsfield", sub: `Upload A als referentie → genereer ${effectLabel.toLowerCase()}` },
     { n: "3", icon: Clapperboard, label: "Copy C → Higgsfield", sub: "Upload A + B als frames → genereer video (5s)" },
     { n: "4", icon: Globe, label: "Download video", sub: "Sla de video op van Higgsfield" },
     { n: "5", icon: Code2, label: "VSCode → scroll-stop build", sub: "Zeg in Claude Code: \"scroll-stop build\" + geef het videobestand" },
     { n: "6", icon: Globe, label: "Website live", sub: "Skill bouwt automatisch de Apple-stijl scroll-website" },
   ];
+
+  const canGenerateManifest = (inputType === "product" && input.trim()) || (inputType === "image" && uploadedImage);
+
+  // ── Gallery filtered
+  const filteredGallery = galleryFilter === "all" ? gallery : gallery.filter(g => g.type === galleryFilter);
 
   return (
     <div className="flex flex-col h-full min-h-screen p-6 relative bg-autronis-bg text-autronis-text-primary">
@@ -297,182 +500,177 @@ export default function AnimatiesPage() {
         </button>
       </div>
 
-      {/* Stappenplan (collapsible) */}
-      <div className="bg-autronis-card border border-autronis-border rounded-xl mb-5 overflow-hidden">
-        <button
-          onClick={() => setStepsOpen(v => !v)}
-          className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-autronis-text-primary hover:bg-autronis-card-hover transition-all"
-        >
-          <span className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-autronis-accent" />
-            Volledig stappenplan — van prompt tot website
-          </span>
-          {stepsOpen ? <ChevronUp className="w-4 h-4 text-autronis-text-tertiary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-tertiary" />}
-        </button>
-        {stepsOpen && (
-          <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-autronis-border pt-3">
-            {allSteps.map(({ n, icon: Icon, label, sub }) => (
-              <div key={n} className="flex gap-3 items-start">
-                <div className="w-6 h-6 rounded-md bg-autronis-accent/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-accent">{n}</div>
-                <div>
-                  <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1">
-                    <Icon className="w-3 h-3 text-autronis-accent" /> {label}
-                  </p>
-                  <p className="text-xs text-autronis-text-tertiary mt-0.5 leading-snug">{sub}</p>
+      {/* Stappenplan (collapsible) — only scroll-stop */}
+      {mode === "scroll-stop" && (
+        <div className="bg-autronis-card border border-autronis-border rounded-xl mb-5 overflow-hidden">
+          <button
+            onClick={() => setStepsOpen(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-autronis-text-primary hover:bg-autronis-card-hover transition-all"
+          >
+            <span className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-autronis-accent" />
+              Volledig stappenplan — van prompt tot website
+            </span>
+            {stepsOpen ? <ChevronUp className="w-4 h-4 text-autronis-text-tertiary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-tertiary" />}
+          </button>
+          {stepsOpen && (
+            <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-autronis-border pt-3">
+              {allSteps.map(({ n, icon: Icon, label, sub }) => (
+                <div key={n} className="flex gap-3 items-start">
+                  <div className="w-6 h-6 rounded-md bg-autronis-accent/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-accent">{n}</div>
+                  <div>
+                    <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1">
+                      <Icon className="w-3 h-3 text-autronis-accent" /> {label}
+                    </p>
+                    <p className="text-xs text-autronis-text-tertiary mt-0.5 leading-snug">{sub}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* LOGO ANIMATIE MODE */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* LOGO ANIMATIE MODE                                                     */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
       {mode === "logo-animatie" && (
         <>
           <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 mb-5">
-            {/* Description textarea */}
+            {/* Image upload */}
+            <div className="mb-3">
+              <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, setLogoImage); }} />
+              {logoImage ? (
+                <div className="flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5">
+                  <img src={logoImage.preview} alt="upload" className="w-12 h-12 object-contain rounded" />
+                  <span className="text-sm text-autronis-text-primary flex-1">Afbeelding geladen</span>
+                  <button onClick={() => setLogoImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => logoFileInputRef.current?.click()}
+                  className="w-full flex flex-col items-center gap-2 py-5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
+                >
+                  <Upload className="w-6 h-6" />
+                  <span className="text-sm">Upload je logo, icoon of product afbeelding</span>
+                  <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
+                </button>
+              )}
+            </div>
+
+            {/* Description */}
             <textarea
               value={logoInput}
               onChange={e => setLogoInput(e.target.value)}
-              rows={4}
-              placeholder="Beschrijf je logo en wat de animatie moet doen..."
+              rows={3}
+              placeholder="Beschrijf de gewenste animatie... bijv. 'Logo vliegt van links het beeld in, draait 360° en landt in het midden'"
               className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors resize-none mb-3"
             />
-            {/* Optional image reference + generate */}
-            <div className="flex gap-3 items-center">
-              <input ref={logoFileInputRef} type="file" accept="image/*" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const res = ev.target?.result as string; setLogoImage({ base64: res.split(",")[1], mediaType: f.type, preview: res }); }; r.readAsDataURL(f); }} />
-              {logoImage ? (
-                <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2">
-                  <img src={logoImage.preview} alt="ref" className="w-7 h-7 object-contain rounded" />
-                  <span className="text-xs text-autronis-text-secondary">Referentie</span>
-                  <button onClick={() => setLogoImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary ml-1"><X className="w-3.5 h-3.5" /></button>
-                </div>
-              ) : (
-                <button onClick={() => logoFileInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-2 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-xs text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all">
-                  <Upload className="w-3.5 h-3.5" /> Referentie afbeelding (optioneel)
-                </button>
-              )}
-              <div className="ml-auto flex gap-2">
-                {loading ? (
-                  <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
-                    <X className="w-4 h-4" /> Stop
-                  </button>
-                ) : (
-                  <button onClick={generateLogo} disabled={!logoInput.trim()} className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                    <Zap className="w-4 h-4" /> Genereer prompts
-                  </button>
-                )}
-              </div>
-            </div>
-            {error && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{error}</p>}
-          </div>
 
-          {prompts && (
-            <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
-              <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
-                {(["A", "B", "C"] as Tab[]).map(tab => (
-                  <button key={tab} onClick={() => setActiveTab(tab)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${activeTab === tab ? "bg-autronis-accent text-white" : "bg-autronis-bg text-autronis-text-secondary hover:text-autronis-text-primary border border-autronis-border"}`}
+            {/* Animation chips */}
+            <div className="mb-3">
+              <p className="text-xs font-semibold text-autronis-text-secondary mb-2">Snelkeuze animaties</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ANIMATIE_CHIPS.map(chip => (
+                  <button
+                    key={chip}
+                    onClick={() => setLogoTags(prev => prev.includes(chip) ? prev.filter(t => t !== chip) : [...prev, chip])}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      logoTags.includes(chip)
+                        ? "bg-autronis-accent text-white"
+                        : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/30"
+                    }`}
                   >
-                    <span className={`w-5 h-5 rounded flex items-center justify-center text-xs font-black ${activeTab === tab ? "bg-white/20" : "bg-autronis-border"}`}>{tab}</span>
-                    {tabConfig[tab].label}
+                    {chip}
                   </button>
                 ))}
-                <div className="ml-auto flex gap-2">
-                  <button onClick={() => copyPrompt(false)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${copied ? "bg-autronis-accent text-white border-autronis-accent" : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"}`}>
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Gekopieerd!" : "Copy"}
+              </div>
+            </div>
+
+            {/* Generate button */}
+            <div className="flex justify-end gap-2">
+              {logoLoading ? (
+                <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                  <X className="w-4 h-4" /> Stop
+                </button>
+              ) : (
+                <button onClick={generateLogo} disabled={!logoInput.trim() && !logoImage}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Zap className="w-4 h-4" /> Genereer video prompt
+                </button>
+              )}
+            </div>
+            {logoError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoError}</p>}
+          </div>
+
+          {/* Logo Result */}
+          {logoResult && (
+            <div className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden mb-5">
+              <div className="flex items-center justify-between p-3 border-b border-autronis-border">
+                <div className="flex items-center gap-2">
+                  <Play className="w-4 h-4 text-autronis-accent" />
+                  <span className="text-sm font-semibold">Video Prompt — {logoResult.objectNaam}</span>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => copyLogoPrompt()}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
+                      logoCopied ? "bg-autronis-accent text-white border-autronis-accent" : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"
+                    }`}>
+                    {logoCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {logoCopied ? "Gekopieerd!" : "Copy"}
                   </button>
-                  <button onClick={() => copyPrompt(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all">
+                  <button onClick={() => copyLogoPrompt("runway")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all">
+                    <ExternalLink className="w-4 h-4" /> Copy + Open Runway
+                  </button>
+                  <button onClick={() => copyLogoPrompt("higgsfield")}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all">
                     <ExternalLink className="w-4 h-4" /> Copy + Open Higgsfield
                   </button>
                 </div>
               </div>
-              <div className="px-4 py-2 border-b border-autronis-border flex items-center gap-2">
-                <span className="text-xs font-bold px-2 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent">Stap {activeTab === "A" ? "1" : activeTab === "B" ? "2" : "3"}</span>
-                <span className="text-xs text-autronis-text-tertiary">{tabConfig[activeTab].instruction}</span>
-              </div>
-              <div className="flex-1 min-h-0 overflow-y-auto p-4">
-                <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{activePrompt}</pre>
-              </div>
-              {(activeTab === "A" || activeTab === "B") && (
-                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
-                      <Image className="w-3.5 h-3.5 text-autronis-accent" /> Genereer afbeelding via Kie.ai (Nano Banana 2)
-                    </p>
-                    <button onClick={() => generateKieImage(activeTab)} disabled={kieImgLoading[activeTab]}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {kieImgLoading[activeTab] ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genereren...</> : <><Zap className="w-3.5 h-3.5" /> Genereer</>}
-                    </button>
+              {/* Show uploaded image + prompt */}
+              <div className="p-4 flex gap-4">
+                {logoImage && (
+                  <div className="flex-shrink-0">
+                    <img src={logoImage.preview} alt="logo" className="w-32 h-32 object-contain rounded-lg border border-autronis-border bg-white" />
                   </div>
-                  {kieImgError[activeTab] && <p className="text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieImgError[activeTab]}</p>}
-                  {kieImgUrl[activeTab] && (
-                    <div className="mt-2">
-                      <img src={kieImgUrl[activeTab]!} alt="gegenereerde afbeelding" className="w-full rounded-lg border border-autronis-border" />
-                      <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
-                        <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
-                      </a>
-                    </div>
-                  )}
+                )}
+                <div className="flex-1 min-w-0">
+                  <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{logoResult.videoPrompt}</pre>
                 </div>
-              )}
-              {activeTab === "C" && (
-                <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
-                  <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
-                    <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
-                  </p>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
-                      placeholder="Start frame URL (afbeelding A)"
-                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
-                      placeholder="End frame URL (afbeelding B)"
-                      className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
-                      {[5, 8, 10].map(d => (
-                        <button key={d} onClick={() => setKieDuration(d)}
-                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
-                          {d}s
-                        </button>
-                      ))}
-                    </div>
-                    <button onClick={generateKieVideo} disabled={kieLoading}
-                      className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
-                    </button>
-                  </div>
-                  {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
-                  {kieVideoUrl && (
-                    <div className="mt-3">
-                      <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
-                      <a href={kieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
-                        <ExternalLink className="w-3.5 h-3.5" /> Download video
-                      </a>
-                    </div>
-                  )}
-                </div>
-              )}
+              </div>
             </div>
           )}
 
-          {!prompts && !loading && (
+          {!logoResult && !logoLoading && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
                   <RotateCcw className="w-6 h-6 text-autronis-text-tertiary" />
                 </div>
-                <p className="text-autronis-text-tertiary text-sm">Beschrijf wat je wilt en klik Genereer</p>
+                <p className="text-autronis-text-tertiary text-sm">Upload een afbeelding, beschrijf de animatie en klik Genereer</p>
+              </div>
+            </div>
+          )}
+
+          {logoLoading && (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="flex items-center gap-3 text-autronis-text-secondary">
+                <Loader2 className="w-5 h-5 animate-spin text-autronis-accent" />
+                <span className="text-sm">Video prompt genereren...</span>
               </div>
             </div>
           )}
         </>
       )}
 
-      {/* SCROLL-STOP MODE */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* SCROLL-STOP MODE                                                       */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
       {mode === "scroll-stop" && (
         <>
           {/* Input */}
@@ -498,7 +696,7 @@ export default function AnimatiesPage() {
             {inputType === "image" ? (
               <div className="flex gap-3 items-start">
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0])} />
+                  onChange={e => e.target.files?.[0] && handleFileUpload(e.target.files[0], setUploadedImage)} />
                 {uploadedImage ? (
                   <div className="flex-1 flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5">
                     <img src={uploadedImage.preview} alt="upload" className="w-10 h-10 object-contain rounded" />
@@ -517,54 +715,20 @@ export default function AnimatiesPage() {
                     <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
                   </button>
                 )}
-                {loading ? (
-                  <button
-                    onClick={stopGenerate}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
-                  >
-                    <X className="w-4 h-4" /> Stop
-                  </button>
-                ) : (
-                  <button
-                    onClick={generate}
-                    disabled={!uploadedImage}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Zap className="w-4 h-4" /> Genereer
-                  </button>
-                )}
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <div className="flex gap-3">
-                  <input
-                    value={input}
-                    onChange={e => setInput(e.target.value)}
-                    onKeyDown={e => e.key === "Enter" && !loading && generate()}
-                    placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
-                    className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
-                  />
-                  {loading ? (
-                    <button
-                      onClick={stopGenerate}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all"
-                    >
-                      <X className="w-4 h-4" /> Stop
-                    </button>
-                  ) : (
-                    <button
-                      onClick={generate}
-                      disabled={!input.trim()}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <Zap className="w-4 h-4" /> Genereer
-                    </button>
-                  )}
-                </div>
+                <input
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && !loading && manifestStep === "ready" && generate()}
+                  placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
+                />
                 {inputType === "product" && (
                   <div className="flex items-center gap-2">
                     <input ref={productRefInputRef} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { const res = ev.target?.result as string; setProductRefImage({ base64: res.split(",")[1], mediaType: f.type, preview: res }); }; r.readAsDataURL(f); }} />
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, setProductRefImage); }} />
                     {productRefImage ? (
                       <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5">
                         <img src={productRefImage.preview} alt="ref" className="w-6 h-6 object-contain rounded" />
@@ -580,6 +744,73 @@ export default function AnimatiesPage() {
                 )}
               </div>
             )}
+
+            {/* Eindeffect dropdown + Manifest button */}
+            <div className="flex items-center gap-3 mt-3">
+              {/* Eindeffect dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setEffectDropdownOpen(v => !v)}
+                  className="flex items-center gap-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-sm text-autronis-text-primary hover:border-autronis-accent/50 transition-all"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-autronis-accent" />
+                  <span className="font-semibold">{EIND_EFFECTEN.find(e => e.key === eindEffect)?.label}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-autronis-text-tertiary" />
+                </button>
+                {effectDropdownOpen && (
+                  <div className="absolute top-full left-0 mt-1 w-80 bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-40 py-1 max-h-72 overflow-y-auto">
+                    {EIND_EFFECTEN.map(effect => (
+                      <button
+                        key={effect.key}
+                        onClick={() => { setEindEffect(effect.key); setEffectDropdownOpen(false); }}
+                        className={`w-full text-left px-3 py-2 flex items-center gap-3 hover:bg-autronis-bg transition-all ${
+                          eindEffect === effect.key ? "bg-autronis-accent/10" : ""
+                        }`}
+                      >
+                        <div className="flex-1">
+                          <p className={`text-sm font-semibold ${eindEffect === effect.key ? "text-autronis-accent" : "text-autronis-text-primary"}`}>{effect.label}</p>
+                          <p className="text-xs text-autronis-text-tertiary">{effect.desc}</p>
+                        </div>
+                        {eindEffect === effect.key && <Check className="w-4 h-4 text-autronis-accent flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Manifest generate button */}
+              {inputType !== "url" && (
+                <button
+                  onClick={generateManifest}
+                  disabled={!canGenerateManifest || manifestStep === "generating"}
+                  className="flex items-center gap-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-lg text-sm font-semibold text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {manifestStep === "generating" ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Manifest genereren...</>
+                  ) : (
+                    <><FileText className="w-3.5 h-3.5" /> {manifestStep === "ready" ? "Manifest hergenereren" : "Manifest genereren"}</>
+                  )}
+                </button>
+              )}
+
+              {/* Generate prompts button (right side) */}
+              <div className="ml-auto flex gap-2">
+                {loading ? (
+                  <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                    <X className="w-4 h-4" /> Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={generate}
+                    disabled={inputType === "image" ? !uploadedImage : !input.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <Zap className="w-4 h-4" /> Genereer prompts
+                  </button>
+                )}
+              </div>
+            </div>
+
             {error && (
               <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">
                 {error}
@@ -587,9 +818,51 @@ export default function AnimatiesPage() {
             )}
           </div>
 
+          {/* Manifest preview (collapsible) */}
+          {manifestStep === "ready" && manifest && (
+            <div className="bg-autronis-card border border-autronis-border rounded-xl mb-5 overflow-hidden">
+              <button
+                onClick={() => setManifestOpen(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-autronis-text-primary hover:bg-autronis-card-hover transition-all"
+              >
+                <span className="flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-autronis-accent" />
+                  Onderdelen Manifest {manifestObjectNaam && `— ${manifestObjectNaam}`}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-autronis-text-tertiary">Bewerkbaar</span>
+                  {manifestOpen ? <EyeOff className="w-4 h-4 text-autronis-text-tertiary" /> : <Eye className="w-4 h-4 text-autronis-text-tertiary" />}
+                </div>
+              </button>
+              {manifestOpen && (
+                <div className="px-4 pb-4 border-t border-autronis-border pt-3">
+                  <textarea
+                    value={manifest}
+                    onChange={e => setManifest(e.target.value)}
+                    rows={8}
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-3 text-sm text-autronis-text-primary font-mono leading-relaxed focus:outline-none focus:border-autronis-accent/50 transition-colors resize-y"
+                  />
+                  <p className="mt-2 text-xs text-autronis-text-tertiary">
+                    Review en pas het manifest aan. De prompts worden op basis van dit manifest gegenereerd zodat A en B consistent zijn.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Loading indicator */}
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="flex items-center gap-3 text-autronis-text-secondary">
+                <Loader2 className="w-5 h-5 animate-spin text-autronis-accent" />
+                <span className="text-sm">Prompts genereren...</span>
+              </div>
+            </div>
+          )}
+
           {/* Result */}
           {prompts && (
-            <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+            <div className="flex-1 flex flex-col min-h-0 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden mb-5">
               <div className="flex gap-2 p-3 border-b border-autronis-border flex-wrap">
                 {(["A", "B", "C"] as Tab[]).map(tab => (
                   <button
@@ -607,7 +880,7 @@ export default function AnimatiesPage() {
                 ))}
                 <div className="ml-auto flex gap-2">
                   <button
-                    onClick={() => copyPrompt(false)}
+                    onClick={() => copyScrollStop(false)}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all border ${
                       copied ? "bg-autronis-accent text-white border-autronis-accent" : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary"
                     }`}
@@ -616,7 +889,7 @@ export default function AnimatiesPage() {
                     {copied ? "Gekopieerd!" : "Copy"}
                   </button>
                   <button
-                    onClick={() => copyPrompt(true)}
+                    onClick={() => copyScrollStop(true)}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/20 hover:bg-autronis-accent hover:text-white transition-all"
                   >
                     <ExternalLink className="w-4 h-4" />
@@ -713,6 +986,81 @@ export default function AnimatiesPage() {
           )}
         </>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* GALLERY                                                                */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <div className="mt-8 border-t border-autronis-border pt-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Image className="w-4 h-4 text-autronis-accent" />
+            <h2 className="text-lg font-bold">Galerij</h2>
+            <span className="text-xs text-autronis-text-tertiary">({filteredGallery.length} items)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {(["all", "scroll-stop", "logo-animatie"] as const).map(filter => (
+              <button
+                key={filter}
+                onClick={() => setGalleryFilter(filter)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  galleryFilter === filter
+                    ? "bg-autronis-accent text-white"
+                    : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                }`}
+              >
+                {filter === "all" ? "Alles" : filter === "scroll-stop" ? "Scroll-Stop" : "Logo"}
+              </button>
+            ))}
+            <button onClick={loadGallery} className="p-1.5 text-autronis-text-tertiary hover:text-autronis-accent transition-all">
+              <RefreshCw className={`w-4 h-4 ${galleryLoading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+        </div>
+
+        {filteredGallery.length === 0 ? (
+          <div className="text-center py-10 bg-autronis-card border border-autronis-border rounded-xl">
+            <Image className="w-8 h-8 text-autronis-text-tertiary mx-auto mb-2" />
+            <p className="text-sm text-autronis-text-tertiary">Nog geen gegenereerde afbeeldingen</p>
+            <p className="text-xs text-autronis-text-tertiary mt-1">Afbeeldingen worden automatisch opgeslagen als je ze genereert via Kie.ai</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filteredGallery.map(item => (
+              <div key={item.id} className="group bg-autronis-card border border-autronis-border rounded-xl overflow-hidden hover:border-autronis-accent/30 transition-all">
+                {item.afbeeldingUrl ? (
+                  <div className="aspect-video bg-white relative cursor-pointer" onClick={() => loadGalleryItem(item)}>
+                    <img src={item.afbeeldingUrl} alt={item.productNaam} className="w-full h-full object-contain" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-all" />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="aspect-video bg-autronis-bg flex items-center justify-center cursor-pointer" onClick={() => loadGalleryItem(item)}>
+                    <Image className="w-8 h-8 text-autronis-text-tertiary" />
+                  </div>
+                )}
+                <div className="p-2.5">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
+                      item.type === "scroll-stop" ? "bg-autronis-accent/10 text-autronis-accent" : "bg-purple-500/10 text-purple-400"
+                    }`}>
+                      {item.type}
+                    </span>
+                    <button onClick={() => deleteGalleryItem(item.id)}
+                      className="p-1 text-autronis-text-tertiary hover:text-red-400 transition-all opacity-0 group-hover:opacity-100">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs font-semibold text-autronis-text-primary truncate">{item.productNaam}</p>
+                  <p className="text-[10px] text-autronis-text-tertiary mt-0.5">
+                    {item.aangemaaktOp ? new Date(item.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : ""}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

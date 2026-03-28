@@ -570,7 +570,6 @@ export default function AnimatiesPage() {
 
   // ── FAL: Video generation (Kling O3 — start + end frame)
   const generateKieVideo = async () => {
-    if (!prompts) return;
     if (!kieStartFrame.trim() || !kieEndFrame.trim()) {
       setKieError("Genereer eerst afbeelding A en B. De video gaat van B (start) → A (eind).");
       return;
@@ -1457,12 +1456,67 @@ export default function AnimatiesPage() {
           )}
 
           {!prompts && !loading && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center">
-                <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
-                  <Wand2 className="w-6 h-6 text-autronis-text-tertiary" />
+            <div className="space-y-5">
+              <div className="flex-1 flex items-center justify-center py-6">
+                <div className="text-center">
+                  <div className="w-14 h-14 rounded-xl bg-autronis-card border border-autronis-border flex items-center justify-center mx-auto mb-3">
+                    <Wand2 className="w-6 h-6 text-autronis-text-tertiary" />
+                  </div>
+                  <p className="text-autronis-text-tertiary text-sm">Voer een product of URL in om te beginnen</p>
                 </div>
-                <p className="text-autronis-text-tertiary text-sm">Voer een product of URL in om te beginnen</p>
+              </div>
+
+              {/* Standalone video generator — always accessible */}
+              <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
+                <p className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+                  <Clapperboard className="w-4 h-4 text-autronis-accent" />
+                  Direct video genereren (FAL.ai — Kling O3)
+                </p>
+                <p className="text-xs text-autronis-text-tertiary mb-3">
+                  Plak de URLs van je foto&apos;s hieronder. Geen prompts nodig — alleen twee afbeeldingen.
+                </p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div>
+                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — effect)</label>
+                    <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                      placeholder="Plak URL afbeelding B"
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — assembled)</label>
+                    <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                      placeholder="Plak URL afbeelding A"
+                      className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                  </div>
+                </div>
+                <div className="mb-2">
+                  <input value={kieVideoPrompt} onChange={e => setKieVideoPrompt(e.target.value)}
+                    placeholder="Transitie prompt (optioneel)"
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {[5, 10].map(d => (
+                      <button key={d} onClick={() => setKieDuration(d)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                        {d}s {d === 5 ? "(~€0,52)" : "(~€1,04)"}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
+                    className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren (~6 min)...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                  </button>
+                </div>
+                {kieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieError}</p>}
+                {kieVideoUrl && (
+                  <div className="mt-3">
+                    <video src={kieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                    <a href={kieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                      <ExternalLink className="w-3.5 h-3.5" /> Download video
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}

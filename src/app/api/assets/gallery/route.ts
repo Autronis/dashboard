@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { assetGallery, projecten } from "@/lib/db/schema";
+import { assetGallery } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, desc, and, like, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
+
+interface GalleryRow {
+  id: number;
+  type: string;
+  product_naam: string;
+  eind_effect: string | null;
+  manifest: string | null;
+  prompt_a: string | null;
+  prompt_b: string | null;
+  prompt_video: string | null;
+  afbeelding_url: string | null;
+  video_url: string | null;
+  lokaal_pad: string | null;
+  project_id: number | null;
+  project_naam: string | null;
+  tags: string | null;
+  is_favoriet: number | null;
+  aangemaakt_op: string | null;
+}
 
 export async function GET(req: NextRequest) {
   try { await requireAuth(); } catch { /* proxy auth */ }
@@ -17,38 +36,40 @@ export async function GET(req: NextRequest) {
   const favoriet = searchParams.get("favoriet");
 
   try {
-    const conditions = [];
-    if (type) conditions.push(eq(assetGallery.type, type as "scroll-stop" | "logo-animatie"));
-    if (projectId) conditions.push(eq(assetGallery.projectId, Number(projectId)));
-    if (tag) conditions.push(like(assetGallery.tags, `%${tag}%`));
-    if (search) conditions.push(like(assetGallery.productNaam, `%${search}%`));
-    if (favoriet === "1") conditions.push(eq(assetGallery.isFavoriet, 1));
+    const conditions: string[] = ["1=1"];
+    if (type) conditions.push(`ag.type = '${type.replace(/'/g, "")}'`);
+    if (projectId) conditions.push(`ag.project_id = ${Number(projectId)}`);
+    if (tag) conditions.push(`ag.tags LIKE '%${tag.replace(/'/g, "")}%'`);
+    if (search) conditions.push(`ag.product_naam LIKE '%${search.replace(/'/g, "")}%'`);
+    if (favoriet === "1") conditions.push(`ag.is_favoriet = 1`);
 
-    const items = await db
-      .select({
-        id: assetGallery.id,
-        type: assetGallery.type,
-        productNaam: assetGallery.productNaam,
-        eindEffect: assetGallery.eindEffect,
-        manifest: assetGallery.manifest,
-        promptA: assetGallery.promptA,
-        promptB: assetGallery.promptB,
-        promptVideo: assetGallery.promptVideo,
-        afbeeldingUrl: assetGallery.afbeeldingUrl,
-        videoUrl: assetGallery.videoUrl,
-        lokaalPad: assetGallery.lokaalPad,
-        projectId: assetGallery.projectId,
-        projectNaam: projecten.naam,
-        tags: assetGallery.tags,
-        isFavoriet: assetGallery.isFavoriet,
-        aangemaaktOp: assetGallery.aangemaaktOp,
-      })
-      .from(assetGallery)
-      .leftJoin(projecten, eq(assetGallery.projectId, projecten.id))
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(assetGallery.aangemaaktOp));
+    const rows = db.all<GalleryRow>(sql.raw(`
+      SELECT ag.*, p.naam as project_naam
+      FROM asset_gallery ag
+      LEFT JOIN projecten p ON ag.project_id = p.id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY ag.aangemaakt_op DESC
+    `));
 
-    // Get all unique tags
+    const items = rows.map(r => ({
+      id: r.id,
+      type: r.type,
+      productNaam: r.product_naam,
+      eindEffect: r.eind_effect,
+      manifest: r.manifest,
+      promptA: r.prompt_a,
+      promptB: r.prompt_b,
+      promptVideo: r.prompt_video,
+      afbeeldingUrl: r.afbeelding_url,
+      videoUrl: r.video_url,
+      lokaalPad: r.lokaal_pad,
+      projectId: r.project_id,
+      projectNaam: r.project_naam,
+      tags: r.tags,
+      isFavoriet: r.is_favoriet,
+      aangemaaktOp: r.aangemaakt_op,
+    }));
+
     const allTags = new Set<string>();
     for (const item of items) {
       if (item.tags) {

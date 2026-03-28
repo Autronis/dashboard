@@ -298,7 +298,7 @@ export default function AnimatiesPage() {
   // ── Kie.ai image tweaks
   const [kieCleanBg, setKieCleanBg] = useState(true);
   const [kieExtraPrompt, setKieExtraPrompt] = useState("");
-  const [kieRefStrength, setKieRefStrength] = useState(0.78);
+  const [kieRefStrength, setKieRefStrength] = useState(0.85);
 
   // ── Kie.ai video prompt (editable)
   const [kieVideoPrompt, setKieVideoPrompt] = useState("");
@@ -993,7 +993,8 @@ export default function AnimatiesPage() {
   const buildBPrompt = (productDesc: string, stijlP: string, componentManifest?: string) => {
     const components = componentManifest ? `\n\nComponents:\n${componentManifest}\n` : "";
     const cleanBg = kieCleanBg ? " Pure white seamless backdrop, no shadows on background." : "";
-    const base = `Professional product photography on pure white background (#FFFFFF). ${stijlP} Photorealistic, 16:9 aspect ratio.${cleanBg}`;
+    const consistency = " CRITICAL: Use EXACTLY the same materials, colors, finishes, and lighting as the assembled version. Do NOT change the material style or color palette — only change the arrangement/structure.";
+    const base = `Professional product photography on pure white background (#FFFFFF). ${stijlP} Photorealistic, 16:9 aspect ratio.${cleanBg}${consistency}`;
 
     switch (eindEffect) {
       case "buildup":

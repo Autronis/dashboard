@@ -104,14 +104,22 @@ if (isTurso) {
     prompt_b TEXT,
     prompt_video TEXT,
     afbeelding_url TEXT,
+    video_url TEXT,
     lokaal_pad TEXT,
+    project_id INTEGER REFERENCES projecten(id),
+    tags TEXT,
+    is_favoriet INTEGER DEFAULT 0,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
 
-  // Asset gallery: add video_url column if missing
+  // Asset gallery: add missing columns
   const galleryCols = sqliteDb.prepare("PRAGMA table_info(asset_gallery)").all() as { name: string }[];
-  if (galleryCols.length > 0 && !galleryCols.some((c: { name: string }) => c.name === "video_url")) {
-    sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN video_url TEXT");
+  const galColNames = galleryCols.map((c: { name: string }) => c.name);
+  if (galleryCols.length > 0) {
+    if (!galColNames.includes("video_url")) sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN video_url TEXT");
+    if (!galColNames.includes("project_id")) sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN project_id INTEGER REFERENCES projecten(id)");
+    if (!galColNames.includes("tags")) sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN tags TEXT");
+    if (!galColNames.includes("is_favoriet")) sqliteDb.exec("ALTER TABLE asset_gallery ADD COLUMN is_favoriet INTEGER DEFAULT 0");
   }
 
   // Belasting tips table

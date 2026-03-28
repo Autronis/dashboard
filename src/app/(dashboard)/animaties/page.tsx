@@ -72,6 +72,56 @@ const ANIMATIE_CHIPS = [
   "Zweven", "Landen", "Particle build-up", "Materiaal transformatie", "Schudden",
 ] as const;
 
+const VIDEO_TRANSITIE_PRESETS = [
+  {
+    key: "assembly",
+    label: "Mechanische assembly",
+    desc: "Onderdelen glijden stuk voor stuk naar hun positie",
+    prompt: "Each individual component floats independently and glides precisely into its correct position, snapping into place one by one with mechanical precision. Parts maintain their exact shape — no morphing, no dissolving. Assembly order: base frame first, then internal components, then outer panels last. Satisfying click sound implied. Static locked-off camera, pure white background, photorealistic product photography lighting.",
+  },
+  {
+    key: "magnetic",
+    label: "Magnetische aantrekking",
+    desc: "Onderdelen worden magnetisch naar het centrum getrokken",
+    prompt: "All floating components simultaneously begin drifting toward the center as if pulled by a magnetic force. Movement starts slow then accelerates. Each piece finds its exact position and locks in with a satisfying snap. Larger pieces move slower, smaller pieces zip into place. No morphing or shape changes — every component keeps its original form. Static camera, white background, photorealistic.",
+  },
+  {
+    key: "cascade",
+    label: "Cascade van boven",
+    desc: "Onderdelen vallen van boven en klikken op hun plek",
+    prompt: "Components fall gracefully from above, one after another in a cascading sequence. Each piece descends with slight rotation, then precisely clicks into its correct position. First the base, then middle components, then the top shell. Gravity-driven but precise — like a 3D puzzle assembling itself. Static camera, white background, photorealistic product photography.",
+  },
+  {
+    key: "spiral",
+    label: "Spiraal naar binnen",
+    desc: "Onderdelen spiralen naar het centrum en assembleren",
+    prompt: "Deconstructed components orbit in a wide spiral pattern, gradually tightening toward the center. Each piece follows a smooth curved path inward. As pieces reach the center they lock into position. The spiral contracts over the duration until the product is fully assembled. Elegant, orbital motion. Static camera, white background, photorealistic.",
+  },
+  {
+    key: "freeze-reverse",
+    label: "Reverse explosie",
+    desc: "Alsof je een explosie terugdraait in slow-motion",
+    prompt: "A freeze-frame explosion played in perfect reverse. Scattered fragments and debris hang frozen in mid-air, then begin moving backward — slowly at first, then accelerating. Each shard, gear, panel, and component traces its path back to its original position. The product reassembles with increasing speed until the final piece snaps into place. Reverse high-speed photography effect. Static camera, white background.",
+  },
+  {
+    key: "grow",
+    label: "Groeien vanuit kern",
+    desc: "Product groeit van binnenuit naar buiten",
+    prompt: "Starting from a tiny core at the center, the product grows outward layer by layer. Internal components materialize first — circuit board, gears, wiring. Then the structural frame builds around them. Finally the outer shell and panels form as the last layer. Like watching a product being 3D-printed from the inside out. Static camera, white background, photorealistic.",
+  },
+  {
+    key: "teleport",
+    label: "Materialiseren / Teleport",
+    desc: "Onderdelen verschijnen met een lichtflits op hun plek",
+    prompt: "Components materialize one by one with brief flashes of light, each appearing instantly in its correct assembled position. Small sparkle effects at each materialization point. Order: base first, internals, then exterior. Between each appearance there is a brief pause. The final piece triggers a subtle pulse of light across the completed product. Static camera, white background, sci-fi photorealistic.",
+  },
+  {
+    key: "custom",
+    label: "Eigen prompt",
+    desc: "Schrijf je eigen transitie beschrijving",
+  },
+] as const;
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AnimatiesPage() {
@@ -148,6 +198,8 @@ export default function AnimatiesPage() {
 
   // ── Kie.ai video prompt (editable)
   const [kieVideoPrompt, setKieVideoPrompt] = useState("");
+  const [videoTransitiePreset, setVideoTransitiePreset] = useState("assembly");
+  const [videoTransitieDropdownOpen, setVideoTransitieDropdownOpen] = useState(false);
 
   // ── Kie.ai state
   const [kieStartFrame, setKieStartFrame] = useState("");

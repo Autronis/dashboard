@@ -626,44 +626,25 @@ export default function AnimatiesPage() {
   // ── LOGO KIE: Video generation (image-to-video via Kie.ai runway with imageUrl)
   const generateLogoKieVideo = async () => {
     if (!logoResult) return;
-    // If user uploaded a logo image, first upload it to get a URL for Kie.ai
-    let startFrameUrl = logoKieFirstFrame.trim();
-    if (!startFrameUrl && logoImage) {
-      // Upload the logo to get a public URL via the Kie.ai image generation
-      // Use the logo preview (data URL) — we need a public URL though
-      // For now, generate an image first via Kie, then use that as startFrame
-      setLogoKieError("Upload je logo eerst als afbeelding via Kie.ai (tab A bij Scroll-Stop) of plak een URL hieronder.");
-      return;
-    }
+    const startFrameUrl = logoKieFirstFrame.trim();
     if (!startFrameUrl) {
-      setLogoKieError("Plak een afbeelding URL hieronder als startframe voor de video.");
+      setLogoKieError("Plak een afbeelding URL als startframe. Upload je logo naar een image host of genereer het eerst via Kie.ai.");
       return;
     }
-    const videoPrompt = logoResult.videoPrompt.slice(0, 200);
     setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
     try {
-      // Use Kie.ai runway with imageUrl (proven to work for image-to-video)
-      const res = await fetch("https://api.kie.ai/api/v1/runway/generate", {
+      const res = await fetch("/api/animaties/kie-video", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${await fetch("/api/animaties/kie-key").then(r => r.json()).then(d => d.key).catch(() => "")}`,
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prompt: videoPrompt,
-          duration: 10,
-          quality: "720p",
+          prompt: logoResult.videoPrompt.slice(0, 200),
           imageUrl: startFrameUrl,
         }),
       });
-      const data = await res.json() as { code?: number; msg?: string; data?: { taskId: string } };
-      if (data.code !== 200 || !data.data?.taskId) {
-        setLogoKieError(data.msg ?? "Kie.ai fout.");
-        setLogoKieLoading(false);
-        return;
-      }
+      const data = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
       logoKiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.data!.taskId}`);
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(logoKiePollingRef.current!);
@@ -939,23 +920,22 @@ export default function AnimatiesPage() {
               {/* Kie.ai video generator */}
               <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
                 <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
-                  <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
+                  <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai (image-to-video)
                 </p>
-                <div className="flex flex-col gap-2 mb-2">
-                  <input value={logoKieFirstFrame} onChange={e => setLogoKieFirstFrame(e.target.value)}
-                    placeholder="Start frame URL (je geüploade afbeelding als URL, optioneel)"
-                    className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                <div className="mb-2">
+                  <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame URL (je logo afbeelding)</label>
+                  <div className="flex items-center gap-2">
+                    <input value={logoKieFirstFrame} onChange={e => setLogoKieFirstFrame(e.target.value)}
+                      placeholder="Plak URL van je logo afbeelding"
+                      className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                    {logoKieFirstFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                  </div>
+                  <p className="text-[10px] text-autronis-text-tertiary mt-1">
+                    De AI animeert je logo vanuit deze afbeelding. Video duurt ~10 seconden en wordt automatisch opgeslagen.
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {[5, 8, 10].map(d => (
-                      <button key={d} onClick={() => setLogoKieDuration(d)}
-                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${logoKieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
-                        {d}s
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={generateLogoKieVideo} disabled={logoKieLoading}
+                  <button onClick={generateLogoKieVideo} disabled={logoKieLoading || !logoKieFirstFrame.trim()}
                     className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     {logoKieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                   </button>

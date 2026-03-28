@@ -195,6 +195,7 @@ export default function AnimatiesPage() {
   // ── Kie.ai image tweaks
   const [kieCleanBg, setKieCleanBg] = useState(true);
   const [kieExtraPrompt, setKieExtraPrompt] = useState("");
+  const [kieRefStrength, setKieRefStrength] = useState(0.78);
 
   // ── Kie.ai video prompt (editable)
   const [kieVideoPrompt, setKieVideoPrompt] = useState("");
@@ -587,7 +588,7 @@ export default function AnimatiesPage() {
       const body: Record<string, string | number> = { prompt };
       if (refImageUrl) {
         body.referenceImageUrl = refImageUrl;
-        body.refStrength = 0.84;
+        body.refStrength = kieRefStrength;
       }
       const res = await fetch("/api/animaties/kie-image", {
         method: "POST",
@@ -1685,6 +1686,12 @@ export default function AnimatiesPage() {
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] font-semibold text-autronis-text-secondary">B — Deconstructed</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-autronis-text-tertiary">Ref: {kieRefStrength.toFixed(2)}</span>
+                        <input type="range" min="0.5" max="0.95" step="0.01" value={kieRefStrength}
+                          onChange={e => setKieRefStrength(parseFloat(e.target.value))}
+                          className="w-20 h-1 accent-purple-500" title={`Referentie sterkte: ${kieRefStrength} — lager = meer uit elkaar, hoger = meer zoals A`} />
+                      </div>
                       <button
                         onClick={async () => {
                           if (!input.trim() && !kieImgUrl.A) return;
@@ -1720,7 +1727,7 @@ export default function AnimatiesPage() {
                           }
 
                           const body: Record<string, string | number> = { prompt: fullPrompt };
-                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.84; }
+                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = kieRefStrength; }
                           const res = await fetch("/api/animaties/kie-image", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },

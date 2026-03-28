@@ -110,6 +110,14 @@ export default function AnimatiesPage() {
   const [logoError, setLogoError] = useState("");
   const [logoCopied, setLogoCopied] = useState(false);
 
+  // ── Logo Kie.ai video state
+  const [logoKieFirstFrame, setLogoKieFirstFrame] = useState("");
+  const [logoKieDuration, setLogoKieDuration] = useState(5);
+  const [logoKieLoading, setLogoKieLoading] = useState(false);
+  const [logoKieVideoUrl, setLogoKieVideoUrl] = useState<string | null>(null);
+  const [logoKieError, setLogoKieError] = useState("");
+  const logoKiePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // ── Gallery state
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [galleryFilter, setGalleryFilter] = useState<"all" | "scroll-stop" | "logo-animatie">("all");
@@ -416,6 +424,40 @@ export default function AnimatiesPage() {
     }
   };
 
+  // ── LOGO KIE: Video generation
+  const generateLogoKieVideo = async () => {
+    if (!logoResult) return;
+    setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
+    try {
+      const res = await fetch("/api/animaties/kie-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: logoResult.videoPrompt,
+          duration: logoKieDuration,
+          ...(logoKieFirstFrame.trim() && { firstFrameImage: logoKieFirstFrame.trim() }),
+        }),
+      });
+      const data = await res.json() as { taskId?: string; error?: string };
+      if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
+      logoKiePollingRef.current = setInterval(async () => {
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
+        if (result.status === "done" && result.videoUrl) {
+          clearInterval(logoKiePollingRef.current!);
+          setLogoKieVideoUrl(result.videoUrl);
+          setLogoKieLoading(false);
+        } else if (result.status === "failed") {
+          clearInterval(logoKiePollingRef.current!);
+          setLogoKieError(result.error ?? "Generatie mislukt.");
+          setLogoKieLoading(false);
+        }
+      }, 4000);
+    } catch {
+      setLogoKieError("Er ging iets mis."); setLogoKieLoading(false);
+    }
+  };
+
   // ── Copy helpers
   const copyScrollStop = (openHiggsfield = false) => {
     if (!prompts) return;
@@ -642,6 +684,40 @@ export default function AnimatiesPage() {
                 <div className="flex-1 min-w-0">
                   <pre className="font-mono text-sm text-autronis-text-secondary whitespace-pre-wrap leading-relaxed">{logoResult.videoPrompt}</pre>
                 </div>
+              </div>
+              {/* Kie.ai video generator */}
+              <div className="border-t border-autronis-border p-4 bg-autronis-bg/40">
+                <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
+                  <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
+                </p>
+                <div className="flex flex-col gap-2 mb-2">
+                  <input value={logoKieFirstFrame} onChange={e => setLogoKieFirstFrame(e.target.value)}
+                    placeholder="Start frame URL (je geüploade afbeelding als URL, optioneel)"
+                    className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    {[5, 8, 10].map(d => (
+                      <button key={d} onClick={() => setLogoKieDuration(d)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${logoKieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                        {d}s
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={generateLogoKieVideo} disabled={logoKieLoading}
+                    className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    {logoKieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
+                  </button>
+                </div>
+                {logoKieError && <p className="mt-2 text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoKieError}</p>}
+                {logoKieVideoUrl && (
+                  <div className="mt-3">
+                    <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                    <a href={logoKieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                      <ExternalLink className="w-3.5 h-3.5" /> Download video
+                    </a>
+                  </div>
+                )}
               </div>
             </div>
           )}

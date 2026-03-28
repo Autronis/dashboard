@@ -954,14 +954,41 @@ export default function AnimatiesPage() {
               )}
             </div>
 
-            {/* Description */}
-            <textarea
-              value={logoInput}
-              onChange={e => setLogoInput(e.target.value)}
-              rows={3}
-              placeholder="Beschrijf de gewenste animatie... bijv. 'Logo vliegt van links het beeld in, draait 360° en landt in het midden'"
-              className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors resize-none mb-3"
-            />
+            {/* Description + AI Optimize */}
+            <div className="relative mb-3">
+              <textarea
+                value={logoInput}
+                onChange={e => setLogoInput(e.target.value)}
+                rows={3}
+                placeholder="Beschrijf kort wat je wilt... bijv. 'de kabels moeten bewegen' of 'logo draait en licht op'"
+                className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-3 pr-28 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors resize-none"
+              />
+              <button
+                onClick={async () => {
+                  if (!logoInput.trim() && !logoImage) return;
+                  setOptimizing(true);
+                  try {
+                    const res = await fetch("/api/animaties/optimize-logo-prompt", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        description: logoInput.trim(),
+                        tags: logoTags,
+                        ...(logoImage?.base64 && { imageBase64: logoImage.base64, mediaType: logoImage.mediaType }),
+                      }),
+                    });
+                    const data = await res.json() as { optimizedPrompt?: string; error?: string };
+                    if (data.optimizedPrompt) setLogoInput(data.optimizedPrompt);
+                  } catch { /* ignore */ }
+                  setOptimizing(false);
+                }}
+                disabled={optimizing || (!logoInput.trim() && !logoImage)}
+                className="absolute top-2 right-2 flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/15 text-purple-400 border border-purple-500/30 rounded-lg text-xs font-semibold hover:bg-purple-500/25 transition-all disabled:opacity-40"
+              >
+                {optimizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />}
+                AI Optimize
+              </button>
+            </div>
 
             {/* Animation chips */}
             <div className="mb-3">

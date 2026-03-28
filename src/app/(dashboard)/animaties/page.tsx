@@ -5,6 +5,7 @@ import {
   Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard,
   Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
   Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff, BookmarkPlus,
+  Star, Search, FolderOpen, Tag, CheckSquare, Grid3X3, LayoutList,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -37,7 +38,16 @@ interface GalleryItem {
   afbeeldingUrl: string | null;
   videoUrl: string | null;
   lokaalPad: string | null;
+  projectId: number | null;
+  projectNaam: string | null;
+  tags: string | null;
+  isFavoriet: number | null;
   aangemaaktOp: string | null;
+}
+
+interface ProjectOption {
+  id: number;
+  naam: string;
 }
 
 type Tab = "A" | "B" | "C";
@@ -121,6 +131,99 @@ const VIDEO_TRANSITIE_PRESETS = [
     desc: "Schrijf je eigen transitie beschrijving",
   },
 ] as const;
+
+// ─── Gallery Card ────────────────────────────────────────────────────────────
+
+function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProjectChange, projects }: {
+  item: GalleryItem;
+  selected: boolean;
+  onSelect: (id: number) => void;
+  onFav: (id: number, current: number | null) => void;
+  onDelete: (id: number) => void;
+  onLoad: (item: GalleryItem) => void;
+  onProjectChange: (id: number, projectId: number | null) => void;
+  projects: ProjectOption[];
+}) {
+  const tags = item.tags ? item.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+
+  return (
+    <div className={`group bg-autronis-card border rounded-xl overflow-hidden transition-all ${selected ? "border-autronis-accent ring-1 ring-autronis-accent/30" : "border-autronis-border hover:border-autronis-accent/30"}`}>
+      {/* Thumbnail */}
+      <div className="relative">
+        {item.videoUrl ? (
+          <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-black">
+            <video src={item.videoUrl} className="w-full h-full object-contain" muted />
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+              <Play className="w-8 h-8 text-white opacity-60 group-hover:opacity-100 transition-all" />
+            </div>
+            <span className="absolute top-1.5 right-1.5 text-[9px] px-1.5 py-0.5 rounded bg-purple-500/80 text-white font-bold">VIDEO</span>
+          </a>
+        ) : item.afbeeldingUrl ? (
+          <a href={item.afbeeldingUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-white">
+            <img src={item.afbeeldingUrl} alt={item.productNaam} className="w-full h-full object-contain" />
+          </a>
+        ) : (
+          <div className="aspect-video bg-autronis-bg flex items-center justify-center cursor-pointer" onClick={() => onLoad(item)}>
+            <Image className="w-8 h-8 text-autronis-text-tertiary" />
+          </div>
+        )}
+        {/* Select checkbox */}
+        <button onClick={() => onSelect(item.id)} className={`absolute top-1.5 left-1.5 w-5 h-5 rounded border flex items-center justify-center transition-all ${selected ? "bg-autronis-accent border-autronis-accent" : "bg-black/30 border-white/40 opacity-0 group-hover:opacity-100"}`}>
+          {selected && <Check className="w-3 h-3 text-white" />}
+        </button>
+        {/* Favoriet */}
+        <button onClick={() => onFav(item.id, item.isFavoriet)} className="absolute top-1.5 right-1.5 p-1 rounded transition-all opacity-0 group-hover:opacity-100 hover:scale-110">
+          <Star className={`w-4 h-4 ${item.isFavoriet ? "fill-yellow-400 text-yellow-400" : "text-white/70 hover:text-yellow-400"}`} />
+        </button>
+      </div>
+      {/* Info */}
+      <div className="p-2.5">
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-1">
+            <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${item.type === "scroll-stop" ? "bg-autronis-accent/10 text-autronis-accent" : "bg-purple-500/10 text-purple-400"}`}>
+              {item.type}
+            </span>
+            {item.isFavoriet ? <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> : null}
+          </div>
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <button onClick={() => onLoad(item)} title="Laad in generator" className="p-1 text-autronis-text-tertiary hover:text-autronis-accent">
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={() => onDelete(item.id)} title="Verwijderen" className="p-1 text-autronis-text-tertiary hover:text-red-400">
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        <p className="text-xs font-semibold text-autronis-text-primary truncate">{item.productNaam}</p>
+        {/* Project badge */}
+        {item.projectNaam && (
+          <p className="text-[10px] text-autronis-accent mt-0.5 truncate flex items-center gap-1">
+            <FolderOpen className="w-2.5 h-2.5" /> {item.projectNaam}
+          </p>
+        )}
+        {/* Tags */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {tags.map(t => (
+              <span key={t} className="text-[9px] px-1.5 py-0.5 rounded bg-autronis-bg border border-autronis-border text-autronis-text-tertiary">{t}</span>
+            ))}
+          </div>
+        )}
+        {/* Project dropdown (on hover) */}
+        <div className="mt-1.5 opacity-0 group-hover:opacity-100 transition-all">
+          <select value={item.projectId ? String(item.projectId) : ""} onChange={e => onProjectChange(item.id, e.target.value ? Number(e.target.value) : null)}
+            className="w-full px-1.5 py-1 bg-autronis-bg border border-autronis-border rounded text-[10px] text-autronis-text-secondary focus:outline-none">
+            <option value="">Geen project</option>
+            {projects.map(p => <option key={p.id} value={String(p.id)}>{p.naam}</option>)}
+          </select>
+        </div>
+        <p className="text-[10px] text-autronis-text-tertiary mt-0.5">
+          {item.aangemaaktOp ? new Date(item.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : ""}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -241,6 +344,14 @@ export default function AnimatiesPage() {
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [galleryFilter, setGalleryFilter] = useState<"all" | "scroll-stop" | "logo-animatie">("all");
   const [galleryLoading, setGalleryLoading] = useState(false);
+  const [gallerySearch, setGallerySearch] = useState("");
+  const [galleryTagFilter, setGalleryTagFilter] = useState("");
+  const [galleryProjectFilter, setGalleryProjectFilter] = useState("");
+  const [galleryFavFilter, setGalleryFavFilter] = useState(false);
+  const [galleryView, setGalleryView] = useState<"grid" | "project">("grid");
+  const [galleryAllTags, setGalleryAllTags] = useState<string[]>([]);
+  const [gallerySelected, setGallerySelected] = useState<Set<number>>(new Set());
+  const [projectOptions, setProjectOptions] = useState<ProjectOption[]>([]);
 
   // ── Refs
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -253,14 +364,26 @@ export default function AnimatiesPage() {
     try {
       const res = await fetch("/api/assets/gallery");
       if (res.ok) {
-        const data = await res.json() as { items: GalleryItem[] };
+        const data = await res.json() as { items: GalleryItem[]; allTags: string[] };
         setGallery(data.items);
+        setGalleryAllTags(data.allTags ?? []);
       }
     } catch { /* ignore */ }
     setGalleryLoading(false);
   }, []);
 
-  useEffect(() => { loadGallery(); }, [loadGallery]);
+  // Load projects for dropdown
+  const loadProjects = useCallback(async () => {
+    try {
+      const res = await fetch("/api/projecten");
+      if (res.ok) {
+        const data = await res.json() as { projecten: ProjectOption[] };
+        setProjectOptions(data.projecten ?? []);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { loadGallery(); loadProjects(); }, [loadGallery, loadProjects]);
 
   // Resume FAL video polling after refresh
   useEffect(() => {
@@ -343,7 +466,53 @@ export default function AnimatiesPage() {
     try {
       await fetch(`/api/assets/gallery?id=${id}`, { method: "DELETE" });
       setGallery(prev => prev.filter(item => item.id !== id));
+      setGallerySelected(prev => { const n = new Set(prev); n.delete(id); return n; });
     } catch { /* ignore */ }
+  }, []);
+
+  const toggleFavoriet = useCallback(async (id: number, current: number | null) => {
+    const newVal = current ? 0 : 1;
+    try {
+      await fetch("/api/assets/gallery", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, isFavoriet: newVal }),
+      });
+      setGallery(prev => prev.map(item => item.id === id ? { ...item, isFavoriet: newVal } : item));
+    } catch { /* ignore */ }
+  }, []);
+
+  const updateGalleryProject = useCallback(async (id: number, projectId: number | null) => {
+    try {
+      await fetch("/api/assets/gallery", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, projectId }),
+      });
+      loadGallery();
+    } catch { /* ignore */ }
+  }, [loadGallery]);
+
+  const bulkAction = useCallback(async (action: "delete" | "project" | "tag", value?: string | number) => {
+    const ids = Array.from(gallerySelected);
+    if (ids.length === 0) return;
+    if (action === "delete") {
+      await fetch(`/api/assets/gallery?ids=${ids.join(",")}`, { method: "DELETE" });
+    } else if (action === "project") {
+      await fetch("/api/assets/gallery", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, projectId: value }) });
+    } else if (action === "tag") {
+      await fetch("/api/assets/gallery", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids, addTag: value }) });
+    }
+    setGallerySelected(new Set());
+    loadGallery();
+  }, [gallerySelected, loadGallery]);
+
+  const toggleSelect = useCallback((id: number) => {
+    setGallerySelected(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
   }, []);
 
   // ── Load gallery item into generator
@@ -796,7 +965,20 @@ export default function AnimatiesPage() {
   const canGenerateManifest = (inputType === "product" && input.trim()) || (inputType === "image" && uploadedImage);
 
   // ── Gallery filtered
-  const filteredGallery = galleryFilter === "all" ? gallery : gallery.filter(g => g.type === galleryFilter);
+  const filteredGallery = gallery.filter(g => {
+    if (galleryFilter !== "all" && g.type !== galleryFilter) return false;
+    if (galleryFavFilter && !g.isFavoriet) return false;
+    if (galleryProjectFilter && String(g.projectId) !== galleryProjectFilter) return false;
+    if (galleryTagFilter && !(g.tags ?? "").toLowerCase().includes(galleryTagFilter.toLowerCase())) return false;
+    if (gallerySearch && !g.productNaam.toLowerCase().includes(gallerySearch.toLowerCase())) return false;
+    return true;
+  });
+
+  const galleryByProject = filteredGallery.reduce<Record<string, GalleryItem[]>>((acc, item) => {
+    const key = item.projectNaam ?? "Geen project";
+    (acc[key] ??= []).push(item);
+    return acc;
+  }, {});
 
   return (
     <div className="flex flex-col h-full min-h-screen p-6 relative bg-autronis-bg text-autronis-text-primary">
@@ -1897,31 +2079,91 @@ export default function AnimatiesPage() {
       {/* GALLERY                                                                */}
       {/* ═══════════════════════════════════════════════════════════════════════ */}
       <div className="mt-8 border-t border-autronis-border pt-6">
-        <div className="flex items-center justify-between mb-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Image className="w-4 h-4 text-autronis-accent" />
             <h2 className="text-lg font-bold">Galerij</h2>
             <span className="text-xs text-autronis-text-tertiary">({filteredGallery.length} items)</span>
           </div>
           <div className="flex items-center gap-2">
-            {(["all", "scroll-stop", "logo-animatie"] as const).map(filter => (
-              <button
-                key={filter}
-                onClick={() => setGalleryFilter(filter)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  galleryFilter === filter
-                    ? "bg-autronis-accent text-white"
-                    : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
-                }`}
-              >
-                {filter === "all" ? "Alles" : filter === "scroll-stop" ? "Scroll-Stop" : "Logo"}
+            {/* View toggle */}
+            <div className="flex bg-autronis-bg border border-autronis-border rounded-lg overflow-hidden">
+              <button onClick={() => setGalleryView("grid")} className={`p-1.5 ${galleryView === "grid" ? "bg-autronis-accent text-white" : "text-autronis-text-tertiary hover:text-autronis-text-primary"}`}>
+                <Grid3X3 className="w-3.5 h-3.5" />
               </button>
-            ))}
+              <button onClick={() => setGalleryView("project")} className={`p-1.5 ${galleryView === "project" ? "bg-autronis-accent text-white" : "text-autronis-text-tertiary hover:text-autronis-text-primary"}`}>
+                <LayoutList className="w-3.5 h-3.5" />
+              </button>
+            </div>
             <button onClick={loadGallery} className="p-1.5 text-autronis-text-tertiary hover:text-autronis-accent transition-all">
               <RefreshCw className={`w-4 h-4 ${galleryLoading ? "animate-spin" : ""}`} />
             </button>
           </div>
         </div>
+
+        {/* Filter bar */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Search */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-autronis-text-tertiary absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input value={gallerySearch} onChange={e => setGallerySearch(e.target.value)} placeholder="Zoek op naam..."
+              className="pl-8 pr-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 w-44" />
+          </div>
+          {/* Type filter */}
+          {(["all", "scroll-stop", "logo-animatie"] as const).map(filter => (
+            <button key={filter} onClick={() => setGalleryFilter(filter)}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${galleryFilter === filter ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+              {filter === "all" ? "Alles" : filter === "scroll-stop" ? "Scroll-Stop" : "Logo"}
+            </button>
+          ))}
+          {/* Favoriet filter */}
+          <button onClick={() => setGalleryFavFilter(v => !v)}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${galleryFavFilter ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+            <Star className={`w-3 h-3 ${galleryFavFilter ? "fill-yellow-400" : ""}`} /> Favorieten
+          </button>
+          {/* Project filter */}
+          {projectOptions.length > 0 && (
+            <select value={galleryProjectFilter} onChange={e => setGalleryProjectFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary focus:outline-none focus:border-autronis-accent/50">
+              <option value="">Alle projecten</option>
+              {projectOptions.map(p => <option key={p.id} value={String(p.id)}>{p.naam}</option>)}
+            </select>
+          )}
+          {/* Tag filter */}
+          {galleryAllTags.length > 0 && (
+            <select value={galleryTagFilter} onChange={e => setGalleryTagFilter(e.target.value)}
+              className="px-2.5 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary focus:outline-none focus:border-autronis-accent/50">
+              <option value="">Alle tags</option>
+              {galleryAllTags.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
+        </div>
+
+        {/* Bulk actions */}
+        {gallerySelected.size > 0 && (
+          <div className="flex items-center gap-2 mb-3 bg-autronis-accent/5 border border-autronis-accent/20 rounded-lg px-3 py-2">
+            <CheckSquare className="w-4 h-4 text-autronis-accent" />
+            <span className="text-xs font-semibold text-autronis-accent">{gallerySelected.size} geselecteerd</span>
+            <div className="ml-auto flex items-center gap-2">
+              {projectOptions.length > 0 && (
+                <select onChange={e => { if (e.target.value) bulkAction("project", Number(e.target.value)); e.target.value = ""; }}
+                  className="px-2 py-1 bg-autronis-bg border border-autronis-border rounded text-xs text-autronis-text-primary">
+                  <option value="">Verplaats naar project...</option>
+                  {projectOptions.map(p => <option key={p.id} value={String(p.id)}>{p.naam}</option>)}
+                </select>
+              )}
+              <input placeholder="Tag toevoegen..." className="px-2 py-1 bg-autronis-bg border border-autronis-border rounded text-xs text-autronis-text-primary w-28 placeholder:text-autronis-text-tertiary"
+                onKeyDown={e => { if (e.key === "Enter" && (e.target as HTMLInputElement).value) { bulkAction("tag", (e.target as HTMLInputElement).value); (e.target as HTMLInputElement).value = ""; } }} />
+              <button onClick={() => bulkAction("delete")} className="flex items-center gap-1 px-2 py-1 bg-red-500/10 border border-red-500/20 rounded text-xs font-semibold text-red-400 hover:bg-red-500/20">
+                <Trash2 className="w-3 h-3" /> Verwijder
+              </button>
+              <button onClick={() => setGallerySelected(new Set())} className="p-1 text-autronis-text-tertiary hover:text-autronis-text-primary">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {filteredGallery.length === 0 ? (
           <div className="text-center py-10 bg-autronis-card border border-autronis-border rounded-xl">
@@ -1929,55 +2171,26 @@ export default function AnimatiesPage() {
             <p className="text-sm text-autronis-text-tertiary">Nog geen gegenereerde afbeeldingen</p>
             <p className="text-xs text-autronis-text-tertiary mt-1">Afbeeldingen worden automatisch opgeslagen als je ze genereert via Kie.ai</p>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredGallery.map(item => (
-              <div key={item.id} className="group bg-autronis-card border border-autronis-border rounded-xl overflow-hidden hover:border-autronis-accent/30 transition-all">
-                {item.videoUrl ? (
-                  <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-black relative cursor-pointer">
-                    <video src={item.videoUrl} className="w-full h-full object-contain" muted />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                      <Play className="w-8 h-8 text-white opacity-60 group-hover:opacity-100 transition-all" />
-                    </div>
-                    <span className="absolute top-1.5 right-1.5 text-[9px] px-1.5 py-0.5 rounded bg-purple-500/80 text-white font-bold">VIDEO</span>
-                  </a>
-                ) : item.afbeeldingUrl ? (
-                  <a href={item.afbeeldingUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-white relative cursor-pointer">
-                    <img src={item.afbeeldingUrl} alt={item.productNaam} className="w-full h-full object-contain" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
-                      <ExternalLink className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-all" />
-                    </div>
-                  </a>
-                ) : (
-                  <div className="aspect-video bg-autronis-bg flex items-center justify-center cursor-pointer" onClick={() => loadGalleryItem(item)}>
-                    <Image className="w-8 h-8 text-autronis-text-tertiary" />
-                  </div>
-                )}
-                <div className="p-2.5">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={`text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ${
-                      item.type === "scroll-stop" ? "bg-autronis-accent/10 text-autronis-accent" : "bg-purple-500/10 text-purple-400"
-                    }`}>
-                      {item.type}
-                    </span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={() => loadGalleryItem(item)} title="Laad in generator"
-                        className="p-1 text-autronis-text-tertiary hover:text-autronis-accent">
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => deleteGalleryItem(item.id)} title="Verwijderen"
-                        className="p-1 text-autronis-text-tertiary hover:text-red-400">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs font-semibold text-autronis-text-primary truncate">{item.productNaam}</p>
-                  <p className="text-[10px] text-autronis-text-tertiary mt-0.5">
-                    {item.aangemaaktOp ? new Date(item.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) : ""}
-                  </p>
+        ) : galleryView === "project" ? (
+          /* Per-project grouped view */
+          <div className="space-y-4">
+            {Object.entries(galleryByProject).map(([projectName, items]) => (
+              <details key={projectName} open className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+                <summary className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-autronis-bg/30 transition-all">
+                  <FolderOpen className="w-4 h-4 text-autronis-accent" />
+                  <span className="text-sm font-semibold text-autronis-text-primary">{projectName}</span>
+                  <span className="text-xs text-autronis-text-tertiary">({items.length})</span>
+                </summary>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-3 border-t border-autronis-border">
+                  {items.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} projects={projectOptions} />)}
                 </div>
-              </div>
+              </details>
             ))}
+          </div>
+        ) : (
+          /* Grid view */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {filteredGallery.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} projects={projectOptions} />)}
           </div>
         )}
       </div>

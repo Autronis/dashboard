@@ -176,7 +176,9 @@ export default function AnimatiesPage() {
   useEffect(() => { loadGallery(); }, [loadGallery]);
 
   // ── Save to gallery (use ref to avoid stale closure in setInterval callbacks)
+  const [gallerySaveStatus, setGallerySaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveToGallery = useCallback(async (imageUrl: string, type: "scroll-stop" | "logo-animatie") => {
+    setGallerySaveStatus("saving");
     const body: Record<string, string | undefined> = {
       type,
       productNaam: type === "scroll-stop" ? (prompts?.objectNaam ?? (input || "Scroll-Stop")) : (logoResult?.objectNaam ?? "Logo"),
@@ -198,8 +200,15 @@ export default function AnimatiesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (res.ok) loadGallery();
-    } catch { /* ignore */ }
+      if (res.ok) {
+        setGallerySaveStatus("saved");
+        loadGallery();
+      } else {
+        setGallerySaveStatus("error");
+      }
+    } catch {
+      setGallerySaveStatus("error");
+    }
   }, [prompts, logoResult, eindEffect, manifest, input, loadGallery]);
   const saveToGalleryRef = useRef(saveToGallery);
   useEffect(() => { saveToGalleryRef.current = saveToGallery; }, [saveToGallery]);
@@ -1097,8 +1106,8 @@ export default function AnimatiesPage() {
                         <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
                           <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
                         </a>
-                        <button onClick={() => saveToGalleryRef.current(kieImgUrl[activeTab]!, "scroll-stop")} className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline">
-                          <BookmarkPlus className="w-3.5 h-3.5" /> Opslaan in galerij
+                        <button onClick={() => saveToGalleryRef.current(kieImgUrl[activeTab]!, "scroll-stop")} disabled={gallerySaveStatus === "saving"} className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline disabled:opacity-50">
+                          {gallerySaveStatus === "saving" ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Opslaan...</> : gallerySaveStatus === "saved" ? <><Check className="w-3.5 h-3.5" /> Opgeslagen</> : gallerySaveStatus === "error" ? <><X className="w-3.5 h-3.5 text-red-400" /> Mislukt — opnieuw</> : <><BookmarkPlus className="w-3.5 h-3.5" /> Opslaan in galerij</>}
                         </button>
                       </div>
                     </div>

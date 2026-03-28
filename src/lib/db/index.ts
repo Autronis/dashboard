@@ -37,6 +37,20 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 
+  client.execute(`CREATE TABLE IF NOT EXISTS asset_gallery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    product_naam TEXT NOT NULL,
+    eind_effect TEXT,
+    manifest TEXT,
+    prompt_a TEXT,
+    prompt_b TEXT,
+    prompt_video TEXT,
+    afbeelding_url TEXT,
+    lokaal_pad TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => { /* table may already exist */ });
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -77,6 +91,21 @@ if (isTurso) {
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_naam TEXT");
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_categorie TEXT");
   }
+
+  // Asset gallery table
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS asset_gallery (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    product_naam TEXT NOT NULL,
+    eind_effect TEXT,
+    manifest TEXT,
+    prompt_a TEXT,
+    prompt_b TEXT,
+    prompt_video TEXT,
+    afbeelding_url TEXT,
+    lokaal_pad TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
 
   // Belasting tips table
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS belasting_tips (

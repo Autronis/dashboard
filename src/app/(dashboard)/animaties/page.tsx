@@ -1093,10 +1093,29 @@ export default function AnimatiesPage() {
                     <p className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
                       <Image className="w-3.5 h-3.5 text-autronis-accent" /> Genereer afbeelding via Kie.ai (Nano Banana 2)
                     </p>
-                    <button onClick={() => generateKieImage(activeTab)} disabled={kieImgLoading[activeTab]}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                      {kieImgLoading[activeTab] ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genereren...</> : <><Zap className="w-3.5 h-3.5" /> Genereer</>}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-card border border-autronis-border text-autronis-text-secondary rounded-lg text-xs font-semibold hover:text-autronis-text-primary transition-all cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" /> Upload eigen
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const url = URL.createObjectURL(file);
+                          setKieImgUrl(prev => ({ ...prev, [activeTab]: url }));
+                          // Also save the file to gallery via upload
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            const dataUrl = reader.result as string;
+                            setKieImgUrl(prev => ({ ...prev, [activeTab]: dataUrl }));
+                          };
+                          reader.readAsDataURL(file);
+                          e.target.value = "";
+                        }} />
+                      </label>
+                      <button onClick={() => generateKieImage(activeTab)} disabled={kieImgLoading[activeTab]}
+                        className="flex items-center gap-2 px-3 py-1.5 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        {kieImgLoading[activeTab] ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Genereren...</> : <><Zap className="w-3.5 h-3.5" /> Genereer</>}
+                      </button>
+                    </div>
                   </div>
                   {kieImgError[activeTab] && <p className="text-xs text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{kieImgError[activeTab]}</p>}
                   {kieImgUrl[activeTab] && (

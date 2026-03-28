@@ -70,8 +70,11 @@ export default function AnimatiesPage() {
   const confettiRef = useRef<HTMLCanvasElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Scroll-Stop state
-  const [input, setInput] = useState("");
+  // ── Scroll-Stop state (restored from localStorage)
+  const [input, setInput] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("scrollstop-input") ?? "";
+  });
   const [inputType, setInputType] = useState<"url" | "product" | "image">("product");
   const [loading, setLoading] = useState(false);
   const [prompts, setPrompts] = useState<ScrollStopPrompts | null>(null);
@@ -79,15 +82,39 @@ export default function AnimatiesPage() {
   const [activeTab, setActiveTab] = useState<Tab>("A");
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [eindEffect, setEindEffect] = useState("exploded");
+  const [eindEffect, setEindEffect] = useState(() => {
+    if (typeof window === "undefined") return "exploded";
+    return localStorage.getItem("scrollstop-effect") ?? "exploded";
+  });
   const [effectDropdownOpen, setEffectDropdownOpen] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
 
-  // ── Manifest state
-  const [manifestStep, setManifestStep] = useState<ManifestStep>("idle");
-  const [manifest, setManifest] = useState("");
-  const [manifestObjectNaam, setManifestObjectNaam] = useState("");
+  // ── Manifest state (restored from localStorage)
+  const [manifestStep, setManifestStep] = useState<ManifestStep>(() => {
+    if (typeof window === "undefined") return "idle";
+    return localStorage.getItem("scrollstop-manifest") ? "ready" : "idle";
+  });
+  const [manifest, setManifest] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("scrollstop-manifest") ?? "";
+  });
+  const [manifestObjectNaam, setManifestObjectNaam] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("scrollstop-manifest-naam") ?? "";
+  });
   const [manifestOpen, setManifestOpen] = useState(true);
+
+  // ── Persist to localStorage
+  useEffect(() => { localStorage.setItem("scrollstop-input", input); }, [input]);
+  useEffect(() => { localStorage.setItem("scrollstop-effect", eindEffect); }, [eindEffect]);
+  useEffect(() => {
+    if (manifest) localStorage.setItem("scrollstop-manifest", manifest);
+    else localStorage.removeItem("scrollstop-manifest");
+  }, [manifest]);
+  useEffect(() => {
+    if (manifestObjectNaam) localStorage.setItem("scrollstop-manifest-naam", manifestObjectNaam);
+    else localStorage.removeItem("scrollstop-manifest-naam");
+  }, [manifestObjectNaam]);
 
   // ── Kie.ai state
   const [kieStartFrame, setKieStartFrame] = useState("");

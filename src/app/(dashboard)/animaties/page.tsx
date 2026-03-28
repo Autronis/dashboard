@@ -545,19 +545,22 @@ export default function AnimatiesPage() {
 
   // ── KIE: Video generation
   const generateKieVideo = async () => {
-    if (!kieStartFrame.trim() || !kieEndFrame.trim()) {
-      setKieError("Upload eerst afbeelding A (start) en B (eind) via de tabs hierboven.");
+    if (!kieStartFrame.trim()) {
+      setKieError("Genereer eerst afbeelding A (start frame) via tab A hierboven.");
       return;
     }
+    // Build a short motion prompt based on the selected effect
+    const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
+    const motionPrompt = `smooth ${effectLabel.toLowerCase()} transition, white background, product photography, satisfying mechanical motion`;
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/kie-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          prompt: motionPrompt,
           duration: kieDuration,
           firstFrameImage: kieStartFrame.trim(),
-          lastFrameImage: kieEndFrame.trim(),
         }),
       });
       const data = await res.json() as { taskId?: string; error?: string };
@@ -669,7 +672,7 @@ export default function AnimatiesPage() {
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
     B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
-    C: { label: "Video Transitie", icon: Clapperboard, instruction: "Upload A als start frame + B als end frame → genereer video (5s)" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: kieStartFrame ? "Afbeelding A wordt als startframe gebruikt → genereer video" : "Genereer eerst afbeelding A als startframe" },
   } as const;
 
   const activePrompt = prompts
@@ -1328,7 +1331,7 @@ export default function AnimatiesPage() {
                         </button>
                       ))}
                     </div>
-                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim() || !kieEndFrame.trim()}
+                    <button onClick={generateKieVideo} disabled={kieLoading || !kieStartFrame.trim()}
                       className="ml-auto flex items-center gap-2 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                       {kieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Genereren...</> : <><Zap className="w-4 h-4" /> Genereer video</>}
                     </button>

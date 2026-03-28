@@ -1683,7 +1683,7 @@ export default function AnimatiesPage() {
                             }
                           }, 4000);
                         }}
-                        disabled={kieImgLoading.B || !input.trim()}
+                        disabled={kieImgLoading.B || (!input.trim() && !kieImgUrl.A)}
                         className="flex items-center gap-1 px-2 py-1 bg-purple-500 text-white rounded-md text-[10px] font-semibold hover:bg-purple-600 transition-all disabled:opacity-40"
                       >
                         {kieImgLoading.B ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} Genereer B

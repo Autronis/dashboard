@@ -82,7 +82,6 @@ type FilterType = "alle" | "dev" | "system" | "docs";
 
 interface TaskFeedProps {
   entries: TaskLogEntry[];
-  isDemo?: boolean;
   onAgentClick?: (agentId: string) => void;
 }
 
@@ -93,7 +92,7 @@ interface GroupedEntry {
   toolTypes: ToolType[];
 }
 
-export function TaskFeed({ entries, isDemo = true, onAgentClick }: TaskFeedProps) {
+export function TaskFeed({ entries, onAgentClick }: TaskFeedProps) {
   const [filter, setFilter] = useState<FilterType>("alle");
 
   const filtered = useMemo(() => {
@@ -148,11 +147,6 @@ export function TaskFeed({ entries, isDemo = true, onAgentClick }: TaskFeedProps
         <h3 className="text-sm font-semibold text-autronis-text-primary tracking-tight">
           Activiteit
         </h3>
-        {isDemo && (
-          <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500/60 font-semibold">
-            DEMO
-          </span>
-        )}
       </div>
 
       {/* Filters */}

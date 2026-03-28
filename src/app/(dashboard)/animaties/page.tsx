@@ -1325,15 +1325,33 @@ export default function AnimatiesPage() {
                   <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai (image-to-video)
                 </p>
                 <div className="mb-2">
-                  <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame URL (je logo afbeelding)</label>
-                  <div className="flex items-center gap-2">
-                    <input value={logoKieFirstFrame} onChange={e => setLogoKieFirstFrame(e.target.value)}
-                      placeholder="Plak URL van je logo afbeelding"
-                      className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                    {logoKieFirstFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
-                  </div>
+                  <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (je logo/product afbeelding)</label>
+                  {logoKieFirstFrame ? (
+                    <div className="relative group mb-1">
+                      <img src={logoKieFirstFrame} alt="Start frame" className="w-full max-h-32 object-contain bg-white rounded-lg border border-green-500/50" />
+                      <button onClick={() => setLogoKieFirstFrame("")} className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-all">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 mb-1">
+                      <input value={logoKieFirstFrame} onChange={e => setLogoKieFirstFrame(e.target.value)}
+                        placeholder="Plak URL of kies uit galerij hieronder"
+                        className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                      {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).length > 0 && (
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
+                          {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 8).map(g => (
+                            <button key={g.id} onClick={() => setLogoKieFirstFrame(g.afbeeldingUrl!)}
+                              className="shrink-0 w-14 h-9 rounded border border-autronis-border hover:border-autronis-accent overflow-hidden transition-all">
+                              <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-contain bg-white" />
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p className="text-[10px] text-autronis-text-tertiary mt-1">
-                    De AI animeert je logo vanuit deze afbeelding. Video duurt ~10 seconden en wordt automatisch opgeslagen.
+                    De AI animeert vanuit deze afbeelding. Video duurt ~10 seconden en wordt automatisch opgeslagen.
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

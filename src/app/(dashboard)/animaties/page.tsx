@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard,
   Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
-  Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff,
+  Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff, BookmarkPlus,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -128,6 +128,10 @@ export default function AnimatiesPage() {
   const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>({ A: null, B: null });
   const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
+
+  // Auto-fill video frame URLs when images are generated
+  useEffect(() => { if (kieImgUrl.A) setKieStartFrame(kieImgUrl.A); }, [kieImgUrl.A]);
+  useEffect(() => { if (kieImgUrl.B) setKieEndFrame(kieImgUrl.B); }, [kieImgUrl.B]);
 
   // ── Logo Animatie state
   const [logoInput, setLogoInput] = useState("");
@@ -1089,9 +1093,14 @@ export default function AnimatiesPage() {
                   {kieImgUrl[activeTab] && (
                     <div className="mt-2">
                       <img src={kieImgUrl[activeTab]!} alt="gegenereerde afbeelding" className="w-full rounded-lg border border-autronis-border" />
-                      <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="mt-1.5 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
-                        <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
-                      </a>
+                      <div className="mt-1.5 flex items-center gap-3">
+                        <a href={kieImgUrl[activeTab]!} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                          <ExternalLink className="w-3.5 h-3.5" /> Open afbeelding
+                        </a>
+                        <button onClick={() => saveToGalleryRef.current(kieImgUrl[activeTab]!, "scroll-stop")} className="flex items-center gap-1.5 text-xs text-emerald-400 hover:underline">
+                          <BookmarkPlus className="w-3.5 h-3.5" /> Opslaan in galerij
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

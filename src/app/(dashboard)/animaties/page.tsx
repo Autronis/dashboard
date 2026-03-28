@@ -1627,16 +1627,40 @@ export default function AnimatiesPage() {
                       <span className="text-[10px] font-semibold text-autronis-text-secondary">B — Deconstructed</span>
                       <button
                         onClick={async () => {
-                          if (!input.trim()) return;
-                          const stijlP = getStijlPrompt();
-                          let fullPrompt = `Professional product photography of ${input.trim()} fully deconstructed into individual floating components on white background (#FFFFFF). Every component separated and floating in space — same materials, colors, proportions as assembled version. ${stijlP} Each piece maintains its exact shape. Photorealistic, 16:9, same lighting as assembled shot.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
-                          if (kieImgUrl.A) {
-                            fullPrompt += "\n\nCRITICAL: Use the EXACT same components from the reference image. Same shapes, sizes, proportions, materials. Each piece must be recognizable. Components float apart so they could cleanly reassemble.";
-                          }
+                          if (!input.trim() && !kieImgUrl.A) return;
                           setKieImgLoading(prev => ({ ...prev, B: true }));
                           setKieImgError(prev => ({ ...prev, B: "" }));
+
+                          // Step 1: If we have image A, analyze it to get a component manifest
+                          let componentManifest = manifest;
+                          if (kieImgUrl.A && !componentManifest) {
+                            try {
+                              const manifestRes = await fetch("/api/animaties/generate-manifest", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ product: input.trim() || "product from reference image", imageUrl: kieImgUrl.A }),
+                              });
+                              const manifestData = await manifestRes.json() as { manifest?: string; objectNaam?: string };
+                              if (manifestData.manifest) {
+                                componentManifest = manifestData.manifest;
+                                setManifest(manifestData.manifest);
+                                setManifestObjectNaam(manifestData.objectNaam ?? "");
+                                setManifestStep("ready");
+                              }
+                            } catch { /* continue without manifest */ }
+                          }
+
+                          // Step 2: Build a very specific B prompt using the manifest
+                          const stijlP = getStijlPrompt();
+                          let fullPrompt: string;
+                          if (componentManifest) {
+                            fullPrompt = `Professional exploded-view product photography on pure white background (#FFFFFF). The following components are floating separated in space, each maintaining its EXACT original shape, size, color, and material:\n\n${componentManifest}\n\nEvery component listed above must be visible, separated, and floating. Components are arranged in an exploded view — spread apart along a vertical/diagonal axis but maintaining their spatial relationships so they could snap back together. Same 3/4 camera angle as assembled reference. ${stijlP} Photorealistic, 16:9 aspect ratio.${kieCleanBg ? " Pure white seamless backdrop, no shadows on background." : ""}`;
+                          } else {
+                            fullPrompt = `Professional exploded-view product photography of ${input.trim()} on white background (#FFFFFF). Every component separated and floating — EXACT same shapes, sizes, proportions as the assembled version. ${stijlP} Photorealistic, 16:9.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
+                          }
+
                           const body: Record<string, string | number> = { prompt: fullPrompt };
-                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.75; }
+                          if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = 0.8; }
                           const res = await fetch("/api/animaties/kie-image", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },

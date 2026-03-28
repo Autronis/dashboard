@@ -29,11 +29,12 @@ Return ONLY a JSON object:
 }`;
 
 export async function POST(req: NextRequest) {
-  const { url, product, imageBase64, mediaType } = await req.json() as {
+  const { url, product, imageBase64, mediaType, imageUrl } = await req.json() as {
     url?: string;
     product?: string;
     imageBase64?: string;
     mediaType?: string;
+    imageUrl?: string;
   };
 
   let userContent: MessageParam["content"] = [];
@@ -49,6 +50,19 @@ export async function POST(req: NextRequest) {
         text: product
           ? `Analyseer dit product en maak een gedetailleerd onderdelen manifest. Extra context: ${product}`
           : "Analyseer dit product en maak een gedetailleerd onderdelen manifest op basis van wat je ziet.",
+      },
+    ];
+  } else if (imageUrl) {
+    userContent = [
+      {
+        type: "image",
+        source: { type: "url", url: imageUrl },
+      },
+      {
+        type: "text",
+        text: product
+          ? `Analyseer dit product en maak een gedetailleerd onderdelen manifest. Beschrijf EXACT wat je ziet — elke vorm, materiaal, kleur, grootte en positie. Extra context: ${product}`
+          : "Analyseer dit product en maak een gedetailleerd onderdelen manifest. Beschrijf EXACT wat je ziet — elke vorm, materiaal, kleur, grootte en positie.",
       },
     ];
   } else if (product) {

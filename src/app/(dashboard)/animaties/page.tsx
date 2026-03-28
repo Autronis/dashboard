@@ -767,8 +767,11 @@ export default function AnimatiesPage() {
     }
     // When generating B, use A's image as reference for component consistency
     const refImageUrl = tab === "B" ? kieImgUrl.A : null;
-    if (tab === "B" && refImageUrl) {
-      prompt += "\n\nCRITICAL CONSISTENCY RULES:\n- Every component must be the EXACT same shape, size, proportion, and color as in the reference image\n- The base plate must keep its EXACT rectangular proportion — do NOT make it square\n- Gears must be the EXACT same size and number as the reference\n- Glass panels must match the EXACT same dimensions\n- All pieces must float apart in a way that they could cleanly reassemble back into the original shape\n- Think of it as a real product being carefully disassembled — each piece is lifted out intact, not reshaped\n- Maintain the same camera angle and lighting as the reference image";
+    if (tab === "B") {
+      prompt += "\n\nCRITICAL MATERIAL & COLOR CONSISTENCY:\n- Use EXACTLY the same materials as the assembled shot (same glass type, same metal finish, same colors)\n- The overall color palette, lighting temperature, and material finishes must be IDENTICAL to the assembled version\n- Do NOT change the material style — if assembled is frosted glass with chrome, the B view must also be frosted glass with chrome\n- Keep the same camera angle, perspective, and studio lighting setup\n- White background (#FFFFFF) must remain clean and consistent";
+      if (refImageUrl) {
+        prompt += "\n- Match the reference image EXACTLY in terms of component shapes, sizes, proportions, and colors\n- Each piece must look like it was carefully removed from the original — intact, not reshaped\n- Think of a real product being disassembled by a technician";
+      }
     }
     setKieImgLoading(prev => ({ ...prev, [tab]: true }));
     setKieImgError(prev => ({ ...prev, [tab]: "" }));

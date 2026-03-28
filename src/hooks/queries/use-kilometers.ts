@@ -60,6 +60,22 @@ export interface JaaroverzichtData {
   perKlant: Array<{ klantId: number | null; klantNaam: string; km: number; ritten: number; bedrag: number }>;
   vorigJaarKm: number;
   verschilVorigJaar: number;
+  brandstof?: {
+    totaalBedrag: number;
+    totaalLiters: number;
+    aantalTankbeurten: number;
+    kostenPerKm: number;
+    perMaand: Array<{ maand: number; bedrag: number; liters: number; tankbeurten: number }>;
+    recent: Array<{
+      id: number;
+      datum: string;
+      bedrag: number;
+      liters: number | null;
+      kmStand: number | null;
+      notitie: string | null;
+      isAutomatisch: boolean;
+    }>;
+  };
 }
 
 export function useRitten(maand: number, jaar: number) {

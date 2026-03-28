@@ -7,6 +7,13 @@ import { sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
 
+// Direct DB connection for gallery queries (bypasses Drizzle ORM column mapping issues)
+function getGalleryDb() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Database = require("better-sqlite3");
+  return new Database(path.join(process.cwd(), "data", "autronis.db"), { readonly: true });
+}
+
 export async function GET(req: NextRequest) {
   try { await requireAuth(); } catch { /* proxy auth */ }
 
@@ -28,7 +35,8 @@ export async function GET(req: NextRequest) {
 
     const whereClause = conditions.join(" AND ");
 
-    const rows = await db.all(sql`
+    const rawDb = getGalleryDb();
+    const rows = rawDb.prepare(`
       SELECT ag.id, ag.type, ag.product_naam, ag.eind_effect, ag.manifest,
              ag.prompt_a, ag.prompt_b, ag.prompt_video, ag.afbeelding_url,
              ag.video_url, ag.lokaal_pad, ag.project_id, ag.tags,
@@ -36,7 +44,8 @@ export async function GET(req: NextRequest) {
       FROM asset_gallery ag
       LEFT JOIN projecten p ON ag.project_id = p.id
       ORDER BY ag.aangemaakt_op DESC
-    `) as Record<string, unknown>[];
+    `).all() as Record<string, unknown>[];
+    rawDb.close();
 
     // Client-side filtering (simpler than building raw SQL with params)
     let filtered = rows;

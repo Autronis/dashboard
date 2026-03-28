@@ -160,8 +160,9 @@ export default function AnimatiesPage() {
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
 
   // Auto-fill video frame URLs when images are generated
-  useEffect(() => { if (kieImgUrl.A) setKieStartFrame(kieImgUrl.A); }, [kieImgUrl.A]);
-  useEffect(() => { if (kieImgUrl.B) setKieEndFrame(kieImgUrl.B); }, [kieImgUrl.B]);
+  // Video flow: B → A, so B = start frame, A = end frame
+  useEffect(() => { if (kieImgUrl.A) setKieEndFrame(kieImgUrl.A); }, [kieImgUrl.A]);
+  useEffect(() => { if (kieImgUrl.B) setKieStartFrame(kieImgUrl.B); }, [kieImgUrl.B]);
 
   // ── Logo Animatie state
   const [logoInput, setLogoInput] = useState("");
@@ -504,14 +505,20 @@ export default function AnimatiesPage() {
     if (kieExtraPrompt.trim()) {
       prompt += `\n\nExtra instructions: ${kieExtraPrompt.trim()}`;
     }
-    // When generating B, use A's image as reference for consistency
+    // When generating B, use A's image as reference for component consistency
     const refImageUrl = tab === "B" ? kieImgUrl.A : null;
+    if (tab === "B" && refImageUrl) {
+      prompt += "\n\nCRITICAL: Use the EXACT same components, materials, colors, and design from the reference image. Every piece in this image must be recognizable as a part from the assembled product in the reference. Same chrome gears, same glass panels, same circuit board, same LED indicators — just deconstructed/separated.";
+    }
     setKieImgLoading(prev => ({ ...prev, [tab]: true }));
     setKieImgError(prev => ({ ...prev, [tab]: "" }));
     setKieImgUrl(prev => ({ ...prev, [tab]: null }));
     try {
-      const body: Record<string, string> = { prompt };
-      if (refImageUrl) body.referenceImageUrl = refImageUrl;
+      const body: Record<string, string | number> = { prompt };
+      if (refImageUrl) {
+        body.referenceImageUrl = refImageUrl;
+        body.refStrength = 0.65;
+      }
       const res = await fetch("/api/animaties/kie-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1324,17 +1331,29 @@ export default function AnimatiesPage() {
                   <p className="text-xs font-semibold text-autronis-text-primary mb-3 flex items-center gap-1.5">
                     <Play className="w-3.5 h-3.5 text-autronis-accent" /> Genereer video via Kie.ai
                   </p>
-                  <div className="mb-2">
-                    <div className="flex items-center gap-2">
-                      <input value={kieEndFrame || kieStartFrame} onChange={e => { setKieEndFrame(e.target.value); setKieStartFrame(e.target.value); }}
-                        placeholder="Start frame URL (afbeelding B) — wordt automatisch ingevuld"
-                        className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                      {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — {EIND_EFFECTEN.find(e => e.key === eindEffect)?.label})</label>
+                      <div className="flex items-center gap-2">
+                        <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
+                          placeholder="URL afbeelding B"
+                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                      </div>
                     </div>
-                    <p className="text-[10px] text-autronis-text-tertiary mt-1">
-                      Afbeelding B is het startframe. De video begint bij het effect ({EIND_EFFECTEN.find(e => e.key === eindEffect)?.label}) en assembleert naar het complete product.
-                    </p>
+                    <div>
+                      <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — Assembled)</label>
+                      <div className="flex items-center gap-2">
+                        <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
+                          placeholder="URL afbeelding A"
+                          className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        {kieEndFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                      </div>
+                    </div>
                   </div>
+                  <p className="text-[10px] text-autronis-text-tertiary mb-2">
+                    Video gaat van B → A. Kie.ai gebruikt alleen het startframe (B) — het eindframe is ter referentie voor de prompt.
+                  </p>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
                       {[5, 8, 10].map(d => (

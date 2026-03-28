@@ -1193,20 +1193,93 @@ export default function AnimatiesPage() {
               </div>
             </div>
 
-            {/* Generate button */}
+            {/* Generate buttons */}
             <div className="flex justify-end gap-2">
               {logoLoading ? (
                 <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
                   <X className="w-4 h-4" /> Stop
                 </button>
               ) : (
-                <button onClick={generateLogo} disabled={!logoInput.trim() && !logoImage}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed">
-                  <Zap className="w-4 h-4" /> Genereer video prompt
-                </button>
+                <>
+                  <button onClick={generateLogo} disabled={!logoInput.trim() && !logoImage}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border border-autronis-border text-autronis-text-secondary rounded-lg text-sm font-semibold hover:text-autronis-text-primary transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <FileText className="w-4 h-4" /> Genereer prompt
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!logoInput.trim() && !logoImage) return;
+                      // First optimize the prompt if it's short
+                      let videoPrompt = logoInput.trim();
+                      if (videoPrompt.length < 100) {
+                        setOptimizing(true);
+                        try {
+                          const optRes = await fetch("/api/animaties/optimize-logo-prompt", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              description: videoPrompt,
+                              tags: logoTags,
+                              ...(logoImage?.base64 && { imageBase64: logoImage.base64, mediaType: logoImage.mediaType }),
+                            }),
+                          });
+                          const optData = await optRes.json() as { optimizedPrompt?: string };
+                          if (optData.optimizedPrompt) {
+                            videoPrompt = optData.optimizedPrompt;
+                            setLogoInput(videoPrompt);
+                          }
+                        } catch { /* continue with original */ }
+                        setOptimizing(false);
+                      }
+                      // Then generate the video directly via Kie.ai
+                      setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
+                      try {
+                        const res = await fetch("/api/animaties/kie-video", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            prompt: videoPrompt.slice(0, 200),
+                            ...(logoImage?.preview?.startsWith("http") && { imageUrl: logoImage.preview }),
+                            ...(logoKieFirstFrame.trim() && { imageUrl: logoKieFirstFrame.trim() }),
+                          }),
+                        });
+                        const data = await res.json() as { taskId?: string; error?: string };
+                        if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
+                        logoKiePollingRef.current = setInterval(async () => {
+                          const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+                          const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
+                          if (result.status === "done" && result.videoUrl) {
+                            clearInterval(logoKiePollingRef.current!);
+                            setLogoKieVideoUrl(result.videoUrl);
+                            setLogoKieLoading(false);
+                            saveToGalleryRef.current(result.videoUrl, "logo-animatie");
+                          } else if (result.status === "failed") {
+                            clearInterval(logoKiePollingRef.current!);
+                            setLogoKieError(result.error ?? "Generatie mislukt.");
+                            setLogoKieLoading(false);
+                          }
+                        }, 4000);
+                      } catch {
+                        setLogoKieError("Er ging iets mis."); setLogoKieLoading(false);
+                      }
+                    }}
+                    disabled={logoKieLoading || (!logoInput.trim() && !logoImage)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {logoKieLoading ? <><Loader2 className="w-4 h-4 animate-spin" /> Video genereren...</> : <><Play className="w-4 h-4" /> Genereer video</>}
+                  </button>
+                </>
               )}
             </div>
             {logoError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoError}</p>}
+            {logoKieError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoKieError}</p>}
+            {logoKieVideoUrl && (
+              <div className="mt-3 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden p-4">
+                <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" />
+                <a href={logoKieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                  <ExternalLink className="w-3.5 h-3.5" /> Download video
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Logo Result */}

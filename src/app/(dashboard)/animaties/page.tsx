@@ -263,7 +263,7 @@ export default function AnimatiesPage() {
     setLogoLoading(false);
   };
 
-  // ── AI OPTIMIZE: Enrich input prompt
+  // ── AI OPTIMIZE: Enrich input prompt + generate manifest in one call
   const optimizePrompt = async () => {
     if (!input.trim() && !uploadedImage) return;
     setOptimizing(true); setError("");
@@ -277,9 +277,15 @@ export default function AnimatiesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as { optimizedPrompt?: string; productName?: string; error?: string };
+      const data = await res.json() as { optimizedPrompt?: string; productName?: string; objectNaam?: string; manifest?: string; error?: string };
       if (!res.ok || data.error) { setError(data.error ?? "Optimalisatie mislukt."); setOptimizing(false); return; }
       if (data.optimizedPrompt) setInput(data.optimizedPrompt);
+      if (data.manifest) {
+        setManifest(data.manifest);
+        setManifestObjectNaam(data.objectNaam ?? data.productName ?? "");
+        setManifestStep("ready");
+        setManifestOpen(true);
+      }
       setOptimizing(false);
     } catch {
       setError("Optimalisatie mislukt.");

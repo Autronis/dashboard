@@ -4,10 +4,13 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert AI image prompt engineer. The user gives you a simple product description (e.g. "Nike Air Max 90", "espresso machine", "mechanical keyboard"). Your job is to transform this into a rich, detailed product description optimized for AI image generation.
+const SYSTEM_PROMPT = `You are an expert AI image prompt engineer AND product analysis specialist. The user gives you a simple product description (e.g. "Nike Air Max 90", "espresso machine", "process automation"). Your job is to:
 
-Your output should include:
-- Exact product name and model
+1. Transform this into a rich, detailed product description optimized for AI image generation
+2. Create a detailed component manifest listing all visible parts
+
+For the PRODUCT DESCRIPTION include:
+- Exact product name and model (or a fitting visual representation if it's a concept/service)
 - Materials (brushed aluminum, matte ABS plastic, tempered glass, leather, rubber, etc.)
 - Colors with specifics (space gray, arctic white, burnt orange, etc.)
 - Key visual details (textures, finishes, reflections, patterns)
@@ -15,19 +18,27 @@ Your output should include:
 - Notable design elements (logos, branding, buttons, ports, seams)
 - State of the product (new, pristine, closed, powered off)
 
-DO NOT include:
-- Photography instructions (no camera, lighting, background info)
-- Composition or framing
-- Any prompt engineering syntax
+For the COMPONENT MANIFEST include each visible component with:
+- Component name
+- Material (e.g., brushed aluminum, matte black plastic, tempered glass)
+- Color (exact, e.g., "space gray", "chrome silver", "matte black")
+- Size relative to the whole ("groot", "klein", "medium")
+- Position in the assembled object ("bovenkant", "linkerzijde", "intern")
+- Quantity if multiple ("4x", "2x links + 2x rechts")
 
-Just describe the OBJECT itself in vivid detail, as if you're writing a product catalog entry that a 3D artist would use as reference.
+If the input is abstract (like a service or concept), visualize it as a physical product/device that REPRESENTS that concept. For example: "process automation" → a sleek automation control hub or smart device.
 
-Keep it to 2-4 sentences. Be specific, not generic.
+DO NOT include photography instructions, camera info, or prompt syntax in the description.
+
+Keep the description to 2-4 sentences. Be specific, not generic.
+The manifest should list 6-15 components with bullet points.
 
 Return ONLY a JSON object:
 {
   "optimizedPrompt": "The detailed product description",
-  "productName": "Short product name"
+  "productName": "Short product name",
+  "objectNaam": "Product name for manifest header",
+  "manifest": "Complete component manifest as readable text, one component per line with bullet points (• prefix)"
 }`;
 
 export async function POST(req: NextRequest) {
@@ -52,17 +63,17 @@ export async function POST(req: NextRequest) {
       {
         type: "text",
         text: description
-          ? `Beschrijf dit product in detail voor AI image generation. Extra context: ${description}`
-          : "Beschrijf dit product in detail voor AI image generation.",
+          ? `Beschrijf dit product in detail en maak een onderdelen manifest. Extra context: ${description}`
+          : "Beschrijf dit product in detail en maak een onderdelen manifest.",
       },
     ];
   } else {
-    userContent = [{ type: "text", text: `Beschrijf dit product in detail voor AI image generation: ${description}` }];
+    userContent = [{ type: "text", text: `Beschrijf dit product in detail en maak een onderdelen manifest: ${description}` }];
   }
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 500,
+    max_tokens: 2000,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userContent }],
   });
@@ -74,6 +85,8 @@ export async function POST(req: NextRequest) {
   const result = JSON.parse(jsonMatch[0]) as {
     optimizedPrompt: string;
     productName: string;
+    objectNaam: string;
+    manifest: string;
   };
 
   return NextResponse.json(result);

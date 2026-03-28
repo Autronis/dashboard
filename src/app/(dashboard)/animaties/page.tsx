@@ -941,6 +941,36 @@ export default function AnimatiesPage() {
 
   // ── Scroll-stop tab config
   const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "Deconstructed View";
+
+  // Build B prompt based on selected end effect
+  const buildBPrompt = (productDesc: string, stijlP: string, componentManifest?: string) => {
+    const components = componentManifest ? `\n\nComponents:\n${componentManifest}\n` : "";
+    const cleanBg = kieCleanBg ? " Pure white seamless backdrop, no shadows on background." : "";
+    const base = `Professional product photography on pure white background (#FFFFFF). ${stijlP} Photorealistic, 16:9 aspect ratio.${cleanBg}`;
+
+    switch (eindEffect) {
+      case "buildup":
+        return `${base} Scattered particles, dust, and micro-fragments of ${productDesc} floating chaotically in space. Raw materials dispersed artistically. Some particles glow faintly with the object's colors.${components}`;
+      case "xray":
+        return `${base} X-ray cutaway view of ${productDesc}. Outer shell rendered as translucent glass/crystal, revealing complete internal structure. Cross-section showing internal mechanics. Internal parts in full color, outer shell ghostly translucent with blue-white tint.${components}`;
+      case "wireframe":
+        return `${base} ${productDesc} dissolving into wireframe mesh. 60% wireframe, 40% solid. Clean geometric mesh with glowing teal/cyan (#23C6B7) wireframe lines. Dissolve edge with floating triangular fragments.${components}`;
+      case "glowup":
+        return `${base} ${productDesc} glowing intensely from within. Warm golden/amber light radiates from every seam, joint, and gap. Surface details silhouetted against internal glow. Light rays emanate from gaps between components.${components}`;
+      case "liquid":
+        return `${base} ${productDesc} in liquid/melted state. Melted into beautiful liquid puddle retaining original colors and materials. Chrome-like liquid reflections, viscous drips and pools. Surface tension creates reflective pools.${components}`;
+      case "scatter":
+        return `${base} ${productDesc} shattered into hundreds of small pieces. Fragments radiate outward from center in freeze-frame explosion. Each shard retains color and material of its origin. High-speed photography aesthetic.${components}`;
+      case "context":
+        return `${base} ${productDesc} placed in its natural workspace/environment. Sitting on a real desk/workbench in realistic setting. Warm natural lighting, subtle depth of field with background bokeh. Product is the clear hero.${components}`;
+      case "material":
+        return `${base} ${productDesc} transformed into warm wood material with visible grain texture. Exact same shape and form, but every component is now rich wood. All details preserved but in organic wood material.${components}`;
+      default: // exploded
+        return componentManifest
+          ? `${base} The following components are floating separated in space, each maintaining its EXACT original shape, size, color, and material:${components}Every component listed above must be visible, separated, and floating in an exploded view — spread apart along a vertical/diagonal axis.`
+          : `${base} Professional exploded-view of ${productDesc}. Every component separated and floating — EXACT same shapes, sizes, proportions as assembled version.`;
+    }
+  };
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
     B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
@@ -1876,7 +1906,7 @@ export default function AnimatiesPage() {
                   Snelle foto generator
                 </p>
                 <p className="text-xs text-autronis-text-tertiary mb-3">
-                  Beschrijf je product kort → genereer A (assembled) en B (deconstructed) direct.
+                  Beschrijf je product kort → genereer A (assembled) en B ({EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "effect"}) direct.
                 </p>
                 <div className="flex gap-2 mb-3">
                   <input
@@ -1969,7 +1999,27 @@ export default function AnimatiesPage() {
                   {/* Generate B */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-semibold text-autronis-text-secondary">B — Deconstructed</span>
+                      <div className="relative">
+                        <button onClick={() => setEffectDropdownOpen(v => !v)}
+                          className="flex items-center gap-1 text-[10px] font-semibold text-autronis-text-secondary hover:text-autronis-accent transition-all">
+                          B — {EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "Effect"}
+                          <ChevronDown className="w-2.5 h-2.5" />
+                        </button>
+                        {effectDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-autronis-card border border-autronis-border rounded-xl shadow-xl z-40 py-1 max-h-56 overflow-y-auto">
+                            {EIND_EFFECTEN.map(effect => (
+                              <button key={effect.key} onClick={() => { setEindEffect(effect.key); setEffectDropdownOpen(false); }}
+                                className={`w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-autronis-bg transition-all ${eindEffect === effect.key ? "bg-autronis-accent/10" : ""}`}>
+                                <div className="flex-1">
+                                  <p className={`text-[11px] font-semibold ${eindEffect === effect.key ? "text-autronis-accent" : "text-autronis-text-primary"}`}>{effect.label}</p>
+                                  <p className="text-[9px] text-autronis-text-tertiary">{effect.desc}</p>
+                                </div>
+                                {eindEffect === effect.key && <Check className="w-3 h-3 text-autronis-accent flex-shrink-0" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                       <button
                         onClick={async () => {
                           if (!input.trim() && !kieImgUrl.A) return;
@@ -1997,12 +2047,7 @@ export default function AnimatiesPage() {
 
                           // Step 2: Build a very specific B prompt using the manifest
                           const stijlP = getStijlPrompt();
-                          let fullPrompt: string;
-                          if (componentManifest) {
-                            fullPrompt = `Professional exploded-view product photography on pure white background (#FFFFFF). The following components are floating separated in space, each maintaining its EXACT original shape, size, color, and material:\n\n${componentManifest}\n\nEvery component listed above must be visible, separated, and floating. Components are arranged in an exploded view — spread apart along a vertical/diagonal axis but maintaining their spatial relationships so they could snap back together. Same 3/4 camera angle as assembled reference. ${stijlP} Photorealistic, 16:9 aspect ratio.${kieCleanBg ? " Pure white seamless backdrop, no shadows on background." : ""}`;
-                          } else {
-                            fullPrompt = `Professional exploded-view product photography of ${input.trim()} on white background (#FFFFFF). Every component separated and floating — EXACT same shapes, sizes, proportions as the assembled version. ${stijlP} Photorealistic, 16:9.${kieCleanBg ? " Pure white seamless backdrop." : ""}`;
-                          }
+                          const fullPrompt = buildBPrompt(input.trim() || "product", stijlP, componentManifest || undefined);
 
                           const body: Record<string, string | number> = { prompt: fullPrompt };
                           if (kieImgUrl.A) { body.referenceImageUrl = kieImgUrl.A; body.refStrength = kieRefStrength; }

@@ -242,9 +242,15 @@ export default function AnimatiesPage() {
   });
   const [inputType, setInputType] = useState<"url" | "product" | "image">("product");
   const [loading, setLoading] = useState(false);
-  const [prompts, setPrompts] = useState<ScrollStopPrompts | null>(null);
+  const [prompts, setPrompts] = useState<ScrollStopPrompts | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem("scrollstop-prompts"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<Tab>("A");
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    if (typeof window === "undefined") return "A";
+    return (localStorage.getItem("scrollstop-tab") as Tab) || "A";
+  });
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [eindEffect, setEindEffect] = useState(() => {
@@ -295,6 +301,14 @@ export default function AnimatiesPage() {
     else localStorage.removeItem("scrollstop-manifest-naam");
   }, [manifestObjectNaam]);
 
+  // ── Persist prompts, tab, images to localStorage
+  useEffect(() => {
+    if (prompts) localStorage.setItem("scrollstop-prompts", JSON.stringify(prompts));
+    else localStorage.removeItem("scrollstop-prompts");
+  }, [prompts]);
+  useEffect(() => { localStorage.setItem("scrollstop-tab", activeTab); }, [activeTab]);
+  useEffect(() => { localStorage.setItem("scrollstop-kie-imgs", JSON.stringify(kieImgUrl)); }, [kieImgUrl]);
+
   // ── Kie.ai image tweaks
   const [kieCleanBg, setKieCleanBg] = useState(true);
   const [kieExtraPrompt, setKieExtraPrompt] = useState("");
@@ -314,7 +328,10 @@ export default function AnimatiesPage() {
   const [kieError, setKieError] = useState("");
   const kiePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [kieImgLoading, setKieImgLoading] = useState<Record<"A" | "B", boolean>>({ A: false, B: false });
-  const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>({ A: null, B: null });
+  const [kieImgUrl, setKieImgUrl] = useState<Record<"A" | "B", string | null>>(() => {
+    if (typeof window === "undefined") return { A: null, B: null };
+    try { const s = localStorage.getItem("scrollstop-kie-imgs"); return s ? JSON.parse(s) : { A: null, B: null }; } catch { return { A: null, B: null }; }
+  });
   const [kieImgError, setKieImgError] = useState<Record<"A" | "B", string>>({ A: "", B: "" });
   const kieImgPollingRef = useRef<Record<"A" | "B", ReturnType<typeof setInterval> | null>>({ A: null, B: null });
 
@@ -412,6 +429,16 @@ export default function AnimatiesPage() {
         }
       } catch {
         localStorage.removeItem("logo-video-pending");
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Resume Kie.ai image polling after refresh
+  useEffect(() => {
+    for (const tab of ["A", "B"] as const) {
+      const taskId = localStorage.getItem(`kie-img-pending-${tab}`);
+      if (taskId) {
+        startKieImgPolling(tab, taskId);
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -793,24 +820,35 @@ export default function AnimatiesPage() {
         setKieImgLoading(prev => ({ ...prev, [tab]: false }));
         return;
       }
-      kieImgPollingRef.current[tab] = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-image-status?taskId=${data.taskId}`);
+      // Persist taskId for refresh recovery
+      localStorage.setItem(`kie-img-pending-${tab}`, data.taskId!);
+      startKieImgPolling(tab, data.taskId!);
+    } catch {
+      setKieImgError(prev => ({ ...prev, [tab]: "Er ging iets mis." }));
+      setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+    }
+  };
+
+  const startKieImgPolling = (tab: "A" | "B", taskId: string) => {
+    setKieImgLoading(prev => ({ ...prev, [tab]: true }));
+    kieImgPollingRef.current[tab] = setInterval(async () => {
+      try {
+        const poll = await fetch(`/api/animaties/kie-image-status?taskId=${taskId}`);
         const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
         if (result.status === "done" && result.imageUrl) {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! }));
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+          localStorage.removeItem(`kie-img-pending-${tab}`);
           saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
         } else if (result.status === "failed") {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+          localStorage.removeItem(`kie-img-pending-${tab}`);
         }
-      }, 4000);
-    } catch {
-      setKieImgError(prev => ({ ...prev, [tab]: "Er ging iets mis." }));
-      setKieImgLoading(prev => ({ ...prev, [tab]: false }));
-    }
+      } catch { /* retry next interval */ }
+    }, 4000);
   };
 
   // ── FAL: Video generation (Kling O3 — start + end frame)

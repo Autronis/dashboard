@@ -81,6 +81,7 @@ export default function AnimatiesPage() {
   const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [eindEffect, setEindEffect] = useState("exploded");
   const [effectDropdownOpen, setEffectDropdownOpen] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
 
   // ── Manifest state
   const [manifestStep, setManifestStep] = useState<ManifestStep>("idle");

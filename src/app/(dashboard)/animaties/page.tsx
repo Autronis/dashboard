@@ -549,9 +549,19 @@ export default function AnimatiesPage() {
       setKieError("Genereer eerst afbeelding A (start frame) via tab A hierboven.");
       return;
     }
-    // Build a short motion prompt based on the selected effect
+    // Video flow: B (deconstructed/effect) → A (assembled)
+    // Use image B as start frame, prompt describes assembly/transition back to whole
+    const startFrame = kieEndFrame.trim() || kieStartFrame.trim();
     const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
-    const motionPrompt = `smooth ${effectLabel.toLowerCase()} transition, white background, product photography, satisfying mechanical motion`;
+    const motionPrompt = eindEffect === "buildup" || eindEffect === "scatter" || eindEffect === "liquid"
+      ? "particles and pieces smoothly converge and assemble into a complete pristine product, white background, satisfying mechanical assembly"
+      : eindEffect === "exploded"
+      ? "floating deconstructed pieces smoothly come together and snap into a fully assembled product, white background, satisfying precision assembly"
+      : eindEffect === "glowup"
+      ? "dark silhouette gradually illuminates from within, glowing brighter until fully lit, white background"
+      : eindEffect === "wireframe"
+      ? "wireframe mesh gradually fills in with solid materials, transforming into a real product, white background"
+      : `smooth ${effectLabel.toLowerCase()} reverse transition into fully assembled product, white background, satisfying motion`;
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/kie-video", {
@@ -560,7 +570,7 @@ export default function AnimatiesPage() {
         body: JSON.stringify({
           prompt: motionPrompt,
           duration: kieDuration,
-          firstFrameImage: kieStartFrame.trim(),
+          firstFrameImage: startFrame,
         }),
       });
       const data = await res.json() as { taskId?: string; error?: string };
@@ -672,7 +682,7 @@ export default function AnimatiesPage() {
   const tabConfig = {
     A: { label: prompts?.tabANaam ?? "Assembled Shot", icon: Image, instruction: "Genereer afbeelding A eerst (16:9)" },
     B: { label: prompts?.tabBNaam ?? effectLabel, icon: Layers, instruction: kieImgUrl.A ? "Afbeelding A wordt automatisch als referentie gebruikt" : "Genereer eerst afbeelding A als referentie" },
-    C: { label: "Video Transitie", icon: Clapperboard, instruction: kieStartFrame ? "Afbeelding A wordt als startframe gebruikt → genereer video" : "Genereer eerst afbeelding A als startframe" },
+    C: { label: "Video Transitie", icon: Clapperboard, instruction: kieImgUrl.B ? "Afbeelding B → A: de video begint bij het effect en assembleert naar het product" : "Genereer eerst afbeelding A en B" },
   } as const;
 
   const activePrompt = prompts
@@ -1316,13 +1326,13 @@ export default function AnimatiesPage() {
                   </p>
                   <div className="mb-2">
                     <div className="flex items-center gap-2">
-                      <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
-                        placeholder="Start frame URL (afbeelding A) — wordt automatisch ingevuld"
+                      <input value={kieEndFrame || kieStartFrame} onChange={e => { setKieEndFrame(e.target.value); setKieStartFrame(e.target.value); }}
+                        placeholder="Start frame URL (afbeelding B) — wordt automatisch ingevuld"
                         className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
                       {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
                     </div>
                     <p className="text-[10px] text-autronis-text-tertiary mt-1">
-                      Afbeelding A is het startframe. De AI animeert het product vanuit deze foto in de geselecteerde stijl ({EIND_EFFECTEN.find(e => e.key === eindEffect)?.label}).
+                      Afbeelding B is het startframe. De video begint bij het effect ({EIND_EFFECTEN.find(e => e.key === eindEffect)?.label}) en assembleert naar het complete product.
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

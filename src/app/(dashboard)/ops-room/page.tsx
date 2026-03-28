@@ -11,6 +11,8 @@ import {
   AgentDetail,
   TaskFeed,
   IsometricGrid,
+  agents as mockAgents,
+  taskLog,
 } from "@/components/ops-room";
 
 const PixelOffice = dynamic(
@@ -73,36 +75,53 @@ export default function OpsRoomPage() {
     return map;
   }, [dbCommands]);
 
-  // Only real data from DB + orchestrator
+  // Merge: mock roster as base, overlay live data
+  // When live data exists: agents WITHOUT live activity → idle (stand-by)
   const agents = useMemo(() => {
-    const base: Agent[] = liveAgents ?? [];
-    // Overlay orchestrator/DB active agents that aren't in live data yet
-    const liveIds = new Set(base.map((a) => a.id));
-    const extraFromDb: Agent[] = [];
-    dbActiveAgents.forEach((task, agentId) => {
-      if (!liveIds.has(agentId)) {
-        extraFromDb.push({
-          id: agentId,
-          naam: agentId.charAt(0).toUpperCase() + agentId.slice(1),
-          rol: "builder",
-          team: "sem",
-          status: "working",
-          huidigeTaak: {
-            id: `db-${agentId}`,
-            beschrijving: task.titel,
-            project: task.opdracht.slice(0, 40),
-            startedAt: new Date().toISOString(),
-            status: "bezig",
-          },
-          voltooideVandaag: 0,
-          laatsteActiviteit: new Date().toISOString(),
-          avatar: "#3b82f6",
+    if (!liveAgents || liveAgents.length === 0) return mockAgents;
+    const liveMap = new Map(liveAgents.map((a) => [a.id, a]));
+    const merged = mockAgents.map((mock) => {
+      const live = liveMap.get(mock.id);
+      if (!live) {
+        // No live data — management stays active, builders go idle
+        const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi", "brent"]);
+        if (alwaysActive.has(mock.id)) return mock;
+        // Check if orchestrator or DB has this agent active
+        if (orchestratorAgents.has(mock.id) || dbActiveAgents.has(mock.id)) {
+          const dbTask = dbActiveAgents.get(mock.id);
+          return {
+            ...mock,
+            status: "working" as const,
+            huidigeTaak: dbTask ? {
+              id: `db-${mock.id}`,
+              beschrijving: dbTask.titel,
+              project: dbTask.opdracht.slice(0, 40),
+              startedAt: new Date().toISOString(),
+              status: "bezig" as const,
+            } : mock.huidigeTaak,
+          };
+        }
+        // Builders without live data → idle
+        return {
+          ...mock,
+          status: "idle" as const,
+          huidigeTaak: null,
           terminal: [],
           kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
-        });
+        };
       }
+      return {
+        ...mock,
+        status: live.status,
+        huidigeTaak: live.huidigeTaak,
+        laatsteActiviteit: live.laatsteActiviteit,
+        kosten: live.kosten.tokensVandaag > 0 ? live.kosten : mock.kosten,
+        terminal: live.terminal.length > 0 ? live.terminal : mock.terminal,
+      };
     });
-    return [...base, ...extraFromDb];
+    const mockIds = new Set(mockAgents.map((a) => a.id));
+    const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
+    return [...merged, ...extraLive];
   }, [liveAgents, orchestratorAgents, dbActiveAgents]);
   const isLive = liveAgents && liveAgents.length > 0;
 
@@ -140,7 +159,7 @@ export default function OpsRoomPage() {
       });
     }
     entries.sort((a, b) => new Date(b.tijdstip).getTime() - new Date(a.tijdstip).getTime());
-    return entries;
+    return entries.length > 0 ? entries : taskLog;
   }, [orchestratorLogs, liveAgents, agents]);
 
   const handleSelectAgent = useCallback((agent: Agent) => {
@@ -157,7 +176,7 @@ export default function OpsRoomPage() {
   }, [agents]);
 
   const recentTasksForAgent = selectedAgent
-    ? liveFeed.filter((t) => t.agentId === selectedAgent.id).slice(0, 8)
+    ? taskLog.filter((t) => t.agentId === selectedAgent.id).slice(0, 8)
     : [];
 
   const viewOptions: { mode: ViewMode; icon: typeof Building2; label: string }[] = [
@@ -235,7 +254,7 @@ export default function OpsRoomPage() {
 
         {isError && (
           <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400">
-            Kon live data niet laden
+            Kon live data niet laden — toont demo data
           </div>
         )}
 
@@ -287,7 +306,7 @@ export default function OpsRoomPage() {
               <div className="space-y-4">
                 <AgentStatusGrid agents={agents} onSelect={handleSelectAgent} />
                 <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                  <TaskFeed entries={liveFeed} onAgentClick={handleAgentClickFromFeed} />
+                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
                 </div>
               </div>
             </div>
@@ -341,7 +360,7 @@ export default function OpsRoomPage() {
                 />
               ) : (
                 <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                  <TaskFeed entries={liveFeed} onAgentClick={handleAgentClickFromFeed} />
+                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
                 </div>
               )}
             </div>

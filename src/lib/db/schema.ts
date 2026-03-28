@@ -1153,6 +1153,24 @@ export const secondBrainItems = sqliteTable("second_brain_items", {
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
+// ── VIDEO SAMENVATTINGEN ─────────────────────────────────
+export const videoSamenvattingen = sqliteTable("video_samenvattingen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  youtubeUrl: text("youtube_url").notNull(),
+  youtubeId: text("youtube_id").notNull(),
+  titel: text("titel"),
+  kanaal: text("kanaal"),
+  thumbnailUrl: text("thumbnail_url"),
+  transcript: text("transcript"),
+  samenvatting: text("samenvatting"),
+  keyTakeaways: text("key_takeaways"), // JSON array
+  stappenplan: text("stappenplan"), // JSON array
+  tags: text("tags"), // JSON array
+  relevantieScore: text("relevantie_score", { enum: ["hoog", "midden", "laag"] }),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ CONCURRENTEN ============
 
 export const concurrenten = sqliteTable("concurrenten", {

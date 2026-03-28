@@ -623,29 +623,53 @@ export default function AnimatiesPage() {
     }
   };
 
-  // ── LOGO KIE: Video generation
+  // ── LOGO KIE: Video generation (image-to-video via Kie.ai runway with imageUrl)
   const generateLogoKieVideo = async () => {
     if (!logoResult) return;
+    // If user uploaded a logo image, first upload it to get a URL for Kie.ai
+    let startFrameUrl = logoKieFirstFrame.trim();
+    if (!startFrameUrl && logoImage) {
+      // Upload the logo to get a public URL via the Kie.ai image generation
+      // Use the logo preview (data URL) — we need a public URL though
+      // For now, generate an image first via Kie, then use that as startFrame
+      setLogoKieError("Upload je logo eerst als afbeelding via Kie.ai (tab A bij Scroll-Stop) of plak een URL hieronder.");
+      return;
+    }
+    if (!startFrameUrl) {
+      setLogoKieError("Plak een afbeelding URL hieronder als startframe voor de video.");
+      return;
+    }
+    const videoPrompt = logoResult.videoPrompt.slice(0, 200);
     setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
     try {
-      const res = await fetch("/api/animaties/kie-video", {
+      // Use Kie.ai runway with imageUrl (proven to work for image-to-video)
+      const res = await fetch("https://api.kie.ai/api/v1/runway/generate", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Authorization": `Bearer ${await fetch("/api/animaties/kie-key").then(r => r.json()).then(d => d.key).catch(() => "")}`,
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          prompt: logoResult.videoPrompt,
-          duration: logoKieDuration,
-          ...(logoKieFirstFrame.trim() && { firstFrameImage: logoKieFirstFrame.trim() }),
+          prompt: videoPrompt,
+          duration: 10,
+          quality: "720p",
+          imageUrl: startFrameUrl,
         }),
       });
-      const data = await res.json() as { taskId?: string; error?: string };
-      if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
+      const data = await res.json() as { code?: number; msg?: string; data?: { taskId: string } };
+      if (data.code !== 200 || !data.data?.taskId) {
+        setLogoKieError(data.msg ?? "Kie.ai fout.");
+        setLogoKieLoading(false);
+        return;
+      }
       logoKiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.taskId}`);
+        const poll = await fetch(`/api/animaties/kie-video-status?taskId=${data.data!.taskId}`);
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(logoKiePollingRef.current!);
           setLogoKieVideoUrl(result.videoUrl);
           setLogoKieLoading(false);
+          saveToGalleryRef.current(result.videoUrl, "logo-animatie");
         } else if (result.status === "failed") {
           clearInterval(logoKiePollingRef.current!);
           setLogoKieError(result.error ?? "Generatie mislukt.");

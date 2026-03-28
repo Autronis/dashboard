@@ -109,6 +109,42 @@ export function AbonnementenTab() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [filterCategorie, setFilterCategorie] = useState<string>("alle");
 
+  // AI analyse state
+  const [aiData, setAiData] = useState<AIAnalyseData | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [analysing, setAnalysing] = useState(false);
+
+  const loadAiData = useCallback(async () => {
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/bank/transacties/analyse");
+      if (res.ok) {
+        const data = await res.json() as AIAnalyseData;
+        setAiData(data);
+      }
+    } catch { /* ignore */ }
+    setAiLoading(false);
+  }, []);
+
+  useEffect(() => { loadAiData(); }, [loadAiData]);
+
+  const runAnalyse = async () => {
+    setAnalysing(true);
+    try {
+      const res = await fetch("/api/bank/transacties/analyse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const result = await res.json() as { geanalyseerd: number };
+      addToast(`${result.geanalyseerd} transacties geanalyseerd`, "succes");
+      loadAiData();
+    } catch {
+      addToast("Analyse mislukt", "fout");
+    }
+    setAnalysing(false);
+  };
+
   const abonnementen = data?.abonnementen ?? [];
   const totalen = data?.totalen;
 
@@ -231,6 +267,115 @@ export function AbonnementenTab() {
           </p>
         </div>
       </div>
+
+      {/* AI Gedetecteerde Abonnementen */}
+      {aiData && aiData.abonnementen.length > 0 && (
+        <div className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-autronis-border">
+            <div className="flex items-center gap-2">
+              <Brain className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-semibold text-autronis-text-primary">AI Abonnement Analyse</span>
+              <span className="text-xs text-autronis-text-tertiary">({aiData.abonnementen.length} gedetecteerd)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4 text-xs">
+                <span className="text-autronis-text-secondary">
+                  <span className="font-semibold text-autronis-text-primary">{formatBedrag(aiData.totaalMaand)}</span>/maand
+                </span>
+                <span className="text-autronis-text-secondary">
+                  <span className="font-semibold text-autronis-text-primary">{formatBedrag(aiData.totaalJaar)}</span>/jaar
+                </span>
+              </div>
+              {aiData.ongeanalyseerd > 0 && (
+                <button
+                  onClick={runAnalyse}
+                  disabled={analysing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-semibold text-purple-400 hover:bg-purple-500/20 transition-all disabled:opacity-50"
+                >
+                  {analysing ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyseren...</>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5" /> {aiData.ongeanalyseerd} analyseren</>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="divide-y divide-autronis-border">
+            {aiData.abonnementen.map((abo, i) => {
+              const scoreKey = (abo.overdodigheidScore || "nuttig") as keyof typeof SCORE_CONFIG;
+              const score = SCORE_CONFIG[scoreKey] || SCORE_CONFIG.nuttig;
+              const ScoreIcon = score.icon;
+
+              return (
+                <div key={i} className="px-4 py-3 flex items-center gap-4 hover:bg-autronis-bg/30 transition-colors">
+                  {/* Score badge */}
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0", score.bg)}>
+                    <ScoreIcon className={cn("w-4 h-4", score.color)} />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-autronis-text-primary truncate">{abo.merchantNaam}</p>
+                      <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", score.bg, score.color)}>
+                        {score.label}
+                      </span>
+                    </div>
+                    {abo.aiBeschrijving && (
+                      <p className="text-xs text-autronis-text-secondary mt-0.5 truncate">{abo.aiBeschrijving}</p>
+                    )}
+                    <p className="text-[10px] text-autronis-text-tertiary mt-0.5">
+                      {abo.aantal}x gezien · sinds {new Date(abo.eersteDatum).toLocaleDateString("nl-NL", { month: "short", year: "numeric" })}
+                    </p>
+                  </div>
+
+                  {/* Bedragen */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-sm font-bold text-autronis-text-primary tabular-nums">
+                      {formatBedrag(abo.gemiddeldBedrag)}<span className="text-xs font-normal text-autronis-text-secondary">/maand</span>
+                    </p>
+                    <p className="text-[10px] text-autronis-text-tertiary tabular-nums">
+                      {formatBedrag(abo.gemiddeldBedrag * 12)}/jaar
+                    </p>
+                  </div>
+
+                  {/* Opzeggen suggestie */}
+                  {scoreKey === "overbodig" && (
+                    <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 flex-shrink-0">
+                      Opzeggen?
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Analyse knop als er geen AI data is maar wel ongeanalyseerde transacties */}
+      {aiData && aiData.abonnementen.length === 0 && aiData.ongeanalyseerd > 0 && (
+        <div className="bg-autronis-card border border-dashed border-purple-500/20 rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Brain className="w-5 h-5 text-purple-400" />
+            <div>
+              <p className="text-sm font-semibold text-autronis-text-primary">AI Transactie Analyse</p>
+              <p className="text-xs text-autronis-text-secondary">{aiData.ongeanalyseerd} transacties wachten op analyse</p>
+            </div>
+          </div>
+          <button
+            onClick={runAnalyse}
+            disabled={analysing}
+            className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-sm font-semibold text-purple-400 hover:bg-purple-500/20 transition-all disabled:opacity-50"
+          >
+            {analysing ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Analyseren...</>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Analyseer transacties</>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Categorie breakdown */}
       {Object.keys(categorieStats).length > 0 && (

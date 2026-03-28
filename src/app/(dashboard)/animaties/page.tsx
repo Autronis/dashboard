@@ -209,6 +209,21 @@ export default function AnimatiesPage() {
 
   useEffect(() => { loadGallery(); }, [loadGallery]);
 
+  // Resume FAL video polling after refresh
+  useEffect(() => {
+    const pending = localStorage.getItem("fal-video-pending");
+    if (pending) {
+      try {
+        const { statusUrl, responseUrl } = JSON.parse(pending) as { statusUrl: string; responseUrl: string };
+        if (statusUrl && responseUrl) {
+          startFalPolling(statusUrl, responseUrl);
+        }
+      } catch {
+        localStorage.removeItem("fal-video-pending");
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Save to gallery (use ref to avoid stale closure in setInterval callbacks)
   const [gallerySaveStatus, setGallerySaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const saveToGallery = useCallback(async (imageUrl: string, type: "scroll-stop" | "logo-animatie") => {
@@ -576,26 +591,38 @@ export default function AnimatiesPage() {
       });
       const data = await res.json() as { requestId?: string; statusUrl?: string; responseUrl?: string; error?: string };
       if (!res.ok || data.error) { setKieError(data.error ?? "Fout."); setKieLoading(false); return; }
-      // Poll FAL for completion using the status_url and response_url
-      const statusUrl = encodeURIComponent(data.statusUrl ?? "");
-      const responseUrl = encodeURIComponent(data.responseUrl ?? "");
-      kiePollingRef.current = setInterval(async () => {
-        const poll = await fetch(`/api/animaties/fal-video-status?statusUrl=${statusUrl}&responseUrl=${responseUrl}`);
-        const result = await poll.json() as { status: string; videoUrl?: string; error?: string; queuePosition?: number };
+      // Save to localStorage so polling survives refresh
+      const falReq = { statusUrl: data.statusUrl, responseUrl: data.responseUrl };
+      localStorage.setItem("fal-video-pending", JSON.stringify(falReq));
+      startFalPolling(falReq.statusUrl!, falReq.responseUrl!);
+    } catch {
+      setKieError("Er ging iets mis."); setKieLoading(false);
+    }
+  };
+
+  // Reusable FAL polling function
+  const startFalPolling = (statusUrl: string, responseUrl: string) => {
+    setKieLoading(true);
+    const encodedStatus = encodeURIComponent(statusUrl);
+    const encodedResponse = encodeURIComponent(responseUrl);
+    kiePollingRef.current = setInterval(async () => {
+      try {
+        const poll = await fetch(`/api/animaties/fal-video-status?statusUrl=${encodedStatus}&responseUrl=${encodedResponse}`);
+        const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(kiePollingRef.current!);
           setKieVideoUrl(result.videoUrl);
           setKieLoading(false);
+          localStorage.removeItem("fal-video-pending");
           saveVideoToGalleryRef.current(result.videoUrl);
         } else if (result.status === "failed") {
           clearInterval(kiePollingRef.current!);
           setKieError(result.error ?? "Generatie mislukt.");
           setKieLoading(false);
+          localStorage.removeItem("fal-video-pending");
         }
-      }, 5000);
-    } catch {
-      setKieError("Er ging iets mis."); setKieLoading(false);
-    }
+      } catch { /* keep polling */ }
+    }, 5000);
   };
 
   // ── LOGO: Generate
@@ -1395,7 +1422,7 @@ export default function AnimatiesPage() {
                       {[5, 10].map(d => (
                         <button key={d} onClick={() => setKieDuration(d)}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
-                          {d}s {d === 5 ? "(~$0.56)" : "(~$1.12)"}
+                          {d}s {d === 5 ? "(~€0,52)" : "(~€1,04)"}
                         </button>
                       ))}
                     </div>

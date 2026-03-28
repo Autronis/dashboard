@@ -218,6 +218,29 @@ export default function AnimatiesPage() {
   const saveToGalleryRef = useRef(saveToGallery);
   useEffect(() => { saveToGalleryRef.current = saveToGallery; }, [saveToGallery]);
 
+  // ── Save video to gallery
+  const saveVideoToGallery = useCallback(async (videoUrl: string) => {
+    const body: Record<string, string | undefined> = {
+      type: "scroll-stop",
+      productNaam: prompts?.objectNaam ?? (input || "Scroll-Stop Video"),
+      videoUrl,
+    };
+    if (prompts) {
+      body.eindEffect = eindEffect;
+      body.promptVideo = prompts.promptC;
+    }
+    try {
+      await fetch("/api/assets/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      loadGallery();
+    } catch { /* ignore */ }
+  }, [prompts, eindEffect, input, loadGallery]);
+  const saveVideoToGalleryRef = useRef(saveVideoToGallery);
+  useEffect(() => { saveVideoToGalleryRef.current = saveVideoToGallery; }, [saveVideoToGallery]);
+
   // ── Delete from gallery
   const deleteGalleryItem = useCallback(async (id: number) => {
     try {
@@ -504,6 +527,8 @@ export default function AnimatiesPage() {
           clearInterval(kiePollingRef.current!);
           setKieVideoUrl(result.videoUrl);
           setKieLoading(false);
+          // Save video to gallery
+          saveVideoToGalleryRef.current(result.videoUrl);
         } else if (result.status === "failed") {
           clearInterval(kiePollingRef.current!);
           setKieError(result.error ?? "Generatie mislukt.");
@@ -1292,7 +1317,15 @@ export default function AnimatiesPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {filteredGallery.map(item => (
               <div key={item.id} className="group bg-autronis-card border border-autronis-border rounded-xl overflow-hidden hover:border-autronis-accent/30 transition-all">
-                {item.afbeeldingUrl ? (
+                {item.videoUrl ? (
+                  <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-black relative cursor-pointer">
+                    <video src={item.videoUrl} className="w-full h-full object-contain" muted />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                      <Play className="w-8 h-8 text-white opacity-60 group-hover:opacity-100 transition-all" />
+                    </div>
+                    <span className="absolute top-1.5 right-1.5 text-[9px] px-1.5 py-0.5 rounded bg-purple-500/80 text-white font-bold">VIDEO</span>
+                  </a>
+                ) : item.afbeeldingUrl ? (
                   <a href={item.afbeeldingUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-white relative cursor-pointer">
                     <img src={item.afbeeldingUrl} alt={item.productNaam} className="w-full h-full object-contain" />
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">

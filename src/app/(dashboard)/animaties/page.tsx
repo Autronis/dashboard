@@ -682,11 +682,13 @@ export default function AnimatiesPage() {
     ? activeTab === "A" ? prompts.promptA : activeTab === "B" ? prompts.promptB : prompts.promptC
     : "";
 
-  const allSteps = [
-    { n: "1", icon: Image, label: "Copy A → Higgsfield", sub: "Genereer assembled shot (afbeelding)" },
-    { n: "2", icon: Layers, label: "Genereer B", sub: `Afbeelding A wordt automatisch als referentie meegegeven` },
-    { n: "3", icon: Clapperboard, label: "Copy C → Higgsfield", sub: "Upload A + B als frames → genereer video (5s)" },
-    { n: "4", icon: Globe, label: "Download video", sub: "Sla de video op van Higgsfield" },
+  const assetSteps = [
+    { n: "1", icon: Image, label: "Genereer assembled shot (A)", sub: "AI optimaliseert je input → genereer afbeelding" },
+    { n: "2", icon: Layers, label: `Genereer ${effectLabel.toLowerCase()} (B)`, sub: "A wordt automatisch als referentie meegegeven" },
+    { n: "3", icon: Clapperboard, label: "Genereer video", sub: "A + B als start/end frame → video (5-10s)" },
+    { n: "4", icon: Globe, label: "Download assets", sub: "Sla afbeeldingen en video op" },
+  ];
+  const websiteSteps = [
     { n: "5", icon: Code2, label: "VSCode → scroll-stop build", sub: "Zeg in Claude Code: \"scroll-stop build\" + geef het videobestand" },
     { n: "6", icon: Globe, label: "Website live", sub: "Skill bouwt automatisch de Apple-stijl scroll-website" },
   ];
@@ -733,22 +735,19 @@ export default function AnimatiesPage() {
         </button>
       </div>
 
-      {/* Stappenplan (collapsible) — only scroll-stop */}
+      {/* Stappenplan — only scroll-stop */}
       {mode === "scroll-stop" && (
-        <div className="bg-autronis-card border border-autronis-border rounded-xl mb-5 overflow-hidden">
-          <button
-            onClick={() => setStepsOpen(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-autronis-text-primary hover:bg-autronis-card-hover transition-all"
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-autronis-accent" />
-              Volledig stappenplan — van prompt tot website
-            </span>
-            {stepsOpen ? <ChevronUp className="w-4 h-4 text-autronis-text-tertiary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-tertiary" />}
-          </button>
-          {stepsOpen && (
-            <div className="px-4 pb-4 grid grid-cols-3 gap-3 border-t border-autronis-border pt-3">
-              {allSteps.map(({ n, icon: Icon, label, sub }) => (
+        <div className="mb-5 space-y-2">
+          {/* Blok 1: Assets genereren (altijd zichtbaar) */}
+          <div className="bg-autronis-card border border-autronis-border rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-autronis-border">
+              <span className="flex items-center gap-2 text-sm font-semibold text-autronis-text-primary">
+                <Zap className="w-4 h-4 text-autronis-accent" />
+                Assets genereren
+              </span>
+            </div>
+            <div className="px-4 py-3 grid grid-cols-4 gap-3">
+              {assetSteps.map(({ n, icon: Icon, label, sub }) => (
                 <div key={n} className="flex gap-3 items-start">
                   <div className="w-6 h-6 rounded-md bg-autronis-accent/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-accent">{n}</div>
                   <div>
@@ -760,7 +759,36 @@ export default function AnimatiesPage() {
                 </div>
               ))}
             </div>
-          )}
+          </div>
+
+          {/* Blok 2: Website bouwen (inklapbaar, standaard dicht) */}
+          <div className="border border-dashed border-autronis-border rounded-xl overflow-hidden opacity-60 hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => setStepsOpen(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-autronis-text-tertiary hover:text-autronis-text-secondary transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <Code2 className="w-3.5 h-3.5" />
+                Optioneel: bouw scroll-website
+              </span>
+              {stepsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {stepsOpen && (
+              <div className="px-4 pb-3 grid grid-cols-2 gap-3 border-t border-dashed border-autronis-border pt-3">
+                {websiteSteps.map(({ n, icon: Icon, label, sub }) => (
+                  <div key={n} className="flex gap-3 items-start">
+                    <div className="w-6 h-6 rounded-md bg-autronis-border/50 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-text-tertiary">{n}</div>
+                    <div>
+                      <p className="text-xs font-semibold text-autronis-text-secondary flex items-center gap-1">
+                        <Icon className="w-3 h-3 text-autronis-text-tertiary" /> {label}
+                      </p>
+                      <p className="text-xs text-autronis-text-tertiary mt-0.5 leading-snug">{sub}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

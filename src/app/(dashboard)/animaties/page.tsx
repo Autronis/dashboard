@@ -576,7 +576,18 @@ export default function AnimatiesPage() {
       return;
     }
     const effectLabel = EIND_EFFECTEN.find(e => e.key === eindEffect)?.label ?? "deconstructed";
-    const videoPrompt = kieVideoPrompt.trim() || `Smooth ${effectLabel.toLowerCase()} to assembled transition, satisfying mechanical precision, white background`;
+    const defaultPrompts: Record<string, string> = {
+      exploded: "Floating deconstructed product parts each individually glide and snap precisely into their correct positions, piece by piece mechanical assembly. Each component maintains its shape and slides into place with precision. No morphing, no dissolving, no recreation. Static camera, white background, photorealistic.",
+      buildup: "Scattered product components each float independently toward center, each piece maintains its exact shape and locks into its correct position one by one. Mechanical snap-fit assembly, no melting or morphing. Static camera, white background, photorealistic.",
+      scatter: "Hundreds of small product fragments drift inward from all directions, each piece finding its exact position and clicking into place. Reverse shatter effect, precise reassembly. Static camera, white background, photorealistic.",
+      glowup: "Dark product silhouette gradually illuminates from within, internal glow spreading through seams and edges until fully lit and visible. No shape change, only lighting transition. Static camera, white background.",
+      wireframe: "Wireframe mesh gradually fills with solid materials, each polygon face becoming opaque with correct material texture. Digital to physical transformation. Static camera, white background.",
+      xray: "Transparent x-ray view of product gradually becomes opaque, outer shell materializing while internal components remain briefly visible then covered. Static camera, white background.",
+      liquid: "Liquid metal pools rise and solidify into precise product components, each pool forming a specific part. No random morphing. Static camera, white background.",
+      context: "Product floating on white background gently descends onto a real desk surface as the environment fades in around it. Static camera, smooth transition.",
+      material: "Product surface material smoothly transitions from glass to brushed metal to warm wood, maintaining exact same shape throughout. Static camera, white background.",
+    };
+    const videoPrompt = kieVideoPrompt.trim() || defaultPrompts[eindEffect] || `Each deconstructed component individually slides and snaps into its correct position, precise mechanical assembly, no morphing. Static camera, white background, photorealistic.`;
     setKieLoading(true); setKieError(""); setKieVideoUrl(null);
     try {
       const res = await fetch("/api/animaties/fal-video", {
@@ -1413,7 +1424,7 @@ export default function AnimatiesPage() {
                     <input
                       value={kieVideoPrompt}
                       onChange={e => setKieVideoPrompt(e.target.value)}
-                      placeholder={`Smooth ${EIND_EFFECTEN.find(e => e.key === eindEffect)?.label?.toLowerCase() ?? ''} to assembled transition...`}
+                      placeholder="Laat leeg voor standaard prompt, of typ je eigen transitie beschrijving..."
                       className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
                     />
                   </div>

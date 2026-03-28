@@ -886,6 +886,60 @@ export default function KilometersPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Auto-overzicht: Brandstof */}
+                {jaarData.brandstof && (
+                  <div className="border-t border-autronis-border/50 pt-5 space-y-4">
+                    <h3 className="text-sm font-medium text-autronis-text-secondary flex items-center gap-2">
+                      <Car className="w-4 h-4 text-amber-400" />
+                      Auto-overzicht
+                    </h3>
+
+                    {/* Brandstof KPIs */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-autronis-bg/50 rounded-xl p-3">
+                        <p className="text-lg font-bold text-amber-400 tabular-nums">{formatBedrag(jaarData.brandstof.totaalBedrag)}</p>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">Brandstof totaal</p>
+                      </div>
+                      <div className="bg-autronis-bg/50 rounded-xl p-3">
+                        <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{jaarData.brandstof.aantalTankbeurten}</p>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">Tankbeurten</p>
+                      </div>
+                      <div className="bg-autronis-bg/50 rounded-xl p-3">
+                        <p className="text-lg font-bold text-autronis-text-primary tabular-nums">
+                          {jaarData.brandstof.totaalLiters > 0 ? `${jaarData.brandstof.totaalLiters.toFixed(1)}L` : "—"}
+                        </p>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">Liters getankt</p>
+                      </div>
+                      <div className="bg-autronis-bg/50 rounded-xl p-3">
+                        <p className="text-lg font-bold text-autronis-text-primary tabular-nums">
+                          {jaarData.brandstof.kostenPerKm > 0 ? `€${jaarData.brandstof.kostenPerKm.toFixed(2)}/km` : "—"}
+                        </p>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">Kosten per km</p>
+                      </div>
+                    </div>
+
+                    {/* Recente tankbeurten */}
+                    {jaarData.brandstof.recent.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-autronis-text-tertiary mb-2">Recente tankbeurten</h4>
+                        <div className="space-y-1.5">
+                          {jaarData.brandstof.recent.slice(0, 5).map((b: { id: number; datum: string; bedrag: number; liters: number | null; notitie: string | null; isAutomatisch: boolean }) => (
+                            <div key={b.id} className="flex items-center gap-3 bg-autronis-bg/30 rounded-lg px-3 py-2">
+                              <span className="text-xs text-autronis-text-secondary w-20">{formatDatumKort(b.datum)}</span>
+                              <span className="text-sm text-autronis-text-primary font-medium tabular-nums">{formatBedrag(b.bedrag)}</span>
+                              {b.liters && <span className="text-xs text-autronis-text-secondary tabular-nums">{b.liters.toFixed(1)}L</span>}
+                              {b.isAutomatisch && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-semibold">REVOLUT</span>
+                              )}
+                              {b.notitie && <span className="text-xs text-autronis-text-tertiary truncate flex-1">{b.notitie}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           )}

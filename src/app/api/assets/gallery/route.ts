@@ -1,29 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
 import { assetGallery } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import fs from "fs";
 import path from "path";
-
-interface RawGalleryRow {
-  id: number;
-  type: string;
-  product_naam: string;
-  eind_effect: string | null;
-  manifest: string | null;
-  prompt_a: string | null;
-  prompt_b: string | null;
-  prompt_video: string | null;
-  afbeelding_url: string | null;
-  video_url: string | null;
-  lokaal_pad: string | null;
-  project_id: number | null;
-  project_naam: string | null;
-  tags: string | null;
-  is_favoriet: number | null;
-  aangemaakt_op: string | null;
-}
 
 export async function GET(req: NextRequest) {
   try { await requireAuth(); } catch { /* proxy auth */ }
@@ -36,6 +18,7 @@ export async function GET(req: NextRequest) {
   const favoriet = searchParams.get("favoriet");
 
   try {
+    // Use raw SQL to avoid Drizzle column mapping issues with ALTER TABLE'd columns
     const conditions: string[] = ["1=1"];
     if (type) conditions.push(`ag.type = '${type.replace(/'/g, "")}'`);
     if (projectId) conditions.push(`ag.project_id = ${Number(projectId)}`);
@@ -43,31 +26,43 @@ export async function GET(req: NextRequest) {
     if (search) conditions.push(`ag.product_naam LIKE '%${search.replace(/'/g, "")}%'`);
     if (favoriet === "1") conditions.push(`ag.is_favoriet = 1`);
 
-    const rows = sqlite.prepare(`
-      SELECT ag.*, p.naam as project_naam
+    const whereClause = conditions.join(" AND ");
+
+    const rows = await db.all(sql`
+      SELECT ag.id, ag.type, ag.product_naam, ag.eind_effect, ag.manifest,
+             ag.prompt_a, ag.prompt_b, ag.prompt_video, ag.afbeelding_url,
+             ag.video_url, ag.lokaal_pad, ag.project_id, ag.tags,
+             ag.is_favoriet, ag.aangemaakt_op, p.naam as project_naam
       FROM asset_gallery ag
       LEFT JOIN projecten p ON ag.project_id = p.id
-      WHERE ${conditions.join(" AND ")}
       ORDER BY ag.aangemaakt_op DESC
-    `).all() as RawGalleryRow[];
+    `) as Record<string, unknown>[];
 
-    const items = rows.map(r => ({
-      id: r.id,
-      type: r.type,
-      productNaam: r.product_naam,
-      eindEffect: r.eind_effect,
-      manifest: r.manifest,
-      promptA: r.prompt_a,
-      promptB: r.prompt_b,
-      promptVideo: r.prompt_video,
-      afbeeldingUrl: r.afbeelding_url,
-      videoUrl: r.video_url,
-      lokaalPad: r.lokaal_pad,
-      projectId: r.project_id,
-      projectNaam: r.project_naam,
-      tags: r.tags,
-      isFavoriet: r.is_favoriet,
-      aangemaaktOp: r.aangemaakt_op,
+    // Client-side filtering (simpler than building raw SQL with params)
+    let filtered = rows;
+    if (type) filtered = filtered.filter(r => r.type === type);
+    if (projectId) filtered = filtered.filter(r => r.project_id === Number(projectId));
+    if (tag) filtered = filtered.filter(r => ((r.tags as string) ?? "").toLowerCase().includes(tag.toLowerCase()));
+    if (search) filtered = filtered.filter(r => ((r.product_naam as string) ?? "").toLowerCase().includes(search.toLowerCase()));
+    if (favoriet === "1") filtered = filtered.filter(r => r.is_favoriet === 1);
+
+    const items = filtered.map((r: Record<string, unknown>) => ({
+      id: r.id as number,
+      type: r.type as string,
+      productNaam: r.product_naam as string,
+      eindEffect: r.eind_effect as string | null,
+      manifest: r.manifest as string | null,
+      promptA: r.prompt_a as string | null,
+      promptB: r.prompt_b as string | null,
+      promptVideo: r.prompt_video as string | null,
+      afbeeldingUrl: r.afbeelding_url as string | null,
+      videoUrl: r.video_url as string | null,
+      lokaalPad: r.lokaal_pad as string | null,
+      projectId: r.project_id as number | null,
+      projectNaam: r.project_naam as string | null,
+      tags: r.tags as string | null,
+      isFavoriet: r.is_favoriet as number | null,
+      aangemaaktOp: r.aangemaakt_op as string | null,
     }));
 
     const allTags = new Set<string>();

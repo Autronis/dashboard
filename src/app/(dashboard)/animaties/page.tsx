@@ -263,6 +263,30 @@ export default function AnimatiesPage() {
     setLogoLoading(false);
   };
 
+  // ── AI OPTIMIZE: Enrich input prompt
+  const optimizePrompt = async () => {
+    if (!input.trim() && !uploadedImage) return;
+    setOptimizing(true); setError("");
+    const body: Record<string, string> = {};
+    if (input.trim()) body.description = input;
+    if (inputType === "image" && uploadedImage) { body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType; }
+    if (inputType === "product" && productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; if (input.trim()) body.description = input; }
+    try {
+      const res = await fetch("/api/animaties/optimize-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json() as { optimizedPrompt?: string; productName?: string; error?: string };
+      if (!res.ok || data.error) { setError(data.error ?? "Optimalisatie mislukt."); setOptimizing(false); return; }
+      if (data.optimizedPrompt) setInput(data.optimizedPrompt);
+      setOptimizing(false);
+    } catch {
+      setError("Optimalisatie mislukt.");
+      setOptimizing(false);
+    }
+  };
+
   // ── MANIFEST: Generate
   const generateManifest = async () => {
     setManifestStep("generating");
@@ -795,13 +819,37 @@ export default function AnimatiesPage() {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                <input
-                  value={input}
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === "Enter" && !loading && manifestStep === "ready" && generate()}
-                  placeholder={inputType === "url" ? "https://nike.com/air-max-90" : "bijv. Nike Air Max, Autronis logo, iPhone 15 Pro"}
-                  className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
-                />
+                {inputType === "url" ? (
+                  <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === "Enter" && !loading && generate()}
+                    placeholder="https://nike.com/air-max-90"
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary"
+                  />
+                ) : (
+                  <div className="flex gap-2">
+                    <textarea
+                      value={input}
+                      onChange={e => setInput(e.target.value)}
+                      rows={input.length > 100 ? 3 : 1}
+                      placeholder="bijv. Nike Air Max 90, Autronis logo, iPhone 15 Pro"
+                      className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-4 py-2.5 text-sm placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 transition-colors text-autronis-text-primary resize-none"
+                    />
+                    <button
+                      onClick={optimizePrompt}
+                      disabled={!input.trim() || optimizing}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-xs font-semibold text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed self-start"
+                      title="AI optimaliseert je beschrijving met rijke materiaal-, kleur- en vormdetails"
+                    >
+                      {optimizing ? (
+                        <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Optimaliseren...</>
+                      ) : (
+                        <><Wand2 className="w-3.5 h-3.5" /> AI Optimize</>
+                      )}
+                    </button>
+                  </div>
+                )}
                 {inputType === "product" && (
                   <div className="flex items-center gap-2">
                     <input ref={productRefInputRef} type="file" accept="image/*" className="hidden"

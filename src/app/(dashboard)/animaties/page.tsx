@@ -1323,13 +1323,30 @@ export default function AnimatiesPage() {
                       // Then generate the video directly via Kie.ai
                       setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
                       try {
+                        // Upload image to get a public URL for Kie.ai
+                        let startFrameUrl = logoKieFirstFrame.trim();
+                        if (!startFrameUrl && logoImage?.base64) {
+                          const uploadRes = await fetch("/api/assets/upload", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ base64: logoImage.base64, mediaType: logoImage.mediaType }),
+                          });
+                          const uploadData = await uploadRes.json() as { url?: string };
+                          if (uploadData.url) startFrameUrl = uploadData.url;
+                        }
+                        if (!startFrameUrl && logoImage?.preview?.startsWith("http")) {
+                          startFrameUrl = logoImage.preview;
+                        }
+
+                        // Add white background + reference instruction to prompt
+                        const finalPrompt = `${videoPrompt.slice(0, 450)}. CRITICAL: Clean white background (#FFFFFF) throughout. The object must match the reference image exactly — same shape, colors, materials, proportions.`;
+
                         const res = await fetch("/api/animaties/kie-video", {
                           method: "POST",
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
-                            prompt: videoPrompt.slice(0, 200),
-                            ...(logoImage?.preview?.startsWith("http") && { imageUrl: logoImage.preview }),
-                            ...(logoKieFirstFrame.trim() && { imageUrl: logoKieFirstFrame.trim() }),
+                            prompt: finalPrompt,
+                            ...(startFrameUrl && { imageUrl: startFrameUrl }),
                           }),
                         });
                         const data = await res.json() as { taskId?: string; error?: string };

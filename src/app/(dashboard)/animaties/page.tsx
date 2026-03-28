@@ -910,14 +910,47 @@ export default function AnimatiesPage() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => logoFileInputRef.current?.click()}
-                  className="w-full flex flex-col items-center gap-2 py-5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
-                >
-                  <Upload className="w-6 h-6" />
-                  <span className="text-sm">Upload je logo, icoon of product afbeelding</span>
-                  <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
-                </button>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => logoFileInputRef.current?.click()}
+                    className="w-full flex flex-col items-center gap-2 py-5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all"
+                  >
+                    <Upload className="w-6 h-6" />
+                    <span className="text-sm">Upload je logo, icoon of product afbeelding</span>
+                    <span className="text-xs opacity-60">PNG, JPG, WEBP</span>
+                  </button>
+                  {/* Pick from gallery */}
+                  {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).length > 0 && (
+                    <div>
+                      <p className="text-[10px] text-autronis-text-tertiary font-medium mb-1">Of kies uit galerij:</p>
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 10).map(g => (
+                          <button key={g.id} onClick={() => {
+                            // Fetch the image and convert to base64 for the logo flow
+                            const img = new window.Image();
+                            img.crossOrigin = "anonymous";
+                            img.onload = () => {
+                              const canvas = document.createElement("canvas");
+                              canvas.width = img.width;
+                              canvas.height = img.height;
+                              canvas.getContext("2d")?.drawImage(img, 0, 0);
+                              const dataUrl = canvas.toDataURL("image/png");
+                              setLogoImage({ base64: dataUrl.split(",")[1], mediaType: "image/png", preview: g.afbeeldingUrl! });
+                            };
+                            img.onerror = () => {
+                              // Fallback: just set preview URL
+                              setLogoImage({ base64: "", mediaType: "image/png", preview: g.afbeeldingUrl! });
+                            };
+                            img.src = g.afbeeldingUrl!;
+                          }}
+                            className="shrink-0 w-16 h-10 rounded border border-autronis-border hover:border-autronis-accent overflow-hidden transition-all">
+                            <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-contain bg-white" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 

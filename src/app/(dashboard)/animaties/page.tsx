@@ -402,13 +402,17 @@ export default function AnimatiesPage() {
 
   // ── Save to gallery (use ref to avoid stale closure in setInterval callbacks)
   const [gallerySaveStatus, setGallerySaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const saveToGallery = useCallback(async (imageUrl: string, type: "scroll-stop" | "logo-animatie") => {
+  const saveToGallery = useCallback(async (url: string, type: "scroll-stop" | "logo-animatie", isVideo = false) => {
     setGallerySaveStatus("saving");
     const body: Record<string, string | undefined> = {
       type,
       productNaam: type === "scroll-stop" ? (prompts?.objectNaam ?? (input || "Scroll-Stop")) : (logoResult?.objectNaam ?? "Logo"),
-      afbeeldingUrl: imageUrl,
     };
+    if (isVideo) {
+      body.videoUrl = url;
+    } else {
+      body.afbeeldingUrl = url;
+    }
     if (type === "scroll-stop" && prompts) {
       body.eindEffect = eindEffect;
       body.manifest = manifest || undefined;

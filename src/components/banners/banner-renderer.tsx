@@ -6,8 +6,8 @@ import { FlowLines } from "./flow-lines";
 import { BgIllustration } from "./bg-illustrations";
 import { CapsuleIcon } from "./capsule-icons";
 
-const BG = "#0A1214";
-const NEON = "#17B8A5";
+const BG = "#0B1A1F";
+const NEON = "#2DD4A8";
 const WHITE = "#F3F5F7";
 const GRAY = "#8B98A3";
 const FONT = "Inter, sans-serif";
@@ -60,7 +60,7 @@ export function BannerRenderer({
         position: "relative",
         width: width * scale,
         height: height * scale,
-        background: BG,
+        background: `radial-gradient(ellipse at 50% 40%, #0F2B30 0%, ${BG} 50%, #081215 100%)`,
         overflow: "hidden",
         fontFamily: FONT,
         flexShrink: 0,
@@ -104,7 +104,7 @@ export function BannerRenderer({
           left: "50%",
           width: width * scale * 1.1,
           height: height * scale * 0.6,
-          background: "radial-gradient(ellipse at center, rgba(23,184,165,0.25) 0%, rgba(23,184,165,0.12) 30%, rgba(23,184,165,0.04) 55%, transparent 75%)",
+          background: "radial-gradient(ellipse at center, rgba(45,212,168,0.35) 0%, rgba(45,212,168,0.18) 25%, rgba(45,212,168,0.08) 45%, rgba(45,212,168,0.02) 65%, transparent 80%)",
           transform: "translate(-50%, -50%)",
           pointerEvents: "none",
         }}
@@ -132,7 +132,7 @@ export function BannerRenderer({
             borderRadius: "999px",
             border: `${Math.round(2 * scale)}px solid ${NEON}`,
             background: "rgba(23,184,165,0.12)",
-            boxShadow: `0 0 ${Math.round(20 * scale)}px rgba(23,184,165,0.7), 0 0 ${Math.round(60 * scale)}px rgba(23,184,165,0.4), 0 0 ${Math.round(120 * scale)}px rgba(23,184,165,0.15), inset 0 0 ${Math.round(30 * scale)}px rgba(23,184,165,0.08)`,
+            boxShadow: `0 0 ${Math.round(25 * scale)}px rgba(45,212,168,0.8), 0 0 ${Math.round(70 * scale)}px rgba(45,212,168,0.5), 0 0 ${Math.round(140 * scale)}px rgba(45,212,168,0.2), inset 0 0 ${Math.round(40 * scale)}px rgba(45,212,168,0.1)`,
           }}
         >
           <CapsuleIcon icon={icon} size={iconSize} />
@@ -142,7 +142,7 @@ export function BannerRenderer({
               fontSize,
               fontWeight: 800,
               color: NEON,
-              textShadow: `0 0 ${Math.round(8 * scale)}px rgba(23,184,165,0.8), 0 0 ${Math.round(20 * scale)}px rgba(23,184,165,0.4)`,
+              textShadow: `0 0 ${Math.round(10 * scale)}px rgba(45,212,168,0.9), 0 0 ${Math.round(25 * scale)}px rgba(45,212,168,0.5), 0 0 ${Math.round(50 * scale)}px rgba(45,212,168,0.2)`,
               letterSpacing: "0.01em",
               whiteSpace: "nowrap",
             }}

@@ -4,52 +4,77 @@ import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
-// Ensure table exists
-async function ensureMealplanTable() {
+async function ensureTable() {
   try {
     await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
       id INTEGER PRIMARY KEY,
-      plan_json TEXT NOT NULL,
+      status TEXT DEFAULT 'generating',
+      plan_json TEXT,
       settings_json TEXT NOT NULL,
       aangemaakt_op TEXT DEFAULT (datetime('now'))
     )`);
-  } catch { /* table may already exist */ }
+  } catch { /* already exists */ }
 }
 
-// GET — fetch latest saved plan
+// GET — poll for result
 export async function GET() {
   try {
-    await ensureMealplanTable();
-    const row = await db.all(sql`SELECT plan_json, settings_json FROM mealplan_cache ORDER BY id DESC LIMIT 1`) as { plan_json: string; settings_json: string }[];
-    if (row.length === 0) return NextResponse.json({ plan: null });
-    return NextResponse.json({ plan: JSON.parse(row[0].plan_json), settings: JSON.parse(row[0].settings_json) });
+    await ensureTable();
+    const rows = await db.all(sql`SELECT status, plan_json, settings_json FROM mealplan_cache ORDER BY id DESC LIMIT 1`) as { status: string; plan_json: string | null; settings_json: string }[];
+    if (rows.length === 0) return NextResponse.json({ status: "none" });
+    const row = rows[0];
+    if (row.status === "generating") return NextResponse.json({ status: "generating" });
+    return NextResponse.json({
+      status: "done",
+      plan: row.plan_json ? JSON.parse(row.plan_json) : null,
+      settings: JSON.parse(row.settings_json),
+    });
   } catch {
-    return NextResponse.json({ plan: null });
+    return NextResponse.json({ status: "none" });
   }
 }
 
+// POST — start generation (returns immediately, generates in background)
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
     const body = await req.json();
     const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = body as {
-      kcal: number;
-      eiwit: number;
-      koolhydraten: number;
-      vezels: number;
-      suiker: number;
-      vet: number;
-      voorkeuren?: string;
-      uitsluitingen?: string;
+      kcal: number; eiwit: number; koolhydraten: number; vezels: number;
+      suiker: number; vet: number; voorkeuren?: string; uitsluitingen?: string;
     };
 
-    const client = new Anthropic();
-    const response = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 16000,
-      messages: [{
-        role: "user",
-        content: `Maak een WEEKPLAN (maandag t/m zondag) met elke dag deze macro's:
+    await ensureTable();
+    const settingsJson = JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen });
+
+    // Clear old and insert generating status
+    await db.run(sql`DELETE FROM mealplan_cache`);
+    await db.run(sql`INSERT INTO mealplan_cache (status, settings_json) VALUES ('generating', ${settingsJson})`);
+
+    // Fire and forget — server-side, doesn't depend on client
+    generateInBackground({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }).catch(() => {
+      try { db.run(sql`UPDATE mealplan_cache SET status = 'error'`); } catch { /* ignore */ }
+    });
+
+    return NextResponse.json({ status: "generating" });
+  } catch (error) {
+    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout" }, { status: 500 });
+  }
+}
+
+async function generateInBackground(params: {
+  kcal: number; eiwit: number; koolhydraten: number; vezels: number;
+  suiker: number; vet: number; voorkeuren?: string; uitsluitingen?: string;
+}) {
+  const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = params;
+
+  const client = new Anthropic();
+  const response = await client.messages.create({
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 16000,
+    messages: [{
+      role: "user",
+      content: `Maak een WEEKPLAN (maandag t/m zondag) met elke dag deze macro's:
 - ${kcal} kcal
 - ${eiwit}g eiwit
 - ${koolhydraten}g koolhydraten
@@ -87,9 +112,7 @@ Antwoord als JSON:
     }
   ],
   "boodschappenlijst": [
-    { "product": "Havermout (Krokante Havermout, Lidl)", "hoeveelheid": "1 pak (500g)", "prijs": 0.89, "afdeling": "ontbijt" },
-    { "product": "Halfvolle melk (Milbona, Lidl)", "hoeveelheid": "2 pakken (2L)", "prijs": 1.89, "afdeling": "zuivel" },
-    { "product": "Kipfilet (Lidl slager)", "hoeveelheid": "1.5 kg", "prijs": 8.99, "afdeling": "vlees" }
+    { "product": "Havermout (Krokante Havermout, Lidl)", "hoeveelheid": "1 pak (500g)", "prijs": 0.89, "afdeling": "ontbijt" }
   ],
   "totaalPrijs": 65.50,
   "weekTotaal": { "kcal": 19250, "eiwit": 1330, "kh": 2100, "vet": 770, "vezels": 210, "suiker": 420 }
@@ -103,32 +126,18 @@ BOODSCHAPPENLIJST REGELS:
 - Groepeer per afdeling (zuivel, vlees, groente, ontbijt, etc.)
 
 Zorg dat elke dag zo dicht mogelijk bij de targets zit (max 5% afwijking). Alleen JSON, geen uitleg.`,
-      }],
-    });
+    }],
+  });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    if (!textBlock || textBlock.type !== "text") {
-      return NextResponse.json({ fout: "Geen response" }, { status: 500 });
-    }
+  const textBlock = response.content.find((b) => b.type === "text");
+  if (!textBlock || textBlock.type !== "text") throw new Error("Geen response");
 
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return NextResponse.json({ fout: "Ongeldige response" }, { status: 500 });
-    }
+  const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) throw new Error("Ongeldige response");
 
-    const plan = JSON.parse(jsonMatch[0]);
+  const plan = JSON.parse(jsonMatch[0]);
+  const settingsJson = JSON.stringify(params);
 
-    // Save to DB so it persists
-    await ensureMealplanTable();
-    const settingsJson = JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen });
-    await db.run(sql`DELETE FROM mealplan_cache`);
-    await db.run(sql`INSERT INTO mealplan_cache (plan_json, settings_json) VALUES (${JSON.stringify(plan)}, ${settingsJson})`);
-
-    return NextResponse.json(plan);
-  } catch (error) {
-    return NextResponse.json(
-      { fout: error instanceof Error ? error.message : "Onbekende fout" },
-      { status: 500 }
-    );
-  }
+  await db.run(sql`DELETE FROM mealplan_cache`);
+  await db.run(sql`INSERT INTO mealplan_cache (status, plan_json, settings_json) VALUES ('done', ${JSON.stringify(plan)}, ${settingsJson})`);
 }

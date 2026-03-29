@@ -82,11 +82,18 @@ export default function MealPlanPage() {
   const [voorkeuren, setVoorkeuren] = useState("");
   const [uitsluitingen, setUitsluitingen] = useState("");
 
-  const [plan, setPlan] = useState<WeekPlan | null>(null);
+  const [plan, setPlan] = useState<WeekPlan | null>(() => {
+    if (typeof window === "undefined") return null;
+    const saved = localStorage.getItem("autronis-mealplan");
+    return saved ? JSON.parse(saved) : null;
+  });
   const [loading, setLoading] = useState(false);
   const [activeDay, setActiveDay] = useState("Maandag");
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(true);
+  const [showSettings, setShowSettings] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return !localStorage.getItem("autronis-mealplan");
+  });
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
   const generatePlan = async () => {
@@ -100,6 +107,7 @@ export default function MealPlanPage() {
       if (!res.ok) throw new Error("Genereren mislukt");
       const data = await res.json();
       setPlan(data);
+      localStorage.setItem("autronis-mealplan", JSON.stringify(data));
       setShowSettings(false);
       setActiveDay("Maandag");
     } catch {

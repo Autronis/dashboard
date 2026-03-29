@@ -448,14 +448,27 @@ export default function MealPlanPage() {
                       <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/50 font-medium mb-2">{afdeling}</p>
                       <div className="space-y-1">
                         {items.map((item, i) => (
-                          <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-autronis-border/10 last:border-0">
-                            <div className="flex-1 min-w-0">
-                              <span className="text-autronis-text-primary font-medium">{item.product}</span>
+                          <div key={i} className="text-xs py-1.5 border-b border-autronis-border/10 last:border-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex-1 min-w-0">
+                                <span className="text-autronis-text-primary font-medium">{item.product}</span>
+                                {item.prijsPerEenheid && (
+                                  <span className="text-autronis-text-secondary/30 ml-1.5 text-[10px]">{item.prijsPerEenheid}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-autronis-text-secondary tabular-nums">{item.hoeveelheid}</span>
+                                <span className="text-emerald-400 font-medium tabular-nums w-14 text-right">€{item.prijs.toFixed(2)}</span>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3 flex-shrink-0 ml-2">
-                              <span className="text-autronis-text-secondary tabular-nums">{item.hoeveelheid}</span>
-                              <span className="text-emerald-400 font-medium tabular-nums w-14 text-right">€{item.prijs.toFixed(2)}</span>
-                            </div>
+                            {(item.nodig || (item.over && item.over !== "0g" && item.over !== "0")) && (
+                              <div className="flex items-center gap-3 mt-0.5 ml-0">
+                                {item.nodig && <span className="text-[10px] text-autronis-text-secondary/40 tabular-nums">Nodig: {item.nodig}</span>}
+                                {item.over && item.over !== "0g" && item.over !== "0" && (
+                                  <span className="text-[10px] text-amber-400/70 tabular-nums bg-amber-500/10 px-1.5 py-0.5 rounded">+{item.over} over</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

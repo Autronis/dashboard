@@ -151,16 +151,19 @@ ${ingredientenLijst}
 
 REGELS:
 1. ELKE ingrediënt hierboven MOET terug te vinden zijn in de boodschappenlijst. Sla NIETS over.
-2. Gebruik echte Lidl producten en verpakkingen (bijv. kipfilet 1kg, havermout 500g pak, melk 1L)
-3. Rond ALTIJD OMHOOG af naar hele verpakkingen (1.2kg kip nodig → 2 pakken van 1kg = €5.99 per pak)
-4. De "hoeveelheid" moet zeggen hoeveel verpakkingen ik moet pakken (bijv. "3 pakken", "2 zakken", "4 stuks")
-5. De "prijs" is de TOTAALPRIJS voor die hoeveelheid (bijv. 3 pakken × €5.99 = prijs: 17.97)
-6. Realistische Nederlandse Lidl prijzen (2025)
-7. Combineer vergelijkbare items (bijv. alle groenten hoeven niet apart, maar vlees/zuivel/granen WEL apart)
-8. "totaalPrijs" = exacte som van alle "prijs" waarden
+2. Gebruik echte Lidl producten en verpakkingsgroottes (bijv. kipfilet 1kg, havermout 500g pak, melk 1L, eieren doos 10 stuks)
+3. Rond ALTIJD OMHOOG af naar hele verpakkingen (1.2kg kip nodig → 2 pakken van 1kg)
+4. "hoeveelheid" = hoeveel verpakkingen ik moet kopen (bijv. "2 pakken", "3 zakken", "1 doos")
+5. "nodig" = hoeveel ik daadwerkelijk gebruik voor de recepten (bijv. "1.2kg", "8 stuks", "350ml")
+6. "over" = wat er overblijft na de week (bijv. "800g", "2 stuks", "150ml"). Bereken: gekocht - nodig. Als 0, zet "0"
+7. "prijs" = TOTAALPRIJS voor die hoeveelheid verpakkingen
+8. "prijsPerEenheid" = prijs per verpakking (bijv. "€5.99/kg", "€1.29/pak", "€2.49/L")
+9. Realistische Nederlandse Lidl prijzen (2026). Wees accuraat — kijk naar huidige prijzen.
+10. Combineer vergelijkbare items waar logisch, maar houd vlees/zuivel/granen apart
+11. "totaalPrijs" = exacte som van alle "prijs" waarden
 
 JSON (ALLEEN JSON, geen tekst):
-{"boodschappenlijst":[{"product":"Kipfilet (1kg verpakking)","hoeveelheid":"3 pakken","prijs":17.97,"afdeling":"vlees/vis"}],"totaalPrijs":85.50}`,
+{"boodschappenlijst":[{"product":"Kipfilet","hoeveelheid":"2 pakken (1kg)","nodig":"1.2kg","over":"800g","prijs":11.98,"prijsPerEenheid":"€5.99/pak","afdeling":"vlees/vis"}],"totaalPrijs":85.50}`,
     }],
   });
 
@@ -235,18 +238,27 @@ async function triggerGeneration() {
       // Boodschappenlijst failed — save plan without it
     }
 
+    // Calculate real week totals from actual day data
+    const weekTotaal = { kcal: 0, eiwit: 0, kh: 0, vet: 0, vezels: 0, suiker: 0 };
+    for (const dag of dagen) {
+      try {
+        const d = dag as { dagTotaal?: { kcal?: number; eiwit?: number; kh?: number; vet?: number; vezels?: number; suiker?: number } };
+        if (d.dagTotaal) {
+          weekTotaal.kcal += d.dagTotaal.kcal ?? 0;
+          weekTotaal.eiwit += d.dagTotaal.eiwit ?? 0;
+          weekTotaal.kh += d.dagTotaal.kh ?? 0;
+          weekTotaal.vet += d.dagTotaal.vet ?? 0;
+          weekTotaal.vezels += d.dagTotaal.vezels ?? 0;
+          weekTotaal.suiker += d.dagTotaal.suiker ?? 0;
+        }
+      } catch { /* skip */ }
+    }
+
     const plan = {
       dagen,
       boodschappenlijst,
       totaalPrijs,
-      weekTotaal: {
-        kcal: (params.kcal as number) * 7,
-        eiwit: (params.eiwit as number) * 7,
-        kh: (params.koolhydraten as number) * 7,
-        vet: (params.vet as number) * 7,
-        vezels: (params.vezels as number) * 7,
-        suiker: (params.suiker as number) * 7,
-      },
+      weekTotaal,
     };
 
     await dbRun("UPDATE mealplan_cache SET status = 'done', plan_json = ?, progress = 8", [JSON.stringify(plan)]);

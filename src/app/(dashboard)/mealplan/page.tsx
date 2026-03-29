@@ -84,31 +84,12 @@ export default function MealPlanPage() {
   const [voorkeuren, setVoorkeuren] = useState(savedSettings?.voorkeuren ?? "");
   const [uitsluitingen, setUitsluitingen] = useState(savedSettings?.uitsluitingen ?? "");
 
-  const [plan, setPlan] = useState<WeekPlan | null>(() => {
-    if (typeof window === "undefined") return null;
-    const saved = localStorage.getItem("autronis-mealplan");
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [loading, setLoading] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const generating = localStorage.getItem("autronis-mealplan-generating");
-    if (!generating || generating === "false") return false;
-    // Auto-cleanup if stuck longer than 5 minutes
-    try {
-      const startedAt = Number(generating);
-      if (startedAt > 0 && Date.now() - startedAt > 5 * 60 * 1000) {
-        localStorage.removeItem("autronis-mealplan-generating");
-        return false;
-      }
-    } catch { /* old format "true" */ }
-    return true;
-  });
+  const [plan, setPlan] = useState<WeekPlan | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [activeDay, setActiveDay] = useState("Maandag");
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(() => {
-    if (typeof window === "undefined") return true;
-    return !localStorage.getItem("autronis-mealplan") && localStorage.getItem("autronis-mealplan-generating") !== "true";
-  });
+  const [showSettings, setShowSettings] = useState(false);
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
   // Auto-save settings on change
@@ -118,7 +99,7 @@ export default function MealPlanPage() {
 
   const [progress, setProgress] = useState(0);
 
-  // Poll server for plan status
+  // Poll server for plan status — server is single source of truth
   useEffect(() => {
     const poll = () => {
       fetch("/api/mealplan")
@@ -138,7 +119,11 @@ export default function MealPlanPage() {
             setLoading(false);
             setShowSettings(true);
             setProgress(0);
+          } else if (data.status === "none") {
+            // No plan exists — show settings
+            if (!initialLoaded) setShowSettings(true);
           }
+          setInitialLoaded(true);
         })
         .catch(() => {});
     };
@@ -146,7 +131,7 @@ export default function MealPlanPage() {
     poll();
     const interval = setInterval(poll, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [initialLoaded]);
 
   const generatePlan = () => {
     setLoading(true);

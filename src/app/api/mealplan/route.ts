@@ -185,13 +185,23 @@ async function triggerGeneration() {
   if (isGenerating) return;
   await ensureTable();
 
-  const row = await dbGet<{ settings_json: string }>(
-    "SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1"
+  // Pick up 'pending' OR stale 'generating' (server restarted mid-generation)
+  let row = await dbGet<{ settings_json: string; status: string; progress: number; aangemaakt_op: string }>(
+    "SELECT settings_json, status, progress, aangemaakt_op FROM mealplan_cache WHERE status = 'pending' LIMIT 1"
   );
-  if (!row) return;
+
+  if (!row) {
+    // Check for stuck 'generating' — if isGenerating is false, the process died
+    row = await dbGet<{ settings_json: string; status: string; progress: number; aangemaakt_op: string }>(
+      "SELECT settings_json, status, progress, aangemaakt_op FROM mealplan_cache WHERE status = 'generating' LIMIT 1"
+    );
+    if (!row) return;
+    // Reset to pending so we restart from scratch
+    await dbRun("UPDATE mealplan_cache SET status = 'pending', progress = 0");
+  }
 
   isGenerating = true;
-  await dbRun("UPDATE mealplan_cache SET status = 'generating', progress = 0");
+  await dbRun("UPDATE mealplan_cache SET status = 'generating', progress = 0, aangemaakt_op = datetime('now')");
 
   const params = JSON.parse(row.settings_json);
   const apiKey = process.env.ANTHROPIC_API_KEY;

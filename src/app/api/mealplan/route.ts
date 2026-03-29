@@ -145,8 +145,8 @@ async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promis
     .join("\n");
 
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 4000,
+    model: "claude-sonnet-4-6",
+    max_tokens: 8000,
     messages: [{
       role: "user",
       content: `Hier zijn ALLE ${entries.length} ingrediënten die ik nodig heb voor mijn weekmenu. Maak een complete Lidl boodschappenlijst.

@@ -1147,8 +1147,8 @@ export default function AnimatiesPage() {
         return `${base} ${productDesc} transformed into warm wood material with visible grain texture. Exact same shape and form, but every component is now rich wood. All details preserved but in organic wood material.${components}`;
       default: // exploded
         return componentManifest
-          ? `${base} The following components are floating separated in space, each maintaining its EXACT original shape, size, color, and material:${components}Every component listed above must be visible, separated, and floating in an exploded view — spread apart along a vertical/diagonal axis.`
-          : `${base} Professional exploded-view of ${productDesc}. Every component separated and floating — EXACT same shapes, sizes, proportions as assembled version.`;
+          ? `${base} The following components are dramatically floating in space in a freeze-frame explosion, each maintaining its EXACT original shape, size, color, and material:${components}DRAMATIC EXPLOSION STYLE: Components float outward in ALL directions from center — NOT neatly stacked in rows. Each piece tilted 10-30 degrees at different angles, at varying distances creating real 3D depth. Glass pieces catch light creating refractions. Think cinematic freeze-frame mid-explosion. Subtle motion blur on outermost pieces.`
+          : `${base} Dramatic exploded-view of ${productDesc}. Components floating outward in all directions — tilted at angles, varying distances, freeze-frame mid-explosion style. NOT a neat layout — dynamic and cinematic. EXACT same materials and colors as assembled.`;
     }
   };
   const tabConfig = {

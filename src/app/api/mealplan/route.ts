@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, sqlite } from "@/lib/db";
 import { sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
+let tableReady = false;
 async function ensureTable() {
-  try {
+  if (tableReady) return;
+  if (sqlite) {
+    sqlite.exec(`CREATE TABLE IF NOT EXISTS mealplan_cache (
+      id INTEGER PRIMARY KEY,
+      status TEXT DEFAULT 'generating',
+      plan_json TEXT,
+      settings_json TEXT NOT NULL,
+      aangemaakt_op TEXT DEFAULT (datetime('now'))
+    )`);
+  } else {
     await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
       id INTEGER PRIMARY KEY,
       status TEXT DEFAULT 'generating',
@@ -13,12 +23,14 @@ async function ensureTable() {
       settings_json TEXT NOT NULL,
       aangemaakt_op TEXT DEFAULT (datetime('now'))
     )`);
-  } catch { /* already exists */ }
+  }
+  tableReady = true;
 }
 
 // GET — poll for result
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    await requireAuth();
     await ensureTable();
     const rows = await db.all(sql`SELECT status, plan_json, settings_json FROM mealplan_cache ORDER BY id DESC LIMIT 1`) as { status: string; plan_json: string | null; settings_json: string }[];
     if (rows.length === 0) return NextResponse.json({ status: "none" });

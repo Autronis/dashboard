@@ -57,22 +57,33 @@ const DAGEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterd
 
 async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: string[]): Promise<unknown> {
   const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = params;
-  const variatieHint = vorigeDagen.length > 0
-    ? `\nVARIATIE: Je hebt al gemaakt: ${vorigeDagen.join(", ")}. Kies ANDERE gerechten.`
+
+  const eerderGebruikt = vorigeDagen.length > 0
+    ? `\n\nEERDER GEBRUIKT (kies COMPLEET ANDERE gerechten): ${vorigeDagen.join(", ")}`
     : "";
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 4000,
+    max_tokens: 5000,
     messages: [{
       role: "user",
-      content: `Dagplan voor ${dag}. Targets: ${kcal}kcal/${eiwit}E/${koolhydraten}KH/${vet}V/${vezels}vez/${suiker}suik.
-${voorkeuren ? `Voorkeuren: ${voorkeuren}` : ""}${uitsluitingen ? ` Niet: ${uitsluitingen}` : ""}${variatieHint}
+      content: `Maak een dagplan voor ${dag}. Macro targets per dag: ${kcal} kcal, ${eiwit}g eiwit, ${koolhydraten}g koolhydraten, ${vet}g vet, ${vezels}g vezels, ${suiker}g suiker.
+${voorkeuren ? `\nVoorkeuren: ${voorkeuren}` : ""}${uitsluitingen ? `\nUitsluitingen: ${uitsluitingen}` : ""}${eerderGebruikt}
 
-5 maaltijden. Compleet gerecht met bereiding. Max 3 ingredienten per maaltijd. Lidl.
+BELANGRIJK — elk maaltijdtype moet passen bij het moment van de dag:
+- **ontbijt**: Ontbijtgerechten! Denk aan havermout, yoghurt met fruit, eieren (roerei/omelet/gebakken), brood met beleg, smoothiebowl, pannenkoeken, overnight oats, muesli. NOOIT een warm diner als ontbijt.
+- **lunch**: Lichte maaltijden! Denk aan wraps, salades, broodjes, soep, tosti's, bowl met rijst/quinoa, quesadilla, pasta salade. GEEN zware warme maaltijden.
+- **tussendoor**: Snacks! Denk aan noten, fruit, rijstwafels met pindakaas, yoghurt, eiwitreep, hummus met groente, trail mix, cottage cheese, crackers. GEEN warme maaltijden.
+- **avondeten**: De enige warme hoofdmaaltijd van de dag. Denk aan pasta, rijst met kip/gehakt, wok, curry, ovenschotel, aardappelen met groente en vlees, burrito bowl, stir-fry.
+- **avondsnack**: Licht! Denk aan kwark met honing, caseine shake, noten, fruit, rijstwafel, pindakaas toast, schaaltje yoghurt.
 
-JSON: {"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"X","beschrijving":"bereiding","ingredienten":[{"naam":"X","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1}],"totaal":{"kcal":650,"eiwit":45,"kh":80,"vet":15,"vezels":12,"suiker":15}}],"dagTotaal":{"kcal":${kcal},"eiwit":${eiwit},"kh":${koolhydraten},"vet":${vet},"vezels":${vezels},"suiker":${suiker}}}
-Alleen JSON.`,
+Zorg voor VARIATIE in eiwitbronnen door de dag heen (niet alles kip). Gebruik realistische hoeveelheden.
+Alle producten moeten bij de Lidl te koop zijn.
+
+Geef per ingrediënt de exacte hoeveelheid in grammen en de macro's per die hoeveelheid.
+
+JSON formaat (ALLEEN JSON, geen tekst ervoor of erna):
+{"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"Havermout met banaan en pindakaas","beschrijving":"Kook havermout in water, snijd banaan in plakjes, roer pindakaas erdoor.","ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1},{"naam":"Banaan","hoeveelheid":"1 stuk (120g)","kcal":107,"eiwit":1,"kh":23,"vet":0,"vezels":3,"suiker":12},{"naam":"Pindakaas","hoeveelheid":"20g","kcal":118,"eiwit":5,"kh":3,"vet":10,"vezels":1,"suiker":1}],"totaal":{"kcal":521,"eiwit":16,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":${kcal},"eiwit":${eiwit},"kh":${koolhydraten},"vet":${vet},"vezels":${vezels},"suiker":${suiker}}}`,
     }],
   });
 
@@ -82,17 +93,42 @@ Alleen JSON.`,
   return JSON.parse(match[0]);
 }
 
-async function generateBoodschappen(client: Anthropic, params: Record<string, unknown>): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
-  const { kcal, eiwit, koolhydraten, vet } = params;
+async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
+  // Collect all ingredients from the plan to create an accurate shopping list
+  const alleIngredienten: Record<string, number> = {};
+  for (const dag of dagen) {
+    const d = dag as { maaltijden: { ingredienten: { naam: string; hoeveelheid: string }[] }[] };
+    for (const maaltijd of d.maaltijden) {
+      for (const ing of maaltijd.ingredienten) {
+        const naam = ing.naam.toLowerCase();
+        const grams = parseFloat(ing.hoeveelheid) || 100;
+        alleIngredienten[naam] = (alleIngredienten[naam] || 0) + grams;
+      }
+    }
+  }
+
+  const ingredientenSamenvatting = Object.entries(alleIngredienten)
+    .map(([naam, gram]) => `${naam}: ${Math.round(gram)}g totaal`)
+    .join("\n");
+
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 3000,
     messages: [{
       role: "user",
-      content: `Boodschappenlijst voor een week mealprep. Dagelijks: ${kcal}kcal/${eiwit}E/${koolhydraten}KH/${vet}V. Lidl producten, hele verpakkingen, realistische prijzen.
+      content: `Maak een Lidl boodschappenlijst voor deze weekingrediënten:
 
-JSON: {"boodschappenlijst":[{"product":"Havermout (Lidl)","hoeveelheid":"1 pak","prijs":0.89,"afdeling":"ontbijt"}],"totaalPrijs":65}
-Max 25 items. Alleen JSON.`,
+${ingredientenSamenvatting}
+
+REGELS:
+- Reken uit hoeveel VERPAKKINGEN je nodig hebt (bijv. 3.5kg kip nodig → 4 pakken kipfilet van 1kg)
+- Gebruik echte Lidl producten met realistische Nederlandse Lidl prijzen (2024/2025)
+- Groepeer per afdeling (zuivel, vlees/vis, groente/fruit, droog/conserven, diepvries, overig)
+- Rond hoeveelheden omhoog af naar hele verpakkingen
+- Bereken de totaalprijs correct (som van alle producten)
+
+JSON formaat (ALLEEN JSON):
+{"boodschappenlijst":[{"product":"Kipfilet (1kg)","hoeveelheid":"4 pakken","prijs":5.99,"afdeling":"vlees/vis"}],"totaalPrijs":82.50}`,
     }],
   });
 
@@ -135,7 +171,7 @@ async function triggerGeneration() {
       await dbRun("UPDATE mealplan_cache SET progress = ?", [i + 1]);
     }
 
-    const boodschappen = await generateBoodschappen(client, params);
+    const boodschappen = await generateBoodschappen(client, dagen);
 
     const plan = {
       dagen,

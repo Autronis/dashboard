@@ -127,7 +127,7 @@ export default function MealPlanPage() {
             setPlan(data.plan);
             setShowSettings(false);
             setLoading(false);
-          } else if (data.status === "generating") {
+          } else if (data.status === "generating" || data.status === "pending") {
             setLoading(true);
             setShowSettings(false);
           }
@@ -148,6 +148,7 @@ export default function MealPlanPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
     }).catch(() => {});
+    // Polling picks up the result — no need to wait
   };
 
   const macroBar = (label: string, waarde: number, target: number, kleur: keyof typeof macroKleuren) => {

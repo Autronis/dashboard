@@ -258,7 +258,7 @@ export default function AnimatiesPage() {
     return (localStorage.getItem("scrollstop-tab") as Tab) || "A";
   });
   const [uploadedImage, setUploadedImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
-  const [productRefImage, setProductRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [productRefImages, setProductRefImages] = useState<{ base64: string; mediaType: string; preview: string }[]>([]);
   const [eindEffect, setEindEffect] = useState(() => {
     if (typeof window === "undefined") return "exploded";
     return localStorage.getItem("scrollstop-effect") ?? "exploded";
@@ -698,7 +698,7 @@ export default function AnimatiesPage() {
     setManifestStep("idle");
     setManifestOpen(true);
     setUploadedImage(null);
-    setProductRefImage(null);
+    setProductRefImages([]);
     setEindEffect("exploded");
     setOptimizing(false);
     setKieImgUrl({ A: null, B: null });
@@ -729,14 +729,17 @@ export default function AnimatiesPage() {
 
   // ── AI OPTIMIZE: Enrich input prompt + generate manifest in one call
   const optimizePrompt = async () => {
-    if (!input.trim() && !uploadedImage) return;
+    if (!input.trim() && !uploadedImage && productRefImages.length === 0) return;
     setOptimizing(true); setError("");
-    const body: Record<string, string> = {};
+    const body: Record<string, unknown> = {};
     if (input.trim()) body.description = input;
     const stijlPrompt = getStijlPrompt();
     if (stijlPrompt) body.stylePrompt = stijlPrompt;
     if (inputType === "image" && uploadedImage) { body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType; }
-    if (inputType === "product" && productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; if (input.trim()) body.description = input; }
+    if (inputType === "product" && productRefImages.length > 0) {
+      body.images = productRefImages.map(img => ({ base64: img.base64, mediaType: img.mediaType }));
+      if (input.trim()) body.description = input;
+    }
     try {
       const res = await fetch("/api/animaties/optimize-prompt", {
         method: "POST",
@@ -766,7 +769,7 @@ export default function AnimatiesPage() {
     const body: Record<string, string> = {};
     if (inputType === "product") body.product = input;
     if (inputType === "image" && uploadedImage) { body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType; }
-    if (inputType === "product" && productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; if (input) body.product = input; }
+    if (inputType === "product" && productRefImages.length > 0) { body.imageBase64 = productRefImages[0].base64; body.mediaType = productRefImages[0].mediaType; if (input) body.product = input; }
     try {
       const res = await fetch("/api/animaties/generate-manifest", {
         method: "POST",
@@ -799,7 +802,7 @@ export default function AnimatiesPage() {
     if (inputType === "url") body.url = input;
     else if (inputType === "product") {
       body.product = input;
-      if (productRefImage) { body.imageBase64 = productRefImage.base64; body.mediaType = productRefImage.mediaType; }
+      if (productRefImages.length > 0) { body.imageBase64 = productRefImages[0].base64; body.mediaType = productRefImages[0].mediaType; }
     } else if (inputType === "image" && uploadedImage) {
       body.imageBase64 = uploadedImage.base64; body.mediaType = uploadedImage.mediaType;
     }
@@ -1780,18 +1783,35 @@ export default function AnimatiesPage() {
                   </div>
                 )}
                 {inputType === "product" && (
-                  <div className="flex items-center gap-2">
-                    <input ref={productRefInputRef} type="file" accept="image/*" className="hidden"
-                      onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f, setProductRefImage); }} />
-                    {productRefImage ? (
-                      <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5">
-                        <img src={productRefImage.preview} alt="ref" className="w-6 h-6 object-contain rounded" />
-                        <span className="text-xs text-autronis-text-secondary">Referentie afbeelding</span>
-                        <button onClick={() => setProductRefImage(null)} className="text-autronis-text-tertiary hover:text-autronis-text-primary ml-1"><X className="w-3.5 h-3.5" /></button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input ref={productRefInputRef} type="file" accept="image/*" multiple className="hidden"
+                      onChange={e => {
+                        const files = e.target.files;
+                        if (!files) return;
+                        Array.from(files).forEach(f => {
+                          const reader = new FileReader();
+                          reader.onload = ev => {
+                            const result = ev.target?.result as string;
+                            setProductRefImages(prev => [...prev, { base64: result.split(",")[1], mediaType: f.type, preview: result }]);
+                          };
+                          reader.readAsDataURL(f);
+                        });
+                      }} />
+                    {productRefImages.map((img, i) => (
+                      <div key={i} className="flex items-center gap-1.5 bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1">
+                        <img src={img.preview} alt={`ref ${i + 1}`} className="w-7 h-7 object-contain rounded" />
+                        <span className="text-[10px] text-autronis-text-tertiary">Ref {i + 1}</span>
+                        <button onClick={() => setProductRefImages(prev => prev.filter((_, j) => j !== i))} className="text-autronis-text-tertiary hover:text-red-400 transition-all">
+                          <X className="w-3 h-3" />
+                        </button>
                       </div>
-                    ) : (
-                      <button onClick={() => productRefInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-xs text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all">
-                        <Upload className="w-3.5 h-3.5" /> Referentie afbeelding toevoegen (optioneel)
+                    ))}
+                    <button onClick={() => productRefInputRef.current?.click()} className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-xs text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent transition-all">
+                      <Upload className="w-3.5 h-3.5" /> {productRefImages.length > 0 ? "Meer toevoegen" : "Referentie afbeeldingen (optioneel)"}
+                    </button>
+                    {productRefImages.length > 0 && (
+                      <button onClick={() => setProductRefImages([])} className="text-[10px] text-autronis-text-tertiary hover:text-red-400 transition-all">
+                        Wis alles
                       </button>
                     )}
                   </div>

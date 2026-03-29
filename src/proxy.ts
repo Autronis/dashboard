@@ -39,6 +39,7 @@ const PUBLIC_PATHS = [
   "/waves.webm",
   "/bonnetjes/",
   "/api/mealplan",
+  "/api/mealplan/generate",
   "/scan",
 ];
 

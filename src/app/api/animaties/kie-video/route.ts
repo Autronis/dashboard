@@ -60,7 +60,12 @@ export async function POST(req: NextRequest) {
 
   // imageUrl makes it image-to-video (start frame)
   if (imageUrl) {
-    body.imageUrl = imageUrl;
+    let publicUrl = imageUrl;
+    if (imageUrl.startsWith("/api/") || imageUrl.startsWith("/data/")) {
+      const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
+      publicUrl = `${baseUrl}${imageUrl}`;
+    }
+    body.imageUrl = publicUrl;
   }
 
   const res = await fetch("https://api.kie.ai/api/v1/runway/generate", {

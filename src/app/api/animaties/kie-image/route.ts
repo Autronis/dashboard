@@ -42,7 +42,13 @@ export async function POST(req: NextRequest) {
   // If a reference image URL is provided (e.g. image A for generating B),
   // include it as reference for style/content consistency
   if (referenceImageUrl) {
-    input.ref_image = referenceImageUrl;
+    // Ensure URL is publicly accessible — convert local paths to public URLs
+    let publicRefUrl = referenceImageUrl;
+    if (referenceImageUrl.startsWith("/api/") || referenceImageUrl.startsWith("/data/")) {
+      const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
+      publicRefUrl = `${baseUrl}${referenceImageUrl}`;
+    }
+    input.ref_image = publicRefUrl;
     input.ref_strength = refStrength ?? 0.6;
   }
 

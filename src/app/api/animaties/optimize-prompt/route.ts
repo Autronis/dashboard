@@ -35,14 +35,15 @@ Return ONLY a JSON object:
 }`;
 
 export async function POST(req: NextRequest) {
-  const { description, imageBase64, mediaType, stylePrompt } = await req.json() as {
+  const { description, imageBase64, mediaType, images, stylePrompt } = await req.json() as {
     description?: string;
     imageBase64?: string;
     mediaType?: string;
+    images?: { base64: string; mediaType: string }[];
     stylePrompt?: string;
   };
 
-  if (!description?.trim() && !imageBase64) {
+  if (!description?.trim() && !imageBase64 && (!images || images.length === 0)) {
     return NextResponse.json({ error: "Geef een beschrijving op." }, { status: 400 });
   }
 
@@ -50,17 +51,20 @@ export async function POST(req: NextRequest) {
 
   const styleContext = stylePrompt ? `\n\nVISUAL STYLE (VERPLICHT — pas alle materialen, kleuren en sfeer aan op deze stijl):\n${stylePrompt}` : "";
 
-  if (imageBase64 && mediaType) {
-    userContent = [
-      {
+  // Support multiple reference images
+  const allImages = images ?? (imageBase64 && mediaType ? [{ base64: imageBase64, mediaType }] : []);
+
+  if (allImages.length > 0) {
+    for (const img of allImages) {
+      userContent.push({
         type: "image",
-        source: { type: "base64", media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imageBase64 },
-      },
-      {
-        type: "text",
-        text: `BELANGRIJK: Beschrijf EXACT wat je ZIET in deze afbeelding. Beschrijf de echte materialen, kleuren, vormen en onderdelen die zichtbaar zijn. Verzin NIETS — beschrijf alleen wat er is.${description ? ` Extra context van de gebruiker: ${description}` : ""}${styleContext}`,
-      },
-    ];
+        source: { type: "base64", media_type: img.mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: img.base64 },
+      });
+    }
+    userContent.push({
+      type: "text",
+      text: `BELANGRIJK: Beschrijf EXACT wat je ZIET in ${allImages.length > 1 ? "deze afbeeldingen" : "deze afbeelding"}. ${allImages.length > 1 ? "Combineer de elementen uit alle afbeeldingen — gebruik de vormen/producten uit de ene en de content/data uit de andere." : "Beschrijf de echte materialen, kleuren, vormen en onderdelen die zichtbaar zijn."} Verzin NIETS — beschrijf alleen wat er is.${description ? ` Extra context van de gebruiker: ${description}` : ""}${styleContext}`,
+    });
   } else {
     userContent = [{ type: "text", text: `Beschrijf dit product in detail en maak een onderdelen manifest: ${description}${styleContext}` }];
   }

@@ -1,87 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { db, sqlite } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { sqlite } from "@/lib/db";
 import Anthropic from "@anthropic-ai/sdk";
 
-let tableReady = false;
-async function ensureTable() {
-  if (tableReady) return;
-  if (sqlite) {
-    sqlite.exec(`CREATE TABLE IF NOT EXISTS mealplan_cache (
-      id INTEGER PRIMARY KEY,
-      status TEXT DEFAULT 'generating',
-      plan_json TEXT,
-      settings_json TEXT NOT NULL,
-      aangemaakt_op TEXT DEFAULT (datetime('now'))
-    )`);
-  } else {
-    await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
-      id INTEGER PRIMARY KEY,
-      status TEXT DEFAULT 'generating',
-      plan_json TEXT,
-      settings_json TEXT NOT NULL,
-      aangemaakt_op TEXT DEFAULT (datetime('now'))
-    )`);
-  }
-  tableReady = true;
+// Ensure table at module load
+if (sqlite) {
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS mealplan_cache (
+    id INTEGER PRIMARY KEY,
+    status TEXT DEFAULT 'idle',
+    plan_json TEXT,
+    settings_json TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
 }
 
-// GET — poll for result
-export async function GET(req: NextRequest) {
-  try {
-    await requireAuth();
-    await ensureTable();
-    const rows = await db.all(sql`SELECT status, plan_json, settings_json FROM mealplan_cache ORDER BY id DESC LIMIT 1`) as { status: string; plan_json: string | null; settings_json: string }[];
-    if (rows.length === 0) return NextResponse.json({ status: "none" });
-    const row = rows[0];
-    if (row.status === "generating") return NextResponse.json({ status: "generating" });
-    return NextResponse.json({
-      status: "done",
-      plan: row.plan_json ? JSON.parse(row.plan_json) : null,
-      settings: JSON.parse(row.settings_json),
-    });
-  } catch {
-    return NextResponse.json({ status: "none" });
-  }
-}
+// Module-level generation — completely independent of any request
+let isGenerating = false;
 
-// POST — start generation (returns immediately, generates in background)
-export async function POST(req: NextRequest) {
-  try {
-    await requireAuth();
-    const body = await req.json();
-    const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = body as {
-      kcal: number; eiwit: number; koolhydraten: number; vezels: number;
-      suiker: number; vet: number; voorkeuren?: string; uitsluitingen?: string;
-    };
+function triggerGeneration() {
+  if (isGenerating || !sqlite) return;
 
-    await ensureTable();
-    const settingsJson = JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen });
+  const row = sqlite.prepare("SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1").get() as { settings_json: string } | undefined;
+  if (!row) return;
 
-    // Clear old and insert generating status
-    await db.run(sql`DELETE FROM mealplan_cache`);
-    await db.run(sql`INSERT INTO mealplan_cache (status, settings_json) VALUES ('generating', ${settingsJson})`);
+  isGenerating = true;
+  sqlite.prepare("UPDATE mealplan_cache SET status = 'generating'").run();
 
-    // Fire and forget — server-side, doesn't depend on client
-    generateInBackground({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }).catch(() => {
-      try { db.run(sql`UPDATE mealplan_cache SET status = 'error'`); } catch { /* ignore */ }
-    });
-
-    return NextResponse.json({ status: "generating" });
-  } catch (error) {
-    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout" }, { status: 500 });
-  }
-}
-
-async function generateInBackground(params: {
-  kcal: number; eiwit: number; koolhydraten: number; vezels: number;
-  suiker: number; vet: number; voorkeuren?: string; uitsluitingen?: string;
-}) {
+  const params = JSON.parse(row.settings_json);
   const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = params;
 
   const client = new Anthropic();
-  const response = await client.messages.create({
+  client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 16000,
     messages: [{
@@ -97,14 +46,13 @@ async function generateInBackground(params: {
 ${voorkeuren ? `Voorkeuren: ${voorkeuren}` : ""}
 ${uitsluitingen ? `Uitsluitingen (NIET gebruiken): ${uitsluitingen}` : ""}
 
-BELANGRIJKE REGELS:
-- Beschrijf elke maaltijd als een COMPLEET GERECHT, niet los ingredienten. Bijv: "Havermout bowl: 80g havermout gekookt in 200ml halfvolle melk, 1 schep whey protein erdoor, 1 banaan in plakjes, 15g pindakaas"
-- Varieer per dag (niet elke dag hetzelfde)
+REGELS:
+- Beschrijf elke maaltijd als COMPLEET GERECHT. Bijv: "Havermout bowl: 80g havermout gekookt in 200ml halfvolle melk, 1 schep whey protein erdoor, 1 banaan in plakjes, 15g pindakaas"
+- Varieer per dag
 - 5 maaltijden per dag: ontbijt, lunch, tussendoor, avondeten, avondsnack
-- Nederlands/simpel eten, makkelijk te bereiden
-- Realistisch: dingen die je bij de Lidl kan kopen
+- Nederlands/simpel eten, Lidl producten
 
-Antwoord als JSON:
+JSON format:
 {
   "dagen": [
     {
@@ -112,8 +60,8 @@ Antwoord als JSON:
       "maaltijden": [
         {
           "type": "ontbijt",
-          "naam": "Havermout bowl met banaan en pindakaas",
-          "beschrijving": "Kook 80g havermout in 200ml halfvolle melk. Roer 1 schep (30g) whey protein erdoor. Top met 1 banaan in plakjes en 15g pindakaas.",
+          "naam": "Naam gerecht",
+          "beschrijving": "Volledige bereiding met hoeveelheden",
           "ingredienten": [
             { "naam": "Havermout", "hoeveelheid": "80g", "kcal": 296, "eiwit": 10, "kh": 48, "vet": 6, "vezels": 8, "suiker": 1 }
           ],
@@ -124,32 +72,60 @@ Antwoord als JSON:
     }
   ],
   "boodschappenlijst": [
-    { "product": "Havermout (Krokante Havermout, Lidl)", "hoeveelheid": "1 pak (500g)", "prijs": 0.89, "afdeling": "ontbijt" }
+    { "product": "Havermout (Lidl)", "hoeveelheid": "1 pak (500g)", "prijs": 0.89, "afdeling": "ontbijt" }
   ],
   "totaalPrijs": 65.50,
   "weekTotaal": { "kcal": 19250, "eiwit": 1330, "kh": 2100, "vet": 770, "vezels": 210, "suiker": 420 }
 }
 
-BOODSCHAPPENLIJST REGELS:
-- Bereken hoeveel je voor de HELE WEEK nodig hebt
-- Rond af naar hele verpakkingen (je koopt geen 80g havermout, je koopt een pak van 500g)
-- Gebruik Lidl productnamen en merken (Milbona, Pikok, etc.)
-- Schat realistische Lidl prijzen in euro's
-- Groepeer per afdeling (zuivel, vlees, groente, ontbijt, etc.)
-
-Zorg dat elke dag zo dicht mogelijk bij de targets zit (max 5% afwijking). Alleen JSON, geen uitleg.`,
+Hele verpakkingen bij boodschappen. Lidl merken/prijzen. Max 5% afwijking per dag. Alleen JSON.`,
     }],
+  }).then((response) => {
+    const textBlock = response.content.find((b) => b.type === "text");
+    if (!textBlock || textBlock.type !== "text") throw new Error("Geen response");
+    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("Geen JSON");
+    const plan = JSON.parse(jsonMatch[0]);
+    sqlite!.prepare("UPDATE mealplan_cache SET status = 'done', plan_json = ?").run(JSON.stringify(plan));
+  }).catch(() => {
+    sqlite!.prepare("UPDATE mealplan_cache SET status = 'error'").run();
+  }).finally(() => {
+    isGenerating = false;
   });
+}
 
-  const textBlock = response.content.find((b) => b.type === "text");
-  if (!textBlock || textBlock.type !== "text") throw new Error("Geen response");
+// GET — poll for status
+export async function GET() {
+  if (!sqlite) return NextResponse.json({ status: "none" });
 
-  const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Ongeldige response");
+  // Check if there's a pending job to start
+  triggerGeneration();
 
-  const plan = JSON.parse(jsonMatch[0]);
-  const settingsJson = JSON.stringify(params);
+  const row = sqlite.prepare("SELECT status, plan_json FROM mealplan_cache ORDER BY id DESC LIMIT 1").get() as { status: string; plan_json: string | null } | undefined;
+  if (!row) return NextResponse.json({ status: "none" });
+  if (row.status === "done" && row.plan_json) {
+    return NextResponse.json({ status: "done", plan: JSON.parse(row.plan_json) });
+  }
+  return NextResponse.json({ status: row.status });
+}
 
-  await db.run(sql`DELETE FROM mealplan_cache`);
-  await db.run(sql`INSERT INTO mealplan_cache (status, plan_json, settings_json) VALUES ('done', ${JSON.stringify(plan)}, ${settingsJson})`);
+// POST — save settings, mark pending
+export async function POST(req: NextRequest) {
+  try {
+    await requireAuth();
+    if (!sqlite) return NextResponse.json({ fout: "Geen DB" }, { status: 500 });
+
+    const body = await req.json();
+    const settingsJson = JSON.stringify(body);
+
+    sqlite.prepare("DELETE FROM mealplan_cache").run();
+    sqlite.prepare("INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ?)").run(settingsJson);
+
+    // Try to start immediately
+    triggerGeneration();
+
+    return NextResponse.json({ status: "pending" });
+  } catch (error) {
+    return NextResponse.json({ fout: error instanceof Error ? error.message : "Fout" }, { status: 500 });
+  }
 }

@@ -93,9 +93,16 @@ JSON formaat (ALLEEN JSON, geen tekst ervoor of erna):
   return JSON.parse(match[0]);
 }
 
+// Normalize ingredient names so "Kipfilet", "kipfilet", "Kip filet" all merge
+function normalizeIngredient(naam: string): string {
+  return naam.toLowerCase().trim()
+    .replace(/\s*\(.*?\)\s*/g, "") // remove "(lidl)", "(gekookt)" etc
+    .replace(/\s+/g, " ");
+}
+
 async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
-  // Collect all ingredients from the plan to create an accurate shopping list
-  const alleIngredienten: Record<string, number> = {};
+  // Step 1: Collect ALL ingredients from the 7-day plan with total grams
+  const alleIngredienten: Record<string, { gram: number; count: number }> = {};
   for (const dag of dagen) {
     try {
       const d = dag as { maaltijden?: { ingredienten?: { naam?: string; hoeveelheid?: string }[] }[] };
@@ -103,43 +110,75 @@ async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promis
       for (const maaltijd of d.maaltijden) {
         if (!maaltijd.ingredienten) continue;
         for (const ing of maaltijd.ingredienten) {
-          const naam = (ing.naam || "onbekend").toLowerCase();
-          const grams = parseFloat(ing.hoeveelheid || "100") || 100;
-          alleIngredienten[naam] = (alleIngredienten[naam] || 0) + grams;
+          const naam = normalizeIngredient(ing.naam || "onbekend");
+          // Parse grams - handle "80g", "1 stuk (120g)", "150ml", "2 stuks", etc
+          const hoeveelheid = ing.hoeveelheid || "100g";
+          let gram = parseFloat(hoeveelheid) || 0;
+          // If it says "stuks" or "stuk" without grams, estimate
+          if (gram === 0 || (hoeveelheid.includes("stuk") && gram < 10)) {
+            gram = 150; // default per stuk
+          }
+          // "ml" roughly equals grams for most liquids
+          if (!alleIngredienten[naam]) {
+            alleIngredienten[naam] = { gram: 0, count: 0 };
+          }
+          alleIngredienten[naam].gram += gram;
+          alleIngredienten[naam].count += 1;
         }
       }
     } catch { continue; }
   }
 
-  const ingredientenSamenvatting = Object.entries(alleIngredienten)
-    .map(([naam, gram]) => `${naam}: ${Math.round(gram)}g totaal`)
+  // Step 2: Format as numbered list so AI can't skip any
+  const entries = Object.entries(alleIngredienten)
+    .sort((a, b) => b[1].gram - a[1].gram);
+
+  const ingredientenLijst = entries
+    .map(([naam, { gram, count }], idx) => {
+      const kgDisplay = gram >= 1000 ? `${(gram / 1000).toFixed(1)}kg` : `${Math.round(gram)}g`;
+      return `${idx + 1}. ${naam} — ${kgDisplay} totaal (${count}x gebruikt in weekplan)`;
+    })
     .join("\n");
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 3000,
+    max_tokens: 4000,
     messages: [{
       role: "user",
-      content: `Maak een Lidl boodschappenlijst voor deze weekingrediënten:
+      content: `Hier zijn ALLE ${entries.length} ingrediënten die ik nodig heb voor mijn weekmenu. Maak een complete Lidl boodschappenlijst.
 
-${ingredientenSamenvatting}
+${ingredientenLijst}
 
 REGELS:
-- Reken uit hoeveel VERPAKKINGEN je nodig hebt (bijv. 3.5kg kip nodig → 4 pakken kipfilet van 1kg)
-- Gebruik echte Lidl producten met realistische Nederlandse Lidl prijzen (2024/2025)
-- Groepeer per afdeling (zuivel, vlees/vis, groente/fruit, droog/conserven, diepvries, overig)
-- Rond hoeveelheden omhoog af naar hele verpakkingen
-- Bereken de totaalprijs correct (som van alle producten)
+1. ELKE ingrediënt hierboven MOET terug te vinden zijn in de boodschappenlijst. Sla NIETS over.
+2. Gebruik echte Lidl producten en verpakkingen (bijv. kipfilet 1kg, havermout 500g pak, melk 1L)
+3. Rond ALTIJD OMHOOG af naar hele verpakkingen (1.2kg kip nodig → 2 pakken van 1kg = €5.99 per pak)
+4. De "hoeveelheid" moet zeggen hoeveel verpakkingen ik moet pakken (bijv. "3 pakken", "2 zakken", "4 stuks")
+5. De "prijs" is de TOTAALPRIJS voor die hoeveelheid (bijv. 3 pakken × €5.99 = prijs: 17.97)
+6. Realistische Nederlandse Lidl prijzen (2025)
+7. Combineer vergelijkbare items (bijv. alle groenten hoeven niet apart, maar vlees/zuivel/granen WEL apart)
+8. "totaalPrijs" = exacte som van alle "prijs" waarden
 
-JSON formaat (ALLEEN JSON):
-{"boodschappenlijst":[{"product":"Kipfilet (1kg)","hoeveelheid":"4 pakken","prijs":5.99,"afdeling":"vlees/vis"}],"totaalPrijs":82.50}`,
+JSON (ALLEEN JSON, geen tekst):
+{"boodschappenlijst":[{"product":"Kipfilet (1kg verpakking)","hoeveelheid":"3 pakken","prijs":17.97,"afdeling":"vlees/vis"}],"totaalPrijs":85.50}`,
     }],
   });
 
   const text = response.content.find((b) => b.type === "text")?.text || "";
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) return { boodschappenlijst: [], totaalPrijs: 0 };
-  return JSON.parse(match[0]);
+
+  const result = JSON.parse(match[0]);
+
+  // Recalculate totaalPrijs to avoid AI math errors
+  if (Array.isArray(result.boodschappenlijst)) {
+    result.totaalPrijs = result.boodschappenlijst.reduce(
+      (sum: number, item: { prijs?: number }) => sum + (Number(item.prijs) || 0), 0
+    );
+    result.totaalPrijs = Math.round(result.totaalPrijs * 100) / 100;
+  }
+
+  return result;
 }
 
 async function triggerGeneration() {

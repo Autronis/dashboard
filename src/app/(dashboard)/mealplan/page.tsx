@@ -45,6 +45,33 @@ interface WeekPlan {
   weekTotaal: { kcal: number; eiwit: number; kh: number; vet: number; vezels: number; suiker: number };
 }
 
+// Global: runs outside React lifecycle, restarts if needed
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const _win = typeof window !== "undefined" ? window as unknown as Record<string, unknown> : {} as Record<string, unknown>;
+
+function startBackgroundGeneration(params: Record<string, unknown>) {
+  if (_win.__mealplanGenerating) return;
+  _win.__mealplanGenerating = true;
+  localStorage.setItem("autronis-mealplan-generating", String(Date.now()));
+
+  fetch("/api/mealplan", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(params),
+  })
+    .then((res) => res.ok ? res.json() : Promise.reject())
+    .then((data) => {
+      localStorage.setItem("autronis-mealplan", JSON.stringify(data));
+      localStorage.removeItem("autronis-mealplan-generating");
+    })
+    .catch(() => {
+      localStorage.removeItem("autronis-mealplan-generating");
+    })
+    .finally(() => {
+      _win.__mealplanGenerating = false;
+    });
+}
+
 const typeIcons: Record<string, string> = {
   ontbijt: "🌅",
   lunch: "☀️",
@@ -123,53 +150,48 @@ export default function MealPlanPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [loading]);
 
-  // Poll for background generation result
+  // On mount: check if we need to resume a generation
   useEffect(() => {
-    const check = () => {
-      const saved = localStorage.getItem("autronis-mealplan");
-      const generating = localStorage.getItem("autronis-mealplan-generating");
-      if (!generating && saved) {
-        const parsed = JSON.parse(saved);
-        setPlan(parsed);
+    const generating = localStorage.getItem("autronis-mealplan-generating");
+    const saved = localStorage.getItem("autronis-mealplan");
+
+    // Result already there → show it
+    if (!generating && saved) {
+      setPlan(JSON.parse(saved));
+      setShowSettings(false);
+      setLoading(false);
+      return;
+    }
+
+    // Was generating but fetch died (navigated away) → restart it
+    if (generating && !_win.__mealplanGenerating) {
+      const settings = JSON.parse(localStorage.getItem("autronis-mealplan-settings") || "{}");
+      if (settings.kcal) {
+        setLoading(true);
+        setShowSettings(false);
+        startBackgroundGeneration(settings);
+      }
+    }
+
+    // Poll for result
+    const interval = setInterval(() => {
+      const gen = localStorage.getItem("autronis-mealplan-generating");
+      const data = localStorage.getItem("autronis-mealplan");
+      if (!gen && data) {
+        setPlan(JSON.parse(data));
         setShowSettings(false);
         setLoading(false);
       }
-    };
-    check();
-    // Poll every second while generating
-    const interval = setInterval(() => {
-      if (localStorage.getItem("autronis-mealplan-generating")) {
-        check();
-      }
     }, 1000);
-    window.addEventListener("focus", check);
-    return () => { clearInterval(interval); window.removeEventListener("focus", check); };
+
+    return () => clearInterval(interval);
   }, []);
 
-  const generatePlan = async () => {
+  const generatePlan = () => {
     setLoading(true);
     localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
     localStorage.setItem("autronis-mealplan-generating", String(Date.now()));
-
-    // Fire and forget — works even if user navigates away
-    fetch("/api/mealplan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
-    })
-      .then((res) => res.ok ? res.json() : Promise.reject())
-      .then((data) => {
-        localStorage.setItem("autronis-mealplan", JSON.stringify(data));
-        localStorage.removeItem("autronis-mealplan-generating");
-        setPlan(data);
-        setShowSettings(false);
-        setActiveDay("Maandag");
-        setLoading(false);
-      })
-      .catch(() => {
-        localStorage.removeItem("autronis-mealplan-generating");
-        setLoading(false);
-      });
+    startBackgroundGeneration({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen });
   };
 
   const macroBar = (label: string, waarde: number, target: number, kleur: keyof typeof macroKleuren) => {

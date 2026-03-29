@@ -2261,10 +2261,33 @@ export default function AnimatiesPage() {
                       </div>
                     ) : (
                       <div className="space-y-1.5">
-                        <input
-                          placeholder="Plak URL of kies uit galerij"
-                          onChange={e => { if (e.target.value.trim()) setKieImgUrl(prev => ({ ...prev, A: e.target.value.trim() })); }}
-                          className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                        <div className="flex gap-1.5">
+                          <input
+                            placeholder="Plak URL of kies uit galerij"
+                            onChange={e => { if (e.target.value.trim()) setKieImgUrl(prev => ({ ...prev, A: e.target.value.trim() })); }}
+                            className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
+                          <label className="flex items-center gap-1 px-2 py-1.5 bg-autronis-bg border border-dashed border-autronis-border rounded-lg text-[10px] text-autronis-text-tertiary hover:border-autronis-accent/50 hover:text-autronis-accent cursor-pointer transition-all">
+                            <Upload className="w-3 h-3" /> Upload
+                            <input type="file" accept="image/*" className="hidden" onChange={async e => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = async ev => {
+                                const base64 = (ev.target?.result as string).split(",")[1];
+                                try {
+                                  const res = await fetch("/api/assets/upload", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ base64, mediaType: file.type }),
+                                  });
+                                  const data = await res.json() as { url?: string };
+                                  if (data.url) setKieImgUrl(prev => ({ ...prev, A: data.url! }));
+                                } catch { /* ignore */ }
+                              };
+                              reader.readAsDataURL(file);
+                            }} />
+                          </label>
+                        </div>
                         <div className="flex gap-1 overflow-x-auto pb-1">
                           {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 6).map(g => (
                             <button key={g.id} onClick={() => setKieImgUrl(prev => ({ ...prev, A: g.afbeeldingUrl! }))}

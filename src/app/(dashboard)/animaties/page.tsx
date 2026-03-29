@@ -6,6 +6,7 @@ import {
   Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
   Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff, BookmarkPlus,
   Star, Search, FolderOpen, Tag, CheckSquare, Grid3X3, LayoutList,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -2616,38 +2617,67 @@ export default function AnimatiesPage() {
       </div>
 
       {/* ═══ Preview Modal ═══ */}
-      {previewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreviewItem(null)}>
-          <div className="relative max-w-4xl w-full mx-4" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setPreviewItem(null)} className="absolute -top-10 right-0 text-white/70 hover:text-white transition-all">
-              <X className="w-6 h-6" />
-            </button>
-            {previewItem.videoUrl ? (
-              <video src={previewItem.videoUrl} controls autoPlay className="w-full rounded-xl" />
-            ) : previewItem.afbeeldingUrl ? (
-              <img src={previewItem.afbeeldingUrl} alt={previewItem.productNaam} className="w-full rounded-xl" />
-            ) : null}
-            <div className="flex items-center justify-between mt-3">
-              <div>
-                <p className="text-sm font-semibold text-white">{previewItem.productNaam}</p>
-                <p className="text-xs text-white/50">
-                  {previewItem.type} · {previewItem.aangemaaktOp ? new Date(previewItem.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : ""}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <a href={previewItem.videoUrl ?? previewItem.afbeeldingUrl ?? "#"} download
-                  className="flex items-center gap-1.5 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all">
-                  <ExternalLink className="w-4 h-4" /> Download
-                </a>
-                <button onClick={() => { loadGalleryItem(previewItem); setPreviewItem(null); }}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-white/10 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-all">
-                  <RotateCcw className="w-4 h-4" /> Laad in generator
-                </button>
+      {previewItem && (() => {
+        const currentIdx = filteredGallery.findIndex(g => g.id === previewItem.id);
+        const prevItem = currentIdx > 0 ? filteredGallery[currentIdx - 1] : null;
+        const nextItem = currentIdx < filteredGallery.length - 1 ? filteredGallery[currentIdx + 1] : null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setPreviewItem(null)}
+            onKeyDown={e => { if (e.key === "ArrowLeft" && prevItem) setPreviewItem(prevItem); if (e.key === "ArrowRight" && nextItem) setPreviewItem(nextItem); if (e.key === "Escape") setPreviewItem(null); }}
+            tabIndex={0}
+            ref={el => el?.focus()}
+          >
+            {/* Prev arrow */}
+            {prevItem && (
+              <button onClick={e => { e.stopPropagation(); setPreviewItem(prevItem); }}
+                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            )}
+            {/* Next arrow */}
+            {nextItem && (
+              <button onClick={e => { e.stopPropagation(); setPreviewItem(nextItem); }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            )}
+
+            <div className="relative max-w-4xl w-full mx-16" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setPreviewItem(null)} className="absolute -top-10 right-0 text-white/70 hover:text-white transition-all">
+                <X className="w-6 h-6" />
+              </button>
+              {/* Counter */}
+              <span className="absolute -top-10 left-0 text-xs text-white/40">
+                {currentIdx + 1} / {filteredGallery.length}
+              </span>
+              {previewItem.videoUrl ? (
+                <video key={previewItem.id} src={previewItem.videoUrl} controls autoPlay className="w-full rounded-xl" />
+              ) : previewItem.afbeeldingUrl ? (
+                <img src={previewItem.afbeeldingUrl} alt={previewItem.productNaam} className="w-full rounded-xl" />
+              ) : null}
+              <div className="flex items-center justify-between mt-3">
+                <div>
+                  <p className="text-sm font-semibold text-white">{previewItem.productNaam}</p>
+                  <p className="text-xs text-white/50">
+                    {previewItem.type} · {previewItem.aangemaaktOp ? new Date(previewItem.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : ""}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a href={previewItem.videoUrl ?? previewItem.afbeeldingUrl ?? "#"} download
+                    className="flex items-center gap-1.5 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all">
+                    <ExternalLink className="w-4 h-4" /> Download
+                  </a>
+                  <button onClick={() => { loadGalleryItem(previewItem); setPreviewItem(null); }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-white/10 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-all">
+                    <RotateCcw className="w-4 h-4" /> Laad in generator
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

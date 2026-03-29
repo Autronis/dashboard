@@ -90,7 +90,17 @@ export default function MealPlanPage() {
   });
   const [loading, setLoading] = useState(() => {
     if (typeof window === "undefined") return false;
-    return localStorage.getItem("autronis-mealplan-generating") === "true";
+    const generating = localStorage.getItem("autronis-mealplan-generating");
+    if (!generating || generating === "false") return false;
+    // Auto-cleanup if stuck longer than 5 minutes
+    try {
+      const startedAt = Number(generating);
+      if (startedAt > 0 && Date.now() - startedAt > 5 * 60 * 1000) {
+        localStorage.removeItem("autronis-mealplan-generating");
+        return false;
+      }
+    } catch { /* old format "true" */ }
+    return true;
   });
   const [activeDay, setActiveDay] = useState("Maandag");
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
@@ -118,7 +128,7 @@ export default function MealPlanPage() {
     const check = () => {
       const saved = localStorage.getItem("autronis-mealplan");
       const generating = localStorage.getItem("autronis-mealplan-generating");
-      if (generating !== "true" && saved) {
+      if (!generating && saved) {
         const parsed = JSON.parse(saved);
         setPlan(parsed);
         setShowSettings(false);
@@ -128,7 +138,7 @@ export default function MealPlanPage() {
     check();
     // Poll every second while generating
     const interval = setInterval(() => {
-      if (localStorage.getItem("autronis-mealplan-generating") === "true") {
+      if (localStorage.getItem("autronis-mealplan-generating")) {
         check();
       }
     }, 1000);
@@ -139,7 +149,7 @@ export default function MealPlanPage() {
   const generatePlan = async () => {
     setLoading(true);
     localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
-    localStorage.setItem("autronis-mealplan-generating", "true");
+    localStorage.setItem("autronis-mealplan-generating", String(Date.now()));
 
     // Fire and forget — works even if user navigates away
     fetch("/api/mealplan", {

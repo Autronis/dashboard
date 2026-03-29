@@ -99,15 +99,20 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 
-  // Mealplan cache table
-  client.execute(`CREATE TABLE IF NOT EXISTS mealplan_cache (
-    id INTEGER PRIMARY KEY,
-    status TEXT DEFAULT 'idle',
-    plan_json TEXT,
-    settings_json TEXT,
-    progress INTEGER DEFAULT 0,
-    aangemaakt_op TEXT DEFAULT (datetime('now'))
-  )`).catch(() => { /* table may already exist */ });
+  // Mealplan cache table — ensure correct schema with status/progress columns
+  client.execute("SELECT status FROM mealplan_cache LIMIT 1").catch(() => {
+    // Column missing or table doesn't exist — recreate
+    return client.execute("DROP TABLE IF EXISTS mealplan_cache").then(() =>
+      client.execute(`CREATE TABLE mealplan_cache (
+        id INTEGER PRIMARY KEY,
+        status TEXT DEFAULT 'idle',
+        plan_json TEXT,
+        settings_json TEXT,
+        progress INTEGER DEFAULT 0,
+        aangemaakt_op TEXT DEFAULT (datetime('now'))
+      )`)
+    );
+  });
 
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {

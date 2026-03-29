@@ -36,8 +36,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#1F2937",
     backgroundColor: "#FFFFFF",
-    paddingTop: 55,
-    paddingBottom: 70,
+    paddingTop: 50,
+    paddingBottom: 65,
+    paddingHorizontal: 50,
   },
   // ===== HEADER =====
   headerBand: {

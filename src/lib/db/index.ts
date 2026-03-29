@@ -49,6 +49,50 @@ if (isTurso) {
     afbeelding_url TEXT,
     video_url TEXT,
     lokaal_pad TEXT,
+    project_id INTEGER,
+    tags TEXT,
+    is_favoriet INTEGER DEFAULT 0,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => { /* table may already exist */ });
+
+  // Add missing columns to asset_gallery on Turso
+  for (const col of [
+    "ALTER TABLE asset_gallery ADD COLUMN project_id INTEGER",
+    "ALTER TABLE asset_gallery ADD COLUMN tags TEXT",
+    "ALTER TABLE asset_gallery ADD COLUMN is_favoriet INTEGER DEFAULT 0",
+    "ALTER TABLE asset_gallery ADD COLUMN video_url TEXT",
+  ]) {
+    client.execute(col).catch(() => { /* column may already exist */ });
+  }
+
+  // Add missing columns to bank_transacties on Turso
+  for (const col of [
+    "ALTER TABLE bank_transacties ADD COLUMN ai_beschrijving TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN is_abonnement INTEGER DEFAULT 0",
+    "ALTER TABLE bank_transacties ADD COLUMN overbodigheid_score TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN fiscaal_type TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN subsidie_mogelijkheden TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN btw_bedrag REAL",
+    "ALTER TABLE bank_transacties ADD COLUMN kia_aftrek REAL",
+  ]) {
+    client.execute(col).catch(() => { /* column may already exist */ });
+  }
+
+  // Video samenvattingen table on Turso
+  client.execute(`CREATE TABLE IF NOT EXISTS video_samenvattingen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    youtube_url TEXT NOT NULL,
+    youtube_id TEXT NOT NULL,
+    titel TEXT,
+    kanaal TEXT,
+    thumbnail_url TEXT,
+    transcript TEXT,
+    samenvatting TEXT,
+    key_takeaways TEXT,
+    stappenplan TEXT,
+    tags TEXT,
+    relevantie_score TEXT,
+    aangemaakt_door INTEGER,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 

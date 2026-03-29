@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
     input.ref_strength = refStrength ?? 0.6;
   }
 
+  // Debug: log what we're sending
+  console.log("[KIE-IMAGE] Sending to Kie.ai:", JSON.stringify({ model: "nano-banana-2", input: { ...input, prompt: input.prompt.toString().slice(0, 50) + "..." } }, null, 2));
+
   const res = await fetch("https://api.kie.ai/api/v1/jobs/createTask", {
     method: "POST",
     headers: {

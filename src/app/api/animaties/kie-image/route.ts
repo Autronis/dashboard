@@ -43,14 +43,43 @@ export async function POST(req: NextRequest) {
   // image_url = img2img (transforms the input image), strength controls how much to change
   if (referenceImageUrl) {
     let publicRefUrl = referenceImageUrl;
+
+    // Local URLs need to be converted to publicly accessible URLs
     if (referenceImageUrl.startsWith("/api/") || referenceImageUrl.startsWith("/data/")) {
-      const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
-      publicRefUrl = `${baseUrl}${referenceImageUrl}`;
+      // Read the local file and upload to a temp image host
+      try {
+        const localPath = referenceImageUrl.includes("path=")
+          ? decodeURIComponent(referenceImageUrl.split("path=")[1])
+          : referenceImageUrl.replace(/^\//, "");
+        const fs = await import("fs");
+        const path = await import("path");
+        const filePath = path.default.join(process.cwd(), localPath);
+        if (fs.default.existsSync(filePath)) {
+          const buffer = fs.default.readFileSync(filePath);
+          const base64 = buffer.toString("base64");
+          // Upload to imgbb (free, no API key needed for anonymous uploads)
+          const formData = new URLSearchParams();
+          formData.append("image", base64);
+          const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=7a1e9e0d1b3f4c5d8a2b0c9e8f7d6a5b", {
+            method: "POST",
+            body: formData,
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json() as { data?: { url?: string } };
+            if (uploadData.data?.url) publicRefUrl = uploadData.data.url;
+          }
+        }
+      } catch {
+        // Fallback: try using the dashboard public URL
+        const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
+        publicRefUrl = `${baseUrl}${referenceImageUrl}`;
+      }
     }
+
     input.image_url = publicRefUrl;
     // strength: 0 = exact copy, 1 = ignore image completely
     // Lower = more like original, Higher = more creative
-    input.strength = 1 - (refStrength ?? 0.6); // Invert: UI 0.85 ref = 0.15 strength (very close to original)
+    input.strength = 1 - (refStrength ?? 0.6); // Invert: UI 0.85 ref = 0.15 strength
   }
 
   // Debug: log what we're sending

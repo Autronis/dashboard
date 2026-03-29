@@ -17,6 +17,8 @@ async function dbRun(query: string, params: unknown[] = []): Promise<void> {
     sqlite.prepare(query).run(...params);
   } else if (tursoClient) {
     await tursoClient.execute({ sql: query, args: params });
+  } else {
+    console.error("[MEALPLAN] dbRun: no database connection! sqlite:", !!sqlite, "turso:", !!tursoClient);
   }
 }
 

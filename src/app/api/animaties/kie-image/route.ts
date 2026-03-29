@@ -40,13 +40,11 @@ export async function POST(req: NextRequest) {
   };
 
   // If a reference image URL is provided, use img2img mode
-  // image_url = img2img (transforms the input image), strength controls how much to change
   if (referenceImageUrl) {
     let publicRefUrl = referenceImageUrl;
 
-    // Local URLs need to be converted to publicly accessible URLs
+    // Local URLs need to be uploaded to a public host first
     if (referenceImageUrl.startsWith("/api/") || referenceImageUrl.startsWith("/data/")) {
-      // Read the local file and upload to a temp image host
       try {
         const localPath = referenceImageUrl.includes("path=")
           ? decodeURIComponent(referenceImageUrl.split("path=")[1])
@@ -57,29 +55,29 @@ export async function POST(req: NextRequest) {
         if (fs.default.existsSync(filePath)) {
           const buffer = fs.default.readFileSync(filePath);
           const base64 = buffer.toString("base64");
-          // Upload to imgbb (free, no API key needed for anonymous uploads)
-          const formData = new URLSearchParams();
-          formData.append("image", base64);
-          const uploadRes = await fetch("https://api.imgbb.com/1/upload?key=7a1e9e0d1b3f4c5d8a2b0c9e8f7d6a5b", {
+          // Upload to freeimage.host (no API key needed)
+          const form = new URLSearchParams();
+          form.append("source", base64);
+          form.append("type", "base64");
+          form.append("action", "upload");
+          const uploadRes = await fetch("https://freeimage.host/api/1/upload?key=6d207e02198a847aa98d0a2a901485a5", {
             method: "POST",
-            body: formData,
+            body: form,
           });
           if (uploadRes.ok) {
-            const uploadData = await uploadRes.json() as { data?: { url?: string } };
-            if (uploadData.data?.url) publicRefUrl = uploadData.data.url;
+            const uploadData = await uploadRes.json() as { image?: { url?: string } };
+            if (uploadData.image?.url) publicRefUrl = uploadData.image.url;
           }
         }
       } catch {
-        // Fallback: try using the dashboard public URL
+        // Fallback
         const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
         publicRefUrl = `${baseUrl}${referenceImageUrl}`;
       }
     }
 
     input.image_url = publicRefUrl;
-    // strength: 0 = exact copy, 1 = ignore image completely
-    // Lower = more like original, Higher = more creative
-    input.strength = 1 - (refStrength ?? 0.6); // Invert: UI 0.85 ref = 0.15 strength
+    input.strength = 1 - (refStrength ?? 0.6);
   }
 
   // Debug: log what we're sending

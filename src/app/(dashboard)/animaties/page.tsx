@@ -1211,7 +1211,7 @@ export default function AnimatiesPage() {
       </div>
 
       {/* Mode selector */}
-      <div className="flex gap-2 mb-5">
+      <div className="flex gap-2 mb-5 overflow-x-auto">
         <button
           onClick={() => setMode("scroll-stop")}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -1241,7 +1241,7 @@ export default function AnimatiesPage() {
                 Assets genereren
               </span>
             </div>
-            <div className="px-4 py-3 grid grid-cols-4 gap-3">
+            <div className="px-4 py-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {assetSteps.map(({ n, icon: Icon, label, sub }) => (
                 <div key={n} className="flex gap-3 items-start">
                   <div className="w-6 h-6 rounded-md bg-autronis-accent/10 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-accent">{n}</div>
@@ -1269,7 +1269,7 @@ export default function AnimatiesPage() {
               {stepsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             {stepsOpen && (
-              <div className="px-4 pb-3 grid grid-cols-2 gap-3 border-t border-dashed border-autronis-border pt-3">
+              <div className="px-4 pb-3 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-dashed border-autronis-border pt-3">
                 {websiteSteps.map(({ n, icon: Icon, label, sub }) => (
                   <div key={n} className="flex gap-3 items-start">
                     <div className="w-6 h-6 rounded-md bg-autronis-border/50 flex items-center justify-center flex-shrink-0 text-xs font-black text-autronis-text-tertiary">{n}</div>
@@ -1436,7 +1436,7 @@ export default function AnimatiesPage() {
             </div>
 
             {/* Duration selector + Generate buttons */}
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-autronis-text-tertiary">Duur:</span>
                 {[5, 7, 10].map(d => (
@@ -1820,7 +1820,7 @@ export default function AnimatiesPage() {
             )}
 
             {/* Eindeffect dropdown + Manifest button */}
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3">
               {/* Eindeffect dropdown */}
               <div className="relative">
                 <button
@@ -2224,7 +2224,7 @@ export default function AnimatiesPage() {
                   <span className="text-[10px] font-mono text-autronis-text-secondary w-8">{kieRefStrength.toFixed(2)}</span>
                   <span className="text-[9px] text-autronis-text-tertiary">← meer uit elkaar | meer zoals origineel →</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {/* A — Assembled: select from gallery, paste URL, or generate */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
@@ -2423,7 +2423,7 @@ export default function AnimatiesPage() {
                 <p className="text-xs text-autronis-text-tertiary mb-3">
                   Klik op een foto uit je galerij of plak een URL.
                 </p>
-                <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
                   {/* Start frame picker */}
                   <div>
                     <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (B — effect)</label>

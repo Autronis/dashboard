@@ -20,6 +20,7 @@ import {
   Pencil,
   X,
   ExternalLink,
+  MessageSquare,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -85,6 +86,12 @@ export default function ContractDetailPage() {
   const [selectedText, setSelectedText] = useState("");
   const [aiAanpassingInput, setAiAanpassingInput] = useState("");
   const [aiAanpassingLoading, setAiAanpassingLoading] = useState(false);
+
+  // Chat/spar states
+  const [chatBerichten, setChatBerichten] = useState<{ rol: "gebruiker" | "ai"; tekst: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
   const [herschrijfOpen, setHerschrijfOpen] = useState(false);
   const [herschrijfInstructie, setHerschrijfInstructie] = useState("");
   const [herschrijfLoading, setHerschrijfLoading] = useState(false);
@@ -614,6 +621,111 @@ export default function ContractDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Spar met AI */}
+            <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 space-y-3">
+              <h3 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-1.5">
+                <MessageSquare className="w-4 h-4 text-autronis-accent" />
+                Spar met AI
+              </h3>
+              <p className="text-[11px] text-autronis-text-secondary/60">
+                Bespreek het contract, stel vragen over clausules, of leg je situatie uit zodat de AI kan adviseren wat wel/niet nodig is.
+              </p>
+
+              {/* Chat berichten */}
+              {chatBerichten.length > 0 && (
+                <div className="max-h-64 overflow-y-auto space-y-2 border-t border-autronis-border/30 pt-3">
+                  {chatBerichten.map((b, i) => (
+                    <div key={i} className={cn("text-xs p-2.5 rounded-lg", b.rol === "gebruiker" ? "bg-autronis-accent/10 text-autronis-text-primary ml-6" : "bg-autronis-bg text-autronis-text-secondary mr-6")}>
+                      <span className="text-[10px] font-medium block mb-1 opacity-50">{b.rol === "gebruiker" ? "Jij" : "AI Adviseur"}</span>
+                      <div className="whitespace-pre-wrap">{b.tekst}</div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex items-center gap-2 text-xs text-autronis-accent p-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Nadenken...
+                    </div>
+                  )}
+                  <div ref={chatEndRef} />
+                </div>
+              )}
+
+              {/* Chat input */}
+              <div className="flex gap-2">
+                <input
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={async e => {
+                    if (e.key !== "Enter" || !chatInput.trim() || chatLoading) return;
+                    const bericht = chatInput.trim();
+                    setChatInput("");
+                    setChatBerichten(prev => [...prev, { rol: "gebruiker", tekst: bericht }]);
+                    setChatLoading(true);
+                    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                    try {
+                      const res = await fetch(`/api/contracten/${id}/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          bericht,
+                          geschiedenis: chatBerichten,
+                          risicos: risicos ?? undefined,
+                        }),
+                      });
+                      const data = await res.json() as { antwoord?: string; fout?: string };
+                      if (data.antwoord) {
+                        setChatBerichten(prev => [...prev, { rol: "ai", tekst: data.antwoord! }]);
+                      }
+                    } catch { /* ignore */ }
+                    setChatLoading(false);
+                    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                  }}
+                  placeholder="Bijv: 'het is voor een kantoorruimte die we 2 dagen/week gebruiken, zijn al die boeteclausules nodig?'"
+                  className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
+                />
+                <button
+                  onClick={async () => {
+                    if (!chatInput.trim() || chatLoading) return;
+                    const bericht = chatInput.trim();
+                    setChatInput("");
+                    setChatBerichten(prev => [...prev, { rol: "gebruiker", tekst: bericht }]);
+                    setChatLoading(true);
+                    try {
+                      const res = await fetch(`/api/contracten/${id}/chat`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ bericht, geschiedenis: chatBerichten, risicos: risicos ?? undefined }),
+                      });
+                      const data = await res.json() as { antwoord?: string };
+                      if (data.antwoord) setChatBerichten(prev => [...prev, { rol: "ai", tekst: data.antwoord! }]);
+                    } catch { /* ignore */ }
+                    setChatLoading(false);
+                    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+                  }}
+                  disabled={!chatInput.trim() || chatLoading}
+                  className="px-3 py-2 bg-autronis-accent text-white rounded-lg text-xs font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-40"
+                >
+                  {chatLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              {/* Quick starters */}
+              {chatBerichten.length === 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    "Welke clausules zijn het belangrijkst?",
+                    "Wat kan ik weglaten als het een informele samenwerking is?",
+                    "Zijn de boeteclausules redelijk?",
+                    "Leg de aansprakelijkheidsbeperkingen uit",
+                  ].map(q => (
+                    <button key={q} onClick={() => setChatInput(q)}
+                      className="text-[10px] px-2.5 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-autronis-text-tertiary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Risicoscan */}

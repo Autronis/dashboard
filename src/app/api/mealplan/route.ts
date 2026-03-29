@@ -235,8 +235,8 @@ async function triggerGeneration() {
       const boodschappen = await generateBoodschappen(client, dagen);
       boodschappenlijst = boodschappen.boodschappenlijst;
       totaalPrijs = boodschappen.totaalPrijs;
-    } catch {
-      // Boodschappenlijst failed — save plan without it
+    } catch (boodschapErr) {
+      console.error("[MEALPLAN] Boodschappenlijst generatie mislukt:", boodschapErr instanceof Error ? boodschapErr.message : boodschapErr);
     }
 
     // Calculate real week totals from actual day data

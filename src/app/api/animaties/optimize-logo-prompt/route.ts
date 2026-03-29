@@ -4,27 +4,29 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert AI video prompt engineer specializing in logo and product animations. The user gives you a simple description of what they want (e.g. "de kabels moeten bewegen", "logo draait", "oplichten") and optionally an image and animation tags.
+const SYSTEM_PROMPT = `You refine short animation descriptions into concise AI video prompts. The user has ALREADY uploaded a reference image — do NOT describe the object in detail. The video model will SEE the image.
 
-Your job is to transform this into a detailed, professional video animation prompt optimized for AI video generation (Runway, Higgsfield, Kling).
+Your job:
+- Keep it SHORT (2-4 sentences max)
+- Start with "The object" or "The logo" — never describe what it looks like (the image handles that)
+- Focus ONLY on the MOTION: what moves, how, timing, direction
+- Add specific timing (e.g. "over 2 seconds", "at 0.5s")
+- Add motion style (e.g. "smooth ease-in-out", "snappy", "organic")
+- Include lighting changes if relevant (e.g. "glow intensifies", "subtle pulse")
+- Always end with: "Clean white background, photorealistic, locked camera."
 
-Your output should describe:
-- The starting state of the object/logo (position, angle, lighting)
-- The exact motion sequence step by step (what moves, how fast, in what direction)
-- Camera behavior (static, slow zoom, orbit)
-- Lighting changes (glow, pulse, dim, illuminate)
-- Timing (what happens at 0s, 1s, 2s, etc.)
-- The ending state (where does it land, final pose)
-- Background (white, dark, gradient)
-- Style (photorealistic, cinematic, clean, dramatic)
+Example input: "oplichten en stroom door de kabels"
+Example output: "The object sits still for 0.5s, then a warm golden glow gradually builds from the core outward over 1.5s. Thin electric pulses travel along the cables as bright teal charges, racing from center to endpoints in sequential waves. The glow stabilizes at full intensity with a subtle breathing pulse. Clean white background, photorealistic, locked camera."
 
-Write in English. Be specific about motion — not "it moves" but "it rotates 360° clockwise over 2 seconds with slight hover bounce".
-
-Keep it to 3-6 sentences. Concise but detailed enough for an AI video model.
+Do NOT:
+- Describe the shape, materials, or colors of the object
+- Write "A [object type] sits on..."
+- Start from scratch — build on what the user wrote
+- Make it longer than 4 sentences
 
 Return ONLY a JSON object:
 {
-  "optimizedPrompt": "The detailed animation prompt"
+  "optimizedPrompt": "The refined animation prompt"
 }`;
 
 export async function POST(req: NextRequest) {
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Geef een beschrijving op." }, { status: 400 });
   }
 
-  const tagContext = tags && tags.length > 0 ? `\nGeselecteerde animatie stijlen: ${tags.join(", ")}` : "";
+  const tagContext = tags && tags.length > 0 ? ` Animatie types: ${tags.join(", ")}.` : "";
 
   let userContent: MessageParam["content"] = [];
 
@@ -51,16 +53,16 @@ export async function POST(req: NextRequest) {
       },
       {
         type: "text",
-        text: `Maak een gedetailleerde video animatie prompt voor dit object/logo. De gebruiker wil: ${description || "een mooie animatie"}.${tagContext}`,
+        text: `Dit is het object. De gebruiker wil deze animatie: "${description || "mooie animatie"}".${tagContext} Verfijn dit tot een korte video prompt. Beschrijf NIET het object — alleen de beweging.`,
       },
     ];
   } else {
-    userContent = [{ type: "text", text: `Maak een gedetailleerde video animatie prompt. De gebruiker wil: ${description}.${tagContext}` }];
+    userContent = [{ type: "text", text: `De gebruiker wil deze animatie: "${description}".${tagContext} Verfijn tot een korte video prompt — alleen de beweging, niet het object beschrijven.` }];
   }
 
   const message = await anthropic.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 500,
+    max_tokens: 400,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userContent }],
   });

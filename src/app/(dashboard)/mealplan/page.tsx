@@ -116,6 +116,8 @@ export default function MealPlanPage() {
     localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
   }, [kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen]);
 
+  const [progress, setProgress] = useState(0);
+
   // Poll server for plan status
   useEffect(() => {
     const poll = () => {
@@ -127,9 +129,11 @@ export default function MealPlanPage() {
             setPlan(data.plan);
             setShowSettings(false);
             setLoading(false);
+            setProgress(8);
           } else if (data.status === "generating" || data.status === "pending") {
             setLoading(true);
             setShowSettings(false);
+            setProgress(data.progress || 0);
           }
         })
         .catch(() => {});

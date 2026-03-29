@@ -12,11 +12,12 @@ export async function POST(req: NextRequest) {
     await requireAuth();
     const body = await req.json();
 
-    const { klantId, type, details, offerteId } = body as {
+    const { klantId, type, details, offerteId, referentieText } = body as {
       klantId: number;
       type: ContractType;
       details?: string;
       offerteId?: number;
+      referentieText?: string;
     };
 
     if (!klantId || !type) {
@@ -95,6 +96,11 @@ Gebaseerd op offerte ${offerte.offertenummer}:
 
     const prompt = generateContractPrompt(type, bedrijfsnaam, klant.bedrijfsnaam, klant.contactpersoon, klantContext);
 
+    // Add reference document context if provided
+    const referentieContext = referentieText
+      ? `\n\nREFERENTIE DOCUMENT (gebruik als basis/inspiratie — neem relevante clausules, structuur en voorwaarden over maar pas aan voor deze specifieke situatie):\n${referentieText.slice(0, 15000)}`
+      : "";
+
     const { text: inhoud } = await aiComplete({
       provider: "anthropic",
       system:
@@ -116,7 +122,7 @@ FORMATTING:
 - Als gegevens ontbreken, laat die regel weg — vul NOOIT fictieve gegevens in
 - Gebruik markdown ## voor artikelkoppen
 - Nummer elk artikel en subartikel (1.1, 1.2, etc.)`,
-      prompt,
+      prompt: prompt + referentieContext,
       maxTokens: 4000,
     });
 

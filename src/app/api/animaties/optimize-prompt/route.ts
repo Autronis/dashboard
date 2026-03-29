@@ -4,43 +4,34 @@ import type { MessageParam } from "@anthropic-ai/sdk/resources";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SYSTEM_PROMPT = `You are an expert AI image prompt engineer AND product analysis specialist. The user gives you a simple product description (e.g. "Nike Air Max 90", "espresso machine", "process automation"). Your job is to:
+const SYSTEM_PROMPT = `You are an expert AI image prompt engineer. Your job depends on whether the user provides an IMAGE or only TEXT:
 
-1. Transform this into a rich, detailed product description optimized for AI image generation
-2. Create a detailed component manifest listing all visible parts
+## IF AN IMAGE IS PROVIDED:
+Describe EXACTLY what you SEE in the image. Do NOT invent or reimagine the object.
+- Describe the actual materials, colors, shapes, and components visible
+- Note every visible detail: textures, finishes, glow effects, cables, ports, panels
+- Create a manifest listing each component you can identify in the image
+- If a VISUAL STYLE is specified, adapt your description to emphasize matching elements
 
-CRITICAL: If a VISUAL STYLE is specified in the user message, you MUST design the product entirely in that style. ALL materials, colors, textures, and components must match the specified style. The style dictates everything — the product should look like it was manufactured in that aesthetic.
+## IF ONLY TEXT IS PROVIDED:
+Transform the text into a rich product description.
+- If abstract (service/concept), visualize it as a physical device representing that concept
+- If a VISUAL STYLE is specified, design the product entirely in that style
 
-For the PRODUCT DESCRIPTION include:
-- A product name that incorporates the style (e.g. "Glass Morphism Process Automation Machine" or "Matte Black Espresso Hub")
-- Materials that match the specified style EXACTLY
-- Colors that match the specified style EXACTLY
-- Key visual details matching the style (textures, finishes, reflections, glow effects)
-- Shape and form description
-- Notable design elements fitting the style
-- State of the product (new, pristine)
+## ALWAYS:
+- Keep the description to 3-5 sentences
+- Be specific, not generic — describe exact materials (e.g. "frosted borosilicate glass" not "glass")
+- DO NOT include photography/camera instructions
+- The manifest should list 8-15 components with: name, material, color, size, position, quantity
 
-For the COMPONENT MANIFEST include each visible component with:
-- Component name
-- Material (MUST match the visual style — e.g. for Glass Morphism: borosilicate glass, chrome, brushed steel)
-- Color (MUST match the visual style — e.g. for Glass Morphism: ice-blue transparent, chrome silver, teal glow)
-- Size relative to the whole ("groot", "klein", "medium")
-- Position in the assembled object ("bovenkant", "linkerzijde", "intern")
-- Quantity if multiple ("4x", "2x links + 2x rechts")
-
-If the input is abstract (like a service or concept), visualize it as a physical product/device that REPRESENTS that concept in the specified style. For example: "process automation" with Glass Morphism style → a futuristic transparent glass automation control hub with chrome gears, glowing cyan data tubes, and teal LED indicators.
-
-DO NOT include photography instructions, camera info, or prompt syntax in the description.
-
-Keep the description to 3-5 sentences. Be specific, not generic. Make it vivid and detailed.
-The manifest should list 8-15 components with bullet points.
+If a VISUAL STYLE is specified, ALL materials and colors must match that style.
 
 Return ONLY a JSON object:
 {
-  "optimizedPrompt": "The detailed product description",
+  "optimizedPrompt": "The detailed product description based on what you see/imagine",
   "productName": "Short product name",
   "objectNaam": "Product name for manifest header",
-  "manifest": "Complete component manifest as readable text, one component per line with bullet points (• prefix)"
+  "manifest": "Complete component manifest, one per line with • prefix"
 }`;
 
 export async function POST(req: NextRequest) {
@@ -67,9 +58,7 @@ export async function POST(req: NextRequest) {
       },
       {
         type: "text",
-        text: (description
-          ? `Beschrijf dit product in detail en maak een onderdelen manifest. Extra context: ${description}`
-          : "Beschrijf dit product in detail en maak een onderdelen manifest.") + styleContext,
+        text: `BELANGRIJK: Beschrijf EXACT wat je ZIET in deze afbeelding. Beschrijf de echte materialen, kleuren, vormen en onderdelen die zichtbaar zijn. Verzin NIETS — beschrijf alleen wat er is.${description ? ` Extra context van de gebruiker: ${description}` : ""}${styleContext}`,
       },
     ];
   } else {

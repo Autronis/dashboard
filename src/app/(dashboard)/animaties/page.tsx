@@ -342,7 +342,7 @@ export default function AnimatiesPage() {
   useEffect(() => { if (kieImgUrl.A) setKieEndFrame(kieImgUrl.A); }, [kieImgUrl.A]);
   useEffect(() => { if (kieImgUrl.B) setKieStartFrame(kieImgUrl.B); }, [kieImgUrl.B]);
 
-  // ── Logo Animatie state
+  // ── Video Animatie state
   const [logoInput, setLogoInput] = useState("");
   const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
   const [logoTags, setLogoTags] = useState<string[]>([]);
@@ -1163,7 +1163,7 @@ export default function AnimatiesPage() {
             mode === "logo-animatie" ? "bg-autronis-accent text-white" : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
           }`}
         >
-          <RotateCcw className="w-4 h-4" /> Logo Animatie
+          <RotateCcw className="w-4 h-4" /> Video Animatie
         </button>
       </div>
 

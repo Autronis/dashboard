@@ -171,12 +171,21 @@ async function triggerGeneration() {
       await dbRun("UPDATE mealplan_cache SET progress = ?", [i + 1]);
     }
 
-    const boodschappen = await generateBoodschappen(client, dagen);
+    // Shopping list — if it fails, still save the plan without it
+    let boodschappenlijst: unknown[] = [];
+    let totaalPrijs = 0;
+    try {
+      const boodschappen = await generateBoodschappen(client, dagen);
+      boodschappenlijst = boodschappen.boodschappenlijst;
+      totaalPrijs = boodschappen.totaalPrijs;
+    } catch {
+      // Boodschappenlijst failed — save plan without it
+    }
 
     const plan = {
       dagen,
-      boodschappenlijst: boodschappen.boodschappenlijst,
-      totaalPrijs: boodschappen.totaalPrijs,
+      boodschappenlijst,
+      totaalPrijs,
       weekTotaal: {
         kcal: (params.kcal as number) * 7,
         eiwit: (params.eiwit as number) * 7,
@@ -188,8 +197,9 @@ async function triggerGeneration() {
     };
 
     await dbRun("UPDATE mealplan_cache SET status = 'done', plan_json = ?, progress = 8", [JSON.stringify(plan)]);
-  })().catch(async () => {
-    try { await dbRun("UPDATE mealplan_cache SET status = 'error'"); } catch { /* ignore */ }
+  })().catch(async (err: unknown) => {
+    const msg = err instanceof Error ? err.message : "Onbekend";
+    try { await dbRun("UPDATE mealplan_cache SET status = 'error', plan_json = ?", [JSON.stringify({ fout: msg })]); } catch { /* ignore */ }
   }).finally(() => {
     isGenerating = false;
   });

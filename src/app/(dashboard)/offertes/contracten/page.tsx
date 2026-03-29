@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import {
   FileText,
   Plus,
@@ -16,6 +16,7 @@ import {
   ArrowRight,
   CalendarClock,
   AlertTriangle,
+  Upload,
   Building,
   UserCheck,
   Briefcase,
@@ -177,6 +178,8 @@ export default function ContractenPage() {
   const [titel, setTitel] = useState("");
   const [offerteId, setOfferteId] = useState("");
   const [verloopdatum, setVerloopdatum] = useState("");
+  const [referentieFile, setReferentieFile] = useState<{ naam: string; text: string } | null>(null);
+  const referentieInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -231,6 +234,7 @@ export default function ContractenPage() {
           klantId: Number(klantId),
           type,
           offerteId: offerteId ? Number(offerteId) : undefined,
+          referentieText: referentieFile?.text,
         }),
       });
 
@@ -711,6 +715,62 @@ export default function ContractenPage() {
                         onChange={e => setVerloopdatum(e.target.value)}
                         className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/40"
                       />
+                    </div>
+
+                    {/* Referentie document */}
+                    <div>
+                      <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">
+                        Referentie document <span className="text-autronis-text-secondary/50 font-normal">(optioneel — bijv. bestaand contract als basis)</span>
+                      </label>
+                      <input ref={referentieInputRef} type="file" accept=".pdf,.txt,.doc,.docx,.md" className="hidden"
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.type === "application/pdf") {
+                            // For PDF: read as text (basic extraction)
+                            const text = await file.text().catch(() => "");
+                            if (text) {
+                              setReferentieFile({ naam: file.name, text });
+                            } else {
+                              // PDF binary — try reading as ArrayBuffer and extracting text
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const arr = new Uint8Array(reader.result as ArrayBuffer);
+                                // Basic text extraction from PDF bytes
+                                let extracted = "";
+                                for (let i = 0; i < arr.length; i++) {
+                                  if (arr[i] >= 32 && arr[i] <= 126) extracted += String.fromCharCode(arr[i]);
+                                  else if (arr[i] === 10 || arr[i] === 13) extracted += "\n";
+                                }
+                                setReferentieFile({ naam: file.name, text: extracted.slice(0, 20000) });
+                              };
+                              reader.readAsArrayBuffer(file);
+                            }
+                          } else {
+                            // Plain text, markdown, etc
+                            const text = await file.text();
+                            setReferentieFile({ naam: file.name, text: text.slice(0, 20000) });
+                          }
+                        }}
+                      />
+                      {referentieFile ? (
+                        <div className="flex items-center gap-2 bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5">
+                          <FileText className="w-4 h-4 text-autronis-accent flex-shrink-0" />
+                          <span className="text-sm text-autronis-text-primary flex-1 truncate">{referentieFile.naam}</span>
+                          <span className="text-[10px] text-autronis-text-secondary/50">{Math.round(referentieFile.text.length / 1000)}K tekens</span>
+                          <button onClick={() => setReferentieFile(null)} className="text-autronis-text-secondary hover:text-red-400 transition-colors">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => referentieInputRef.current?.click()}
+                          className="w-full flex items-center justify-center gap-2 py-3 bg-autronis-bg border border-dashed border-autronis-border rounded-xl text-sm text-autronis-text-tertiary hover:border-autronis-accent/40 hover:text-autronis-accent transition-all"
+                        >
+                          <Upload className="w-4 h-4" />
+                          Upload bestaand contract als referentie
+                        </button>
+                      )}
                     </div>
 
                     {/* Actions */}

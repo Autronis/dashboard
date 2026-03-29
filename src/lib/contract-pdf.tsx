@@ -36,9 +36,9 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#1F2937",
     backgroundColor: "#FFFFFF",
-    paddingTop: 50,
-    paddingBottom: 65,
-    paddingHorizontal: 50,
+    paddingTop: 70,
+    paddingBottom: 80,
+    paddingHorizontal: 55,
   },
   // ===== HEADER =====
   headerBand: {
@@ -170,12 +170,12 @@ const styles = StyleSheet.create({
   footer: {
     position: "absolute",
     bottom: 0,
-    left: 50,
-    right: 50,
+    left: 55,
+    right: 55,
     backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
-    paddingVertical: 15,
+    paddingVertical: 18,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -287,7 +287,7 @@ function parseMarkdownToElements(markdown: string): React.ReactElement[] {
       // Let sections wrap across pages, but keep heading with at least first 2 items
       elements.push(
         <View key={`section-${idx}`} wrap>
-          <Text style={styles.articleHeading} minPresenceAhead={40}>{section.heading}</Text>
+          <Text style={styles.articleHeading} minPresenceAhead={80}>{section.heading}</Text>
           {section.content}
         </View>
       );

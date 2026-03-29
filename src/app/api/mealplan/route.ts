@@ -130,18 +130,27 @@ async function triggerGeneration() {
 
 // GET
 export async function GET() {
-  await ensureTable();
-  await triggerGeneration();
+  try {
+    await ensureTable();
 
-  const rows = await db.all<{ status: string; plan_json: string | null; progress: number }>(
-    sql`SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1`
-  );
-  const row = rows[0];
-  if (!row) return NextResponse.json({ status: "none" });
-  if (row.status === "done" && row.plan_json) {
-    return NextResponse.json({ status: "done", plan: JSON.parse(row.plan_json) });
+    const rows = await db.all<{ status: string; plan_json: string | null; progress: number }>(
+      sql`SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1`
+    );
+    const row = rows[0];
+    if (!row) return NextResponse.json({ status: "none" });
+
+    // Trigger background generation if pending
+    if (row.status === "pending" || row.status === "generating") {
+      triggerGeneration().catch(() => {});
+    }
+
+    if (row.status === "done" && row.plan_json) {
+      return NextResponse.json({ status: "done", plan: JSON.parse(row.plan_json) });
+    }
+    return NextResponse.json({ status: row.status, progress: row.progress || 0 });
+  } catch (error) {
+    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout", status: "error" }, { status: 500 });
   }
-  return NextResponse.json({ status: row.status, progress: row.progress || 0 });
 }
 
 // POST

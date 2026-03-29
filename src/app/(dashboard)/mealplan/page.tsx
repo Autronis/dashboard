@@ -427,77 +427,66 @@ export default function MealPlanPage() {
               </div>
             )}
 
-            {/* Boodschappenlijst — altijd zichtbaar */}
-            {boodschappenPerAfdeling && (
-              <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <ShoppingCart className="w-4 h-4 text-emerald-400" />
-                    <span className="text-sm font-medium text-autronis-text-primary">Boodschappenlijst — hele week</span>
-                    <span className="text-[10px] text-autronis-text-secondary/50">({plan.boodschappenlijst?.length || 0} producten)</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-emerald-500/15 px-3 py-1.5 rounded-lg">
-                    <Euro className="w-3 h-3 text-emerald-400" />
-                    <span className="text-sm font-bold text-emerald-400">€{plan.totaalPrijs?.toFixed(2) || "0.00"}</span>
-                  </div>
-                </div>
+            {/* Boodschappenlijst — compact layout */}
+            {boodschappenPerAfdeling && (() => {
+              const restjes = (plan.boodschappenlijst || []).filter((item: BoodschapItem) => item.over && item.over !== "0g" && item.over !== "0" && item.over !== "0ml");
+              const totaalPrijs = plan.totaalPrijs ?? 0;
+              const perDag = totaalPrijs / 7;
+              const perMaaltijd = totaalPrijs / (7 * 3);
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {Object.entries(boodschappenPerAfdeling).map(([afdeling, items]) => (
-                    <div key={afdeling}>
-                      <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/50 font-medium mb-2">{afdeling}</p>
-                      <div className="space-y-1">
+              return (
+                <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
+                  {/* Header + prijsoverzicht */}
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <ShoppingCart className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm font-medium text-autronis-text-primary">Boodschappenlijst</span>
+                      <span className="text-[10px] text-autronis-text-secondary/50">({plan.boodschappenlijst?.length || 0})</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] text-autronis-text-secondary/50">€{perDag.toFixed(2)}/dag</span>
+                      <span className="text-[10px] text-autronis-text-secondary/50">€{perMaaltijd.toFixed(2)}/maaltijd</span>
+                      <div className="flex items-center gap-1 bg-emerald-500/15 px-2.5 py-1 rounded-lg">
+                        <Euro className="w-3 h-3 text-emerald-400" />
+                        <span className="text-sm font-bold text-emerald-400">€{totaalPrijs.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Producten grid — compact */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-0">
+                    {Object.entries(boodschappenPerAfdeling).map(([afdeling, items]) => (
+                      <div key={afdeling} className="mb-2">
+                        <p className="text-[9px] uppercase tracking-wider text-autronis-text-secondary/40 font-medium mb-0.5 mt-1">{afdeling}</p>
                         {items.map((item, i) => (
-                          <div key={i} className="text-xs py-1.5 border-b border-autronis-border/10 last:border-0">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex-1 min-w-0">
-                                <span className="text-autronis-text-primary font-medium">{item.product}</span>
-                                {item.prijsPerEenheid && (
-                                  <span className="text-autronis-text-secondary/30 ml-1.5 text-[10px]">{item.prijsPerEenheid}</span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-autronis-text-secondary tabular-nums">{item.hoeveelheid}</span>
-                                <span className="text-emerald-400 font-medium tabular-nums w-14 text-right">€{item.prijs.toFixed(2)}</span>
-                              </div>
-                            </div>
-                            {(item.nodig || (item.over && item.over !== "0g" && item.over !== "0")) && (
-                              <div className="flex items-center gap-3 mt-0.5 ml-0">
-                                {item.nodig && <span className="text-[10px] text-autronis-text-secondary/40 tabular-nums">Nodig: {item.nodig}</span>}
-                                {item.over && item.over !== "0g" && item.over !== "0" && (
-                                  <span className="text-[10px] text-amber-400/70 tabular-nums bg-amber-500/10 px-1.5 py-0.5 rounded">+{item.over} over</span>
-                                )}
-                              </div>
-                            )}
+                          <div key={i} className="flex items-center justify-between gap-1 text-[11px] py-0.5">
+                            <span className="text-autronis-text-primary truncate flex-1">{item.product}</span>
+                            <span className="text-autronis-text-secondary/50 tabular-nums text-[10px] flex-shrink-0">{item.hoeveelheid}</span>
+                            <span className="text-emerald-400 font-medium tabular-nums w-12 text-right flex-shrink-0">€{item.prijs.toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
 
-                {/* Restjes samenvatting */}
-                {(() => {
-                  const restjes = (plan.boodschappenlijst || []).filter((item: BoodschapItem) => item.over && item.over !== "0g" && item.over !== "0" && item.over !== "0ml");
-                  if (restjes.length === 0) return null;
-                  return (
-                    <div className="mt-4 pt-4 border-t border-emerald-500/20">
-                      <p className="text-xs font-medium text-amber-400 mb-2 flex items-center gap-1.5">
-                        <Salad className="w-3.5 h-3.5" /> Overblijft na deze week ({restjes.length} producten)
+                  {/* Overblijft na deze week */}
+                  {restjes.length > 0 && (
+                    <div className="pt-2 border-t border-emerald-500/20">
+                      <p className="text-[10px] font-medium text-amber-400 mb-1.5 flex items-center gap-1">
+                        <Salad className="w-3 h-3" /> Over na deze week — gebruik volgende week
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1">
                         {restjes.map((item: BoodschapItem, i: number) => (
-                          <span key={i} className="text-[10px] px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400/80">
-                            {item.product}: <span className="font-medium">{item.over}</span>
+                          <span key={i} className="text-[9px] px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/15 rounded text-amber-400/80">
+                            {item.product} <span className="font-medium">+{item.over}</span>
                           </span>
                         ))}
                       </div>
-                      <p className="text-[10px] text-autronis-text-secondary/30 mt-2">Tip: gebruik restjes als basis voor je volgende weekplan</p>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </motion.div>
         )}
       </div>

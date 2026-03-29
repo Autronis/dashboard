@@ -97,14 +97,18 @@ async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promis
   // Collect all ingredients from the plan to create an accurate shopping list
   const alleIngredienten: Record<string, number> = {};
   for (const dag of dagen) {
-    const d = dag as { maaltijden: { ingredienten: { naam: string; hoeveelheid: string }[] }[] };
-    for (const maaltijd of d.maaltijden) {
-      for (const ing of maaltijd.ingredienten) {
-        const naam = ing.naam.toLowerCase();
-        const grams = parseFloat(ing.hoeveelheid) || 100;
-        alleIngredienten[naam] = (alleIngredienten[naam] || 0) + grams;
+    try {
+      const d = dag as { maaltijden?: { ingredienten?: { naam?: string; hoeveelheid?: string }[] }[] };
+      if (!d.maaltijden) continue;
+      for (const maaltijd of d.maaltijden) {
+        if (!maaltijd.ingredienten) continue;
+        for (const ing of maaltijd.ingredienten) {
+          const naam = (ing.naam || "onbekend").toLowerCase();
+          const grams = parseFloat(ing.hoeveelheid || "100") || 100;
+          alleIngredienten[naam] = (alleIngredienten[naam] || 0) + grams;
+        }
       }
-    }
+    } catch { continue; }
   }
 
   const ingredientenSamenvatting = Object.entries(alleIngredienten)

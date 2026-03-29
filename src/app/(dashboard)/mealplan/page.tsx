@@ -134,6 +134,10 @@ export default function MealPlanPage() {
             setLoading(true);
             setShowSettings(false);
             setProgress(data.progress || 0);
+          } else if (data.status === "error") {
+            setLoading(false);
+            setShowSettings(true);
+            setProgress(0);
           }
         })
         .catch(() => {});

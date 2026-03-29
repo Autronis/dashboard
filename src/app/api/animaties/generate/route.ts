@@ -23,10 +23,10 @@ async function scrapeUrl(url: string): Promise<string> {
 const EIND_EFFECTEN: Record<string, { label: string; promptB: string; promptC: string }> = {
   exploded: {
     label: "Exploded/Deconstructed",
-    promptB: `Professional exploded-view product photography of a [OBJECT], deconstructed into its individual components, all floating in space against a clean white background (#FFFFFF).
-Every internal component is visible and separated: [USE MANIFEST COMPONENTS].
-Each piece floats with even spacing, maintaining spatial relationships. Arrangement follows a vertical or diagonal explosion axis.
-Soft studio lighting with subtle shadows on each floating piece. Components are pristine and detailed.
+    promptB: `Professional exploded-view product photography of a [OBJECT], dramatically deconstructed into its individual components, all floating dynamically in space against a clean white background (#FFFFFF).
+Every component is visible and separated: [USE MANIFEST COMPONENTS].
+DRAMATIC EXPLOSION STYLE: Components float outward in ALL directions from the center — NOT neatly stacked in rows. Each piece is tilted 10-30 degrees at different angles, at varying distances from center. Some pieces closer, some further away creating real 3D depth. Glass/transparent pieces catch light at different angles creating colorful refractions. Think freeze-frame mid-explosion — dynamic, energetic, cinematic. Subtle motion blur on the outermost pieces.
+Soft studio lighting with individual shadows beneath each floating piece. Components are pristine and detailed, maintaining their exact original materials and colors.
 Photorealistic rendering, 16:9 aspect ratio. Shot on Phase One IQ4 150MP, focus-stacked. Same lighting as assembled shot.`,
     promptC: `START FRAME: A fully assembled [OBJECT] sitting centered on a white background, product photography style, soft studio lighting.
 END FRAME: The same [OBJECT] elegantly deconstructed into an exploded view — every component floating in space, separated along a vertical axis, maintaining spatial relationships.

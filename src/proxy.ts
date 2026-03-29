@@ -38,6 +38,8 @@ const PUBLIC_PATHS = [
   "/foto-syb.jpg",
   "/waves.webm",
   "/bonnetjes/",
+  "/api/mealplan",
+  "/scan",
 ];
 
 function isPublicPath(pathname: string): boolean {

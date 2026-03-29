@@ -13,7 +13,7 @@ import {
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
-  PlusCircle, Compass, Sparkles,
+  PlusCircle, Compass, Sparkles, UtensilsCrossed,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
+  { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
 
   // Mijn dag
   {

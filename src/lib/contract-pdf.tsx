@@ -43,9 +43,7 @@ const styles = StyleSheet.create({
   // ===== HEADER =====
   headerBand: {
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 50,
-    paddingTop: 0,
-    paddingBottom: 25,
+    paddingBottom: 20,
   },
   headerContent: {
     flexDirection: "row",
@@ -84,8 +82,7 @@ const styles = StyleSheet.create({
   },
   // ===== BODY =====
   body: {
-    paddingHorizontal: 50,
-    paddingTop: 15,
+    paddingTop: 10,
   },
   // ===== TITEL =====
   titel: {

@@ -255,11 +255,16 @@ export default function MealPlanPage() {
           )}
         </AnimatePresence>
 
-        {/* Loading */}
+        {/* Loading with progress */}
         {loading && !plan && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div className="flex flex-col items-center justify-center py-16 gap-4">
             <Loader2 className="w-8 h-8 text-autronis-accent animate-spin" />
-            <p className="text-sm text-autronis-text-secondary">AI stelt je weekplan samen...</p>
+            <p className="text-sm text-autronis-text-secondary">
+              {progress === 0 ? "Starten..." : progress <= 7 ? `Dag ${progress}/7 genereren...` : "Boodschappenlijst maken..."}
+            </p>
+            <div className="w-48 h-2 bg-autronis-border/30 rounded-full overflow-hidden">
+              <motion.div animate={{ width: `${(progress / 8) * 100}%` }} className="h-full bg-autronis-accent rounded-full" />
+            </div>
           </div>
         )}
 

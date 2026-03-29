@@ -150,20 +150,32 @@ export default function MealPlanPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [loading]);
 
-  // On mount: check if we need to resume a generation
+  // On mount: load from DB, or resume generation
   useEffect(() => {
-    const generating = localStorage.getItem("autronis-mealplan-generating");
+    // First check localStorage
     const saved = localStorage.getItem("autronis-mealplan");
-
-    // Result already there → show it
-    if (!generating && saved) {
+    if (saved) {
       setPlan(JSON.parse(saved));
       setShowSettings(false);
       setLoading(false);
-      return;
     }
 
-    // Was generating but fetch died (navigated away) → restart it
+    // Also check DB (might have result from a killed fetch)
+    fetch("/api/mealplan")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (data?.plan) {
+          setPlan(data.plan);
+          localStorage.setItem("autronis-mealplan", JSON.stringify(data.plan));
+          localStorage.removeItem("autronis-mealplan-generating");
+          setShowSettings(false);
+          setLoading(false);
+        }
+      })
+      .catch(() => {});
+
+    // If still generating, resume
+    const generating = localStorage.getItem("autronis-mealplan-generating");
     if (generating && !_win.__mealplanGenerating) {
       const settings = JSON.parse(localStorage.getItem("autronis-mealplan-settings") || "{}");
       if (settings.kcal) {
@@ -173,11 +185,11 @@ export default function MealPlanPage() {
       }
     }
 
-    // Poll for result
+    // Poll for result while generating
     const interval = setInterval(() => {
-      const gen = localStorage.getItem("autronis-mealplan-generating");
+      if (!localStorage.getItem("autronis-mealplan-generating")) return;
       const data = localStorage.getItem("autronis-mealplan");
-      if (!gen && data) {
+      if (data) {
         setPlan(JSON.parse(data));
         setShowSettings(false);
         setLoading(false);

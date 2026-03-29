@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+
+// Ensure table exists
+async function ensureMealplanTable() {
+  try {
+    await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
+      id INTEGER PRIMARY KEY,
+      plan_json TEXT NOT NULL,
+      settings_json TEXT NOT NULL,
+      aangemaakt_op TEXT DEFAULT (datetime('now'))
+    )`);
+  } catch { /* table may already exist */ }
+}
+
+// GET — fetch latest saved plan
+export async function GET() {
+  try {
+    await ensureMealplanTable();
+    const row = await db.all(sql`SELECT plan_json, settings_json FROM mealplan_cache ORDER BY id DESC LIMIT 1`) as { plan_json: string; settings_json: string }[];
+    if (row.length === 0) return NextResponse.json({ plan: null });
+    return NextResponse.json({ plan: JSON.parse(row[0].plan_json), settings: JSON.parse(row[0].settings_json) });
+  } catch {
+    return NextResponse.json({ plan: null });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +45,7 @@ export async function POST(req: NextRequest) {
 
     const client = new Anthropic();
     const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-haiku-4-5-20251001",
       max_tokens: 16000,
       messages: [{
         role: "user",
@@ -91,6 +117,13 @@ Zorg dat elke dag zo dicht mogelijk bij de targets zit (max 5% afwijking). Allee
     }
 
     const plan = JSON.parse(jsonMatch[0]);
+
+    // Save to DB so it persists
+    await ensureMealplanTable();
+    const settingsJson = JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen });
+    await db.run(sql`DELETE FROM mealplan_cache`);
+    await db.run(sql`INSERT INTO mealplan_cache (plan_json, settings_json) VALUES (${JSON.stringify(plan)}, ${settingsJson})`);
+
     return NextResponse.json(plan);
   } catch (error) {
     return NextResponse.json(

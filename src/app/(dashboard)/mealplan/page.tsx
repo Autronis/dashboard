@@ -278,9 +278,12 @@ export default function MealPlanPage() {
                 </button>
               ))}
               <div className="flex-1" />
-              <button onClick={generatePlan} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-accent/15 hover:bg-autronis-accent/25 text-autronis-accent rounded-xl text-xs font-medium transition-colors disabled:opacity-40 flex-shrink-0">
+              <button onClick={() => setShowSettings(v => !v)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/30 text-autronis-text-secondary rounded-xl text-xs font-medium transition-colors flex-shrink-0">
+                <Settings2 className="w-3 h-3" />
+              </button>
+              <button onClick={generatePlan} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-40 flex-shrink-0">
                 {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shuffle className="w-3 h-3" />}
-                Varieer
+                Nieuw weekplan
               </button>
             </div>
 

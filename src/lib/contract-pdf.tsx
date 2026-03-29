@@ -36,8 +36,8 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#1F2937",
     backgroundColor: "#FFFFFF",
-    paddingTop: 40,
-    paddingBottom: 60,
+    paddingTop: 55,
+    paddingBottom: 70,
   },
   // ===== HEADER =====
   headerBand: {
@@ -160,8 +160,8 @@ const styles = StyleSheet.create({
   signatureLine: {
     borderBottomWidth: 1,
     borderBottomColor: "#D1D5DB",
-    marginBottom: 6,
-    paddingBottom: 30,
+    marginBottom: 8,
+    paddingBottom: 40,
   },
   signatureSubLabel: {
     fontSize: 8,
@@ -358,7 +358,7 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
                 <Text style={styles.signatureSubLabel}>Datum:</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                <View style={[styles.signatureLine, { paddingBottom: 50 }]} />
+                <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
               </View>
               <View style={styles.signatureCol}>
                 <Text style={styles.signatureLabel}>Opdrachtgever</Text>
@@ -370,7 +370,7 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
                 <Text style={styles.signatureSubLabel}>Datum:</Text>
                 <View style={styles.signatureLine} />
                 <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                <View style={[styles.signatureLine, { paddingBottom: 50 }]} />
+                <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
               </View>
             </View>
           </View>

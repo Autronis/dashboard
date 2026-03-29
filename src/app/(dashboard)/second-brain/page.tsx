@@ -42,6 +42,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { AiZoekenTab } from "./ai-zoeken-tab";
 import { DetailModal } from "./detail-modal";
+import { VideoTab } from "./video-tab";
 
 const typeConfig = {
   tekst: { icon: FileText, label: "Tekst", color: "text-slate-400", bg: "bg-slate-500/15", border: "border-slate-500/20", accent: "#94a3b8" },
@@ -90,7 +91,7 @@ export default function SecondBrainPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<"feed" | "zoeken">("feed");
+  const [activeTab, setActiveTab] = useState<"feed" | "zoeken" | "video">("feed");
   const [typeFilter, setTypeFilter] = useState("alle");
   const [tagFilter, setTagFilter] = useState("");
   const [zoek, setZoek] = useState("");
@@ -645,6 +646,17 @@ export default function SecondBrainPage() {
           >
             AI Zoeken
           </button>
+          <button
+            onClick={() => setActiveTab("video")}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2.5 rounded-t-xl text-sm font-medium transition-colors border-b-2 -mb-px",
+              activeTab === "video"
+                ? "text-autronis-accent border-autronis-accent"
+                : "text-autronis-text-secondary border-transparent hover:text-autronis-text-primary"
+            )}
+          >
+            Video&apos;s
+          </button>
         </div>
 
         {/* Feed tab */}
@@ -1067,6 +1079,8 @@ export default function SecondBrainPage() {
         {activeTab === "zoeken" && (
           <AiZoekenTab onSelectItem={(item) => setSelectedItem(item)} />
         )}
+
+        {activeTab === "video" && <VideoTab />}
 
         {/* Detail modal */}
         {selectedItem && (

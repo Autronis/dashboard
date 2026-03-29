@@ -1,5 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Words/phrases that trigger Kie.ai content policy flags
+const BLOCKED_WORDS = [
+  "explosion", "explode", "exploding", "exploded", "blow up", "blowing up",
+  "destroy", "destruction", "shatter", "shattering", "smash", "smashing",
+  "crash", "crashing", "break apart", "breaking apart", "rip apart",
+  "tear apart", "burst", "bursting", "detonate", "detonation",
+  "weapon", "gun", "knife", "blood", "gore", "violence", "violent",
+  "kill", "death", "dead", "murder", "attack", "bomb", "bombing",
+  "fire", "burning", "flames", "smoke",
+  "nude", "naked", "nsfw", "sexual", "explicit",
+];
+
+function sanitizePrompt(prompt: string): string {
+  let clean = prompt;
+  for (const word of BLOCKED_WORDS) {
+    const regex = new RegExp(`\\b${word}\\b`, "gi");
+    // Replace with safe alternatives
+    if (["explosion", "explode", "exploding", "exploded"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "separation");
+    } else if (["shatter", "shattering"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "divide into pieces");
+    } else if (["destroy", "destruction"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "transform");
+    } else if (["break apart", "breaking apart", "rip apart", "tear apart"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "separate");
+    } else if (["burst", "bursting"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "expand");
+    } else if (["crash", "crashing", "smash", "smashing"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "impact");
+    } else if (["fire", "burning", "flames"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "glow");
+    } else if (["smoke"].includes(word.toLowerCase())) {
+      clean = clean.replace(regex, "mist");
+    } else {
+      clean = clean.replace(regex, "");
+    }
+  }
+  // Clean up double spaces
+  return clean.replace(/\s{2,}/g, " ").trim();
+}
+
 export async function POST(req: NextRequest) {
   const { prompt, imageUrl } = await req.json() as {
     prompt?: string;
@@ -11,7 +52,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body: Record<string, string | number> = {
-    prompt: prompt.slice(0, 500),
+    prompt: sanitizePrompt(prompt.slice(0, 500)),
     duration: 10,
     quality: "720p",
   };

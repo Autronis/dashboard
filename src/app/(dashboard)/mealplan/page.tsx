@@ -34,7 +34,10 @@ interface Dag {
 interface BoodschapItem {
   product: string;
   hoeveelheid: string;
+  nodig: string;
+  over: string;
   prijs: number;
+  prijsPerEenheid: string;
   afdeling: string;
 }
 

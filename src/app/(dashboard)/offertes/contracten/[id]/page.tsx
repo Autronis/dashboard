@@ -83,6 +83,8 @@ export default function ContractDetailPage() {
   const [risicos, setRisicos] = useState<Risico[] | null>(null);
   const [scanLoading, setScanLoading] = useState(false);
   const [selectedText, setSelectedText] = useState("");
+  const [aiAanpassingInput, setAiAanpassingInput] = useState("");
+  const [aiAanpassingLoading, setAiAanpassingLoading] = useState(false);
   const [herschrijfOpen, setHerschrijfOpen] = useState(false);
   const [herschrijfInstructie, setHerschrijfInstructie] = useState("");
   const [herschrijfLoading, setHerschrijfLoading] = useState(false);
@@ -189,6 +191,34 @@ export default function ContractDetailPage() {
       addToast(e instanceof Error ? e.message : "Scan mislukt", "fout");
     }
     setScanLoading(false);
+  }
+
+  async function handleAiAanpassing() {
+    if (!contract || !aiAanpassingInput.trim()) return;
+    setAiAanpassingLoading(true);
+    try {
+      const res = await fetch(`/api/contracten/${id}/herschrijf`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tekst: contract.inhoud, instructie: aiAanpassingInput.trim(), volledig: true }),
+      });
+      const d = await res.json() as { tekst?: string; fout?: string };
+      if (!res.ok) throw new Error(d.fout);
+      if (d.tekst) {
+        // Save the updated content
+        await fetch(`/api/contracten/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ inhoud: d.tekst }),
+        });
+        setContract(c => c ? { ...c, inhoud: d.tekst! } : c);
+        setAiAanpassingInput("");
+        addToast("Contract aangepast", "succes");
+      }
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Aanpassing mislukt", "fout");
+    }
+    setAiAanpassingLoading(false);
   }
 
   async function handleHerschrijf() {
@@ -410,6 +440,31 @@ export default function ContractDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Contract inhoud */}
           <div className="lg:col-span-2 space-y-4">
+            {/* AI Aanpassen — altijd zichtbaar */}
+            <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-semibold text-purple-300">AI Aanpassen</span>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={aiAanpassingInput}
+                  onChange={e => setAiAanpassingInput(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleAiAanpassing()}
+                  placeholder="Bijv. 'Verander huurprijs naar €500', 'Maak artikel 3 korter', 'Voeg een artikel over opzegtermijn toe'..."
+                  className="flex-1 bg-autronis-bg border border-purple-500/20 rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
+                />
+                <button
+                  onClick={handleAiAanpassing}
+                  disabled={aiAanpassingLoading || !aiAanpassingInput.trim()}
+                  className="px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {aiAanpassingLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Aanpassen
+                </button>
+              </div>
+            </div>
+
             {/* Herschrijf tooltip bij selectie */}
             <AnimatePresence>
               {selectedText && !herschrijfOpen && (

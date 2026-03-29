@@ -97,6 +97,11 @@ export default function MealPlanPage() {
   });
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
+  // Auto-save settings on change
+  useEffect(() => {
+    localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
+  }, [kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen]);
+
   // Warn if leaving during generation
   useEffect(() => {
     if (!loading) return;
@@ -105,27 +110,49 @@ export default function MealPlanPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [loading]);
 
+  // Check if a background generation finished while we were away
+  useEffect(() => {
+    const check = () => {
+      const saved = localStorage.getItem("autronis-mealplan");
+      const generating = localStorage.getItem("autronis-mealplan-generating");
+      if (saved && !plan) {
+        setPlan(JSON.parse(saved));
+        setShowSettings(false);
+      }
+      if (generating !== "true") {
+        setLoading(false);
+      }
+    };
+    check();
+    window.addEventListener("focus", check);
+    return () => window.removeEventListener("focus", check);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const generatePlan = async () => {
     setLoading(true);
-    // Save settings immediately
     localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
-    try {
-      const res = await fetch("/api/mealplan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
+    localStorage.setItem("autronis-mealplan-generating", "true");
+
+    // Fire and forget — works even if user navigates away
+    fetch("/api/mealplan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject())
+      .then((data) => {
+        localStorage.setItem("autronis-mealplan", JSON.stringify(data));
+        localStorage.removeItem("autronis-mealplan-generating");
+        setPlan(data);
+        setShowSettings(false);
+        setActiveDay("Maandag");
+        setLoading(false);
+      })
+      .catch(() => {
+        localStorage.removeItem("autronis-mealplan-generating");
+        setLoading(false);
       });
-      if (!res.ok) throw new Error("Genereren mislukt");
-      const data = await res.json();
-      setPlan(data);
-      localStorage.setItem("autronis-mealplan", JSON.stringify(data));
-      setShowSettings(false);
-      setActiveDay("Maandag");
-    } catch {
-      // error silently
-    } finally {
-      setLoading(false);
-    }
   };
 
   const macroBar = (label: string, waarde: number, target: number, kleur: keyof typeof macroKleuren) => {

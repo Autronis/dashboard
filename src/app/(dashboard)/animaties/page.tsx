@@ -229,7 +229,11 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
 
 export default function AnimatiesPage() {
   // ── Shared state
-  const [mode, setMode] = useState<Mode>("scroll-stop");
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window === "undefined") return "scroll-stop";
+    return (localStorage.getItem("animatie-mode") as Mode) || "scroll-stop";
+  });
+  useEffect(() => { localStorage.setItem("animatie-mode", mode); }, [mode]);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -343,13 +347,26 @@ export default function AnimatiesPage() {
   useEffect(() => { if (kieImgUrl.B) setKieStartFrame(kieImgUrl.B); }, [kieImgUrl.B]);
 
   // ── Video Animatie state
-  const [logoInput, setLogoInput] = useState("");
-  const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [logoInput, setLogoInput] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("video-animatie-input") ?? "";
+  });
+  const [logoImage, setLogoImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem("video-animatie-image"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
   const [logoTags, setLogoTags] = useState<string[]>([]);
   const [logoLoading, setLogoLoading] = useState(false);
   const [logoResult, setLogoResult] = useState<LogoResult | null>(null);
   const [logoError, setLogoError] = useState("");
   const [logoCopied, setLogoCopied] = useState(false);
+
+  // Persist video animatie state
+  useEffect(() => { localStorage.setItem("video-animatie-input", logoInput); }, [logoInput]);
+  useEffect(() => {
+    if (logoImage) localStorage.setItem("video-animatie-image", JSON.stringify(logoImage));
+    else localStorage.removeItem("video-animatie-image");
+  }, [logoImage]);
 
   // ── Logo Kie.ai video state
   const [logoKieFirstFrame, setLogoKieFirstFrame] = useState("");
@@ -851,9 +868,21 @@ export default function AnimatiesPage() {
 
   const startKieImgPolling = (tab: "A" | "B", taskId: string) => {
     setKieImgLoading(prev => ({ ...prev, [tab]: true }));
+    let pollCount = 0;
+    let errorCount = 0;
     kieImgPollingRef.current[tab] = setInterval(async () => {
+      pollCount++;
+      if (pollCount > 60) { // 4 min timeout for images
+        clearInterval(kieImgPollingRef.current[tab]!);
+        setKieImgError(prev => ({ ...prev, [tab]: "Timeout. Probeer opnieuw." }));
+        setKieImgLoading(prev => ({ ...prev, [tab]: false }));
+        localStorage.removeItem(`kie-img-pending-${tab}`);
+        return;
+      }
       try {
         const poll = await fetch(`/api/animaties/kie-image-status?taskId=${taskId}`);
+        if (!poll.ok) { errorCount++; if (errorCount >= 5) { clearInterval(kieImgPollingRef.current[tab]!); setKieImgError(prev => ({ ...prev, [tab]: "Server error." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); } return; }
+        errorCount = 0;
         const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
         if (result.status === "done" && result.imageUrl) {
           clearInterval(kieImgPollingRef.current[tab]!);
@@ -861,13 +890,16 @@ export default function AnimatiesPage() {
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
           localStorage.removeItem(`kie-img-pending-${tab}`);
           saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
-        } else if (result.status === "failed") {
+        } else if (result.status === "failed" || result.error) {
           clearInterval(kieImgPollingRef.current[tab]!);
           setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));
           setKieImgLoading(prev => ({ ...prev, [tab]: false }));
           localStorage.removeItem(`kie-img-pending-${tab}`);
         }
-      } catch { /* retry next interval */ }
+      } catch {
+        errorCount++;
+        if (errorCount >= 5) { clearInterval(kieImgPollingRef.current[tab]!); setKieImgError(prev => ({ ...prev, [tab]: "Verbinding verloren." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); }
+      }
     }, 4000);
   };
 
@@ -1017,9 +1049,31 @@ export default function AnimatiesPage() {
 
   const startLogoVideoPolling = (taskId: string) => {
     setLogoKieLoading(true);
+    let pollCount = 0;
+    let errorCount = 0;
     logoKiePollingRef.current = setInterval(async () => {
+      pollCount++;
+      // Auto-stop after 10 minutes (150 polls × 4s)
+      if (pollCount > 150) {
+        clearInterval(logoKiePollingRef.current!);
+        setLogoKieError("Video generatie timeout na 10 minuten. Probeer opnieuw.");
+        setLogoKieLoading(false);
+        localStorage.removeItem("logo-video-pending");
+        return;
+      }
       try {
         const poll = await fetch(`/api/animaties/kie-video-status?taskId=${taskId}`);
+        if (!poll.ok) {
+          errorCount++;
+          if (errorCount >= 5) {
+            clearInterval(logoKiePollingRef.current!);
+            setLogoKieError("Video status check mislukt (server error). Probeer opnieuw.");
+            setLogoKieLoading(false);
+            localStorage.removeItem("logo-video-pending");
+          }
+          return;
+        }
+        errorCount = 0; // Reset on success
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
           clearInterval(logoKiePollingRef.current!);
@@ -1027,13 +1081,21 @@ export default function AnimatiesPage() {
           setLogoKieLoading(false);
           localStorage.removeItem("logo-video-pending");
           saveToGalleryRef.current(result.videoUrl, "logo-animatie", true);
-        } else if (result.status === "failed") {
+        } else if (result.status === "failed" || result.error) {
           clearInterval(logoKiePollingRef.current!);
           setLogoKieError(result.error ?? "Generatie mislukt.");
           setLogoKieLoading(false);
           localStorage.removeItem("logo-video-pending");
         }
-      } catch { /* retry next interval */ }
+      } catch {
+        errorCount++;
+        if (errorCount >= 5) {
+          clearInterval(logoKiePollingRef.current!);
+          setLogoKieError("Verbinding verloren. Probeer opnieuw.");
+          setLogoKieLoading(false);
+          localStorage.removeItem("logo-video-pending");
+        }
+      }
     }, 4000);
   };
 

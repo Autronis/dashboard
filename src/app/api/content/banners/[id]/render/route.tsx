@@ -558,7 +558,7 @@ function OgBanner({
         position: "relative",
         width,
         height,
-        background: BG,
+        background: `radial-gradient(ellipse at 50% 40%, #0F2B30 0%, ${BG} 50%, #081215 100%)`,
         display: "flex",
         fontFamily: FONT,
         overflow: "hidden",
@@ -602,7 +602,7 @@ function OgBanner({
           left: "50%",
           width: Math.round(width * 0.9),
           height: Math.round(height * 0.55),
-          background: "radial-gradient(ellipse at center, rgba(45,212,168,0.18) 0%, rgba(45,212,168,0.06) 40%, transparent 70%)",
+          background: "radial-gradient(ellipse at center, rgba(45,212,168,0.35) 0%, rgba(45,212,168,0.18) 25%, rgba(45,212,168,0.08) 45%, rgba(45,212,168,0.02) 65%, transparent 80%)",
           transform: "translate(-50%, -50%)",
         }}
       />
@@ -688,7 +688,7 @@ function OgBanner({
             borderRadius: "999px",
             border: `${Math.round(2 * scale)}px solid ${NEON}`,
             background: "rgba(45,212,168,0.08)",
-            boxShadow: `0 0 ${Math.round(30 * scale)}px rgba(45,212,168,0.5), 0 0 ${Math.round(80 * scale)}px rgba(45,212,168,0.25), 0 0 ${Math.round(120 * scale)}px rgba(45,212,168,0.1)`,
+            boxShadow: `0 0 ${Math.round(25 * scale)}px rgba(45,212,168,0.8), 0 0 ${Math.round(70 * scale)}px rgba(45,212,168,0.5), 0 0 ${Math.round(140 * scale)}px rgba(45,212,168,0.2), inset 0 0 ${Math.round(40 * scale)}px rgba(45,212,168,0.1)`,
           }}
         >
           <OgIcon icon={icon} size={iconSize} />

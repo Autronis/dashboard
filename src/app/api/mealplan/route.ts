@@ -1,13 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { sql } from "drizzle-orm";
+import { sqlite, tursoClient } from "@/lib/db";
 import Anthropic from "@anthropic-ai/sdk";
+
+// Unified DB helpers that work with both better-sqlite3 (sync) and Turso/libsql (async)
+async function dbExec(query: string): Promise<void> {
+  if (sqlite) {
+    sqlite.exec(query);
+  } else if (tursoClient) {
+    await tursoClient.execute(query);
+  }
+}
+
+async function dbRun(query: string, params: unknown[] = []): Promise<void> {
+  if (sqlite) {
+    sqlite.prepare(query).run(...params);
+  } else if (tursoClient) {
+    await tursoClient.execute({ sql: query, args: params });
+  }
+}
+
+async function dbGet<T>(query: string, params: unknown[] = []): Promise<T | undefined> {
+  if (sqlite) {
+    return sqlite.prepare(query).get(...params) as T | undefined;
+  } else if (tursoClient) {
+    const result = await tursoClient.execute({ sql: query, args: params });
+    if (result.rows.length === 0) return undefined;
+    // libsql returns rows as arrays with column info — convert to object
+    const row = result.rows[0];
+    const obj: Record<string, unknown> = {};
+    for (let i = 0; i < result.columns.length; i++) {
+      obj[result.columns[i]] = row[result.columns[i]] ?? row[i];
+    }
+    return obj as T;
+  }
+  return undefined;
+}
 
 let tableReady = false;
 async function ensureTable() {
   if (tableReady) return;
-  await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
+  await dbExec(`CREATE TABLE IF NOT EXISTS mealplan_cache (
     id INTEGER PRIMARY KEY,
     status TEXT DEFAULT 'idle',
     plan_json TEXT,
@@ -73,19 +106,18 @@ async function triggerGeneration() {
   if (isGenerating) return;
   await ensureTable();
 
-  const rows = await db.all<{ settings_json: string }>(
-    sql`SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1`
+  const row = await dbGet<{ settings_json: string }>(
+    "SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1"
   );
-  const row = rows[0];
   if (!row) return;
 
   isGenerating = true;
-  await db.run(sql`UPDATE mealplan_cache SET status = 'generating', progress = 0`);
+  await dbRun("UPDATE mealplan_cache SET status = 'generating', progress = 0");
 
   const params = JSON.parse(row.settings_json);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    await db.run(sql`UPDATE mealplan_cache SET status = 'error'`);
+    await dbRun("UPDATE mealplan_cache SET status = 'error'");
     isGenerating = false;
     return;
   }
@@ -100,7 +132,7 @@ async function triggerGeneration() {
       const dag = await generateDay(client, DAGEN[i], params, dagNamen);
       dagen.push(dag);
       dagNamen.push(DAGEN[i]);
-      await db.run(sql`UPDATE mealplan_cache SET progress = ${i + 1}`);
+      await dbRun("UPDATE mealplan_cache SET progress = ?", [i + 1]);
     }
 
     const boodschappen = await generateBoodschappen(client, params);
@@ -119,10 +151,9 @@ async function triggerGeneration() {
       },
     };
 
-    const planJson = JSON.stringify(plan);
-    await db.run(sql`UPDATE mealplan_cache SET status = 'done', plan_json = ${planJson}, progress = 8`);
+    await dbRun("UPDATE mealplan_cache SET status = 'done', plan_json = ?, progress = 8", [JSON.stringify(plan)]);
   })().catch(async () => {
-    try { await db.run(sql`UPDATE mealplan_cache SET status = 'error'`); } catch { /* ignore */ }
+    try { await dbRun("UPDATE mealplan_cache SET status = 'error'"); } catch { /* ignore */ }
   }).finally(() => {
     isGenerating = false;
   });
@@ -133,10 +164,9 @@ export async function GET() {
   try {
     await ensureTable();
 
-    const rows = await db.all<{ status: string; plan_json: string | null; progress: number }>(
-      sql`SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1`
+    const row = await dbGet<{ status: string; plan_json: string | null; progress: number }>(
+      "SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1"
     );
-    const row = rows[0];
     if (!row) return NextResponse.json({ status: "none" });
 
     // Trigger background generation if pending
@@ -149,7 +179,7 @@ export async function GET() {
     }
     return NextResponse.json({ status: row.status, progress: row.progress || 0 });
   } catch (error) {
-    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout", status: "error" }, { status: 500 });
+    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout" }, { status: 500 });
   }
 }
 
@@ -160,10 +190,9 @@ export async function POST(req: NextRequest) {
     await ensureTable();
 
     const body = await req.json();
-    await db.run(sql`DELETE FROM mealplan_cache`);
-    const settingsJson = JSON.stringify(body);
-    await db.run(sql`INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ${settingsJson})`);
-    await triggerGeneration();
+    await dbRun("DELETE FROM mealplan_cache");
+    await dbRun("INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ?)", [JSON.stringify(body)]);
+    triggerGeneration().catch(() => {});
 
     return NextResponse.json({ status: "pending" });
   } catch (error) {

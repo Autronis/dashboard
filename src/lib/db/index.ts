@@ -9,6 +9,8 @@ const isTurso = !!process.env.TURSO_DATABASE_URL;
 let db: DrizzleDB;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let sqlite: any = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let tursoClient: any = null;
 
 if (isTurso) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -20,6 +22,7 @@ if (isTurso) {
     url: process.env.TURSO_DATABASE_URL!,
     authToken: process.env.TURSO_AUTH_TOKEN,
   });
+  tursoClient = client;
 
   // Auto-migrate Turso
   client.execute(`CREATE TABLE IF NOT EXISTS belasting_tips (
@@ -196,4 +199,4 @@ if (isTurso) {
   db = drizzleSqlite(sqliteDb, { schema });
 }
 
-export { db, sqlite };
+export { db, sqlite, tursoClient };

@@ -88,12 +88,15 @@ export default function MealPlanPage() {
     const saved = localStorage.getItem("autronis-mealplan");
     return saved ? JSON.parse(saved) : null;
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("autronis-mealplan-generating") === "true";
+  });
   const [activeDay, setActiveDay] = useState("Maandag");
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(() => {
     if (typeof window === "undefined") return true;
-    return !localStorage.getItem("autronis-mealplan");
+    return !localStorage.getItem("autronis-mealplan") && localStorage.getItem("autronis-mealplan-generating") !== "true";
   });
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
@@ -110,23 +113,27 @@ export default function MealPlanPage() {
     return () => window.removeEventListener("beforeunload", handler);
   }, [loading]);
 
-  // Check if a background generation finished while we were away
+  // Poll for background generation result
   useEffect(() => {
     const check = () => {
       const saved = localStorage.getItem("autronis-mealplan");
       const generating = localStorage.getItem("autronis-mealplan-generating");
-      if (saved && !plan) {
-        setPlan(JSON.parse(saved));
+      if (generating !== "true" && saved) {
+        const parsed = JSON.parse(saved);
+        setPlan(parsed);
         setShowSettings(false);
-      }
-      if (generating !== "true") {
         setLoading(false);
       }
     };
     check();
+    // Poll every second while generating
+    const interval = setInterval(() => {
+      if (localStorage.getItem("autronis-mealplan-generating") === "true") {
+        check();
+      }
+    }, 1000);
     window.addEventListener("focus", check);
-    return () => window.removeEventListener("focus", check);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => { clearInterval(interval); window.removeEventListener("focus", check); };
   }, []);
 
   const generatePlan = async () => {

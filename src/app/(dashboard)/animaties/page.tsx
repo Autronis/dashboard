@@ -2672,6 +2672,14 @@ export default function AnimatiesPage() {
                     className="flex items-center gap-1.5 px-4 py-2 bg-white/10 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-all">
                     <RotateCcw className="w-4 h-4" /> Laad in generator
                   </button>
+                  <button onClick={() => {
+                    const next = nextItem ?? prevItem;
+                    deleteGalleryItem(previewItem.id);
+                    setPreviewItem(next);
+                  }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-500/20 text-red-400 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
+                    <Trash2 className="w-4 h-4" /> Verwijder
+                  </button>
                 </div>
               </div>
             </div>

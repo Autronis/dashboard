@@ -122,7 +122,7 @@ async function triggerGeneration() {
     const planJson = JSON.stringify(plan);
     await db.run(sql`UPDATE mealplan_cache SET status = 'done', plan_json = ${planJson}, progress = 8`);
   })().catch(async () => {
-    await db.run(sql`UPDATE mealplan_cache SET status = 'error'`).catch(() => {});
+    try { await db.run(sql`UPDATE mealplan_cache SET status = 'error'`); } catch { /* ignore */ }
   }).finally(() => {
     isGenerating = false;
   });

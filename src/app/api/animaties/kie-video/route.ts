@@ -42,9 +42,10 @@ function sanitizePrompt(prompt: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  const { prompt, imageUrl } = await req.json() as {
+  const { prompt, imageUrl, duration } = await req.json() as {
     prompt?: string;
     imageUrl?: string;
+    duration?: number;
   };
 
   if (!prompt?.trim()) {
@@ -53,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const body: Record<string, string | number> = {
     prompt: sanitizePrompt(prompt.slice(0, 500)),
-    duration: 10,
+    duration: duration && [5, 10].includes(duration) ? duration : 5,
     quality: "720p",
   };
 

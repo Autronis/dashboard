@@ -36,6 +36,7 @@ interface BoodschapItem {
   hoeveelheid: string;
   nodig: string;
   over: string;
+  overWaarde?: number;
   prijs: number;
   prijsPerEenheid: string;
   afdeling: string;
@@ -429,10 +430,12 @@ export default function MealPlanPage() {
 
             {/* Boodschappenlijst — compact layout */}
             {boodschappenPerAfdeling && (() => {
-              const restjes = (plan.boodschappenlijst || []).filter((item: BoodschapItem) => item.over && item.over !== "0g" && item.over !== "0" && item.over !== "0ml");
+              const restjes = (plan.boodschappenlijst || []).filter((item: BoodschapItem) => item.over && item.over !== "0g" && item.over !== "0" && item.over !== "0ml" && item.over !== "0 stuks");
               const totaalPrijs = plan.totaalPrijs ?? 0;
-              const perDag = totaalPrijs / 7;
-              const perMaaltijd = totaalPrijs / (7 * 3);
+              const totaalOverWaarde = restjes.reduce((sum: number, item: BoodschapItem) => sum + (item.overWaarde ?? 0), 0);
+              const effectieveKosten = totaalPrijs - totaalOverWaarde;
+              const perDag = effectieveKosten / 7;
+              const perMaaltijd = effectieveKosten / (7 * 3);
 
               return (
                 <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-4 sm:p-5 space-y-3">
@@ -443,9 +446,12 @@ export default function MealPlanPage() {
                       <span className="text-sm font-medium text-autronis-text-primary">Boodschappenlijst</span>
                       <span className="text-[10px] text-autronis-text-secondary/50">({plan.boodschappenlijst?.length || 0})</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                       <span className="text-[10px] text-autronis-text-secondary/50">€{perDag.toFixed(2)}/dag</span>
                       <span className="text-[10px] text-autronis-text-secondary/50">€{perMaaltijd.toFixed(2)}/maaltijd</span>
+                      {totaalOverWaarde > 0 && (
+                        <span className="text-[10px] text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">€{totaalOverWaarde.toFixed(2)} over</span>
+                      )}
                       <div className="flex items-center gap-1 bg-emerald-500/15 px-2.5 py-1 rounded-lg">
                         <Euro className="w-3 h-3 text-emerald-400" />
                         <span className="text-sm font-bold text-emerald-400">€{totaalPrijs.toFixed(2)}</span>
@@ -471,17 +477,26 @@ export default function MealPlanPage() {
 
                   {/* Overblijft na deze week */}
                   {restjes.length > 0 && (
-                    <div className="pt-2 border-t border-emerald-500/20">
-                      <p className="text-[10px] font-medium text-amber-400 mb-1.5 flex items-center gap-1">
-                        <Salad className="w-3 h-3" /> Over na deze week — gebruik volgende week
-                      </p>
-                      <div className="flex flex-wrap gap-1">
+                    <div className="pt-3 border-t border-emerald-500/20">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-medium text-amber-400 flex items-center gap-1.5">
+                          <Salad className="w-3.5 h-3.5" /> Over na deze week ({restjes.length} producten)
+                        </p>
+                        {totaalOverWaarde > 0 && (
+                          <span className="text-xs font-bold text-amber-400">~€{totaalOverWaarde.toFixed(2)} waarde</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
                         {restjes.map((item: BoodschapItem, i: number) => (
-                          <span key={i} className="text-[9px] px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/15 rounded text-amber-400/80">
-                            {item.product} <span className="font-medium">+{item.over}</span>
-                          </span>
+                          <div key={i} className="flex items-center justify-between px-2 py-1 bg-amber-500/5 border border-amber-500/10 rounded-lg">
+                            <span className="text-[10px] text-autronis-text-primary truncate">{item.product}</span>
+                            <span className="text-[10px] font-semibold text-amber-400 ml-1 flex-shrink-0">+{item.over}</span>
+                          </div>
                         ))}
                       </div>
+                      <p className="text-[10px] text-autronis-text-secondary/40 mt-1.5">
+                        Effectieve weekkosten: <span className="text-emerald-400 font-medium">€{effectieveKosten.toFixed(2)}</span> (boodschappen minus restjeswaarde)
+                      </p>
                     </div>
                   )}
                 </div>

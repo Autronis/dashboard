@@ -36,13 +36,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#1F2937",
     backgroundColor: "#FFFFFF",
+    paddingTop: 40,
     paddingBottom: 60,
   },
   // ===== HEADER =====
   headerBand: {
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 50,
-    paddingTop: 35,
+    paddingTop: 0,
     paddingBottom: 25,
   },
   headerContent: {
@@ -83,7 +84,7 @@ const styles = StyleSheet.create({
   // ===== BODY =====
   body: {
     paddingHorizontal: 50,
-    paddingTop: 25,
+    paddingTop: 15,
   },
   // ===== TITEL =====
   titel: {
@@ -286,17 +287,16 @@ function parseMarkdownToElements(markdown: string): React.ReactElement[] {
   const elements: React.ReactElement[] = [];
   sections.forEach((section, idx) => {
     if (section.heading) {
-      // wrap={false} keeps the entire article section on one page if possible
-      // If too long, it will wrap but the heading stays with at least 3 lines
+      // Let sections wrap across pages, but keep heading with at least first 2 items
       elements.push(
-        <View key={`section-${idx}`} minPresenceAhead={60} wrap={false}>
-          <Text style={styles.articleHeading}>{section.heading}</Text>
+        <View key={`section-${idx}`} wrap>
+          <Text style={styles.articleHeading} minPresenceAhead={40}>{section.heading}</Text>
           {section.content}
         </View>
       );
     } else {
       elements.push(
-        <View key={`section-${idx}`} wrap={false}>
+        <View key={`section-${idx}`} wrap>
           {section.content}
         </View>
       );
@@ -342,8 +342,8 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
           {/* Content — auto page breaks with sections kept together */}
           {contentElements.map((el) => el)}
 
-          {/* Signature section — starts on new page if needed */}
-          <View style={styles.signatureSection} break>
+          {/* Signature section — keep together, moves to next page if not enough space */}
+          <View style={styles.signatureSection} wrap={false}>
             <Text style={styles.signatureTitle}>
               Aldus overeengekomen en in tweevoud ondertekend:
             </Text>

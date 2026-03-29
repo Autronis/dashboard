@@ -151,19 +151,20 @@ ${ingredientenLijst}
 
 REGELS:
 1. ELKE ingrediënt hierboven MOET terug te vinden zijn in de boodschappenlijst. Sla NIETS over.
-2. Gebruik echte Lidl producten en verpakkingsgroottes (bijv. kipfilet 1kg, havermout 500g pak, melk 1L, eieren doos 10 stuks)
-3. Rond ALTIJD OMHOOG af naar hele verpakkingen (1.2kg kip nodig → 2 pakken van 1kg)
+2. Gebruik echte Lidl producten en verpakkingsgroottes (bijv. kipfilet 500g pak, havermout 500g pak, melk 1L, eieren doos 10 stuks)
+3. Rond ALTIJD OMHOOG af naar hele verpakkingen (1.2kg kip nodig → 3 pakken van 500g)
 4. "hoeveelheid" = hoeveel verpakkingen ik moet kopen (bijv. "2 pakken", "3 zakken", "1 doos")
 5. "nodig" = hoeveel ik daadwerkelijk gebruik voor de recepten (bijv. "1.2kg", "8 stuks", "350ml")
-6. "over" = wat er overblijft na de week (bijv. "800g", "2 stuks", "150ml"). Bereken: gekocht - nodig. Als 0, zet "0"
+6. "over" = VERPLICHT — wat er overblijft na de week. BEREKEN DIT ALTIJD: gekocht hoeveelheid minus nodig. Bijv: 3 pakken van 500g = 1500g gekocht, 1200g nodig → "300g" over. Als precies op, zet "0". NOOIT leeg laten!
 7. "prijs" = TOTAALPRIJS voor die hoeveelheid verpakkingen
 8. "prijsPerEenheid" = prijs per verpakking (bijv. "€5.99/kg", "€1.29/pak", "€2.49/L")
-9. Realistische Nederlandse Lidl prijzen (2026). Wees accuraat — kijk naar huidige prijzen.
+9. Realistische Nederlandse Lidl prijzen (2026).
 10. Combineer vergelijkbare items waar logisch, maar houd vlees/zuivel/granen apart
 11. "totaalPrijs" = exacte som van alle "prijs" waarden
+12. "overWaarde" = geschatte geldwaarde van wat er overblijft (bijv. als 300g van een 500g pak over is → 60% van de pakprijs)
 
 JSON (ALLEEN JSON, geen tekst):
-{"boodschappenlijst":[{"product":"Kipfilet","hoeveelheid":"2 pakken (1kg)","nodig":"1.2kg","over":"800g","prijs":11.98,"prijsPerEenheid":"€5.99/pak","afdeling":"vlees/vis"}],"totaalPrijs":85.50}`,
+{"boodschappenlijst":[{"product":"Kipfilet","hoeveelheid":"3 pakken (500g)","nodig":"1.2kg","over":"300g","overWaarde":1.99,"prijs":11.97,"prijsPerEenheid":"€3.99/pak","afdeling":"vlees/vis"}],"totaalPrijs":85.50,"totaalOverWaarde":12.50}`,
     }],
   });
 

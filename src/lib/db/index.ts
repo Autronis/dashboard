@@ -96,6 +96,16 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 
+  // Mealplan cache table
+  client.execute(`CREATE TABLE IF NOT EXISTS mealplan_cache (
+    id INTEGER PRIMARY KEY,
+    status TEXT DEFAULT 'idle',
+    plan_json TEXT,
+    settings_json TEXT,
+    progress INTEGER DEFAULT 0,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => { /* table may already exist */ });
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

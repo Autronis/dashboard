@@ -39,17 +39,18 @@ export async function POST(req: NextRequest) {
     output_format: "jpg",
   };
 
-  // If a reference image URL is provided (e.g. image A for generating B),
-  // include it as reference for style/content consistency
+  // If a reference image URL is provided, use img2img mode
+  // image_url = img2img (transforms the input image), strength controls how much to change
   if (referenceImageUrl) {
-    // Ensure URL is publicly accessible — convert local paths to public URLs
     let publicRefUrl = referenceImageUrl;
     if (referenceImageUrl.startsWith("/api/") || referenceImageUrl.startsWith("/data/")) {
       const baseUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
       publicRefUrl = `${baseUrl}${referenceImageUrl}`;
     }
-    input.ref_image = publicRefUrl;
-    input.ref_strength = refStrength ?? 0.6;
+    input.image_url = publicRefUrl;
+    // strength: 0 = exact copy, 1 = ignore image completely
+    // Lower = more like original, Higher = more creative
+    input.strength = 1 - (refStrength ?? 0.6); // Invert: UI 0.85 ref = 0.15 strength (very close to original)
   }
 
   // Debug: log what we're sending

@@ -48,6 +48,8 @@ async function ensureTable() {
     progress INTEGER DEFAULT 0,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
+  // Add progress column if missing (table existed before this column was added)
+  try { await dbExec("ALTER TABLE mealplan_cache ADD COLUMN progress INTEGER DEFAULT 0"); } catch { /* already exists */ }
   tableReady = true;
 }
 

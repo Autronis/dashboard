@@ -475,6 +475,27 @@ export default function MealPlanPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Restjes samenvatting */}
+                {(() => {
+                  const restjes = (plan.boodschappenlijst || []).filter((item: BoodschapItem) => item.over && item.over !== "0g" && item.over !== "0" && item.over !== "0ml");
+                  if (restjes.length === 0) return null;
+                  return (
+                    <div className="mt-4 pt-4 border-t border-emerald-500/20">
+                      <p className="text-xs font-medium text-amber-400 mb-2 flex items-center gap-1.5">
+                        <Salad className="w-3.5 h-3.5" /> Overblijft na deze week ({restjes.length} producten)
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {restjes.map((item: BoodschapItem, i: number) => (
+                          <span key={i} className="text-[10px] px-2 py-1 bg-amber-500/10 border border-amber-500/20 rounded-lg text-amber-400/80">
+                            {item.product}: <span className="font-medium">{item.over}</span>
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-autronis-text-secondary/30 mt-2">Tip: gebruik restjes als basis voor je volgende weekplan</p>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </motion.div>

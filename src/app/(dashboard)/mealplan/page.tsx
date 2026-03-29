@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -73,14 +73,15 @@ const macroKleuren = {
 };
 
 export default function MealPlanPage() {
-  const [kcal, setKcal] = useState(2750);
-  const [eiwit, setEiwit] = useState(190);
-  const [koolhydraten, setKoolhydraten] = useState(300);
-  const [vezels, setVezels] = useState(30);
-  const [suiker, setSuiker] = useState(60);
-  const [vet, setVet] = useState(110);
-  const [voorkeuren, setVoorkeuren] = useState("");
-  const [uitsluitingen, setUitsluitingen] = useState("");
+  const savedSettings = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("autronis-mealplan-settings") || "null") : null;
+  const [kcal, setKcal] = useState(savedSettings?.kcal ?? 2750);
+  const [eiwit, setEiwit] = useState(savedSettings?.eiwit ?? 190);
+  const [koolhydraten, setKoolhydraten] = useState(savedSettings?.koolhydraten ?? 300);
+  const [vezels, setVezels] = useState(savedSettings?.vezels ?? 30);
+  const [suiker, setSuiker] = useState(savedSettings?.suiker ?? 60);
+  const [vet, setVet] = useState(savedSettings?.vet ?? 110);
+  const [voorkeuren, setVoorkeuren] = useState(savedSettings?.voorkeuren ?? "");
+  const [uitsluitingen, setUitsluitingen] = useState(savedSettings?.uitsluitingen ?? "");
 
   const [plan, setPlan] = useState<WeekPlan | null>(() => {
     if (typeof window === "undefined") return null;
@@ -96,8 +97,18 @@ export default function MealPlanPage() {
   });
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
+  // Warn if leaving during generation
+  useEffect(() => {
+    if (!loading) return;
+    const handler = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [loading]);
+
   const generatePlan = async () => {
     setLoading(true);
+    // Save settings immediately
+    localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
     try {
       const res = await fetch("/api/mealplan", {
         method: "POST",

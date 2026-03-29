@@ -1434,8 +1434,18 @@ export default function AnimatiesPage() {
               </div>
             </div>
 
-            {/* Generate buttons */}
-            <div className="flex justify-end gap-2">
+            {/* Duration selector + Generate buttons */}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-autronis-text-tertiary">Duur:</span>
+                {[5, 10].map(d => (
+                  <button key={d} onClick={() => setLogoKieDuration(d)}
+                    className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${logoKieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
+                    {d}s
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex gap-2">
               {logoLoading ? (
                 <button onClick={stopGenerate} className="flex items-center gap-2 px-5 py-2.5 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-sm font-semibold hover:bg-red-500/30 transition-all">
                   <X className="w-4 h-4" /> Stop
@@ -1497,6 +1507,7 @@ export default function AnimatiesPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({
                             prompt: finalPrompt,
+                            duration: logoKieDuration,
                             ...(startFrameUrl && { imageUrl: startFrameUrl }),
                           }),
                         });
@@ -1515,15 +1526,63 @@ export default function AnimatiesPage() {
                   </button>
                 </>
               )}
+              </div>
             </div>
             {logoError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoError}</p>}
             {logoKieError && <p className="mt-3 text-sm text-autronis-danger bg-autronis-danger/10 border border-autronis-danger/20 rounded-lg px-3 py-2">{logoKieError}</p>}
             {logoKieVideoUrl && (
               <div className="mt-3 bg-autronis-card border border-autronis-border rounded-xl overflow-hidden p-4">
                 <video src={logoKieVideoUrl} controls className="w-full rounded-lg border border-autronis-border" onError={() => setLogoKieVideoUrl(null)} />
-                <a href={logoKieVideoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
-                  <ExternalLink className="w-3.5 h-3.5" /> Download video
-                </a>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={logoKieVideoUrl} download className="flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                    <ExternalLink className="w-3.5 h-3.5" /> Download video
+                  </a>
+                </div>
+                {/* Pas video aan */}
+                <div className="mt-3 pt-3 border-t border-autronis-border">
+                  <p className="text-xs font-semibold text-autronis-text-secondary mb-2">Pas video aan</p>
+                  <div className="flex gap-2">
+                    <input
+                      placeholder="Bijv: 'langzamer draaien', 'meer glow', 'zonder de kabels'..."
+                      className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
+                      onKeyDown={async (e) => {
+                        if (e.key !== "Enter") return;
+                        const aanpassing = (e.target as HTMLInputElement).value.trim();
+                        if (!aanpassing) return;
+                        // Append adjustment to existing prompt and regenerate
+                        const newPrompt = `${logoInput}. ADJUSTMENT: ${aanpassing}`;
+                        setLogoInput(newPrompt);
+                        (e.target as HTMLInputElement).value = "";
+                        // Trigger video regeneration
+                        setLogoKieLoading(true); setLogoKieError(""); setLogoKieVideoUrl(null);
+                        try {
+                          let startFrameUrl = logoKieFirstFrame.trim();
+                          if (!startFrameUrl && logoImage?.base64) {
+                            const uploadRes = await fetch("/api/assets/upload", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ base64: logoImage.base64, mediaType: logoImage.mediaType }),
+                            });
+                            const uploadData = await uploadRes.json() as { url?: string };
+                            if (uploadData.url) startFrameUrl = uploadData.url;
+                          }
+                          if (!startFrameUrl && logoImage?.preview?.startsWith("http")) startFrameUrl = logoImage.preview;
+                          const finalPrompt = `${newPrompt.slice(0, 450)}. CRITICAL: Clean white background (#FFFFFF) throughout. Match reference image exactly.`;
+                          const res = await fetch("/api/animaties/kie-video", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ prompt: finalPrompt, duration: logoKieDuration, ...(startFrameUrl && { imageUrl: startFrameUrl }) }),
+                          });
+                          const data = await res.json() as { taskId?: string; error?: string };
+                          if (!res.ok || data.error) { setLogoKieError(data.error ?? "Fout."); setLogoKieLoading(false); return; }
+                          localStorage.setItem("logo-video-pending", JSON.stringify({ taskId: data.taskId, startedAt: Date.now() }));
+                          startLogoVideoPolling(data.taskId!);
+                        } catch { setLogoKieError("Er ging iets mis."); setLogoKieLoading(false); }
+                      }}
+                    />
+                    <span className="text-[10px] text-autronis-text-tertiary self-center whitespace-nowrap">Enter = genereer</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>

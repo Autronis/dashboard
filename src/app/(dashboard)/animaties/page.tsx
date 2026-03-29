@@ -2674,46 +2674,45 @@ export default function AnimatiesPage() {
             {/* Prev arrow */}
             {prevItem && (
               <button onClick={e => { e.stopPropagation(); setPreviewItem(prevItem); }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
-                <ChevronLeft className="w-6 h-6" />
+                className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
+                <ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             )}
             {/* Next arrow */}
             {nextItem && (
               <button onClick={e => { e.stopPropagation(); setPreviewItem(nextItem); }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
-                <ChevronRight className="w-6 h-6" />
+                className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 z-10 w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-black/50 hover:bg-black/70 flex items-center justify-center text-white/70 hover:text-white transition-all">
+                <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             )}
 
-            <div className="relative max-w-4xl w-full mx-16" onClick={e => e.stopPropagation()}>
-              <button onClick={() => setPreviewItem(null)} className="absolute -top-10 right-0 text-white/70 hover:text-white transition-all">
-                <X className="w-6 h-6" />
-              </button>
-              {/* Counter */}
-              <span className="absolute -top-10 left-0 text-xs text-white/40">
-                {currentIdx + 1} / {filteredGallery.length}
-              </span>
+            <div className="relative max-w-4xl w-full mx-3 sm:mx-16" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-white/40">{currentIdx + 1} / {filteredGallery.length}</span>
+                <button onClick={() => setPreviewItem(null)} className="text-white/70 hover:text-white transition-all">
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
               {previewItem.videoUrl ? (
-                <video key={previewItem.id} src={previewItem.videoUrl} controls autoPlay className="w-full rounded-xl" />
+                <video key={previewItem.id} src={previewItem.videoUrl} controls autoPlay playsInline className="w-full rounded-xl" />
               ) : previewItem.afbeeldingUrl ? (
                 <img src={previewItem.afbeeldingUrl} alt={previewItem.productNaam} className="w-full rounded-xl" />
               ) : null}
-              <div className="flex items-center justify-between mt-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-3 gap-2">
                 <div>
                   <p className="text-sm font-semibold text-white">{previewItem.productNaam}</p>
                   <p className="text-xs text-white/50">
                     {previewItem.type} · {previewItem.aangemaaktOp ? new Date(previewItem.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : ""}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <a href={previewItem.videoUrl ?? previewItem.afbeeldingUrl ?? "#"} download
-                    className="flex items-center gap-1.5 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all">
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-autronis-accent text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-autronis-accent-hover transition-all">
                     <ExternalLink className="w-4 h-4" /> Download
                   </a>
                   <button onClick={() => { loadGalleryItem(previewItem); setPreviewItem(null); }}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-white/10 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-all">
-                    <RotateCcw className="w-4 h-4" /> Laad in generator
+                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-white/10 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-white/20 transition-all">
+                    <RotateCcw className="w-4 h-4" /> Generator
                   </button>
                   <button onClick={() => {
                     const next = nextItem ?? prevItem;

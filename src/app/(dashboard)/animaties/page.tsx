@@ -1194,7 +1194,7 @@ export default function AnimatiesPage() {
   }, {});
 
   return (
-    <div className="flex flex-col h-full min-h-screen p-6 relative bg-autronis-bg text-autronis-text-primary">
+    <div className="flex flex-col h-full min-h-screen p-3 sm:p-6 relative bg-autronis-bg text-autronis-text-primary">
       <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none z-50" />
 
       {/* Header */}

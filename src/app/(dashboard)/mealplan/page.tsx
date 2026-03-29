@@ -88,7 +88,7 @@ export default function MealPlanPage() {
   const [loading, setLoading] = useState(false);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [activeDay, setActiveDay] = useState("Maandag");
-  const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
+  const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [showBoodschappen, setShowBoodschappen] = useState(false);
 
@@ -264,7 +264,7 @@ export default function MealPlanPage() {
               {plan.dagen.map((dag) => (
                 <button
                   key={dag.dag}
-                  onClick={() => { setActiveDay(dag.dag); setExpandedMeal(null); }}
+                  onClick={() => { setActiveDay(dag.dag); setExpandedMeals(new Set()); }}
                   className={cn(
                     "px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-colors flex-shrink-0",
                     activeDay === dag.dag ? "bg-autronis-accent text-white" : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
@@ -298,9 +298,22 @@ export default function MealPlanPage() {
             {/* Meals for active day */}
             {activeDag && (
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => {
+                      if (!activeDag) return;
+                      const allKeys = activeDag.maaltijden.map(m => `${activeDay}-${m.type}`);
+                      const allOpen = allKeys.every(k => expandedMeals.has(k));
+                      setExpandedMeals(allOpen ? new Set() : new Set(allKeys));
+                    }}
+                    className="text-[10px] text-autronis-text-tertiary hover:text-autronis-accent transition-all"
+                  >
+                    {activeDag.maaltijden.every(m => expandedMeals.has(`${activeDay}-${m.type}`)) ? "Alles inklappen" : "Alles uitklappen"}
+                  </button>
+                </div>
                 {activeDag.maaltijden.map((maaltijd, i) => {
                   const mealKey = `${activeDay}-${maaltijd.type}`;
-                  const isExpanded = expandedMeal === mealKey;
+                  const isExpanded = expandedMeals.has(mealKey);
                   return (
                     <motion.div
                       key={mealKey}
@@ -309,7 +322,7 @@ export default function MealPlanPage() {
                       transition={{ delay: i * 0.06 }}
                       className={cn("bg-autronis-card border border-autronis-border hover:border-autronis-accent/20 rounded-2xl overflow-hidden transition-colors border-l-[3px]", dagKleuren[activeDay] || "border-l-autronis-accent")}
                     >
-                      <button onClick={() => setExpandedMeal(isExpanded ? null : mealKey)} className="w-full flex items-center gap-4 p-4">
+                      <button onClick={() => setExpandedMeals(prev => { const n = new Set(prev); if (n.has(mealKey)) n.delete(mealKey); else n.add(mealKey); return n; })} className="w-full flex items-center gap-4 p-4">
                         <span className="text-2xl">{typeIcons[maaltijd.type] || "🍽️"}</span>
                         <div className="flex-1 text-left min-w-0">
                           <p className="text-xs text-autronis-text-secondary/50 uppercase tracking-wider">{maaltijd.type}</p>
@@ -367,44 +380,72 @@ export default function MealPlanPage() {
               </div>
             )}
 
-            {/* Boodschappenlijst */}
-            <AnimatePresence>
-              {showBoodschappen && boodschappenPerAfdeling && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-                  <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <ShoppingCart className="w-4 h-4 text-emerald-400" />
-                        <span className="text-sm font-medium text-autronis-text-primary">Boodschappenlijst — Lidl</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 bg-emerald-500/15 px-3 py-1.5 rounded-lg">
-                        <Euro className="w-3 h-3 text-emerald-400" />
-                        <span className="text-sm font-bold text-emerald-400">€{plan.totaalPrijs?.toFixed(2) || "0.00"}</span>
+            {/* Week totaal macros */}
+            {plan.weekTotaal && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+                <p className="text-sm font-medium text-autronis-text-primary mb-3 flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-orange-400" /> Week Totaal
+                </p>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                  {[
+                    { label: "Kcal", value: plan.weekTotaal.kcal, target: kcal * 7, color: "text-orange-400" },
+                    { label: "Eiwit", value: plan.weekTotaal.eiwit, target: eiwit * 7, unit: "g", color: "text-red-400" },
+                    { label: "Koolh.", value: plan.weekTotaal.kh, target: koolhydraten * 7, unit: "g", color: "text-blue-400" },
+                    { label: "Vet", value: plan.weekTotaal.vet, target: vet * 7, unit: "g", color: "text-yellow-400" },
+                    { label: "Vezels", value: plan.weekTotaal.vezels, target: vezels * 7, unit: "g", color: "text-green-400" },
+                    { label: "Suiker", value: plan.weekTotaal.suiker, target: suiker * 7, unit: "g", color: "text-pink-400" },
+                  ].map(m => (
+                    <div key={m.label} className="text-center bg-autronis-bg rounded-xl p-2.5">
+                      <p className="text-[10px] text-autronis-text-secondary/50 uppercase">{m.label}</p>
+                      <p className={cn("text-base font-bold tabular-nums", m.color)}>{Math.round(m.value)}{m.unit}</p>
+                      <p className="text-[10px] text-autronis-text-secondary/30 tabular-nums">/ {Math.round(m.target)}{m.unit}</p>
+                      <div className="h-1 bg-autronis-border/30 rounded-full mt-1.5 overflow-hidden">
+                        <div className={cn("h-full rounded-full", m.color.replace("text-", "bg-"))} style={{ width: `${Math.min(100, Math.round((m.value / m.target) * 100))}%`, opacity: 0.6 }} />
                       </div>
                     </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-autronis-text-secondary/40 mt-2 text-center">Gemiddeld per dag: {Math.round(plan.weekTotaal.kcal / 7)} kcal · {Math.round(plan.weekTotaal.eiwit / 7)}g eiwit · {Math.round(plan.weekTotaal.kh / 7)}g kh · {Math.round(plan.weekTotaal.vet / 7)}g vet</p>
+              </div>
+            )}
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {Object.entries(boodschappenPerAfdeling).map(([afdeling, items]) => (
-                        <div key={afdeling}>
-                          <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/50 font-medium mb-2">{afdeling}</p>
-                          <div className="space-y-1">
-                            {items.map((item, i) => (
-                              <div key={i} className="flex items-center justify-between text-xs py-1 border-b border-autronis-border/10 last:border-0">
-                                <div className="flex-1 min-w-0">
-                                  <span className="text-autronis-text-primary">{item.product}</span>
-                                  <span className="text-autronis-text-secondary/40 ml-2">{item.hoeveelheid}</span>
-                                </div>
-                                <span className="text-autronis-text-secondary flex-shrink-0 ml-2">€{item.prijs.toFixed(2)}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+            {/* Boodschappenlijst — altijd zichtbaar */}
+            {boodschappenPerAfdeling && (
+              <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingCart className="w-4 h-4 text-emerald-400" />
+                    <span className="text-sm font-medium text-autronis-text-primary">Boodschappenlijst — hele week</span>
+                    <span className="text-[10px] text-autronis-text-secondary/50">({plan.boodschappenlijst?.length || 0} producten)</span>
                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  <div className="flex items-center gap-1.5 bg-emerald-500/15 px-3 py-1.5 rounded-lg">
+                    <Euro className="w-3 h-3 text-emerald-400" />
+                    <span className="text-sm font-bold text-emerald-400">€{plan.totaalPrijs?.toFixed(2) || "0.00"}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {Object.entries(boodschappenPerAfdeling).map(([afdeling, items]) => (
+                    <div key={afdeling}>
+                      <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/50 font-medium mb-2">{afdeling}</p>
+                      <div className="space-y-1">
+                        {items.map((item, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs py-1.5 border-b border-autronis-border/10 last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <span className="text-autronis-text-primary font-medium">{item.product}</span>
+                            </div>
+                            <div className="flex items-center gap-3 flex-shrink-0 ml-2">
+                              <span className="text-autronis-text-secondary tabular-nums">{item.hoeveelheid}</span>
+                              <span className="text-emerald-400 font-medium tabular-nums w-14 text-right">€{item.prijs.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </motion.div>
         )}
       </div>

@@ -282,19 +282,21 @@ function parseMarkdownToElements(markdown: string): React.ReactElement[] {
     sections.push(current);
   }
 
-  // Wrap each section in a View that tries to keep heading + first few lines together
+  // Wrap each section — keep heading + content together, avoid orphaned headings
   const elements: React.ReactElement[] = [];
   sections.forEach((section, idx) => {
     if (section.heading) {
+      // wrap={false} keeps the entire article section on one page if possible
+      // If too long, it will wrap but the heading stays with at least 3 lines
       elements.push(
-        <View key={`section-${idx}`} minPresenceAhead={40}>
+        <View key={`section-${idx}`} minPresenceAhead={60} wrap={false}>
           <Text style={styles.articleHeading}>{section.heading}</Text>
           {section.content}
         </View>
       );
     } else {
       elements.push(
-        <View key={`section-${idx}`}>
+        <View key={`section-${idx}`} wrap={false}>
           {section.content}
         </View>
       );
@@ -308,72 +310,40 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
   const contentElements = parseMarkdownToElements(contract.inhoud);
   const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis";
 
-  // Split content into pages (rough estimate: ~45 lines per page)
-  const ELEMENTS_PER_PAGE = 40;
-  const pages: React.ReactElement[][] = [];
-
-  for (let i = 0; i < contentElements.length; i += ELEMENTS_PER_PAGE) {
-    pages.push(contentElements.slice(i, i + ELEMENTS_PER_PAGE));
-  }
-
-  // If empty, at least one page
-  if (pages.length === 0) pages.push([]);
-
-  const totalPages = pages.length + 1; // +1 for signature page
-
   return (
     <Document>
-      {pages.map((pageContent, pageIndex) => (
-        <Page key={pageIndex} size="A4" style={styles.page}>
-          {/* Header on first page only */}
-          {pageIndex === 0 && (
-            <>
-              <View style={styles.headerBand}>
-                <View style={styles.headerContent}>
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                    <Image src={getLogoSrc()} style={{ width: 50, height: 25 }} />
-                    <View>
-                      <Text style={styles.bedrijfsnaam}>{bedrijfsnaam.toUpperCase()}</Text>
-                      <Text style={styles.tagline}>AI & Automatisering</Text>
-                    </View>
-                  </View>
-                  <View style={styles.headerRight}>
-                    <Text style={styles.documentType}>{getTypeLabel(contract.type)}</Text>
-                    <Text style={styles.documentSubtype}>Vertrouwelijk document</Text>
-                  </View>
-                </View>
+      {/* Single wrapping page — React-PDF handles page breaks automatically */}
+      <Page size="A4" style={styles.page} wrap>
+        {/* Header — fixed on first page */}
+        <View style={styles.headerBand} fixed={false}>
+          <View style={styles.headerContent}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Image src={getLogoSrc()} style={{ width: 50, height: 25 }} />
+              <View>
+                <Text style={styles.bedrijfsnaam}>{bedrijfsnaam.toUpperCase()}</Text>
+                <Text style={styles.tagline}>AI & Automatisering</Text>
               </View>
-              <View style={styles.accentLine} />
-            </>
-          )}
-
-          <View style={styles.body}>
-            {/* Title on first page */}
-            {pageIndex === 0 && (
-              <>
-                <Text style={styles.titel}>{contract.titel}</Text>
-                <Text style={styles.datumText}>
-                  Datum: {contract.aangemaaktOp ? formatDatumPDF(contract.aangemaaktOp) : "\u2014"}
-                </Text>
-              </>
-            )}
-
-            {/* Content */}
-            {pageContent.map((el) => el)}
+            </View>
+            <View style={styles.headerRight}>
+              <Text style={styles.documentType}>{getTypeLabel(contract.type)}</Text>
+              <Text style={styles.documentSubtype}>Vertrouwelijk document</Text>
+            </View>
           </View>
+        </View>
+        <View style={styles.accentLine} />
 
-          {/* Footer */}
-          <View style={styles.footer} fixed>
-            <Text style={styles.footerText}>{bedrijfsnaam} | {bedrijf.email || "zakelijk@autronis.com"}</Text>
-            <Text style={styles.footerCenter}>Pagina {pageIndex + 1} van {totalPages}</Text>
-          </View>
-        </Page>
-      ))}
-
-      {/* Signature page */}
-      <Page size="A4" style={styles.page}>
         <View style={styles.body}>
-          <View style={styles.signatureSection}>
+          {/* Title */}
+          <Text style={styles.titel}>{contract.titel}</Text>
+          <Text style={styles.datumText}>
+            Datum: {contract.aangemaaktOp ? formatDatumPDF(contract.aangemaaktOp) : "\u2014"}
+          </Text>
+
+          {/* Content — auto page breaks with sections kept together */}
+          {contentElements.map((el) => el)}
+
+          {/* Signature section — starts on new page if needed */}
+          <View style={styles.signatureSection} break>
             <Text style={styles.signatureTitle}>
               Aldus overeengekomen en in tweevoud ondertekend:
             </Text>
@@ -406,10 +376,10 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
           </View>
         </View>
 
-        {/* Footer */}
+        {/* Footer — fixed on every page */}
         <View style={styles.footer} fixed>
           <Text style={styles.footerText}>{bedrijfsnaam} | {bedrijf.email || "zakelijk@autronis.com"}</Text>
-          <Text style={styles.footerCenter}>Pagina {totalPages} van {totalPages}</Text>
+          <Text style={styles.footerCenter} render={({ pageNumber, totalPages: tp }) => `Pagina ${pageNumber} van ${tp}`} />
         </View>
       </Page>
     </Document>

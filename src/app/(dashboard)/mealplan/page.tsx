@@ -405,7 +405,22 @@ export default function MealPlanPage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[10px] text-autronis-text-secondary/40 mt-2 text-center">Gemiddeld per dag: {Math.round(plan.weekTotaal.kcal / 7)} kcal · {Math.round(plan.weekTotaal.eiwit / 7)}g eiwit · {Math.round(plan.weekTotaal.kh / 7)}g kh · {Math.round(plan.weekTotaal.vet / 7)}g vet</p>
+                <div className="mt-3 pt-3 border-t border-autronis-border/30">
+                  <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/50 font-medium mb-2 text-center">Gemiddeld per dag</p>
+                  <div className="flex justify-center gap-4 flex-wrap">
+                    {[
+                      { label: "Kcal", value: Math.round(plan.weekTotaal.kcal / 7), target: kcal, color: "text-orange-400", bg: "bg-orange-500/10" },
+                      { label: "Eiwit", value: Math.round(plan.weekTotaal.eiwit / 7), target: eiwit, unit: "g", color: "text-red-400", bg: "bg-red-500/10" },
+                      { label: "Koolh.", value: Math.round(plan.weekTotaal.kh / 7), target: koolhydraten, unit: "g", color: "text-blue-400", bg: "bg-blue-500/10" },
+                      { label: "Vet", value: Math.round(plan.weekTotaal.vet / 7), target: vet, unit: "g", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+                    ].map(m => (
+                      <div key={m.label} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg", m.bg)}>
+                        <span className={cn("text-sm font-bold tabular-nums", m.color)}>{m.value}{m.unit}</span>
+                        <span className="text-[10px] text-autronis-text-secondary/40">/ {m.target}{m.unit} {m.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
 

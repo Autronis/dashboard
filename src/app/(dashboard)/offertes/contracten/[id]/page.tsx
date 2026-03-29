@@ -124,7 +124,8 @@ export default function ContractDetailPage() {
       }
     }
     document.addEventListener("mouseup", handleSelection);
-    return () => document.removeEventListener("mouseup", handleSelection);
+    document.addEventListener("touchend", handleSelection);
+    return () => { document.removeEventListener("mouseup", handleSelection); document.removeEventListener("touchend", handleSelection); };
   }, []);
 
   async function handleStatusWijzig(nieuweStatus: string) {

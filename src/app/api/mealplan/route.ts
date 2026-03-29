@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { sqlite } from "@/lib/db";
+import { db } from "@/lib/db";
+import { sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
-if (sqlite) {
-  sqlite.exec(`CREATE TABLE IF NOT EXISTS mealplan_cache (
+let tableReady = false;
+async function ensureTable() {
+  if (tableReady) return;
+  await db.run(sql`CREATE TABLE IF NOT EXISTS mealplan_cache (
     id INTEGER PRIMARY KEY,
     status TEXT DEFAULT 'idle',
     plan_json TEXT,
@@ -12,6 +15,7 @@ if (sqlite) {
     progress INTEGER DEFAULT 0,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
+  tableReady = true;
 }
 
 let isGenerating = false;
@@ -46,7 +50,7 @@ Alleen JSON.`,
 }
 
 async function generateBoodschappen(client: Anthropic, params: Record<string, unknown>): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
-  const { kcal, eiwit, koolhydraten, vezels, suiker, vet } = params;
+  const { kcal, eiwit, koolhydraten, vet } = params;
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
@@ -65,19 +69,23 @@ Max 25 items. Alleen JSON.`,
   return JSON.parse(match[0]);
 }
 
-function triggerGeneration() {
-  if (isGenerating || !sqlite) return;
+async function triggerGeneration() {
+  if (isGenerating) return;
+  await ensureTable();
 
-  const row = sqlite.prepare("SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1").get() as { settings_json: string } | undefined;
+  const rows = await db.all<{ settings_json: string }>(
+    sql`SELECT settings_json FROM mealplan_cache WHERE status = 'pending' LIMIT 1`
+  );
+  const row = rows[0];
   if (!row) return;
 
   isGenerating = true;
-  sqlite.prepare("UPDATE mealplan_cache SET status = 'generating', progress = 0").run();
+  await db.run(sql`UPDATE mealplan_cache SET status = 'generating', progress = 0`);
 
   const params = JSON.parse(row.settings_json);
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    sqlite.prepare("UPDATE mealplan_cache SET status = 'error'").run();
+    await db.run(sql`UPDATE mealplan_cache SET status = 'error'`);
     isGenerating = false;
     return;
   }
@@ -92,7 +100,7 @@ function triggerGeneration() {
       const dag = await generateDay(client, DAGEN[i], params, dagNamen);
       dagen.push(dag);
       dagNamen.push(DAGEN[i]);
-      sqlite!.prepare("UPDATE mealplan_cache SET progress = ?").run(i + 1);
+      await db.run(sql`UPDATE mealplan_cache SET progress = ${i + 1}`);
     }
 
     const boodschappen = await generateBoodschappen(client, params);
@@ -101,12 +109,20 @@ function triggerGeneration() {
       dagen,
       boodschappenlijst: boodschappen.boodschappenlijst,
       totaalPrijs: boodschappen.totaalPrijs,
-      weekTotaal: { kcal: params.kcal * 7, eiwit: params.eiwit * 7, kh: params.koolhydraten * 7, vet: params.vet * 7, vezels: params.vezels * 7, suiker: params.suiker * 7 },
+      weekTotaal: {
+        kcal: (params.kcal as number) * 7,
+        eiwit: (params.eiwit as number) * 7,
+        kh: (params.koolhydraten as number) * 7,
+        vet: (params.vet as number) * 7,
+        vezels: (params.vezels as number) * 7,
+        suiker: (params.suiker as number) * 7,
+      },
     };
 
-    sqlite!.prepare("UPDATE mealplan_cache SET status = 'done', plan_json = ?, progress = 8").run(JSON.stringify(plan));
-  })().catch(() => {
-    sqlite!.prepare("UPDATE mealplan_cache SET status = 'error'").run();
+    const planJson = JSON.stringify(plan);
+    await db.run(sql`UPDATE mealplan_cache SET status = 'done', plan_json = ${planJson}, progress = 8`);
+  })().catch(async () => {
+    await db.run(sql`UPDATE mealplan_cache SET status = 'error'`).catch(() => {});
   }).finally(() => {
     isGenerating = false;
   });
@@ -114,10 +130,13 @@ function triggerGeneration() {
 
 // GET
 export async function GET() {
-  if (!sqlite) return NextResponse.json({ status: "none" });
-  triggerGeneration();
+  await ensureTable();
+  await triggerGeneration();
 
-  const row = sqlite.prepare("SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1").get() as { status: string; plan_json: string | null; progress: number } | undefined;
+  const rows = await db.all<{ status: string; plan_json: string | null; progress: number }>(
+    sql`SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1`
+  );
+  const row = rows[0];
   if (!row) return NextResponse.json({ status: "none" });
   if (row.status === "done" && row.plan_json) {
     return NextResponse.json({ status: "done", plan: JSON.parse(row.plan_json) });
@@ -129,12 +148,13 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
-    if (!sqlite) return NextResponse.json({ fout: "Geen DB" }, { status: 500 });
+    await ensureTable();
 
     const body = await req.json();
-    sqlite.prepare("DELETE FROM mealplan_cache").run();
-    sqlite.prepare("INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ?)").run(JSON.stringify(body));
-    triggerGeneration();
+    await db.run(sql`DELETE FROM mealplan_cache`);
+    const settingsJson = JSON.stringify(body);
+    await db.run(sql`INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ${settingsJson})`);
+    await triggerGeneration();
 
     return NextResponse.json({ status: "pending" });
   } catch (error) {

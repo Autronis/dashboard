@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   const body: Record<string, string | number> = {
     prompt: sanitizePrompt(prompt.slice(0, 500)),
-    duration: duration && [5, 10].includes(duration) ? duration : 5,
+    duration: duration && [5, 7, 10].includes(duration) ? duration : 5,
     quality: "720p",
   };
 

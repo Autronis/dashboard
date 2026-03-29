@@ -1436,7 +1436,7 @@ export default function AnimatiesPage() {
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-autronis-text-tertiary">Duur:</span>
-                {[5, 10].map(d => (
+                {[5, 7, 10].map(d => (
                   <button key={d} onClick={() => setLogoKieDuration(d)}
                     className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${logoKieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
                     {d}s
@@ -2135,7 +2135,7 @@ export default function AnimatiesPage() {
                   )}
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1">
-                      {[5, 10].map(d => (
+                      {[5, 7, 10].map(d => (
                         <button key={d} onClick={() => setKieDuration(d)}
                           className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
                           {d}s {d === 5 ? "(~€0,52)" : "(~€1,04)"}
@@ -2492,7 +2492,7 @@ export default function AnimatiesPage() {
                 )}
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1">
-                    {[5, 10].map(d => (
+                    {[5, 7, 10].map(d => (
                       <button key={d} onClick={() => setKieDuration(d)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${kieDuration === d ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"}`}>
                         {d}s {d === 5 ? "(~€0,52)" : "(~€1,04)"}

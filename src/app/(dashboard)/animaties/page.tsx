@@ -134,7 +134,7 @@ const VIDEO_TRANSITIE_PRESETS = [
 
 // ─── Gallery Card ────────────────────────────────────────────────────────────
 
-function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProjectChange, projects }: {
+function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProjectChange, onPreview, projects }: {
   item: GalleryItem;
   selected: boolean;
   onSelect: (id: number) => void;
@@ -142,6 +142,7 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
   onDelete: (id: number) => void;
   onLoad: (item: GalleryItem) => void;
   onProjectChange: (id: number, projectId: number | null) => void;
+  onPreview: (item: GalleryItem) => void;
   projects: ProjectOption[];
 }) {
   const tags = item.tags ? item.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
@@ -151,17 +152,17 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
       {/* Thumbnail */}
       <div className="relative">
         {item.videoUrl ? (
-          <a href={item.videoUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-black">
+          <div className="block aspect-video bg-black cursor-pointer" onClick={() => onPreview(item)}>
             <video src={item.videoUrl} className="w-full h-full object-contain" muted />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
               <Play className="w-8 h-8 text-white opacity-60 group-hover:opacity-100 transition-all" />
             </div>
             <span className="absolute top-1.5 right-1.5 text-[9px] px-1.5 py-0.5 rounded bg-purple-500/80 text-white font-bold">VIDEO</span>
-          </a>
+          </div>
         ) : item.afbeeldingUrl ? (
-          <a href={item.afbeeldingUrl} target="_blank" rel="noopener noreferrer" className="block aspect-video bg-white">
+          <div className="block aspect-video bg-white cursor-pointer" onClick={() => onPreview(item)}>
             <img src={item.afbeeldingUrl} alt={item.productNaam} className="w-full h-full object-contain" />
-          </a>
+          </div>
         ) : (
           <div className="aspect-video bg-autronis-bg flex items-center justify-center cursor-pointer" onClick={() => onLoad(item)}>
             <Image className="w-8 h-8 text-autronis-text-tertiary" />
@@ -375,6 +376,9 @@ export default function AnimatiesPage() {
   const [logoKieVideoUrl, setLogoKieVideoUrl] = useState<string | null>(null);
   const [logoKieError, setLogoKieError] = useState("");
   const logoKiePollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Preview modal state
+  const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
 
   // ── Gallery state
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
@@ -867,38 +871,35 @@ export default function AnimatiesPage() {
   };
 
   const startKieImgPolling = (tab: "A" | "B", taskId: string) => {
+    if (kieImgPollingRef.current[tab]) clearInterval(kieImgPollingRef.current[tab]!);
     setKieImgLoading(prev => ({ ...prev, [tab]: true }));
     let pollCount = 0;
     let errorCount = 0;
+    let completed = false;
     kieImgPollingRef.current[tab] = setInterval(async () => {
+      if (completed) return;
       pollCount++;
-      if (pollCount > 60) { // 4 min timeout for images
-        clearInterval(kieImgPollingRef.current[tab]!);
-        setKieImgError(prev => ({ ...prev, [tab]: "Timeout. Probeer opnieuw." }));
-        setKieImgLoading(prev => ({ ...prev, [tab]: false }));
-        localStorage.removeItem(`kie-img-pending-${tab}`);
+      if (pollCount > 60) {
+        completed = true; clearInterval(kieImgPollingRef.current[tab]!); kieImgPollingRef.current[tab] = null;
+        setKieImgError(prev => ({ ...prev, [tab]: "Timeout." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`);
         return;
       }
       try {
         const poll = await fetch(`/api/animaties/kie-image-status?taskId=${taskId}`);
-        if (!poll.ok) { errorCount++; if (errorCount >= 5) { clearInterval(kieImgPollingRef.current[tab]!); setKieImgError(prev => ({ ...prev, [tab]: "Server error." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); } return; }
+        if (!poll.ok) { errorCount++; if (errorCount >= 5) { completed = true; clearInterval(kieImgPollingRef.current[tab]!); kieImgPollingRef.current[tab] = null; setKieImgError(prev => ({ ...prev, [tab]: "Server error." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); } return; }
         errorCount = 0;
         const result = await poll.json() as { status: string; imageUrl?: string; error?: string };
         if (result.status === "done" && result.imageUrl) {
-          clearInterval(kieImgPollingRef.current[tab]!);
-          setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! }));
-          setKieImgLoading(prev => ({ ...prev, [tab]: false }));
-          localStorage.removeItem(`kie-img-pending-${tab}`);
+          completed = true; clearInterval(kieImgPollingRef.current[tab]!); kieImgPollingRef.current[tab] = null;
+          setKieImgUrl(prev => ({ ...prev, [tab]: result.imageUrl! })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`);
           saveToGalleryRef.current(result.imageUrl!, "scroll-stop");
         } else if (result.status === "failed" || result.error) {
-          clearInterval(kieImgPollingRef.current[tab]!);
-          setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Generatie mislukt." }));
-          setKieImgLoading(prev => ({ ...prev, [tab]: false }));
-          localStorage.removeItem(`kie-img-pending-${tab}`);
+          completed = true; clearInterval(kieImgPollingRef.current[tab]!); kieImgPollingRef.current[tab] = null;
+          setKieImgError(prev => ({ ...prev, [tab]: result.error ?? "Mislukt." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`);
         }
       } catch {
         errorCount++;
-        if (errorCount >= 5) { clearInterval(kieImgPollingRef.current[tab]!); setKieImgError(prev => ({ ...prev, [tab]: "Verbinding verloren." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); }
+        if (errorCount >= 5) { completed = true; clearInterval(kieImgPollingRef.current[tab]!); kieImgPollingRef.current[tab] = null; setKieImgError(prev => ({ ...prev, [tab]: "Verbinding verloren." })); setKieImgLoading(prev => ({ ...prev, [tab]: false })); localStorage.removeItem(`kie-img-pending-${tab}`); }
       }
     }, 4000);
   };
@@ -1048,14 +1049,18 @@ export default function AnimatiesPage() {
   };
 
   const startLogoVideoPolling = (taskId: string) => {
+    // Clear any existing polling first
+    if (logoKiePollingRef.current) clearInterval(logoKiePollingRef.current);
     setLogoKieLoading(true);
     let pollCount = 0;
     let errorCount = 0;
+    let completed = false;
     logoKiePollingRef.current = setInterval(async () => {
+      if (completed) return; // Prevent double-fire
       pollCount++;
-      // Auto-stop after 10 minutes (150 polls × 4s)
       if (pollCount > 150) {
-        clearInterval(logoKiePollingRef.current!);
+        completed = true;
+        clearInterval(logoKiePollingRef.current!); logoKiePollingRef.current = null;
         setLogoKieError("Video generatie timeout na 10 minuten. Probeer opnieuw.");
         setLogoKieLoading(false);
         localStorage.removeItem("logo-video-pending");
@@ -1065,36 +1070,28 @@ export default function AnimatiesPage() {
         const poll = await fetch(`/api/animaties/kie-video-status?taskId=${taskId}`);
         if (!poll.ok) {
           errorCount++;
-          if (errorCount >= 5) {
-            clearInterval(logoKiePollingRef.current!);
-            setLogoKieError("Video status check mislukt (server error). Probeer opnieuw.");
-            setLogoKieLoading(false);
-            localStorage.removeItem("logo-video-pending");
-          }
+          if (errorCount >= 5) { completed = true; clearInterval(logoKiePollingRef.current!); logoKiePollingRef.current = null; setLogoKieError("Server error."); setLogoKieLoading(false); localStorage.removeItem("logo-video-pending"); }
           return;
         }
-        errorCount = 0; // Reset on success
+        errorCount = 0;
         const result = await poll.json() as { status: string; videoUrl?: string; error?: string };
         if (result.status === "done" && result.videoUrl) {
-          clearInterval(logoKiePollingRef.current!);
+          completed = true;
+          clearInterval(logoKiePollingRef.current!); logoKiePollingRef.current = null;
           setLogoKieVideoUrl(result.videoUrl);
           setLogoKieLoading(false);
           localStorage.removeItem("logo-video-pending");
           saveToGalleryRef.current(result.videoUrl, "logo-animatie", true);
         } else if (result.status === "failed" || result.error) {
-          clearInterval(logoKiePollingRef.current!);
+          completed = true;
+          clearInterval(logoKiePollingRef.current!); logoKiePollingRef.current = null;
           setLogoKieError(result.error ?? "Generatie mislukt.");
           setLogoKieLoading(false);
           localStorage.removeItem("logo-video-pending");
         }
       } catch {
         errorCount++;
-        if (errorCount >= 5) {
-          clearInterval(logoKiePollingRef.current!);
-          setLogoKieError("Verbinding verloren. Probeer opnieuw.");
-          setLogoKieLoading(false);
-          localStorage.removeItem("logo-video-pending");
-        }
+        if (errorCount >= 5) { completed = true; clearInterval(logoKiePollingRef.current!); logoKiePollingRef.current = null; setLogoKieError("Verbinding verloren."); setLogoKieLoading(false); localStorage.removeItem("logo-video-pending"); }
       }
     }, 4000);
   };
@@ -2605,7 +2602,7 @@ export default function AnimatiesPage() {
                   <span className="text-xs text-autronis-text-tertiary">({items.length})</span>
                 </summary>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-3 border-t border-autronis-border">
-                  {items.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} projects={projectOptions} />)}
+                  {items.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} projects={projectOptions} />)}
                 </div>
               </details>
             ))}
@@ -2613,10 +2610,44 @@ export default function AnimatiesPage() {
         ) : (
           /* Grid view */
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredGallery.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} projects={projectOptions} />)}
+            {filteredGallery.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} projects={projectOptions} />)}
           </div>
         )}
       </div>
+
+      {/* ═══ Preview Modal ═══ */}
+      {previewItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm" onClick={() => setPreviewItem(null)}>
+          <div className="relative max-w-4xl w-full mx-4" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setPreviewItem(null)} className="absolute -top-10 right-0 text-white/70 hover:text-white transition-all">
+              <X className="w-6 h-6" />
+            </button>
+            {previewItem.videoUrl ? (
+              <video src={previewItem.videoUrl} controls autoPlay className="w-full rounded-xl" />
+            ) : previewItem.afbeeldingUrl ? (
+              <img src={previewItem.afbeeldingUrl} alt={previewItem.productNaam} className="w-full rounded-xl" />
+            ) : null}
+            <div className="flex items-center justify-between mt-3">
+              <div>
+                <p className="text-sm font-semibold text-white">{previewItem.productNaam}</p>
+                <p className="text-xs text-white/50">
+                  {previewItem.type} · {previewItem.aangemaaktOp ? new Date(previewItem.aangemaaktOp + "Z").toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" }) : ""}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a href={previewItem.videoUrl ?? previewItem.afbeeldingUrl ?? "#"} download
+                  className="flex items-center gap-1.5 px-4 py-2 bg-autronis-accent text-white rounded-lg text-sm font-semibold hover:bg-autronis-accent-hover transition-all">
+                  <ExternalLink className="w-4 h-4" /> Download
+                </a>
+                <button onClick={() => { loadGalleryItem(previewItem); setPreviewItem(null); }}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-white/10 text-white rounded-lg text-sm font-semibold hover:bg-white/20 transition-all">
+                  <RotateCcw className="w-4 h-4" /> Laad in generator
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

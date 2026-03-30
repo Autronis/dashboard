@@ -81,44 +81,99 @@ export default function VideoStudioPage() {
     const bericht = tekst ?? input.trim();
     if (!bericht || loading) return;
     setInput("");
-    const berichtTekst = refImage ? `${bericht} [afbeelding bijgevoegd als referentie]` : bericht;
+    const berichtTekst = refImage ? `${bericht} [referentie bijgevoegd${videoFrames.length > 0 ? ` — ${videoFrames.length} video frames` : ""}]` : bericht;
     setBerichten(prev => [...prev, { rol: "gebruiker", tekst: berichtTekst }]);
     setLoading(true);
     scrollToBottom();
 
-    try {
-      const res = await fetch("/api/content/videos/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bericht,
-          geschiedenis: berichten,
-          referentieVideos,
-          huidigeScript: script,
-          // Send video frames (multiple) or single image
-          ...(videoFrames.length > 0
-            ? { videoFrames }
-            : refImage ? { imageBase64: refImage.base64, mediaType: refImage.mediaType } : {}),
-        }),
-      });
-      // Clear after sending
-      setRefImage(null);
-      setVideoFrames([]);
-      const data = await res.json() as { antwoord?: string; script?: { scenes: Scene[] }; fout?: string };
-      if (data.antwoord) {
-        const nieuwBericht: ChatBericht = { rol: "ai", tekst: data.antwoord, script: data.script };
-        setBerichten(prev => [...prev, nieuwBericht]);
-        if (data.script?.scenes) {
-          setScript(data.script);
-          setVideoUrl(null);
+    // Save pending state so it survives navigation
+    localStorage.setItem("video-studio-pending", "true");
+
+    const payload = {
+      bericht,
+      geschiedenis: berichten,
+      referentieVideos,
+      huidigeScript: script,
+      ...(videoFrames.length > 0
+        ? { videoFrames }
+        : refImage ? { imageBase64: refImage.base64, mediaType: refImage.mediaType } : {}),
+    };
+
+    // Clear refs immediately
+    setRefImage(null);
+    setVideoFrames([]);
+
+    // Fire the request — use a detached promise so it continues even if component unmounts
+    const fetchPromise = fetch("/api/content/videos/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    // Store the promise result handler
+    fetchPromise
+      .then(res => res.json())
+      .then((data: { antwoord?: string; script?: { scenes: Scene[] }; fout?: string }) => {
+        localStorage.removeItem("video-studio-pending");
+        if (data.antwoord) {
+          // Save to localStorage so it's available even if user navigated away
+          const nieuwBericht: ChatBericht = { rol: "ai", tekst: data.antwoord, script: data.script };
+          const huidigeBerichten = JSON.parse(localStorage.getItem("video-studio-chat") ?? "[]") as ChatBericht[];
+          huidigeBerichten.push(nieuwBericht);
+          localStorage.setItem("video-studio-chat", JSON.stringify(huidigeBerichten));
+
+          if (data.script?.scenes) {
+            localStorage.setItem("video-studio-script", JSON.stringify(data.script));
+          }
+
+          // Update state if component is still mounted
+          setBerichten(prev => [...prev, nieuwBericht]);
+          if (data.script?.scenes) {
+            setScript(data.script);
+            setVideoUrl(null);
+          }
         }
-      }
-    } catch {
-      addToast("Er ging iets mis", "fout");
-    }
-    setLoading(false);
-    scrollToBottom();
+        setLoading(false);
+        scrollToBottom();
+      })
+      .catch(() => {
+        localStorage.removeItem("video-studio-pending");
+        setLoading(false);
+      });
   };
+
+  // Resume loading state if a request was pending when user left
+  useEffect(() => {
+    const pending = localStorage.getItem("video-studio-pending");
+    if (pending === "true") {
+      // Check if result has arrived since we last saved berichten
+      const savedChat = JSON.parse(localStorage.getItem("video-studio-chat") ?? "[]") as ChatBericht[];
+      if (savedChat.length > berichten.length) {
+        // Result arrived while we were away — update state
+        setBerichten(savedChat);
+        const savedScript = localStorage.getItem("video-studio-script");
+        if (savedScript) try { setScript(JSON.parse(savedScript)); } catch { /* ignore */ }
+        localStorage.removeItem("video-studio-pending");
+      } else {
+        // Still waiting — show loading
+        setLoading(true);
+        // Poll localStorage for the result
+        const poll = setInterval(() => {
+          const chat = JSON.parse(localStorage.getItem("video-studio-chat") ?? "[]") as ChatBericht[];
+          if (chat.length > berichten.length || localStorage.getItem("video-studio-pending") !== "true") {
+            clearInterval(poll);
+            setBerichten(chat);
+            const s = localStorage.getItem("video-studio-script");
+            if (s) try { setScript(JSON.parse(s)); } catch { /* ignore */ }
+            setLoading(false);
+            localStorage.removeItem("video-studio-pending");
+            scrollToBottom();
+          }
+        }, 1000);
+        return () => clearInterval(poll);
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const renderVideo = async () => {
     if (!script) return;
@@ -372,20 +427,20 @@ export default function VideoStudioPage() {
                     videoEl.src = URL.createObjectURL(file);
                     videoEl.onloadedmetadata = () => {
                       const duration = videoEl.duration;
-                      const frameCount = 6;
+                      const frameCount = 4;
                       const frames: { base64: string; mediaType: string }[] = [];
                       let currentFrame = 0;
+                      const maxSize = 360;
 
                       const captureFrame = () => {
+                        const scale = Math.min(maxSize / videoEl.videoWidth, maxSize / videoEl.videoHeight);
+                        const w = Math.round(videoEl.videoWidth * scale);
+                        const h = Math.round(videoEl.videoHeight * scale);
                         const canvas = document.createElement("canvas");
-                        canvas.width = Math.min(videoEl.videoWidth, 720);
-                        canvas.height = Math.min(videoEl.videoHeight, 720);
-                        const ctx = canvas.getContext("2d");
-                        if (ctx) {
-                          const scale = Math.min(720 / videoEl.videoWidth, 720 / videoEl.videoHeight);
-                          ctx.drawImage(videoEl, 0, 0, videoEl.videoWidth * scale, videoEl.videoHeight * scale);
-                        }
-                        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext("2d")?.drawImage(videoEl, 0, 0, w, h);
+                        const dataUrl = canvas.toDataURL("image/jpeg", 0.6);
                         frames.push({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg" });
 
                         if (currentFrame === 0) {

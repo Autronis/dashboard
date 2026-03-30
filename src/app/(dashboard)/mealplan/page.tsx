@@ -90,8 +90,14 @@ export default function MealPlanPage() {
   const [voorkeuren, setVoorkeuren] = useState(savedSettings?.voorkeuren ?? "");
   const [uitsluitingen, setUitsluitingen] = useState(savedSettings?.uitsluitingen ?? "");
 
-  const [plan, setPlan] = useState<WeekPlan | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [plan, setPlan] = useState<WeekPlan | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem("autronis-mealplan-data"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [loading, setLoading] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("autronis-mealplan-loading") === "true";
+  });
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [activeDay, setActiveDay] = useState("Maandag");
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
@@ -146,37 +152,47 @@ export default function MealPlanPage() {
     localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
   }, [kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen]);
 
+  // Persist plan to localStorage
+  useEffect(() => {
+    if (plan) localStorage.setItem("autronis-mealplan-data", JSON.stringify(plan));
+  }, [plan]);
+
   const [progress, setProgress] = useState(0);
 
-  // Load plan from server on mount (once, not polling)
+  // On mount: use localStorage plan if available, otherwise show settings
   useEffect(() => {
     if (initialLoaded) return;
-    fetch("/api/mealplan")
-      .then((res) => res.ok ? res.json() : null)
-      .then((data) => {
-        if (!data) { setShowSettings(true); setInitialLoaded(true); return; }
-        if (data.status === "done" && data.plan) {
-          setPlan(data.plan);
-          setShowSettings(false);
-        } else {
-          setShowSettings(true);
-        }
-        setInitialLoaded(true);
-      })
-      .catch(() => { setInitialLoaded(true); setShowSettings(true); });
-  }, [initialLoaded]);
+    if (plan) {
+      // Already have plan from localStorage
+      setShowSettings(false);
+    } else if (loading) {
+      // Was generating — show loading state (fetch is still running in background)
+      // But if loading was stuck (page was closed), clean up after 5 min
+      const loadingStart = localStorage.getItem("autronis-mealplan-loading");
+      if (loadingStart === "true") {
+        // Can't recover the fetch — reset loading
+        setLoading(false);
+        localStorage.removeItem("autronis-mealplan-loading");
+        setShowSettings(true);
+      }
+    } else {
+      setShowSettings(true);
+    }
+    setInitialLoaded(true);
+  }, [initialLoaded, plan, loading]);
 
   // Shared generation logic
   const doGenerate = async (extraParams?: Record<string, unknown>) => {
     setLoading(true);
+    localStorage.setItem("autronis-mealplan-loading", "true");
     setShowSettings(false);
     setPlan(null);
+    localStorage.removeItem("autronis-mealplan-data");
     setProgress(0);
     try {
-      // Update progress indicator
       const progressTimer = setInterval(() => {
         setProgress(prev => Math.min(prev + 1, 7));
-      }, 8000); // ~8 sec per dag
+      }, 8000);
 
       const res = await fetch("/api/mealplan", {
         method: "POST",
@@ -188,9 +204,10 @@ export default function MealPlanPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({ fout: "Server error" })) as { fout?: string };
-        setLoading(false);
-        setShowSettings(true);
         addToast(err.fout ?? "Weekplan genereren mislukt", "fout");
+        setShowSettings(true);
+        setLoading(false);
+        localStorage.removeItem("autronis-mealplan-loading");
         return;
       }
 
@@ -207,11 +224,12 @@ export default function MealPlanPage() {
         setShowSettings(true);
         addToast(data.fout ?? "Weekplan genereren mislukt", "fout");
       }
-    } catch (e) {
+    } catch {
       setShowSettings(true);
       addToast("Verbinding verloren of timeout — probeer opnieuw", "fout");
     }
     setLoading(false);
+    localStorage.removeItem("autronis-mealplan-loading");
   };
 
   // Nieuw weekplan — geen restjes, volledig vers

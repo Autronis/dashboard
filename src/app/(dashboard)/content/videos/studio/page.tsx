@@ -54,6 +54,7 @@ export default function VideoStudioPage() {
   const [showScript, setShowScript] = useState(false);
   const [referentieVideos, setReferentieVideos] = useState<string[]>([]);
   const [refImage, setRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [videoFrames, setVideoFrames] = useState<{ base64: string; mediaType: string }[]>([]);
   const [gallery, setGallery] = useState<{ id: number; afbeeldingUrl: string | null; productNaam: string }[]>([]);
   const [showGallery, setShowGallery] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -94,11 +95,15 @@ export default function VideoStudioPage() {
           geschiedenis: berichten,
           referentieVideos,
           huidigeScript: script,
-          ...(refImage && { imageBase64: refImage.base64, mediaType: refImage.mediaType }),
+          // Send video frames (multiple) or single image
+          ...(videoFrames.length > 0
+            ? { videoFrames }
+            : refImage ? { imageBase64: refImage.base64, mediaType: refImage.mediaType } : {}),
         }),
       });
-      // Clear image after sending
+      // Clear after sending
       setRefImage(null);
+      setVideoFrames([]);
       const data = await res.json() as { antwoord?: string; script?: { scenes: Scene[] }; fout?: string };
       if (data.antwoord) {
         const nieuwBericht: ChatBericht = { rol: "ai", tekst: data.antwoord, script: data.script };
@@ -348,28 +353,49 @@ export default function VideoStudioPage() {
                   title="Upload afbeelding als referentie">
                   <Upload className="w-4 h-4" />
                 </button>
-                {/* Video ref upload — extracts thumbnail frame for AI */}
+                {/* Video ref upload — extracts 6 frames across the video for AI analysis */}
                 <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
                   onChange={e => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setReferentieVideos(prev => [...prev, file.name]);
-                    // Extract thumbnail from video at 1 second
                     const videoEl = document.createElement("video");
-                    videoEl.preload = "metadata";
+                    videoEl.preload = "auto";
                     videoEl.muted = true;
                     videoEl.src = URL.createObjectURL(file);
-                    videoEl.onloadeddata = () => {
-                      videoEl.currentTime = Math.min(1, videoEl.duration * 0.1);
-                    };
-                    videoEl.onseeked = () => {
-                      const canvas = document.createElement("canvas");
-                      canvas.width = videoEl.videoWidth;
-                      canvas.height = videoEl.videoHeight;
-                      canvas.getContext("2d")?.drawImage(videoEl, 0, 0);
-                      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-                      setRefImage({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", preview: dataUrl });
-                      URL.revokeObjectURL(videoEl.src);
+                    videoEl.onloadedmetadata = () => {
+                      const duration = videoEl.duration;
+                      const frameCount = 6;
+                      const frames: { base64: string; mediaType: string }[] = [];
+                      let currentFrame = 0;
+
+                      const captureFrame = () => {
+                        const canvas = document.createElement("canvas");
+                        canvas.width = Math.min(videoEl.videoWidth, 720);
+                        canvas.height = Math.min(videoEl.videoHeight, 720);
+                        const ctx = canvas.getContext("2d");
+                        if (ctx) {
+                          const scale = Math.min(720 / videoEl.videoWidth, 720 / videoEl.videoHeight);
+                          ctx.drawImage(videoEl, 0, 0, videoEl.videoWidth * scale, videoEl.videoHeight * scale);
+                        }
+                        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                        frames.push({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg" });
+
+                        if (currentFrame === 0) {
+                          setRefImage({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", preview: dataUrl });
+                        }
+
+                        currentFrame++;
+                        if (currentFrame < frameCount) {
+                          videoEl.currentTime = (duration / (frameCount + 1)) * (currentFrame + 1);
+                        } else {
+                          setVideoFrames(frames);
+                          URL.revokeObjectURL(videoEl.src);
+                        }
+                      };
+
+                      videoEl.onseeked = captureFrame;
+                      videoEl.currentTime = duration * 0.05; // First frame at 5%
                     };
                   }} />
                 <button onClick={() => fileInputRef.current?.click()}

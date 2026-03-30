@@ -597,24 +597,42 @@ export default function CaseStudiesPage() {
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
             </div>
-            <div className="rounded-lg bg-autronis-bg border border-autronis-border p-4 space-y-2">
+            <div className="rounded-lg bg-autronis-bg border border-autronis-border p-4 space-y-3">
               <p className="text-sm font-semibold text-autronis-text-secondary flex items-center gap-2">
                 <Terminal className="h-4 w-4 text-autronis-accent" />
-                Start de generator server:
+                Generator server starten
               </p>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/dev/start-server", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ server: "case-study" }),
+                    });
+                    const data = await res.json() as { status?: string; bericht?: string; url?: string };
+                    if (data.status === "running" || data.status === "started") {
+                      checkServer();
+                    }
+                  } catch { /* ignore */ }
+                }}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-autronis-accent text-white rounded-xl text-sm font-semibold hover:bg-autronis-accent-hover transition-all"
+              >
+                <Terminal className="h-4 w-4" /> Start Case Study Server
+              </button>
               <div className="flex items-center gap-2">
-                <code className="flex-1 text-sm text-autronis-accent bg-black/30 rounded-lg px-4 py-3 font-mono">
+                <code className="flex-1 text-[11px] text-autronis-text-tertiary bg-black/20 rounded-lg px-3 py-2 font-mono">
                   cd ../case-study-generator && npm run dev
                 </code>
                 <button
                   onClick={() => navigator.clipboard.writeText("cd ../case-study-generator && npm run dev")}
-                  className="flex-shrink-0 p-2.5 rounded-lg border border-autronis-border hover:border-autronis-accent/50 text-autronis-text-secondary hover:text-autronis-accent transition-colors"
+                  className="flex-shrink-0 p-2 rounded-lg border border-autronis-border hover:border-autronis-accent/50 text-autronis-text-tertiary hover:text-autronis-accent transition-colors"
                   title="Kopieer commando"
                 >
-                  <Copy className="h-4 w-4" />
+                  <Copy className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <p className="text-xs text-autronis-text-tertiary">Server draait daarna op {GENERATOR_URL}</p>
+              <p className="text-[10px] text-autronis-text-tertiary">Of start handmatig op {GENERATOR_URL}</p>
             </div>
           </div>
         )}

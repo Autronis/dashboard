@@ -156,11 +156,21 @@ export default function VideoStudioPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Remotion Studio link */}
-            <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer"
+            {/* Remotion Studio — start + open */}
+            <button
+              onClick={async () => {
+                try {
+                  await fetch("/api/dev/start-server", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ server: "remotion" }),
+                  });
+                } catch { /* ignore */ }
+                window.open("http://localhost:3001", "_blank");
+              }}
               className="flex items-center gap-1.5 px-3 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
               <Code className="w-3.5 h-3.5" /> Remotion Studio
-            </a>
+            </button>
             {script && (
               <>
                 <select value={formaat} onChange={e => setFormaat(e.target.value as VideoFormaat)}

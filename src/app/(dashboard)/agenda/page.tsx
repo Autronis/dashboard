@@ -1363,8 +1363,7 @@ export default function AgendaPage() {
                                 });
                                 if (res.ok) {
                                   addToast("Agenda item verplaatst", "succes");
-                                  // Force refetch all agenda queries
-                                  queryClient.resetQueries({ queryKey: ["agenda"] });
+                                  window.location.reload();
                                 } else {
                                   const err = await res.json();
                                   addToast(err.fout || "Kon niet verplaatsen", "fout");

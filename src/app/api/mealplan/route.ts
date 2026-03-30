@@ -121,9 +121,22 @@ JSON (ALLEEN JSON):
   });
 
   const text = response.content.find((b) => b.type === "text")?.text || "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error(`Geen JSON voor ${dag}`);
-  return JSON.parse(match[0]);
+  // Extract JSON by finding balanced braces
+  const startIdx = text.indexOf("{");
+  if (startIdx === -1) throw new Error(`Geen JSON voor ${dag}`);
+  let depth = 0;
+  let endIdx = startIdx;
+  for (let i = startIdx; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+  }
+  const jsonStr = text.slice(startIdx, endIdx + 1);
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error(`[MEALPLAN] JSON parse error voor ${dag}:`, e instanceof Error ? e.message : e, "Raw:", jsonStr.slice(0, 200));
+    throw new Error(`Ongeldige JSON voor ${dag}`);
+  }
 }
 
 // Normalize ingredient names so "Kipfilet", "kipfilet", "Kip filet" all merge
@@ -212,17 +225,26 @@ JSON (ALLEEN JSON, geen tekst):
 
   const text = response.content.find((b) => b.type === "text")?.text || "";
   console.log("[MEALPLAN] Boodschappen response length:", text.length, "chars. Stop reason:", response.stop_reason);
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) {
+
+  // Extract JSON by finding balanced braces
+  const startIdx = text.indexOf("{");
+  if (startIdx === -1) {
     console.error("[MEALPLAN] Geen JSON gevonden in boodschappen response:", text.slice(0, 300));
     return { boodschappenlijst: [], totaalPrijs: 0 };
   }
+  let depth = 0;
+  let endIdx = startIdx;
+  for (let i = startIdx; i < text.length; i++) {
+    if (text[i] === "{") depth++;
+    else if (text[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+  }
+  const jsonStr = text.slice(startIdx, endIdx + 1);
 
   let result;
   try {
-    result = JSON.parse(match[0]);
+    result = JSON.parse(jsonStr);
   } catch (e) {
-    console.error("[MEALPLAN] JSON parse error:", e instanceof Error ? e.message : e, "Raw:", match[0].slice(0, 200));
+    console.error("[MEALPLAN] JSON parse error:", e instanceof Error ? e.message : e, "Raw:", jsonStr.slice(0, 300));
     return { boodschappenlijst: [], totaalPrijs: 0 };
   }
 

@@ -1363,8 +1363,8 @@ export default function AgendaPage() {
                                 });
                                 if (res.ok) {
                                   addToast("Agenda item verplaatst", "succes");
-                                  await queryClient.invalidateQueries({ queryKey: ["agenda"] });
-                                  await queryClient.refetchQueries({ queryKey: ["agenda"] });
+                                  await queryClient.invalidateQueries({ queryKey: ["agenda", jaar, maand] });
+                                  await queryClient.refetchQueries({ queryKey: ["agenda", jaar, maand] });
                                 }
                               } catch { /* ignore */ }
                             }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro, CheckCircle2, MessageSquare, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 
 interface Ingredient {
@@ -78,6 +79,7 @@ const macroKleuren = {
 };
 
 export default function MealPlanPage() {
+  const { addToast } = useToast();
   const savedSettings = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("autronis-mealplan-settings") || "null") : null;
   const [kcal, setKcal] = useState(savedSettings?.kcal ?? 2750);
   const [eiwit, setEiwit] = useState(savedSettings?.eiwit ?? 190);
@@ -169,19 +171,46 @@ export default function MealPlanPage() {
     setLoading(true);
     setShowSettings(false);
     setPlan(null);
+    setProgress(0);
     try {
+      // Update progress indicator
+      const progressTimer = setInterval(() => {
+        setProgress(prev => Math.min(prev + 1, 7));
+      }, 8000); // ~8 sec per dag
+
       const res = await fetch("/api/mealplan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, ...extraParams }),
       });
-      const data = await res.json() as { status: string; plan?: WeekPlan };
+
+      clearInterval(progressTimer);
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ fout: "Server error" })) as { fout?: string };
+        setLoading(false);
+        setShowSettings(true);
+        addToast(err.fout ?? "Weekplan genereren mislukt", "fout");
+        return;
+      }
+
+      const data = await res.json() as { status: string; plan?: WeekPlan; fout?: string };
       if (data.status === "done" && data.plan) {
         setPlan(data.plan);
         setActiveDay("Maandag");
         setExpandedMeals(new Set());
+        setProgress(8);
+        if (!data.plan.boodschappenlijst?.length) {
+          addToast("Weekplan gemaakt, maar boodschappenlijst kon niet gegenereerd worden", "fout");
+        }
+      } else {
+        setShowSettings(true);
+        addToast(data.fout ?? "Weekplan genereren mislukt", "fout");
       }
-    } catch { /* ignore */ }
+    } catch (e) {
+      setShowSettings(true);
+      addToast("Verbinding verloren of timeout — probeer opnieuw", "fout");
+    }
     setLoading(false);
   };
 

@@ -137,16 +137,41 @@ export default function MealPlanPage() {
     return () => clearInterval(interval);
   }, [initialLoaded]);
 
+  // Nieuw weekplan — geen restjes, volledig vers
   const generatePlan = () => {
     setLoading(true);
     setShowSettings(false);
+    setPlan(null);
     fetch("/api/mealplan", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
     }).catch(() => {});
-    // Polling picks up the result — no need to wait
   };
+
+  // Week voltooid → sla restjes op en genereer nieuw plan dat restjes meeneemt
+  const weekVoltooid = () => {
+    if (!plan?.boodschappenlijst) return;
+    const restjes = plan.boodschappenlijst
+      .filter((item: BoodschapItem) => item.over && item.over !== "0" && item.over !== "0g" && item.over !== "0ml" && item.over !== "0 stuks")
+      .map((item: BoodschapItem) => ({ product: item.product, hoeveelheid: item.over, afdeling: item.afdeling }));
+    // Save restjes
+    localStorage.setItem("autronis-mealplan-restjes", JSON.stringify(restjes));
+    // Generate new plan with restjes
+    setLoading(true);
+    setShowSettings(false);
+    setPlan(null);
+    fetch("/api/mealplan", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, restjes }),
+    }).catch(() => {});
+  };
+
+  // Load saved restjes
+  const opgeslagenRestjes = typeof window !== "undefined"
+    ? JSON.parse(localStorage.getItem("autronis-mealplan-restjes") || "[]") as { product: string; hoeveelheid: string }[]
+    : [];
 
   const macroBar = (label: string, waarde: number, target: number, kleur: keyof typeof macroKleuren) => {
     const pct = Math.min((waarde / target) * 100, 100);

@@ -74,9 +74,16 @@ export async function seed() {
     bedrijfsinstellingen,
   ];
 
+  // Disable FK checks for cleanup
+  await db.run(sql`PRAGMA foreign_keys = OFF`);
   for (const table of tablesToClear) {
-    await db.delete(table);
+    try {
+      await db.delete(table);
+    } catch {
+      // Table might not exist yet, skip
+    }
   }
+  await db.run(sql`PRAGMA foreign_keys = ON`);
 
   console.log("Cleared all tables.");
 

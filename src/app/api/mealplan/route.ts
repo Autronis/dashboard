@@ -121,20 +121,31 @@ JSON (ALLEEN JSON):
   });
 
   const text = response.content.find((b) => b.type === "text")?.text || "";
-  // Extract JSON by finding balanced braces
+  // Try parsing progressively smaller substrings until valid JSON found
   const startIdx = text.indexOf("{");
   if (startIdx === -1) throw new Error(`Geen JSON voor ${dag}`);
+
+  // Find the matching closing brace, respecting strings
   let depth = 0;
-  let endIdx = startIdx;
+  let inString = false;
+  let escape = false;
+  let endIdx = -1;
   for (let i = startIdx; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    else if (text[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+    const ch = text[i];
+    if (escape) { escape = false; continue; }
+    if (ch === "\\") { escape = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{") depth++;
+    else if (ch === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
   }
+
+  if (endIdx === -1) throw new Error(`Onvolledige JSON voor ${dag}`);
   const jsonStr = text.slice(startIdx, endIdx + 1);
   try {
     return JSON.parse(jsonStr);
   } catch (e) {
-    console.error(`[MEALPLAN] JSON parse error voor ${dag}:`, e instanceof Error ? e.message : e, "Raw:", jsonStr.slice(0, 200));
+    console.error(`[MEALPLAN] JSON parse error voor ${dag}:`, e instanceof Error ? e.message : e);
     throw new Error(`Ongeldige JSON voor ${dag}`);
   }
 }
@@ -226,25 +237,33 @@ JSON (ALLEEN JSON, geen tekst):
   const text = response.content.find((b) => b.type === "text")?.text || "";
   console.log("[MEALPLAN] Boodschappen response length:", text.length, "chars. Stop reason:", response.stop_reason);
 
-  // Extract JSON by finding balanced braces
-  const startIdx = text.indexOf("{");
-  if (startIdx === -1) {
-    console.error("[MEALPLAN] Geen JSON gevonden in boodschappen response:", text.slice(0, 300));
+  // Extract JSON respecting strings
+  const bStartIdx = text.indexOf("{");
+  if (bStartIdx === -1) {
+    console.error("[MEALPLAN] Geen JSON in boodschappen response:", text.slice(0, 300));
     return { boodschappenlijst: [], totaalPrijs: 0 };
   }
-  let depth = 0;
-  let endIdx = startIdx;
-  for (let i = startIdx; i < text.length; i++) {
-    if (text[i] === "{") depth++;
-    else if (text[i] === "}") { depth--; if (depth === 0) { endIdx = i; break; } }
+  let bDepth = 0, bInString = false, bEscape = false, bEndIdx = -1;
+  for (let i = bStartIdx; i < text.length; i++) {
+    const ch = text[i];
+    if (bEscape) { bEscape = false; continue; }
+    if (ch === "\\") { bEscape = true; continue; }
+    if (ch === '"') { bInString = !bInString; continue; }
+    if (bInString) continue;
+    if (ch === "{") bDepth++;
+    else if (ch === "}") { bDepth--; if (bDepth === 0) { bEndIdx = i; break; } }
   }
-  const jsonStr = text.slice(startIdx, endIdx + 1);
+  if (bEndIdx === -1) {
+    console.error("[MEALPLAN] Onvolledige JSON in boodschappen");
+    return { boodschappenlijst: [], totaalPrijs: 0 };
+  }
+  const jsonStr = text.slice(bStartIdx, bEndIdx + 1);
 
   let result;
   try {
     result = JSON.parse(jsonStr);
   } catch (e) {
-    console.error("[MEALPLAN] JSON parse error:", e instanceof Error ? e.message : e, "Raw:", jsonStr.slice(0, 300));
+    console.error("[MEALPLAN] JSON parse error:", e instanceof Error ? e.message : e);
     return { boodschappenlijst: [], totaalPrijs: 0 };
   }
 

@@ -150,13 +150,15 @@ function detectProjectFromTitle(
   let extracted: string | null = null;
 
   // VS Code / Cursor: "file.tsx — project-name — Visual Studio Code"
+  // The PROJECT NAME is the second-to-last segment (the workspace/folder name)
   if (app.toLowerCase().includes("code") || app.toLowerCase().includes("cursor")) {
     const parts = title.split(" — ");
     if (parts.length >= 2) {
+      // The workspace/folder name — this is the project directory
       extracted = parts[parts.length - 2]?.trim() || null;
     }
   }
-  // Terminal: extract last directory
+  // Terminal: extract current directory
   else if (app.toLowerCase().includes("terminal") || app.toLowerCase().includes("cmd") || app.toLowerCase().includes("powershell")) {
     const match = title.match(/[/\\]([^/\\]+)\s*$/);
     if (match) extracted = match[1];
@@ -164,11 +166,37 @@ function detectProjectFromTitle(
 
   if (!extracted) return null;
 
-  // Find matching project (case-insensitive)
-  const match = projects.filter(p =>
-    p.naam.toLowerCase().includes(extracted!.toLowerCase()) ||
-    extracted!.toLowerCase().includes(p.naam.toLowerCase())
-  );
+  // Clean up extracted name (remove common suffixes)
+  const cleanExtracted = extracted
+    .replace(/\s*\[.*?\]\s*/g, "") // remove [SSH], [WSL] etc
+    .replace(/\s*-\s*$/, "")
+    .trim()
+    .toLowerCase();
+
+  if (!cleanExtracted || cleanExtracted.length < 3) return null;
+
+  // STRICT matching: the extracted workspace name must closely match a project name
+  // Don't match if the extracted name is a generic word like "src", "app", "test"
+  const genericNames = new Set(["src", "app", "test", "dist", "build", "node_modules", "public", "pages", "components", "lib", "data", "config", "docs"]);
+  if (genericNames.has(cleanExtracted)) return null;
+
+  // Find matching project — require strong match (not just substring)
+  const match = projects.filter(p => {
+    const projectLower = p.naam.toLowerCase().replace(/[-_\s]/g, "");
+    const extractedClean = cleanExtracted.replace(/[-_\s]/g, "");
+
+    // Exact match (normalized)
+    if (projectLower === extractedClean) return true;
+
+    // Project name is contained in extracted (e.g. "autronis-dashboard" contains "dashboard")
+    // But only if the project name is at least 5 chars to avoid false positives
+    if (p.naam.length >= 5 && extractedClean.includes(projectLower)) return true;
+
+    // Extracted is contained in project name — but must be substantial (>60% of project name)
+    if (extractedClean.length >= 5 && projectLower.includes(extractedClean) && extractedClean.length / projectLower.length > 0.6) return true;
+
+    return false;
+  });
 
   if (match.length === 1) {
     return { projectId: match[0].id, klantId: match[0].klantId };

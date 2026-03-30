@@ -370,7 +370,7 @@ export default function ContentPage() {
   const modules = [
     { href: "/content/kennisbank", label: "Kennisbank", icon: BookOpen, kleur: "text-autronis-accent", bg: "bg-autronis-accent/10", count: stats.inzichten, sub: "inzichten", laatst: null },
     { href: "/content/posts", label: "Posts", icon: Newspaper, kleur: "text-blue-400", bg: "bg-blue-500/10", count: stats.conceptPosts, sub: "concept", laatst: laatsteActiviteit.posts },
-    { href: "/content/videos", label: "Video's", icon: Video, kleur: "text-purple-400", bg: "bg-purple-500/10", count: stats.totaleVideos, sub: "totaal", laatst: laatsteActiviteit.videos },
+    { href: "/content/videos/studio", label: "Video Studio", icon: Sparkles, kleur: "text-purple-400", bg: "bg-purple-500/10", count: stats.totaleVideos, sub: "video's", laatst: laatsteActiviteit.videos },
     { href: "/content/kalender", label: "Kalender", icon: CalendarDays, kleur: "text-emerald-400", bg: "bg-emerald-500/10", count: stats.geplandPosts, sub: "gepland", laatst: null },
     { href: "/content/banners", label: "Banners", icon: ImageIcon, kleur: "text-pink-400", bg: "bg-pink-500/10", count: stats.bannersKlaar, sub: "gemaakt", laatst: laatsteActiviteit.banners },
   ];
@@ -500,6 +500,11 @@ export default function ContentPage() {
 
         {/* Snelle acties — direct na KPIs */}
         <div className="flex flex-wrap gap-3">
+          <Link href="/content/videos/studio"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 rounded-xl text-sm font-medium transition-colors">
+            <Sparkles className="w-4 h-4" />
+            Video Studio (AI)
+          </Link>
           <button
             onClick={handleGenereerLinkedin}
             disabled={genereerLinkedin.isPending}

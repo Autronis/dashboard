@@ -317,12 +317,35 @@ export default function VideoStudioPage() {
                   title="Upload afbeelding als referentie">
                   <Upload className="w-4 h-4" />
                 </button>
-                {/* Video ref upload */}
+                {/* Video ref upload — extracts thumbnail frame for AI */}
                 <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
                   onChange={e => {
                     const file = e.target.files?.[0];
-                    if (file) setReferentieVideos(prev => [...prev, file.name]);
+                    if (!file) return;
+                    setReferentieVideos(prev => [...prev, file.name]);
+                    // Extract thumbnail from video at 1 second
+                    const videoEl = document.createElement("video");
+                    videoEl.preload = "metadata";
+                    videoEl.muted = true;
+                    videoEl.src = URL.createObjectURL(file);
+                    videoEl.onloadeddata = () => {
+                      videoEl.currentTime = Math.min(1, videoEl.duration * 0.1);
+                    };
+                    videoEl.onseeked = () => {
+                      const canvas = document.createElement("canvas");
+                      canvas.width = videoEl.videoWidth;
+                      canvas.height = videoEl.videoHeight;
+                      canvas.getContext("2d")?.drawImage(videoEl, 0, 0);
+                      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+                      setRefImage({ base64: dataUrl.split(",")[1], mediaType: "image/jpeg", preview: dataUrl });
+                      URL.revokeObjectURL(videoEl.src);
+                    };
                   }} />
+                <button onClick={() => fileInputRef.current?.click()}
+                  className="p-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-autronis-text-tertiary hover:text-orange-400 hover:border-orange-500/30 transition-all"
+                  title="Upload video als referentie (thumbnail wordt geëxtraheerd)">
+                  <Video className="w-4 h-4" />
+                </button>
                 <button onClick={() => sendMessage()} disabled={(!input.trim() && !refImage) || loading}
                   className="p-2.5 bg-autronis-accent text-white rounded-xl hover:bg-autronis-accent-hover transition-all disabled:opacity-40">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}

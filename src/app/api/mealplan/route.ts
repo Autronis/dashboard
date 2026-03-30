@@ -76,7 +76,7 @@ async function generateDay(client: Anthropic, dag: string, params: Record<string
     messages: [{
       role: "user",
       content: `Maak een dagplan voor ${dag}. Macro targets per dag: ${kcal} kcal, ${eiwit}g eiwit, ${koolhydraten}g koolhydraten, ${vet}g vet, ${vezels}g vezels, ${suiker}g suiker.
-${voorkeuren ? `\nVoorkeuren: ${voorkeuren}` : ""}${uitsluitingen ? `\nUitsluitingen: ${uitsluitingen}` : ""}${eerderGebruikt}
+${voorkeuren ? `\nVoorkeuren: ${voorkeuren}` : ""}${uitsluitingen ? `\nUitsluitingen: ${uitsluitingen}` : ""}${eerderGebruikt}${restjesInfo}
 
 BELANGRIJK — elk maaltijdtype moet passen bij het moment van de dag:
 - **ontbijt**: Ontbijtgerechten! Denk aan havermout, yoghurt met fruit, eieren (roerei/omelet/gebakken), brood met beleg, smoothiebowl, pannenkoeken, overnight oats, muesli. NOOIT een warm diner als ontbijt.
@@ -108,7 +108,7 @@ function normalizeIngredient(naam: string): string {
     .replace(/\s+/g, " ");
 }
 
-async function generateBoodschappen(client: Anthropic, dagen: unknown[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
+async function generateBoodschappen(client: Anthropic, dagen: unknown[], restjes?: { product: string; hoeveelheid: string }[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
   // Step 1: Collect ALL ingredients from the 7-day plan with total grams
   const alleIngredienten: Record<string, { gram: number; count: number }> = {};
   for (const dag of dagen) {

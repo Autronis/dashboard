@@ -1490,7 +1490,14 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={`taak-plan-${taak.id}-${wd.datumStr}`}
-                        className="absolute rounded-xl px-2 py-1 overflow-hidden border-l-[3px] z-[8] cursor-pointer hover:brightness-110 transition-all group"
+                        draggable
+                        onDragStart={(e) => {
+                          setDragTaak(taak);
+                          e.dataTransfer.setData("text/plain", String(taak.id));
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragEnd={() => setDragTaak(null)}
+                        className="absolute rounded-xl px-2 py-1 overflow-hidden border-l-[3px] z-[8] cursor-grab active:cursor-grabbing hover:brightness-110 transition-all group"
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,

@@ -339,38 +339,40 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
           {/* Content — auto page breaks with sections kept together */}
           {contentElements.map((el) => el)}
 
-          {/* Signature section — keep together, moves to next page if not enough space */}
-          <View style={styles.signatureSection} wrap={false}>
-            <Text style={styles.signatureTitle}>
-              Aldus overeengekomen en in tweevoud ondertekend:
-            </Text>
-            <View style={styles.signatureRow}>
-              <View style={styles.signatureCol}>
-                <Text style={styles.signatureLabel}>Opdrachtnemer</Text>
-                <Text style={[styles.paragraph, { marginBottom: 8 }]}>{bedrijfsnaam}</Text>
-                <Text style={styles.signatureSubLabel}>Naam:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Functie:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Datum:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
-              </View>
-              <View style={styles.signatureCol}>
-                <Text style={styles.signatureLabel}>Opdrachtgever</Text>
-                <Text style={[styles.paragraph, { marginBottom: 8 }]}>{contract.klantNaam}</Text>
-                <Text style={styles.signatureSubLabel}>Naam:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Functie:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Datum:</Text>
-                <View style={styles.signatureLine} />
-                <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+          {/* Signature section — only show if contract inhoud doesn't already contain signatures */}
+          {!contract.inhoud.toLowerCase().includes("ondertekend") && !contract.inhoud.toLowerCase().includes("handtekening") && (
+            <View style={styles.signatureSection} wrap={false}>
+              <Text style={styles.signatureTitle}>
+                Aldus overeengekomen en in tweevoud ondertekend:
+              </Text>
+              <View style={styles.signatureRow}>
+                <View style={styles.signatureCol}>
+                  <Text style={styles.signatureLabel}>Opdrachtnemer</Text>
+                  <Text style={[styles.paragraph, { marginBottom: 8 }]}>{bedrijfsnaam}</Text>
+                  <Text style={styles.signatureSubLabel}>Naam:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Functie:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Datum:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Handtekening:</Text>
+                  <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+                </View>
+                <View style={styles.signatureCol}>
+                  <Text style={styles.signatureLabel}>Opdrachtgever</Text>
+                  <Text style={[styles.paragraph, { marginBottom: 8 }]}>{contract.klantNaam}</Text>
+                  <Text style={styles.signatureSubLabel}>Naam:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Functie:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Datum:</Text>
+                  <View style={styles.signatureLine} />
+                  <Text style={styles.signatureSubLabel}>Handtekening:</Text>
+                  <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+                </View>
               </View>
             </View>
-          </View>
+          )}
         </View>
 
         {/* Footer — fixed on every page */}

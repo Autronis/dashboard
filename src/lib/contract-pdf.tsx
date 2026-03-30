@@ -304,7 +304,12 @@ function parseMarkdownToElements(markdown: string): React.ReactElement[] {
 }
 
 export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
-  const contentElements = parseMarkdownToElements(contract.inhoud);
+  // Strip signature section from inhoud to avoid duplicates (we render it as a formatted template)
+  const inhoudZonderHandtekening = contract.inhoud
+    .replace(/(?:Aldus overeengekomen|Deze overeenkomst is opgemaakt)[\s\S]*$/i, "")
+    .replace(/Plaats en datum:[\s\S]*$/i, "")
+    .trim();
+  const contentElements = parseMarkdownToElements(inhoudZonderHandtekening);
   const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis";
 
   return (
@@ -339,40 +344,59 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
           {/* Content — auto page breaks with sections kept together */}
           {contentElements.map((el) => el)}
 
-          {/* Signature section — only show if contract inhoud doesn't already contain signatures */}
-          {!contract.inhoud.toLowerCase().includes("ondertekend") && !contract.inhoud.toLowerCase().includes("handtekening") && (
-            <View style={styles.signatureSection} wrap={false}>
-              <Text style={styles.signatureTitle}>
-                Aldus overeengekomen en in tweevoud ondertekend:
-              </Text>
-              <View style={styles.signatureRow}>
-                <View style={styles.signatureCol}>
-                  <Text style={styles.signatureLabel}>Opdrachtnemer</Text>
-                  <Text style={[styles.paragraph, { marginBottom: 8 }]}>{bedrijfsnaam}</Text>
-                  <Text style={styles.signatureSubLabel}>Naam:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Functie:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Datum:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                  <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
-                </View>
-                <View style={styles.signatureCol}>
-                  <Text style={styles.signatureLabel}>Opdrachtgever</Text>
-                  <Text style={[styles.paragraph, { marginBottom: 8 }]}>{contract.klantNaam}</Text>
-                  <Text style={styles.signatureSubLabel}>Naam:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Functie:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Datum:</Text>
-                  <View style={styles.signatureLine} />
-                  <Text style={styles.signatureSubLabel}>Handtekening:</Text>
-                  <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+          {/* Signature section — detect labels from contract content */}
+          {(() => {
+            // Extract signature labels from contract inhoud
+            const inhoudLower = contract.inhoud.toLowerCase();
+            let linksLabel = "Opdrachtnemer";
+            let rechtsLabel = "Opdrachtgever";
+
+            if (inhoudLower.includes("onderverhuurder") && inhoudLower.includes("onderhuurder")) {
+              linksLabel = "Onderverhuurder"; rechtsLabel = "Onderhuurder";
+            } else if (inhoudLower.includes("verhuurder") && inhoudLower.includes("huurder")) {
+              linksLabel = "Verhuurder"; rechtsLabel = "Huurder";
+            } else if (inhoudLower.includes("werkgever") && inhoudLower.includes("werknemer")) {
+              linksLabel = "Werkgever"; rechtsLabel = "Werknemer";
+            } else if (inhoudLower.includes("opdrachtgever") && inhoudLower.includes("opdrachtnemer")) {
+              linksLabel = "Opdrachtnemer"; rechtsLabel = "Opdrachtgever";
+            } else if (inhoudLower.includes("partij a") && inhoudLower.includes("partij b")) {
+              linksLabel = "Partij A"; rechtsLabel = "Partij B";
+            }
+
+            return (
+              <View style={styles.signatureSection} wrap={false}>
+                <Text style={styles.signatureTitle}>
+                  Aldus overeengekomen en in tweevoud ondertekend:
+                </Text>
+                <View style={styles.signatureRow}>
+                  <View style={styles.signatureCol}>
+                    <Text style={styles.signatureLabel}>{linksLabel}</Text>
+                    <Text style={[styles.paragraph, { marginBottom: 8 }]}>{bedrijfsnaam}</Text>
+                    <Text style={styles.signatureSubLabel}>Naam:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Functie:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Datum:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Handtekening:</Text>
+                    <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+                  </View>
+                  <View style={styles.signatureCol}>
+                    <Text style={styles.signatureLabel}>{rechtsLabel}</Text>
+                    <Text style={[styles.paragraph, { marginBottom: 8 }]}>{contract.klantNaam}</Text>
+                    <Text style={styles.signatureSubLabel}>Naam:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Functie:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Datum:</Text>
+                    <View style={styles.signatureLine} />
+                    <Text style={styles.signatureSubLabel}>Handtekening:</Text>
+                    <View style={[styles.signatureLine, { paddingBottom: 70 }]} />
+                  </View>
                 </View>
               </View>
-            </View>
-          )}
+            );
+          })()}
         </View>
 
         {/* Footer — fixed on every page */}

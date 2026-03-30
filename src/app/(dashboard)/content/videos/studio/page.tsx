@@ -238,29 +238,31 @@ export default function VideoStudioPage() {
                 <RotateCcw className="w-3.5 h-3.5" /> Nieuw gesprek
               </button>
             )}
-            {/* Remotion Studio — start + open */}
-            <button
-              onClick={async () => {
-                addToast("Remotion Studio starten...", "succes");
-                try {
-                  const res = await fetch("/api/dev/start-server", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ server: "remotion" }),
-                  });
-                  const data = await res.json() as { status?: string; url?: string; bericht?: string };
-                  if (data.status === "running" || data.status === "started") {
-                    window.open(data.url || "http://localhost:3001", "_blank");
-                  } else {
-                    addToast(data.bericht || "Server wordt gestart, probeer over 10 sec opnieuw", "succes");
+            {/* Remotion Studio — only on localhost */}
+            {typeof window !== "undefined" && window.location.hostname === "localhost" && (
+              <button
+                onClick={async () => {
+                  addToast("Remotion Studio starten...", "succes");
+                  try {
+                    const res = await fetch("/api/dev/start-server", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ server: "remotion" }),
+                    });
+                    const data = await res.json() as { status?: string; url?: string; bericht?: string };
+                    if (data.status === "running" || data.status === "started") {
+                      window.open(data.url || "http://localhost:3001", "_blank");
+                    } else {
+                      addToast(data.bericht || "Server wordt gestart, probeer over 10 sec opnieuw", "succes");
+                    }
+                  } catch {
+                    addToast("Kon server niet starten", "fout");
                   }
-                } catch {
-                  addToast("Kon server niet starten", "fout");
-                }
-              }}
-              className="flex items-center gap-1.5 px-3 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
-              <Code className="w-3.5 h-3.5" /> Remotion Studio
-            </button>
+                }}
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+                <Code className="w-3.5 h-3.5" /> Remotion Studio
+              </button>
+            )}
             {script && (
               <>
                 <select value={formaat} onChange={e => setFormaat(e.target.value as VideoFormaat)}

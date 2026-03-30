@@ -35,11 +35,20 @@ const FORMAAT_LABELS: Record<VideoFormaat, string> = {
 
 export default function VideoStudioPage() {
   const { addToast } = useToast();
-  const [berichten, setBerichten] = useState<ChatBericht[]>([]);
+  const [berichten, setBerichten] = useState<ChatBericht[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { const s = localStorage.getItem("video-studio-chat"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [script, setScript] = useState<{ scenes: Scene[] } | null>(null);
-  const [formaat, setFormaat] = useState<VideoFormaat>("square");
+  const [script, setScript] = useState<{ scenes: Scene[] } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem("video-studio-script"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const [formaat, setFormaat] = useState<VideoFormaat>(() => {
+    if (typeof window === "undefined") return "square";
+    return (localStorage.getItem("video-studio-formaat") as VideoFormaat) || "square";
+  });
   const [rendering, setRendering] = useState(false);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [showScript, setShowScript] = useState(false);
@@ -57,6 +66,11 @@ export default function VideoStudioPage() {
       setGallery((d.items ?? []).filter(g => g.afbeeldingUrl && !g.afbeeldingUrl.includes("video")));
     }).catch(() => {});
   }, []);
+
+  // Persist to localStorage
+  useEffect(() => { localStorage.setItem("video-studio-chat", JSON.stringify(berichten)); }, [berichten]);
+  useEffect(() => { if (script) localStorage.setItem("video-studio-script", JSON.stringify(script)); else localStorage.removeItem("video-studio-script"); }, [script]);
+  useEffect(() => { localStorage.setItem("video-studio-formaat", formaat); }, [formaat]);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -156,6 +170,13 @@ export default function VideoStudioPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Nieuw gesprek */}
+            {berichten.length > 0 && (
+              <button onClick={() => { setBerichten([]); setScript(null); setVideoUrl(null); setRefImage(null); setReferentieVideos([]); }}
+                className="flex items-center gap-1.5 px-3 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-xs font-medium text-autronis-text-secondary hover:text-red-400 hover:border-red-500/30 transition-all">
+                <RotateCcw className="w-3.5 h-3.5" /> Nieuw gesprek
+              </button>
+            )}
             {/* Remotion Studio — start + open */}
             <button
               onClick={async () => {

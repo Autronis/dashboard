@@ -82,11 +82,11 @@ async function generateDay(client: Anthropic, dag: string, params: Record<string
     : "";
 
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 8000,
+    model: "claude-haiku-4-5-20251001",
+    max_tokens: 4000,
     messages: [{
       role: "user",
-      content: `Maak een dagplan voor ${dag}.
+      content: `Maak een dagplan voor ${dag}. Antwoord ALLEEN met JSON, geen tekst ervoor of erna.
 
 MACRO TARGETS (STRIKT AANHOUDEN — maximaal 5% afwijking!):
 - Calorieën: ${kcal} kcal (NIET meer dan ${Math.round(kcal * 1.05)}, NIET minder dan ${Math.round(kcal * 0.95)})
@@ -106,14 +106,10 @@ STRUCTUUR — 6 maaltijden per dag:
 - **avondsnack** (~${Math.round(kcal * 0.09)} kcal, ~${Math.round(eiwit * 0.13)}g eiwit): kwark, shake, noten, yoghurt
 
 REGELS:
-1. Tel de macro's van ALLE ingrediënten op en CONTROLEER dat het dagtotaal binnen 5% van de targets valt
-2. Eiwit is PRIORITEIT — als je moet kiezen, ga voor meer eiwit
-3. Gebruik realistische hoeveelheden en correcte voedingswaarden per 100g
-4. Variatie in eiwitbronnen (kip, rund, vis, eieren, zuivel, peulvruchten, noten)
-5. Alle producten bij de Lidl verkrijgbaar
-
-Geef per ingrediënt de exacte hoeveelheid en macro's per die hoeveelheid.
-dagTotaal = ECHTE som van alle maaltijden (NIET de targets copy-pasten, maar de WERKELIJKE som berekenen!)
+1. dagTotaal MOET binnen 5% van targets vallen — BEREKEN de echte som
+2. Eiwit is PRIORITEIT — minimaal ${Math.round(eiwit * 0.95)}g
+3. Correcte voedingswaarden, Lidl producten
+4. Variatie in eiwitbronnen
 
 JSON (ALLEEN JSON):
 {"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"...","beschrijving":"...","ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1}],"totaal":{"kcal":521,"eiwit":25,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":2750,"eiwit":190,"kh":300,"vet":110,"vezels":30,"suiker":55}}`,

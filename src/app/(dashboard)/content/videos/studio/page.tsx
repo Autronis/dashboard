@@ -276,12 +276,19 @@ export default function VideoStudioPage() {
               </div>
             )}
 
-            {/* Image ref preview */}
+            {/* Image/video ref preview */}
             {refImage && (
               <div className="px-3 py-2 border-t border-autronis-border flex items-center gap-2">
                 <img src={refImage.preview} alt="ref" className="w-10 h-10 object-contain rounded-lg border border-autronis-accent/30" />
-                <span className="text-[10px] text-autronis-accent">Afbeelding als referentie</span>
-                <button onClick={() => setRefImage(null)} className="text-autronis-text-tertiary hover:text-red-400 ml-auto">
+                <div>
+                  <span className="text-[10px] text-autronis-accent block">
+                    {videoFrames.length > 0 ? `Video referentie (${videoFrames.length} frames)` : "Afbeelding als referentie"}
+                  </span>
+                  {videoFrames.length > 0 && (
+                    <span className="text-[9px] text-autronis-text-tertiary">AI analyseert de hele video flow</span>
+                  )}
+                </div>
+                <button onClick={() => { setRefImage(null); setVideoFrames([]); }} className="text-autronis-text-tertiary hover:text-red-400 ml-auto">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>

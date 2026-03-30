@@ -73,16 +73,17 @@ export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
-    const { bericht, geschiedenis, referentieVideos, huidigeScript, imageBase64, mediaType } = await req.json() as {
+    const { bericht, geschiedenis, referentieVideos, huidigeScript, imageBase64, mediaType, videoFrames } = await req.json() as {
       bericht: string;
       geschiedenis?: ChatBericht[];
       referentieVideos?: string[];
       huidigeScript?: unknown;
       imageBase64?: string;
       mediaType?: string;
+      videoFrames?: { base64: string; mediaType: string }[];
     };
 
-    if (!bericht?.trim() && !imageBase64) {
+    if (!bericht?.trim() && !imageBase64 && (!videoFrames || videoFrames.length === 0)) {
       return NextResponse.json({ fout: "Bericht is verplicht" }, { status: 400 });
     }
 
@@ -98,20 +99,45 @@ export async function POST(req: NextRequest) {
       ? `\n\nDE GEBRUIKER HEEFT REFERENTIE VIDEO'S GEDEELD. De stijl moet vergelijkbaar zijn maar met UNIEKE content.`
       : "";
 
-    // Build user content — support text + image
+    // Build user content — support text + images + video frames
     const userContent: MessageParam["content"] = [];
 
-    if (imageBase64 && mediaType) {
+    // Video frames: send all 6 frames so AI sees the entire video flow
+    if (videoFrames && videoFrames.length > 0) {
+      for (let i = 0; i < videoFrames.length; i++) {
+        userContent.push({
+          type: "image",
+          source: { type: "base64", media_type: videoFrames[i].mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: videoFrames[i].base64 },
+        });
+      }
+      userContent.push({
+        type: "text",
+        text: `Hierboven zie je ${videoFrames.length} frames uit een referentie video (van begin tot eind). Analyseer:
+1. De visuele stijl — kleuren, typografie, layout, achtergrond
+2. De content flow — hoe de scenes opgebouwd zijn, welke tekst per scene
+3. Het tempo — hoeveel scenes, hoelang elk duurt
+4. De hook — hoe begint het, waarmee pakt het de aandacht
+
+Maak nu een NIEUW script in dezelfde stijl maar met FRISSE, UNIEKE content. Niet dezelfde tekst — nieuwe invalshoek, nieuw onderwerp of nieuwe draai. Behoud de Autronis brand stijl.
+
+${bericht}${refContext}${scriptContext}${gespreksContext}`,
+      });
+    } else if (imageBase64 && mediaType) {
+      // Single image reference
       userContent.push({
         type: "image",
         source: { type: "base64", media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp", data: imageBase64 },
       });
+      userContent.push({
+        type: "text",
+        text: `${bericht}${refContext}${scriptContext}${gespreksContext}`,
+      });
+    } else {
+      userContent.push({
+        type: "text",
+        text: `${bericht}${refContext}${scriptContext}${gespreksContext}`,
+      });
     }
-
-    userContent.push({
-      type: "text",
-      text: `${bericht}${refContext}${scriptContext}${gespreksContext}`,
-    });
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-6",

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro, CheckCircle2 } from "lucide-react";
+import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro, CheckCircle2, MessageSquare, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 
@@ -95,6 +95,49 @@ export default function MealPlanPage() {
   const [expandedMeals, setExpandedMeals] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [showBoodschappen, setShowBoodschappen] = useState(false);
+
+  // AI chat for preferences
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "ai"; text: string }[]>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("autronis-mealplan-chat") || "[]"); } catch { return []; }
+  });
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatMessages.length > 0) localStorage.setItem("autronis-mealplan-chat", JSON.stringify(chatMessages));
+  }, [chatMessages]);
+
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || chatLoading) return;
+    const msg = chatInput.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", text: msg }]);
+    setChatLoading(true);
+
+    try {
+      const res = await fetch("/api/mealplan/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bericht: msg,
+          huidigeVoorkeuren: voorkeuren,
+          huidigeUitsluitingen: uitsluitingen,
+          chatHistorie: chatMessages.slice(-10),
+        }),
+      });
+      const data = await res.json() as { antwoord: string; voorkeuren?: string; uitsluitingen?: string };
+      setChatMessages(prev => [...prev, { role: "ai", text: data.antwoord }]);
+      if (data.voorkeuren !== undefined) setVoorkeuren(data.voorkeuren);
+      if (data.uitsluitingen !== undefined) setUitsluitingen(data.uitsluitingen);
+    } catch {
+      setChatMessages(prev => [...prev, { role: "ai", text: "Sorry, er ging iets mis. Probeer opnieuw." }]);
+    }
+    setChatLoading(false);
+  };
 
   // Auto-save settings on change
   useEffect(() => {
@@ -257,16 +300,57 @@ export default function MealPlanPage() {
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[11px] font-medium text-autronis-text-secondary">Voorkeuren</label>
-                    <input type="text" value={voorkeuren} onChange={(e) => setVoorkeuren(e.target.value)} placeholder="bijv. Veel kip, Simpel, Aziatisch" className="w-full mt-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/30 focus:outline-none focus:border-autronis-accent/50" />
+                {/* AI Chat voor voorkeuren */}
+                <div className="bg-autronis-bg border border-autronis-border rounded-xl overflow-hidden">
+                  <div className="px-3 py-2 border-b border-autronis-border flex items-center gap-2">
+                    <MessageSquare className="w-3.5 h-3.5 text-autronis-accent" />
+                    <span className="text-xs font-semibold text-autronis-text-primary">Vertel wat je wilt</span>
+                    <span className="text-[10px] text-autronis-text-tertiary">— AI past je voorkeuren aan</span>
+                    {chatMessages.length > 0 && (
+                      <button onClick={() => { setChatMessages([]); localStorage.removeItem("autronis-mealplan-chat"); }} className="ml-auto text-[10px] text-autronis-text-tertiary hover:text-red-400">Wis chat</button>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-[11px] font-medium text-autronis-text-secondary">Uitsluitingen</label>
-                    <input type="text" value={uitsluitingen} onChange={(e) => setUitsluitingen(e.target.value)} placeholder="bijv. Geen vis, Lactosevrij" className="w-full mt-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/30 focus:outline-none focus:border-autronis-accent/50" />
+                  {/* Messages */}
+                  <div className="max-h-48 overflow-y-auto px-3 py-2 space-y-2">
+                    {chatMessages.length === 0 && (
+                      <p className="text-[11px] text-autronis-text-tertiary italic py-2">
+                        Bijv: &quot;ik wil pasta pesto met kip maar geen spaghetti&quot;, &quot;gebruik Lidl protein shakes&quot;, &quot;meer boter en kaas gebruiken&quot;, &quot;geen cottage cheese&quot;
+                      </p>
+                    )}
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={cn("text-xs rounded-lg px-3 py-2 max-w-[85%]", msg.role === "user" ? "bg-autronis-accent/15 text-autronis-accent ml-auto" : "bg-autronis-border/30 text-autronis-text-primary")}>
+                        {msg.text}
+                      </div>
+                    ))}
+                    {chatLoading && (
+                      <div className="flex items-center gap-1.5 text-xs text-autronis-text-tertiary">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Denken...
+                      </div>
+                    )}
+                    <div ref={chatEndRef} />
+                  </div>
+                  {/* Input */}
+                  <div className="flex gap-2 px-3 py-2 border-t border-autronis-border">
+                    <input
+                      value={chatInput}
+                      onChange={e => setChatInput(e.target.value)}
+                      onKeyDown={e => e.key === "Enter" && sendChat()}
+                      placeholder="Bijv: ik wil meer pasta, geen cottage cheese, gebruik boter bij het bakken..."
+                      className="flex-1 bg-transparent text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/30 focus:outline-none"
+                    />
+                    <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()} className="p-1.5 text-autronis-accent hover:text-autronis-accent-hover disabled:opacity-30 transition-all">
+                      <Send className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
+
+                {/* Current preferences summary */}
+                {(voorkeuren || uitsluitingen) && (
+                  <div className="flex flex-wrap gap-2 text-[10px]">
+                    {voorkeuren && <span className="px-2 py-1 bg-autronis-accent/10 text-autronis-accent rounded-lg">Voorkeuren: {voorkeuren}</span>}
+                    {uitsluitingen && <span className="px-2 py-1 bg-red-500/10 text-red-400 rounded-lg">Niet: {uitsluitingen}</span>}
+                  </div>
+                )}
                 <button onClick={generatePlan} disabled={loading} className="w-full flex items-center justify-center gap-2 bg-autronis-accent hover:bg-autronis-accent/80 disabled:opacity-40 text-white font-medium py-3 rounded-xl transition-colors">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ChefHat className="w-4 h-4" />}
                   {loading ? "Weekplan genereren..." : "Genereer weekplan"}

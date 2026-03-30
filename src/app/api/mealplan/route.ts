@@ -60,10 +60,14 @@ let isGenerating = false;
 const DAGEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
 async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: string[]): Promise<unknown> {
-  const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen } = params;
+  const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, restjes } = params;
 
   const eerderGebruikt = vorigeDagen.length > 0
     ? `\n\nEERDER GEBRUIKT (kies COMPLEET ANDERE gerechten): ${vorigeDagen.join(", ")}`
+    : "";
+
+  const restjesInfo = Array.isArray(restjes) && restjes.length > 0
+    ? `\n\nRESTJES VAN VORIGE WEEK (gebruik deze ingrediënten EERST op, maak er gerechten mee):\n${(restjes as { product: string; hoeveelheid: string }[]).map(r => `- ${r.product}: ${r.hoeveelheid}`).join("\n")}`
     : "";
 
   const response = await client.messages.create({

@@ -314,17 +314,40 @@ function useSectionState(section: string, defaultOpen: boolean) {
 }
 
 // ─── Active matching ────────────────────────────────────────────
+// All known nav hrefs for specificity checking
+const ALL_NAV_HREFS: string[] = [];
+for (const entry of navSections) {
+  if (entry === "divider") continue;
+  if ("section" in entry) {
+    for (const item of entry.items) {
+      if (isLauncher(item)) {
+        for (const child of item.children) { ALL_NAV_HREFS.push(child.href); if (child.alsoMatches) ALL_NAV_HREFS.push(...child.alsoMatches); }
+      } else {
+        ALL_NAV_HREFS.push(item.href);
+        if (item.alsoMatches) ALL_NAV_HREFS.push(...item.alsoMatches);
+      }
+    }
+  } else {
+    ALL_NAV_HREFS.push(entry.href);
+    if (entry.alsoMatches) ALL_NAV_HREFS.push(...entry.alsoMatches);
+  }
+}
+
 function isNavLinkActive(link: NavLink, pathname: string): boolean {
   if (link.href === "/") return pathname === "/";
   // Exact match on alsoMatches: [] means exact-only
   if (link.alsoMatches !== undefined && link.alsoMatches.length === 0) {
     return pathname === link.href || pathname === link.href + "/";
   }
-  // Check alsoMatches prefixes
-  if (link.alsoMatches?.some((prefix) => pathname.startsWith(prefix))) return true;
-  // Standard match
+  // Exact match
   if (pathname === link.href) return true;
-  if (pathname.startsWith(link.href + "/")) return true;
+  // Check alsoMatches
+  if (link.alsoMatches?.some((prefix) => pathname === prefix || pathname.startsWith(prefix + "/"))) return true;
+  // startsWith match — but only if no MORE specific href matches
+  if (pathname.startsWith(link.href + "/")) {
+    const hasMoreSpecific = ALL_NAV_HREFS.some(h => h !== link.href && h.length > link.href.length && (pathname === h || pathname.startsWith(h + "/") || pathname.startsWith(h)));
+    return !hasMoreSpecific;
+  }
   return false;
 }
 
@@ -456,13 +479,16 @@ export function Sidebar() {
     }
   }
 
-  function isActive(href: string) {
+  function isActive(href: string, alsoMatches?: string[]) {
     if (href === "/") return pathname === "/";
+    // Exact match
     if (pathname === href) return true;
-    // Check if this href matches the pathname
-    if (!pathname.startsWith(href)) return false;
-    // Check if there's a MORE specific href that also matches — if so, this one is NOT active
-    const moreSpecific = allHrefs.find(h => h !== href && h.length > href.length && pathname.startsWith(h));
+    // Check alsoMatches first
+    if (alsoMatches?.some(m => pathname === m || pathname.startsWith(m + "/"))) return true;
+    // startsWith match — but only if no OTHER nav item is more specific
+    if (!pathname.startsWith(href + "/") && pathname !== href) return false;
+    // There IS a startsWith match — check if another href is more specific
+    const moreSpecific = allHrefs.find(h => h !== href && h.length > href.length && (pathname === h || pathname.startsWith(h + "/") || pathname.startsWith(h)));
     return !moreSpecific;
   }
 
@@ -527,7 +553,7 @@ export function Sidebar() {
               );
             }
             return (
-              <NavItem key={entry.href} item={entry} isCollapsed={isCollapsed} isActive={isActive(entry.href)} />
+              <NavItem key={entry.href} item={entry} isCollapsed={isCollapsed} isActive={isActive(entry.href, entry.alsoMatches)} />
             );
           })}
         </nav>

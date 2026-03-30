@@ -63,7 +63,15 @@ let isGenerating = false;
 const DAGEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
 async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: { dag: string; gerechten: string[] }[]): Promise<unknown> {
-  const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, restjes } = params;
+  const kcal = Number(params.kcal) || 2750;
+  const eiwit = Number(params.eiwit) || 190;
+  const koolhydraten = Number(params.koolhydraten) || 300;
+  const vezels = Number(params.vezels) || 30;
+  const suiker = Number(params.suiker) || 60;
+  const vet = Number(params.vet) || 110;
+  const voorkeuren = String(params.voorkeuren || "");
+  const uitsluitingen = String(params.uitsluitingen || "");
+  const restjes = params.restjes;
 
   const eerderGebruikt = vorigeDagen.length > 0
     ? `\n\nEERDER GEBRUIKTE GERECHTEN (kies COMPLEET ANDERE gerechten en ingrediënten — GEEN herhalingen!):\n${vorigeDagen.map(d => `${d.dag}: ${d.gerechten.join(", ")}`).join("\n")}\n\nBELANGRIJK: Gebruik ANDERE fruit soorten, ANDERE eiwitbronnen, ANDERE snacks dan hierboven. Variatie is cruciaal — niet elke dag dezelfde shake, hetzelfde fruit of dezelfde snack!`
@@ -78,23 +86,37 @@ async function generateDay(client: Anthropic, dag: string, params: Record<string
     max_tokens: 5000,
     messages: [{
       role: "user",
-      content: `Maak een dagplan voor ${dag}. Macro targets per dag: ${kcal} kcal, ${eiwit}g eiwit, ${koolhydraten}g koolhydraten, ${vet}g vet, ${vezels}g vezels, ${suiker}g suiker.
+      content: `Maak een dagplan voor ${dag}.
+
+MACRO TARGETS (STRIKT AANHOUDEN — maximaal 5% afwijking!):
+- Calorieën: ${kcal} kcal (NIET meer dan ${Math.round(kcal * 1.05)}, NIET minder dan ${Math.round(kcal * 0.95)})
+- Eiwit: ${eiwit}g (MINIMAAL ${Math.round(eiwit * 0.95)}g — dit is de BELANGRIJKSTE macro)
+- Koolhydraten: ${koolhydraten}g
+- Vet: ${vet}g
+- Vezels: ${vezels}g
+- Suiker: max ${suiker}g
 ${voorkeuren ? `\nVoorkeuren: ${voorkeuren}` : ""}${uitsluitingen ? `\nUitsluitingen: ${uitsluitingen}` : ""}${eerderGebruikt}${restjesInfo}
 
-BELANGRIJK — elk maaltijdtype moet passen bij het moment van de dag:
-- **ontbijt**: Ontbijtgerechten! Denk aan havermout, yoghurt met fruit, eieren (roerei/omelet/gebakken), brood met beleg, smoothiebowl, pannenkoeken, overnight oats, muesli. NOOIT een warm diner als ontbijt.
-- **lunch**: Lichte maaltijden! Denk aan wraps, salades, broodjes, soep, tosti's, bowl met rijst/quinoa, quesadilla, pasta salade. GEEN zware warme maaltijden.
-- **tussendoor**: Snacks! Denk aan noten, fruit, rijstwafels met pindakaas, yoghurt, eiwitreep, hummus met groente, trail mix, cottage cheese, crackers. GEEN warme maaltijden.
-- **avondeten**: De enige warme hoofdmaaltijd van de dag. Denk aan pasta, rijst met kip/gehakt, wok, curry, ovenschotel, aardappelen met groente en vlees, burrito bowl, stir-fry.
-- **avondsnack**: Licht! Denk aan kwark met honing, caseine shake, noten, fruit, rijstwafel, pindakaas toast, schaaltje yoghurt.
+STRUCTUUR — 6 maaltijden per dag:
+- **ontbijt** (~${Math.round(kcal * 0.2)} kcal, ~${Math.round(eiwit * 0.15)}g eiwit): havermout, eieren, yoghurt, brood, smoothiebowl, pannenkoeken
+- **tussendoor** (~${Math.round(kcal * 0.08)} kcal, ~${Math.round(eiwit * 0.12)}g eiwit): noten, fruit, rijstwafels, eiwitreep, hummus
+- **lunch** (~${Math.round(kcal * 0.25)} kcal, ~${Math.round(eiwit * 0.25)}g eiwit): wraps, salades, broodjes, bowl, tosti
+- **tussendoor** (~${Math.round(kcal * 0.08)} kcal, ~${Math.round(eiwit * 0.1)}g eiwit): snack
+- **avondeten** (~${Math.round(kcal * 0.3)} kcal, ~${Math.round(eiwit * 0.25)}g eiwit): pasta, rijst, wok, curry, ovenschotel
+- **avondsnack** (~${Math.round(kcal * 0.09)} kcal, ~${Math.round(eiwit * 0.13)}g eiwit): kwark, shake, noten, yoghurt
 
-Zorg voor VARIATIE in eiwitbronnen door de dag heen (niet alles kip). Gebruik realistische hoeveelheden.
-Alle producten moeten bij de Lidl te koop zijn.
+REGELS:
+1. Tel de macro's van ALLE ingrediënten op en CONTROLEER dat het dagtotaal binnen 5% van de targets valt
+2. Eiwit is PRIORITEIT — als je moet kiezen, ga voor meer eiwit
+3. Gebruik realistische hoeveelheden en correcte voedingswaarden per 100g
+4. Variatie in eiwitbronnen (kip, rund, vis, eieren, zuivel, peulvruchten, noten)
+5. Alle producten bij de Lidl verkrijgbaar
 
-Geef per ingrediënt de exacte hoeveelheid in grammen en de macro's per die hoeveelheid.
+Geef per ingrediënt de exacte hoeveelheid en macro's per die hoeveelheid.
+dagTotaal = ECHTE som van alle maaltijden (NIET de targets copy-pasten, maar de WERKELIJKE som berekenen!)
 
-JSON formaat (ALLEEN JSON, geen tekst ervoor of erna):
-{"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"Havermout met banaan en pindakaas","beschrijving":"Kook havermout in water, snijd banaan in plakjes, roer pindakaas erdoor.","ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1},{"naam":"Banaan","hoeveelheid":"1 stuk (120g)","kcal":107,"eiwit":1,"kh":23,"vet":0,"vezels":3,"suiker":12},{"naam":"Pindakaas","hoeveelheid":"20g","kcal":118,"eiwit":5,"kh":3,"vet":10,"vezels":1,"suiker":1}],"totaal":{"kcal":521,"eiwit":16,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":${kcal},"eiwit":${eiwit},"kh":${koolhydraten},"vet":${vet},"vezels":${vezels},"suiker":${suiker}}}`,
+JSON (ALLEEN JSON):
+{"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"...","beschrijving":"...","ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1}],"totaal":{"kcal":521,"eiwit":25,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":2750,"eiwit":190,"kh":300,"vet":110,"vezels":30,"suiker":55}}`,
     }],
   });
 

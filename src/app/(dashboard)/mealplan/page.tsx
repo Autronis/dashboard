@@ -440,17 +440,17 @@ export default function MealPlanPage() {
                   <button
                     onClick={() => {
                       if (!activeDag) return;
-                      const allKeys = activeDag.maaltijden.map(m => `${activeDay}-${m.type}`);
+                      const allKeys = activeDag.maaltijden.map((m, i) => `${activeDay}-${m.type}-${i}`);
                       const allOpen = allKeys.every(k => expandedMeals.has(k));
                       setExpandedMeals(allOpen ? new Set() : new Set(allKeys));
                     }}
                     className="text-[10px] text-autronis-text-tertiary hover:text-autronis-accent transition-all"
                   >
-                    {activeDag.maaltijden.every(m => expandedMeals.has(`${activeDay}-${m.type}`)) ? "Alles inklappen" : "Alles uitklappen"}
+                    {activeDag.maaltijden.every((m, i) => expandedMeals.has(`${activeDay}-${m.type}-${i}`)) ? "Alles inklappen" : "Alles uitklappen"}
                   </button>
                 </div>
                 {activeDag.maaltijden.map((maaltijd, i) => {
-                  const mealKey = `${activeDay}-${maaltijd.type}`;
+                  const mealKey = `${activeDay}-${maaltijd.type}-${i}`;
                   const isExpanded = expandedMeals.has(mealKey);
                   return (
                     <motion.div

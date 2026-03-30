@@ -96,29 +96,24 @@ const navSections: (NavLink | NavSection | "divider")[] = [
     ],
   },
 
-  // Kennis & Content
+  // Creatie
   {
-    section: "Kennis & Content",
+    section: "Creatie",
     items: [
-      {
-        label: "Nieuw",
-        icon: PlusCircle,
-        children: [
-          { label: "Content", icon: Megaphone, href: "/content" },
-          { label: "Video Studio", icon: Video, href: "/content/videos/studio" },
-          { label: "Animatie", icon: Wand2, href: "/animaties" },
-          { label: "Case Study", icon: Compass, href: "/case-studies" },
-        ],
-      },
-      {
-        label: "Bibliotheek",
-        icon: Library,
-        children: [
-          { label: "Wiki", icon: BookOpen, href: "/wiki" },
-          { label: "Second Brain", icon: Brain, href: "/second-brain" },
-          { label: "Learning Radar", icon: Radar, href: "/radar" },
-        ],
-      },
+      { label: "Content Engine", icon: Megaphone, href: "/content", alsoMatches: ["/content/posts", "/content/kennisbank", "/content/kalender"] },
+      { label: "Video Studio", icon: Video, href: "/content/videos/studio", alsoMatches: ["/content/videos"] },
+      { label: "Banners", icon: PenLine, href: "/content/banners" },
+      { label: "Animaties", icon: Wand2, href: "/animaties" },
+    ],
+  },
+
+  // Kennis
+  {
+    section: "Kennis",
+    items: [
+      { label: "Second Brain", icon: Brain, href: "/second-brain" },
+      { label: "Wiki", icon: BookOpen, href: "/wiki" },
+      { label: "Learning Radar", icon: Radar, href: "/radar" },
       { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
     ],
   },
@@ -441,9 +436,33 @@ export function Sidebar() {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
 
+  // Collect all nav hrefs to find the most specific match
+  const allHrefs: string[] = [];
+  for (const entry of navSections) {
+    if (entry === "divider") continue;
+    if ("section" in entry) {
+      for (const item of entry.items) {
+        if (isLauncher(item)) {
+          for (const child of item.children) allHrefs.push(child.href);
+        } else {
+          allHrefs.push(item.href);
+          if (item.alsoMatches) allHrefs.push(...item.alsoMatches);
+        }
+      }
+    } else {
+      allHrefs.push(entry.href);
+      if (entry.alsoMatches) allHrefs.push(...entry.alsoMatches);
+    }
+  }
+
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
+    if (pathname === href) return true;
+    // Check if this href matches the pathname
+    if (!pathname.startsWith(href)) return false;
+    // Check if there's a MORE specific href that also matches — if so, this one is NOT active
+    const moreSpecific = allHrefs.find(h => h !== href && h.length > href.length && pathname.startsWith(h));
+    return !moreSpecific;
   }
 
   return (

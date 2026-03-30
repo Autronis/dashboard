@@ -62,11 +62,11 @@ let isGenerating = false;
 
 const DAGEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
-async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: string[]): Promise<unknown> {
+async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: { dag: string; gerechten: string[] }[]): Promise<unknown> {
   const { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, restjes } = params;
 
   const eerderGebruikt = vorigeDagen.length > 0
-    ? `\n\nEERDER GEBRUIKT (kies COMPLEET ANDERE gerechten): ${vorigeDagen.join(", ")}`
+    ? `\n\nEERDER GEBRUIKTE GERECHTEN (kies COMPLEET ANDERE gerechten en ingrediënten — GEEN herhalingen!):\n${vorigeDagen.map(d => `${d.dag}: ${d.gerechten.join(", ")}`).join("\n")}\n\nBELANGRIJK: Gebruik ANDERE fruit soorten, ANDERE eiwitbronnen, ANDERE snacks dan hierboven. Variatie is cruciaal — niet elke dag dezelfde shake, hetzelfde fruit of dezelfde snack!`
     : "";
 
   const restjesInfo = Array.isArray(restjes) && restjes.length > 0
@@ -230,12 +230,14 @@ async function triggerGeneration() {
 
   (async () => {
     const dagen: unknown[] = [];
-    const dagNamen: string[] = [];
+    const dagNamen: { dag: string; gerechten: string[] }[] = [];
 
     for (let i = 0; i < DAGEN.length; i++) {
-      const dag = await generateDay(client, DAGEN[i], params, dagNamen);
-      dagen.push(dag);
-      dagNamen.push(DAGEN[i]);
+      const dagData = await generateDay(client, DAGEN[i], params, dagNamen);
+      dagen.push(dagData);
+      // Extract meal names for variety tracking
+      const d = dagData as { maaltijden?: { naam?: string }[] };
+      dagNamen.push({ dag: DAGEN[i], gerechten: d.maaltijden?.map(m => m.naam ?? "") ?? [] });
       await dbRun("UPDATE mealplan_cache SET progress = ?", [i + 1]);
     }
 
@@ -318,12 +320,13 @@ export async function POST(req: NextRequest) {
 
     const client = new Anthropic({ apiKey });
     const dagen: unknown[] = [];
-    const dagNamen: string[] = [];
+    const dagNamen: { dag: string; gerechten: string[] }[] = [];
 
     for (const dag of DAGEN) {
       const dagData = await generateDay(client, dag, params, dagNamen);
       dagen.push(dagData);
-      dagNamen.push(dag);
+      const d = dagData as { maaltijden?: { naam?: string }[] };
+      dagNamen.push({ dag, gerechten: d.maaltijden?.map(m => m.naam ?? "") ?? [] });
     }
 
     let boodschappenlijst: unknown[] = [];

@@ -277,9 +277,13 @@ export default function CaseStudiesPage() {
 
   // Filtered projects for selected client
   const clientProjecten = useMemo(() => {
+    if (formState.klantnaam === "Autronis") {
+      // Show internal projects (no client or Autronis-owned)
+      return projecten.filter((p) => !p.klantId || p.klantNaam === "Autronis" || p.klantNaam?.includes("intern"));
+    }
     if (!selectedKlantId) return [];
     return projecten.filter((p) => p.klantId === selectedKlantId);
-  }, [selectedKlantId, projecten]);
+  }, [selectedKlantId, projecten, formState.klantnaam]);
 
   // ============ KLANT/PROJECT SELECTIE ============
 
@@ -1033,10 +1037,19 @@ export default function CaseStudiesPage() {
                       <div className="relative">
                         <select
                           value={selectedKlantId ?? ""}
-                          onChange={(e) => handleKlantSelect(e.target.value ? Number(e.target.value) : null)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "intern") {
+                              handleKlantSelect(null);
+                              setFormState(s => ({ ...s, klantnaam: "Autronis", klantBeschrijving: "AI- en automatiseringsbureau voor MKB", klantBranche: "AI & Automatisering" }));
+                            } else {
+                              handleKlantSelect(val ? Number(val) : null);
+                            }
+                          }}
                           className={selectClass}
                         >
                           <option value="">— Kies klant of vul handmatig in —</option>
+                          <option value="intern">🏠 Intern project (Autronis)</option>
                           {klanten.map((k) => (
                             <option key={k.id} value={k.id}>{k.bedrijfsnaam}</option>
                           ))}
@@ -1050,7 +1063,7 @@ export default function CaseStudiesPage() {
                         <select
                           value={selectedProjectId ?? ""}
                           onChange={(e) => handleProjectSelect(e.target.value ? Number(e.target.value) : null)}
-                          disabled={!selectedKlantId}
+                          disabled={!selectedKlantId && formState.klantnaam !== "Autronis"}
                           className={cn(selectClass, "disabled:opacity-40 disabled:cursor-not-allowed")}
                         >
                           <option value="">— Kies project —</option>

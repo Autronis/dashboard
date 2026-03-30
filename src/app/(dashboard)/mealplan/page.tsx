@@ -146,40 +146,22 @@ export default function MealPlanPage() {
 
   const [progress, setProgress] = useState(0);
 
-  // Poll server for plan status — server is single source of truth
+  // Load plan from server on mount (once, not polling)
   useEffect(() => {
-    const poll = () => {
-      fetch("/api/mealplan")
-        .then((res) => res.ok ? res.json() : null)
-        .then((data) => {
-          if (!data) return;
-          if (data.status === "done" && data.plan) {
-            setPlan(prev => {
-              // Only close settings when plan FIRST arrives (prev was null)
-              if (!prev) setShowSettings(false);
-              return data.plan;
-            });
-            setLoading(false);
-            setProgress(8);
-          } else if (data.status === "generating" || data.status === "pending") {
-            setLoading(true);
-            setProgress(data.progress || 0);
-          } else if (data.status === "error") {
-            setLoading(false);
-            setShowSettings(true);
-            setProgress(0);
-          } else if (data.status === "none") {
-            // No plan exists — show settings
-            if (!initialLoaded) setShowSettings(true);
-          }
-          setInitialLoaded(true);
-        })
-        .catch(() => {});
-    };
-
-    poll();
-    const interval = setInterval(poll, 2000);
-    return () => clearInterval(interval);
+    if (initialLoaded) return;
+    fetch("/api/mealplan")
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data) { setShowSettings(true); setInitialLoaded(true); return; }
+        if (data.status === "done" && data.plan) {
+          setPlan(data.plan);
+          setShowSettings(false);
+        } else {
+          setShowSettings(true);
+        }
+        setInitialLoaded(true);
+      })
+      .catch(() => { setInitialLoaded(true); setShowSettings(true); });
   }, [initialLoaded]);
 
   // Shared generation logic

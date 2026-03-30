@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
   },
   bedrijfsnaam: {
     fontSize: 14,
@@ -64,12 +64,14 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     alignItems: "flex-end",
+    maxWidth: "55%",
   },
   documentType: {
-    fontSize: 18,
+    fontSize: 13,
     fontWeight: 700,
     color: TEAL,
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+    textAlign: "right",
   },
   documentSubtype: {
     fontSize: 8,

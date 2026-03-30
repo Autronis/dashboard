@@ -105,8 +105,9 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: PlusCircle,
         children: [
           { label: "Content", icon: Megaphone, href: "/content" },
+          { label: "Video Studio", icon: Video, href: "/content/videos/studio" },
           { label: "Animatie", icon: Wand2, href: "/animaties" },
-          { label: "Case Study", icon: Video, href: "/case-studies" },
+          { label: "Case Study", icon: Compass, href: "/case-studies" },
         ],
       },
       {

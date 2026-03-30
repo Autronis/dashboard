@@ -80,6 +80,7 @@ export default function VideoStudioPage() {
   const sendMessage = async (tekst?: string) => {
     const bericht = tekst ?? input.trim();
     if (!bericht || loading) return;
+    if (localStorage.getItem("video-studio-pending") === "true") return; // Prevent double send
     setInput("");
     const berichtTekst = refImage ? `${bericht} [referentie bijgevoegd${videoFrames.length > 0 ? ` — ${videoFrames.length} video frames` : ""}]` : bericht;
     setBerichten(prev => [...prev, { rol: "gebruiker", tekst: berichtTekst }]);

@@ -1,9 +1,6 @@
-import { interpolate } from "remotion";
+import { interpolate, spring, useVideoConfig } from "remotion";
 import { Scene } from "../types";
 import { Icon } from "./Icon";
-
-const CHARS_PER_FRAME = 2;
-const LINE_START_DELAY = 8; // frames of pause between lines
 
 const ACCENT_COLORS: Record<string, string> = {
   turquoise: "#23C6B7",
@@ -12,40 +9,20 @@ const ACCENT_COLORS: Record<string, string> = {
 
 interface SceneContentProps {
   scene: Scene;
-  frame: number; // frame relative to this scene start
-}
-
-function getLineRevealFrames(tekst: string[]): number[] {
-  const starts: number[] = [];
-  let cursor = 0;
-  for (let i = 0; i < tekst.length; i++) {
-    starts.push(cursor);
-    cursor += Math.ceil(tekst[i].length / CHARS_PER_FRAME) + LINE_START_DELAY;
-  }
-  return starts;
-}
-
-function getRevealedText(text: string, frame: number, startFrame: number): string {
-  const elapsed = frame - startFrame;
-  if (elapsed < 0) return "";
-  const charsVisible = Math.floor(elapsed * CHARS_PER_FRAME);
-  return text.slice(0, charsVisible);
+  frame: number;
 }
 
 export const SceneContent: React.FC<SceneContentProps> = ({ scene, frame }) => {
+  const { fps } = useVideoConfig();
   const { tekst, accentRegel, accentKleur = "turquoise", icon, isCta } = scene;
   const accentColor = ACCENT_COLORS[accentKleur];
-  const lineStarts = getLineRevealFrames(tekst);
 
-  // The icon fades in after all text is done
-  const lastLineStart = lineStarts[tekst.length - 1] ?? 0;
-  const lastLine = tekst[tekst.length - 1] ?? "";
-  const iconRevealFrame =
-    lastLineStart + Math.ceil(lastLine.length / CHARS_PER_FRAME) + LINE_START_DELAY;
+  // Container fade + scale in
+  const containerOpacity = interpolate(frame, [0, 6], [0, 1], { extrapolateRight: "clamp" });
+  const containerScale = interpolate(frame, [0, 8], [0.95, 1], { extrapolateRight: "clamp" });
 
-  const containerOpacity = interpolate(frame, [0, 8], [0, 1], {
-    extrapolateRight: "clamp",
-  });
+  // Each line slides up with spring
+  const lineDelay = 6; // frames between each line
 
   return (
     <div
@@ -56,89 +33,120 @@ export const SceneContent: React.FC<SceneContentProps> = ({ scene, frame }) => {
         width: 1080,
         height: 1080,
         opacity: containerOpacity,
+        transform: `scale(${containerScale})`,
       }}
     >
-      {/* Text block — left-aligned, vertically centered */}
+      {/* Glow behind text area */}
+      <div style={{
+        position: "absolute",
+        top: isCta ? 340 : 280,
+        left: 20,
+        right: 20,
+        height: 300,
+        background: `radial-gradient(ellipse at 30% 50%, ${accentColor}15 0%, transparent 70%)`,
+        pointerEvents: "none",
+      }} />
+
+      {/* Text block */}
       <div
         style={{
           position: "absolute",
-          top: isCta ? 380 : 340,
+          top: isCta ? 360 : 300,
           left: 56,
           right: 56,
-          fontFamily: "Inter, sans-serif",
+          fontFamily: "'Inter', sans-serif",
         }}
       >
         {tekst.map((line, i) => {
           const isAccent = i === accentRegel;
-          const revealed = getRevealedText(line, frame, lineStarts[i]);
-          const isLastLine = i === tekst.length - 1;
+          const delay = i * lineDelay;
 
-          // Last line or accent line gets larger
-          const fontSize = isAccent || isLastLine ? 62 : 52;
+          // Spring animation per line
+          const lineProgress = spring({ frame: frame - delay, fps, config: { damping: 20, stiffness: 120 } });
+          const lineOpacity = interpolate(lineProgress, [0, 1], [0, 1]);
+          const lineY = interpolate(lineProgress, [0, 1], [30, 0]);
+
+          // Font sizing — accent and CTA lines bigger
+          const fontSize = isCta && i === tekst.length - 1 ? 58 : isAccent ? 64 : 54;
           const color = isAccent ? accentColor : "#F3F5F7";
-          const fontWeight = isAccent ? 700 : 600;
-
-          // CTA scene: emphasize last line differently
-          const lineStyle: React.CSSProperties = {
-            display: "block",
-            fontSize,
-            fontWeight,
-            color,
-            lineHeight: 1.22,
-            marginBottom: i < tekst.length - 1 ? 10 : 0,
-            letterSpacing: isAccent ? "0.01em" : "-0.01em",
-            minHeight: fontSize * 1.22,
-          };
+          const fontWeight = isAccent ? 800 : 700;
 
           return (
-            <span key={i} style={lineStyle}>
-              {revealed}
-              {/* Blinking cursor on actively typing line */}
-              {revealed.length < line.length && revealed.length > 0 && (
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: 3,
-                    height: fontSize * 0.85,
-                    backgroundColor: accentColor,
-                    marginLeft: 3,
-                    verticalAlign: "middle",
-                    opacity: Math.floor(frame / 8) % 2 === 0 ? 1 : 0,
-                  }}
-                />
-              )}
-            </span>
+            <div
+              key={i}
+              style={{
+                display: "block",
+                fontSize,
+                fontWeight,
+                color,
+                lineHeight: 1.15,
+                marginBottom: 8,
+                letterSpacing: isAccent ? "0.01em" : "-0.02em",
+                opacity: lineOpacity,
+                transform: `translateY(${lineY}px)`,
+                // Glow on accent text
+                textShadow: isAccent
+                  ? `0 0 40px ${accentColor}60, 0 0 80px ${accentColor}30`
+                  : "none",
+              }}
+            >
+              {line}
+            </div>
           );
         })}
 
-        {/* CTA underline accent */}
-        {isCta && (
-          <div
-            style={{
-              marginTop: 28,
-              width: interpolate(
-                frame,
-                [iconRevealFrame, iconRevealFrame + 20],
-                [0, 220],
-                { extrapolateRight: "clamp", extrapolateLeft: "clamp" }
-              ),
-              height: 3,
+        {/* CTA underline accent bar */}
+        {isCta && (() => {
+          const barDelay = tekst.length * lineDelay + 4;
+          const barProgress = spring({ frame: frame - barDelay, fps, config: { damping: 15, stiffness: 100 } });
+          const barWidth = interpolate(barProgress, [0, 1], [0, 280]);
+          return (
+            <div style={{
+              marginTop: 24,
+              width: barWidth,
+              height: 4,
               backgroundColor: accentColor,
               borderRadius: 2,
-            }}
-          />
-        )}
+              boxShadow: `0 0 20px ${accentColor}80, 0 0 40px ${accentColor}40`,
+            }} />
+          );
+        })()}
       </div>
 
-      {/* Icon */}
-      {icon && (
-        <Icon
-          name={icon}
-          color={accentColor}
-          revealFrame={iconRevealFrame}
-          currentFrame={frame}
-        />
-      )}
+      {/* Icon — bigger, with glow */}
+      {icon && (() => {
+        const iconDelay = tekst.length * lineDelay + 6;
+        const iconProgress = spring({ frame: frame - iconDelay, fps, config: { damping: 18, stiffness: 100 } });
+        const iconOpacity = interpolate(iconProgress, [0, 1], [0, 1]);
+        const iconScale = interpolate(iconProgress, [0, 1], [0.5, 1]);
+
+        return (
+          <div style={{
+            position: "absolute",
+            bottom: 110,
+            left: 56,
+            opacity: iconOpacity,
+            transform: `scale(${iconScale})`,
+          }}>
+            {/* Icon glow */}
+            <div style={{
+              position: "absolute",
+              top: -20,
+              left: -20,
+              width: 112,
+              height: 112,
+              borderRadius: "50%",
+              background: `radial-gradient(circle, ${accentColor}25 0%, transparent 70%)`,
+            }} />
+            <Icon
+              name={icon}
+              color={accentColor}
+              revealFrame={0}
+              currentFrame={10}
+            />
+          </div>
+        );
+      })()}
     </div>
   );
 };

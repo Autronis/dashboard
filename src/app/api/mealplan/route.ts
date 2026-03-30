@@ -156,7 +156,7 @@ async function generateBoodschappen(client: Anthropic, dagen: unknown[], restjes
       content: `Hier zijn ALLE ${entries.length} ingrediënten die ik nodig heb voor mijn weekmenu. Maak een complete Lidl boodschappenlijst.
 
 ${ingredientenLijst}
-
+${restjes?.length ? `\nRESTJES VAN VORIGE WEEK (heb ik al in huis — trek af van wat ik moet kopen!):\n${restjes.map(r => `- ${r.product}: ${r.hoeveelheid}`).join("\n")}\n\nBELANGRIJK: Als ik een ingrediënt al (deels) heb van vorige week, hoef ik MINDER te kopen. Bijv: ik heb 300g rijst over en heb 800g nodig → ik moet maar 500g kopen (1 pak). Als ik genoeg heb, hoef ik het NIET te kopen — zet dan hoeveelheid op "0 (al in huis)" en prijs op 0.\n` : ""}
 REGELS:
 1. ELKE ingrediënt hierboven MOET terug te vinden zijn in de boodschappenlijst. Sla NIETS over.
 2. Gebruik echte Lidl producten en verpakkingsgroottes (bijv. kipfilet 500g pak, havermout 500g pak, melk 1L, eieren doos 10 stuks)
@@ -240,7 +240,7 @@ async function triggerGeneration() {
     let boodschappenlijst: unknown[] = [];
     let totaalPrijs = 0;
     try {
-      const boodschappen = await generateBoodschappen(client, dagen);
+      const boodschappen = await generateBoodschappen(client, dagen, Array.isArray(params.restjes) ? params.restjes as { product: string; hoeveelheid: string }[] : undefined);
       boodschappenlijst = boodschappen.boodschappenlijst;
       totaalPrijs = boodschappen.totaalPrijs;
     } catch (boodschapErr) {

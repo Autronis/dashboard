@@ -233,6 +233,51 @@ export default function VideoStudioPage() {
               </div>
             )}
 
+            {/* Image ref preview */}
+            {refImage && (
+              <div className="px-3 py-2 border-t border-autronis-border flex items-center gap-2">
+                <img src={refImage.preview} alt="ref" className="w-10 h-10 object-contain rounded-lg border border-autronis-accent/30" />
+                <span className="text-[10px] text-autronis-accent">Afbeelding als referentie</span>
+                <button onClick={() => setRefImage(null)} className="text-autronis-text-tertiary hover:text-red-400 ml-auto">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Gallery picker */}
+            {showGallery && (
+              <div className="px-3 py-2 border-t border-autronis-border">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-medium text-autronis-text-secondary">Kies uit galerij</span>
+                  <button onClick={() => setShowGallery(false)} className="text-autronis-text-tertiary hover:text-autronis-text-primary">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                  {gallery.slice(0, 20).map(g => (
+                    <button key={g.id} onClick={async () => {
+                      // Fetch image and convert to base64
+                      try {
+                        const imgRes = await fetch(g.afbeeldingUrl!);
+                        if (!imgRes.ok) return;
+                        const blob = await imgRes.blob();
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const dataUrl = reader.result as string;
+                          setRefImage({ base64: dataUrl.split(",")[1], mediaType: blob.type || "image/png", preview: g.afbeeldingUrl! });
+                          setShowGallery(false);
+                        };
+                        reader.readAsDataURL(blob);
+                      } catch { /* ignore */ }
+                    }}
+                      className="shrink-0 w-14 h-14 rounded-lg border border-autronis-border hover:border-autronis-accent overflow-hidden transition-all">
+                      <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Input */}
             <div className="p-3 border-t border-autronis-border">
               <div className="flex gap-2">
@@ -240,20 +285,38 @@ export default function VideoStudioPage() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                  placeholder="Beschrijf je video idee of geef feedback op het script..."
+                  placeholder={refImage ? "Beschrijf wat je wilt met deze afbeelding als stijl..." : "Beschrijf je video idee of geef feedback..."}
                   className="flex-1 bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50"
                 />
+                {/* Image upload */}
+                <input ref={imgInputRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = ev => {
+                      const result = ev.target?.result as string;
+                      setRefImage({ base64: result.split(",")[1], mediaType: file.type, preview: result });
+                    };
+                    reader.readAsDataURL(file);
+                  }} />
+                <button onClick={() => setShowGallery(v => !v)}
+                  className={cn("p-2.5 bg-autronis-bg border rounded-xl transition-all", showGallery ? "border-autronis-accent text-autronis-accent" : "border-autronis-border text-autronis-text-tertiary hover:text-autronis-accent hover:border-autronis-accent/30")}
+                  title="Kies afbeelding uit galerij">
+                  <Film className="w-4 h-4" />
+                </button>
+                <button onClick={() => imgInputRef.current?.click()}
+                  className="p-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-autronis-text-tertiary hover:text-purple-400 hover:border-purple-500/30 transition-all"
+                  title="Upload afbeelding als referentie">
+                  <Upload className="w-4 h-4" />
+                </button>
+                {/* Video ref upload */}
                 <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
                   onChange={e => {
                     const file = e.target.files?.[0];
                     if (file) setReferentieVideos(prev => [...prev, file.name]);
                   }} />
-                <button onClick={() => fileInputRef.current?.click()}
-                  className="p-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-autronis-text-tertiary hover:text-purple-400 hover:border-purple-500/30 transition-all"
-                  title="Referentie video uploaden">
-                  <Upload className="w-4 h-4" />
-                </button>
-                <button onClick={() => sendMessage()} disabled={!input.trim() || loading}
+                <button onClick={() => sendMessage()} disabled={(!input.trim() && !refImage) || loading}
                   className="p-2.5 bg-autronis-accent text-white rounded-xl hover:bg-autronis-accent-hover transition-all disabled:opacity-40">
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                 </button>

@@ -154,13 +154,15 @@ export default function MealPlanPage() {
         .then((data) => {
           if (!data) return;
           if (data.status === "done" && data.plan) {
-            setPlan(data.plan);
-            setShowSettings(false);
+            setPlan(prev => {
+              // Only close settings when plan FIRST arrives (prev was null)
+              if (!prev) setShowSettings(false);
+              return data.plan;
+            });
             setLoading(false);
             setProgress(8);
           } else if (data.status === "generating" || data.status === "pending") {
             setLoading(true);
-            setShowSettings(false);
             setProgress(data.progress || 0);
           } else if (data.status === "error") {
             setLoading(false);

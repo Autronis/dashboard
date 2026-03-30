@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Video, Play, Download, Trash2, ChevronDown, ChevronUp, Loader2,
   Film, Lightbulb, ArrowRightLeft, Wrench, BarChart3, Quote, Briefcase,
   Monitor,
   Sparkles,
+  X,
 } from "lucide-react";
 import {
   useContentVideos, useGenerateVideoScript, useRenderVideo, useDeleteVideo,
@@ -269,13 +270,17 @@ function TemplateCard({
 function TemplateForm({
   template,
   onCancel,
+  gallery,
 }: {
   template: VideoTemplateInfo;
   onCancel: () => void;
+  gallery: { id: number; afbeeldingUrl: string | null; productNaam: string }[];
 }) {
   const { addToast } = useToast();
   const generateFromTemplate = useGenerateFromTemplate();
   const [input, setInput] = useState<Record<string, string>>({});
+  const [refPreview, setRefPreview] = useState<string | null>(null);
+  const [showGalleryPicker, setShowGalleryPicker] = useState(false);
 
   function handleChange(key: string, value: string) {
     setInput((prev) => ({ ...prev, [key]: value }));
@@ -349,6 +354,39 @@ function TemplateForm({
         ))}
       </div>
 
+      {/* Referentie afbeelding */}
+      <div>
+        <label className="block text-sm font-medium text-autronis-text-secondary mb-1">
+          Stijl referentie <span className="text-autronis-text-secondary/50 font-normal">(optioneel — kies een afbeelding als visuele inspiratie)</span>
+        </label>
+        {refPreview ? (
+          <div className="flex items-center gap-3 bg-autronis-card border border-autronis-border rounded-lg px-3 py-2">
+            <img src={refPreview} alt="ref" className="w-10 h-10 object-cover rounded" />
+            <span className="text-xs text-autronis-text-secondary flex-1">Referentie geselecteerd</span>
+            <button onClick={() => setRefPreview(null)} className="text-autronis-text-tertiary hover:text-red-400">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <button onClick={() => setShowGalleryPicker(v => !v)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 bg-autronis-card border border-dashed border-autronis-border rounded-lg text-sm text-autronis-text-tertiary hover:border-autronis-accent/40 hover:text-autronis-accent transition-all">
+              <Film className="w-4 h-4" /> Kies uit galerij
+            </button>
+            {showGalleryPicker && gallery.length > 0 && (
+              <div className="flex gap-1.5 overflow-x-auto pb-1 mt-2">
+                {gallery.filter(g => g.afbeeldingUrl).slice(0, 15).map(g => (
+                  <button key={g.id} onClick={() => { setRefPreview(g.afbeeldingUrl); setShowGalleryPicker(false); }}
+                    className="shrink-0 w-14 h-14 rounded-lg border border-autronis-border hover:border-autronis-accent overflow-hidden transition-all">
+                    <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
       <button
         onClick={handleGenerate}
         disabled={!allRequiredFilled || generateFromTemplate.isPending}
@@ -374,6 +412,13 @@ export default function VideosPage() {
   const [activeTab, setActiveTab] = useState<"template" | "post">("template");
 
   const { data: videos, isLoading: videosLoading } = useContentVideos();
+  const [galleryItems, setGalleryItems] = useState<{ id: number; afbeeldingUrl: string | null; productNaam: string }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/assets/gallery").then(r => r.json()).then((d: { items: typeof galleryItems }) => {
+      setGalleryItems((d.items ?? []).filter(g => g.afbeeldingUrl));
+    }).catch(() => {});
+  }, []);
   const { data: posts } = useContentPosts({ status: "goedgekeurd" });
   const { data: bewerktPosts } = useContentPosts({ status: "bewerkt" });
   const { data: templates } = useVideoTemplates();
@@ -471,6 +516,7 @@ export default function VideosPage() {
               <TemplateForm
                 template={selectedTemplate}
                 onCancel={() => setSelectedTemplateId(null)}
+                gallery={galleryItems}
               />
             )}
           </div>

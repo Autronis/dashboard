@@ -45,39 +45,35 @@ async function generateBeschrijvingen(sessies: Sessie[]): Promise<string[]> {
     return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}`;
   }).join("\n");
 
-  const prompt = `Beschrijf elke sessie in 8-12 woorden. Kijk naar de APP TIJDEN en venstertitels.
+  const prompt = `Beschrijf elke sessie in 8-12 woorden. Baseer je UITSLUITEND op de venstertitels.
 
-BELANGRIJK: de app met de MEESTE minuten bepaalt de focus van de beschrijving.
-- Code/cursor dominant → "Gewerkt aan [projectnaam uit titel]" (alleen als Code de meeste tijd heeft!)
-- TradingView/"System Investing" dominant → investing/trading werk
-- Chrome dominant → kijk naar TITELS om te bepalen wat de gebruiker DEED, niet wat er open stond
-- YouTube in titels → "YouTube video's gekeken over [onderwerp uit titel]"
-- Discord/Slack/WhatsApp dominant → communicatie, noem het onderwerp
+GOUDEN REGEL: beschrijf ALLEEN wat je ZEKER weet op basis van de venstertitels. Als je het niet zeker weet, wees vaag ("Browsergebruik en research") in plaats van iets te verzinnen.
 
-KRITIEK — voorkom deze fout:
-- "Autronis Dashboard" als Chrome-titel betekent NIET dat iemand aan het dashboard werkte. Het is gewoon een open tabblad.
-- Alleen als Code/cursor de DOMINANTE app is EN de Code-titel "autronis-dashboard" bevat → dan werkt iemand aan het dashboard.
-- Als Chrome dominant is, beschrijf WAT de gebruiker deed op basis van de INHOUDELIJKE titels (KVK, formulieren, documenten, etc.), niet de achtergrond-tabs.
-- Als er geen inhoudelijke titels zijn → "Online onderzoek en administratie" of "Browser sessie" — NIET "Gewerkt aan dashboard".
+HOE TE BEPALEN WAT IEMAND DEED:
+1. Kijk welke APP de meeste minuten heeft — die bepaalt de hoofdactiviteit
+2. Kijk naar de VENSTERTITELS van die app — die vertellen je WAT er gedaan werd
+3. NEGEER achtergrond-apps en -tabs volledig
+4. Als er meerdere taken in dezelfde sessie zitten, noem de dominante
 
-Voorbeelden:
-- "Code (20m), chrome (5m)" + "page.tsx — autronis-dashboard" → "Gewerkt aan Autronis dashboard pagina's"
-- "chrome (25m)" + "Claude Code Agent Team - YouTube" → "YouTube video's gekeken over Claude Code Agent teams"
-- "chrome (20m), Code (5m)" + "KVK inschrijving | mijn.kvk.nl" → "KVK inschrijving en bedrijfsregistratie geregeld"
-- "chrome (8m), Discord (5m)" + "#links | Business" → "Business links en ideeën uitgewisseld via Discord"
-- "chrome (15m), TradingView (9m)" + "System Investing V8" → "Investerings systeem bijgewerkt en marktdata geanalyseerd"
-- "Code (20m)" + "schema.ts — autronis-dashboard" → "Database schema aangepast voor Autronis dashboard"
-- "chrome (25m)" + "geen titels" → "Online onderzoek en browsing"
+PER APP TYPE:
+- Code/Cursor dominant → kijk naar het WORKSPACE/PROJECT deel van de titel (na "—"). Bijv "file.tsx — autronis-dashboard — Code" → project is "autronis-dashboard"
+- Chrome dominant → kijk naar de PAGINATITELS. "KVK inschrijving | mijn.kvk.nl" = administratie. "Claude chat" = AI research. Negeer dashboard.autronis.nl als achtergrondtab.
+- YouTube → noem het ONDERWERP uit de videotitel
+- Discord/Slack → "Communicatie" + eventueel kanaal/onderwerp
+- TradingView → alleen noemen als TradingView zelf dominant is (meeste minuten), niet als achtergrondtab
 
-Regels:
-- 8-12 woorden, Nederlands, NOOIT app namen noemen (behalve YouTube als bron)
-- Focus op de app met de MEESTE tijd
-- Noem SPECIFIEKE onderwerpen uit de titels (projectnamen, features, video onderwerpen)
-- Achtergrond-apps en achtergrond-tabs NEGEREN
-- "Autronis Dashboard" als Chrome-titel is RUIS — negeer het tenzij Code dominant is
-- Begin NOOIT met "Gebruiker", "De gebruiker", "Er werd" of andere onpersoonlijke vormen
-- Schrijf ALTIJD in directe stijl: "Gewerkt aan...", "Marktdata geanalyseerd...", "YouTube video's gekeken over..."
-- Doe alsof je een logboek schrijft voor jezelf, niet een rapport voor iemand anders
+KRITIEKE FOUTEN OM TE VOORKOMEN:
+- VERZIN NOOIT activiteiten die niet in de titels staan
+- "marktdata geanalyseerd" ALLEEN zeggen als TradingView de dominante app is
+- "Autronis Dashboard" als Chrome-titel = gewoon een open tab, NIET dat er aan gewerkt wordt
+- localhost:3000 in Chrome = achtergrondtab van dashboard, niet actief werk (tenzij Code dominant is)
+- Als titels onduidelijk zijn → "Browsergebruik" of "Diverse taken" — niet raden
+
+SCHRIJFSTIJL:
+- 8-12 woorden, Nederlands, directe stijl
+- "Gewerkt aan...", "Research naar...", "Video's gekeken over..."
+- NOOIT app-namen in de beschrijving
+- NOOIT onpersoonlijke vormen ("Er werd", "De gebruiker")
 
 ${lines}
 

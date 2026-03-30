@@ -82,8 +82,8 @@ async function generateDay(client: Anthropic, dag: string, params: Record<string
     : "";
 
   const response = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 5000,
+    model: "claude-sonnet-4-6",
+    max_tokens: 8000,
     messages: [{
       role: "user",
       content: `Maak een dagplan voor ${dag}.
@@ -410,6 +410,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ status: "done", plan });
   } catch (error) {
-    return NextResponse.json({ fout: error instanceof Error ? error.message : "Fout" }, { status: 500 });
+    console.error("[MEALPLAN POST] Error:", error);
+    const msg = error instanceof Error ? error.message : "Onbekende fout";
+    return NextResponse.json({ fout: `Weekplan genereren mislukt: ${msg}` }, { status: 500 });
   }
 }

@@ -1363,10 +1363,15 @@ export default function AgendaPage() {
                                 });
                                 if (res.ok) {
                                   addToast("Agenda item verplaatst", "succes");
-                                  await queryClient.invalidateQueries({ queryKey: ["agenda", jaar, maand] });
-                                  await queryClient.refetchQueries({ queryKey: ["agenda", jaar, maand] });
+                                  // Force refetch all agenda queries
+                                  queryClient.resetQueries({ queryKey: ["agenda"] });
+                                } else {
+                                  const err = await res.json();
+                                  addToast(err.fout || "Kon niet verplaatsen", "fout");
                                 }
-                              } catch { /* ignore */ }
+                              } catch {
+                                addToast("Kon niet verplaatsen", "fout");
+                              }
                             }
                           }}
                           className={cn(

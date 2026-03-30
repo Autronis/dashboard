@@ -1,31 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
+import { spawn } from "child_process";
 import path from "path";
 
-// Track running processes
-const runningServers: Record<string, { pid: number; port: number }> = {};
-
-const SERVER_CONFIG: Record<string, { command: string; port: number; cwd?: string; name: string }> = {
+const SERVER_CONFIG: Record<string, { command: string; args: string[]; port: number; cwd?: string; name: string; shell?: boolean }> = {
   remotion: {
-    command: "npx remotion studio src/remotion/index.ts --port 3001",
+    command: process.platform === "win32" ? "npx.cmd" : "npx",
+    args: ["remotion", "studio", "src/remotion/index.ts", "--port", "3001"],
     port: 3001,
     name: "Remotion Studio",
+    shell: true,
   },
   "case-study": {
-    command: "npm run dev",
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "dev"],
     port: 3456,
     cwd: "../autronis-case-study-generator",
     name: "Case Study Generator",
+    shell: true,
   },
 };
 
 async function isPortInUse(port: number): Promise<boolean> {
   try {
-    const res = await fetch(`http://localhost:${port}`, { signal: AbortSignal.timeout(2000) });
+    await fetch(`http://localhost:${port}`, { signal: AbortSignal.timeout(2000) });
     return true;
   } catch {
     return false;
   }
+}
+
+async function waitForPort(port: number, maxWaitMs: number): Promise<boolean> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    if (await isPortInUse(port)) return true;
+    await new Promise(r => setTimeout(r, 1000));
+  }
+  return false;
 }
 
 export async function POST(req: NextRequest) {
@@ -46,27 +56,30 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Start the server
+  // Start the server as detached process (survives Next.js restarts)
   const cwd = config.cwd
     ? path.resolve(process.cwd(), config.cwd)
     : process.cwd();
 
   try {
-    const child = exec(config.command, { cwd, env: { ...process.env } });
-    if (child.pid) {
-      runningServers[server] = { pid: child.pid, port: config.port };
-    }
+    const child = spawn(config.command, config.args, {
+      cwd,
+      env: { ...process.env },
+      detached: true,
+      stdio: "ignore",
+      shell: config.shell,
+    });
 
-    // Wait a bit for server to start
-    await new Promise(r => setTimeout(r, 3000));
+    // Unref so Node.js won't wait for this process
+    child.unref();
 
-    const isUp = await isPortInUse(config.port);
+    // Wait up to 15 seconds for the server to become available
+    const isUp = await waitForPort(config.port, 15000);
 
     return NextResponse.json({
       status: isUp ? "started" : "starting",
       url: `http://localhost:${config.port}`,
-      bericht: isUp ? `${config.name} gestart` : `${config.name} wordt gestart...`,
-      pid: child.pid,
+      bericht: isUp ? `${config.name} gestart op port ${config.port}` : `${config.name} wordt gestart... probeer over 10 seconden opnieuw`,
     });
   } catch (error) {
     return NextResponse.json({

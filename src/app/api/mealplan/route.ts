@@ -88,8 +88,9 @@ async function generateDay(client: Anthropic, dag: string, params: Record<string
       role: "user",
       content: `Maak een dagplan voor ${dag}. Antwoord ALLEEN met JSON, geen tekst ervoor of erna.
 
-MACRO TARGETS (STRIKT AANHOUDEN — maximaal 5% afwijking!):
-- Calorieën: ${kcal} kcal (NIET meer dan ${Math.round(kcal * 1.05)}, NIET minder dan ${Math.round(kcal * 0.95)})
+MACRO TARGETS (EXTREEM STRIKT — elke macro moet kloppen):
+- Calorieën: EXACT ${kcal} kcal (MAXIMUM ${kcal} — liever 50 kcal te weinig dan 50 te veel!)
+- BEREKEN na elke maaltijd hoeveel kcal je nog over hebt en pas de volgende maaltijd aan
 - Eiwit: ${eiwit}g (MINIMAAL ${Math.round(eiwit * 0.95)}g — dit is de BELANGRIJKSTE macro)
 - Koolhydraten: ${koolhydraten}g
 - Vet: ${vet}g
@@ -138,12 +139,56 @@ JSON (ALLEEN JSON):
 
   if (endIdx === -1) throw new Error(`Onvolledige JSON voor ${dag}`);
   const jsonStr = text.slice(startIdx, endIdx + 1);
+  let dagPlan;
   try {
-    return JSON.parse(jsonStr);
+    dagPlan = JSON.parse(jsonStr);
   } catch (e) {
     console.error(`[MEALPLAN] JSON parse error voor ${dag}:`, e instanceof Error ? e.message : e);
     throw new Error(`Ongeldige JSON voor ${dag}`);
   }
+
+  // Herbereken dagTotaal op basis van echte ingrediënten — AI is vaak onnauwkeurig
+  if (dagPlan.maaltijden && Array.isArray(dagPlan.maaltijden)) {
+    const echt = { kcal: 0, eiwit: 0, kh: 0, vet: 0, vezels: 0, suiker: 0 };
+    for (const maaltijd of dagPlan.maaltijden) {
+      if (!maaltijd.ingredienten || !Array.isArray(maaltijd.ingredienten)) continue;
+      let mKcal = 0, mEiwit = 0, mKh = 0, mVet = 0, mVezels = 0, mSuiker = 0;
+      for (const ing of maaltijd.ingredienten) {
+        mKcal += Number(ing.kcal) || 0;
+        mEiwit += Number(ing.eiwit) || 0;
+        mKh += Number(ing.kh) || 0;
+        mVet += Number(ing.vet) || 0;
+        mVezels += Number(ing.vezels) || 0;
+        mSuiker += Number(ing.suiker) || 0;
+      }
+      // Fix maaltijd totaal
+      maaltijd.totaal = {
+        kcal: Math.round(mKcal),
+        eiwit: Math.round(mEiwit),
+        kh: Math.round(mKh),
+        vet: Math.round(mVet),
+        vezels: Math.round(mVezels),
+        suiker: Math.round(mSuiker),
+      };
+      echt.kcal += mKcal;
+      echt.eiwit += mEiwit;
+      echt.kh += mKh;
+      echt.vet += mVet;
+      echt.vezels += mVezels;
+      echt.suiker += mSuiker;
+    }
+    // Overschrijf dagTotaal met echte berekening
+    dagPlan.dagTotaal = {
+      kcal: Math.round(echt.kcal),
+      eiwit: Math.round(echt.eiwit),
+      kh: Math.round(echt.kh),
+      vet: Math.round(echt.vet),
+      vezels: Math.round(echt.vezels),
+      suiker: Math.round(echt.suiker),
+    };
+  }
+
+  return dagPlan;
 }
 
 // Normalize ingredient names so "Kipfilet", "kipfilet", "Kip filet" all merge

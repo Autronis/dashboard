@@ -173,6 +173,20 @@ interface DagViewProps {
 }
 
 export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak }: DagViewProps) {
+  // DnD sensors
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || !active.data.current?.taak) return;
+
+    const taak = active.data.current.taak as AgendaTaak;
+    const slotData = over.data.current as { uur?: number; datumStr?: string } | undefined;
+    if (!slotData?.datumStr || slotData.uur === undefined) return;
+
+    const nieuweTijd = `${String(slotData.uur).padStart(2, "0")}:00`;
+    onPlanTaak?.(taak, slotData.datumStr, nieuweTijd);
+  }, [onPlanTaak]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
@@ -381,7 +395,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
         )}
       </AnimatePresence>
 
-      {/* Tijdlijn */}
+      {/* Tijdlijn met drag-and-drop */}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl overflow-x-auto">
         <div className="relative" style={{ height: `${uren.length * UUR_HOOGTE}px`, minWidth: "280px" }}>
           {/* Uur lijnen */}
@@ -399,7 +414,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   {String(uur).padStart(2, "0")}:00
                 </span>
               </div>
-              <div className="flex-1 border-l border-autronis-border/15" />
+              <div className="flex-1 border-l border-autronis-border/15 relative">
+                <DroppableSlot uur={uur} datumStr={datumStr} />
+              </div>
             </div>
           ))}
 
@@ -507,8 +524,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             );
           })}
 
-          {/* Ingeplande taken als groene blokken */}
-          {dagTaken.map((taak, idx) => {
+          {/* Ingeplande taken als draggable groene blokken */}
+          {dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
             const startDate = new Date(taak.ingeplandStart);
             const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
@@ -520,49 +537,17 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const eindTijd = taak.ingeplandEind ? new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
             return (
-              <motion.div
+              <DraggableTaakBlock
                 key={`taak-dag-${taak.id}`}
-                initial={{ opacity: 0, scaleX: 0.85, originX: 0 }}
-                animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ delay: (timed.length + idx) * 0.055, duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-[filter] hover:brightness-115 z-[3] group"
-                style={{
-                  top: `${top}px`,
-                  height: `${height}px`,
-                  background: `linear-gradient(135deg, ${taak.kalenderKleur ? taak.kalenderKleur + "24" : "rgba(34,197,94,0.14)"} 40%, rgba(14,23,25,0.1) 100%)`,
-                  borderLeftColor: taak.kalenderKleur || "#22c55e",
-                  boxShadow: `0 2px 10px ${taak.kalenderKleur || "#22c55e"}25, inset 0 1px 0 ${taak.kalenderKleur || "#22c55e"}25`,
-                }}
+                taak={taak}
+                top={top}
+                height={height}
+                startTijd={startTijd}
+                eindTijd={eindTijd}
+                kalenderKleur={taak.kalenderKleur || "#22c55e"}
+                onUnplan={onUnplanTaak}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
-              >
-                <div className="flex items-start gap-1.5">
-                  <CheckSquare className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0">{taak.titel}</p>
-                </div>
-                {height >= 36 && (
-                  <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: (taak.kalenderKleur || "#22c55e") + "B3" }} />
-                    <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: (taak.kalenderKleur || "#22c55e") + "B3" }}>
-                      {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
-                    </span>
-                    {taak.projectNaam && (
-                      <span className="text-[10px] text-autronis-text-secondary/50 ml-auto overflow-hidden">{taak.projectNaam}</span>
-                    )}
-                  </div>
-                )}
-                {onUnplanTaak && (
-                  <button
-                    className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onUnplanTaak(taak.id);
-                    }}
-                    title="Uit agenda halen"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
-              </motion.div>
+              />
             );
           })}
 
@@ -581,6 +566,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           )}
         </div>
       </div>
+      </DndContext>
 
       {/* Hover tooltip (fixed position, buiten scroll container) */}
       <AnimatePresence>

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 2592000, // 30 days
   },
   experimental: {
-    optimizeCss: true,
+    optimizeCss: !!process.env.TURSO_DATABASE_URL,
     scrollRestoration: true,
   },
 };

@@ -151,14 +151,23 @@ async function generateBoodschappen(client: Anthropic, dagen: unknown[], restjes
     })
     .join("\n");
 
+  // Limit to top 50 ingredients to keep prompt manageable
+  const topEntries = entries.slice(0, 50);
+  const ingredientenLijstFinal = topEntries
+    .map(([naam, { gram, count }], idx) => {
+      const kgDisplay = gram >= 1000 ? `${(gram / 1000).toFixed(1)}kg` : `${Math.round(gram)}g`;
+      return `${idx + 1}. ${naam} — ${kgDisplay} (${count}x)`;
+    })
+    .join("\n");
+
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
-    max_tokens: 8000,
+    max_tokens: 16000,
     messages: [{
       role: "user",
-      content: `Hier zijn ALLE ${entries.length} ingrediënten die ik nodig heb voor mijn weekmenu. Maak een complete Lidl boodschappenlijst.
+      content: `Hier zijn de ${topEntries.length} ingrediënten voor mijn weekmenu. Maak een Lidl boodschappenlijst.
 
-${ingredientenLijst}
+${ingredientenLijstFinal}
 ${restjes?.length ? `\nRESTJES VAN VORIGE WEEK (heb ik al in huis — trek af van wat ik moet kopen!):\n${restjes.map(r => `- ${r.product}: ${r.hoeveelheid}`).join("\n")}\n\nBELANGRIJK: Als ik een ingrediënt al (deels) heb van vorige week, hoef ik MINDER te kopen. Bijv: ik heb 300g rijst over en heb 800g nodig → ik moet maar 500g kopen (1 pak). Als ik genoeg heb, hoef ik het NIET te kopen — zet dan hoeveelheid op "0 (al in huis)" en prijs op 0.\n` : ""}
 REGELS:
 1. ELKE ingrediënt hierboven MOET terug te vinden zijn in de boodschappenlijst. Sla NIETS over.
@@ -180,10 +189,20 @@ JSON (ALLEEN JSON, geen tekst):
   });
 
   const text = response.content.find((b) => b.type === "text")?.text || "";
+  console.log("[MEALPLAN] Boodschappen response length:", text.length, "chars. Stop reason:", response.stop_reason);
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return { boodschappenlijst: [], totaalPrijs: 0 };
+  if (!match) {
+    console.error("[MEALPLAN] Geen JSON gevonden in boodschappen response:", text.slice(0, 300));
+    return { boodschappenlijst: [], totaalPrijs: 0 };
+  }
 
-  const result = JSON.parse(match[0]);
+  let result;
+  try {
+    result = JSON.parse(match[0]);
+  } catch (e) {
+    console.error("[MEALPLAN] JSON parse error:", e instanceof Error ? e.message : e, "Raw:", match[0].slice(0, 200));
+    return { boodschappenlijst: [], totaalPrijs: 0 };
+  }
 
   // Recalculate totaalPrijs to avoid AI math errors
   if (Array.isArray(result.boodschappenlijst)) {

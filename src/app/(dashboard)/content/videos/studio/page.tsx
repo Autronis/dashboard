@@ -44,8 +44,19 @@ export default function VideoStudioPage() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [showScript, setShowScript] = useState(false);
   const [referentieVideos, setReferentieVideos] = useState<string[]>([]);
+  const [refImage, setRefImage] = useState<{ base64: string; mediaType: string; preview: string } | null>(null);
+  const [gallery, setGallery] = useState<{ id: number; afbeeldingUrl: string | null; productNaam: string }[]>([]);
+  const [showGallery, setShowGallery] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imgInputRef = useRef<HTMLInputElement>(null);
+
+  // Load gallery items
+  useEffect(() => {
+    fetch("/api/assets/gallery").then(r => r.json()).then((d: { items: typeof gallery }) => {
+      setGallery((d.items ?? []).filter(g => g.afbeeldingUrl && !g.afbeeldingUrl.includes("video")));
+    }).catch(() => {});
+  }, []);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
@@ -55,7 +66,8 @@ export default function VideoStudioPage() {
     const bericht = tekst ?? input.trim();
     if (!bericht || loading) return;
     setInput("");
-    setBerichten(prev => [...prev, { rol: "gebruiker", tekst: bericht }]);
+    const berichtTekst = refImage ? `${bericht} [afbeelding bijgevoegd als referentie]` : bericht;
+    setBerichten(prev => [...prev, { rol: "gebruiker", tekst: berichtTekst }]);
     setLoading(true);
     scrollToBottom();
 
@@ -68,8 +80,11 @@ export default function VideoStudioPage() {
           geschiedenis: berichten,
           referentieVideos,
           huidigeScript: script,
+          ...(refImage && { imageBase64: refImage.base64, mediaType: refImage.mediaType }),
         }),
       });
+      // Clear image after sending
+      setRefImage(null);
       const data = await res.json() as { antwoord?: string; script?: { scenes: Scene[] }; fout?: string };
       if (data.antwoord) {
         const nieuwBericht: ChatBericht = { rol: "ai", tekst: data.antwoord, script: data.script };

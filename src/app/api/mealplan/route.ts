@@ -3,6 +3,9 @@ import { requireAuth } from "@/lib/auth";
 import { sqlite, tursoClient } from "@/lib/db";
 import Anthropic from "@anthropic-ai/sdk";
 
+// Allow up to 5 minutes for full plan + boodschappenlijst generation
+export const maxDuration = 300;
+
 // Unified DB helpers that work with both better-sqlite3 (sync) and Turso/libsql (async)
 async function dbExec(query: string): Promise<void> {
   if (sqlite) {
@@ -325,12 +328,19 @@ export async function POST(req: NextRequest) {
 
     let boodschappenlijst: unknown[] = [];
     let totaalPrijs = 0;
-    try {
-      const boodschappen = await generateBoodschappen(client, dagen, Array.isArray(params.restjes) ? params.restjes as { product: string; hoeveelheid: string }[] : undefined);
-      boodschappenlijst = boodschappen.boodschappenlijst;
-      totaalPrijs = boodschappen.totaalPrijs;
-    } catch (e) {
-      console.error("[MEALPLAN] Boodschappenlijst mislukt:", e instanceof Error ? e.message : e);
+    const restjesParam = Array.isArray(params.restjes) ? params.restjes as { product: string; hoeveelheid: string }[] : undefined;
+    // Try up to 2 times
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        console.log(`[MEALPLAN] Boodschappenlijst poging ${attempt + 1}...`);
+        const boodschappen = await generateBoodschappen(client, dagen, restjesParam);
+        boodschappenlijst = boodschappen.boodschappenlijst;
+        totaalPrijs = boodschappen.totaalPrijs;
+        console.log(`[MEALPLAN] Boodschappenlijst OK: ${boodschappenlijst.length} items, €${totaalPrijs}`);
+        break;
+      } catch (e) {
+        console.error(`[MEALPLAN] Boodschappenlijst poging ${attempt + 1} mislukt:`, e instanceof Error ? e.message : e);
+      }
     }
 
     const weekTotaal = { kcal: 0, eiwit: 0, kh: 0, vet: 0, vezels: 0, suiker: 0 };

@@ -212,6 +212,8 @@ export default function AgendaPage() {
 
   // Drag state voor taken
   const [dragTaak, setDragTaak] = useState<AgendaTaak | null>(null);
+  // Drag state voor agenda items
+  const [dragAgendaItem, setDragAgendaItem] = useState<AgendaItem | null>(null);
 
   // Filters
   const [filterType, setFilterType] = useState<string>("alle");
@@ -1330,7 +1332,7 @@ export default function AgendaPage() {
                           key={`${uur}-${wd.datumStr}`}
                           onClick={() => openNieuwModal(wd.datumStr)}
                           onDragOver={(e) => {
-                            if (dragTaak) {
+                            if (dragTaak || dragAgendaItem) {
                               e.preventDefault();
                               e.currentTarget.classList.add("bg-green-500/10");
                             }
@@ -1338,12 +1340,32 @@ export default function AgendaPage() {
                           onDragLeave={(e) => {
                             e.currentTarget.classList.remove("bg-green-500/10");
                           }}
-                          onDrop={(e) => {
+                          onDrop={async (e) => {
                             e.preventDefault();
                             e.currentTarget.classList.remove("bg-green-500/10");
                             if (dragTaak) {
                               openPlanModal(dragTaak, wd.datumStr, `${String(uur).padStart(2, "0")}:00`);
                               setDragTaak(null);
+                            }
+                            if (dragAgendaItem) {
+                              const item = dragAgendaItem;
+                              setDragAgendaItem(null);
+                              const oldStart = new Date(item.startDatum);
+                              const oldEnd = item.eindDatum ? new Date(item.eindDatum) : new Date(oldStart.getTime() + 3600000);
+                              const duurMs = oldEnd.getTime() - oldStart.getTime();
+                              const newStart = `${wd.datumStr}T${String(uur).padStart(2, "0")}:00:00`;
+                              const newEnd = new Date(new Date(newStart).getTime() + duurMs).toISOString().replace("Z", "").slice(0, 19);
+                              try {
+                                const res = await fetch(`/api/agenda/${item.id}`, {
+                                  method: "PUT",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ ...item, startDatum: newStart, eindDatum: newEnd }),
+                                });
+                                if (res.ok) {
+                                  addToast("Agenda item verplaatst", "succes");
+                                  queryClient.invalidateQueries({ queryKey: ["agenda"] });
+                                }
+                              } catch { /* ignore */ }
                             }
                           }}
                           className={cn(
@@ -1426,7 +1448,16 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={`week-${item.id}-${wd.datumStr}`}
-                        className="absolute rounded-xl px-2 py-1 overflow-hidden cursor-pointer hover:brightness-110 transition-all border-l-[3px] z-10 group"
+                        draggable={!isExtern}
+                        onDragStart={(e) => {
+                          if (!isExtern) {
+                            setDragAgendaItem(item as AgendaItem);
+                            e.dataTransfer.setData("text/plain", String(item.id));
+                            e.dataTransfer.effectAllowed = "move";
+                          }
+                        }}
+                        onDragEnd={() => setDragAgendaItem(null)}
+                        className={cn("absolute rounded-xl px-2 py-1 overflow-hidden hover:brightness-110 transition-all border-l-[3px] z-10 group", isExtern ? "cursor-pointer" : "cursor-grab active:cursor-grabbing")}
                         style={{
                           top: `${topOffset}px`,
                           height: `${height}px`,

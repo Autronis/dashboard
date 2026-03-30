@@ -1,11 +1,11 @@
-import { interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { VideoProps } from "./types";
 import { Background } from "./components/Background";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
 import { SceneContent } from "./components/SceneContent";
 
-const TRANSITION_FRAMES = 10;
+const TRANSITION_FRAMES = 12;
 
 interface SceneRange {
   start: number;
@@ -46,7 +46,7 @@ export const AutronisVideo: React.FC<VideoProps> = ({ scenes }) => {
         height,
         position: "relative",
         overflow: "hidden",
-        fontFamily: "Inter, sans-serif",
+        fontFamily: "'Inter', sans-serif",
       }}
     >
       <Background />
@@ -59,17 +59,24 @@ export const AutronisVideo: React.FC<VideoProps> = ({ scenes }) => {
 
         const localFrame = frame - range.start;
 
+        // Fade in with spring
+        const fadeIn = i === 0
+          ? 1
+          : spring({ frame: localFrame, fps, config: { damping: 20, stiffness: 100 } });
+
         // Fade out during transition to next scene
         const fadeOutStart = range.durationFrames - TRANSITION_FRAMES;
-        const sceneOpacity = interpolate(
+        const fadeOut = interpolate(
           localFrame,
           [fadeOutStart, range.durationFrames],
           [1, 0],
-          {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-          }
+          { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
         );
+
+        const sceneOpacity = Math.min(fadeIn, fadeOut);
+
+        // Slight scale effect on scene enter
+        const scaleIn = interpolate(fadeIn, [0, 1], [1.02, 1]);
 
         // Scene is only active in its own time window (with small overlap for crossfade)
         const isActive =
@@ -87,6 +94,7 @@ export const AutronisVideo: React.FC<VideoProps> = ({ scenes }) => {
               width,
               height,
               opacity: sceneOpacity,
+              transform: `scale(${scaleIn})`,
             }}
           >
             <SceneContent scene={scene} frame={Math.max(0, localFrame)} />

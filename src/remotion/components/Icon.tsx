@@ -1,5 +1,3 @@
-import { interpolate } from "remotion";
-
 interface IconProps {
   name: string;
   color: string;
@@ -7,126 +5,58 @@ interface IconProps {
   currentFrame: number;
 }
 
-type IconPath = {
-  d?: string;
-  paths?: string[];
-  circle?: { cx: number; cy: number; r: number };
-  lines?: Array<{ x1: number; y1: number; x2: number; y2: number }>;
-  rects?: Array<{ x: number; y: number; width: number; height: number; rx?: number }>;
-  polyline?: string;
+// Lucide-style SVG paths for common icons
+const ICON_PATHS: Record<string, string[]> = {
+  zap: ["M13 2L3 14h9l-1 10 10-12h-9l1-10z"],
+  target: ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z", "M12 18a6 6 0 100-12 6 6 0 000 12z", "M12 14a2 2 0 100-4 2 2 0 000 4z"],
+  shield: ["M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"],
+  brain: ["M12 2a7 7 0 017 7v1a7 7 0 01-7 7 7 7 0 01-7-7v-1a7 7 0 017-7z", "M12 2v20"],
+  rocket: ["M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 00-2.91-.09z", "M12 15l-3-3a22 22 0 012-3.95A12.88 12.88 0 0122 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 01-4 2z"],
+  chart: ["M18 20V10", "M12 20V4", "M6 20v-6"],
+  code: ["M16 18l6-6-6-6", "M8 6l-6 6 6 6"],
+  globe: ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z", "M2 12h20", "M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"],
+  users: ["M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2", "M9 11a4 4 0 100-8 4 4 0 000 8z", "M23 21v-2a4 4 0 00-3-3.87", "M16 3.13a4 4 0 010 7.75"],
+  clock: ["M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z", "M12 6v6l4 2"],
+  check: ["M20 6L9 17l-5-5"],
+  star: ["M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"],
+  heart: ["M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"],
+  "trending-up": ["M23 6l-9.5 9.5-5-5L1 18", "M17 6h6v6"],
+  lightbulb: ["M9 18h6", "M10 22h4", "M12 2a7 7 0 00-4 12.7V17h8v-2.3A7 7 0 0012 2z"],
+  wrench: ["M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"],
+  puzzle: ["M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 01-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 10-3.214 3.214c.446.166.855.497.925.968a.979.979 0 01-.276.837l-1.61 1.611a2.404 2.404 0 01-1.705.707 2.402 2.402 0 01-1.704-.706l-1.568-1.568a1.026 1.026 0 00-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 11-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 00-.289-.877l-1.568-1.568A2.402 2.402 0 011.998 12c0-.617.236-1.234.706-1.704L4.315 8.685a.98.98 0 01.837-.276c.47.07.802.48.968.925a2.501 2.501 0 103.214-3.214c-.446-.166-.855-.497-.925-.968a.979.979 0 01.276-.837l1.61-1.611a2.404 2.404 0 011.705-.707c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 113.237 3.237c-.464.18-.894.527-.967 1.02z"],
+  layers: ["M12 2L2 7l10 5 10-5-10-5z", "M2 17l10 5 10-5", "M2 12l10 5 10-5"],
+  database: ["M12 2C7.58 2 4 3.79 4 6s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4z", "M4 6v4c0 2.21 3.58 4 8 4s8-1.79 8-4V6", "M4 10v4c0 2.21 3.58 4 8 4s8-1.79 8-4v-4"],
+  cpu: ["M4 4h16v16H4z", "M9 1v3", "M15 1v3", "M9 20v3", "M15 20v3", "M1 9h3", "M1 15h3", "M20 9h3", "M20 15h3"],
+  wifi: ["M5 12.55a11 11 0 0114.08 0", "M1.42 9a16 16 0 0121.16 0", "M8.53 16.11a6 6 0 016.95 0", "M12 20h.01"],
+  lock: ["M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z", "M7 11V7a5 5 0 0110 0v4"],
+  eye: ["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z", "M12 15a3 3 0 100-6 3 3 0 000 6z"],
+  "message-square": ["M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"],
+  "thumbs-up": ["M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14z", "M7 22H4a2 2 0 01-2-2v-7a2 2 0 012-2h3"],
+  award: ["M12 15a7 7 0 100-14 7 7 0 000 14z", "M8.21 13.89L7 23l5-3 5 3-1.21-9.12"],
+  gift: ["M20 12v10H4V12", "M2 7h20v5H2z", "M12 22V7", "M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z", "M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"],
+  flag: ["M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z", "M4 22v-7"],
+  megaphone: ["M3 11l18-5v12L3 13v-2z", "M11.6 16.8a3 3 0 11-5.8-1.6"],
+  mail: ["M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z", "M22 6l-10 7L2 6"],
 };
 
-const ICON_PATHS: Record<string, IconPath[]> = {
-  database: [
-    { d: "M12 2C7.58 2 4 3.79 4 6s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4z" },
-    { d: "M4 6v4c0 2.21 3.58 4 8 4s8-1.79 8-4V6" },
-    { d: "M4 10v4c0 2.21 3.58 4 8 4s8-1.79 8-4v-4" },
-    { d: "M4 14v4c0 2.21 3.58 4 8 4s8-1.79 8-4v-4" },
-  ],
-  flow: [
-    { lines: [{ x1: 3, y1: 12, x2: 9, y2: 12 }] },
-    { lines: [{ x1: 15, y1: 12, x2: 21, y2: 12 }] },
-    { circle: { cx: 12, cy: 12, r: 3 } },
-    { lines: [{ x1: 9, y1: 6, x2: 9, y2: 18 }] },
-    { lines: [{ x1: 15, y1: 6, x2: 15, y2: 18 }] },
-  ],
-  sync: [
-    { d: "M23 4v6h-6" },
-    { d: "M1 20v-6h6" },
-    { d: "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" },
-  ],
-  shield: [
-    { d: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
-    { lines: [{ x1: 9, y1: 12, x2: 11, y2: 14 }] },
-    { lines: [{ x1: 11, y1: 14, x2: 15, y2: 10 }] },
-  ],
-  deal: [
-    { lines: [{ x1: 2, y1: 12, x2: 22, y2: 12 }] },
-    { d: "M12 2l10 10-10 10L2 12z" },
-  ],
-  manual: [
-    { rects: [{ x: 3, y: 3, width: 18, height: 18, rx: 2 }] },
-    { lines: [{ x1: 8, y1: 9, x2: 16, y2: 9 }] },
-    { lines: [{ x1: 8, y1: 13, x2: 16, y2: 13 }] },
-    { lines: [{ x1: 8, y1: 17, x2: 12, y2: 17 }] },
-  ],
-  integration: [
-    { circle: { cx: 18, cy: 6, r: 3 } },
-    { circle: { cx: 6, cy: 18, r: 3 } },
-    { lines: [{ x1: 18, y1: 9, x2: 6, y2: 15 }] },
-    { circle: { cx: 18, cy: 18, r: 3 } },
-    { lines: [{ x1: 18, y1: 9, x2: 18, y2: 15 }] },
-    { lines: [{ x1: 6, y1: 9, x2: 6, y2: 15 }] },
-    { circle: { cx: 6, cy: 6, r: 3 } },
-  ],
-  data: [
-    { lines: [{ x1: 12, y1: 20, x2: 12, y2: 10 }] },
-    { lines: [{ x1: 18, y1: 20, x2: 18, y2: 4 }] },
-    { lines: [{ x1: 6, y1: 20, x2: 6, y2: 16 }] },
-  ],
-};
-
-export const Icon: React.FC<IconProps> = ({
-  name,
-  color,
-  revealFrame,
-  currentFrame,
-}) => {
-  const relFrame = currentFrame - revealFrame;
-  const opacity = interpolate(relFrame, [0, 12], [0, 1], {
-    extrapolateLeft: "clamp",
-    extrapolateRight: "clamp",
-  });
-
-  const paths = ICON_PATHS[name] ?? ICON_PATHS["data"];
+export const Icon: React.FC<IconProps> = ({ name, color }) => {
+  const paths = ICON_PATHS[name] ?? ICON_PATHS["zap"];
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        bottom: 120,
-        left: 56,
-        opacity,
-      }}
+    <svg
+      width="72"
+      height="72"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ filter: `drop-shadow(0 0 12px ${color}60)` }}
     >
-      <svg
-        width="48"
-        height="48"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        {paths.map((p, i) => {
-          if (p.d) return <path key={i} d={p.d} />;
-          if (p.circle)
-            return <circle key={i} cx={p.circle.cx} cy={p.circle.cy} r={p.circle.r} />;
-          if (p.lines)
-            return p.lines.map((l, j) => (
-              <line
-                key={`${i}-${j}`}
-                x1={l.x1}
-                y1={l.y1}
-                x2={l.x2}
-                y2={l.y2}
-              />
-            ));
-          if (p.rects)
-            return p.rects.map((r, j) => (
-              <rect
-                key={`${i}-${j}`}
-                x={r.x}
-                y={r.y}
-                width={r.width}
-                height={r.height}
-                rx={r.rx}
-              />
-            ));
-          return null;
-        })}
-      </svg>
-    </div>
+      {paths.map((d, i) => (
+        <path key={i} d={d} />
+      ))}
+    </svg>
   );
 };

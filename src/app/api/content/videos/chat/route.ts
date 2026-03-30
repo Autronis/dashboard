@@ -40,15 +40,17 @@ SCENE FORMAT:
 BESCHIKBARE ICONS: zap, target, shield, brain, rocket, chart, code, globe, users, clock, check, star, heart, trending-up, lightbulb, wrench, puzzle, layers, database, cpu, wifi, lock, eye, message-square, thumbs-up, award, gift, flag, megaphone, mail
 
 VIDEO STIJL (Autronis brand):
-- Donkere achtergrond met teal accenten en flow-line animaties
-- Tekst verschijnt met typewriter effect — kort, krachtig
-- Max 3-4 regels per scene, grote tekst
-- accentKleur "turquoise" voor de key message per scene, "geel" voor waarschuwingen/problemen
-- Totaal 4-6 scenes (15-25 seconden)
-- Scene 1 = HOOK — pakkende vraag, controversiële stelling, of herkenbaar probleem
-- Laatste scene = CTA (isCta: true) met "Autronis.nl" of "Plan een gesprek"
-- Taal: Nederlands, informeel maar professioneel — spreek de ondernemer direct aan
-- Gebruik iconen die passen bij het onderwerp
+- Donkere achtergrond met teal glow, flow-line animaties, premium feel
+- Tekst poppt in per regel met spring animatie — groot, bold, impactful
+- Max 2-3 regels per scene, KORTE zinnen (max 6 woorden per regel)
+- accentKleur "turquoise" voor key message, "geel" voor waarschuwingen/problemen
+- Totaal 3-5 scenes, max 15 seconden totaal (duur: 2-3 seconden per scene)
+- Scene 1 = HOOK — 1 pakkende zin die scrollers stopt (2 sec)
+- Midden scenes = waarde/probleem/oplossing (2-3 sec elk)
+- Laatste scene = CTA (isCta: true) met "Autronis.nl" of "Plan een gesprek" (3 sec)
+- Taal: Nederlands, direct, punchy — GEEN lange zinnen
+- Elke scene heeft een icon dat past bij het onderwerp
+- Iconen zijn groot (72px) met glow effect
 
 ALS EEN AFBEELDING/VIDEO WORDT MEEGESTUURD:
 - Analyseer de visuele stijl en content

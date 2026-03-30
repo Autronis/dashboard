@@ -303,18 +303,58 @@ export async function GET() {
   }
 }
 
-// POST
+// POST — generate plan synchronously and return it
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
     await ensureTable();
 
-    const body = await req.json();
-    await dbRun("DELETE FROM mealplan_cache");
-    await dbRun("INSERT INTO mealplan_cache (status, settings_json) VALUES ('pending', ?)", [JSON.stringify(body)]);
-    triggerGeneration().catch(() => {});
+    const params = await req.json();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) return NextResponse.json({ fout: "API key ontbreekt" }, { status: 500 });
 
-    return NextResponse.json({ status: "pending" });
+    const client = new Anthropic({ apiKey });
+    const dagen: unknown[] = [];
+    const dagNamen: string[] = [];
+
+    for (const dag of DAGEN) {
+      const dagData = await generateDay(client, dag, params, dagNamen);
+      dagen.push(dagData);
+      dagNamen.push(dag);
+    }
+
+    let boodschappenlijst: unknown[] = [];
+    let totaalPrijs = 0;
+    try {
+      const boodschappen = await generateBoodschappen(client, dagen, Array.isArray(params.restjes) ? params.restjes as { product: string; hoeveelheid: string }[] : undefined);
+      boodschappenlijst = boodschappen.boodschappenlijst;
+      totaalPrijs = boodschappen.totaalPrijs;
+    } catch (e) {
+      console.error("[MEALPLAN] Boodschappenlijst mislukt:", e instanceof Error ? e.message : e);
+    }
+
+    const weekTotaal = { kcal: 0, eiwit: 0, kh: 0, vet: 0, vezels: 0, suiker: 0 };
+    for (const dag of dagen) {
+      const d = dag as { dagTotaal?: { kcal?: number; eiwit?: number; kh?: number; vet?: number; vezels?: number; suiker?: number } };
+      if (d.dagTotaal) {
+        weekTotaal.kcal += d.dagTotaal.kcal ?? 0;
+        weekTotaal.eiwit += d.dagTotaal.eiwit ?? 0;
+        weekTotaal.kh += d.dagTotaal.kh ?? 0;
+        weekTotaal.vet += d.dagTotaal.vet ?? 0;
+        weekTotaal.vezels += d.dagTotaal.vezels ?? 0;
+        weekTotaal.suiker += d.dagTotaal.suiker ?? 0;
+      }
+    }
+
+    const plan = { dagen, boodschappenlijst, totaalPrijs, weekTotaal };
+
+    // Save to cache
+    try {
+      await dbRun("DELETE FROM mealplan_cache");
+      await dbRun("INSERT INTO mealplan_cache (status, plan_json, settings_json, progress) VALUES ('done', ?, ?, 8)", [JSON.stringify(plan), JSON.stringify(params)]);
+    } catch { /* save failed but plan is returned */ }
+
+    return NextResponse.json({ status: "done", plan });
   } catch (error) {
     return NextResponse.json({ fout: error instanceof Error ? error.message : "Fout" }, { status: 500 });
   }

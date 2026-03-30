@@ -137,17 +137,29 @@ export default function MealPlanPage() {
     return () => clearInterval(interval);
   }, [initialLoaded]);
 
-  // Nieuw weekplan — geen restjes, volledig vers
-  const generatePlan = () => {
+  // Shared generation logic
+  const doGenerate = async (extraParams?: Record<string, unknown>) => {
     setLoading(true);
     setShowSettings(false);
     setPlan(null);
-    fetch("/api/mealplan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }),
-    }).catch(() => {});
+    try {
+      const res = await fetch("/api/mealplan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, ...extraParams }),
+      });
+      const data = await res.json() as { status: string; plan?: WeekPlan };
+      if (data.status === "done" && data.plan) {
+        setPlan(data.plan);
+        setActiveDay("Maandag");
+        setExpandedMeals(new Set());
+      }
+    } catch { /* ignore */ }
+    setLoading(false);
   };
+
+  // Nieuw weekplan — geen restjes, volledig vers
+  const generatePlan = () => doGenerate();
 
   // Week voltooid → sla restjes op en genereer nieuw plan dat restjes meeneemt
   const weekVoltooid = () => {
@@ -155,17 +167,8 @@ export default function MealPlanPage() {
     const restjes = plan.boodschappenlijst
       .filter((item: BoodschapItem) => item.over && item.over !== "0" && item.over !== "0g" && item.over !== "0ml" && item.over !== "0 stuks")
       .map((item: BoodschapItem) => ({ product: item.product, hoeveelheid: item.over, afdeling: item.afdeling }));
-    // Save restjes
     localStorage.setItem("autronis-mealplan-restjes", JSON.stringify(restjes));
-    // Generate new plan with restjes
-    setLoading(true);
-    setShowSettings(false);
-    setPlan(null);
-    fetch("/api/mealplan", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen, restjes }),
-    }).catch(() => {});
+    doGenerate({ restjes });
   };
 
   // Load saved restjes

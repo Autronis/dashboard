@@ -5,6 +5,7 @@ import {
   Video, Play, Download, Trash2, ChevronDown, ChevronUp, Loader2,
   Film, Lightbulb, ArrowRightLeft, Wrench, BarChart3, Quote, Briefcase,
   Monitor,
+  Sparkles,
 } from "lucide-react";
 import {
   useContentVideos, useGenerateVideoScript, useRenderVideo, useDeleteVideo,
@@ -399,11 +400,17 @@ export default function VideosPage() {
   return (
     <PageTransition>
     <div className="p-6 space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Video&apos;s</h1>
-        <p className="text-autronis-text-secondary mt-1">
-          Genereer en beheer Autronis video&apos;s
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Video&apos;s</h1>
+          <p className="text-autronis-text-secondary mt-1">
+            Genereer en beheer Autronis video&apos;s
+          </p>
+        </div>
+        <a href="/content/videos/studio"
+          className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-xl text-sm font-semibold hover:bg-autronis-accent-hover transition-all shadow-lg shadow-autronis-accent/20">
+          <Sparkles className="w-4 h-4" /> Video Studio (AI)
+        </a>
       </div>
 
       {/* Create new video */}

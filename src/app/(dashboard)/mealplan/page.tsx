@@ -306,9 +306,13 @@ export default function MealPlanPage() {
               <button onClick={() => setShowSettings(v => !v)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/30 text-autronis-text-secondary rounded-xl text-xs font-medium transition-colors flex-shrink-0">
                 <Settings2 className="w-3 h-3" />
               </button>
-              <button onClick={generatePlan} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-40 flex-shrink-0">
-                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Shuffle className="w-3 h-3" />}
-                Nieuw weekplan
+              <button onClick={generatePlan} disabled={loading} className="inline-flex items-center gap-1.5 px-3 py-2 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/30 text-autronis-text-secondary rounded-xl text-xs font-medium transition-colors disabled:opacity-40 flex-shrink-0" title="Volledig nieuw plan zonder restjes">
+                <Shuffle className="w-3 h-3" />
+                Nieuw
+              </button>
+              <button onClick={weekVoltooid} disabled={loading || !plan?.boodschappenlijst?.length} className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-medium transition-colors disabled:opacity-40 flex-shrink-0" title="Sla restjes op en genereer nieuw plan dat restjes meeneemt">
+                <CheckCircle2 className="w-3 h-3" />
+                Week voltooid → nieuw
               </button>
             </div>
 

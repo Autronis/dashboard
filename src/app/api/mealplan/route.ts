@@ -166,7 +166,7 @@ REGELS:
 6. "over" = VERPLICHT — wat er overblijft na de week. BEREKEN DIT ALTIJD: gekocht hoeveelheid minus nodig. Bijv: 3 pakken van 500g = 1500g gekocht, 1200g nodig → "300g" over. Als precies op, zet "0". NOOIT leeg laten!
 7. "prijs" = TOTAALPRIJS voor die hoeveelheid verpakkingen
 8. "prijsPerEenheid" = prijs per verpakking (bijv. "€5.99/kg", "€1.29/pak", "€2.49/L")
-9. Realistische Nederlandse Lidl prijzen (2026).
+9. Realistische Nederlandse Lidl prijzen (2026). BUDGET: streef naar ~€25-30/dag (€175-210/week totaal). Kies waar mogelijk huismerken en voordeelverpakkingen.
 10. Combineer vergelijkbare items waar logisch, maar houd vlees/zuivel/granen apart
 11. "totaalPrijs" = exacte som van alle "prijs" waarden
 12. "overWaarde" = geschatte geldwaarde van wat er overblijft (bijv. als 300g van een 500g pak over is → 60% van de pakprijs)

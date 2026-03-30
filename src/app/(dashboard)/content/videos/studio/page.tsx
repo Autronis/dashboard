@@ -27,10 +27,10 @@ interface Scene {
 type VideoFormaat = "square" | "reels" | "feed" | "youtube";
 
 const FORMAAT_LABELS: Record<VideoFormaat, string> = {
-  square: "Instagram (1:1)",
-  reels: "Reels (9:16)",
-  feed: "Feed (4:5)",
-  youtube: "YouTube (16:9)",
+  square: "Instagram / LinkedIn (1:1)",
+  feed: "Instagram Feed (4:5)",
+  reels: "Reels / TikTok (9:16)",
+  youtube: "YouTube / LinkedIn (16:9)",
 };
 
 export default function VideoStudioPage() {

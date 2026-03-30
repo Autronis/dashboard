@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro } from "lucide-react";
+import { Loader2, ChefHat, Flame, Beef, Wheat, Droplets, Cookie, Salad, ChevronDown, ChevronUp, Settings2, Shuffle, ShoppingCart, Euro, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 
@@ -288,6 +288,19 @@ export default function MealPlanPage() {
 
         {plan && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            {/* Restjes banner */}
+            {opgeslagenRestjes.length > 0 && (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl px-3 py-2 flex items-center gap-2 flex-wrap">
+                <Salad className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                <span className="text-[11px] text-amber-400 font-medium">Restjes van vorige week meegenomen:</span>
+                {opgeslagenRestjes.slice(0, 8).map((r, i) => (
+                  <span key={i} className="text-[10px] px-1.5 py-0.5 bg-amber-500/10 rounded text-amber-400/80">{r.product} ({r.hoeveelheid})</span>
+                ))}
+                {opgeslagenRestjes.length > 8 && <span className="text-[10px] text-amber-400/50">+{opgeslagenRestjes.length - 8} meer</span>}
+                <button onClick={() => { localStorage.removeItem("autronis-mealplan-restjes"); window.location.reload(); }} className="ml-auto text-[10px] text-amber-400/50 hover:text-amber-400">Wis</button>
+              </div>
+            )}
+
             {/* Day tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {plan.dagen.map((dag) => (

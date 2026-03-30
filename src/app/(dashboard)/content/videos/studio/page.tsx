@@ -155,18 +155,25 @@ export default function VideoStudioPage() {
               Spar met AI over je video concept → genereer script → render met Remotion
             </p>
           </div>
-          {script && (
-            <div className="flex items-center gap-2">
-              <select value={formaat} onChange={e => setFormaat(e.target.value as VideoFormaat)}
-                className="bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none">
-                {Object.entries(FORMAAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <button onClick={renderVideo} disabled={rendering}
-                className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-xl text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50">
-                {rendering ? <><Loader2 className="w-4 h-4 animate-spin" /> Renderen...</> : <><Play className="w-4 h-4" /> Render video</>}
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Remotion Studio link */}
+            <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-3 py-2.5 bg-autronis-bg border border-autronis-border rounded-xl text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+              <Code className="w-3.5 h-3.5" /> Remotion Studio
+            </a>
+            {script && (
+              <>
+                <select value={formaat} onChange={e => setFormaat(e.target.value as VideoFormaat)}
+                  className="bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none">
+                  {Object.entries(FORMAAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+                <button onClick={renderVideo} disabled={rendering}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-autronis-accent text-white rounded-xl text-sm font-semibold hover:bg-autronis-accent-hover transition-all disabled:opacity-50">
+                  {rendering ? <><Loader2 className="w-4 h-4 animate-spin" /> Renderen...</> : <><Play className="w-4 h-4" /> Render video</>}
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -333,9 +340,15 @@ export default function VideoStudioPage() {
                   <Play className="w-4 h-4" /> Video klaar
                 </p>
                 <video src={videoUrl} controls className="w-full rounded-xl" />
-                <a href={videoUrl} download className="mt-2 flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
-                  <Download className="w-3.5 h-3.5" /> Download MP4
-                </a>
+                <div className="flex items-center gap-3 mt-2">
+                  <a href={videoUrl} download className="flex items-center gap-1.5 text-xs text-autronis-accent hover:underline">
+                    <Download className="w-3.5 h-3.5" /> Download MP4
+                  </a>
+                  <a href="http://localhost:3001" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-autronis-text-tertiary hover:text-autronis-accent">
+                    <Code className="w-3.5 h-3.5" /> Open in Remotion Studio
+                  </a>
+                </div>
               </div>
             )}
 

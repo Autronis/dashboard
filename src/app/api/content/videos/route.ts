@@ -41,11 +41,54 @@ export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
-    const body = await req.json() as { postId: number };
+    const body = await req.json() as {
+      postId?: number;
+      titel?: string;
+      script?: string;
+      formaat?: string;
+    };
+
+    // Mode 1: Direct script from Video Studio (no postId needed)
+    if (body.script && body.titel) {
+      const scriptData = typeof body.script === "string" ? JSON.parse(body.script) : body.script;
+      const scenes = scriptData.scenes ?? scriptData;
+      const totaalSeconden = (Array.isArray(scenes) ? scenes : []).reduce(
+        (sum: number, scene: { duur?: number }) => sum + (scene.duur ?? 3), 0
+      );
+
+      const validFormaat = ["square", "reels", "feed", "youtube"].includes(body.formaat ?? "")
+        ? (body.formaat as "square" | "reels" | "feed" | "youtube")
+        : "square";
+
+      const result = await db
+        .insert(contentVideos)
+        .values({
+          titel: body.titel,
+          script: typeof body.script === "string" ? body.script : JSON.stringify(body.script),
+          status: "script",
+          formaat: validFormaat,
+          duurSeconden: totaalSeconden,
+        })
+        .returning()
+        .get();
+
+      return NextResponse.json({
+        video: {
+          id: result.id,
+          script: scenes,
+          status: result.status,
+          duurSeconden: result.duurSeconden,
+          formaat: result.formaat,
+          aangemaaktOp: result.aangemaaktOp,
+        },
+      });
+    }
+
+    // Mode 2: Generate from post (existing flow)
     const { postId } = body;
 
     if (!postId || typeof postId !== "number") {
-      return NextResponse.json({ fout: "postId is verplicht" }, { status: 400 });
+      return NextResponse.json({ fout: "postId of titel+script is verplicht" }, { status: 400 });
     }
 
     const post = await db

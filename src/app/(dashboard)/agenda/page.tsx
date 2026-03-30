@@ -1359,11 +1359,12 @@ export default function AgendaPage() {
                                 const res = await fetch(`/api/agenda/${item.id}`, {
                                   method: "PUT",
                                   headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ ...item, startDatum: newStart, eindDatum: newEnd }),
+                                  body: JSON.stringify({ startDatum: newStart, eindDatum: newEnd }),
                                 });
                                 if (res.ok) {
                                   addToast("Agenda item verplaatst", "succes");
-                                  queryClient.invalidateQueries({ queryKey: ["agenda"] });
+                                  await queryClient.invalidateQueries({ queryKey: ["agenda"] });
+                                  await queryClient.refetchQueries({ queryKey: ["agenda"] });
                                 }
                               } catch { /* ignore */ }
                             }

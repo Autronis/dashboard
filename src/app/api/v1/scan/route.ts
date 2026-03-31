@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireApiKey } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { uitgaven } from "@/lib/db/schema";
+import { uitgaven, bankTransacties } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
+import fs from "fs";
+import path from "path";
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,7 +86,69 @@ Alleen JSON, geen uitleg.`,
       .returning()
       .all();
 
-    return NextResponse.json({ uitgave, extracted: parsed }, { status: 201 });
+    // Save receipt image
+    const uploadsDir = path.join(process.cwd(), "data", "uploads", "bonnetjes");
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    const ext = mediaType.includes("png") ? ".png" : ".jpg";
+    const fileName = `bon_${Date.now()}${ext}`;
+    fs.writeFileSync(path.join(uploadsDir, fileName), buffer);
+    const bonPad = `data/uploads/bonnetjes/${fileName}`;
+
+    // Auto-match with bank transaction
+    let matchedTransactie = null;
+    if (parsed.bedrag) {
+      const margin = parsed.bedrag * 0.15;
+      const matches = await db.select({
+        id: bankTransacties.id,
+        datum: bankTransacties.datum,
+        omschrijving: bankTransacties.omschrijving,
+        bedrag: bankTransacties.bedrag,
+        merchantNaam: bankTransacties.merchantNaam,
+      }).from(bankTransacties).where(
+        and(
+          eq(bankTransacties.type, "af"),
+          sql`ABS(${bankTransacties.bedrag} - ${parsed.bedrag}) < ${margin}`,
+          sql`${bankTransacties.bonPad} IS NULL`
+        )
+      ).limit(5);
+
+      if (matches.length > 0) {
+        // Score by amount + date + name proximity
+        const scored = matches.map(m => {
+          let score = 10 - Math.abs(m.bedrag - (parsed.bedrag ?? 0)) * 2;
+          if (parsed.datum) {
+            const diff = Math.abs(new Date(m.datum).getTime() - new Date(parsed.datum).getTime()) / 86400000;
+            score += Math.max(0, 5 - diff * 2);
+          }
+          if (parsed.leverancier && (m.merchantNaam || m.omschrijving || "").toLowerCase().includes(parsed.leverancier.toLowerCase())) {
+            score += 10;
+          }
+          return { ...m, score };
+        }).sort((a, b) => b.score - a.score);
+
+        matchedTransactie = scored[0];
+        if (matchedTransactie.score >= 10) {
+          await db.update(bankTransacties).set({
+            bonPad,
+            categorie: categorie,
+            btwBedrag: parsed.btwBedrag || undefined,
+            status: "gecategoriseerd",
+          }).where(eq(bankTransacties.id, matchedTransactie.id));
+        }
+      }
+    }
+
+    return NextResponse.json({
+      uitgave,
+      extracted: parsed,
+      bonPad,
+      match: matchedTransactie ? {
+        id: matchedTransactie.id,
+        omschrijving: matchedTransactie.omschrijving,
+        bedrag: matchedTransactie.bedrag,
+        autoGekoppeld: (matchedTransactie as unknown as { score: number }).score >= 10,
+      } : null,
+    }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     const status = message === "API key vereist" || message === "Ongeldige API key" ? 401 : 500;

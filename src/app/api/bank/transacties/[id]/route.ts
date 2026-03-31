@@ -15,7 +15,7 @@ export async function PUT(
     const transactieId = parseInt(id);
     const body = await req.json();
 
-    const { categorie, gekoppeldFactuurId } = body;
+    const { categorie, gekoppeldFactuurId, fiscaalType, bonPad } = body;
 
     const updateData: Record<string, unknown> = {};
 
@@ -27,6 +27,14 @@ export async function PUT(
     if (gekoppeldFactuurId !== undefined) {
       updateData.gekoppeldFactuurId = gekoppeldFactuurId;
       updateData.status = "gematcht";
+    }
+
+    if (fiscaalType !== undefined) {
+      updateData.fiscaalType = fiscaalType;
+    }
+
+    if (bonPad !== undefined) {
+      updateData.bonPad = bonPad;
     }
 
     if (Object.keys(updateData).length === 0) {

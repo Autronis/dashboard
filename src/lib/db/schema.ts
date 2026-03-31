@@ -522,6 +522,8 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   subsidieMogelijkheden: text("subsidie_mogelijkheden"), // JSON array
   btwBedrag: real("btw_bedrag"),
   kiaAftrek: real("kia_aftrek"),
+  isVerlegging: integer("is_verlegging").default(0),
+  bonPad: text("bon_pad"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Receipt, TrendingUp, PiggyBank, ShieldCheck, Sparkles,
   Loader2, CheckCircle2, AlertCircle, Gift, Calculator,
@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn, formatBedrag } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface FiscaleInvestering {
   id: number;
@@ -43,24 +44,21 @@ const SUBSIDIE_INFO: Record<string, { label: string; color: string; bg: string; 
   EIA: { label: "EIA", color: "text-yellow-400", bg: "bg-yellow-500/15", desc: "Energie-investeringsaftrek — energiebesparend" },
 };
 
+async function fetchFiscaleData(): Promise<AnalyseData> {
+  const res = await fetch("/api/bank/transacties/analyse");
+  if (!res.ok) throw new Error("Kon fiscale data niet laden");
+  return res.json() as Promise<AnalyseData>;
+}
+
 export function FiscaleVoordelenTab() {
-  const [data, setData] = useState<AnalyseData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [analysing, setAnalysing] = useState(false);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/bank/transacties/analyse");
-      if (res.ok) {
-        const json = await res.json() as AnalyseData;
-        setData(json);
-      }
-    } catch { /* ignore */ }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ["fiscale-voordelen"],
+    queryFn: fetchFiscaleData,
+    staleTime: 5 * 60_000, // Cache for 5 minutes
+  });
 
   const runAnalyse = async () => {
     setAnalysing(true);
@@ -70,7 +68,7 @@ export function FiscaleVoordelenTab() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      loadData();
+      queryClient.invalidateQueries({ queryKey: ["fiscale-voordelen"] });
     } catch { /* ignore */ }
     setAnalysing(false);
   };

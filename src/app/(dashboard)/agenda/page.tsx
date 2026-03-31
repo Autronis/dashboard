@@ -1363,7 +1363,15 @@ export default function AgendaPage() {
                                 });
                                 if (res.ok) {
                                   addToast("Agenda item verplaatst", "succes");
-                                  window.location.reload();
+                                  // Optimistic update: update the item in the query cache immediately
+                                  queryClient.setQueryData<AgendaItem[]>(["agenda", jaar, maand], (old) => {
+                                    if (!old) return old;
+                                    return old.map((a) =>
+                                      a.id === item.id ? { ...a, startDatum: newStart, eindDatum: newEnd } : a
+                                    );
+                                  });
+                                  // Refetch in background to ensure consistency
+                                  queryClient.invalidateQueries({ queryKey: ["agenda", jaar, maand] });
                                 } else {
                                   const err = await res.json();
                                   addToast(err.fout || "Kon niet verplaatsen", "fout");

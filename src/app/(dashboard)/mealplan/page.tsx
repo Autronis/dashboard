@@ -22,6 +22,7 @@ interface Maaltijd {
   type: string;
   naam: string;
   beschrijving: string;
+  bereidingswijze: string[];
   ingredienten: Ingredient[];
   totaal: { kcal: number; eiwit: number; kh: number; vet: number; vezels: number; suiker: number };
 }
@@ -508,8 +509,18 @@ export default function MealPlanPage() {
                           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
                             <div className="px-4 pb-4 border-t border-autronis-border/30">
                               {/* Bereiding */}
-                              <div className="mt-3 p-3 bg-autronis-accent/5 rounded-xl">
+                              <div className="mt-3 p-3 bg-autronis-accent/5 rounded-xl space-y-2">
                                 <p className="text-xs text-autronis-text-primary">{maaltijd.beschrijving}</p>
+                                {maaltijd.bereidingswijze && maaltijd.bereidingswijze.length > 0 && (
+                                  <ol className="space-y-1 mt-1">
+                                    {maaltijd.bereidingswijze.map((stap, si) => (
+                                      <li key={si} className="text-xs text-autronis-text-secondary flex gap-2">
+                                        <span className="text-autronis-accent font-semibold flex-shrink-0">{si + 1}.</span>
+                                        <span>{stap}</span>
+                                      </li>
+                                    ))}
+                                  </ol>
+                                )}
                               </div>
 
                               {/* Ingredients */}

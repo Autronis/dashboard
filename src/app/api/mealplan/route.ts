@@ -111,9 +111,10 @@ REGELS:
 2. Eiwit is PRIORITEIT — minimaal ${Math.round(eiwit * 0.95)}g
 3. Correcte voedingswaarden, Lidl producten
 4. Variatie in eiwitbronnen
+5. bereidingswijze: array van 3-5 korte stappen per maaltijd (bijv. ["Kook havermout 3 min in water", "Bak ei in koekenpan", "Serveer met plakjes banaan"])
 
 JSON (ALLEEN JSON):
-{"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"...","beschrijving":"...","ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1}],"totaal":{"kcal":521,"eiwit":25,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":2750,"eiwit":190,"kh":300,"vet":110,"vezels":30,"suiker":55}}`,
+{"dag":"${dag}","maaltijden":[{"type":"ontbijt","naam":"...","beschrijving":"...","bereidingswijze":["Stap 1 beschrijving","Stap 2 beschrijving","Stap 3 beschrijving"],"ingredienten":[{"naam":"Havermout","hoeveelheid":"80g","kcal":296,"eiwit":10,"kh":48,"vet":6,"vezels":8,"suiker":1}],"totaal":{"kcal":521,"eiwit":25,"kh":74,"vet":16,"vezels":12,"suiker":14}}],"dagTotaal":{"kcal":2750,"eiwit":190,"kh":300,"vet":110,"vezels":30,"suiker":55}}`,
     }],
   });
 

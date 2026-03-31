@@ -239,6 +239,23 @@ export default function BelastingPage() {
   const [deleteInvesteringId, setDeleteInvesteringId] = useState<number | null>(null);
   const [reserveringModal, setReserveringModal] = useState(false);
   const [aanslagModal, setAanslagModal] = useState(false);
+  const [btwVoorbereidingModal, setBtwVoorbereidingModal] = useState(false);
+  const [btwVoorbereidingKwartaal, setBtwVoorbereidingKwartaal] = useState(1);
+  const [btwVoorbereidingJaar, setBtwVoorbereidingJaar] = useState(new Date().getFullYear());
+  const [btwVoorbereidingData, setBtwVoorbereidingData] = useState<{
+    rubrieken: {
+      rubriek_1a: { omzet: number; btw: number };
+      rubriek_1b: { omzet: number; btw: number };
+      rubriek_4a: { omzet: number; btw: number };
+      rubriek_4b: { omzet: number; btw: number };
+      rubriek_5a: { btw: number };
+      rubriek_5b: { btw: number };
+    };
+    saldo: number;
+    bestaandeAangifte: { id: number; status: string; betalingskenmerk: string | null; ingediendOp: string | null } | null;
+  } | null>(null);
+  const [btwVoorbereidingLoading, setBtwVoorbereidingLoading] = useState(false);
+  const [btwBetalingskenmerk, setBtwBetalingskenmerk] = useState("");
 
   // Form state — investering
   const [invForm, setInvForm] = useState({
@@ -366,6 +383,71 @@ export default function BelastingPage() {
   const handleToggleDeadline = (deadline: Deadline) => toggleDeadlineMutation.mutate(deadline);
   const handleBtwStatus = (aangifte: BtwAangifte, nieuweStatus: "ingediend" | "betaald") =>
     btwStatusMutation.mutate({ aangifte, nieuweStatus });
+
+  const fetchBtwVoorbereiding = useCallback(async (kwartaal: number, btwJaar: number) => {
+    setBtwVoorbereidingLoading(true);
+    setBtwVoorbereidingData(null);
+    try {
+      const res = await fetch("/api/belasting/btw-voorbereiding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kwartaal, jaar: btwJaar }),
+      });
+      if (!res.ok) throw new Error("Fout bij ophalen");
+      const data = await res.json();
+      setBtwVoorbereidingData(data);
+      setBtwBetalingskenmerk(data.bestaandeAangifte?.betalingskenmerk ?? "");
+    } catch {
+      addToast("Fout bij BTW voorbereiding berekening", "fout");
+    }
+    setBtwVoorbereidingLoading(false);
+  }, [addToast]);
+
+  const openBtwVoorbereiding = useCallback((kwartaal: number) => {
+    setBtwVoorbereidingKwartaal(kwartaal);
+    setBtwVoorbereidingJaar(jaar);
+    setBtwVoorbereidingModal(true);
+    fetchBtwVoorbereiding(kwartaal, jaar);
+  }, [jaar, fetchBtwVoorbereiding]);
+
+  const saveBtwAangifte = useCallback(async (status: "open" | "ingediend") => {
+    if (!btwVoorbereidingData) return;
+    const r = btwVoorbereidingData.rubrieken;
+    const aangifteId = btwVoorbereidingData.bestaandeAangifte?.id;
+
+    if (!aangifteId) {
+      addToast("Geen BTW aangifte gevonden voor dit kwartaal. Maak eerst aangiftes aan.", "fout");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/belasting/btw/${aangifteId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status,
+          betalingskenmerk: btwBetalingskenmerk,
+          rubriek1aOmzet: r.rubriek_1a.omzet,
+          rubriek1aBtw: r.rubriek_1a.btw,
+          rubriek1bOmzet: r.rubriek_1b.omzet,
+          rubriek1bBtw: r.rubriek_1b.btw,
+          rubriek4aOmzet: r.rubriek_4a.omzet,
+          rubriek4aBtw: r.rubriek_4a.btw,
+          rubriek4bOmzet: r.rubriek_4b.omzet,
+          rubriek4bBtw: r.rubriek_4b.btw,
+          rubriek5aBtw: r.rubriek_5a.btw,
+          rubriek5bBtw: r.rubriek_5b.btw,
+          saldo: btwVoorbereidingData.saldo,
+        }),
+      });
+      if (!res.ok) throw new Error("Opslaan mislukt");
+      addToast(status === "ingediend" ? `Q${btwVoorbereidingKwartaal} gemarkeerd als ingediend` : `Q${btwVoorbereidingKwartaal} concept opgeslagen`, "succes");
+      queryClient.invalidateQueries({ queryKey: ["belasting"] });
+      setBtwVoorbereidingModal(false);
+    } catch {
+      addToast("Fout bij opslaan BTW aangifte", "fout");
+    }
+  }, [btwVoorbereidingData, btwBetalingskenmerk, btwVoorbereidingKwartaal, addToast, queryClient]);
 
   const resetInvForm = useCallback(() => {
     setInvForm({

@@ -438,10 +438,11 @@ export default function VideoStudioPage() {
                     videoEl.src = URL.createObjectURL(file);
                     videoEl.onloadedmetadata = () => {
                       const duration = videoEl.duration;
-                      const frameCount = 4;
+                      // Extract 1 frame per 2 seconds of video (min 4, max 12)
+                      const frameCount = Math.max(4, Math.min(12, Math.round(duration / 2)));
                       const frames: { base64: string; mediaType: string }[] = [];
                       let currentFrame = 0;
-                      const maxSize = 360;
+                      const maxSize = 400;
 
                       const captureFrame = () => {
                         const scale = Math.min(maxSize / videoEl.videoWidth, maxSize / videoEl.videoHeight);

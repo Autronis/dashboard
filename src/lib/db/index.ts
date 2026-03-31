@@ -114,6 +114,18 @@ if (isTurso) {
     );
   });
 
+  // Mealplan plans table — per-user persistent meal plans
+  client.execute(`CREATE TABLE IF NOT EXISTS mealplan_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    plan_json TEXT NOT NULL,
+    settings_json TEXT,
+    chat_json TEXT,
+    restjes_json TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => { /* table may already exist */ });
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -198,6 +210,18 @@ if (isTurso) {
     toegepast INTEGER DEFAULT 0,
     toegepast_op TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  // Mealplan plans table — per-user persistent meal plans
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS mealplan_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    plan_json TEXT NOT NULL,
+    settings_json TEXT,
+    chat_json TEXT,
+    restjes_json TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);
 
   sqlite = sqliteDb;

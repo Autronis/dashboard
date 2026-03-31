@@ -1452,6 +1452,18 @@ export const brandstofKosten = sqliteTable("brandstof_kosten", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ MEALPLAN ============
+export const mealplanPlans = sqliteTable("mealplan_plans", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  planJson: text("plan_json").notNull(),
+  settingsJson: text("settings_json"),
+  chatJson: text("chat_json"),
+  restjesJson: text("restjes_json"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ ASSET GALLERY ============
 export const assetGallery = sqliteTable("asset_gallery", {
   id: integer("id").primaryKey({ autoIncrement: true }),

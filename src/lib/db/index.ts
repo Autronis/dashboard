@@ -126,6 +126,22 @@ if (isTurso) {
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 
+  // BTW aangifte rubriek columns
+  const btwNewColsTurso = [
+    "rubriek_1a_omzet REAL DEFAULT 0", "rubriek_1a_btw REAL DEFAULT 0",
+    "rubriek_1b_omzet REAL DEFAULT 0", "rubriek_1b_btw REAL DEFAULT 0",
+    "rubriek_4a_omzet REAL DEFAULT 0", "rubriek_4a_btw REAL DEFAULT 0",
+    "rubriek_4b_omzet REAL DEFAULT 0", "rubriek_4b_btw REAL DEFAULT 0",
+    "rubriek_5a_btw REAL DEFAULT 0", "rubriek_5b_btw REAL DEFAULT 0",
+    "saldo REAL DEFAULT 0", "betalingskenmerk TEXT",
+  ];
+  for (const col of btwNewColsTurso) {
+    client.execute(`ALTER TABLE btw_aangiftes ADD COLUMN ${col}`).catch(() => {});
+  }
+
+  // Uitgaven is_buitenland column
+  client.execute("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT").catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -223,6 +239,28 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now')),
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);
+
+  // BTW aangifte rubriek columns
+  const btwCols = sqliteDb.prepare("PRAGMA table_info(btw_aangiftes)").all() as { name: string }[];
+  const btwNewCols = [
+    { name: "rubriek_1a_omzet", def: "REAL DEFAULT 0" }, { name: "rubriek_1a_btw", def: "REAL DEFAULT 0" },
+    { name: "rubriek_1b_omzet", def: "REAL DEFAULT 0" }, { name: "rubriek_1b_btw", def: "REAL DEFAULT 0" },
+    { name: "rubriek_4a_omzet", def: "REAL DEFAULT 0" }, { name: "rubriek_4a_btw", def: "REAL DEFAULT 0" },
+    { name: "rubriek_4b_omzet", def: "REAL DEFAULT 0" }, { name: "rubriek_4b_btw", def: "REAL DEFAULT 0" },
+    { name: "rubriek_5a_btw", def: "REAL DEFAULT 0" }, { name: "rubriek_5b_btw", def: "REAL DEFAULT 0" },
+    { name: "saldo", def: "REAL DEFAULT 0" }, { name: "betalingskenmerk", def: "TEXT" },
+  ];
+  for (const col of btwNewCols) {
+    if (!btwCols.some((c: { name: string }) => c.name === col.name)) {
+      sqliteDb.exec(`ALTER TABLE btw_aangiftes ADD COLUMN ${col.name} ${col.def}`);
+    }
+  }
+
+  // Uitgaven is_buitenland column
+  const uitgavenCols = sqliteDb.prepare("PRAGMA table_info(uitgaven)").all() as { name: string }[];
+  if (!uitgavenCols.some((c: { name: string }) => c.name === "is_buitenland")) {
+    sqliteDb.exec("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT");
+  }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

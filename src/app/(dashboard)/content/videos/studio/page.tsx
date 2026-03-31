@@ -176,14 +176,21 @@ export default function VideoStudioPage() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Determine if we're on localhost or live site
+  const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const localBaseUrl = "http://localhost:3000";
+
   const renderVideo = async () => {
     if (!script) return;
     setRendering(true);
     setVideoUrl(null);
 
+    // Use localhost API for rendering (Vercel can't render videos)
+    const apiBase = isLocal ? "" : localBaseUrl;
+
     try {
       // First save as content video
-      const saveRes = await fetch("/api/content/videos", {
+      const saveRes = await fetch(`${apiBase}/api/content/videos`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -193,17 +200,20 @@ export default function VideoStudioPage() {
         }),
       });
       const saveData = await saveRes.json() as { video?: { id: number } };
-      if (!saveData.video?.id) { addToast("Opslaan mislukt", "fout"); setRendering(false); return; }
+      if (!saveData.video?.id) { addToast("Opslaan mislukt — zorg dat localhost:3000 draait", "fout"); setRendering(false); return; }
 
-      // Then render
-      const renderRes = await fetch(`/api/content/videos/${saveData.video.id}/render`, {
+      // Then render via localhost
+      addToast("Video wordt gerenderd op localhost...", "succes");
+      const renderRes = await fetch(`${apiBase}/api/content/videos/${saveData.video.id}/render`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ formaat }),
       });
       const renderData = await renderRes.json() as { videoPath?: string; fout?: string };
       if (renderData.videoPath) {
-        setVideoUrl(renderData.videoPath);
+        // If rendered on localhost, prefix the URL
+        const fullVideoUrl = isLocal ? renderData.videoPath : `${localBaseUrl}${renderData.videoPath}`;
+        setVideoUrl(fullVideoUrl);
         addToast("Video gerenderd!", "succes");
       } else {
         addToast(renderData.fout ?? "Rendering mislukt", "fout");

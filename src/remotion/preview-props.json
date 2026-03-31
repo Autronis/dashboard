@@ -1,0 +1,33 @@
+{
+  "scenes": [
+    {
+      "tekst": ["Handmatig werk", "kost je uren.", "Elke. Week."],
+      "accentRegel": 2,
+      "accentKleur": "geel",
+      "icon": "clock",
+      "duur": 3
+    },
+    {
+      "tekst": ["Wij automatiseren", "je herhalende taken."],
+      "accentRegel": 1,
+      "accentKleur": "turquoise",
+      "icon": "zap",
+      "duur": 3
+    },
+    {
+      "tekst": ["Zonder omkijken."],
+      "accentRegel": 0,
+      "accentKleur": "turquoise",
+      "icon": "check",
+      "duur": 2
+    },
+    {
+      "tekst": ["Autronis.nl", "Plan een gesprek →"],
+      "accentRegel": 0,
+      "accentKleur": "turquoise",
+      "icon": "rocket",
+      "duur": 3,
+      "isCta": true
+    }
+  ]
+}

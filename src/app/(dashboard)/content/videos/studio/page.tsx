@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Video, Send, Loader2, Play, Download, RotateCcw, Sparkles,
-  Upload, X, Film, ChevronDown, Zap, MessageSquare, Code,
+  Upload, X, Film, ChevronDown, Zap, MessageSquare, Code, Eye,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -275,6 +275,36 @@ export default function VideoStudioPage() {
             )}
             {script && (
               <>
+                {/* Preview in Remotion — saves script + opens studio */}
+                <button
+                  onClick={async () => {
+                    try {
+                      // Save script to preview-props.json via localhost
+                      const base = isLocal ? "" : localBaseUrl;
+                      await fetch(`${base}/api/content/videos/preview`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ script }),
+                      });
+                      addToast("Script geladen in Remotion Studio", "succes");
+                      // Start Remotion Studio if needed + open
+                      if (isLocal) {
+                        try {
+                          await fetch("/api/dev/start-server", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ server: "remotion" }),
+                          });
+                        } catch { /* ignore */ }
+                      }
+                      window.open("http://localhost:3001", "_blank");
+                    } catch {
+                      addToast("Zorg dat localhost:3000 draait", "fout");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-purple-500/10 border border-purple-500/20 rounded-xl text-xs font-medium text-purple-400 hover:bg-purple-500/20 transition-all">
+                  <Eye className="w-3.5 h-3.5" /> Preview in Remotion
+                </button>
                 <select value={formaat} onChange={e => setFormaat(e.target.value as VideoFormaat)}
                   className="bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2 text-sm text-autronis-text-primary focus:outline-none">
                   {Object.entries(FORMAAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

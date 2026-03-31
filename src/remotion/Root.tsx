@@ -2,34 +2,52 @@ import { Composition } from "remotion";
 import { AutronisVideo } from "./AutronisVideo";
 import { VideoSchema } from "./types";
 
-const defaultScenes = [
+import type { Scene } from "./types";
+
+// Try to load preview props from file (written by Video Studio)
+let previewScenes: Scene[] | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const loaded = require("./preview-props.json") as { scenes?: Scene[] };
+  if (loaded?.scenes) previewScenes = loaded.scenes;
+} catch {
+  // File doesn't exist yet — use defaults
+}
+
+const defaultScenes: Scene[] = previewScenes ?? [
   {
-    tekst: [
-      "Data wordt overgetypt.",
-      "Updates lopen achter.",
-      "Overzicht verdwijnt.",
-    ],
+    tekst: ["Handmatig werk", "kost je uren.", "Elke. Week."],
     accentRegel: 2,
     accentKleur: "geel" as const,
-    icon: "database",
-    duur: 4,
-  },
-  {
-    tekst: ["System integrations", "verbinden die stappen."],
-    accentRegel: 1,
-    accentKleur: "turquoise" as const,
-    icon: "flow",
+    icon: "clock",
     duur: 3,
   },
   {
-    tekst: ["Breng structuur", "in je data flows."],
+    tekst: ["Wij automatiseren", "je herhalende taken."],
     accentRegel: 1,
     accentKleur: "turquoise" as const,
-    icon: "shield",
-    duur: 4,
+    icon: "zap",
+    duur: 3,
+  },
+  {
+    tekst: ["Zonder omkijken."],
+    accentRegel: 0,
+    accentKleur: "turquoise" as const,
+    icon: "check",
+    duur: 2,
+  },
+  {
+    tekst: ["Autronis.nl", "Plan een gesprek →"],
+    accentRegel: 0,
+    accentKleur: "turquoise" as const,
+    icon: "rocket",
+    duur: 3,
     isCta: true,
   },
 ];
+
+const totalDuur = (defaultScenes as { duur?: number }[]).reduce((s, sc) => s + (sc.duur ?? 3), 0);
+const totalFrames = totalDuur * 30;
 
 export const RemotionRoot: React.FC = () => {
   return (
@@ -38,7 +56,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AutronisVideo"
         component={AutronisVideo}
-        durationInFrames={1350}
+        durationInFrames={totalFrames}
         fps={30}
         width={1080}
         height={1080}
@@ -48,7 +66,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AutronisVideoSquare"
         component={AutronisVideo}
-        durationInFrames={1350}
+        durationInFrames={totalFrames}
         fps={30}
         width={1080}
         height={1080}
@@ -60,7 +78,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AutronisVideoReels"
         component={AutronisVideo}
-        durationInFrames={1350}
+        durationInFrames={totalFrames}
         fps={30}
         width={1080}
         height={1920}
@@ -72,7 +90,7 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="AutronisVideoFeed"
         component={AutronisVideo}
-        durationInFrames={1350}
+        durationInFrames={totalFrames}
         fps={30}
         width={1080}
         height={1350}
@@ -80,11 +98,11 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{ scenes: defaultScenes }}
       />
 
-      {/* YouTube — 16:9 */}
+      {/* YouTube / LinkedIn — 16:9 */}
       <Composition
         id="AutronisVideoYouTube"
         component={AutronisVideo}
-        durationInFrames={1350}
+        durationInFrames={totalFrames}
         fps={30}
         width={1920}
         height={1080}

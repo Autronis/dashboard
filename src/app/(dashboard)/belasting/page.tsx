@@ -1262,24 +1262,30 @@ export default function BelastingPage() {
                           </div>
                           {/* Action buttons */}
                           <div className="flex gap-2">
+                            <button
+                              onClick={() => openBtwVoorbereiding(aangifte.kwartaal)}
+                              className="flex-1 px-3 py-2 bg-autronis-accent/15 text-autronis-accent rounded-lg text-xs font-semibold hover:bg-autronis-accent/25 transition-colors"
+                            >
+                              Aangifte voorbereiden
+                            </button>
                             {aangifte.status === "open" && (
                               <button
                                 onClick={() => handleBtwStatus(aangifte, "ingediend")}
-                                className="flex-1 px-3 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/25 transition-colors"
+                                className="px-3 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-xs font-semibold hover:bg-blue-500/25 transition-colors"
                               >
-                                Aangifte indienen
+                                Indienen
                               </button>
                             )}
                             {(aangifte.status === "open" || aangifte.status === "ingediend") && (
                               <button
                                 onClick={() => handleBtwStatus(aangifte, "betaald")}
-                                className="flex-1 px-3 py-2 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                                className="px-3 py-2 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
                               >
-                                Betaald markeren
+                                Betaald
                               </button>
                             )}
                             {aangifte.status === "betaald" && (
-                              <div className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-green-400 text-xs font-semibold">
+                              <div className="flex items-center gap-1.5 px-3 py-2 text-green-400 text-xs font-semibold">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Afgerond
                               </div>
                             )}

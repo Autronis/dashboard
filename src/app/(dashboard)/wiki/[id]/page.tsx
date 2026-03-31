@@ -73,6 +73,9 @@ function renderMarkdown(text: string): string {
   html = html.replace(/^##\s(.+)$/gm, '<h2 class="text-xl font-bold text-autronis-text-primary mt-8 mb-3">$1</h2>');
   html = html.replace(/^#\s(.+)$/gm, '<h1 class="text-2xl font-bold text-autronis-text-primary mt-8 mb-4">$1</h1>');
 
+  // Highlight ==text== as red voiceover text
+  html = html.replace(/==(.+?)==/g, '<mark class="bg-transparent text-red-400 font-medium">$1</mark>');
+
   // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-autronis-text-primary">$1</strong>');
 

@@ -189,6 +189,26 @@ export function BankImportTab() {
     }
   };
 
+  const handleFiscaalToggle = async (id: number, fiscaalType: string) => {
+    try {
+      await fetch(`/api/bank/transacties/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fiscaalType }),
+      });
+      setTransacties(prev => prev.map(t => t.id === id ? { ...t, fiscaalType } : t));
+    } catch {
+      addToast("Kon type niet bijwerken", "fout");
+    }
+  };
+
+  // Detect verleggingsregeling — foreign companies
+  const BUITENLANDSE_MERCHANTS = ["anthropic", "github", "aws", "vercel", "stripe", "google cloud", "microsoft azure", "openai", "digitalocean", "cloudflare", "hetzner", "fal.ai", "kie.ai", "resend", "netlify"];
+  const isVerlegging = (t: BankTransactie) => {
+    const naam = (t.merchantNaam || t.omschrijving || "").toLowerCase();
+    return t.type === "af" && BUITENLANDSE_MERCHANTS.some(m => naam.includes(m));
+  };
+
   return (
     <div className="space-y-8">
       {/* Upload area */}
@@ -344,8 +364,19 @@ export function BankImportTab() {
           </div>
         </div>
 
-        {/* Status filter */}
-        <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+        {/* Zoekbalk + filters */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {/* Zoeken */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-autronis-text-tertiary absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              value={zoekTerm}
+              onChange={e => setZoekTerm(e.target.value)}
+              placeholder="Zoek op omschrijving..."
+              className="pl-9 pr-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50 w-48"
+            />
+          </div>
+          {/* Status filter */}
           {[
             { key: "alle", label: "Alle" },
             { key: "onbekend", label: "Onbekend" },
@@ -356,7 +387,7 @@ export function BankImportTab() {
               key={f.key}
               onClick={() => setStatusFilter(f.key)}
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap",
                 statusFilter === f.key
                   ? "bg-autronis-accent text-autronis-bg"
                   : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
@@ -365,6 +396,31 @@ export function BankImportTab() {
               {f.label}
             </button>
           ))}
+          <div className="w-px h-5 bg-autronis-border/30 mx-1" />
+          {/* Fiscaal type filter */}
+          {[
+            { key: "alle", label: "Alles", icon: null },
+            { key: "kosten", label: "Zakelijk", icon: Building2 },
+            { key: "prive", label: "Privé", icon: User },
+            { key: "investering", label: "Investering", icon: null },
+          ].map((f) => {
+            const Icon = f.icon;
+            return (
+              <button
+                key={f.key}
+                onClick={() => setFiscaalFilter(f.key)}
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap",
+                  fiscaalFilter === f.key
+                    ? f.key === "prive" ? "bg-red-500/20 text-red-400" : f.key === "kosten" ? "bg-blue-500/20 text-blue-400" : f.key === "investering" ? "bg-purple-500/20 text-purple-400" : "bg-autronis-accent text-autronis-bg"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"
+                )}
+              >
+                {Icon && <Icon className="w-3 h-3" />}
+                {f.label}
+              </button>
+            );
+          })}
         </div>
 
         {loadingTransacties ? (
@@ -384,52 +440,85 @@ export function BankImportTab() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-autronis-border">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Datum</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Omschrijving</th>
-                  <th className="text-right py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Categorie</th>
-                  <th className="text-center py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Bank</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Datum</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Omschrijving</th>
+                  <th className="text-right py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
+                  <th className="text-left py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Categorie</th>
+                  <th className="text-center py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Type</th>
+                  <th className="text-center py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {transacties.map((t) => {
                   const sc = STATUS_CONFIG[t.status] || STATUS_CONFIG.onbekend;
+                  const verlegd = isVerlegging(t);
                   return (
                     <tr
                       key={t.id}
-                      className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors"
+                      className="border-b border-autronis-border/50 hover:bg-autronis-bg/30 transition-colors group"
                     >
-                      <td className="py-3 px-4 text-sm text-autronis-text-secondary whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-xs text-autronis-text-secondary whitespace-nowrap tabular-nums">
                         {formatDatumKort(t.datum)}
                       </td>
-                      <td className="py-3 px-4 text-sm text-autronis-text-primary max-w-[300px] truncate">
-                        {t.omschrijving}
+                      <td className="py-2.5 px-3 max-w-[280px]">
+                        <p className="text-sm text-autronis-text-primary truncate">{t.merchantNaam || t.omschrijving}</p>
+                        {t.aiBeschrijving && (
+                          <p className="text-[10px] text-autronis-text-tertiary truncate mt-0.5">{t.aiBeschrijving}</p>
+                        )}
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {verlegd && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 font-medium flex items-center gap-0.5">
+                              <Globe className="w-2.5 h-2.5" /> Verlegging
+                            </span>
+                          )}
+                          {t.isAbonnement === 1 && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 font-medium">Abonnement</span>
+                          )}
+                          {t.btwBedrag && t.btwBedrag > 0 && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-autronis-accent/10 text-autronis-accent font-medium">BTW {formatBedrag(t.btwBedrag)}</span>
+                          )}
+                        </div>
                       </td>
                       <td className={cn(
-                        "py-3 px-4 text-sm font-semibold text-right tabular-nums whitespace-nowrap",
+                        "py-2.5 px-3 text-sm font-semibold text-right tabular-nums whitespace-nowrap",
                         t.type === "bij" ? "text-green-400" : "text-red-400"
                       )}>
                         {t.type === "af" ? "-" : "+"}{formatBedrag(t.bedrag)}
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-2.5 px-3">
                         <select
                           value={t.categorie || "overig"}
                           onChange={(e) => handleCategorieUpdate(t.id, e.target.value)}
-                          className="bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 cursor-pointer"
+                          className="bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1 text-[11px] text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 cursor-pointer"
                         >
                           {CATEGORIE_OPTIES.map((c) => (
                             <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
                           ))}
                         </select>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold", sc.bg, sc.text)}>
+                      <td className="py-2.5 px-3 text-center">
+                        {/* Zakelijk/Privé/Investering toggle */}
+                        <div className="flex items-center justify-center gap-0.5">
+                          {(["kosten", "prive", "investering"] as const).map(ft => (
+                            <button
+                              key={ft}
+                              onClick={() => handleFiscaalToggle(t.id, ft)}
+                              className={cn(
+                                "px-1.5 py-0.5 rounded text-[9px] font-medium transition-all",
+                                t.fiscaalType === ft
+                                  ? ft === "kosten" ? "bg-blue-500/20 text-blue-400" : ft === "prive" ? "bg-red-500/20 text-red-400" : "bg-purple-500/20 text-purple-400"
+                                  : "text-autronis-text-tertiary hover:text-autronis-text-secondary"
+                              )}
+                            >
+                              {ft === "kosten" ? "ZAK" : ft === "prive" ? "PRV" : "INV"}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", sc.bg, sc.text)}>
                           {sc.label}
                         </span>
-                      </td>
-                      <td className="py-3 px-4 text-xs text-autronis-text-secondary">
-                        {t.bank || "\u2014"}
                       </td>
                     </tr>
                   );

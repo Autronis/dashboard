@@ -20,6 +20,18 @@ export interface BtwAangifte {
   btwOntvangen: number;
   btwBetaald: number;
   btwAfdragen: number;
+  rubriek1aOmzet: number;
+  rubriek1aBtw: number;
+  rubriek1bOmzet: number;
+  rubriek1bBtw: number;
+  rubriek4aOmzet: number;
+  rubriek4aBtw: number;
+  rubriek4bOmzet: number;
+  rubriek4bBtw: number;
+  rubriek5aBtw: number;
+  rubriek5bBtw: number;
+  saldo: number;
+  betalingskenmerk: string | null;
   status: "open" | "ingediend" | "betaald";
   ingediendOp: string | null;
   notities: string | null;

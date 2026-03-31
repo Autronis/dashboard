@@ -45,6 +45,7 @@ interface BankTransactie {
   btwBedrag: number | null;
   isAbonnement: number | null;
   overdodigheidScore: string | null;
+  bonPad: string | null;
 }
 
 interface Stats {
@@ -207,6 +208,45 @@ export function BankImportTab() {
   const isVerlegging = (t: BankTransactie) => {
     const naam = (t.merchantNaam || t.omschrijving || "").toLowerCase();
     return t.type === "af" && BUITENLANDSE_MERCHANTS.some(m => naam.includes(m));
+  };
+
+  const bonInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingBonId, setUploadingBonId] = useState<number | null>(null);
+
+  const handleBonUpload = async (transactieId: number, file: File) => {
+    setUploadingBonId(transactieId);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        const b64 = dataUrl.split(",")[1];
+
+        // Upload via bonnetje API
+        const formData = new FormData();
+        formData.append("bonnetje", file);
+        const res = await fetch("/api/bank/bonnetje", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json() as { bonPad?: string; succes?: boolean };
+
+        if (data.bonPad) {
+          // Link to specific transaction
+          await fetch(`/api/bank/transacties/${transactieId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bonPad: data.bonPad }),
+          });
+          addToast("Factuur gekoppeld", "succes");
+          fetchTransacties();
+        }
+        setUploadingBonId(null);
+      };
+      reader.readAsDataURL(file);
+    } catch {
+      addToast("Upload mislukt", "fout");
+      setUploadingBonId(null);
+    }
   };
 
   return (
@@ -445,6 +485,7 @@ export function BankImportTab() {
                   <th className="text-right py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Bedrag</th>
                   <th className="text-left py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Categorie</th>
                   <th className="text-center py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Type</th>
+                  <th className="text-center py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Bon</th>
                   <th className="text-center py-3 px-3 text-[10px] font-semibold text-autronis-text-secondary uppercase tracking-wide">Status</th>
                 </tr>
               </thead>
@@ -514,6 +555,23 @@ export function BankImportTab() {
                             </button>
                           ))}
                         </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {t.type === "af" && (
+                          t.bonPad ? (
+                            <a href={`/api/assets/file?path=${encodeURIComponent(t.bonPad)}`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] text-green-400 hover:underline" title="Bon bekijken">
+                              <Paperclip className="w-3 h-3" /> ✓
+                            </a>
+                          ) : (
+                            <label className="inline-flex items-center gap-1 text-[10px] text-red-400/60 hover:text-red-400 cursor-pointer transition-all" title="Upload bon/factuur">
+                              <Paperclip className="w-3 h-3" />
+                              {uploadingBonId === t.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : "mist"}
+                              <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
+                                onChange={e => { const f = e.target.files?.[0]; if (f) handleBonUpload(t.id, f); }} />
+                            </label>
+                          )
+                        )}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span className={cn("text-[10px] px-2 py-0.5 rounded-full font-semibold", sc.bg, sc.text)}>

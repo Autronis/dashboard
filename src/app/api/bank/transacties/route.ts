@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
         btwBedrag: bankTransacties.btwBedrag,
         isAbonnement: bankTransacties.isAbonnement,
         overdodigheidScore: bankTransacties.overdodigheidScore,
+        bonPad: bankTransacties.bonPad,
         aangemaaktOp: bankTransacties.aangemaaktOp,
       })
       .from(bankTransacties)

@@ -306,6 +306,20 @@ export function FiscaleVoordelenTab() {
             <CheckCircle2 className="w-5 h-5 text-autronis-accent" />
             <h3 className="text-base font-bold text-autronis-text-primary">Fiscaal Jaaroverzicht {new Date().getFullYear()}</h3>
           </div>
+          <div className="flex items-center gap-2">
+            <a href={`/api/belasting/export?type=csv&jaar=${new Date().getFullYear()}`} download
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+              CSV Export
+            </a>
+            <a href={`/api/belasting/export?type=btw&jaar=${new Date().getFullYear()}`} download
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+              BTW Export
+            </a>
+            <a href={`/api/belasting/export?type=winstverdeling&jaar=${new Date().getFullYear()}`} download
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
+              Winstverdeling
+            </a>
+          </div>
         </div>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           <div className="bg-autronis-bg rounded-xl p-4 border border-autronis-border">

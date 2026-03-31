@@ -7,6 +7,12 @@ import {
   Check,
   AlertTriangle,
   RefreshCw,
+  Search,
+  Building2,
+  User,
+  Globe,
+  Paperclip,
+  Brain,
 } from "lucide-react";
 import { cn, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -33,6 +39,12 @@ interface BankTransactie {
   status: string;
   bank: string | null;
   tegenrekening: string | null;
+  merchantNaam: string | null;
+  aiBeschrijving: string | null;
+  fiscaalType: string | null;
+  btwBedrag: number | null;
+  isAbonnement: number | null;
+  overdodigheidScore: string | null;
 }
 
 interface Stats {
@@ -69,11 +81,15 @@ export function BankImportTab() {
   const [stats, setStats] = useState<Stats>({ totaal: 0, onbekend: 0, gecategoriseerd: 0, gematcht: 0 });
   const [loadingTransacties, setLoadingTransacties] = useState(true);
   const [statusFilter, setStatusFilter] = useState("alle");
+  const [fiscaalFilter, setFiscaalFilter] = useState("alle");
+  const [zoekTerm, setZoekTerm] = useState("");
 
   const fetchTransacties = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (statusFilter !== "alle") params.set("status", statusFilter);
+      if (fiscaalFilter !== "alle") params.set("fiscaalType", fiscaalFilter);
+      if (zoekTerm.trim()) params.set("zoek", zoekTerm.trim());
       const res = await fetch(`/api/bank/transacties?${params}`);
       if (!res.ok) throw new Error();
       const json = await res.json();
@@ -84,7 +100,7 @@ export function BankImportTab() {
     } finally {
       setLoadingTransacties(false);
     }
-  }, [statusFilter, addToast]);
+  }, [statusFilter, fiscaalFilter, zoekTerm, addToast]);
 
   useEffect(() => {
     fetchTransacties();

@@ -10,11 +10,19 @@ export async function GET(req: NextRequest) {
     await requireAuth();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const limiet = parseInt(searchParams.get("limiet") || "100");
+    const fiscaalType = searchParams.get("fiscaalType");
+    const zoek = searchParams.get("zoek");
+    const limiet = parseInt(searchParams.get("limiet") || "200");
 
     const conditions: ReturnType<typeof eq>[] = [];
     if (status && status !== "alle") {
       conditions.push(eq(bankTransacties.status, status as "onbekend" | "gecategoriseerd" | "gematcht"));
+    }
+    if (fiscaalType && fiscaalType !== "alle") {
+      conditions.push(eq(bankTransacties.fiscaalType, fiscaalType as "investering" | "kosten" | "prive"));
+    }
+    if (zoek) {
+      conditions.push(sql`(${bankTransacties.omschrijving} LIKE ${"%" + zoek + "%"} OR ${bankTransacties.merchantNaam} LIKE ${"%" + zoek + "%"})` as ReturnType<typeof eq>);
     }
 
     const lijst = await db
@@ -29,6 +37,12 @@ export async function GET(req: NextRequest) {
         status: bankTransacties.status,
         bank: bankTransacties.bank,
         tegenrekening: bankTransacties.tegenrekening,
+        merchantNaam: bankTransacties.merchantNaam,
+        aiBeschrijving: bankTransacties.aiBeschrijving,
+        fiscaalType: bankTransacties.fiscaalType,
+        btwBedrag: bankTransacties.btwBedrag,
+        isAbonnement: bankTransacties.isAbonnement,
+        overdodigheidScore: bankTransacties.overdodigheidScore,
         aangemaaktOp: bankTransacties.aangemaaktOp,
       })
       .from(bankTransacties)

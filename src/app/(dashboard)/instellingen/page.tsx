@@ -577,7 +577,7 @@ export default function InstellingenPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-autronis-bg rounded-xl p-3 border border-autronis-border">
                 <p className="text-[10px] text-autronis-text-secondary uppercase tracking-wider">Status</p>
                 <p className="text-sm font-semibold text-emerald-400 mt-1">Actief</p>

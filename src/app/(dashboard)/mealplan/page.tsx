@@ -115,7 +115,10 @@ export default function MealPlanPage() {
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (chatMessages.length > 0) localStorage.setItem("autronis-mealplan-chat", JSON.stringify(chatMessages));
+    if (chatMessages.length > 0) {
+      localStorage.setItem("autronis-mealplan-chat", JSON.stringify(chatMessages));
+      fetch("/api/mealplan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chat: chatMessages }) }).catch(() => {});
+    }
   }, [chatMessages]);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
@@ -148,10 +151,14 @@ export default function MealPlanPage() {
     setChatLoading(false);
   };
 
-  // Auto-save settings on change
+  // Auto-save settings on change (localStorage + DB)
   useEffect(() => {
-    localStorage.setItem("autronis-mealplan-settings", JSON.stringify({ kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen }));
-  }, [kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen]);
+    const settings = { kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen };
+    localStorage.setItem("autronis-mealplan-settings", JSON.stringify(settings));
+    if (initialLoaded && plan) {
+      fetch("/api/mealplan", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ settings }) }).catch(() => {});
+    }
+  }, [kcal, eiwit, koolhydraten, vezels, suiker, vet, voorkeuren, uitsluitingen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist plan to localStorage
   useEffect(() => {
@@ -160,27 +167,55 @@ export default function MealPlanPage() {
 
   const [progress, setProgress] = useState(0);
 
-  // On mount: use localStorage plan if available, otherwise show settings
+  // On mount: load from DB first, fallback to localStorage
   useEffect(() => {
     if (initialLoaded) return;
-    if (plan) {
-      // Already have plan from localStorage
-      setShowSettings(false);
-    } else if (loading) {
-      // Was generating — show loading state (fetch is still running in background)
-      // But if loading was stuck (page was closed), clean up after 5 min
-      const loadingStart = localStorage.getItem("autronis-mealplan-loading");
-      if (loadingStart === "true") {
-        // Can't recover the fetch — reset loading
-        setLoading(false);
-        localStorage.removeItem("autronis-mealplan-loading");
+
+    const loadFromDb = async () => {
+      try {
+        const res = await fetch("/api/mealplan");
+        if (!res.ok) throw new Error("fetch failed");
+        const data = await res.json() as { status: string; plan?: WeekPlan; settings?: Record<string, unknown>; chat?: { role: "user" | "ai"; text: string }[]; restjes?: { product: string; hoeveelheid: string }[] };
+        if (data.status === "done" && data.plan) {
+          setPlan(data.plan);
+          localStorage.setItem("autronis-mealplan-data", JSON.stringify(data.plan));
+          if (data.settings) {
+            if (data.settings.kcal) setKcal(Number(data.settings.kcal));
+            if (data.settings.eiwit) setEiwit(Number(data.settings.eiwit));
+            if (data.settings.koolhydraten) setKoolhydraten(Number(data.settings.koolhydraten));
+            if (data.settings.vezels) setVezels(Number(data.settings.vezels));
+            if (data.settings.suiker) setSuiker(Number(data.settings.suiker));
+            if (data.settings.vet) setVet(Number(data.settings.vet));
+            if (data.settings.voorkeuren !== undefined) setVoorkeuren(String(data.settings.voorkeuren));
+            if (data.settings.uitsluitingen !== undefined) setUitsluitingen(String(data.settings.uitsluitingen));
+          }
+          if (data.chat && data.chat.length > 0) {
+            setChatMessages(data.chat);
+          }
+          setShowSettings(false);
+          setInitialLoaded(true);
+          return;
+        }
+      } catch { /* DB unavailable, use localStorage */ }
+
+      // Fallback to localStorage
+      if (plan) {
+        setShowSettings(false);
+      } else if (loading) {
+        const loadingStart = localStorage.getItem("autronis-mealplan-loading");
+        if (loadingStart === "true") {
+          setLoading(false);
+          localStorage.removeItem("autronis-mealplan-loading");
+          setShowSettings(true);
+        }
+      } else {
         setShowSettings(true);
       }
-    } else {
-      setShowSettings(true);
-    }
-    setInitialLoaded(true);
-  }, [initialLoaded, plan, loading]);
+      setInitialLoaded(true);
+    };
+
+    loadFromDb();
+  }, [initialLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Shared generation logic
   const doGenerate = async (extraParams?: Record<string, unknown>) => {
@@ -564,7 +599,7 @@ export default function MealPlanPage() {
                 <p className="text-sm font-medium text-autronis-text-primary mb-3 flex items-center gap-2">
                   <Flame className="w-4 h-4 text-orange-400" /> Week Totaal
                 </p>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 sm:grid-cols-6 gap-3">
                   {[
                     { label: "Kcal", value: plan.weekTotaal.kcal, target: kcal * 7, color: "text-orange-400" },
                     { label: "Eiwit", value: plan.weekTotaal.eiwit, target: eiwit * 7, unit: "g", color: "text-red-400" },

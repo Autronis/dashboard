@@ -988,7 +988,7 @@ export default function TakenPage() {
         {weergave === "lijst" && (
           <>
             {/* Drop zones */}
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {(["open", "bezig", "afgerond"] as const).map((status) => {
                 const sc = statusConfig[status]; const Icon = sc.icon;
                 const count = taken.filter((t) => t.status === status).length;

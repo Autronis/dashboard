@@ -1162,7 +1162,7 @@ export default function BelastingPage() {
                               </div>
                             </div>
                           )}
-                          <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                             <div>
                               <p className="text-xs text-autronis-text-secondary">Ontvangen</p>
                               <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatBedrag(aangifte.btwOntvangen)}</p>
@@ -1637,7 +1637,7 @@ export default function BelastingPage() {
               ) : investeringenLijst.length ? (
                 <div className="space-y-4">
                   {/* KPI row */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">Totaal</p>
                       <p className="text-lg font-bold text-autronis-text-primary tabular-nums">{formatBedrag(totaalInvestering)}</p>

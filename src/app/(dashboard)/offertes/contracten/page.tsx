@@ -637,7 +637,7 @@ export default function ContractenPage() {
                     {/* Type keuze */}
                     <div>
                       <label className="text-sm font-medium text-autronis-text-secondary mb-2 block">Type contract</label>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         {Object.entries(TYPE_CONFIG).map(([key, config]) => {
                           const Icon = config.icon;
                           const selected = type === key;

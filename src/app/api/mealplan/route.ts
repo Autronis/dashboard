@@ -408,17 +408,35 @@ async function triggerGeneration() {
   });
 }
 
-// GET
+// GET — load user's saved mealplan from DB
 export async function GET() {
   try {
+    const gebruiker = await requireAuth();
     await ensureTable();
 
+    // First check user's persistent plan
+    const userPlan = await dbGet<{ plan_json: string; settings_json: string | null; chat_json: string | null; restjes_json: string | null; bijgewerkt_op: string | null }>(
+      "SELECT plan_json, settings_json, chat_json, restjes_json, bijgewerkt_op FROM mealplan_plans WHERE gebruiker_id = ? ORDER BY id DESC LIMIT 1",
+      [gebruiker.id]
+    );
+
+    if (userPlan) {
+      return NextResponse.json({
+        status: "done",
+        plan: JSON.parse(userPlan.plan_json),
+        settings: userPlan.settings_json ? JSON.parse(userPlan.settings_json) : null,
+        chat: userPlan.chat_json ? JSON.parse(userPlan.chat_json) : null,
+        restjes: userPlan.restjes_json ? JSON.parse(userPlan.restjes_json) : null,
+        bijgewerktOp: userPlan.bijgewerkt_op,
+      });
+    }
+
+    // Fallback: check generation cache
     const row = await dbGet<{ status: string; plan_json: string | null; progress: number }>(
       "SELECT status, plan_json, progress FROM mealplan_cache ORDER BY id DESC LIMIT 1"
     );
     if (!row) return NextResponse.json({ status: "none" });
 
-    // Trigger background generation if pending
     if (row.status === "pending" || row.status === "generating") {
       triggerGeneration().catch(() => {});
     }
@@ -484,17 +502,74 @@ export async function POST(req: NextRequest) {
     }
 
     const plan = { dagen, boodschappenlijst, totaalPrijs, weekTotaal };
+    const planStr = JSON.stringify(plan);
+    const settingsStr = JSON.stringify(params);
 
     // Save to cache
     try {
       await dbRun("DELETE FROM mealplan_cache");
-      await dbRun("INSERT INTO mealplan_cache (status, plan_json, settings_json, progress) VALUES ('done', ?, ?, 8)", [JSON.stringify(plan), JSON.stringify(params)]);
+      await dbRun("INSERT INTO mealplan_cache (status, plan_json, settings_json, progress) VALUES ('done', ?, ?, 8)", [planStr, settingsStr]);
     } catch { /* save failed but plan is returned */ }
+
+    // Save to user's persistent plan
+    try {
+      const gebruiker = await requireAuth();
+      // Delete old plans, keep only latest
+      await dbRun("DELETE FROM mealplan_plans WHERE gebruiker_id = ?", [gebruiker.id]);
+      await dbRun(
+        "INSERT INTO mealplan_plans (gebruiker_id, plan_json, settings_json, restjes_json) VALUES (?, ?, ?, ?)",
+        [gebruiker.id, planStr, settingsStr, params.restjes ? JSON.stringify(params.restjes) : null]
+      );
+    } catch { /* user save failed but plan is returned */ }
 
     return NextResponse.json({ status: "done", plan });
   } catch (error) {
     console.error("[MEALPLAN POST] Error:", error);
     const msg = error instanceof Error ? error.message : "Onbekende fout";
     return NextResponse.json({ fout: `Weekplan genereren mislukt: ${msg}` }, { status: 500 });
+  }
+}
+
+// PUT — sync settings, chat, restjes to user's plan
+export async function PUT(req: NextRequest) {
+  try {
+    const gebruiker = await requireAuth();
+    const body = await req.json() as { settings?: unknown; chat?: unknown; restjes?: unknown };
+
+    // Check if user has a plan
+    const existing = await dbGet<{ id: number }>(
+      "SELECT id FROM mealplan_plans WHERE gebruiker_id = ? ORDER BY id DESC LIMIT 1",
+      [gebruiker.id]
+    );
+
+    if (!existing) {
+      return NextResponse.json({ fout: "Geen weekplan gevonden" }, { status: 404 });
+    }
+
+    const updates: string[] = [];
+    const params: unknown[] = [];
+
+    if (body.settings !== undefined) {
+      updates.push("settings_json = ?");
+      params.push(JSON.stringify(body.settings));
+    }
+    if (body.chat !== undefined) {
+      updates.push("chat_json = ?");
+      params.push(JSON.stringify(body.chat));
+    }
+    if (body.restjes !== undefined) {
+      updates.push("restjes_json = ?");
+      params.push(JSON.stringify(body.restjes));
+    }
+
+    if (updates.length > 0) {
+      updates.push("bijgewerkt_op = datetime('now')");
+      params.push(existing.id);
+      await dbRun(`UPDATE mealplan_plans SET ${updates.join(", ")} WHERE id = ?`, params);
+    }
+
+    return NextResponse.json({ succes: true });
+  } catch (error) {
+    return NextResponse.json({ fout: error instanceof Error ? error.message : "Onbekende fout" }, { status: 500 });
   }
 }

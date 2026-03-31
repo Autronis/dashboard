@@ -149,7 +149,7 @@ export default function FollowUpPage() {
         </div>
 
         {/* KPI strip */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { label: "Dringend", value: data?.danger.length ?? 0, color: "text-red-400", icon: AlertTriangle, bg: "bg-red-500/10 border-red-500/20" },
             { label: "Let op", value: data?.warning.length ?? 0, color: "text-amber-400", icon: Clock, bg: "bg-amber-500/10 border-amber-500/20" },

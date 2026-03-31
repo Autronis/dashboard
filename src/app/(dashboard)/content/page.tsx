@@ -618,7 +618,7 @@ export default function ContentPage() {
         </div>
 
         {/* Modules — compacte horizontale rij */}
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           {modules.map((mod, i) => (
             <motion.div
               key={mod.href}

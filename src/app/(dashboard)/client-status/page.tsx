@@ -187,7 +187,7 @@ export default function ClientStatusPage() {
         </div>
 
         {/* KPI strip */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
             { label: "Totaal", value: data?.kpis?.totaal ?? 0, color: "text-autronis-text-primary", icon: Activity },
             { label: "Actief", value: data?.kpis?.actief ?? 0, color: "text-emerald-400", icon: CheckCircle2 },

@@ -192,7 +192,7 @@ export function FiscaleVoordelenTab() {
         </div>
 
         {/* KIA Info cards */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className={cn("rounded-xl p-3 border", kiaInRange ? "bg-green-500/5 border-green-500/20" : "bg-autronis-bg border-autronis-border")}>
             <p className="text-xs text-autronis-text-secondary">Status</p>
             <p className={cn("text-sm font-bold mt-0.5", kiaInRange ? "text-green-400" : "text-orange-400")}>

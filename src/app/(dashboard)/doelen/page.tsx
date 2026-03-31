@@ -1010,7 +1010,7 @@ export default function DoelenPage() {
                         <button onClick={() => removeKr(i)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-autronis-text-secondary hover:text-red-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
                       )}
                     </div>
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="space-y-1">
                         <label className="block text-[11px] text-autronis-text-secondary">Doelwaarde</label>
                         <input type="number" value={kr.doelwaarde || ""} onChange={(e) => updateKr(i, "doelwaarde", Number(e.target.value))} placeholder="0" className={inputClasses} />

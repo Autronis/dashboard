@@ -540,7 +540,7 @@ export function AbonnementenTab() {
             <FormField label="Naam *" value={form.naam} onChange={(e) => setForm((f) => ({ ...f, naam: e.target.value }))} placeholder="OpenAI, Vercel, etc." />
             <FormField label="Leverancier" value={form.leverancier} onChange={(e) => setForm((f) => ({ ...f, leverancier: e.target.value }))} placeholder="Optioneel" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <FormField label="Bedrag *" value={form.bedrag} onChange={(e) => setForm((f) => ({ ...f, bedrag: e.target.value }))} type="number" placeholder="29.00" />
             <SelectField
               label="Frequentie"

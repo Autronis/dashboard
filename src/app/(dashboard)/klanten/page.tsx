@@ -268,7 +268,7 @@ function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void
       <div className="h-px bg-autronis-border mt-auto mb-3" />
 
       {/* Footer KPIs */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div>
           <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Projecten</p>
           <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{klant.aantalProjecten}</p>

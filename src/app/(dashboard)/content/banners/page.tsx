@@ -189,7 +189,7 @@ function InstagramGridPreview({ banners }: { banners: ContentBanner[] }) {
           <p className="text-xs text-autronis-text-secondary">Laatste 9 Instagram banners</p>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-1 max-w-xs mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-1 max-w-xs mx-auto">
         {cells.map((banner, idx) => (
           <div
             key={idx}

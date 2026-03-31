@@ -239,7 +239,7 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
               <Clock className="w-3 h-3" />
               Duur
             </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               {DUUR_OPTIES.map((opt) => (
                 <button
                   key={opt.waarde}

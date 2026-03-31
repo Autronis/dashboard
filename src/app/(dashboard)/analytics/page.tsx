@@ -331,7 +331,7 @@ function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis
 
       <div className="overflow-x-auto -mx-6 px-6">
         <div className="min-w-[500px] space-y-1.5">
-          <div className="grid grid-cols-6 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs text-autronis-text-secondary font-medium pb-2 border-b border-autronis-border">
             <span className="col-span-2">Klant</span>
             <span className="text-right">Doel</span>
             <span className="text-right">Werkelijk</span>
@@ -344,7 +344,7 @@ function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis
               <div
                 key={r.naam}
                 className={cn(
-                  "grid grid-cols-6 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2",
+                  "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-sm py-2.5 rounded-lg px-2 -mx-2",
                   isBiggestLek ? "bg-red-500/12 border border-red-500/20" : r.gap < -10 ? "bg-red-500/8" : ""
                 )}
               >
@@ -718,7 +718,7 @@ function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["fo
         Jaardoel: {formatBedrag(forecast.jaardoel)} &middot; Tot nu: {formatBedrag(forecast.omzetTotNu)} &middot; Benodigd: {formatBedrag(forecast.benodigdPerMaand)}/mnd &middot; Zeker: {formatBedrag(forecast.restWaarde)}
       </p>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {forecast.maanden.map((m, i) => (
           <div key={m.maand} className="space-y-3">
             <div className="flex items-center justify-center gap-2">
@@ -875,7 +875,7 @@ function TeamVergelijking({ gebruikers }: { gebruikers: VergelijkGebruiker[] }) 
       </div>
 
       <div className="space-y-3 sm:space-y-4">
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center pb-3 border-b border-autronis-border">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-center pb-3 border-b border-autronis-border">
           <span className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{a.naam.split(" ")[0]}</span>
           <span className="text-xs text-autronis-text-secondary self-center">vs</span>
           <span className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{b.naam.split(" ")[0]}</span>

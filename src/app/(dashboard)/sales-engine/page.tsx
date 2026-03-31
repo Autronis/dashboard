@@ -496,7 +496,7 @@ export default function SalesEnginePage() {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-48" />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24" />)}
         </div>
         <Skeleton className="h-40" />

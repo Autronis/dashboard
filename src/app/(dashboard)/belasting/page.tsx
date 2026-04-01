@@ -2607,6 +2607,187 @@ export default function BelastingPage() {
           </div>
         </div>
       </Modal>
+
+      {/* BTW Aangifte Voorbereiding Modal */}
+      <Modal
+        open={btwVoorbereidingModal}
+        onClose={() => setBtwVoorbereidingModal(false)}
+        titel={`BTW Aangifte Q${btwVoorbereidingKwartaal} ${btwVoorbereidingJaar}`}
+        breedte="lg"
+        footer={
+          btwVoorbereidingData ? (
+            <>
+              <button
+                onClick={() => setBtwVoorbereidingModal(false)}
+                className="px-4 py-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+              >
+                Sluiten
+              </button>
+              <button
+                onClick={() => saveBtwAangifte("open")}
+                className="px-4 py-2 bg-amber-500/15 text-amber-400 rounded-lg text-sm font-semibold hover:bg-amber-500/25 transition-colors"
+              >
+                Opslaan als concept
+              </button>
+              {btwVoorbereidingData.bestaandeAangifte?.status !== "ingediend" && btwVoorbereidingData.bestaandeAangifte?.status !== "betaald" && (
+                <button
+                  onClick={() => saveBtwAangifte("ingediend")}
+                  className="px-4 py-2 bg-blue-500/15 text-blue-400 rounded-lg text-sm font-semibold hover:bg-blue-500/25 transition-colors"
+                >
+                  Markeer als ingediend
+                </button>
+              )}
+            </>
+          ) : undefined
+        }
+      >
+        {btwVoorbereidingLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <RefreshCw className="w-6 h-6 text-autronis-accent animate-spin" />
+          </div>
+        ) : btwVoorbereidingData ? (
+          <div className="space-y-5">
+            {/* Kwartaal selector */}
+            <div className="flex items-center gap-2">
+              {[1, 2, 3, 4].map(q => (
+                <button
+                  key={q}
+                  onClick={() => { setBtwVoorbereidingKwartaal(q); fetchBtwVoorbereiding(q, btwVoorbereidingJaar); }}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors",
+                    q === btwVoorbereidingKwartaal ? "bg-autronis-accent text-white" : "bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+                  )}
+                >
+                  Q{q}
+                </button>
+              ))}
+              <div className="flex-1" />
+              {btwVoorbereidingData.bestaandeAangifte ? (
+                <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold",
+                  btwVoorbereidingData.bestaandeAangifte.status === "ingediend" ? "bg-blue-500/15 text-blue-400" :
+                  btwVoorbereidingData.bestaandeAangifte.status === "betaald" ? "bg-green-500/15 text-green-400" :
+                  "bg-amber-500/15 text-amber-400"
+                )}>
+                  {btwVoorbereidingData.bestaandeAangifte.status === "ingediend" ? "Ingediend" :
+                   btwVoorbereidingData.bestaandeAangifte.status === "betaald" ? "Betaald" : "Concept"}
+                </span>
+              ) : (
+                <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-autronis-border/50 text-autronis-text-secondary">Nieuw</span>
+              )}
+            </div>
+
+            {/* Rubriek 1: Omzet binnenland */}
+            <div className="bg-autronis-bg/30 border border-autronis-border/50 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-autronis-text-secondary uppercase tracking-wider">Rubriek 1 — Omzet binnenland</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">1a</span>
+                    <span className="text-sm text-autronis-text-primary">Omzet hoog tarief (21%)</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm tabular-nums">
+                    <span className="text-autronis-text-secondary">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_1a.omzet)}</span>
+                    <span className="font-semibold text-autronis-text-primary w-24 text-right">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_1a.btw)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">1b</span>
+                    <span className="text-sm text-autronis-text-primary">Omzet laag tarief (9%)</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm tabular-nums">
+                    <span className="text-autronis-text-secondary">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_1b.omzet)}</span>
+                    <span className="font-semibold text-autronis-text-primary w-24 text-right">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_1b.btw)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rubriek 4: Buitenland */}
+            <div className="bg-autronis-bg/30 border border-autronis-border/50 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-autronis-text-secondary uppercase tracking-wider">Rubriek 4 — Buitenland</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">4a</span>
+                    <span className="text-sm text-autronis-text-primary">Diensten buiten EU</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm tabular-nums">
+                    <span className="text-autronis-text-secondary">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_4a.omzet)}</span>
+                    <span className="font-semibold text-autronis-text-primary w-24 text-right">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_4a.btw)}</span>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">4b</span>
+                    <span className="text-sm text-autronis-text-primary">Leveringen/diensten binnen EU</span>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm tabular-nums">
+                    <span className="text-autronis-text-secondary">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_4b.omzet)}</span>
+                    <span className="font-semibold text-autronis-text-primary w-24 text-right">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_4b.btw)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Rubriek 5: Berekening */}
+            <div className="bg-autronis-bg/30 border border-autronis-border/50 rounded-xl p-4 space-y-3">
+              <p className="text-xs font-bold text-autronis-text-secondary uppercase tracking-wider">Rubriek 5 — Berekening</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">5a</span>
+                    <span className="text-sm text-autronis-text-primary">Verschuldigde BTW</span>
+                  </div>
+                  <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_5a.btw)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-autronis-accent w-5">5b</span>
+                    <span className="text-sm text-autronis-text-primary">Voorbelasting</span>
+                  </div>
+                  <span className="text-sm font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(btwVoorbereidingData.rubrieken.rubriek_5b.btw)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Saldo */}
+            <div className={cn(
+              "rounded-xl p-5 text-center",
+              btwVoorbereidingData.saldo > 0 ? "bg-red-500/10 border border-red-500/30" : "bg-green-500/10 border border-green-500/30"
+            )}>
+              <p className="text-xs text-autronis-text-secondary mb-1">
+                {btwVoorbereidingData.saldo > 0 ? "Te betalen aan de Belastingdienst" : "Terug te ontvangen van de Belastingdienst"}
+              </p>
+              <p className={cn("text-2xl font-bold tabular-nums", btwVoorbereidingData.saldo > 0 ? "text-red-400" : "text-green-400")}>
+                {formatBedrag(Math.abs(btwVoorbereidingData.saldo))}
+              </p>
+            </div>
+
+            {/* Betalingskenmerk */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-autronis-text-secondary">Betalingskenmerk</label>
+              <input
+                type="text"
+                value={btwBetalingskenmerk}
+                onChange={e => setBtwBetalingskenmerk(e.target.value)}
+                placeholder="Vul hier het betalingskenmerk in..."
+                disabled={btwVoorbereidingData.bestaandeAangifte?.status === "ingediend" || btwVoorbereidingData.bestaandeAangifte?.status === "betaald"}
+                className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/30 focus:outline-none focus:border-autronis-accent/50 disabled:opacity-50"
+              />
+            </div>
+
+            {/* Ingediend info */}
+            {btwVoorbereidingData.bestaandeAangifte?.ingediendOp && (
+              <p className="text-xs text-autronis-text-secondary/60 text-center">
+                Ingediend op {formatDatum(btwVoorbereidingData.bestaandeAangifte.ingediendOp)}
+              </p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-autronis-text-secondary text-center py-8">Geen data beschikbaar</p>
+        )}
+      </Modal>
     </PageTransition>
   );
 }

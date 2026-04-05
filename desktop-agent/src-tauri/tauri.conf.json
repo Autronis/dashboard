@@ -27,13 +27,7 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "frameworks": [],
-      "minimumSystemVersion": "10.13",
-      "exceptionDomain": "",
-      "signingIdentity": null,
-      "infoPlist": {
-        "LSUIElement": true
-      }
+      "minimumSystemVersion": "10.13"
     }
   },
   "plugins": {}

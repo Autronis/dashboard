@@ -208,6 +208,12 @@ pub fn run() {
             exclude_current_app,
         ])
         .setup(move |app| {
+            // Hide from dock on macOS
+            #[cfg(target_os = "macos")]
+            {
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
             let app_handle = app.handle().clone();
 
             // Build tray menu

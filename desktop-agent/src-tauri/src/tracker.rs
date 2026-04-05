@@ -145,43 +145,76 @@ fn get_browser_url(app: &str, hwnd: windows::Win32::Foundation::HWND) -> Option<
 pub fn get_active_window() -> Option<WindowInfo> {
     use std::process::Command;
 
-    // Get frontmost app name
-    let app_output = Command::new("osascript")
-        .args(["-e", r#"tell application "System Events" to get name of first application process whose frontmost is true"#])
-        .output()
-        .ok()?;
-
-    if !app_output.status.success() {
-        return None;
-    }
-
-    let app = String::from_utf8_lossy(&app_output.stdout).trim().to_string();
-    if app.is_empty() {
-        return None;
-    }
-
-    // Get window title
-    let title_output = Command::new("osascript")
+    // Single osascript call for both app name and window title
+    let output = Command::new("osascript")
         .args(["-e", r#"
 tell application "System Events"
     set frontApp to first application process whose frontmost is true
+    set appName to name of frontApp
+    set winTitle to ""
     try
         set winTitle to name of front window of frontApp
-    on error
-        set winTitle to ""
     end try
-    return winTitle
+    return appName & "|||" & winTitle
 end tell
 "#])
         .output()
         .ok()?;
 
-    let title = String::from_utf8_lossy(&title_output.stdout).trim().to_string();
+    if !output.status.success() {
+        return None;
+    }
+
+    let result = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let parts: Vec<&str> = result.splitn(2, "|||").collect();
+
+    let app = parts.first()?.trim().to_string();
+    if app.is_empty() {
+        return None;
+    }
+
+    let title = parts.get(1).map(|t| t.trim().to_string()).unwrap_or_default();
+
+    // Fallback: for apps where System Events can't get window title,
+    // try getting it via the app's own AppleScript interface
+    let title = if title.is_empty() {
+        get_app_title_fallback(&app).unwrap_or_default()
+    } else {
+        title
+    };
 
     // Try to get browser URL
     let url = get_browser_url_macos(&app);
 
     Some(WindowInfo { app, title, url })
+}
+
+/// Fallback: get window title directly from the app (not via System Events)
+#[cfg(target_os = "macos")]
+fn get_app_title_fallback(app: &str) -> Option<String> {
+    use std::process::Command;
+
+    let script = format!(
+        r#"try
+    tell application "{}" to get name of front window
+on error
+    ""
+end try"#,
+        app
+    );
+
+    let output = Command::new("osascript")
+        .args(["-e", &script])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let title = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !title.is_empty() && title != "missing value" {
+            return Some(title);
+        }
+    }
+    None
 }
 
 #[cfg(target_os = "macos")]

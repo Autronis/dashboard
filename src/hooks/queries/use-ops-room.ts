@@ -93,7 +93,7 @@ function useOpsRoomSSE() {
   const queryClient = useQueryClient();
   const eventSourceRef = useRef<EventSource | null>(null);
   const [connected, setConnected] = useState(false);
-  const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>(undefined);
   const retryCount = useRef(0);
 
   const connect = useCallback(() => {

@@ -145,6 +145,18 @@ if (isTurso) {
   // Screen time locatie column
   client.execute("ALTER TABLE screen_time_entries ADD COLUMN locatie TEXT").catch(() => {});
 
+  // API token gebruik table
+  client.execute(`CREATE TABLE IF NOT EXISTS api_token_gebruik (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    model TEXT,
+    input_tokens INTEGER DEFAULT 0,
+    output_tokens INTEGER DEFAULT 0,
+    kosten_cent INTEGER DEFAULT 0,
+    route TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -270,6 +282,18 @@ if (isTurso) {
   if (!stCols.some((c: { name: string }) => c.name === "locatie")) {
     sqliteDb.exec("ALTER TABLE screen_time_entries ADD COLUMN locatie TEXT");
   }
+
+  // API token gebruik table
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS api_token_gebruik (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider TEXT NOT NULL,
+    model TEXT,
+    input_tokens INTEGER DEFAULT 0,
+    output_tokens INTEGER DEFAULT 0,
+    kosten_cent INTEGER DEFAULT 0,
+    route TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

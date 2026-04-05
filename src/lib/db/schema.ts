@@ -1496,3 +1496,18 @@ export const assetGallery = sqliteTable("asset_gallery", {
   isFavoriet: integer("is_favoriet").default(0),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ API TOKEN GEBRUIK ============
+
+export const apiTokenGebruik = sqliteTable("api_token_gebruik", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  provider: text("provider").notNull(), // "anthropic", "groq", "openai"
+  model: text("model"),
+  inputTokens: integer("input_tokens").default(0),
+  outputTokens: integer("output_tokens").default(0),
+  kostenCent: integer("kosten_cent").default(0), // kosten in centen
+  route: text("route"), // welke API route de call deed
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxProviderDatum: index("idx_atg_provider_datum").on(table.provider, table.aangemaaktOp),
+}));

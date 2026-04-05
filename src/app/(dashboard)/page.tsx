@@ -831,7 +831,7 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
-  const { gebruiker, kpis, mijnTaken, deadlines, teamgenoot, projecten } = data;
+  const { gebruiker, kpis, mijnTaken, actielijsten, deadlines, teamgenoot, projecten } = data;
 
   // KPI trends
   const omzetTrend = trendPercentage(kpis.omzetDezeMaand, kpis.omzetVorigeMaand);
@@ -982,48 +982,35 @@ export default function DashboardPage() {
             )}
 
             {/* Actielijsten — projectloze taken gegroepeerd op fase */}
-            {(() => {
-              const faseGroepen = new Map<string, { totaal: number; afgerond: number; hoog: number }>();
-              for (const t of mijnTaken) {
-                if (!t.projectId && t.fase) {
-                  const g = faseGroepen.get(t.fase) ?? { totaal: 0, afgerond: 0, hoog: 0 };
-                  g.totaal++;
-                  if (t.status === "afgerond") g.afgerond++;
-                  if (t.prioriteit === "hoog") g.hoog++;
-                  faseGroepen.set(t.fase, g);
-                }
-              }
-              if (faseGroepen.size === 0) return null;
-              return (
-                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
-                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2.5 flex items-center gap-2">
-                    <Layers className="w-3.5 h-3.5 text-autronis-accent" />
-                    Actielijsten
-                  </h3>
-                  <div className="space-y-2.5">
-                    {Array.from(faseGroepen.entries()).map(([fase, g]) => {
-                      const pct = g.totaal > 0 ? Math.round((g.afgerond / g.totaal) * 100) : 0;
-                      return (
-                        <Link key={fase} href={`/taken?fase=${encodeURIComponent(fase)}`} className="block group">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate">{fase}</span>
-                              {g.hoog > 0 && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold flex-shrink-0">{g.hoog} urgent</span>
-                              )}
-                            </div>
-                            <span className="text-[11px] text-autronis-text-secondary tabular-nums flex-shrink-0">{g.afgerond}/{g.totaal}</span>
+            {actielijsten.length > 0 && (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+                <h3 className="text-sm font-semibold text-autronis-text-primary mb-2.5 flex items-center gap-2">
+                  <Layers className="w-3.5 h-3.5 text-autronis-accent" />
+                  Actielijsten
+                </h3>
+                <div className="space-y-2.5">
+                  {actielijsten.filter((a) => a.fase).map((a) => {
+                    const pct = a.totaal > 0 ? Math.round((a.afgerond / a.totaal) * 100) : 0;
+                    return (
+                      <Link key={a.fase} href="/taken" className="block group">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate">{a.fase}</span>
+                            {a.hoog > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold flex-shrink-0">{a.hoog} urgent</span>
+                            )}
                           </div>
-                          <div className="h-1.5 bg-autronis-border rounded-full overflow-hidden">
-                            <div className={cn("h-full rounded-full transition-all", pct === 100 ? "bg-emerald-500" : "bg-autronis-accent")} style={{ width: `${pct}%` }} />
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                          <span className="text-[11px] text-autronis-text-secondary tabular-nums flex-shrink-0">{a.afgerond}/{a.totaal}</span>
+                        </div>
+                        <div className="h-1.5 bg-autronis-border rounded-full overflow-hidden">
+                          <div className={cn("h-full rounded-full transition-all", pct === 100 ? "bg-emerald-500" : "bg-autronis-accent")} style={{ width: `${pct}%` }} />
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
-              );
-            })()}
+              </div>
+            )}
 
             {/* Documenten */}
             <DocumentWidget />

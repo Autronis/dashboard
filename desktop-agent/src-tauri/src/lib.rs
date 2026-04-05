@@ -246,7 +246,6 @@ pub fn run() {
             let _tray = TrayIconBuilder::new()
                 .tooltip("Autronis Tracker")
                 .icon(app.default_window_icon().unwrap().clone())
-                .icon_as_template(true)
                 .menu(&menu)
                 .on_menu_event(move |app: &AppHandle, event| {
                     match event.id().as_ref() {

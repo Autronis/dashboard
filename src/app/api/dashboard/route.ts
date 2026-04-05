@@ -293,6 +293,25 @@ export async function GET() {
       };
     }
 
+    // === Actielijsten (projectloze taken gegroepeerd op fase) ===
+    const actielijsten = await db
+      .select({
+        fase: taken.fase,
+        totaal: sql<number>`count(*)`,
+        afgerond: sql<number>`sum(case when ${taken.status} = 'afgerond' then 1 else 0 end)`,
+        hoog: sql<number>`sum(case when ${taken.prioriteit} = 'hoog' and ${taken.status} != 'afgerond' then 1 else 0 end)`,
+      })
+      .from(taken)
+      .where(
+        and(
+          isNull(taken.projectId),
+          eq(taken.toegewezenAan, gebruiker.id),
+          sql`${taken.fase} IS NOT NULL AND ${taken.fase} != ''`
+        )
+      )
+      .groupBy(taken.fase)
+      .all();
+
     // === Projecten voor timer dropdown ===
     const projectenLijst = await db
       .select({
@@ -323,6 +342,7 @@ export async function GET() {
         takenAfgerondVandaag,
       },
       mijnTaken,
+      actielijsten,
       deadlines: aankomendDeadlines,
       teamgenoot: teamgenootData,
       projecten: projectenLijst,

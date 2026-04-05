@@ -45,6 +45,12 @@ interface DashboardData {
     urenTotaal: number;
     taken: { id: number; titel: string; projectNaam: string | null }[];
   } | null;
+  actielijsten: {
+    fase: string | null;
+    totaal: number;
+    afgerond: number;
+    hoog: number;
+  }[];
   projecten: { id: number; naam: string; klantNaam: string; voortgang: number | null; status: string }[];
 }
 

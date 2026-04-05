@@ -173,6 +173,7 @@ export async function GET() {
         status: taken.status,
         deadline: taken.deadline,
         prioriteit: taken.prioriteit,
+        fase: taken.fase,
         projectId: taken.projectId,
         projectNaam: projecten.naam,
         klantId: klanten.id,

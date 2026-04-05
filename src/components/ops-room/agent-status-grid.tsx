@@ -85,7 +85,13 @@ export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
                 <button
                   key={a.id}
                   onClick={() => onSelect(a)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-card-hover transition-colors text-left"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/agent-id", a.id);
+                    e.dataTransfer.setData("text/plain", a.naam);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-card-hover transition-colors text-left cursor-grab active:cursor-grabbing"
                 >
                   <MiniSprite agentId={a.id} size={22} />
                   <span className="text-[11px] font-semibold text-autronis-text-primary flex-1 truncate">{a.naam}</span>
@@ -115,7 +121,13 @@ export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
                 <button
                   key={a.id}
                   onClick={() => onSelect(a)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-card-hover transition-colors text-left"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/agent-id", a.id);
+                    e.dataTransfer.setData("text/plain", a.naam);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-card-hover transition-colors text-left cursor-grab active:cursor-grabbing"
                 >
                   <MiniSprite agentId={a.id} size={22} />
                   <span className="text-[11px] font-medium text-autronis-text-primary">{a.naam}</span>
@@ -137,7 +149,13 @@ export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
                 <button
                   key={a.id}
                   onClick={() => onSelect(a)}
-                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-red-500/5 hover:bg-red-500/10 transition-colors text-left"
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/agent-id", a.id);
+                    e.dataTransfer.setData("text/plain", a.naam);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg bg-red-500/5 hover:bg-red-500/10 transition-colors text-left cursor-grab active:cursor-grabbing"
                 >
                   <MiniSprite agentId={a.id} size={22} />
                   <span className="text-[11px] font-medium text-red-400">{a.naam}</span>
@@ -148,19 +166,26 @@ export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
           </div>
         )}
 
-        {/* Idle (compact) */}
+        {/* Idle (compact) — draggable to assign to projects */}
         {idle.length > 0 && (
           <div>
             <p className="text-[9px] font-semibold text-autronis-text-tertiary uppercase tracking-wider mb-1.5">
               Stand-by ({agents.filter((a) => a.status === "idle" && a.team === "sem").length})
+              <span className="ml-1 font-normal opacity-60">— sleep naar project</span>
             </p>
             <div className="flex flex-wrap gap-1.5">
               {idle.map((a) => (
                 <button
                   key={a.id}
                   onClick={() => onSelect(a)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-autronis-border/15 hover:bg-autronis-border/30 transition-colors"
-                  title={`${a.naam} — ${a.voltooideVandaag} taken vandaag`}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/agent-id", a.id);
+                    e.dataTransfer.setData("text/plain", a.naam);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-autronis-border/15 hover:bg-autronis-border/30 transition-colors cursor-grab active:cursor-grabbing"
+                  title={`${a.naam} — sleep naar een project om toe te wijzen`}
                 >
                   <MiniSprite agentId={a.id} size={16} />
                   <span className="text-[10px] text-autronis-text-tertiary">{a.naam}</span>

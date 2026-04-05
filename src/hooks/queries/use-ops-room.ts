@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useCallback, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Agent } from "@/components/ops-room/types";
 
 // Raw DB row from the API
@@ -87,11 +88,74 @@ async function fetchOpsRoom(): Promise<Agent[]> {
   return (data.agents as AgentActiviteitRow[]).map(mapRowToAgent);
 }
 
+// SSE hook — connects to /api/ops-room/stream for real-time updates
+function useOpsRoomSSE() {
+  const queryClient = useQueryClient();
+  const eventSourceRef = useRef<EventSource | null>(null);
+  const [connected, setConnected] = useState(false);
+  const reconnectTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const retryCount = useRef(0);
+
+  const connect = useCallback(() => {
+    // Clean up existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    try {
+      const es = new EventSource("/api/ops-room/stream?token=autronis-ops-2026");
+      eventSourceRef.current = es;
+
+      es.onopen = () => {
+        setConnected(true);
+        retryCount.current = 0;
+      };
+
+      es.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "agents" && Array.isArray(data.agents)) {
+            const agents = (data.agents as AgentActiviteitRow[]).map(mapRowToAgent);
+            queryClient.setQueryData(["ops-room"], agents);
+          }
+        } catch { /* ignore parse errors */ }
+      };
+
+      es.onerror = () => {
+        setConnected(false);
+        es.close();
+        eventSourceRef.current = null;
+        // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+        const delay = Math.min(1000 * Math.pow(2, retryCount.current), 30000);
+        retryCount.current++;
+        reconnectTimeout.current = setTimeout(connect, delay);
+      };
+    } catch {
+      setConnected(false);
+    }
+  }, [queryClient]);
+
+  useEffect(() => {
+    connect();
+    return () => {
+      if (eventSourceRef.current) eventSourceRef.current.close();
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+    };
+  }, [connect]);
+
+  return connected;
+}
+
 export function useOpsRoom() {
+  // SSE pushes data into the query cache
+  const sseConnected = useOpsRoomSSE();
+
+  // Fallback polling only when SSE is disconnected
   return useQuery({
     queryKey: ["ops-room"],
     queryFn: fetchOpsRoom,
     staleTime: 3 * 1000,
-    refetchInterval: 5 * 1000, // Poll every 5 seconds
+    refetchInterval: sseConnected ? false : 5 * 1000, // Only poll when SSE is down
   });
 }

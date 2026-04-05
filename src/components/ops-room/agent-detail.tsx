@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MiniTerminal } from "./mini-terminal";
+import { AgentTimeline } from "./agent-timeline";
 import { getProjectColor } from "./project-colors";
 import { getCharacterDef, drawSprite } from "./pixel-sprites";
 import type { Agent, AgentRole } from "./types";
@@ -215,6 +216,9 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
               </div>
             </div>
           )}
+
+          {/* Activity Timeline */}
+          <AgentTimeline agentId={agent.id} />
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 pt-1">

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FolderOpen, FileCode } from "lucide-react";
+import { FolderOpen, FileCode, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
 import { PixelAvatar } from "./pixel-avatar";
@@ -30,6 +30,30 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
 
 export function ProjectPanel({ agents }: ProjectPanelProps) {
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
+  const [dragOverProject, setDragOverProject] = useState<string | null>(null);
+  const [assigning, setAssigning] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleDrop = useCallback(async (projectNaam: string, e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOverProject(null);
+    const agentId = e.dataTransfer.getData("application/agent-id");
+    if (!agentId) return;
+
+    setAssigning(true);
+    try {
+      const res = await fetch("/api/ops-room/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+        body: JSON.stringify({ agentId, projectNaam }),
+      });
+      if (res.ok) {
+        // Refresh agent data
+        queryClient.invalidateQueries({ queryKey: ["ops-room"] });
+      }
+    } catch { /* ignore */ }
+    setAssigning(false);
+  }, [queryClient]);
 
   const { data: dbProjects } = useQuery<DbProject[]>({
     queryKey: ["projecten-lookup"],
@@ -236,16 +260,33 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
             </div>
           );
 
+          const dropHandlers = {
+            onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverProject(proj); },
+            onDragLeave: () => setDragOverProject(null),
+            onDrop: (e: React.DragEvent) => handleDrop(proj, e),
+          };
+          const isDragTarget = dragOverProject === proj;
+
           if (dbProject?.id) {
             return (
               <Link
                 key={proj}
                 href={`/projecten/${dbProject.id}`}
-                className="block px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all group cursor-pointer"
+                className={cn(
+                  "block px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all group cursor-pointer",
+                  isDragTarget && "ring-2 ring-autronis-accent/50 bg-autronis-accent/5"
+                )}
                 onMouseEnter={() => setHoveredProject(proj)}
                 onMouseLeave={() => setHoveredProject(null)}
+                {...dropHandlers}
               >
                 {content}
+                {isDragTarget && (
+                  <div className="mt-1.5 flex items-center gap-1 text-[9px] text-autronis-accent font-medium">
+                    <UserPlus className="w-3 h-3" />
+                    Agent toewijzen aan {proj}
+                  </div>
+                )}
               </Link>
             );
           }
@@ -253,11 +294,21 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
           return (
             <div
               key={proj}
-              className="px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all"
+              className={cn(
+                "px-3 py-2.5 rounded-lg hover:bg-autronis-card-hover transition-all",
+                isDragTarget && "ring-2 ring-autronis-accent/50 bg-autronis-accent/5"
+              )}
               onMouseEnter={() => setHoveredProject(proj)}
               onMouseLeave={() => setHoveredProject(null)}
+              {...dropHandlers}
             >
               {content}
+              {isDragTarget && (
+                <div className="mt-1.5 flex items-center gap-1 text-[9px] text-autronis-accent font-medium">
+                  <UserPlus className="w-3 h-3" />
+                  Agent toewijzen aan {proj}
+                </div>
+              )}
             </div>
           );
         })}

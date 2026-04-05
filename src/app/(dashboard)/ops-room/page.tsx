@@ -28,7 +28,7 @@ import { Leaderboard } from "@/components/ops-room/leaderboard";
 import { MissionControl } from "@/components/ops-room/mission-control";
 import { ExecutionFeed } from "@/components/ops-room/execution-feed";
 import { AgentStatusGrid } from "@/components/ops-room/agent-status-grid";
-import { OfficeViewSyb } from "@/components/ops-room/office-view-syb";
+import { CostDashboard } from "@/components/ops-room/cost-dashboard";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
 import { useOrchestrator } from "@/components/ops-room/orchestrator-store";
@@ -293,9 +293,10 @@ export default function OpsRoomPage() {
 
             {/* 3-column control grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Left: Projects + Ranking */}
+              {/* Left: Projects + Costs + Ranking */}
               <div className="space-y-4">
                 <ProjectPanel agents={agents} />
+                <CostDashboard agents={agents} />
                 <Leaderboard agents={agents} />
               </div>
 

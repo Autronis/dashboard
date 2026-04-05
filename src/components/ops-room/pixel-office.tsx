@@ -1093,21 +1093,19 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
     // === Slaapkamer (geen achtergrond — zelfde vloer) ===
 
-    // === Group labels — all centered over full canvas width, like STAND-BY ===
+    // === Group labels — dynamic per team ===
+    const isSybFloor = ceoId === "syb";
     ctx.font = "bold italic 13px Inter, system-ui, sans-serif";
     ctx.letterSpacing = "3px";
-    ctx.fillStyle = pal.labelColor;
+    ctx.fillStyle = isSybFloor ? "#a855f7cc" : pal.labelColor;
     ctx.textAlign = "center";
     const centerX = CANVAS_W / 2;
-    // "DE BAAS" + "HET BESTUUR" on same line (management row)
-    // Hardcoded: each label Y = agent Y - 30
-    ctx.fillText("DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
-    ctx.fillText("HET BESTUUR", BUILDER_X + MGMT_OFFSET + UNIT_W * 2 - 30, DESK_POSITIONS.theo.y + 30);
+    ctx.fillText(isSybFloor ? "DE BAAS" : "DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
+    ctx.fillText(isSybFloor ? "HET TEAM" : "HET BESTUUR", BUILDER_X + MGMT_OFFSET + UNIT_W * 2 - 30, DESK_POSITIONS.theo.y + 30);
     ctx.textAlign = "left";
-    ctx.fillText("DE STAF", 45, DESK_POSITIONS.ari.y + 20);
+    ctx.fillText(isSybFloor ? "SUPPORT" : "DE STAF", 45, DESK_POSITIONS.ari.y + 20);
     ctx.textAlign = "center";
-    ctx.fillText("DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2 - 30, DESK_POSITIONS.wout.y - 125);
-    // "STAND-BY" — with same gap above as other labels
+    ctx.fillText(isSybFloor ? "BUILDERS" : "DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2 - 30, DESK_POSITIONS.wout.y - 125);
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
     ctx.letterSpacing = "0px";
@@ -1809,19 +1807,90 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
     }
     particles.current = aliveParticles;
 
-    // === DAY/NIGHT CYCLE: subtle overlay based on time of day ===
+    // === DAY/NIGHT CYCLE: dynamic lighting based on real time ===
     const hour = new Date().getHours();
+    const minute = new Date().getMinutes();
+    const timeF = hour + minute / 60; // fractional hour (e.g. 14.5 = 2:30pm)
+
     if (!isLight) {
-      if (hour >= 22 || hour < 6) {
-        // Late night — dim the office
-        ctx.fillStyle = "#00001520";
+      // Night (22-5): deep blue overlay + dim
+      if (timeF >= 22 || timeF < 5) {
+        ctx.fillStyle = "#000020" + (timeF >= 0 && timeF < 5 ? "30" : "25");
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
-      } else if (hour >= 18) {
-        // Evening — warm tint
-        ctx.fillStyle = "#1a0a0008";
+        // Moonlight glow from top-right window
+        const moonGrad = ctx.createRadialGradient(CANVAS_W - 200, 0, 0, CANVAS_W - 200, 0, 400);
+        moonGrad.addColorStop(0, "rgba(180, 200, 255, 0.03)");
+        moonGrad.addColorStop(1, "rgba(180, 200, 255, 0)");
+        ctx.fillStyle = moonGrad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      // Early morning (5-7): warm sunrise tint + golden window light
+      else if (timeF >= 5 && timeF < 7) {
+        const sunrise = (timeF - 5) / 2; // 0→1
+        ctx.fillStyle = `rgba(255, 180, 80, ${0.03 * sunrise})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        // Golden light from first window
+        const sunGrad = ctx.createRadialGradient(winSpacing + 40, WALL_H, 0, winSpacing + 40, WALL_H, 250);
+        sunGrad.addColorStop(0, `rgba(255, 200, 100, ${0.06 * sunrise})`);
+        sunGrad.addColorStop(1, "rgba(255, 200, 100, 0)");
+        ctx.fillStyle = sunGrad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      // Golden hour / sunset (17-19): warm orange tint
+      else if (timeF >= 17 && timeF < 19) {
+        const sunset = (timeF - 17) / 2; // 0→1
+        ctx.fillStyle = `rgba(255, 120, 50, ${0.02 + 0.03 * sunset})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        // Warm light from last window
+        const sunsetGrad = ctx.createRadialGradient(CANVAS_W - winSpacing - 40, WALL_H, 0, CANVAS_W - winSpacing - 40, WALL_H, 300);
+        sunsetGrad.addColorStop(0, `rgba(255, 140, 60, ${0.05 * sunset})`);
+        sunsetGrad.addColorStop(1, "rgba(255, 140, 60, 0)");
+        ctx.fillStyle = sunsetGrad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      // Evening (19-22): gradual dimming
+      else if (timeF >= 19 && timeF < 22) {
+        const evening = (timeF - 19) / 3; // 0→1
+        ctx.fillStyle = `rgba(10, 5, 30, ${0.05 * evening})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+      // Daytime (7-17): bright and clear, subtle warm center
+      else {
+        const midday = 1 - Math.abs(timeF - 12) / 5; // peaks at noon
+        const warmGrad = ctx.createRadialGradient(CANVAS_W / 2, WALL_H, 0, CANVAS_W / 2, WALL_H, CANVAS_W * 0.6);
+        warmGrad.addColorStop(0, `rgba(255, 255, 240, ${0.015 * midday})`);
+        warmGrad.addColorStop(1, "rgba(255, 255, 240, 0)");
+        ctx.fillStyle = warmGrad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
+    } else {
+      // Light theme: subtle time-based tinting too
+      if (timeF >= 17 && timeF < 19) {
+        const sunset = (timeF - 17) / 2;
+        ctx.fillStyle = `rgba(255, 150, 80, ${0.02 * sunset})`;
         ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
       }
     }
+
+    // Time-of-day badge (bottom-left corner)
+    const timeLabel = timeF >= 22 || timeF < 5 ? "NACHT"
+      : timeF < 7 ? "OCHTEND"
+      : timeF < 12 ? "OCHTEND"
+      : timeF < 17 ? "MIDDAG"
+      : timeF < 19 ? "AVOND"
+      : "AVOND";
+    const timeDot = timeF >= 22 || timeF < 5 ? "#6366f1"
+      : timeF < 7 ? "#f59e0b"
+      : timeF < 12 ? "#fbbf24"
+      : timeF < 17 ? "#f59e0b"
+      : "#ef4444";
+    ctx.font = "bold 10px Inter, system-ui, sans-serif";
+    ctx.fillStyle = isLight ? "#5a6a7a30" : "#ffffff20";
+    ctx.fillText(timeLabel, 14, CANVAS_H - 16);
+    ctx.fillStyle = timeDot + "60";
+    ctx.beginPath();
+    ctx.arc(8, CANVAS_H - 20, 3, 0, Math.PI * 2);
+    ctx.fill();
 
     // === COST ALARM: red pulse border when daily costs exceed threshold ===
     const totalCost = agents.reduce((sum, a) => sum + a.kosten.kostenVandaag, 0);

@@ -268,7 +268,9 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Start Next.js server and open dashboard window
+            // On macOS: skip Next.js server + dashboard window (tracker only)
+            // On Windows: start Next.js and open dashboard as before
+            #[cfg(not(target_os = "macos"))]
             tauri::async_runtime::spawn({
                 let state = Arc::clone(&state_for_nextjs);
                 let app = app_handle.clone();
@@ -277,6 +279,9 @@ pub fn run() {
                     open_dashboard(&app);
                 }
             });
+
+            #[cfg(target_os = "macos")]
+            let _ = &state_for_nextjs; // suppress unused warning
 
             // Start screen time tracking loop
             tauri::async_runtime::spawn({

@@ -58,6 +58,12 @@ export async function requireApiKey(req: NextRequest): Promise<number> {
   }
 
   const token = authHeader.slice(7);
+
+  // Fallback: accept SESSION_SECRET directly (for desktop agent)
+  if (token === SESSION_SECRET) {
+    return 1; // Sem's user ID
+  }
+
   const hash = createHash("sha256").update(token).digest("hex");
 
   const key = await db

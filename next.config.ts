@@ -37,6 +37,7 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2592000, // 30 days
   },
+  serverExternalPackages: ["better-sqlite3", "@libsql/client", "@libsql/hrana-client"],
   experimental: {
     optimizeCss: !!process.env.TURSO_DATABASE_URL,
     scrollRestoration: true,

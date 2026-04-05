@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Radar,
@@ -34,6 +34,10 @@ import {
   CalendarPlus,
   Share2,
   AlertCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +52,7 @@ import {
   useDeleteBron,
   type RadarItem,
   type RadarBron,
+  type RadarItemFilters,
 } from "@/hooks/queries/use-radar";
 import { PageTransition } from "@/components/ui/page-transition";
 
@@ -97,6 +102,20 @@ const categorieBadge: Record<string, string> = {
 };
 
 const bronTypeOpties = ["rss", "api", "website", "newsletter", "reddit", "producthunt", "github"];
+
+// Category grouping order and Dutch labels for grouped view
+const categorieGroepen: { key: string; label: string }[] = [
+  { key: "must_reads", label: "Must Reads" },
+  { key: "ai_tools", label: "Nieuwe Tools" },
+  { key: "tools", label: "Nieuwe Tools" },
+  { key: "api_updates", label: "API Updates" },
+  { key: "kansen", label: "Kansen voor Klanten" },
+  { key: "trends", label: "Trends" },
+  { key: "automation", label: "Automation" },
+  { key: "business", label: "Business" },
+  { key: "competitors", label: "Competitors" },
+  { key: "tutorials", label: "Tutorials" },
+];
 
 // ============ HELPERS ============
 
@@ -924,6 +943,12 @@ export default function RadarPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("feed");
   const [categorie, setCategorie] = useState("");
   const [minScore, setMinScore] = useState(5);
+  const [zoekInput, setZoekInput] = useState("");
+  const [zoek, setZoek] = useState("");
+  const [vanDatum, setVanDatum] = useState("");
+  const [totDatum, setTotDatum] = useState("");
+  const [pagina, setPagina] = useState(0);
+  const ITEMS_PER_PAGE = 20;
 
   // Bron form
   const [bronFormOpen, setBronFormOpen] = useState(false);
@@ -956,21 +981,34 @@ export default function RadarPage() {
 
   // Queries
   const feedFilters = useMemo(
-    () =>
+    (): RadarItemFilters =>
       activeTab === "bewaard"
-        ? ({ bewaard: true as const })
+        ? ({ bewaard: true as const, limit: 200 })
         : ({
             categorie: categorie || undefined,
             minScore: minScore > 1 ? minScore : undefined,
+            zoek: zoek || undefined,
+            vanDatum: vanDatum || undefined,
+            totDatum: totDatum || undefined,
+            offset: pagina * ITEMS_PER_PAGE,
+            limit: ITEMS_PER_PAGE,
           }),
-    [activeTab, categorie, minScore]
+    [activeTab, categorie, minScore, zoek, vanDatum, totDatum, pagina]
   );
 
-  const { data: items = [], isLoading: itemsLaden } = useRadarItems(
+  const { data: feedData, isLoading: itemsLaden } = useRadarItems(
     activeTab === "bronnen" ? undefined : feedFilters
   );
+  const items = feedData?.items ?? [];
+  const totaalItems = feedData?.totaal ?? 0;
+  const totaalPaginas = Math.ceil(totaalItems / ITEMS_PER_PAGE);
+
   const { data: bronnen = [], isLoading: bronnenLaden } = useRadarBronnen();
-  const { data: alleItems = [] } = useRadarItems({ minScore: 1 });
+  const { data: alleData } = useRadarItems({ minScore: 1, limit: 500 });
+  const alleItems = alleData?.items ?? [];
+
+  // Reset pagination when filters change
+  const handleFilterChange = useCallback(() => setPagina(0), []);
 
   // Mutations
   const fetchMutation = useRadarFetch();
@@ -1062,11 +1100,7 @@ export default function RadarPage() {
     [mustReadItems, vandaag]
   );
 
-  // Slider preview
-  const previewAantal = useMemo(
-    () => alleItems.filter((i) => i.score != null && i.score >= minScore).length,
-    [alleItems, minScore]
-  );
+  // Note: totaalItems from API response replaces previewAantal
 
   // Relevantie-hint: detecteer vaak weggegooide categorieën
   const [relevantieHint, setRelevantieHint] = useState<{
@@ -1391,8 +1425,72 @@ export default function RadarPage() {
               </div>
             )}
 
-            {/* Categorie chips */}
+            {/* Zoeken + filters */}
             <div className="space-y-3">
+              {/* Zoekbalk */}
+              <div className="flex gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
+                  <input
+                    type="text"
+                    value={zoekInput}
+                    onChange={(e) => setZoekInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setZoek(zoekInput);
+                        handleFilterChange();
+                      }
+                    }}
+                    placeholder="Zoek in titels, beschrijvingen, samenvattingen..."
+                    className="w-full bg-autronis-bg border border-autronis-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                  />
+                  {zoek && (
+                    <button
+                      onClick={() => { setZoek(""); setZoekInput(""); handleFilterChange(); }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => { setZoek(zoekInput); handleFilterChange(); }}
+                  className="px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Zoeken
+                </button>
+              </div>
+
+              {/* Datum filters */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-3.5 h-3.5 text-autronis-text-secondary" />
+                  <span className="text-xs text-autronis-text-secondary">Periode:</span>
+                </div>
+                <input
+                  type="date"
+                  value={vanDatum}
+                  onChange={(e) => { setVanDatum(e.target.value); handleFilterChange(); }}
+                  className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 [color-scheme:dark]"
+                />
+                <span className="text-xs text-autronis-text-secondary">t/m</span>
+                <input
+                  type="date"
+                  value={totDatum}
+                  onChange={(e) => { setTotDatum(e.target.value); handleFilterChange(); }}
+                  className="bg-autronis-bg border border-autronis-border rounded-lg px-3 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 [color-scheme:dark]"
+                />
+                {(vanDatum || totDatum) && (
+                  <button
+                    onClick={() => { setVanDatum(""); setTotDatum(""); handleFilterChange(); }}
+                    className="text-xs text-autronis-text-secondary hover:text-autronis-accent flex items-center gap-1"
+                  >
+                    <X className="w-3 h-3" /> Wis datum
+                  </button>
+                )}
+              </div>
+
+              {/* Categorie chips */}
               <div className="overflow-x-auto -mx-4 px-4 pb-1">
                 <div className="flex gap-2 w-max">
                   {categorieOpties.map((opt) => {
@@ -1403,7 +1501,7 @@ export default function RadarPage() {
                     return (
                       <button
                         key={opt.value}
-                        onClick={() => setCategorie(opt.value)}
+                        onClick={() => { setCategorie(opt.value); handleFilterChange(); }}
                         className={cn(
                           "flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border",
                           categorie === opt.value
@@ -1434,11 +1532,11 @@ export default function RadarPage() {
                   min={1}
                   max={10}
                   value={minScore}
-                  onChange={(e) => setMinScore(Number(e.target.value))}
+                  onChange={(e) => { setMinScore(Number(e.target.value)); handleFilterChange(); }}
                   className="w-28 accent-autronis-accent"
                 />
                 <span className="text-xs text-autronis-text-secondary/60 tabular-nums">
-                  {previewAantal} items zichtbaar
+                  {totaalItems} items gevonden
                 </span>
 
                 {/* Gelezen toggle */}
@@ -1496,32 +1594,20 @@ export default function RadarPage() {
               </motion.div>
             )}
 
-            {/* Must-reads sectie */}
-            <MustReadsSection
-              items={mustReadItems}
-              hasNieuw={hasNieuweMustReads}
-              onToggleBewaard={handleToggleBewaard}
-              onNietRelevant={handleNietRelevant}
-              onVraagClaude={setVraagItem}
-              onLeesLater={handleLeesLater}
-              onDeelInzicht={handleDeelInzicht}
-              isToggling={toggleBewaard.isPending}
-              openedIds={openedIds}
-              onOpen={handleOpen}
-            />
-
-            {/* Rest items */}
-            {visibleRestItems.length === 0 && mustReadItems.length === 0 ? (
+            {/* Items gegroepeerd per categorie */}
+            {items.length === 0 ? (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
                 <Radar className="w-12 h-12 text-autronis-text-secondary/30 mx-auto mb-4" />
                 <p className="text-autronis-text-secondary">
-                  Geen items gevonden. Klik op &apos;Nieuwe items ophalen&apos; om feeds te
-                  scannen.
+                  {zoek
+                    ? `Geen items gevonden voor "${zoek}".`
+                    : "Geen items gevonden. Klik op 'Nieuwe items ophalen' om feeds te scannen."}
                 </p>
               </div>
-            ) : (
+            ) : categorie ? (
+              // Single category: flat list
               <AnimatePresence mode="popLayout">
-                {visibleRestItems.map((item, i) => (
+                {items.filter((i) => !dismissingIds.has(i.id)).map((item, i) => (
                   <motion.div
                     key={item.id}
                     layout
@@ -1544,6 +1630,121 @@ export default function RadarPage() {
                   </motion.div>
                 ))}
               </AnimatePresence>
+            ) : (
+              // Grouped by category
+              <div className="space-y-8">
+                {categorieGroepen
+                  .map((groep) => ({
+                    ...groep,
+                    groepItems: items.filter(
+                      (i) => !dismissingIds.has(i.id) && i.categorie === groep.key
+                    ),
+                  }))
+                  .filter((g) => g.groepItems.length > 0)
+                  .map((groep) => {
+                    const isMustRead = groep.key === "must_reads";
+                    return (
+                      <div
+                        key={groep.key}
+                        className={cn(
+                          "space-y-3",
+                          isMustRead &&
+                            "border-l-4 border-amber-500/60 bg-gradient-to-r from-amber-500/5 to-transparent rounded-r-2xl pl-5 pr-5 py-5"
+                        )}
+                      >
+                        <h2
+                          className={cn(
+                            "text-base font-semibold flex items-center gap-2",
+                            isMustRead ? "text-amber-400" : "text-autronis-text-primary"
+                          )}
+                        >
+                          {isMustRead && <Star className="w-5 h-5" />}
+                          {groep.label}
+                          <span className="text-xs font-normal text-autronis-text-secondary">
+                            ({groep.groepItems.length})
+                          </span>
+                        </h2>
+                        <AnimatePresence mode="popLayout">
+                          {groep.groepItems.map((item, i) => (
+                            <motion.div
+                              key={item.id}
+                              layout
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, x: -80, transition: { duration: 0.25 } }}
+                              transition={{ delay: i * 0.03, duration: 0.2 }}
+                            >
+                              <ItemCard
+                                item={item}
+                                onToggleBewaard={handleToggleBewaard}
+                                onNietRelevant={handleNietRelevant}
+                                onVraagClaude={setVraagItem}
+                                onLeesLater={handleLeesLater}
+                                onDeelInzicht={handleDeelInzicht}
+                                isToggling={toggleBewaard.isPending}
+                                isOpened={openedIds.has(item.id)}
+                                onOpen={handleOpen}
+                              />
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    );
+                  })}
+                {/* Items without category */}
+                {items
+                  .filter(
+                    (i) =>
+                      !dismissingIds.has(i.id) &&
+                      !categorieGroepen.some((g) => g.key === i.categorie)
+                  )
+                  .map((item, i) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03, duration: 0.2 }}
+                    >
+                      <ItemCard
+                        item={item}
+                        onToggleBewaard={handleToggleBewaard}
+                        onNietRelevant={handleNietRelevant}
+                        onVraagClaude={setVraagItem}
+                        onLeesLater={handleLeesLater}
+                        onDeelInzicht={handleDeelInzicht}
+                        isToggling={toggleBewaard.isPending}
+                        isOpened={openedIds.has(item.id)}
+                        onOpen={handleOpen}
+                      />
+                    </motion.div>
+                  ))}
+              </div>
+            )}
+
+            {/* Paginering */}
+            {totaalPaginas > 1 && (
+              <div className="flex items-center justify-center gap-3 pt-4">
+                <button
+                  onClick={() => setPagina((p) => Math.max(0, p - 1))}
+                  disabled={pagina === 0}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-card border border-autronis-border rounded-xl text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Vorige
+                </button>
+                <span className="text-sm text-autronis-text-secondary tabular-nums">
+                  Pagina <span className="font-semibold text-autronis-text-primary">{pagina + 1}</span> van{" "}
+                  <span className="font-semibold text-autronis-text-primary">{totaalPaginas}</span>
+                </span>
+                <button
+                  onClick={() => setPagina((p) => Math.min(totaalPaginas - 1, p + 1))}
+                  disabled={pagina >= totaalPaginas - 1}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-card border border-autronis-border rounded-xl text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/40 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  Volgende
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </motion.div>
         )}

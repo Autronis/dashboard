@@ -43,21 +43,38 @@ async function fetchBronnen(): Promise<RadarBron[]> {
   return data.bronnen || [];
 }
 
-async function fetchItems(filters?: {
+export interface RadarItemFilters {
   categorie?: string;
   minScore?: number;
   bewaard?: boolean;
   nietRelevant?: boolean;
-}): Promise<RadarItem[]> {
+  zoek?: string;
+  vanDatum?: string;
+  totDatum?: string;
+  offset?: number;
+  limit?: number;
+}
+
+export interface RadarItemsResponse {
+  items: RadarItem[];
+  totaal: number;
+}
+
+async function fetchItems(filters?: RadarItemFilters): Promise<RadarItemsResponse> {
   const params = new URLSearchParams();
   if (filters?.categorie) params.set("categorie", filters.categorie);
   if (filters?.minScore != null) params.set("minScore", String(filters.minScore));
   if (filters?.bewaard != null) params.set("bewaard", filters.bewaard ? "1" : "0");
   if (filters?.nietRelevant != null) params.set("nietRelevant", filters.nietRelevant ? "1" : "0");
+  if (filters?.zoek) params.set("zoek", filters.zoek);
+  if (filters?.vanDatum) params.set("vanDatum", filters.vanDatum);
+  if (filters?.totDatum) params.set("totDatum", filters.totDatum);
+  if (filters?.offset != null) params.set("offset", String(filters.offset));
+  if (filters?.limit != null) params.set("limit", String(filters.limit));
   const res = await fetch(`/api/radar/items?${params}`);
   if (!res.ok) throw new Error("Kon radar items niet laden");
   const data = await res.json();
-  return data.items || [];
+  return { items: data.items || [], totaal: data.totaal ?? 0 };
 }
 
 // ============ QUERY HOOKS ============
@@ -70,12 +87,7 @@ export function useRadarBronnen() {
   });
 }
 
-export function useRadarItems(filters?: {
-  categorie?: string;
-  minScore?: number;
-  bewaard?: boolean;
-  nietRelevant?: boolean;
-}) {
+export function useRadarItems(filters?: RadarItemFilters) {
   return useQuery({
     queryKey: ["radar-items", filters],
     queryFn: () => fetchItems(filters),

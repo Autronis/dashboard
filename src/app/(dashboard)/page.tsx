@@ -556,8 +556,9 @@ const categorieLabels: Record<string, string> = {
 };
 
 function RadarWidget() {
-  const { data: items = [], isLoading } = useRadarItems({ minScore: 7 });
-  const topItems = items.slice(0, 3);
+  const { data, isLoading } = useRadarItems({ minScore: 7 });
+  const items = data?.items ?? [];
+  const topItems = items.slice(0, 5);
 
   if (isLoading) {
     return (
@@ -589,22 +590,32 @@ function RadarWidget() {
         <p className="text-sm text-autronis-text-secondary">Nog geen items met hoge score.</p>
       ) : (
         <div className="space-y-2">
-          {topItems.map((item) => (
-            <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 bg-autronis-bg/50 rounded-xl p-3 hover:bg-autronis-bg/80 transition-colors group">
-              <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums flex-shrink-0 mt-0.5", item.score != null && item.score >= 8 ? "bg-emerald-500/15 text-emerald-400" : "bg-yellow-500/15 text-yellow-400")}>
-                {item.score}/10
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors line-clamp-1">{item.titel}</p>
-                {item.categorie && (
-                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full mt-1 inline-flex", categorieBadgeKleur[item.categorie] ?? "bg-autronis-border text-autronis-text-secondary")}>
-                    {categorieLabels[item.categorie] ?? item.categorie}
-                  </span>
-                )}
-              </div>
-              <ExternalLink className="w-3 h-3 text-autronis-text-secondary/30 group-hover:text-autronis-accent transition-colors flex-shrink-0 mt-0.5" />
-            </a>
-          ))}
+          {topItems.map((item) => {
+            const eersteBullet = item.aiSamenvatting
+              ? item.aiSamenvatting.split("\n").find((l) => l.trim().startsWith("-") || l.trim().startsWith("•"))?.replace(/^[-•]\s*/, "").trim()
+              : null;
+            return (
+              <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 bg-autronis-bg/50 rounded-xl p-3 hover:bg-autronis-bg/80 transition-colors group">
+                <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums flex-shrink-0 mt-0.5", item.score != null && item.score >= 8 ? "bg-emerald-500/15 text-emerald-400" : "bg-yellow-500/15 text-yellow-400")}>
+                  {item.score}/10
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors line-clamp-1">{item.titel}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {item.categorie && (
+                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full inline-flex", categorieBadgeKleur[item.categorie] ?? "bg-autronis-border text-autronis-text-secondary")}>
+                        {categorieLabels[item.categorie] ?? item.categorie}
+                      </span>
+                    )}
+                  </div>
+                  {eersteBullet && (
+                    <p className="text-[11px] text-autronis-text-secondary mt-1 line-clamp-1">{eersteBullet}</p>
+                  )}
+                </div>
+                <ExternalLink className="w-3 h-3 text-autronis-text-secondary/30 group-hover:text-autronis-accent transition-colors flex-shrink-0 mt-0.5" />
+              </a>
+            );
+          })}
         </div>
       )}
     </div>

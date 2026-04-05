@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { TrackedAnthropic as Anthropic, AnthropicNS } from "@/lib/ai/tracked-anthropic";
 import { AGENT_SPECIALIZATIONS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
 import type { PlanTask, AgentSpecialization } from "@/components/ops-room/orchestrator-types";
 import { db } from "@/lib/db";
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
     });
 
     const rawText = message.content
-      .filter((block): block is Anthropic.TextBlock => block.type === "text")
+      .filter((block): block is AnthropicNS.TextBlock => block.type === "text")
       .map((block) => block.text)
       .join("");
 

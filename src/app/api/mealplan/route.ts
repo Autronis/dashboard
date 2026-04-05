@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { sqlite, tursoClient } from "@/lib/db";
-import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { TrackedAnthropic as Anthropic, type AnthropicType } from "@/lib/ai/tracked-anthropic";
+import OriginalAnthropic from "@anthropic-ai/sdk";
 
 // Allow up to 5 minutes for full plan + boodschappenlijst generation
 export const maxDuration = 300;
@@ -62,7 +63,7 @@ let isGenerating = false;
 
 const DAGEN = ["Maandag", "Dinsdag", "Woensdag", "Donderdag", "Vrijdag", "Zaterdag", "Zondag"];
 
-async function generateDay(client: Anthropic, dag: string, params: Record<string, unknown>, vorigeDagen: { dag: string; gerechten: string[] }[]): Promise<unknown> {
+async function generateDay(client: OriginalAnthropic, dag: string, params: Record<string, unknown>, vorigeDagen: { dag: string; gerechten: string[] }[]): Promise<unknown> {
   const kcal = Number(params.kcal) || 2750;
   const eiwit = Number(params.eiwit) || 190;
   const koolhydraten = Number(params.koolhydraten) || 300;
@@ -199,7 +200,7 @@ function normalizeIngredient(naam: string): string {
     .replace(/\s+/g, " ");
 }
 
-async function generateBoodschappen(client: Anthropic, dagen: unknown[], restjes?: { product: string; hoeveelheid: string }[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
+async function generateBoodschappen(client: OriginalAnthropic, dagen: unknown[], restjes?: { product: string; hoeveelheid: string }[]): Promise<{ boodschappenlijst: unknown[]; totaalPrijs: number }> {
   // Step 1: Collect ALL ingredients from the 7-day plan with total grams
   const alleIngredienten: Record<string, { gram: number; count: number }> = {};
   for (const dag of dagen) {

@@ -14,6 +14,7 @@ interface ApiGebruik {
   limiet?: number | string;
   eenheid: string;
   percentage?: number;
+  details?: string;
 }
 
 interface ApiEntry {
@@ -116,6 +117,9 @@ function ApiCard({ api }: { api: ApiEntry }) {
           )}
           {!api.gebruik!.limiet && !api.gebruik!.percentage && (
             <span className="text-xs text-autronis-text-secondary">{api.gebruik!.eenheid}</span>
+          )}
+          {api.gebruik!.details && (
+            <p className="text-xs text-autronis-text-secondary mt-1.5">{api.gebruik!.details}</p>
           )}
         </div>
       )}

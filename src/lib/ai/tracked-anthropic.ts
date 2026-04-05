@@ -10,6 +10,9 @@ import { db } from "@/lib/db";
 import { apiTokenGebruik } from "@/lib/db/schema";
 
 export type { MessageParam };
+export type { OriginalAnthropic as AnthropicType };
+// Re-export the Anthropic namespace for type usage (e.g. Anthropic.TextBlock)
+export { OriginalAnthropic as AnthropicNS };
 
 // Cost per million tokens in cents (USD)
 const COST_MAP: Record<string, { input: number; output: number }> = {

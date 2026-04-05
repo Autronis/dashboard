@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { TrackedAnthropic as Anthropic, AnthropicNS } from "@/lib/ai/tracked-anthropic";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { AGENT_SPECIALIZATIONS, AGENT_TEAMS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
@@ -128,7 +128,7 @@ Bij mode "taak" + niet helder: verduidelijkingsvragen.`,
           messages: [{ role: "user", content: `Opdracht: "${opdracht}"` }],
         });
 
-        const rawText = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
+        const rawText = msg.content.filter((b): b is AnthropicNS.TextBlock => b.type === "text").map((b) => b.text).join("");
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const result = JSON.parse(jsonMatch[0]);
@@ -170,7 +170,7 @@ Reageer ALLEEN met JSON:
           messages: [{ role: "user", content: `Origineel idee: "${opdracht}"\n\nSpar-sessie:\n${context}` }],
         });
 
-        const rawText = msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("");
+        const rawText = msg.content.filter((b): b is AnthropicNS.TextBlock => b.type === "text").map((b) => b.text).join("");
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error("Geen JSON in response");
         const result = JSON.parse(jsonMatch[0]);
@@ -297,7 +297,7 @@ Reageer ALLEEN met JSON:
       });
 
       const rawText = message.content
-        .filter((block): block is Anthropic.TextBlock => block.type === "text")
+        .filter((block): block is AnthropicNS.TextBlock => block.type === "text")
         .map((block) => block.text)
         .join("");
 

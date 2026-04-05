@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageParam } from "@anthropic-ai/sdk/resources";
+import { TrackedAnthropic as Anthropic, type MessageParam } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 interface ChatBericht {
   rol: "gebruiker" | "ai";

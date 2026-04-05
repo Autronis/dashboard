@@ -3,7 +3,7 @@ import { requireApiKey } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { uitgaven, bankTransacties } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import fs from "fs";
 import path from "path";
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "ANTHROPIC_API_KEY niet geconfigureerd" }, { status: 500 });
     }
 
-    const client = new Anthropic({ apiKey });
+    const client = Anthropic({ apiKey });
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 500,

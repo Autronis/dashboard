@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { apiTokenGebruik } from "@/lib/db/schema";
+import { sql, gte, eq } from "drizzle-orm";
 
 interface ApiUsageResult {
   naam: string;
@@ -10,9 +13,124 @@ interface ApiUsageResult {
     limiet?: number | string;
     eenheid: string;
     percentage?: number;
+    details?: string;
   };
   dashboardUrl?: string;
   fout?: string;
+}
+
+interface TokenStats {
+  provider: string;
+  totalInput: number;
+  totalOutput: number;
+  totalKosten: number;
+  aantalCalls: number;
+}
+
+async function fetchTokenStats(): Promise<TokenStats[]> {
+  try {
+    // Get stats for the current month
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const monthStart = startOfMonth.toISOString().slice(0, 19).replace("T", " ");
+
+    const rows = await db
+      .select({
+        provider: apiTokenGebruik.provider,
+        totalInput: sql<number>`COALESCE(SUM(${apiTokenGebruik.inputTokens}), 0)`,
+        totalOutput: sql<number>`COALESCE(SUM(${apiTokenGebruik.outputTokens}), 0)`,
+        totalKosten: sql<number>`COALESCE(SUM(${apiTokenGebruik.kostenCent}), 0)`,
+        aantalCalls: sql<number>`COUNT(*)`,
+      })
+      .from(apiTokenGebruik)
+      .where(gte(apiTokenGebruik.aangemaaktOp, monthStart))
+      .groupBy(apiTokenGebruik.provider)
+      .all();
+
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+function formatTokens(count: number): string {
+  if (count >= 1_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
+  if (count >= 1_000) return `${(count / 1_000).toFixed(1)}K`;
+  return String(count);
+}
+
+async function fetchAnthropicUsage(): Promise<ApiUsageResult> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return { naam: "Anthropic (Claude)", categorie: "ai", status: "niet_geconfigureerd", dashboardUrl: "https://console.anthropic.com/settings/billing" };
+  }
+
+  const stats = (await fetchTokenStats()).find(s => s.provider === "anthropic");
+
+  if (!stats || stats.aantalCalls === 0) {
+    return {
+      naam: "Anthropic (Claude)",
+      categorie: "ai",
+      status: "actief",
+      gebruik: {
+        verbruikt: "Nog geen data",
+        eenheid: "tokens",
+        details: "Tracking actief — gebruik wordt automatisch bijgehouden",
+      },
+      dashboardUrl: "https://console.anthropic.com/settings/billing",
+    };
+  }
+
+  const totalTokens = stats.totalInput + stats.totalOutput;
+  const kostenEuro = (stats.totalKosten / 100).toFixed(2);
+
+  return {
+    naam: "Anthropic (Claude)",
+    categorie: "ai",
+    status: "actief",
+    gebruik: {
+      verbruikt: `€${kostenEuro}`,
+      eenheid: "deze maand",
+      details: `${formatTokens(totalTokens)} tokens (${formatTokens(stats.totalInput)} in / ${formatTokens(stats.totalOutput)} uit) · ${stats.aantalCalls} calls`,
+    },
+    dashboardUrl: "https://console.anthropic.com/settings/billing",
+  };
+}
+
+async function fetchGroqUsage(): Promise<ApiUsageResult> {
+  if (!process.env.GROQ_API_KEY) {
+    return { naam: "Groq", categorie: "ai", status: "niet_geconfigureerd", dashboardUrl: "https://console.groq.com/settings/billing" };
+  }
+
+  const stats = (await fetchTokenStats()).find(s => s.provider === "groq");
+
+  if (!stats || stats.aantalCalls === 0) {
+    return {
+      naam: "Groq",
+      categorie: "ai",
+      status: "actief",
+      gebruik: {
+        verbruikt: "Nog geen data",
+        eenheid: "tokens",
+        details: "Gratis tier — tracking actief",
+      },
+      dashboardUrl: "https://console.groq.com/settings/billing",
+    };
+  }
+
+  const totalTokens = stats.totalInput + stats.totalOutput;
+
+  return {
+    naam: "Groq",
+    categorie: "ai",
+    status: "actief",
+    gebruik: {
+      verbruikt: formatTokens(totalTokens),
+      eenheid: "tokens deze maand",
+      details: `${formatTokens(stats.totalInput)} in / ${formatTokens(stats.totalOutput)} uit · ${stats.aantalCalls} calls · Gratis`,
+    },
+    dashboardUrl: "https://console.groq.com/settings/billing",
+  };
 }
 
 async function fetchFalUsage(): Promise<ApiUsageResult> {
@@ -75,18 +193,6 @@ async function fetchFirecrawlUsage(): Promise<ApiUsageResult> {
 
 function buildStaticEntries(): ApiUsageResult[] {
   return [
-    {
-      naam: "Anthropic (Claude)",
-      categorie: "ai",
-      status: process.env.ANTHROPIC_API_KEY ? "actief" : "niet_geconfigureerd",
-      dashboardUrl: "https://console.anthropic.com/settings/billing",
-    },
-    {
-      naam: "Groq",
-      categorie: "ai",
-      status: process.env.GROQ_API_KEY ? "actief" : "niet_geconfigureerd",
-      dashboardUrl: "https://console.groq.com/settings/billing",
-    },
     {
       naam: "OpenAI",
       categorie: "ai",
@@ -159,13 +265,15 @@ function buildStaticEntries(): ApiUsageResult[] {
 export async function GET() {
   await requireAuth();
 
-  const [fal, firecrawl] = await Promise.all([
+  const [anthropic, groq, fal, firecrawl] = await Promise.all([
+    fetchAnthropicUsage(),
+    fetchGroqUsage(),
     fetchFalUsage(),
     fetchFirecrawlUsage(),
   ]);
 
   const staticEntries = buildStaticEntries();
-  const apis = [fal, firecrawl, ...staticEntries];
+  const apis = [anthropic, groq, fal, firecrawl, ...staticEntries];
 
   return NextResponse.json({ apis });
 }

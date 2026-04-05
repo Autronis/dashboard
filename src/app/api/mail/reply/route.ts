@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "ANTHROPIC_API_KEY niet geconfigureerd" }, { status: 500 });
     }
 
-    const client = new Anthropic({ apiKey });
+    const client = Anthropic({ apiKey });
     const buffer = Buffer.from(await screenshot.arrayBuffer());
     const base64 = buffer.toString("base64");
     const mediaType = screenshot.type.startsWith("image/") ? screenshot.type : "image/jpeg";

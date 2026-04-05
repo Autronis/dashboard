@@ -8,7 +8,7 @@ import { ideeen, projecten, klanten, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, like, sql } from "drizzle-orm";
 import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 const PROJECTS_BASE = "c:/Users/semmi/OneDrive/Claude AI/Projects";
 
@@ -240,7 +240,7 @@ function generateRules(): string {
 }
 
 async function generateDetailedPlan(idee: { naam: string; omschrijving: string | null; uitwerking: string | null }): Promise<{ todoMd: string; fases: Array<{ naam: string; taken: Array<{ titel: string; uitvoerder: "claude" | "handmatig" }> }> }> {
-  const client = new Anthropic();
+  const client = Anthropic();
   const context = [idee.omschrijving, idee.uitwerking].filter(Boolean).join("\n\n");
 
   const response = await client.messages.create({

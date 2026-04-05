@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageParam } from "@anthropic-ai/sdk/resources";
+import { TrackedAnthropic as Anthropic, type MessageParam } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SYSTEM_PROMPT = `You refine short animation descriptions into concise AI video prompts. The user has ALREADY uploaded a reference image — do NOT describe the object in detail. The video model will SEE the image.
 

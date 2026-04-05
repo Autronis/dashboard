@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { uitgaven } from "@/lib/db/schema";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const client = new Anthropic({ apiKey });
+    const client = Anthropic({ apiKey });
     const base64 = buffer.toString("base64");
     const mediaType = file.type.startsWith("image/")
       ? file.type

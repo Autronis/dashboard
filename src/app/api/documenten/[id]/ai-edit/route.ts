@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { fetchNotionPageContent, replaceNotionPageContent } from "@/lib/notion";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { db } from "@/lib/db";
 import { sql } from "drizzle-orm";
 
@@ -125,7 +125,7 @@ async function runAiEdit(jobId: number, notionId: string, titel: string, instruc
   try {
     const currentHtml = await fetchNotionPageContent(notionId);
 
-    const client = new Anthropic();
+    const client = Anthropic();
     const message = await client.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 16000,

@@ -3,11 +3,11 @@ import { db } from "@/lib/db";
 import { secondBrainItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
-const anthropic = new Anthropic();
+const anthropic = Anthropic();
 
 async function genereerAiVelden(
   inhoud: string,

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import type { BannerIcon, BannerIllustration } from "@/types/content";
 import { BANNER_ICONS, BANNER_ILLUSTRATIONS } from "@/types/content";
 
@@ -83,7 +83,7 @@ Return ONLY valid JSON, no explanation, no markdown:
 }
 
 export async function analyzeTopic(onderwerp: string): Promise<TopicAnalysis> {
-  const client = new Anthropic();
+  const client = Anthropic();
 
   const message = await client.messages.create({
     model: "claude-haiku-4-20250514",

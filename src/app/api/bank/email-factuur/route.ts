@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import fs from "fs";
 import path from "path";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // POST /api/bank/email-factuur
 // Accepts: forwarded email with PDF attachment, or direct PDF upload

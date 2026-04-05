@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AGENT_SPECIALIZATIONS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
 import type { PlanTask, AgentSpecialization } from "@/components/ops-room/orchestrator-types";
 import { db } from "@/lib/db";
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "API key niet geconfigureerd" }, { status: 500 });
     }
 
-    const client = new Anthropic({ apiKey });
+    const client = Anthropic({ apiKey });
 
     const systemPrompt = mode === "review"
       ? buildReviewPrompt(task, context)

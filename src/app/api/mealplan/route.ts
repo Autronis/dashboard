@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { sqlite, tursoClient } from "@/lib/db";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // Allow up to 5 minutes for full plan + boodschappenlijst generation
 export const maxDuration = 300;
@@ -350,7 +350,7 @@ async function triggerGeneration() {
     return;
   }
 
-  const client = new Anthropic({ apiKey });
+  const client = Anthropic({ apiKey });
 
   (async () => {
     const dagen: unknown[] = [];
@@ -460,7 +460,7 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) return NextResponse.json({ fout: "API key ontbreekt" }, { status: 500 });
 
-    const client = new Anthropic({ apiKey });
+    const client = Anthropic({ apiKey });
     const dagen: unknown[] = [];
     const dagNamen: { dag: string; gerechten: string[] }[] = [];
 

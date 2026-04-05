@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AUTRONIS_CONTEXT } from "./autronis-context";
 import { getTemplate } from "./video-templates";
 
@@ -113,7 +113,7 @@ export async function generateFromTemplate(
   const filledPrompt = fillTemplate(template.promptTemplate, input);
   const prompt = buildTemplatePrompt(filledPrompt);
 
-  const client = new Anthropic();
+  const client = Anthropic();
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",

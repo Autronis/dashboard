@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AUTRONIS_CONTEXT } from "./autronis-context";
 
 interface ProfielData {
@@ -133,7 +133,7 @@ export async function generateContentBatch(
   platforms: ("linkedin" | "instagram")[] = ["linkedin", "instagram"],
   format?: string
 ): Promise<GeneratedPost[]> {
-  const client = new Anthropic();
+  const client = Anthropic();
 
   const selectedInzichten = selectRandomInzichten(inzichten, Math.min(count, inzichten.length));
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
-import type { MessageParam } from "@anthropic-ai/sdk/resources";
+import { TrackedAnthropic as Anthropic, type MessageParam } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 async function scrapeUrl(url: string): Promise<string> {
   const res = await fetch("https://api.firecrawl.dev/v1/scrape", {

@@ -2,6 +2,7 @@
  * Unified AI client: Groq (free, fast) → Anthropic (paid, fallback)
  * All non-vision, non-streaming AI calls should use this.
  */
+import { logTokenUsage } from "./tracked-anthropic";
 
 interface AiCompletionOptions {
   prompt: string;
@@ -44,7 +45,13 @@ async function callGroq(options: AiCompletionOptions): Promise<string> {
 
   const data = await res.json() as {
     choices: Array<{ message: { content: string } }>;
+    model?: string;
+    usage?: { prompt_tokens: number; completion_tokens: number };
   };
+
+  if (data.usage) {
+    logTokenUsage("groq", data.model, data.usage.prompt_tokens, data.usage.completion_tokens, "ai/client");
+  }
 
   return data.choices?.[0]?.message?.content || "";
 }
@@ -75,7 +82,13 @@ async function callAnthropic(options: AiCompletionOptions): Promise<string> {
 
   const data = await res.json() as {
     content: Array<{ type: string; text: string }>;
+    model?: string;
+    usage?: { input_tokens: number; output_tokens: number };
   };
+
+  if (data.usage) {
+    logTokenUsage("anthropic", data.model, data.usage.input_tokens, data.usage.output_tokens, "ai/client");
+  }
 
   return data.content?.find((c) => c.type === "text")?.text || "";
 }

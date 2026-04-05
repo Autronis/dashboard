@@ -1,9 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AUTRONIS_CONTEXT } from "./autronis-context";
 import { AiDraftRequest, AiDraftResponse, AiCategorisatieResponse, DocumentType } from "@/types/documenten";
 
 function getClient() {
-  return new Anthropic();
+  return Anthropic();
 }
 
 const TYPE_PROMPTS: Record<DocumentType, string> = {

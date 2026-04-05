@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = new Anthropic();
+const anthropic = Anthropic();
 
 // POST /api/agenda/taken/schat-duur
 // Body: { titel, omschrijving?, projectNaam? }

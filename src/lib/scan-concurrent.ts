@@ -2,7 +2,7 @@ import { createHash } from "crypto";
 import { db } from "@/lib/db";
 import { concurrenten, concurrentSnapshots, concurrentScans } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // ============ TYPES ============
 
@@ -258,7 +258,7 @@ export async function analyseMetAI(
   trendIndicator: "groeiend" | "stabiel" | "krimpend";
   kansen: string[];
 }> {
-  const anthropic = new Anthropic();
+  const anthropic = Anthropic();
 
   const prompt = `Je bent een competitive intelligence analist voor Autronis (AI & automatiseringsbureau, 2-mans bedrijf).
 Analyseer de volgende scan-data van concurrent "${concurrent.naam}" (${concurrent.websiteUrl}).

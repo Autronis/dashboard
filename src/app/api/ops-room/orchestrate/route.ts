@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { AGENT_SPECIALIZATIONS, AGENT_TEAMS, SPECIALIZATION_LABELS } from "@/components/ops-room/orchestrator-types";
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       if (!apiKey) return NextResponse.json({ needsIntake: false, mode: "taak" });
 
       try {
-        const client = new Anthropic({ apiKey });
+        const client = Anthropic({ apiKey });
         const msg = await client.messages.create({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 600,
@@ -153,7 +153,7 @@ Bij mode "taak" + niet helder: verduidelijkingsvragen.`,
       if (!apiKey) return NextResponse.json({ fout: "API key niet geconfigureerd" }, { status: 500 });
 
       try {
-        const client = new Anthropic({ apiKey });
+        const client = Anthropic({ apiKey });
         const msg = await client.messages.create({
           model: "claude-haiku-4-5-20251001",
           max_tokens: 800,
@@ -288,7 +288,7 @@ Reageer ALLEEN met JSON:
     } catch { /* table might not exist */ }
 
     try {
-      const client = new Anthropic({ apiKey });
+      const client = Anthropic({ apiKey });
       const message = await client.messages.create({
         model: "claude-sonnet-4-6",
         max_tokens: 4096,

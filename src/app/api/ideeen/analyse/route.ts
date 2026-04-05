@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ideeen, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { sql } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       .from(projecten)
       .all();
 
-    const client = new Anthropic();
+    const client = Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 4096,

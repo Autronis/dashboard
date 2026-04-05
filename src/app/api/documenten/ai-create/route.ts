@@ -5,7 +5,7 @@ import { klanten, projecten } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createNotionDocument } from "@/lib/notion";
 import { DocumentType, DocumentPayload } from "@/types/documenten";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AUTRONIS_CONTEXT } from "@/lib/ai/autronis-context";
 
 interface AiCreateResult {
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
       return `- ${p.naam} (id: ${p.id}${klant ? `, klant: ${klant.bedrijfsnaam}` : ""})`;
     }).join("\n");
 
-    const client = new Anthropic();
+    const client = Anthropic();
 
     const message = await client.messages.create({
       model: "claude-sonnet-4-20250514",

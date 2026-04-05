@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import path from "path";
 import { Client } from "@notionhq/client";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { db } from "@/lib/db";
 import { projecten } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -137,7 +137,7 @@ export async function POST(
     const descriptions = new Map<string, string>();
     if (newTasks.length > 0 && process.env.ANTHROPIC_API_KEY) {
       try {
-        const anthropic = new Anthropic();
+        const anthropic = Anthropic();
         const taskList = newTasks.map((t) => `- ${t.titel} (fase: ${t.fase})`).join("\n");
         const msg = await anthropic.messages.create({
           model: "claude-haiku-4-5-20251001",

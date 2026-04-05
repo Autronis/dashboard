@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import type { ScrapeResult } from "./scraper";
 import { buildAnalysisPrompt, type CalComContext } from "./prompts";
 
@@ -31,7 +31,7 @@ export async function analyzeWithClaude(
   scrapeResult: ScrapeResult,
   context: CalComContext
 ): Promise<AnalysisResult> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const prompt = buildAnalysisPrompt(scrapeResult, context);
 
   const message = await client.messages.create({

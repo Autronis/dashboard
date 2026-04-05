@@ -3,10 +3,10 @@ import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { videoSamenvattingen } from "@/lib/db/schema";
 import { desc, eq, like, sql } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { YoutubeTranscript } from "youtube-transcript";
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 function extractYoutubeId(url: string): string | null {
   const patterns = [

@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { AUTRONIS_CONTEXT } from "./autronis-context";
 
 export interface Scene {
@@ -91,7 +91,7 @@ function validateScene(raw: unknown): Scene {
 }
 
 export async function generateVideoScript(postInhoud: string, postTitel: string): Promise<Scene[]> {
-  const client = new Anthropic();
+  const client = Anthropic();
 
   const message = await client.messages.create({
     model: "claude-sonnet-4-20250514",

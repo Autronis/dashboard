@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { db } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import {
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const client = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
     // Get or create conversation
     let currentGesprekId = gesprekId;

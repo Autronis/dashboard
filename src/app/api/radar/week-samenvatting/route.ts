@@ -3,9 +3,9 @@ import { db } from "@/lib/db";
 import { radarItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, desc } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = new Anthropic();
+const anthropic = Anthropic();
 
 // POST /api/radar/week-samenvatting
 // Genereert een Claude-samenvatting van bewaarde items van de afgelopen 7 dagen

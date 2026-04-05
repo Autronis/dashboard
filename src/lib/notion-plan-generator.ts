@@ -1,5 +1,5 @@
 import { Client } from "@notionhq/client";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // --- Types ---
 
@@ -182,7 +182,7 @@ async function enrichWithClaude(
   if (!apiKey) return null;
   if (!briefContent && !todoContent) return null;
 
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = Anthropic({ apiKey });
 
   const prompt = `Je bent een projectmanager voor Autronis. Analyseer dit project en verrijk het plan.
 

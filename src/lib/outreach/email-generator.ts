@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import type { AnalysisResult } from "@/lib/sales-engine/analyzer";
 
 interface EmailSequenceInput {
@@ -57,7 +57,7 @@ export async function generateEmailSequence(
   input: EmailSequenceInput,
   variant: "a" | "b" = "a"
 ): Promise<GeneratedSequence> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const variantInstructie = variant === "a"
     ? "Schrijf in een professionele maar warme toon. Focus op het knelpunt en de oplossing."

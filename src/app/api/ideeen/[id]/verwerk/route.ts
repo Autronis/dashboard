@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { ideeen, projecten } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // POST /api/ideeen/[id]/verwerk
 // AI analyzes a note and suggests: link to project OR convert to idea
@@ -41,7 +41,7 @@ export async function POST(
       .where(sql`${ideeen.categorie} != 'inzicht'`)
       .all();
 
-    const client = new Anthropic();
+    const client = Anthropic();
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1024,

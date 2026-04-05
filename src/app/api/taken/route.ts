@@ -77,17 +77,18 @@ export async function GET(req: NextRequest) {
     }>();
 
     for (const t of rows) {
-      if (!t.projectId || !t.projectNaam) continue;
-      let proj = projectMap.get(t.projectId);
+      const pId = t.projectId ?? 0;
+      const pNaam = t.projectNaam ?? (t.fase || "Zonder project");
+      let proj = projectMap.get(pId);
       if (!proj) {
         proj = {
-          projectId: t.projectId,
-          projectNaam: t.projectNaam,
+          projectId: pId,
+          projectNaam: pNaam,
           totaal: 0,
           afgerond: 0,
           faseMap: new Map(),
         };
-        projectMap.set(t.projectId, proj);
+        projectMap.set(pId, proj);
       }
       proj.totaal++;
       if (t.status === "afgerond") proj.afgerond++;
@@ -140,14 +141,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Titel is verplicht." }, { status: 400 });
     }
 
-    if (!projectId) {
-      return NextResponse.json({ fout: "Project is verplicht." }, { status: 400 });
-    }
-
     const [nieuw] = await db
       .insert(taken)
       .values({
-        projectId,
+        projectId: projectId || null,
         aangemaaktDoor: gebruiker.id,
         toegewezenAan: gebruiker.id,
         titel: titel.trim(),

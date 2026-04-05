@@ -86,7 +86,7 @@ function groepeerTaken(taken: Taak[]): GegroepeerdeData[] {
 
   for (const taak of sorted) {
     const pId = taak.projectId ?? 0;
-    const pNaam = taak.projectNaam ?? "Zonder project";
+    const pNaam = taak.projectNaam ?? (taak.fase || "Zonder project");
     let project = projectMap.get(pId);
     if (!project) { project = { projectId: pId, projectNaam: pNaam, totaal: 0, afgerond: 0, fases: [] }; projectMap.set(pId, project); }
     project.totaal++;

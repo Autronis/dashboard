@@ -140,6 +140,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
     section: "Beheer",
     items: [
       { label: "Team", icon: Users2, href: "/team" },
+      { label: "API Gebruik", icon: Activity, href: "/api-gebruik" },
       { label: "Instellingen", icon: Settings, href: "/instellingen" },
     ],
   },

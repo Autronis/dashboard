@@ -180,7 +180,7 @@ function detectProjectFromTitle(
   const genericNames = new Set(["src", "app", "test", "dist", "build", "node_modules", "public", "pages", "components", "lib", "data", "config", "docs"]);
   if (genericNames.has(cleanExtracted)) return null;
 
-  // Find matching project — require strong match (not just substring)
+  // Find matching project — strict matching on directory/workspace name
   const match = projects.filter(p => {
     const projectLower = p.naam.toLowerCase().replace(/[-_\s]/g, "");
     const extractedClean = cleanExtracted.replace(/[-_\s]/g, "");
@@ -188,12 +188,14 @@ function detectProjectFromTitle(
     // Exact match (normalized)
     if (projectLower === extractedClean) return true;
 
-    // Project name is contained in extracted (e.g. "autronis-dashboard" contains "dashboard")
-    // But only if the project name is at least 5 chars to avoid false positives
-    if (p.naam.length >= 5 && extractedClean.includes(projectLower)) return true;
-
-    // Extracted is contained in project name — but must be substantial (>60% of project name)
-    if (extractedClean.length >= 5 && projectLower.includes(extractedClean) && extractedClean.length / projectLower.length > 0.6) return true;
+    // The extracted workspace dir name matches the project name closely
+    // e.g. "autronis-dashboard" dir → "Autronis Dashboard" project
+    // Both must be substantial and similarity > 80%
+    if (extractedClean.length >= 5 && projectLower.length >= 5) {
+      if (extractedClean === projectLower) return true;
+      if (extractedClean.includes(projectLower) && projectLower.length / extractedClean.length > 0.5) return true;
+      if (projectLower.includes(extractedClean) && extractedClean.length / projectLower.length > 0.8) return true;
+    }
 
     return false;
   });

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { sqlite, tursoClient } from "@/lib/db";
-import { TrackedAnthropic as Anthropic, type AnthropicType } from "@/lib/ai/tracked-anthropic";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import OriginalAnthropic from "@anthropic-ai/sdk";
 
 // Allow up to 5 minutes for full plan + boodschappenlijst generation
@@ -119,7 +119,7 @@ JSON (ALLEEN JSON):
     }],
   });
 
-  const text = response.content.find((b) => b.type === "text")?.text || "";
+  const text = response.content.filter((b): b is OriginalAnthropic.TextBlock => b.type === "text").map((b) => b.text).join("") || "";
   // Try parsing progressively smaller substrings until valid JSON found
   const startIdx = text.indexOf("{");
   if (startIdx === -1) throw new Error(`Geen JSON voor ${dag}`);
@@ -277,7 +277,7 @@ JSON (ALLEEN JSON, geen tekst):
     }],
   });
 
-  const text = response.content.find((b) => b.type === "text")?.text || "";
+  const text = response.content.filter((b): b is OriginalAnthropic.TextBlock => b.type === "text").map((b) => b.text).join("") || "";
   console.log("[MEALPLAN] Boodschappen response length:", text.length, "chars. Stop reason:", response.stop_reason);
 
   // Extract JSON respecting strings

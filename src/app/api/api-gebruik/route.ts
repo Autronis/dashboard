@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { apiTokenGebruik } from "@/lib/db/schema";
-import { sql, gte, eq } from "drizzle-orm";
+import { sql, gte } from "drizzle-orm";
 
 interface ApiUsageResult {
   naam: string;

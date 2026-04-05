@@ -39,6 +39,7 @@ import {
   ListChecks,
   ChevronDown,
   Target,
+  Layers,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -395,7 +396,7 @@ function DailyBriefing() {
                     <Link key={taak.id} href="/taken" className="flex items-center gap-3 group hover:bg-autronis-bg/50 rounded-lg p-1.5 -mx-1.5 transition-colors">
                       <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", cfg.color, cfg.bg)}>{taak.prioriteit}</span>
                       <span className="text-base text-autronis-text-primary truncate min-w-0 flex-1 group-hover:text-autronis-accent transition-colors">{taak.titel}</span>
-                      {taak.projectNaam && <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden lg:inline max-w-[120px] truncate">{taak.projectNaam}</span>}
+                      {(taak.projectNaam || taak.fase) && <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden lg:inline max-w-[120px] truncate">{taak.projectNaam ?? taak.fase}</span>}
                     </Link>
                   );
                 })}
@@ -979,6 +980,50 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
+            {/* Actielijsten — projectloze taken gegroepeerd op fase */}
+            {(() => {
+              const faseGroepen = new Map<string, { totaal: number; afgerond: number; hoog: number }>();
+              for (const t of mijnTaken) {
+                if (!t.projectId && t.fase) {
+                  const g = faseGroepen.get(t.fase) ?? { totaal: 0, afgerond: 0, hoog: 0 };
+                  g.totaal++;
+                  if (t.status === "afgerond") g.afgerond++;
+                  if (t.prioriteit === "hoog") g.hoog++;
+                  faseGroepen.set(t.fase, g);
+                }
+              }
+              if (faseGroepen.size === 0) return null;
+              return (
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
+                  <h3 className="text-sm font-semibold text-autronis-text-primary mb-2.5 flex items-center gap-2">
+                    <Layers className="w-3.5 h-3.5 text-autronis-accent" />
+                    Actielijsten
+                  </h3>
+                  <div className="space-y-2.5">
+                    {Array.from(faseGroepen.entries()).map(([fase, g]) => {
+                      const pct = g.totaal > 0 ? Math.round((g.afgerond / g.totaal) * 100) : 0;
+                      return (
+                        <Link key={fase} href={`/taken?fase=${encodeURIComponent(fase)}`} className="block group">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors truncate">{fase}</span>
+                              {g.hoog > 0 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold flex-shrink-0">{g.hoog} urgent</span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-autronis-text-secondary tabular-nums flex-shrink-0">{g.afgerond}/{g.totaal}</span>
+                          </div>
+                          <div className="h-1.5 bg-autronis-border rounded-full overflow-hidden">
+                            <div className={cn("h-full rounded-full transition-all", pct === 100 ? "bg-emerald-500" : "bg-autronis-accent")} style={{ width: `${pct}%` }} />
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Documenten */}
             <DocumentWidget />

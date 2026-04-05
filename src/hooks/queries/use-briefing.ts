@@ -12,6 +12,7 @@ interface BriefingTaak {
   titel: string;
   prioriteit: string;
   projectNaam: string | null;
+  fase: string | null;
   deadline: string | null;
 }
 

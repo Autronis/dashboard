@@ -18,6 +18,7 @@ interface DashboardData {
     status: string;
     deadline: string | null;
     prioriteit: string;
+    fase: string | null;
     projectId: number | null;
     projectNaam: string | null;
     klantId: number | null;

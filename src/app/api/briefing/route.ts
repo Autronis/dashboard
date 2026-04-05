@@ -33,6 +33,7 @@ interface BriefingTaak {
   titel: string;
   prioriteit: string;
   projectNaam: string | null;
+  fase: string | null;
   deadline: string | null;
 }
 
@@ -168,6 +169,7 @@ export async function POST() {
         id: taken.id,
         titel: taken.titel,
         prioriteit: taken.prioriteit,
+        fase: taken.fase,
         deadline: taken.deadline,
         projectNaam: projecten.naam,
       })
@@ -188,6 +190,7 @@ export async function POST() {
       titel: t.titel,
       prioriteit: t.prioriteit ?? "normaal",
       projectNaam: t.projectNaam ?? null,
+      fase: t.fase ?? null,
       deadline: t.deadline ?? null,
     }));
 

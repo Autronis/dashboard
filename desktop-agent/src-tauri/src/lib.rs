@@ -211,19 +211,37 @@ pub fn run() {
             let app_handle = app.handle().clone();
 
             // Build tray menu
-            let dashboard_item = MenuItemBuilder::with_id("dashboard", "Dashboard openen").build(app)?;
-            let toggle = MenuItemBuilder::with_id("toggle", "Pauzeer tracking").build(app)?;
-            let exclude = MenuItemBuilder::with_id("exclude", "Huidige app excluden").build(app)?;
-            let quit = MenuItemBuilder::with_id("quit", "Afsluiten").build(app)?;
+            #[cfg(target_os = "macos")]
+            let menu = {
+                let dashboard_item = MenuItemBuilder::with_id("dashboard", "Dashboard (browser)").build(app)?;
+                let toggle = MenuItemBuilder::with_id("toggle", "Pauzeer tracking").build(app)?;
+                let exclude = MenuItemBuilder::with_id("exclude", "Huidige app excluden").build(app)?;
+                let quit = MenuItemBuilder::with_id("quit", "Afsluiten").build(app)?;
+                MenuBuilder::new(app)
+                    .item(&dashboard_item)
+                    .separator()
+                    .item(&toggle)
+                    .item(&exclude)
+                    .separator()
+                    .item(&quit)
+                    .build()?
+            };
 
-            let menu = MenuBuilder::new(app)
-                .item(&dashboard_item)
-                .separator()
-                .item(&toggle)
-                .item(&exclude)
-                .separator()
-                .item(&quit)
-                .build()?;
+            #[cfg(not(target_os = "macos"))]
+            let menu = {
+                let dashboard_item = MenuItemBuilder::with_id("dashboard", "Dashboard openen").build(app)?;
+                let toggle = MenuItemBuilder::with_id("toggle", "Pauzeer tracking").build(app)?;
+                let exclude = MenuItemBuilder::with_id("exclude", "Huidige app excluden").build(app)?;
+                let quit = MenuItemBuilder::with_id("quit", "Afsluiten").build(app)?;
+                MenuBuilder::new(app)
+                    .item(&dashboard_item)
+                    .separator()
+                    .item(&toggle)
+                    .item(&exclude)
+                    .separator()
+                    .item(&quit)
+                    .build()?
+            };
 
             let _tray = TrayIconBuilder::new()
                 .tooltip("Autronis Dashboard")
@@ -232,7 +250,16 @@ pub fn run() {
                 .on_menu_event(move |app: &AppHandle, event| {
                     match event.id().as_ref() {
                         "dashboard" => {
-                            open_dashboard(app);
+                            #[cfg(target_os = "macos")]
+                            {
+                                let _ = std::process::Command::new("open")
+                                    .arg("https://dashboard.autronis.nl")
+                                    .spawn();
+                            }
+                            #[cfg(not(target_os = "macos"))]
+                            {
+                                open_dashboard(app);
+                            }
                         }
                         "toggle" => {
                             let state = app.state::<Arc<AppState>>();

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize)]
 struct SyncPayload {
     entries: Vec<SyncEntry>,
+    locatie: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -47,7 +48,7 @@ pub async fn sync_entries(records: &[ScreenTimeRecord], config: &Config) -> Resu
         .post(&url)
         .header("Authorization", format!("Bearer {}", config.api_token))
         .header("Content-Type", "application/json")
-        .json(&SyncPayload { entries })
+        .json(&SyncPayload { entries, locatie: config.locatie.clone() })
         .send()
         .await
         .map_err(|e| format!("Sync fout: {}", e))?;

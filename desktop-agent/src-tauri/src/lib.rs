@@ -91,8 +91,20 @@ async fn is_port_available(port: u16) -> bool {
 async fn start_nextjs(dashboard_dir: &str) -> Option<tokio::process::Child> {
     eprintln!("[nextjs] Starting dev server in: {}", dashboard_dir);
 
+    #[cfg(target_os = "windows")]
     let child = tokio::process::Command::new("cmd")
         .args(["/C", "npm", "run", "dev"])
+        .current_dir(dashboard_dir)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .stdin(std::process::Stdio::null())
+        .kill_on_drop(true)
+        .spawn()
+        .ok()?;
+
+    #[cfg(not(target_os = "windows"))]
+    let child = tokio::process::Command::new("npm")
+        .args(["run", "dev"])
         .current_dir(dashboard_dir)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())

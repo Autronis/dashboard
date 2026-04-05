@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { entries } = body;
+    const { entries, locatie } = body;
 
     if (!Array.isArray(entries) || entries.length === 0) {
       return NextResponse.json({ fout: "Geen entries meegegeven" }, { status: 400 });
@@ -330,6 +330,7 @@ export async function POST(req: NextRequest) {
           eindTijd: chunk.eindTijd,
           duurSeconden: cappedDuur,
           bron: "agent",
+          locatie: locatie === "kantoor" || locatie === "thuis" ? locatie : null,
         }).run();
 
         categorieen.push({ clientId: chunk.clientId, categorie, projectId });

@@ -857,6 +857,7 @@ export const screenTimeEntries = sqliteTable("screen_time_entries", {
   eindTijd: text("eind_tijd").notNull(),
   duurSeconden: integer("duur_seconden").notNull(),
   bron: text("bron", { enum: ["agent", "handmatig"] }).default("agent"),
+  locatie: text("locatie", { enum: ["kantoor", "thuis"] }),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   uniekClientId: uniqueIndex("uniek_client_id").on(table.clientId),

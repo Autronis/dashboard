@@ -2,7 +2,15 @@ use serde::Deserialize;
 use std::process::Command;
 use warp::Filter;
 
-const PROJECTS_DIR: &str = r"C:\Users\semmi\OneDrive\Claude AI\Projects";
+fn projects_dir() -> String {
+    if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .map(|h| h.join("Autronis/Projects").to_string_lossy().to_string())
+            .unwrap_or_else(|| "/Users/semmiegijs/Autronis/Projects".to_string())
+    } else {
+        r"C:\Users\semmi\OneDrive\Claude AI\Projects".to_string()
+    }
+}
 const PORT: u16 = 3847;
 
 #[derive(Deserialize)]
@@ -20,7 +28,9 @@ pub async fn start_server() {
         .and(warp::post())
         .and(warp::body::json())
         .map(|body: OpenProjectRequest| {
-            let project_dir = format!("{}\\{}", PROJECTS_DIR, body.project);
+            let base = projects_dir();
+            let sep = if cfg!(target_os = "windows") { "\\" } else { "/" };
+            let project_dir = format!("{}{}{}", base, sep, body.project);
             let path = std::path::Path::new(&project_dir);
 
             if !path.exists() || !path.is_dir() {
@@ -32,24 +42,35 @@ pub async fn start_server() {
             }
 
             // Open VS Code in project dir
-            match Command::new("cmd")
+            #[cfg(target_os = "windows")]
+            let vscode_result = Command::new("cmd")
                 .args(["/C", "code", &project_dir])
-                .spawn()
-            {
+                .spawn();
+
+            #[cfg(not(target_os = "windows"))]
+            let vscode_result = Command::new("code")
+                .arg(&project_dir)
+                .spawn();
+
+            match vscode_result {
                 Ok(_) => eprintln!("[http] VS Code geopend: {}", project_dir),
                 Err(e) => eprintln!("[http] VS Code openen mislukt: {}", e),
             }
 
             // Open Claude Code in project dir
-            match Command::new("cmd")
-                .args([
-                    "/C",
-                    "claude",
-                    "--resume",
-                ])
+            #[cfg(target_os = "windows")]
+            let claude_result = Command::new("cmd")
+                .args(["/C", "claude", "--resume"])
                 .current_dir(&project_dir)
-                .spawn()
-            {
+                .spawn();
+
+            #[cfg(not(target_os = "windows"))]
+            let claude_result = Command::new("claude")
+                .arg("--resume")
+                .current_dir(&project_dir)
+                .spawn();
+
+            match claude_result {
                 Ok(_) => eprintln!("[http] Claude geopend in: {}", project_dir),
                 Err(e) => eprintln!("[http] Claude openen mislukt: {}", e),
             }

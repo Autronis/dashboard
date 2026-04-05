@@ -142,6 +142,9 @@ if (isTurso) {
   // Uitgaven is_buitenland column
   client.execute("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT").catch(() => {});
 
+  // Screen time locatie column
+  client.execute("ALTER TABLE screen_time_entries ADD COLUMN locatie TEXT").catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -260,6 +263,12 @@ if (isTurso) {
   const uitgavenCols = sqliteDb.prepare("PRAGMA table_info(uitgaven)").all() as { name: string }[];
   if (!uitgavenCols.some((c: { name: string }) => c.name === "is_buitenland")) {
     sqliteDb.exec("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT");
+  }
+
+  // Screen time locatie column
+  const stCols = sqliteDb.prepare("PRAGMA table_info(screen_time_entries)").all() as { name: string }[];
+  if (!stCols.some((c: { name: string }) => c.name === "locatie")) {
+    sqliteDb.exec("ALTER TABLE screen_time_entries ADD COLUMN locatie TEXT");
   }
 
   sqlite = sqliteDb;

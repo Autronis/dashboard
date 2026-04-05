@@ -2,9 +2,17 @@ use crate::config::Config;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-const PROJECTS_DIR: &str = r"C:\Users\semmi\OneDrive\Claude AI\Projects";
+fn projects_dir() -> std::path::PathBuf {
+    if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .map(|h| h.join("Autronis/Projects"))
+            .unwrap_or_else(|| std::path::PathBuf::from("/Users/semmiegijs/Autronis/Projects"))
+    } else {
+        std::path::PathBuf::from(r"C:\Users\semmi\OneDrive\Claude AI\Projects")
+    }
+}
 const SKIP_DIRS: &[&str] = &["autronis-website"];
 
 #[derive(Debug, Serialize)]
@@ -173,19 +181,21 @@ fn is_project_dir(dir: &Path) -> bool {
         || dir.join("package.json").exists()
 }
 
-use std::os::windows::process::CommandExt;
-
-const CREATE_NO_WINDOW: u32 = 0x08000000;
-
 fn git_cmd(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
-    std::process::Command::new("git")
-        .args(args)
+    let mut cmd = std::process::Command::new("git");
+    cmd.args(args)
         .current_dir(dir)
-        .creation_flags(CREATE_NO_WINDOW)
         .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .output()
-        .ok()
+        .stderr(std::process::Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    cmd.output().ok()
 }
 
 fn git_sync(dir: &Path) {
@@ -239,7 +249,7 @@ fn git_sync(dir: &Path) {
 }
 
 fn scan_projects() -> Vec<AgentProject> {
-    let projects_dir = PathBuf::from(PROJECTS_DIR);
+    let projects_dir = projects_dir();
     let entries = match fs::read_dir(&projects_dir) {
         Ok(e) => e,
         Err(e) => {

@@ -12,10 +12,26 @@ pub struct Config {
     pub tracking_enabled: bool,
     #[serde(default = "default_dashboard_dir")]
     pub dashboard_dir: String,
+    #[serde(default = "default_locatie")]
+    pub locatie: String,
+}
+
+fn default_locatie() -> String {
+    if cfg!(target_os = "macos") {
+        "kantoor".to_string()
+    } else {
+        "thuis".to_string()
+    }
 }
 
 fn default_dashboard_dir() -> String {
-    r"C:\Users\semmi\OneDrive\Claude AI\Projects\autronis-dashboard".to_string()
+    if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .map(|h| h.join("Autronis/Projects/autronis-dashboard").to_string_lossy().to_string())
+            .unwrap_or_else(|| "/Users/semmiegijs/Autronis/Projects/autronis-dashboard".to_string())
+    } else {
+        r"C:\Users\semmi\OneDrive\Claude AI\Projects\autronis-dashboard".to_string()
+    }
 }
 
 impl Default for Config {
@@ -33,9 +49,13 @@ impl Default for Config {
                 "SearchHost".to_string(),
                 "ShellHost".to_string(),
                 "ShellExperienceHost".to_string(),
+                "loginwindow".to_string(),
+                "ScreenSaverEngine".to_string(),
+                "Keychain Access".to_string(),
             ],
             tracking_enabled: true,
             dashboard_dir: default_dashboard_dir(),
+            locatie: default_locatie(),
         }
     }
 }

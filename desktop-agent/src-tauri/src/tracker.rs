@@ -141,12 +141,87 @@ fn get_browser_url(app: &str, hwnd: windows::Win32::Foundation::HWND) -> Option<
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
+pub fn get_active_window() -> Option<WindowInfo> {
+    use std::process::Command;
+
+    // Get frontmost app name
+    let app_output = Command::new("osascript")
+        .args(["-e", r#"tell application "System Events" to get name of first application process whose frontmost is true"#])
+        .output()
+        .ok()?;
+
+    if !app_output.status.success() {
+        return None;
+    }
+
+    let app = String::from_utf8_lossy(&app_output.stdout).trim().to_string();
+    if app.is_empty() {
+        return None;
+    }
+
+    // Get window title
+    let title_output = Command::new("osascript")
+        .args(["-e", r#"
+tell application "System Events"
+    set frontApp to first application process whose frontmost is true
+    try
+        set winTitle to name of front window of frontApp
+    on error
+        set winTitle to ""
+    end try
+    return winTitle
+end tell
+"#])
+        .output()
+        .ok()?;
+
+    let title = String::from_utf8_lossy(&title_output.stdout).trim().to_string();
+
+    // Try to get browser URL
+    let url = get_browser_url_macos(&app);
+
+    Some(WindowInfo { app, title, url })
+}
+
+#[cfg(target_os = "macos")]
+fn get_browser_url_macos(app: &str) -> Option<String> {
+    use std::process::Command;
+
+    let app_lower = app.to_lowercase();
+
+    let script = if app_lower.contains("safari") {
+        r#"tell application "Safari" to get URL of front document"#.to_string()
+    } else if app_lower.contains("chrome") || app_lower.contains("brave") || app_lower.contains("edge") || app_lower.contains("vivaldi") || app_lower.contains("opera") || app_lower.contains("arc") {
+        // Chromium-based browsers all support the same AppleScript interface
+        format!(r#"tell application "{}" to get URL of active tab of front window"#, app)
+    } else if app_lower.contains("firefox") {
+        // Firefox doesn't reliably support AppleScript for URLs
+        return None;
+    } else {
+        return None;
+    };
+
+    let output = Command::new("osascript")
+        .args(["-e", &script])
+        .output()
+        .ok()?;
+
+    if output.status.success() {
+        let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !url.is_empty() && url != "missing value" {
+            return Some(url);
+        }
+    }
+    None
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 fn get_browser_url(_app: &str, _hwnd: ()) -> Option<String> {
     None
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn get_active_window() -> Option<WindowInfo> {
     None
 }
@@ -169,7 +244,34 @@ pub fn get_idle_duration() -> std::time::Duration {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+/// macOS idle duration via IOKit HIDIdleTime (nanoseconds)
+#[cfg(target_os = "macos")]
+pub fn get_idle_duration() -> std::time::Duration {
+    use std::process::Command;
+
+    let output = match Command::new("ioreg")
+        .args(["-c", "IOHIDSystem", "-d", "4"])
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return std::time::Duration::from_secs(0),
+    };
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    for line in stdout.lines() {
+        if line.contains("HIDIdleTime") {
+            // Line looks like: "HIDIdleTime" = 1234567890
+            if let Some(val_str) = line.split('=').nth(1) {
+                if let Ok(nanos) = val_str.trim().parse::<u64>() {
+                    return std::time::Duration::from_nanos(nanos);
+                }
+            }
+        }
+    }
+    std::time::Duration::from_secs(0)
+}
+
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
 pub fn get_idle_duration() -> std::time::Duration {
     std::time::Duration::from_secs(0)
 }

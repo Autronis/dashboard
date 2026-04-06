@@ -159,13 +159,16 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
 }
 
 // ─── Vandaag Doen Card (prominent, full width) ───
-function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
+function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak, onEdit }: {
   taken: Taak[];
   onStatusToggle: (taak: Taak) => void;
   onStartTimer: (taak: Taak) => void;
   onPlanTaak: (taak: Taak) => void;
+  onEdit: (id: number, body: Record<string, string | null>) => void;
 }) {
   const [showAll, setShowAll] = useState(false);
+  const [editingDeadline, setEditingDeadline] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState("");
   if (taken.length === 0) return null;
 
   const eersteTaak = taken[0];
@@ -401,11 +404,37 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
           <span className={cn("text-xs px-2 py-1 rounded-full font-medium", pc.bg, pc.color)}>{pc.label} prioriteit</span>
           {isClaude && <span className="text-xs px-2 py-1 rounded-full bg-purple-500/15 text-purple-400 font-medium flex items-center gap-1"><Bot className="w-3 h-3" /> Claude</span>}
           {!isClaude && <span className="text-xs px-2 py-1 rounded-full bg-orange-500/15 text-orange-400 font-medium flex items-center gap-1"><User className="w-3 h-3" /> Handmatig</span>}
-          {taak.deadline && (
-            <span className={cn("text-xs px-2 py-1 rounded-full font-medium", isVerlopen ? "bg-red-500/15 text-red-400" : "bg-autronis-bg text-autronis-text-secondary")}>
-              {isVerlopen && <AlertTriangle className="w-3 h-3 inline mr-1" />}
-              Deadline: {formatDatum(taak.deadline)}
-            </span>
+          {editingDeadline ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={deadlineValue}
+                onChange={(e) => setDeadlineValue(e.target.value)}
+                autoFocus
+                className="bg-autronis-bg border border-autronis-accent/50 rounded-full px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+              />
+              <button
+                onClick={() => { onEdit(taak.id, { deadline: deadlineValue || null }); setEditingDeadline(false); }}
+                className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-full text-[10px] font-bold"
+              >OK</button>
+              <button
+                onClick={() => { setDeadlineValue(taak.deadline ?? ""); setEditingDeadline(false); }}
+                className="px-2 py-1 text-autronis-text-secondary text-[10px] hover:text-autronis-text-primary"
+              >Annuleer</button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setEditingDeadline(true)}
+              className={cn("text-xs px-2 py-1 rounded-full font-medium cursor-pointer hover:ring-1 hover:ring-autronis-accent/40 transition-all",
+                taak.deadline ? (isVerlopen ? "bg-red-500/15 text-red-400" : "bg-autronis-bg text-autronis-text-secondary") : "bg-autronis-bg/50 text-autronis-text-secondary/60 border border-dashed border-autronis-border"
+              )}
+            >
+              {taak.deadline ? (
+                <>{isVerlopen && <AlertTriangle className="w-3 h-3 inline mr-1" />}Deadline: {formatDatum(taak.deadline)}</>
+              ) : (
+                <><Clock className="w-3 h-3 inline mr-1" />Deadline instellen</>
+              )}
+            </button>
           )}
           {taak.klantNaam && <span className="text-xs text-autronis-text-secondary">Klant: {taak.klantNaam}</span>}
           {taak.toegewezenAanNaam && <span className="text-xs text-autronis-text-secondary">Toegewezen: {taak.toegewezenAanNaam}</span>}

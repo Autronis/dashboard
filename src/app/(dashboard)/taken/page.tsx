@@ -713,26 +713,33 @@ export default function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSuccess: ({ id, status }) => {
-      // Ensure the cache has the confirmed status before any refetch can overwrite it
-      queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
-        { queryKey: ["taken"] },
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            taken: old.taken.map((t) => t.id === id ? { ...t, status } : t),
-          };
-        }
-      );
-    },
     onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (taakId: number) => { const res = await fetch(`/api/taken/${taakId}`, { method: "DELETE" }); if (!res.ok) throw new Error(); },
-    onSuccess: () => { addToast("Taak verwijderd", "succes"); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
-    onError: () => addToast("Kon taak niet verwijderen", "fout"),
+    mutationFn: async (taakId: number) => { const res = await fetch(`/api/taken/${taakId}`, { method: "DELETE" }); if (!res.ok) throw new Error(); return taakId; },
+    onMutate: async (taakId) => {
+      await queryClient.cancelQueries({ queryKey: ["taken"] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
+      queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
+        { queryKey: ["taken"] },
+        (old) => {
+          if (!old) return old;
+          return { ...old, taken: old.taken.filter((t) => t.id !== taakId) };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previousData) {
+        for (const [key, data] of context.previousData) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      addToast("Kon taak niet verwijderen", "fout");
+    },
+    onSuccess: () => { addToast("Taak verwijderd", "succes"); },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const editMutation = useMutation({

@@ -612,7 +612,7 @@ export default function TakenPage() {
         const data = await res.json().catch(() => ({})) as { fout?: string };
         throw new Error(data.fout || "Kon status niet bijwerken");
       }
-      return status;
+      return { id, status };
     },
     onMutate: async ({ id, status }) => {
       // Cancel outgoing refetches so they don't overwrite our optimistic update
@@ -641,6 +641,19 @@ export default function TakenPage() {
         }
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
+    },
+    onSuccess: ({ id, status }) => {
+      // Ensure the cache has the confirmed status before any refetch can overwrite it
+      queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
+        { queryKey: ["taken"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            taken: old.taken.map((t) => t.id === id ? { ...t, status } : t),
+          };
+        }
+      );
     },
     onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });

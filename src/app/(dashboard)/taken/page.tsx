@@ -348,7 +348,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
   onStartTimer: (taak: Taak) => void;
   onPlanTaak: (taak: Taak) => void;
   onDelete: (id: number) => void;
-  onEdit: (id: number, body: Record<string, string | undefined>) => void;
+  onEdit: (id: number, body: Record<string, string | null | undefined>) => void;
 }) {
   const sc = statusConfig[taak.status] || statusConfig.open;
   const pc = prioriteitConfig[taak.prioriteit] || prioriteitConfig.normaal;
@@ -477,7 +477,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
             </button>
           )}
           {taak.projectId && (
-            <button onClick={() => { onEdit(taak.id, { projectId: undefined }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
+            <button onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-orange-400/70 text-sm font-medium hover:bg-orange-500/10 hover:text-orange-400 transition-colors">
               <FolderOpen className="w-3.5 h-3.5" /> Loskoppelen
             </button>
@@ -671,7 +671,7 @@ export default function TakenPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null }) => {
+    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null | string }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
     },

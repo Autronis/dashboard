@@ -994,6 +994,13 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
+              onDeadlineNaarSlot={(dl, datum, tijd) => {
+                if (dl.type === "taak") {
+                  const taakId = Number(dl.id.replace("taak-", ""));
+                  const taak = agendaTaken.find((t) => t.id === taakId);
+                  if (taak) openPlanModal(taak, datum, tijd);
+                }
+              }}
               onHeleDagNaarSlot={(item, datum, tijd) => {
                 const startFull = `${datum}T${tijd}:00`;
                 const [uur] = tijd.split(":").map(Number);

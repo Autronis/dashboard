@@ -99,8 +99,23 @@ function parseProjectBrief(content: string): { naam: string; omschrijving: strin
 
 function detectTechStack(dirPath: string): string[] {
   const stack: string[] = [];
-  const pkgPath = path.join(dirPath, "package.json");
 
+  // Swift / macOS
+  if (fs.existsSync(path.join(dirPath, "Package.swift"))) {
+    stack.push("Swift");
+    try {
+      const swift = fs.readFileSync(path.join(dirPath, "Package.swift"), "utf8");
+      if (swift.includes("SwiftUI")) stack.push("SwiftUI");
+    } catch { /* ignore */ }
+  }
+
+  // Python
+  if (fs.existsSync(path.join(dirPath, "pyproject.toml"))) stack.push("Python");
+
+  // Rust
+  if (fs.existsSync(path.join(dirPath, "Cargo.toml"))) stack.push("Rust");
+
+  const pkgPath = path.join(dirPath, "package.json");
   if (!fs.existsSync(pkgPath)) return stack;
 
   try {

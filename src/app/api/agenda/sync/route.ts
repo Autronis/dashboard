@@ -215,12 +215,22 @@ async function fetchICSEvents(
 
     const meetingUrl = extractMeetingUrl(event.description, event.location);
 
+    // For all-day events, use local date string to avoid timezone shift
+    const startStr = event.heleDag
+      ? `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-${String(start.getDate()).padStart(2, "0")}`
+      : start.toISOString();
+    const eindStr = end
+      ? (event.heleDag
+        ? `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`
+        : end.toISOString())
+      : null;
+
     events.push({
-      id: `${bron}-${event.uid}-${start.toISOString()}`,
+      id: `${bron}-${event.uid}-${startStr}`,
       titel: event.summary || "Zonder titel",
       omschrijving: event.description || null,
-      startDatum: start.toISOString(),
-      eindDatum: end ? end.toISOString() : null,
+      startDatum: startStr,
+      eindDatum: eindStr,
       heleDag: event.heleDag,
       locatie: event.location || null,
       meetingUrl,

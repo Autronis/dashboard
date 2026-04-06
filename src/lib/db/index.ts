@@ -166,6 +166,48 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  // Follow-up tables
+  client.execute(`CREATE TABLE IF NOT EXISTS follow_up_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    onderwerp TEXT NOT NULL,
+    inhoud TEXT NOT NULL,
+    type TEXT DEFAULT 'email',
+    is_actief INTEGER DEFAULT 1,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS follow_up_regels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    type TEXT NOT NULL,
+    doelgroep TEXT DEFAULT 'beide',
+    dagen_drempel INTEGER NOT NULL,
+    template_id INTEGER REFERENCES follow_up_templates(id),
+    is_actief INTEGER DEFAULT 1,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS follow_up_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    regel_id INTEGER REFERENCES follow_up_regels(id),
+    template_id INTEGER REFERENCES follow_up_templates(id),
+    contact_type TEXT NOT NULL,
+    contact_id INTEGER NOT NULL,
+    offerte_id INTEGER REFERENCES offertes(id),
+    status TEXT DEFAULT 'getriggerd',
+    dagen_geleden INTEGER,
+    email_verstuurd TEXT,
+    foutmelding TEXT,
+    notitie TEXT,
+    verstuurd_op TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -307,6 +349,48 @@ if (isTurso) {
     output_tokens INTEGER DEFAULT 0,
     kosten_cent INTEGER DEFAULT 0,
     route TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  // Follow-up tables
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS follow_up_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    onderwerp TEXT NOT NULL,
+    inhoud TEXT NOT NULL,
+    type TEXT DEFAULT 'email',
+    is_actief INTEGER DEFAULT 1,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS follow_up_regels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL,
+    type TEXT NOT NULL,
+    doelgroep TEXT DEFAULT 'beide',
+    dagen_drempel INTEGER NOT NULL,
+    template_id INTEGER REFERENCES follow_up_templates(id),
+    is_actief INTEGER DEFAULT 1,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS follow_up_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    regel_id INTEGER REFERENCES follow_up_regels(id),
+    template_id INTEGER REFERENCES follow_up_templates(id),
+    contact_type TEXT NOT NULL,
+    contact_id INTEGER NOT NULL,
+    offerte_id INTEGER REFERENCES offertes(id),
+    status TEXT DEFAULT 'getriggerd',
+    dagen_geleden INTEGER,
+    email_verstuurd TEXT,
+    foutmelding TEXT,
+    notitie TEXT,
+    verstuurd_op TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
 

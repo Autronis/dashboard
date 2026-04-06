@@ -298,12 +298,7 @@ export const useFocus = create<FocusState & FocusActions>((set, get) => ({
       if (!res.ok) apiFailed = true;
     }
 
-    // If API failed, keep localStorage so restore can retry
-    if (apiFailed) {
-      set({ showReflectie: false, showOverlay: false });
-      throw new Error("Sessie opslaan mislukt. Probeer opnieuw.");
-    }
-
+    // Always clear state — don't keep the user stuck if API fails
     set({
       isActive: false,
       isPaused: false,
@@ -323,6 +318,10 @@ export const useFocus = create<FocusState & FocusActions>((set, get) => ({
       showOverlay: false,
     });
     clearStorage();
+
+    if (apiFailed) {
+      throw new Error("Sessie opslaan mislukt, maar timer is gestopt.");
+    }
   },
 
   tick: () => {

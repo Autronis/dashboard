@@ -429,12 +429,31 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const isDeadline = "linkHref" in item;
               const colors = getEventColors(item);
 
+              // Deadline-taken (type "taak") zijn draggable naar tijdslots
+              if (isDeadline) {
+                const dl = item as DeadlineEvent;
+                if (dl.type === "taak") {
+                  return (
+                    <DraggableHeleDagItem
+                      key={item.id}
+                      item={item}
+                      dragId={`deadline-${dl.id}`}
+                      dragData={{ deadlineItem: dl }}
+                      colors={colors}
+                      idx={idx}
+                    />
+                  );
+                }
+              }
+
               // Interne AgendaItems zijn draggable naar tijdslots
               if (!isExtern && !isDeadline) {
                 return (
                   <DraggableHeleDagItem
                     key={item.id}
-                    item={item as AgendaItem}
+                    item={item}
+                    dragId={`heledag-${item.id}`}
+                    dragData={{ heleDagItem: item }}
                     colors={colors}
                     idx={idx}
                     onClick={() => onItemClick?.(item as AgendaItem)}

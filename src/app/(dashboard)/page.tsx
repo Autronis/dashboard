@@ -924,7 +924,108 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Taken staan al in de Dagbriefing */}
+        {/* Taken widget */}
+        {mijnTaken.length > 0 && (
+          <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-2">
+                <ListChecks className="w-4 h-4 text-autronis-accent" />
+                Mijn taken
+              </h3>
+              <Link href="/taken" className="text-xs text-autronis-accent hover:text-autronis-accent-hover font-medium flex items-center gap-1 transition-colors">
+                Alles bekijken <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Focus taak */}
+            {nextTask && (
+              <div className="bg-gradient-to-r from-autronis-accent/10 to-autronis-accent/5 border border-autronis-accent/20 rounded-xl p-4 mb-4">
+                <div className="flex items-start gap-3">
+                  <button
+                    onClick={async () => {
+                      await fetch(`/api/taken/${nextTask.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "afgerond" }),
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+                      addToast("Taak afgerond", "succes");
+                    }}
+                    className="mt-0.5 w-5 h-5 rounded-full border-2 border-autronis-accent/50 hover:border-autronis-accent hover:bg-autronis-accent/20 transition-all flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] uppercase tracking-wider text-autronis-accent font-semibold">Volgende taak</span>
+                      {nextTask.prioriteit === "hoog" && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/15 text-red-400 font-semibold">Urgent</span>
+                      )}
+                    </div>
+                    <p className="text-base font-medium text-autronis-text-primary">{nextTask.titel}</p>
+                    {nextTask.projectNaam && (
+                      <p className="text-xs text-autronis-text-secondary mt-1">{nextTask.projectNaam}</p>
+                    )}
+                  </div>
+                  {nextTask.deadline && (
+                    <span className={cn("text-[11px] font-medium tabular-nums flex-shrink-0", deadlineKleur(nextTask.deadline))}>
+                      {deadlineLabel(nextTask.deadline)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Overige taken */}
+            {visibleTasks.length > 0 && (
+              <div className="space-y-1">
+                {visibleTasks.map((taak) => {
+                  const prioConfig: Record<string, { color: string; bg: string }> = {
+                    hoog: { color: "text-red-400", bg: "bg-red-500/10" },
+                    normaal: { color: "text-blue-400", bg: "bg-blue-500/10" },
+                    laag: { color: "text-slate-400", bg: "bg-slate-500/10" },
+                  };
+                  const pc = prioConfig[taak.prioriteit] || prioConfig.normaal;
+                  return (
+                    <div key={taak.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-autronis-bg/50 transition-colors group">
+                      <button
+                        onClick={async () => {
+                          await fetch(`/api/taken/${taak.id}`, {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ status: "afgerond" }),
+                          });
+                          queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+                          addToast("Taak afgerond", "succes");
+                        }}
+                        className="w-4 h-4 rounded-full border-2 border-autronis-border hover:border-autronis-accent hover:bg-autronis-accent/20 transition-all flex-shrink-0"
+                      />
+                      <span className="text-sm text-autronis-text-primary flex-1 truncate group-hover:text-autronis-accent transition-colors">{taak.titel}</span>
+                      {taak.projectNaam && (
+                        <span className="text-[10px] text-autronis-text-secondary truncate max-w-[100px] hidden sm:block">{taak.projectNaam}</span>
+                      )}
+                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.color, pc.bg)}>{taak.prioriteit}</span>
+                    </div>
+                  );
+                })}
+                {mijnTaken.length > 4 && !takenExpanded && (
+                  <button
+                    onClick={() => setTakenExpanded(true)}
+                    className="w-full text-center text-xs text-autronis-text-secondary hover:text-autronis-accent py-1.5 transition-colors"
+                  >
+                    +{mijnTaken.length - 4} meer
+                  </button>
+                )}
+                {takenExpanded && mijnTaken.length > 4 && (
+                  <button
+                    onClick={() => setTakenExpanded(false)}
+                    className="w-full text-center text-xs text-autronis-text-secondary hover:text-autronis-accent py-1.5 transition-colors"
+                  >
+                    Inklappen
+                  </button>
+                )}
+              </div>
+            )}
+          </motion.div>
+        )}
 
         {/* Main 2-column layout */}
         {/* Gewoontes — compact */}

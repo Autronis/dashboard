@@ -86,8 +86,9 @@ export async function PUT(
       }).execute().catch(() => {});
     }
 
-    // Sync with Google Calendar in the background
-    if (huidig) {
+    // Sync with Google Calendar in the background — skip for status-only changes
+    const isCalendarRelevant = body.deadline !== undefined || body.ingeplandStart !== undefined || body.ingeplandEind !== undefined || body.titel !== undefined;
+    if (huidig && isCalendarRelevant) {
       const nieuweDeadline = (body.deadline !== undefined ? body.deadline : huidig.deadline) as string | null;
       const nieuweIngeplandStart = (body.ingeplandStart !== undefined ? body.ingeplandStart : huidig.ingeplandStart) as string | null;
       const nieuweIngeplandEind = (body.ingeplandEind !== undefined ? body.ingeplandEind : huidig.ingeplandEind) as string | null;

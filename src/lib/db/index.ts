@@ -1,7 +1,8 @@
 import * as schema from "./schema";
+import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type DrizzleDB = any;
+// Use the better-sqlite3 type as base — libsql is API-compatible at runtime
+type DrizzleDB = ReturnType<typeof drizzleSqlite<typeof schema>>;
 
 const isTurso = !!process.env.TURSO_DATABASE_URL;
 
@@ -295,8 +296,6 @@ if (isTurso) {
   )`);
 
   sqlite = sqliteDb;
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { drizzle: drizzleSqlite } = require("drizzle-orm/better-sqlite3");
   db = drizzleSqlite(sqliteDb, { schema });
 }
 

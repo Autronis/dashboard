@@ -1,4 +1,4 @@
-import { AppWindow, Globe, LayoutGrid } from "lucide-react";
+import { AppWindow, Building2, Globe, Home, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScreenTimeCategorie, ScreenTimeRegel } from "@/types";
 
@@ -221,6 +221,25 @@ export function CategorieBadge({ categorie }: { categorie: string }) {
       }}
     >
       {CATEGORIE_LABELS[categorie] ?? categorie}
+    </span>
+  );
+}
+
+export function LocatieBadge({ locatie }: { locatie: "kantoor" | "thuis" | null }) {
+  if (!locatie) return null;
+  const isKantoor = locatie === "kantoor";
+  const Icon = isKantoor ? Building2 : Home;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
+        isKantoor
+          ? "bg-blue-500/10 text-blue-400"
+          : "bg-orange-500/10 text-orange-400"
+      )}
+    >
+      <Icon className="w-3 h-3" />
+      {isKantoor ? "Kantoor" : "Thuis"}
     </span>
   );
 }

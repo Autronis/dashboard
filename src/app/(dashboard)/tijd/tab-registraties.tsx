@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Plus, Trash2, Download, RotateCcw, Clock, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Download, RotateCcw, Clock, ChevronLeft, ChevronRight, Copy, Check, Building2, Home } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
@@ -9,12 +9,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { TijdCategorie } from "@/types";
+import { detectLocatie } from "@/lib/detect-locatie";
 import {
   type Periode,
   berekenVanTot,
   navigeerDatum,
   datumLabel,
   CategorieBadge,
+  LocatieBadge,
 } from "./constants";
 import { HandmatigModal } from "./handmatig-modal";
 import {
@@ -245,6 +247,7 @@ export function TabRegistraties() {
       return;
     }
     try {
+      const locatie = detectLocatie();
       const res = await fetch("/api/tijdregistraties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -252,6 +255,7 @@ export function TabRegistraties() {
           projectId: reg.projectId,
           omschrijving: reg.omschrijving,
           categorie: reg.categorie,
+          locatie,
         }),
       });
       if (!res.ok) throw new Error();
@@ -545,6 +549,7 @@ export function TabRegistraties() {
                                 {reg.projectNaam}
                               </span>
                               <CategorieBadge categorie={reg.categorie} />
+                              <LocatieBadge locatie={reg.locatie} />
                               {!isActief && reg.eindTijd && (
                                 <span className="text-xs text-autronis-text-secondary tabular-nums ml-auto">
                                   {formatTijdstip(reg.startTijd)}–{formatTijdstip(reg.eindTijd)}

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Modal } from "@/components/ui/modal";
 import { FormField, SelectField } from "@/components/ui/form-field";
 import { useToast } from "@/hooks/use-toast";
+import { detectLocatie } from "@/lib/detect-locatie";
 
 interface Project {
   id: number;
@@ -115,6 +116,7 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
           eindTijd: eindISO,
           duurMinuten,
           categorie,
+          locatie: registratie ? undefined : detectLocatie(),
           isHandmatig: registratie ? undefined : true,
         }),
       });

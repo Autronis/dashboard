@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Play, Square, RotateCcw, AlertTriangle, X } from "lucide-react";
 import { useTimer, loadTimerFromStorage } from "@/hooks/use-timer";
 import { useProjecten } from "@/hooks/queries/use-tijdregistraties";
+import { detectLocatie } from "@/lib/detect-locatie";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -148,6 +149,7 @@ export function TimerStrip() {
     }
 
     try {
+      const locatie = detectLocatie();
       const res = await fetch("/api/tijdregistraties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,6 +157,7 @@ export function TimerStrip() {
           projectId,
           omschrijving: localOmschrijving || null,
           categorie: localCategorie,
+          locatie,
         }),
       });
 
@@ -213,6 +216,7 @@ export function TimerStrip() {
     }
 
     try {
+      const locatie = detectLocatie();
       const res = await fetch("/api/tijdregistraties", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -220,6 +224,7 @@ export function TimerStrip() {
           projectId: last.projectId,
           omschrijving: last.omschrijving || null,
           categorie: last.categorie,
+          locatie,
         }),
       });
 

@@ -185,32 +185,46 @@ export async function GET(req: NextRequest) {
       .all();
 
     // Infer locatie for entries that don't have one (pre-feature data)
-    // Windows-only apps → thuis (Windows), macOS-only apps → kantoor (Mac)
+    // Step 1: detect platform from app names for entries without locatie
     const WINDOWS_APPS = new Set(["Explorer", "Verkenner", "Taakbeheer", "Windows Terminal", "PowerShell", "cmd"]);
     const MAC_APPS = new Set(["Finder", "Preview", "Activity Monitor", "System Settings", "System Preferences", "Keychain Access"]);
+    const WINDOWS_TITLE_PATTERNS = /\\Users\\|C:\\|PS [A-Z]:\\|— PowerShell|— cmd|Windows Terminal/;
+    const MAC_TITLE_PATTERNS = /\/Users\/|— zsh|— bash|\.app\b|macOS/;
 
-    // First pass: determine dominant platform for this day from entries that have locatie or platform-specific apps
-    let macCount = 0;
-    let winCount = 0;
+    // Build anchor points: entries with known locatie (explicit or app-inferred)
+    const anchors: Array<{ time: number; locatie: "kantoor" | "thuis" }> = [];
     for (const e of entries) {
-      if (e.locatie === "kantoor") macCount++;
-      else if (e.locatie === "thuis") winCount++;
-      else if (MAC_APPS.has(e.app)) macCount++;
-      else if (WINDOWS_APPS.has(e.app)) winCount++;
+      const time = new Date(e.startTijd).getTime();
+      if (e.locatie === "kantoor" || e.locatie === "thuis") {
+        anchors.push({ time, locatie: e.locatie });
+      } else if (MAC_APPS.has(e.app) || (e.vensterTitel && MAC_TITLE_PATTERNS.test(e.vensterTitel))) {
+        anchors.push({ time, locatie: "kantoor" });
+      } else if (WINDOWS_APPS.has(e.app) || (e.vensterTitel && WINDOWS_TITLE_PATTERNS.test(e.vensterTitel))) {
+        anchors.push({ time, locatie: "thuis" });
+      }
     }
 
-    // Fill in missing locatie based on dominant platform for entries without one
+    // Step 2: for entries without locatie, find nearest anchor
     const inferredEntries = entries.map(e => {
       if (e.locatie) return e;
-      // If we found platform-specific signals, use them
-      if (macCount > 0 && winCount === 0) return { ...e, locatie: "kantoor" as const };
-      if (winCount > 0 && macCount === 0) return { ...e, locatie: "thuis" as const };
-      // Mixed day: try app-specific detection
-      if (MAC_APPS.has(e.app)) return { ...e, locatie: "kantoor" as const };
-      if (WINDOWS_APPS.has(e.app)) return { ...e, locatie: "thuis" as const };
-      // If there are entries with locatie on the same day, use the most common one
-      if (macCount > winCount) return { ...e, locatie: "kantoor" as const };
-      if (winCount > macCount) return { ...e, locatie: "thuis" as const };
+      // Check app/title first
+      if (MAC_APPS.has(e.app) || (e.vensterTitel && MAC_TITLE_PATTERNS.test(e.vensterTitel))) {
+        return { ...e, locatie: "kantoor" as const };
+      }
+      if (WINDOWS_APPS.has(e.app) || (e.vensterTitel && WINDOWS_TITLE_PATTERNS.test(e.vensterTitel))) {
+        return { ...e, locatie: "thuis" as const };
+      }
+      // Find nearest anchor by time
+      if (anchors.length > 0) {
+        const time = new Date(e.startTijd).getTime();
+        let nearest = anchors[0];
+        let minDist = Math.abs(time - nearest.time);
+        for (let i = 1; i < anchors.length; i++) {
+          const dist = Math.abs(time - anchors[i].time);
+          if (dist < minDist) { minDist = dist; nearest = anchors[i]; }
+        }
+        return { ...e, locatie: nearest.locatie };
+      }
       return e;
     });
 

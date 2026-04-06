@@ -597,6 +597,7 @@ export default function TakenPage() {
   const [flashedFases, setFlashedFases] = useState<Set<string>>(new Set());
   const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectSectionsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [mutatingCount, setMutatingCount] = useState(0);
 
   const apiStatusFilter = statusFilter === "verlopen" ? "open" : statusFilter;
   const { data, isLoading: loading, refetch: fetchTaken } = useTaken({
@@ -605,7 +606,7 @@ export default function TakenPage() {
     projectId: projectFilter,
     fase: faseFilter,
     prioriteit: prioriteitFilter,
-  });
+  }, { pauseRefetch: mutatingCount > 0 });
 
   const { data: mappenData } = useQuery({
     queryKey: ["projectmappen"],
@@ -686,26 +687,20 @@ export default function TakenPage() {
       return { id, status };
     },
     onMutate: async ({ id, status }) => {
-      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      setMutatingCount((c) => c + 1);
       await queryClient.cancelQueries({ queryKey: ["taken"] });
-      // Snapshot previous value
       const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
-      // Optimistically update all matching query caches
       queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
         { queryKey: ["taken"] },
         (old) => {
           if (!old) return old;
-          return {
-            ...old,
-            taken: old.taken.map((t) => t.id === id ? { ...t, status } : t),
-          };
+          return { ...old, taken: old.taken.map((t) => t.id === id ? { ...t, status } : t) };
         }
       );
       if (status === "afgerond") showCheckBurst(id);
       return { previousData };
     },
     onError: (error, _vars, context) => {
-      // Rollback on error
       if (context?.previousData) {
         for (const [key, data] of context.previousData) {
           queryClient.setQueryData(key, data);
@@ -713,12 +708,13 @@ export default function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
+    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (taakId: number) => { const res = await fetch(`/api/taken/${taakId}`, { method: "DELETE" }); if (!res.ok) throw new Error(); return taakId; },
     onMutate: async (taakId) => {
+      setMutatingCount((c) => c + 1);
       await queryClient.cancelQueries({ queryKey: ["taken"] });
       const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
       queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
@@ -739,16 +735,43 @@ export default function TakenPage() {
       addToast("Kon taak niet verwijderen", "fout");
     },
     onSuccess: () => { addToast("Taak verwijderd", "succes"); },
-    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
+    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const editMutation = useMutation({
     mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null | string; deadline?: string | null }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
+      return { id, body };
     },
-    onSuccess: () => { setEditingId(null); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
-    onError: () => addToast("Kon taak niet bijwerken", "fout"),
+    onMutate: async ({ id, ...body }) => {
+      setMutatingCount((c) => c + 1);
+      await queryClient.cancelQueries({ queryKey: ["taken"] });
+      const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
+      const patch: Partial<Taak> = {};
+      if (body.fase !== undefined) patch.fase = body.fase ?? null;
+      if (body.prioriteit !== undefined) patch.prioriteit = body.prioriteit;
+      if (body.deadline !== undefined) patch.deadline = body.deadline ?? null;
+      if (body.projectId !== undefined) patch.projectId = body.projectId ? Number(body.projectId) : null;
+      queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
+        { queryKey: ["taken"] },
+        (old) => {
+          if (!old) return old;
+          return { ...old, taken: old.taken.map((t) => t.id === id ? { ...t, ...patch } : t) };
+        }
+      );
+      return { previousData };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previousData) {
+        for (const [key, data] of context.previousData) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      addToast("Kon taak niet bijwerken", "fout");
+    },
+    onSuccess: () => { setEditingId(null); },
+    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const createMutation = useMutation({

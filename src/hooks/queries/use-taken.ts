@@ -63,11 +63,11 @@ async function fetchTaken(filters: TakenFilters): Promise<TakenResponse> {
   return res.json();
 }
 
-export function useTaken(filters: TakenFilters) {
+export function useTaken(filters: TakenFilters, options?: { pauseRefetch?: boolean }) {
   return useQuery({
     queryKey: ["taken", filters],
     queryFn: () => fetchTaken(filters),
     staleTime: 15_000,
-    refetchInterval: 30_000, // Auto-sync elke 30 seconden voor team awareness
+    refetchInterval: options?.pauseRefetch ? false : 30_000,
   });
 }

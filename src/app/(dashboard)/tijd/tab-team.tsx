@@ -9,6 +9,30 @@ import { useGebruikers } from "@/hooks/queries/use-doelen";
 import { CATEGORIE_KLEUREN, CATEGORIE_LABELS, formatTijd } from "./constants";
 import type { SessiesData } from "@/hooks/queries/use-screen-time";
 
+interface JaarOverzichtGebruiker {
+  gebruikerId: number;
+  naam: string;
+  totaalUren: number;
+  kantoorUren: number;
+  thuisUren: number;
+  doelUren: number;
+  voortgangPercentage: number;
+}
+
+function useJaarOverzicht() {
+  const jaar = new Date().getFullYear();
+  return useQuery({
+    queryKey: ["jaaroverzicht", jaar],
+    queryFn: async () => {
+      const res = await fetch(`/api/tijdregistraties/jaaroverzicht?jaar=${jaar}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.overzicht ?? []) as JaarOverzichtGebruiker[];
+    },
+    staleTime: 60_000,
+  });
+}
+
 function formatMinuten(min: number): string {
   const uren = Math.floor(min / 60);
   const rest = Math.round(min % 60);
@@ -39,6 +63,7 @@ function useTeamSessies(datum: string, gebruikerIds: number[]) {
 export function TabTeam({ van, tot }: { van: string; tot: string }) {
   const { data: gebruikers } = useGebruikers();
   const { data: registraties, isLoading: regLoading } = useTeamRegistraties(van, tot);
+  const { data: jaarOverzicht = [] } = useJaarOverzicht();
 
   const gebruikerIds = useMemo(() => (gebruikers ?? []).map((g) => g.id), [gebruikers]);
   const { data: teamSessies, isLoading: sessiesLoading } = useTeamSessies(van, gebruikerIds);
@@ -207,6 +232,71 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
           </p>
         </div>
       </div>
+
+      {/* Urencriterium voortgang */}
+      {jaarOverzicht.length > 0 && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl bg-autronis-accent/10 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-autronis-accent" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-autronis-text-primary">Urencriterium {new Date().getFullYear()}</p>
+              <p className="text-xs text-autronis-text-secondary">Voortgang richting 1.225 uur per vennoot</p>
+            </div>
+          </div>
+          <div className="space-y-5">
+            {jaarOverzicht.map((g) => (
+              <div key={g.gebruikerId}>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium text-autronis-text-primary">{g.naam}</span>
+                  <span className="text-sm text-autronis-text-secondary tabular-nums">
+                    {Math.round(g.totaalUren)}u / {g.doelUren}u
+                    <span className="ml-2 text-xs font-medium text-autronis-accent">{g.voortgangPercentage}%</span>
+                  </span>
+                </div>
+                <div className="w-full h-4 bg-autronis-bg rounded-full overflow-hidden flex">
+                  {g.kantoorUren > 0 && (
+                    <div
+                      className="h-full bg-blue-400"
+                      style={{ width: `${(g.kantoorUren / g.doelUren) * 100}%` }}
+                      title={`Kantoor: ${Math.round(g.kantoorUren)}u`}
+                    />
+                  )}
+                  {g.thuisUren > 0 && (
+                    <div
+                      className="h-full bg-orange-400"
+                      style={{ width: `${(g.thuisUren / g.doelUren) * 100}%` }}
+                      title={`Thuis: ${Math.round(g.thuisUren)}u`}
+                    />
+                  )}
+                  {g.totaalUren - g.kantoorUren - g.thuisUren > 0 && (
+                    <div
+                      className="h-full bg-autronis-text-secondary/30"
+                      style={{ width: `${((g.totaalUren - g.kantoorUren - g.thuisUren) / g.doelUren) * 100}%` }}
+                      title={`Onbekend: ${Math.round(g.totaalUren - g.kantoorUren - g.thuisUren)}u`}
+                    />
+                  )}
+                </div>
+                <div className="flex items-center gap-3 mt-1.5 text-[10px] text-autronis-text-secondary">
+                  {g.kantoorUren > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Building2 className="w-3 h-3 text-blue-400" />
+                      Kantoor {Math.round(g.kantoorUren)}u
+                    </span>
+                  )}
+                  {g.thuisUren > 0 && (
+                    <span className="flex items-center gap-1">
+                      <Home className="w-3 h-3 text-orange-400" />
+                      Thuis {Math.round(g.thuisUren)}u
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Per person cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

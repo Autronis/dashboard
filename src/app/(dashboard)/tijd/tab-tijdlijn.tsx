@@ -142,34 +142,7 @@ function SessieDetailPanel({
             </div>
             <div className="flex items-center gap-1.5">
               <CategorieBadge categorie={sessie.categorie} />
-              {onLocatieChange ? (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => onLocatieChange("kantoor")}
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors",
-                      sessie.locatie === "kantoor"
-                        ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-400/40"
-                        : "bg-blue-500/5 text-blue-400/40 hover:bg-blue-500/10 hover:text-blue-400/70"
-                    )}
-                  >
-                    Kantoor
-                  </button>
-                  <button
-                    onClick={() => onLocatieChange("thuis")}
-                    className={cn(
-                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors",
-                      sessie.locatie === "thuis"
-                        ? "bg-orange-500/20 text-orange-400 ring-1 ring-orange-400/40"
-                        : "bg-orange-500/5 text-orange-400/40 hover:bg-orange-500/10 hover:text-orange-400/70"
-                    )}
-                  >
-                    Thuis
-                  </button>
-                </div>
-              ) : (
-                <LocatieBadge locatie={sessie.locatie} />
-              )}
+              <LocatieBadge locatie={sessie.locatie} />
             </div>
           </div>
         </div>
@@ -185,6 +158,35 @@ function SessieDetailPanel({
         <p className="text-sm text-autronis-text-primary leading-relaxed">
           {sessie.beschrijving}
         </p>
+      )}
+
+      {/* Locatie toggle */}
+      {onLocatieChange && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-autronis-text-secondary">Locatie:</span>
+          <button
+            onClick={() => onLocatieChange("kantoor")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              sessie.locatie === "kantoor"
+                ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-400/40"
+                : "bg-autronis-bg text-autronis-text-secondary hover:text-blue-400 hover:bg-blue-500/10"
+            )}
+          >
+            Kantoor
+          </button>
+          <button
+            onClick={() => onLocatieChange("thuis")}
+            className={cn(
+              "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+              sessie.locatie === "thuis"
+                ? "bg-orange-500/20 text-orange-400 ring-1 ring-orange-400/40"
+                : "bg-autronis-bg text-autronis-text-secondary hover:text-orange-400 hover:bg-orange-500/10"
+            )}
+          >
+            Thuis
+          </button>
+        </div>
       )}
 
       {(sessie.projectNaam || sessie.klantNaam) && (

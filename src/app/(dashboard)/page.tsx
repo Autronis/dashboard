@@ -961,8 +961,8 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p className="text-base font-medium text-autronis-text-primary">{nextTask.titel}</p>
-                    {(nextTask.fase || nextTask.projectNaam) && (
-                      <p className="text-xs text-autronis-text-secondary mt-1">{nextTask.fase || nextTask.projectNaam}</p>
+                    {nextTask.omschrijving && (
+                      <p className="text-xs text-autronis-text-secondary mt-1 line-clamp-1">{nextTask.omschrijving}</p>
                     )}
                   </div>
                   {nextTask.deadline && (
@@ -999,9 +999,11 @@ export default function DashboardPage() {
                         className="w-4 h-4 rounded-full border-2 border-autronis-border hover:border-autronis-accent hover:bg-autronis-accent/20 transition-all flex-shrink-0"
                       />
                       <span className="text-sm text-autronis-text-primary flex-1 truncate group-hover:text-autronis-accent transition-colors">{taak.titel}</span>
-                      <span className="text-[10px] text-autronis-text-secondary truncate max-w-[140px]">
-                        {taak.fase || taak.projectNaam || ""}
-                      </span>
+                      {taak.deadline && (
+                        <span className={cn("text-[10px] font-medium tabular-nums flex-shrink-0", deadlineKleur(taak.deadline))}>
+                          {deadlineLabel(taak.deadline)}
+                        </span>
+                      )}
                       <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.color, pc.bg)}>{taak.prioriteit}</span>
                     </div>
                   );

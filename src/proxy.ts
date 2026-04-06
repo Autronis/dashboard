@@ -44,6 +44,8 @@ const PUBLIC_PATHS = [
   "/api/mealplan",
   "/api/mealplan/generate",
   "/scan",
+  "/api/followup/cron",
+  "/api/followup/webhook",
 ];
 
 function isPublicPath(pathname: string): boolean {

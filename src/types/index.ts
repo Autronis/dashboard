@@ -88,6 +88,7 @@ export interface ScreenTimeSessie {
   venstertitels: string[];
   isIdle: boolean;
   beschrijving: string;
+  locatie: "kantoor" | "thuis" | null;
 }
 
 export interface ScreenTimeSamenvatting {

@@ -45,6 +45,7 @@ import {
   gisterenDatum,
   berekenVanTot,
   CategorieBadge,
+  LocatieBadge,
 } from "./constants";
 
 // ============ TYPES ============
@@ -135,7 +136,10 @@ function SessieDetailPanel({
                 </span>
               )}
             </div>
-            <CategorieBadge categorie={sessie.categorie} />
+            <div className="flex items-center gap-1.5">
+              <CategorieBadge categorie={sessie.categorie} />
+              <LocatieBadge locatie={sessie.locatie} />
+            </div>
           </div>
         </div>
         <button
@@ -359,6 +363,7 @@ function DagTimeline({
                     {sessie.projectNaam && (
                       <span className="text-[10px] font-medium" style={{ color: kleur }}>{sessie.projectNaam}</span>
                     )}
+                    <LocatieBadge locatie={sessie.locatie} />
                   </div>
                 )}
               </div>

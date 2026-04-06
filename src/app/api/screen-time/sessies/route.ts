@@ -23,6 +23,7 @@ interface Sessie {
   projectId: number | null;
   venstertitels: string[];
   isIdle: boolean;
+  locatie: "kantoor" | "thuis" | null;
 }
 
 // ─── AI beschrijvingen (alleen tekst, geen categorie) ───
@@ -171,6 +172,7 @@ export async function GET(req: NextRequest) {
         startTijd: screenTimeEntries.startTijd,
         eindTijd: screenTimeEntries.eindTijd,
         duurSeconden: screenTimeEntries.duurSeconden,
+        locatie: screenTimeEntries.locatie,
       })
       .from(screenTimeEntries)
       .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
@@ -278,9 +280,13 @@ export async function GET(req: NextRequest) {
       let kNaam: string | null = null;
       let projectCandidate: { id: number; naam: string | null; klant: string | null; cat: string } | null = null;
 
+      let kantoorSec = 0;
+      let thuisSec = 0;
       for (const e of slot) {
         catSec[e.categorie ?? "overig"] = (catSec[e.categorie ?? "overig"] || 0) + e.duurSeconden;
         appSec[e.app] = (appSec[e.app] || 0) + e.duurSeconden;
+        if (e.locatie === "kantoor") kantoorSec += e.duurSeconden;
+        else if (e.locatie === "thuis") thuisSec += e.duurSeconden;
         if (e.vensterTitel) {
           const prefix = /^[A-Z]{3,}USD.*[▲▼]/.test(e.vensterTitel) ? e.vensterTitel.slice(0, 10) : e.vensterTitel.slice(0, 50);
           if (!seen.has(prefix)) { seen.add(prefix); titles.push(e.vensterTitel); }
@@ -326,6 +332,7 @@ export async function GET(req: NextRequest) {
         projectId: pId,
         venstertitels: titles.slice(0, 25),
         isIdle: false,
+        locatie: kantoorSec > 0 || thuisSec > 0 ? (kantoorSec >= thuisSec ? "kantoor" : "thuis") : null,
       };
     });
 

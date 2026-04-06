@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Monitor,
   Clock,
@@ -111,9 +112,11 @@ interface SessieDetail {
 function SessieDetailPanel({
   sessie,
   onClose,
+  onLocatieChange,
 }: {
   sessie: SessieDetail;
   onClose: () => void;
+  onLocatieChange?: (locatie: "kantoor" | "thuis") => void;
 }) {
   const parsedTitels = parseBestandenUitTitels(sessie.venstertitels);
   const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
@@ -139,7 +142,34 @@ function SessieDetailPanel({
             </div>
             <div className="flex items-center gap-1.5">
               <CategorieBadge categorie={sessie.categorie} />
-              <LocatieBadge locatie={sessie.locatie} />
+              {onLocatieChange ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => onLocatieChange("kantoor")}
+                    className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors",
+                      sessie.locatie === "kantoor"
+                        ? "bg-blue-500/20 text-blue-400 ring-1 ring-blue-400/40"
+                        : "bg-blue-500/5 text-blue-400/40 hover:bg-blue-500/10 hover:text-blue-400/70"
+                    )}
+                  >
+                    Kantoor
+                  </button>
+                  <button
+                    onClick={() => onLocatieChange("thuis")}
+                    className={cn(
+                      "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-colors",
+                      sessie.locatie === "thuis"
+                        ? "bg-orange-500/20 text-orange-400 ring-1 ring-orange-400/40"
+                        : "bg-orange-500/5 text-orange-400/40 hover:bg-orange-500/10 hover:text-orange-400/70"
+                    )}
+                  >
+                    Thuis
+                  </button>
+                </div>
+              ) : (
+                <LocatieBadge locatie={sessie.locatie} />
+              )}
             </div>
           </div>
         </div>
@@ -609,6 +639,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
   const view: TijdlijnView = periode === "week" ? "week" : "dag";
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [weekSelectedSessie, setWeekSelectedSessie] = useState<ScreenTimeSessie | null>(null);
+  const queryClient = useQueryClient();
   const [detailOpen, setDetailOpen] = useState(false);
   const [periodeRapport, setPeriodeRapport] = useState<PeriodeSamenvatting | null>(null);
   const [periodeDetailOpen, setPeriodeDetailOpen] = useState(false);
@@ -651,6 +682,34 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
 
   const stats = sessiesData?.stats;
   const selectedSessie = selectedIdx !== null ? alleSessies[selectedIdx] ?? null : null;
+
+  const handleLocatieChange = useCallback(async (sessie: ScreenTimeSessie, locatie: "kantoor" | "thuis") => {
+    // Optimistic update
+    if (sessiesData) {
+      queryClient.setQueryData(["sessies", datum], {
+        ...sessiesData,
+        sessies: sessiesData.sessies.map(s =>
+          s.startTijd === sessie.startTijd && s.eindTijd === sessie.eindTijd
+            ? { ...s, locatie }
+            : s
+        ),
+      });
+    }
+    if (weekSelectedSessie?.startTijd === sessie.startTijd) {
+      setWeekSelectedSessie({ ...weekSelectedSessie, locatie });
+    }
+    // Persist
+    try {
+      const res = await fetch("/api/screen-time/locatie", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startTijd: sessie.startTijd, eindTijd: sessie.eindTijd, locatie }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      queryClient.invalidateQueries({ queryKey: ["sessies", datum] });
+    }
+  }, [sessiesData, datum, weekSelectedSessie, queryClient]);
 
   // Lazy auto-generation for yesterday's summary
   useEffect(() => {
@@ -1020,6 +1079,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
                 setSelectedIdx(null);
                 setWeekSelectedSessie(null);
               }}
+              onLocatieChange={(loc) => handleLocatieChange(activeSessieDetail, loc)}
             />
           </div>
         )}

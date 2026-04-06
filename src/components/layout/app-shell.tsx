@@ -65,13 +65,14 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
     }
   }, []);
 
-  // Run auto-tasks once per session per day (non-blocking)
+  // Run auto-tasks + project sync once per session per day (non-blocking)
   useEffect(() => {
     const key =
       "autronis-auto-tasks-" + new Date().toISOString().split("T")[0];
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, "1");
     fetch("/api/auto-tasks", { method: "POST" }).catch(() => {});
+    fetch("/api/projecten/sync", { method: "POST" }).catch(() => {});
   }, []);
 
   return (

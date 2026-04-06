@@ -115,6 +115,8 @@ export async function GET(req: NextRequest) {
         const apiKey = process.env.RESEND_API_KEY;
         if (!apiKey) continue;
 
+        if (!f.klantId) continue;
+
         const klant = await db
           .select()
           .from(klanten)
@@ -146,6 +148,7 @@ export async function GET(req: NextRequest) {
               ...nieuw,
               klantNaam: klant.bedrijfsnaam,
               klantContactpersoon: klant.contactpersoon,
+              klantEmail: klant.email,
               klantAdres: klant.adres,
             },
             regels: nieuweRegels,

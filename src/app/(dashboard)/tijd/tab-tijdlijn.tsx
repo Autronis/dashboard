@@ -104,6 +104,7 @@ interface SessieDetail {
   venstertitels: string[];
   isIdle: boolean;
   beschrijving: string;
+  locatie: "kantoor" | "thuis" | null;
   isHandmatig?: boolean;
 }
 
@@ -638,6 +639,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
         klantNaam: r.klantNaam ?? null,
         isIdle: false,
         venstertitels: r.omschrijving ? [r.omschrijving] : [],
+        locatie: r.locatie ?? null,
       }));
   }, [registraties]);
 

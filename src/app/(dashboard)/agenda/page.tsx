@@ -403,12 +403,17 @@ export default function AgendaPage() {
         lokaleKeys.add(toLocalKey(taak.titel, taak.ingeplandStart));
       }
     }
+    // Collect Google event IDs from deadline events (taken met deadlines die naar Google gepusht zijn)
+    const deadlineGoogleIds = new Set(
+      deadlineEvents.map((dl) => dl.googleEventId).filter(Boolean)
+    );
     for (const event of externeEvents) {
       if (filterType !== "alle" && filterType !== "extern") continue;
       const key = toLocalKey(event.titel, event.startDatum);
-      // Skip als titel+tijd matcht of als google event ID matcht
+      // Skip als titel+tijd matcht of als google event ID matcht (lokaal of deadline)
       if (lokaleKeys.has(key)) continue;
-      if (event.id && lokaleGoogleIds.has(event.id.replace(/^google-/, "").split("-")[0])) continue;
+      const rawId = event.id?.replace(/^google-/, "").split("-")[0];
+      if (rawId && (lokaleGoogleIds.has(rawId) || deadlineGoogleIds.has(rawId))) continue;
       const dag = event.startDatum.slice(0, 10);
       if (!map[dag]) map[dag] = [];
       map[dag].push(event);

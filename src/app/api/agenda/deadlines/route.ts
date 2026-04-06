@@ -93,6 +93,7 @@ export async function GET(req: NextRequest) {
         projectNaam: row.naam,
         linkHref: row.klantId ? `/klanten/${row.klantId}/projecten/${row.id}` : "/taken",
         bedrag: null,
+        googleEventId: null,
       });
     }
 
@@ -125,6 +126,7 @@ export async function GET(req: NextRequest) {
         projectNaam: null,
         linkHref: `/financien/${row.id}`,
         bedrag: row.bedragInclBtw ?? null,
+        googleEventId: null,
       });
     }
 

@@ -49,6 +49,7 @@ export interface DeadlineEvent {
   projectNaam: string | null;
   linkHref: string;
   bedrag: number | null;
+  googleEventId: string | null;
 }
 
 async function fetchDeadlineEvents(jaar: number, maand: number): Promise<DeadlineEvent[]> {

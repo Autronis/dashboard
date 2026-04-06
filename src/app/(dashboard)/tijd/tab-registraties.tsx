@@ -310,6 +310,21 @@ export function TabRegistraties() {
     return sum;
   }, 0);
 
+  const locatieSplit = registraties.reduce(
+    (acc, r) => {
+      const min = r.eindTijd && r.duurMinuten
+        ? r.duurMinuten
+        : !r.eindTijd && r.startTijd
+          ? Math.round((Date.now() - new Date(r.startTijd).getTime()) / 60000)
+          : 0;
+      if (r.locatie === "kantoor") acc.kantoor += min;
+      else if (r.locatie === "thuis") acc.thuis += min;
+      else acc.onbekend += min;
+      return acc;
+    },
+    { kantoor: 0, thuis: 0, onbekend: 0 }
+  );
+
   const periodeLabels: Record<Periode, string> = {
     dag: "Vandaag",
     week: "Deze week",
@@ -404,6 +419,43 @@ export function TabRegistraties() {
           </div>
         </div>
       </div>
+
+      {/* Locatie split bar */}
+      {totaalMinuten > 0 && (locatieSplit.kantoor > 0 || locatieSplit.thuis > 0) && (
+        <div className="bg-autronis-card border border-autronis-border rounded-2xl px-4 py-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-autronis-text-secondary uppercase tracking-wide font-medium">Locatie</span>
+            <div className="flex items-center gap-4 text-xs text-autronis-text-secondary">
+              {locatieSplit.kantoor > 0 && (
+                <span className="flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-blue-400" />
+                  Kantoor {formatUrenTotaal(locatieSplit.kantoor)}
+                </span>
+              )}
+              {locatieSplit.thuis > 0 && (
+                <span className="flex items-center gap-1">
+                  <Home className="w-3 h-3 text-orange-400" />
+                  Thuis {formatUrenTotaal(locatieSplit.thuis)}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="w-full h-2.5 bg-autronis-border/30 rounded-full overflow-hidden flex">
+            {locatieSplit.kantoor > 0 && (
+              <div
+                className="h-full bg-blue-400 rounded-l-full"
+                style={{ width: `${(locatieSplit.kantoor / totaalMinuten) * 100}%` }}
+              />
+            )}
+            {locatieSplit.thuis > 0 && (
+              <div
+                className="h-full bg-orange-400 rounded-r-full"
+                style={{ width: `${(locatieSplit.thuis / totaalMinuten) * 100}%` }}
+              />
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Registration list */}
       {laden ? (

@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Users, Clock, Briefcase, TrendingUp, Zap, Brain } from "lucide-react";
+import { Users, Clock, Briefcase, TrendingUp, Zap, Brain, Building2, Home } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTeamRegistraties } from "@/hooks/queries/use-tijdregistraties";
 import { useGebruikers } from "@/hooks/queries/use-doelen";
@@ -90,6 +90,18 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
         perRegCategorie[r.categorie] = (perRegCategorie[r.categorie] ?? 0) + min;
       }
 
+      // Locatie split
+      let kantoorMin = 0;
+      let thuisMin = 0;
+      let huidigeLocatie: "kantoor" | "thuis" | null = null;
+      for (const r of userRegs) {
+        const min = r.duurMinuten ?? (!r.eindTijd && r.startTijd ? Math.round((now - new Date(r.startTijd).getTime()) / 60000) : 0);
+        if (r.locatie === "kantoor") kantoorMin += min;
+        else if (r.locatie === "thuis") thuisMin += min;
+        // Detect current location from active timer
+        if (!r.eindTijd && r.locatie) huidigeLocatie = r.locatie as "kantoor" | "thuis";
+      }
+
       return {
         id: g.id,
         naam: g.naam,
@@ -102,6 +114,9 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
         perRegCategorie,
         topProjecten,
         aantalRegistraties: userRegs.length,
+        kantoorMin,
+        thuisMin,
+        huidigeLocatie,
       };
     });
   }, [gebruikers, teamSessies, registraties]);
@@ -212,7 +227,19 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
                   </span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-base font-semibold text-autronis-text-primary">{g.naam}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-semibold text-autronis-text-primary">{g.naam}</p>
+                    {g.huidigeLocatie && (
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        g.huidigeLocatie === "kantoor"
+                          ? "bg-blue-500/10 text-blue-400"
+                          : "bg-orange-500/10 text-orange-400"
+                      }`}>
+                        {g.huidigeLocatie === "kantoor" ? <Building2 className="w-3 h-3" /> : <Home className="w-3 h-3" />}
+                        {g.huidigeLocatie === "kantoor" ? "Kantoor" : "Thuis"}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-3 text-sm text-autronis-text-secondary">
                     <span className="tabular-nums">{formatTijd(g.actiefSec)} actief</span>
                     {g.gewerktMin > 0 && (
@@ -311,6 +338,43 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
                           </span>
                         </div>
                       ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Locatie split */}
+              {(g.kantoorMin > 0 || g.thuisMin > 0) && (
+                <div className="mb-5">
+                  <p className="text-xs text-autronis-text-secondary mb-2.5 uppercase tracking-wide">
+                    Locatie
+                  </p>
+                  <div className="flex items-center gap-3 mb-1.5">
+                    {g.kantoorMin > 0 && (
+                      <span className="flex items-center gap-1 text-xs text-autronis-text-secondary">
+                        <Building2 className="w-3 h-3 text-blue-400" />
+                        Kantoor {formatMinuten(g.kantoorMin)}
+                      </span>
+                    )}
+                    {g.thuisMin > 0 && (
+                      <span className="flex items-center gap-1 text-xs text-autronis-text-secondary">
+                        <Home className="w-3 h-3 text-orange-400" />
+                        Thuis {formatMinuten(g.thuisMin)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full h-3 bg-autronis-bg rounded-full overflow-hidden flex">
+                    {g.kantoorMin > 0 && (
+                      <div
+                        className="h-full bg-blue-400 rounded-l-full transition-all duration-500"
+                        style={{ width: `${(g.kantoorMin / (g.kantoorMin + g.thuisMin)) * 100}%` }}
+                      />
+                    )}
+                    {g.thuisMin > 0 && (
+                      <div
+                        className="h-full bg-orange-400 rounded-r-full transition-all duration-500"
+                        style={{ width: `${(g.thuisMin / (g.kantoorMin + g.thuisMin)) * 100}%` }}
+                      />
+                    )}
                   </div>
                 </div>
               )}

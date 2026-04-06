@@ -4,7 +4,7 @@ import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Clock, Coffee, CheckSquare, X, Video, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DndContext, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
@@ -239,7 +239,24 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       const dl = active.data.current.deadlineItem as DeadlineEvent;
       onDeadlineNaarSlot?.(dl, slotData.datumStr, nieuweTijd);
     }
+    setActiveHeledag(null);
   }, [onPlanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot]);
+
+  // Track actively dragged item for DragOverlay
+  const [activeHeledag, setActiveHeledag] = useState<{ item: AnyEvent; colors: { bg: string; border: string; text: string } } | null>(null);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current;
+    if (data?.heleDagItem || data?.deadlineItem) {
+      const item = (data.heleDagItem || data.deadlineItem) as AnyEvent;
+      setActiveHeledag({ item, colors: getEventColors(item) });
+    }
+  }, []);
+
+  const handleDragCancel = useCallback(() => {
+    setActiveHeledag(null);
+  }, []);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
@@ -413,7 +430,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       </div>
 
       {/* Tijdlijn met drag-and-drop (wraps hele-dag + tijdlijn zodat hele-dag items naar slots gesleept kunnen worden) */}
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
 
       {/* Hele-dag events */}
       <AnimatePresence>
@@ -652,6 +669,25 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           )}
         </div>
       </div>
+      {/* Drag overlay — rendert buiten overflow-hidden containers */}
+      <DragOverlay dropAnimation={null}>
+        {activeHeledag && (
+          <div
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-l-[3px] shadow-2xl"
+            style={{
+              background: `linear-gradient(135deg, ${activeHeledag.colors.bg} 0%, transparent 100%)`,
+              borderLeftColor: activeHeledag.colors.border,
+              color: activeHeledag.colors.text,
+              borderColor: `${activeHeledag.colors.border}30`,
+              boxShadow: `0 8px 32px rgba(0,0,0,0.4)`,
+              width: "max-content",
+              maxWidth: "400px",
+            }}
+          >
+            {activeHeledag.item.titel}
+          </div>
+        )}
+      </DragOverlay>
       </DndContext>
 
       {/* Hover tooltip (fixed position, buiten scroll container) */}

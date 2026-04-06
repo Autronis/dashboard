@@ -37,7 +37,7 @@ const DIR_TO_PROJECT: Record<string, string> = {
   "case-study-generator": "Case Study Generator",
   "learning-radar": "Learning Radar",
   "autronis-dashboard": "Autronis Dashboard",
-  "agent-office--ops-room": "Agent Office Ops Room",
+  "agent-office--ops-room": "Agent Office / Ops Room",
   "automatische-follow-ups": "Automatische Follow-ups",
   "client-health-score-dashboard": "Client Health Score Dashboard",
   "speak-to-text": "SpeakToText",
@@ -384,13 +384,21 @@ export async function POST() {
       // Detect tech stack
       const techStack = detectTechStack(dirPath);
 
-      // Find or create project
+      // Find or create project — match on projectDir first, then name
       let isNieuw = false;
       let project = await db
         .select({ id: projecten.id })
         .from(projecten)
-        .where(eq(projecten.naam, projectNaam))
+        .where(eq(projecten.projectDir, dirPath))
         .then((rows) => rows[0]);
+
+      if (!project) {
+        project = await db
+          .select({ id: projecten.id })
+          .from(projecten)
+          .where(eq(projecten.naam, projectNaam))
+          .then((rows) => rows[0]);
+      }
 
       if (!project) {
         const techNote = techStack.length > 0 ? `\n\nTech stack: ${techStack.join(", ")}` : "";
@@ -401,11 +409,18 @@ export async function POST() {
             naam: projectNaam,
             omschrijving: (omschrijving || `Project uit ${dir}/`) + techNote,
             status: "actief",
+            projectDir: dirPath,
             aangemaaktDoor: gebruiker.id,
           })
           .returning({ id: projecten.id });
         project = created;
         isNieuw = true;
+      } else if (!isNieuw) {
+        // Ensure projectDir is set on existing projects
+        await db
+          .update(projecten)
+          .set({ projectDir: dirPath })
+          .where(eq(projecten.id, project.id));
       }
 
       // Parse tasks from TODO.md

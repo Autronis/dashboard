@@ -476,7 +476,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
               <Sparkles className="w-3.5 h-3.5" /> Kopieer prompt
             </button>
           )}
-          {taak.projectId && (
+          {(taak.projectId || taak.projectNaam) && (
             <button onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-orange-400/70 text-sm font-medium hover:bg-orange-500/10 hover:text-orange-400 transition-colors">
               <FolderOpen className="w-3.5 h-3.5" /> Loskoppelen

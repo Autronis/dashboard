@@ -1094,6 +1094,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
               setSelectedIdx(null);
               setWeekSelectedSessie(null);
             }}
+            onLocatieChange={(loc) => handleLocatieChange(activeSessieDetail, loc)}
           />
         </div>
       )}

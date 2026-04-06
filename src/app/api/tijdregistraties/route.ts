@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
         categorie: tijdregistraties.categorie,
         isHandmatig: tijdregistraties.isHandmatig,
         aangemaaktOp: tijdregistraties.aangemaaktOp,
+        locatie: tijdregistraties.locatie,
         projectNaam: projecten.naam,
         klantNaam: klanten.bedrijfsnaam,
         klantId: klanten.id,
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { projectId, omschrijving, categorie, startTijd, eindTijd, duurMinuten, isHandmatig } = body;
+    const { projectId, omschrijving, categorie, startTijd, eindTijd, duurMinuten, isHandmatig, locatie } = body;
 
     if (!projectId) {
       return NextResponse.json({ fout: "Project is verplicht." }, { status: 400 });
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
         duurMinuten: duurMinuten || null,
         categorie: categorie || "development",
         isHandmatig: isHandmatig ? 1 : 0,
+        locatie: locatie === "kantoor" || locatie === "thuis" ? locatie : null,
       })
       .returning();
 

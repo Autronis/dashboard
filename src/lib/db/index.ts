@@ -292,6 +292,12 @@ if (isTurso) {
     sqliteDb.exec("ALTER TABLE screen_time_entries ADD COLUMN locatie TEXT");
   }
 
+  // Tijdregistraties locatie column
+  const trCols = sqliteDb.prepare("PRAGMA table_info(tijdregistraties)").all() as { name: string }[];
+  if (!trCols.some((c: { name: string }) => c.name === "locatie")) {
+    sqliteDb.exec("ALTER TABLE tijdregistraties ADD COLUMN locatie TEXT");
+  }
+
   // API token gebruik table
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS api_token_gebruik (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

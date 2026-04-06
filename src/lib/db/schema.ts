@@ -74,6 +74,7 @@ export const tijdregistraties = sqliteTable("tijdregistraties", {
   duurMinuten: integer("duur_minuten"),
   categorie: text("categorie", { enum: ["development", "meeting", "administratie", "overig", "focus"] }).default("development"),
   isHandmatig: integer("is_handmatig").default(0),
+  locatie: text("locatie", { enum: ["kantoor", "thuis"] }),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 

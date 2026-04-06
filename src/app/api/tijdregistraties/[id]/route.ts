@@ -14,7 +14,7 @@ export async function PUT(
     const { id } = await params;
     const body = await req.json();
 
-    const { omschrijving, projectId, categorie, startTijd, eindTijd, duurMinuten } = body;
+    const { omschrijving, projectId, categorie, startTijd, eindTijd, duurMinuten, locatie } = body;
 
     // Verify ownership
     const [bestaand] = await db
@@ -38,6 +38,7 @@ export async function PUT(
     if (startTijd !== undefined) updateData.startTijd = startTijd;
     if (eindTijd !== undefined) updateData.eindTijd = eindTijd;
     if (duurMinuten !== undefined) updateData.duurMinuten = duurMinuten;
+    if (locatie !== undefined) updateData.locatie = locatie;
 
     const [bijgewerkt] = await db
       .update(tijdregistraties)

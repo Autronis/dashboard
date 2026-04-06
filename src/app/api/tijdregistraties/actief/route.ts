@@ -16,6 +16,7 @@ export async function GET() {
         omschrijving: tijdregistraties.omschrijving,
         startTijd: tijdregistraties.startTijd,
         categorie: tijdregistraties.categorie,
+        locatie: tijdregistraties.locatie,
         projectNaam: projecten.naam,
         klantNaam: klanten.bedrijfsnaam,
       })

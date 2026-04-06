@@ -18,6 +18,7 @@ interface Registratie {
   duurMinuten: number | null;
   categorie: string;
   isHandmatig: number;
+  locatie: "kantoor" | "thuis" | null;
   projectNaam: string | null;
   klantNaam: string | null;
 }

@@ -184,10 +184,40 @@ export async function GET(req: NextRequest) {
       .orderBy(asc(screenTimeEntries.startTijd))
       .all();
 
+    // Infer locatie for entries that don't have one (pre-feature data)
+    // Windows-only apps → thuis (Windows), macOS-only apps → kantoor (Mac)
+    const WINDOWS_APPS = new Set(["Explorer", "Verkenner", "Taakbeheer", "Windows Terminal", "PowerShell", "cmd"]);
+    const MAC_APPS = new Set(["Finder", "Preview", "Activity Monitor", "System Settings", "System Preferences", "Keychain Access"]);
+
+    // First pass: determine dominant platform for this day from entries that have locatie or platform-specific apps
+    let macCount = 0;
+    let winCount = 0;
+    for (const e of entries) {
+      if (e.locatie === "kantoor") macCount++;
+      else if (e.locatie === "thuis") winCount++;
+      else if (MAC_APPS.has(e.app)) macCount++;
+      else if (WINDOWS_APPS.has(e.app)) winCount++;
+    }
+
+    // Fill in missing locatie based on dominant platform for entries without one
+    const inferredEntries = entries.map(e => {
+      if (e.locatie) return e;
+      // If we found platform-specific signals, use them
+      if (macCount > 0 && winCount === 0) return { ...e, locatie: "kantoor" as const };
+      if (winCount > 0 && macCount === 0) return { ...e, locatie: "thuis" as const };
+      // Mixed day: try app-specific detection
+      if (MAC_APPS.has(e.app)) return { ...e, locatie: "kantoor" as const };
+      if (WINDOWS_APPS.has(e.app)) return { ...e, locatie: "thuis" as const };
+      // If there are entries with locatie on the same day, use the most common one
+      if (macCount > winCount) return { ...e, locatie: "kantoor" as const };
+      if (winCount > macCount) return { ...e, locatie: "thuis" as const };
+      return e;
+    });
+
     // Filter system apps and idle
     const SKIP = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
-    const active = entries.filter(e => !SKIP.has(e.app) && e.categorie !== "inactief");
-    const idle = entries.filter(e => e.app === "Inactief" || e.categorie === "inactief");
+    const active = inferredEntries.filter(e => !SKIP.has(e.app) && e.categorie !== "inactief");
+    const idle = inferredEntries.filter(e => e.app === "Inactief" || e.categorie === "inactief");
 
     // ─── SIMPLE: Fixed 30-min slots ───
     if (active.length === 0) {

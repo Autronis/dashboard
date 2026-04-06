@@ -340,21 +340,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Backfill: set locatie on entries from same user+dates that have null locatie
-    if (locatie === "kantoor" || locatie === "thuis") {
-      const datums = new Set(entries.map((e: { startTijd: string }) => e.startTijd?.slice(0, 10)).filter(Boolean));
-      for (const datum of datums) {
-        await db
-          .update(screenTimeEntries)
-          .set({ locatie })
-          .where(and(
-            eq(screenTimeEntries.gebruikerId, gebruiker.id),
-            sql`${screenTimeEntries.locatie} IS NULL`,
-            sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) = ${datum}`,
-          ))
-          .run();
-      }
-    }
 
     return NextResponse.json({ verwerkt, overgeslagen, categorieen });
   } catch (error) {

@@ -6,8 +6,6 @@
  */
 import OriginalAnthropic from "@anthropic-ai/sdk";
 import type { MessageParam } from "@anthropic-ai/sdk/resources";
-import { db } from "@/lib/db";
-import { apiTokenGebruik } from "@/lib/db/schema";
 
 export type { MessageParam };
 export type { OriginalAnthropic as AnthropicType };
@@ -38,6 +36,9 @@ export async function logTokenUsage(
 ) {
   try {
     const kostenCent = model ? calculateCostCents(model, inputTokens, outputTokens) : 0;
+    // Use dynamic import to avoid pulling db into client bundles
+    const { db } = await import("@/lib/db");
+    const { apiTokenGebruik } = await import("@/lib/db/schema");
     await db.insert(apiTokenGebruik).values({
       provider,
       model: model ?? "unknown",

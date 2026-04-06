@@ -37,16 +37,6 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2592000, // 30 days
   },
-  serverExternalPackages: [
-    "better-sqlite3",
-    "@libsql/client",
-    "@libsql/core",
-    "@libsql/hrana-client",
-    "@libsql/isomorphic-ws",
-    "@libsql/linux-x64-gnu",
-    "@libsql/linux-x64-musl",
-    "@neon-rs/load",
-  ],
   experimental: {
     optimizeCss: !!process.env.TURSO_DATABASE_URL,
     scrollRestoration: true,

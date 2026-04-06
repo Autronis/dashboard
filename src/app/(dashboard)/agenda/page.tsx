@@ -994,6 +994,22 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
+              onHeleDagNaarSlot={(item, datum, tijd) => {
+                const startFull = `${datum}T${tijd}:00`;
+                const [uur] = tijd.split(":").map(Number);
+                const eindFull = `${datum}T${String(uur + 1).padStart(2, "0")}:00:00`;
+                saveMutation.mutate({
+                  item,
+                  body: {
+                    titel: item.titel,
+                    omschrijving: item.omschrijving || null,
+                    type: item.type,
+                    startDatum: startFull,
+                    eindDatum: eindFull,
+                    heleDag: false,
+                  },
+                });
+              }}
             />
           ) : weergave === "jaar" ? (
             <JaarView

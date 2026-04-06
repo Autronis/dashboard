@@ -219,15 +219,21 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || !active.data.current?.taak) return;
+    if (!over) return;
 
-    const taak = active.data.current.taak as AgendaTaak;
     const slotData = over.data.current as { uur?: number; datumStr?: string } | undefined;
     if (!slotData?.datumStr || slotData.uur === undefined) return;
 
     const nieuweTijd = `${String(slotData.uur).padStart(2, "0")}:00`;
-    onPlanTaak?.(taak, slotData.datumStr, nieuweTijd);
-  }, [onPlanTaak]);
+
+    if (active.data.current?.taak) {
+      const taak = active.data.current.taak as AgendaTaak;
+      onPlanTaak?.(taak, slotData.datumStr, nieuweTijd);
+    } else if (active.data.current?.heleDagItem) {
+      const item = active.data.current.heleDagItem as AgendaItem;
+      onHeleDagNaarSlot?.(item, slotData.datumStr, nieuweTijd);
+    }
+  }, [onPlanTaak, onHeleDagNaarSlot]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
@@ -400,6 +406,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
         </button>
       </div>
 
+      {/* Tijdlijn met drag-and-drop (wraps hele-dag + tijdlijn zodat hele-dag items naar slots gesleept kunnen worden) */}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+
       {/* Hele-dag events */}
       <AnimatePresence>
         {heleDag.length > 0 && (
@@ -411,7 +420,22 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           >
             {heleDag.map((item, idx) => {
               const isExtern = "bron" in item;
+              const isDeadline = "linkHref" in item;
               const colors = getEventColors(item);
+
+              // Interne AgendaItems zijn draggable naar tijdslots
+              if (!isExtern && !isDeadline) {
+                return (
+                  <DraggableHeleDagItem
+                    key={item.id}
+                    item={item as AgendaItem}
+                    colors={colors}
+                    idx={idx}
+                    onClick={() => onItemClick?.(item as AgendaItem)}
+                  />
+                );
+              }
+
               return (
                 <motion.div
                   key={item.id}
@@ -426,7 +450,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                     borderColor: `${colors.border}30`,
                     boxShadow: `0 2px 8px ${colors.border}20`,
                   }}
-                  onClick={() => !isExtern && onItemClick?.(item as AgendaItem)}
                 >
                   {item.titel}
                 </motion.div>
@@ -435,9 +458,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Tijdlijn met drag-and-drop */}
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl overflow-x-auto">
         <div className="relative" style={{ height: `${uren.length * UUR_HOOGTE}px`, minWidth: "280px" }}>
           {/* Uur lijnen */}

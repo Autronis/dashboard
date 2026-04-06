@@ -476,6 +476,12 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
               <Sparkles className="w-3.5 h-3.5" /> Kopieer prompt
             </button>
           )}
+          {taak.projectId && (
+            <button onClick={() => { onEdit(taak.id, { projectId: undefined }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-orange-400/70 text-sm font-medium hover:bg-orange-500/10 hover:text-orange-400 transition-colors">
+              <FolderOpen className="w-3.5 h-3.5" /> Loskoppelen
+            </button>
+          )}
           <button onClick={() => { onDelete(taak.id); onClose(); }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-red-400/70 text-sm font-medium hover:bg-red-500/10 hover:text-red-400 transition-colors ml-auto">
             <X className="w-3.5 h-3.5" /> Verwijder
@@ -665,7 +671,7 @@ export default function TakenPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string }) => {
+    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
     },

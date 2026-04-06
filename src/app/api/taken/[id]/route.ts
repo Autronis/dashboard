@@ -42,6 +42,7 @@ export async function PUT(
     if (body.volgorde !== undefined) updateData.volgorde = body.volgorde;
     if (body.uitvoerder !== undefined) updateData.uitvoerder = body.uitvoerder;
     if (body.prompt !== undefined) updateData.prompt = body.prompt?.trim() || null;
+    if (body.projectId !== undefined) updateData.projectId = body.projectId || null;
     if (body.projectMap !== undefined) updateData.projectMap = body.projectMap || null;
     if (body.geschatteDuur !== undefined) updateData.geschatteDuur = body.geschatteDuur || null;
     if (body.ingeplandStart !== undefined) updateData.ingeplandStart = body.ingeplandStart || null;

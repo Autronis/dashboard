@@ -8,7 +8,7 @@ import { eq, and, asc, sql } from "drizzle-orm";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 3;
+const CACHE_VERSION = 4;
 
 // ─── Types ───
 interface Sessie {

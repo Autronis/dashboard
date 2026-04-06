@@ -332,7 +332,7 @@ export async function GET() {
         omzetDezeMaand: Math.round(omzetDezeMaand * 100) / 100,
         omzetVorigeMaand: Math.round(omzetVorigeMaand * 100) / 100,
         urenDezeWeek: {
-          totaal: eigenUrenTotaal,
+          totaal: eigenUrenTotaal + teamgenootUren,
           eigen: eigenUrenTotaal,
           teamgenoot: teamgenootUren,
         },

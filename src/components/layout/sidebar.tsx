@@ -67,6 +67,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Leads", icon: Zap, href: "/leads" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Client Status", icon: Activity, href: "/client-status" },
+          { label: "Gezondheid", icon: HeartPulse, href: "/klant-gezondheid" },
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
         ],
       },

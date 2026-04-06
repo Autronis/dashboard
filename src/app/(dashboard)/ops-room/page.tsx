@@ -75,36 +75,12 @@ export default function OpsRoomPage() {
     return map;
   }, [dbCommands]);
 
-  // Fetch active projects for assigning idle builders
-  const { data: dbProjecten } = useQuery<{ id: number; naam: string }[]>({
-    queryKey: ["projecten-actief-ops"],
-    queryFn: async () => {
-      const res = await fetch("/api/projecten");
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.projecten ?? [])
-        .filter((p: { status: string }) => p.status === "actief")
-        .map((p: { id: number; naam: string }) => ({ id: p.id, naam: p.naam }));
-    },
-    staleTime: 60_000,
-  });
-
   // Merge: mock roster as base, overlay live data
-  // When live data exists: agents WITHOUT live activity → assigned to active projects
+  // Only agents with real live activity show as working, rest stays idle/standby
   const agents = useMemo(() => {
     if (!liveAgents || liveAgents.length === 0) return mockAgents;
     const liveMap = new Map(liveAgents.map((a) => [a.id, a]));
-    const actieveProjecten = dbProjecten ?? [];
 
-    // Seeded shuffle: assign builders to projects deterministically per day
-    const dagSeed = new Date().toISOString().slice(0, 10);
-    function hashCode(s: string): number {
-      let h = 0;
-      for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
-      return Math.abs(h);
-    }
-
-    let idleBuilderIdx = 0;
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
       if (!live) {
@@ -126,25 +102,7 @@ export default function OpsRoomPage() {
             } : mock.huidigeTaak,
           };
         }
-        // Assign idle builders to active projects so they show up in ProjectPanel
-        if (mock.rol === "builder" && actieveProjecten.length > 0) {
-          const projIdx = hashCode(dagSeed + mock.id) % actieveProjecten.length;
-          const proj = actieveProjecten[projIdx];
-          idleBuilderIdx++;
-          return {
-            ...mock,
-            status: "working" as const,
-            huidigeTaak: {
-              id: `auto-${mock.id}`,
-              beschrijving: `Werkt aan ${proj.naam}`,
-              project: proj.naam,
-              startedAt: new Date().toISOString(),
-              status: "bezig" as const,
-            },
-            terminal: [],
-            kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
-          };
-        }
+        // No activity → standby
         return {
           ...mock,
           status: "idle" as const,
@@ -165,7 +123,7 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
     return [...merged, ...extraLive];
-  }, [liveAgents, orchestratorAgents, dbActiveAgents, dbProjecten]);
+  }, [liveAgents, orchestratorAgents, dbActiveAgents]);
   const isLive = liveAgents && liveAgents.length > 0;
 
   // Convert orchestrator logs + live API data to TaskLogEntry format

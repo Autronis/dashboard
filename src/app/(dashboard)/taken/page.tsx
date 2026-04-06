@@ -375,7 +375,15 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-autronis-text-primary">{taak.titel}</h2>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-xs text-autronis-text-secondary">{taak.projectNaam}</span>
+              {taak.projectNaam && (
+                <button
+                  onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Losgekoppeld van " + taak.projectNaam, "succes"); }}
+                  className="text-xs text-orange-400/80 hover:text-orange-400 hover:line-through transition-all cursor-pointer"
+                  title="Klik om los te koppelen"
+                >
+                  {taak.projectNaam} ✕
+                </button>
+              )}
               {taak.fase && <span className="text-xs text-autronis-text-secondary">&middot; {taak.fase}</span>}
             </div>
           </div>
@@ -441,17 +449,6 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
             <p className="text-[11px] text-autronis-text-secondary/60">Aangemaakt op {formatDatum(taak.aangemaaktOp)}</p>
           )}
         </div>
-
-        {/* Project loskoppelen */}
-        {(taak.projectId || taak.projectNaam) && (
-          <div className="mx-5 mt-3 flex items-center justify-between bg-orange-500/5 border border-orange-500/20 rounded-xl px-4 py-2.5">
-            <span className="text-xs text-autronis-text-secondary">Project: <span className="text-autronis-text-primary font-medium">{taak.projectNaam}</span></span>
-            <button onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
-              className="text-xs font-semibold text-orange-400 hover:text-orange-300 transition-colors">
-              Loskoppelen
-            </button>
-          </div>
-        )}
 
         {/* Acties onderaan */}
         <div className="flex flex-wrap items-center gap-2 p-5 pt-4 border-t border-autronis-border/50 mt-4">

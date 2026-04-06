@@ -385,8 +385,8 @@ export default function FacturenPage() {
                             {factuur.status === "concept" && (
                               <button onClick={() => inlineVerzondenMutation.mutate(factuur.id)} disabled={inlineVerzondenMutation.isPending} className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-lg text-xs font-semibold transition-all"><Send className="w-3.5 h-3.5" />Verstuur</button>
                             )}
-                            {isVerzonden && (
-                              <button onClick={() => inlineBetaaldMutation.mutate(factuur.id)} disabled={inlineBetaaldMutation.isPending} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/15 hover:bg-green-500/25 text-green-400 rounded-lg text-xs font-semibold transition-all", effectiveStatus === "te_laat" ? "" : "opacity-0 group-hover:opacity-100")}><CheckCircle2 className="w-3.5 h-3.5" />Betaald</button>
+                            {(isVerzonden || effectiveStatus === "te_laat") && (
+                              <button onClick={() => inlineBetaaldMutation.mutate(factuur.id)} disabled={inlineBetaaldMutation.isPending} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all", effectiveStatus === "te_laat" ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : "opacity-0 group-hover:opacity-100 bg-green-500/15 hover:bg-green-500/25 text-green-400")}><CheckCircle2 className="w-3.5 h-3.5" />Betaald</button>
                             )}
                             <Link href={`/financien/${factuur.id}`} className="p-2 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"><Eye className="w-4 h-4" /></Link>
                             <a href={`/api/facturen/${factuur.id}/pdf`} className="p-2 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"><Download className="w-4 h-4" /></a>

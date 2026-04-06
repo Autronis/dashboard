@@ -43,6 +43,27 @@ export function useProjecten() {
   const query = useQuery({
     queryKey: ["projecten"],
     queryFn: fetchProjecten,
+    select: (data) => data.projecten,
+    staleTime: 30_000,
+  });
+
+  // Auto-sync op eerste load
+  const synced = useRef(false);
+  useEffect(() => {
+    if (synced.current) return;
+    synced.current = true;
+    fetch("/api/projecten/sync", { method: "POST" })
+      .then(() => query.refetch())
+      .catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return query;
+}
+
+export function useProjectenMetKpis() {
+  const query = useQuery({
+    queryKey: ["projecten"],
+    queryFn: fetchProjecten,
     staleTime: 30_000,
   });
 

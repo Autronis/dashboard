@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
-import { useProjecten } from "@/hooks/queries/use-projecten";
+import { useProjectenMetKpis } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
 import { Confetti } from "@/components/ui/confetti-dynamic";
 import { useToast } from "@/hooks/use-toast";
@@ -477,7 +477,7 @@ const TABS = [
 ] as const;
 
 export default function ProjectenPage() {
-  const { data, isLoading, refetch } = useProjecten();
+  const { data, isLoading, refetch } = useProjectenMetKpis();
   const [zoek, setZoek] = useState("");
   const [activeTab, setActiveTab] = useState<string>("actief");
   const [syncing, setSyncing] = useState(false);

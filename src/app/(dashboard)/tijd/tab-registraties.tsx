@@ -189,8 +189,7 @@ export function TabRegistraties() {
 
   const range = berekenVanTot(huidigeDatum, periode);
 
-  const { data: projectenData } = useProjecten();
-  const projecten = projectenData?.projecten ?? [];
+  const { data: projecten = [] } = useProjecten();
   const { data: registraties = [], isLoading: laden } = useRegistraties(range.van, range.tot);
 
   const invalidateRegistraties = () =>

@@ -78,8 +78,7 @@ export function TimerStrip() {
   const [localCategorie, setLocalCategorie] = useState<TijdCategorie>("development");
   const [stopPopup, setStopPopup] = useState<{ duur: string; omschrijving: string } | null>(null);
 
-  const { data: projectenData } = useProjecten();
-  const projecten = projectenData?.projecten ?? [];
+  const { data: projecten = [] } = useProjecten();
 
   // Set default project when projecten load
   useEffect(() => {

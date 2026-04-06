@@ -40,7 +40,7 @@ import {
   BANNER_ILLUSTRATIONS,
   BANNER_ILLUSTRATION_LABELS,
 } from "@/types/content";
-import { getDefaults } from "@/lib/ai/banner-generator";
+import { getDefaults } from "@/lib/ai/banner-defaults";
 import { PageTransition } from "@/components/ui/page-transition";
 
 // ============ STATUS BADGE ============

@@ -233,6 +233,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak }: {
                   <span className="text-[10px] text-autronis-text-secondary truncate max-w-16">{taak.projectNaam}</span>
                   {taak.uitvoerder === "claude" && <Bot className="w-2.5 h-2.5 text-purple-400 flex-shrink-0" />}
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                    <a href={`shortcuts://run-shortcut?name=Jarvis&input=text&text=${encodeURIComponent(`Werk aan taak: ${taak.titel} in project ${taak.projectNaam || taak.fase || "onbekend"}`)}`} className="p-0.5 text-autronis-text-secondary hover:text-purple-400 transition-colors" title="Jarvis"><Terminal className="w-3 h-3" /></a>
                     <button onClick={() => onPlanTaak(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan"><CalendarPlus className="w-3 h-3" /></button>
                     <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start"><Timer className="w-3 h-3" /></button>
                     <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
@@ -457,6 +458,10 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-autronis-border text-autronis-text-secondary text-sm font-medium hover:border-autronis-accent/40 hover:text-autronis-accent transition-colors">
                 <CalendarPlus className="w-3.5 h-3.5" /> Plan in agenda
               </button>
+              <a href={`shortcuts://run-shortcut?name=Jarvis&input=text&text=${encodeURIComponent(`Werk aan taak: ${taak.titel} in project ${taak.projectNaam || taak.fase || "onbekend"}`)}`}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm font-semibold hover:bg-purple-500/20 transition-colors">
+                <Terminal className="w-3.5 h-3.5" /> Jarvis
+              </a>
             </>
           )}
           {taak.status === "afgerond" && (

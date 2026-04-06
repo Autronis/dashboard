@@ -25,6 +25,15 @@ if (isTurso) {
   tursoClient = client;
 
   // Auto-migrate Turso
+  client.execute(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    endpoint TEXT NOT NULL UNIQUE,
+    keys_p256dh TEXT NOT NULL,
+    keys_auth TEXT NOT NULL,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   client.execute(`CREATE TABLE IF NOT EXISTS belasting_tips (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     categorie TEXT NOT NULL,

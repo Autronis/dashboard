@@ -207,6 +207,16 @@ export const notificaties = sqliteTable("notificaties", {
   aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
 });
 
+// ============ PUSH SUBSCRIPTIONS ============
+export const pushSubscriptions = sqliteTable("push_subscriptions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").notNull().references(() => gebruikers.id),
+  endpoint: text("endpoint").notNull().unique(),
+  keysP256dh: text("keys_p256dh").notNull(),
+  keysAuth: text("keys_auth").notNull(),
+  aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
+});
+
 // ============ LEAD ACTIVITEITEN ============
 export const leadActiviteiten = sqliteTable("lead_activiteiten", {
   id: integer("id").primaryKey({ autoIncrement: true }),

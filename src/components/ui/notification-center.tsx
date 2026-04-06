@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
+  BellRing,
   FileWarning,
   Clock,
   CheckCircle,
@@ -21,6 +22,17 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useNotificaties, type Notificatie } from "@/hooks/queries/use-notificaties";
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
 
 const typeIcons: Record<Notificatie["type"], typeof Bell> = {
   factuur_te_laat: FileWarning,
@@ -118,6 +130,81 @@ export function NotificationCenter() {
     },
   });
 
+  // Push notification state
+  const [pushStatus, setPushStatus] = useState<"loading" | "granted" | "denied" | "default" | "unsupported">("loading");
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      setPushStatus("unsupported");
+      return;
+    }
+    // Check current permission
+    const perm = Notification.permission;
+    if (perm === "granted") {
+      // Verify we have an active subscription
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.pushManager.getSubscription().then((sub) => {
+          setPushStatus(sub ? "granted" : "default");
+        });
+      });
+    } else {
+      setPushStatus(perm as "denied" | "default");
+    }
+  }, []);
+
+  const handlePushToggle = useCallback(async () => {
+    if (pushStatus === "unsupported" || pushStatus === "denied") return;
+
+    try {
+      // Register service worker if not already
+      const registration = await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.ready;
+
+      if (pushStatus === "granted") {
+        // Unsubscribe
+        const sub = await registration.pushManager.getSubscription();
+        if (sub) {
+          await fetch("/api/push/subscribe", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+          await sub.unsubscribe();
+        }
+        setPushStatus("default");
+      } else {
+        // Subscribe
+        const permission = await Notification.requestPermission();
+        if (permission !== "granted") {
+          setPushStatus("denied");
+          return;
+        }
+
+        const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidKey) return;
+
+        const sub = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(vapidKey),
+        });
+
+        const subJson = sub.toJSON();
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            endpoint: sub.endpoint,
+            keys: subJson.keys,
+          }),
+        });
+
+        setPushStatus("granted");
+      }
+    } catch {
+      // Silently fail
+    }
+  }, [pushStatus]);
+
   function handleNotificatieKlik(notificatie: Notificatie) {
     if (notificatie.gelezen === 0) {
       markeerGelezenMutation.mutate(notificatie.id);
@@ -176,7 +263,7 @@ export function NotificationCenter() {
               </div>
             </div>
 
-            <div className="max-h-96 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto">
               {notificaties.length === 0 ? (
                 <div className="px-4 py-8 text-center text-sm text-autronis-text-secondary">
                   Geen notificaties
@@ -226,6 +313,33 @@ export function NotificationCenter() {
                 })
               )}
             </div>
+
+            {/* Push notification toggle */}
+            {pushStatus !== "unsupported" && (
+              <div className="px-4 py-3 border-t border-autronis-border">
+                <button
+                  onClick={handlePushToggle}
+                  disabled={pushStatus === "denied" || pushStatus === "loading"}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
+                    pushStatus === "granted"
+                      ? "bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
+                      : pushStatus === "denied"
+                        ? "bg-autronis-border/50 text-autronis-text-secondary/50 cursor-not-allowed"
+                        : "bg-autronis-border/50 text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border"
+                  )}
+                >
+                  <BellRing className="w-3.5 h-3.5" />
+                  {pushStatus === "granted"
+                    ? "Push meldingen aan"
+                    : pushStatus === "denied"
+                      ? "Meldingen geblokkeerd in browser"
+                      : pushStatus === "loading"
+                        ? "Laden..."
+                        : "Push meldingen inschakelen"}
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

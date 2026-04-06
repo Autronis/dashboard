@@ -614,8 +614,35 @@ export default function TakenPage() {
       }
       return status;
     },
-    onSuccess: (status, { id }) => { if (status === "afgerond") showCheckBurst(id); queryClient.invalidateQueries({ queryKey: ["taken"] }); },
-    onError: (error) => addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout"),
+    onMutate: async ({ id, status }) => {
+      // Cancel outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["taken"] });
+      // Snapshot previous value
+      const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
+      // Optimistically update all matching query caches
+      queryClient.setQueriesData<{ taken: Taak[]; kpis: Record<string, number>; projecten: unknown[] }>(
+        { queryKey: ["taken"] },
+        (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            taken: old.taken.map((t) => t.id === id ? { ...t, status } : t),
+          };
+        }
+      );
+      if (status === "afgerond") showCheckBurst(id);
+      return { previousData };
+    },
+    onError: (error, _vars, context) => {
+      // Rollback on error
+      if (context?.previousData) {
+        for (const [key, data] of context.previousData) {
+          queryClient.setQueryData(key, data);
+        }
+      }
+      addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
+    },
+    onSettled: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); },
   });
 
   const deleteMutation = useMutation({
@@ -1117,7 +1144,7 @@ export default function TakenPage() {
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
+                                            <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); handleStatusToggle(taak); }} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
                                               <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                                             </button>
                                             <div className="flex-1 min-w-0">

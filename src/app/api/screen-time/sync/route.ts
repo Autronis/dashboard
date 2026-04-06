@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { screenTimeEntries, screenTimeRegels, projecten } from "@/lib/db/schema";
 import { requireApiKey } from "@/lib/auth";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // ─── Server-side idle detection constants ───
 const MAX_ENTRY_DURATION_SECONDS = 300; // 5 min cap per entry
@@ -337,6 +337,22 @@ export async function POST(req: NextRequest) {
 
         categorieen.push({ clientId: chunk.clientId, categorie, projectId });
         verwerkt++;
+      }
+    }
+
+    // Backfill: set locatie on entries from same user+dates that have null locatie
+    if (locatie === "kantoor" || locatie === "thuis") {
+      const datums = new Set(entries.map((e: { startTijd: string }) => e.startTijd?.slice(0, 10)).filter(Boolean));
+      for (const datum of datums) {
+        await db
+          .update(screenTimeEntries)
+          .set({ locatie })
+          .where(and(
+            eq(screenTimeEntries.gebruikerId, gebruiker.id),
+            sql`${screenTimeEntries.locatie} IS NULL`,
+            sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) = ${datum}`,
+          ))
+          .run();
       }
     }
 

@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       // 3. Openstaande facturen
       const openFacturen = await db
         .select({
-          totaal: sql<number>`sum(${facturen.totaalBedrag})`,
+          totaal: sql<number>`sum(${facturen.bedragInclBtw})`,
           aantal: sql<number>`count(*)`,
         })
         .from(facturen)

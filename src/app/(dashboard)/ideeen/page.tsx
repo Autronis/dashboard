@@ -168,8 +168,7 @@ export default function IdeeenPage() {
   const promoveerMutation = usePromoveerIdee();
   const regenereerPlanMutation = useRegenereerPlan();
   const verwerkMutation = useVerwerkNotitie();
-  const { data: projectenData } = useProjecten();
-  const projectenLijst = projectenData?.projecten ?? [];
+  const { data: projectenLijst = [] } = useProjecten();
 
   const [verwerkResult, setVerwerkResult] = useState<{ notitieId: number; suggestie: VerwerkSuggestie } | null>(null);
   const [koppelNotitieId, setKoppelNotitieId] = useState<number | null>(null);

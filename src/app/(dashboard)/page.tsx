@@ -961,8 +961,8 @@ export default function DashboardPage() {
                       )}
                     </div>
                     <p className="text-base font-medium text-autronis-text-primary">{nextTask.titel}</p>
-                    {nextTask.projectNaam && (
-                      <p className="text-xs text-autronis-text-secondary mt-1">{nextTask.projectNaam}</p>
+                    {(nextTask.fase || nextTask.projectNaam) && (
+                      <p className="text-xs text-autronis-text-secondary mt-1">{nextTask.fase || nextTask.projectNaam}</p>
                     )}
                   </div>
                   {nextTask.deadline && (

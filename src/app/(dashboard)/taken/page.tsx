@@ -85,7 +85,8 @@ function groepeerTaken(taken: Taak[]): GegroepeerdeData[] {
   const sorted = [...taken].sort((a, b) => (prioriteitConfig[a.prioriteit]?.sortOrder ?? 1) - (prioriteitConfig[b.prioriteit]?.sortOrder ?? 1));
 
   for (const taak of sorted) {
-    const pId = taak.projectId ?? 0;
+    // Taken zonder project groeperen op fase (negatieve ID om niet te botsen met echte projecten)
+    const pId = taak.projectId ?? -(taak.fase ? taak.fase.charCodeAt(0) * 1000 + taak.fase.length : 0);
     const pNaam = taak.projectNaam ?? (taak.fase || "Zonder project");
     let project = projectMap.get(pId);
     if (!project) { project = { projectId: pId, projectNaam: pNaam, totaal: 0, afgerond: 0, fases: [] }; projectMap.set(pId, project); }

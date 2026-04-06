@@ -79,6 +79,46 @@ interface TooltipState {
   isImminent: boolean;
 }
 
+// ─── Draggable hele-dag item ───
+function DraggableHeleDagItem({ item, colors, idx, onClick }: {
+  item: AgendaItem;
+  colors: { bg: string; border: string; text: string };
+  idx: number;
+  onClick?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `heledag-${item.id}`,
+    data: { heleDagItem: item },
+  });
+
+  const style: React.CSSProperties = {
+    background: `linear-gradient(135deg, ${colors.bg} 0%, transparent 100%)`,
+    borderLeftColor: colors.border,
+    color: colors.text,
+    borderColor: `${colors.border}30`,
+    boxShadow: `0 2px 8px ${colors.border}20`,
+    opacity: isDragging ? 0.4 : 1,
+    ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
+  };
+
+  return (
+    <motion.div
+      ref={setNodeRef}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: idx * 0.06, duration: 0.25 }}
+      className="px-3 py-2 rounded-lg text-sm font-medium border cursor-grab border-l-[3px] flex items-center gap-1.5"
+      style={style}
+      onClick={onClick}
+    >
+      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
+        <GripVertical className="w-3 h-3 opacity-50" />
+      </div>
+      <span className="min-w-0 truncate">{item.titel}</span>
+    </motion.div>
+  );
+}
+
 // ─── Draggable task block ───
 function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onClick }: {
   taak: AgendaTaak;
@@ -170,9 +210,10 @@ interface DagViewProps {
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
+  onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onHeleDagNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 

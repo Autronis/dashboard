@@ -11,6 +11,10 @@
     {
       "path": "/api/facturen/cron",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/followup/cron",
+      "schedule": "0 9 * * *"
     }
   ]
 }

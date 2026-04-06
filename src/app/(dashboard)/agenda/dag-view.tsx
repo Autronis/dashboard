@@ -80,15 +80,17 @@ interface TooltipState {
 }
 
 // ─── Draggable hele-dag item ───
-function DraggableHeleDagItem({ item, colors, idx, onClick }: {
-  item: AgendaItem;
+function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick }: {
+  item: AnyEvent;
+  dragId: string;
+  dragData: Record<string, unknown>;
   colors: { bg: string; border: string; text: string };
   idx: number;
   onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `heledag-${item.id}`,
-    data: { heleDagItem: item },
+    id: dragId,
+    data: dragData,
   });
 
   const style: React.CSSProperties = {
@@ -211,9 +213,10 @@ interface DagViewProps {
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
   onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
+  onDeadlineNaarSlot?: (deadline: DeadlineEvent, datum: string, tijd: string) => void;
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onHeleDagNaarSlot }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -232,8 +235,11 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     } else if (active.data.current?.heleDagItem) {
       const item = active.data.current.heleDagItem as AgendaItem;
       onHeleDagNaarSlot?.(item, slotData.datumStr, nieuweTijd);
+    } else if (active.data.current?.deadlineItem) {
+      const dl = active.data.current.deadlineItem as DeadlineEvent;
+      onDeadlineNaarSlot?.(dl, slotData.datumStr, nieuweTijd);
     }
-  }, [onPlanTaak, onHeleDagNaarSlot]);
+  }, [onPlanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;

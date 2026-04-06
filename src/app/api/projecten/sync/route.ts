@@ -37,6 +37,10 @@ const DIR_TO_PROJECT: Record<string, string> = {
   "case-study-generator": "Case Study Generator",
   "learning-radar": "Learning Radar",
   "autronis-dashboard": "Autronis Dashboard",
+  "agent-office--ops-room": "Agent Office Ops Room",
+  "automatische-follow-ups": "Automatische Follow-ups",
+  "client-health-score-dashboard": "Client Health Score Dashboard",
+  "speak-to-text": "SpeakToText",
 };
 
 // Directories to skip during sync
@@ -229,7 +233,11 @@ function isProjectDir(dirPath: string): boolean {
   return (
     fs.existsSync(path.join(dirPath, "PROJECT_BRIEF.md")) ||
     fs.existsSync(path.join(dirPath, "TODO.md")) ||
-    fs.existsSync(path.join(dirPath, "package.json"))
+    fs.existsSync(path.join(dirPath, "package.json")) ||
+    fs.existsSync(path.join(dirPath, "CLAUDE.md")) ||
+    fs.existsSync(path.join(dirPath, "Package.swift")) ||
+    fs.existsSync(path.join(dirPath, "Cargo.toml")) ||
+    fs.existsSync(path.join(dirPath, "pyproject.toml"))
   );
 }
 

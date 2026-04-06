@@ -13,7 +13,7 @@ import {
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
-  PlusCircle, Compass, Sparkles, UtensilsCrossed,
+  PlusCircle, Compass, Sparkles, UtensilsCrossed, HeartPulse,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";

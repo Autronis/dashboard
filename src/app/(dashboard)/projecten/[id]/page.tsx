@@ -541,8 +541,8 @@ export default function ProjectDetailPage() {
     })));
     pendingToggles.current.add(taakId);
     try {
-      await fetch(`/api/taken/${taakId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: volgende }) });
-      fetchProject();
+      const res = await fetch(`/api/taken/${taakId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: volgende }) });
+      if (!res.ok) throw new Error();
     } catch {
       addToast("Kon status niet bijwerken", "fout");
       fetchProject(); // revert by refetching

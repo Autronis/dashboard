@@ -708,7 +708,8 @@ export default function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSettled: () => { setMutatingCount((c) => c - 1); },
   });
 
   const deleteMutation = useMutation({
@@ -734,8 +735,8 @@ export default function TakenPage() {
       }
       addToast("Kon taak niet verwijderen", "fout");
     },
-    onSuccess: () => { addToast("Taak verwijderd", "succes"); },
-    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSuccess: () => { addToast("Taak verwijderd", "succes"); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSettled: () => { setMutatingCount((c) => c - 1); },
   });
 
   const editMutation = useMutation({
@@ -770,8 +771,8 @@ export default function TakenPage() {
       }
       addToast("Kon taak niet bijwerken", "fout");
     },
-    onSuccess: () => { setEditingId(null); },
-    onSettled: () => { setMutatingCount((c) => c - 1); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSuccess: () => { setEditingId(null); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
+    onSettled: () => { setMutatingCount((c) => c - 1); },
   });
 
   const createMutation = useMutation({

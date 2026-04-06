@@ -357,6 +357,8 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
   const isClaude = taak.uitvoerder === "claude";
   const isVerlopen = taak.deadline && taak.deadline < new Date().toISOString().slice(0, 10) && taak.status !== "afgerond";
   const { addToast } = useToast();
+  const [editingDeadline, setEditingDeadline] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState(taak.deadline ?? "");
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
@@ -516,6 +518,7 @@ export default function TakenPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFase, setEditFase] = useState("");
   const [editPrioriteit, setEditPrioriteit] = useState("");
+  const [editDeadline, setEditDeadline] = useState("");
   const [syncing, setSyncing] = useState(false);
   const [showSyncConfetti, setShowSyncConfetti] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -674,7 +677,7 @@ export default function TakenPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null | string }) => {
+    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null | string; deadline?: string | null }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
     },
@@ -1195,7 +1198,7 @@ export default function TakenPage() {
                                                 </>
                                               )}
                                               {taak.status !== "afgerond" && <CopyPromptButton prompt={generateTaskPrompt(taak)} />}
-                                              <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit))}
+                                              <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit), setEditDeadline(taak.deadline ?? ""))}
                                                 className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>
                                               {(taak.omschrijving || taak.prompt || taak.projectMap) && <button onClick={() => setExpandedId(isExp ? null : taak.id)} className="flex-shrink-0 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">{isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</button>}
                                             </div>
@@ -1208,7 +1211,8 @@ export default function TakenPage() {
                                               <select value={editPrioriteit} onChange={(e) => setEditPrioriteit(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
                                                 <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
                                               </select>
-                                              <button onClick={() => editMutation.mutate({ id: taak.id, fase: editFase || undefined, prioriteit: editPrioriteit })} className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-md text-xs font-medium">Opslaan</button>
+                                              <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+                                              <button onClick={() => editMutation.mutate({ id: taak.id, fase: editFase || undefined, prioriteit: editPrioriteit, deadline: editDeadline || null })} className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-md text-xs font-medium">Opslaan</button>
                                               <button onClick={() => handleDelete(taak.id)} className="px-2 py-1 bg-red-500/15 text-red-400 rounded-md text-xs font-medium hover:bg-red-500/25 transition-colors">Verwijder</button>
                                             </div>
                                           )}

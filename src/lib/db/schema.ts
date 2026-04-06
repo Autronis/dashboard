@@ -1522,3 +1522,54 @@ export const apiTokenGebruik = sqliteTable("api_token_gebruik", {
 }, (table) => ({
   idxProviderDatum: index("idx_atg_provider_datum").on(table.provider, table.aangemaaktOp),
 }));
+
+// ============ FOLLOW-UP REGELS ============
+
+export const followUpRegels = sqliteTable("follow_up_regels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  type: text("type", { enum: ["geen_contact", "offerte_niet_beantwoord", "offerte_vervalt", "handmatig"] }).notNull(),
+  doelgroep: text("doelgroep", { enum: ["klanten", "leads", "beide"] }).default("beide"),
+  dagenDrempel: integer("dagen_drempel").notNull(), // na hoeveel dagen triggeren
+  templateId: integer("template_id").references(() => followUpTemplates.id),
+  isActief: integer("is_actief").default(1),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ FOLLOW-UP TEMPLATES ============
+
+export const followUpTemplates = sqliteTable("follow_up_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  onderwerp: text("onderwerp").notNull(),
+  inhoud: text("inhoud").notNull(), // HTML of plain text body met {{variabelen}}
+  type: text("type", { enum: ["email", "notificatie"] }).default("email"),
+  isActief: integer("is_actief").default(1),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ FOLLOW-UP LOG ============
+
+export const followUpLog = sqliteTable("follow_up_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  regelId: integer("regel_id").references(() => followUpRegels.id),
+  templateId: integer("template_id").references(() => followUpTemplates.id),
+  contactType: text("contact_type", { enum: ["klant", "lead"] }).notNull(),
+  contactId: integer("contact_id").notNull(), // klant of lead ID
+  offerteId: integer("offerte_id").references(() => offertes.id),
+  status: text("status", { enum: ["getriggerd", "verstuurd", "mislukt", "overgeslagen", "gesnoozed"] }).default("getriggerd"),
+  dagenGeleden: integer("dagen_geleden"), // hoeveel dagen geen contact op moment van trigger
+  emailVerstuurd: text("email_verstuurd"), // het e-mailadres waarnaar verstuurd
+  foutmelding: text("foutmelding"), // bij mislukt
+  notitie: text("notitie"),
+  verstuurdOp: text("verstuurd_op"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxContactType: index("idx_ful_contact").on(table.contactType, table.contactId),
+  idxStatus: index("idx_ful_status").on(table.status),
+  idxDatum: index("idx_ful_datum").on(table.aangemaaktOp),
+}));

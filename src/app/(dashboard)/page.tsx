@@ -1000,7 +1000,10 @@ export default function DashboardPage() {
                       />
                       <span className="text-sm text-autronis-text-primary flex-1 truncate group-hover:text-autronis-accent transition-colors">{taak.titel}</span>
                       {taak.projectNaam && (
-                        <span className="text-[10px] text-autronis-text-secondary truncate max-w-[100px] hidden sm:block">{taak.projectNaam}</span>
+                        <span className="text-[10px] text-autronis-text-secondary truncate max-w-[120px]">{taak.projectNaam}</span>
+                      )}
+                      {!taak.projectNaam && taak.fase && (
+                        <span className="text-[10px] text-autronis-text-secondary truncate max-w-[120px]">{taak.fase}</span>
                       )}
                       <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.color, pc.bg)}>{taak.prioriteit}</span>
                     </div>

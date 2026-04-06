@@ -45,34 +45,40 @@ async function generateBeschrijvingen(sessies: Sessie[]): Promise<string[]> {
     return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}`;
   }).join("\n");
 
-  const prompt = `Beschrijf elke sessie in 8-12 woorden. Baseer je UITSLUITEND op de venstertitels.
+  const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je UITSLUITEND op de venstertitels.
 
 GOUDEN REGEL: beschrijf ALLEEN wat je ZEKER weet op basis van de venstertitels. Als je het niet zeker weet, wees vaag ("Browsergebruik en research") in plaats van iets te verzinnen.
 
 HOE TE BEPALEN WAT IEMAND DEED:
 1. Kijk welke APP de meeste minuten heeft — die bepaalt de hoofdactiviteit
 2. Kijk naar de VENSTERTITELS van die app — die vertellen je WAT er gedaan werd
-3. NEGEER achtergrond-apps en -tabs volledig
-4. Als er meerdere taken in dezelfde sessie zitten, noem de dominante
+3. Als er meerdere taken in dezelfde sessie zitten, noem ze allemaal kort
+4. Vermeld welk PROJECT als dat af te leiden is uit de workspace-naam
 
 PER APP TYPE:
-- Code/Cursor dominant → kijk naar het WORKSPACE/PROJECT deel van de titel (na "—"). Bijv "file.tsx — autronis-dashboard — Code" → project is "autronis-dashboard"
-- Chrome dominant → kijk naar de PAGINATITELS. "KVK inschrijving | mijn.kvk.nl" = administratie. "Claude chat" = AI research. Negeer dashboard.autronis.nl als achtergrondtab.
+- Code/Cursor → kijk naar het WORKSPACE/PROJECT deel van de titel (na "—"). Bijv "tracker.rs — autronis-dashboard — Code" → "Gewerkt aan timetracker in autronis-dashboard". Noem ook het BESTAND als relevant.
+- Chrome met claude.ai → "Claude chat over [onderwerp]" of "AI-gesprek over [onderwerp]"
+- Chrome met dashboard.autronis.nl → alleen noemen als er actief mee gewerkt wordt, niet als achtergrondtab
+- Terminal/Claude Code → "Claude Code sessie in [project]" — herken dit aan terminal-achtige titels met projectnamen
 - YouTube → noem het ONDERWERP uit de videotitel
 - Discord/Slack → "Communicatie" + eventueel kanaal/onderwerp
-- TradingView → alleen noemen als TradingView zelf dominant is (meeste minuten), niet als achtergrondtab
+- TradingView → alleen noemen als TradingView zelf dominant is (meeste minuten)
+
+COMBINEER MEERDERE ACTIVITEITEN:
+- Als iemand in dezelfde sessie Code + Claude chat + Chrome gebruikt, beschrijf het als één verhaal
+- Bijv: "Gewerkt aan dashboard timetracker, Claude chat voor hulp met macOS tracking"
+- Bijv: "Development autronis-dashboard, research naar Supabase configuratie"
 
 KRITIEKE FOUTEN OM TE VOORKOMEN:
 - VERZIN NOOIT activiteiten die niet in de titels staan
 - "marktdata geanalyseerd" ALLEEN zeggen als TradingView de dominante app is
-- "Autronis Dashboard" als Chrome-titel = gewoon een open tab, NIET dat er aan gewerkt wordt
-- localhost:3000 in Chrome = achtergrondtab van dashboard, niet actief werk (tenzij Code dominant is)
+- localhost:3000 in Chrome = achtergrondtab, niet actief werk (tenzij Code dominant is)
 - Als titels onduidelijk zijn → "Browsergebruik" of "Diverse taken" — niet raden
 
 SCHRIJFSTIJL:
-- 8-12 woorden, Nederlands, directe stijl
-- "Gewerkt aan...", "Research naar...", "Video's gekeken over..."
-- NOOIT app-namen in de beschrijving
+- 12-20 woorden, Nederlands, directe stijl
+- "Gewerkt aan...", "Research naar...", "Claude chat over...", "Development van..."
+- Noem het project en specifieke bestanden/onderwerpen als die duidelijk zijn
 - NOOIT onpersoonlijke vormen ("Er werd", "De gebruiker")
 
 ${lines}

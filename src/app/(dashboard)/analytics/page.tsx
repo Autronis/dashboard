@@ -567,8 +567,10 @@ function ActionableGoalsSectie({ goals }: { goals: DecisionEngineData["actionabl
               </div>
               <p className="text-xs text-autronis-text-secondary mt-1 tabular-nums">
                 {g.doel === "Uren"
-                  ? `${g.huidig.toFixed(1)}u / ${g.target}u`
-                  : `${formatBedrag(g.huidig)} / ${formatBedrag(g.target)}`}
+                  ? `${g.huidig.toFixed(1)}u / ${g.target}u per maand`
+                  : g.doel === "Jaardoel"
+                  ? `${formatBedrag(g.huidig)} / ${formatBedrag(g.target)} per jaar`
+                  : `${formatBedrag(g.huidig)} / ${formatBedrag(g.target)} per maand`}
               </p>
               <p className="text-xs text-autronis-accent mt-1.5 font-medium leading-tight">{g.actie}</p>
             </div>

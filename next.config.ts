@@ -47,11 +47,6 @@ const nextConfig: NextConfig = {
     "@libsql/linux-x64-musl",
     "@neon-rs/load",
   ],
-  turbopack: {
-    resolveAlias: {
-      "better-sqlite3": { browser: "./src/lib/db/empty-module.ts" },
-    },
-  },
   experimental: {
     optimizeCss: !!process.env.TURSO_DATABASE_URL,
     scrollRestoration: true,

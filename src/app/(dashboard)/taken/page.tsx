@@ -196,7 +196,37 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak, onEd
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-autronis-text-primary truncate">{eersteTaak.titel}</p>
-          <p className="text-xs text-autronis-text-secondary truncate">{eersteTaak.projectNaam}{eersteTaak.fase ? ` · ${eersteTaak.fase}` : ""}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-autronis-text-secondary truncate">{eersteTaak.projectNaam}{eersteTaak.fase ? ` · ${eersteTaak.fase}` : ""}</p>
+            {editingDeadline ? (
+              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                <input
+                  type="date"
+                  value={deadlineValue}
+                  onChange={(e) => setDeadlineValue(e.target.value)}
+                  autoFocus
+                  className="bg-autronis-bg border border-autronis-accent/50 rounded px-1.5 py-0.5 text-[10px] text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+                />
+                <button
+                  onClick={() => { onEdit(eersteTaak.id, { deadline: deadlineValue || null }); setEditingDeadline(false); }}
+                  className="px-1.5 py-0.5 bg-autronis-accent text-autronis-bg rounded text-[10px] font-bold"
+                >OK</button>
+                <button
+                  onClick={() => setEditingDeadline(false)}
+                  className="text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary"
+                >✕</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setDeadlineValue(eersteTaak.deadline ?? ""); setEditingDeadline(true); }}
+                className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium hover:ring-1 hover:ring-autronis-accent/40 transition-all flex-shrink-0",
+                  eersteTaak.deadline ? "text-autronis-text-secondary" : "text-autronis-text-secondary/40 border border-dashed border-autronis-border/50"
+                )}
+              >
+                {eersteTaak.deadline ? (<><Clock className="w-2.5 h-2.5 inline mr-0.5" />{formatDatum(eersteTaak.deadline)}</>) : (<><Clock className="w-2.5 h-2.5 inline mr-0.5" />Deadline</>)}
+              </button>
+            )}
+          </div>
         </div>
         {eersteTaak.uitvoerder === "claude" && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-400 font-semibold flex-shrink-0">Claude</span>}
         <button onClick={() => onPlanTaak(eersteTaak)}
@@ -921,7 +951,7 @@ export default function TakenPage() {
         </div>
 
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
-        <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} />
+        <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} onEdit={(id, body) => editMutation.mutate({ id, ...body })} />
 
         {/* 2. STATUS TABS */}
         <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">

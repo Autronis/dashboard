@@ -752,7 +752,7 @@ export default function TakenPage() {
 
   // ─── Handlers ───
   const handleStatusToggle = (taak: Taak) => {
-    const volgende = taak.status === "open" ? "bezig" : taak.status === "bezig" ? "afgerond" : "open";
+    const volgende = taak.status === "afgerond" ? "open" : "afgerond";
     statusMutation.mutate({ id: taak.id, status: volgende });
   };
 

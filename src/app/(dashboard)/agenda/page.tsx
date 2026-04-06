@@ -413,14 +413,19 @@ export default function AgendaPage() {
       if (!map[dag]) map[dag] = [];
       map[dag].push(event);
     }
+    // Dedup: skip deadline events die al als ingeplande taak op dezelfde dag staan
+    const ingeplandeTaakIds = new Set(
+      agendaTaken.filter((t) => t.ingeplandStart).map((t) => `taak-${t.id}`)
+    );
     for (const dl of deadlineEvents) {
       if (filterType !== "alle" && filterType !== "deadline") continue;
+      if (ingeplandeTaakIds.has(dl.id)) continue;
       const dag = dl.datum.slice(0, 10);
       if (!map[dag]) map[dag] = [];
       map[dag].push(dl);
     }
     return map;
-  }, [items, externeEvents, deadlineEvents, filterType]);
+  }, [items, externeEvents, deadlineEvents, agendaTaken, filterType]);
 
   function navigeer(richting: number) {
     setNavRichting(richting > 0 ? 1 : -1);
@@ -490,7 +495,7 @@ export default function AgendaPage() {
     }, 400);
   }
 
-  const [weergave, setWeergave] = useState<"dag" | "week" | "maand" | "jaar">("week");
+  const [weergave, setWeergave] = useState<"dag" | "week" | "maand" | "jaar">("dag");
   const [selectedDag, setSelectedDag] = useState<Date>(new Date());
   const [hoveredDay, setHoveredDay] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);

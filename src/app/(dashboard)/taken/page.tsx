@@ -442,6 +442,17 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
           )}
         </div>
 
+        {/* Project loskoppelen */}
+        {(taak.projectId || taak.projectNaam) && (
+          <div className="mx-5 mt-3 flex items-center justify-between bg-orange-500/5 border border-orange-500/20 rounded-xl px-4 py-2.5">
+            <span className="text-xs text-autronis-text-secondary">Project: <span className="text-autronis-text-primary font-medium">{taak.projectNaam}</span></span>
+            <button onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
+              className="text-xs font-semibold text-orange-400 hover:text-orange-300 transition-colors">
+              Loskoppelen
+            </button>
+          </div>
+        )}
+
         {/* Acties onderaan */}
         <div className="flex flex-wrap items-center gap-2 p-5 pt-4 border-t border-autronis-border/50 mt-4">
           {taak.status !== "afgerond" && (
@@ -474,12 +485,6 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
             <button onClick={() => { navigator.clipboard.writeText(taak.prompt!); addToast("Prompt gekopieerd", "succes"); }}
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 text-sm font-semibold hover:bg-purple-500/20 transition-colors">
               <Sparkles className="w-3.5 h-3.5" /> Kopieer prompt
-            </button>
-          )}
-          {(taak.projectId || taak.projectNaam) && (
-            <button onClick={() => { onEdit(taak.id, { projectId: null }); onClose(); addToast("Taak losgekoppeld van project", "succes"); }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-orange-400/70 text-sm font-medium hover:bg-orange-500/10 hover:text-orange-400 transition-colors">
-              <FolderOpen className="w-3.5 h-3.5" /> Loskoppelen
             </button>
           )}
           <button onClick={() => { onDelete(taak.id); onClose(); }}

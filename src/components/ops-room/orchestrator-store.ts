@@ -36,6 +36,8 @@ interface OrchestratorState {
   activeAgents: Set<string>; // agents currently executing tasks
   abortControllers: Map<string, AbortController>; // per-command abort controllers
   autoApproveTimers: Map<string, ReturnType<typeof setTimeout>>; // yellow auto-approve timers
+  serverWorkerMode: boolean; // true = execute via server worker, false = client-side loop
+  activeWorkerTokens: Map<string, string>; // commandId → workerToken
 
   // Actions
   loadFromDb: () => Promise<void>;
@@ -48,6 +50,7 @@ interface OrchestratorState {
   setActiveCommand: (id: string | null) => void;
   executePlan: (commandId: string) => Promise<void>;
   killExecution: (commandId?: string) => void;
+  setServerWorkerMode: (enabled: boolean) => void;
   _planCommand: (cmdId: string, opdracht: string) => Promise<void>;
 }
 

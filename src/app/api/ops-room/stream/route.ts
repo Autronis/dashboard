@@ -52,6 +52,48 @@ export async function GET(req: NextRequest) {
           `);
 
           send({ type: "agents", agents });
+
+          // Worker progress: stream task statuses from active worker runs
+          try {
+            const activeWorkers = await db.all(sql`
+              SELECT wr.command_id, wr.status as worker_status, wr.huidige_taak_id, wr.worker_token,
+                     wr.poging, wr.fout, wr.laatste_heartbeat,
+                     oc.opdracht, oc.plan_json, oc.status as command_status
+              FROM worker_runs wr
+              JOIN orchestrator_commands oc ON oc.id = wr.command_id
+              WHERE wr.status IN ('running', 'paused')
+              ORDER BY wr.id DESC
+            `);
+
+            if (activeWorkers.length > 0) {
+              const workerProgress = (activeWorkers as Record<string, unknown>[]).map((w) => {
+                let taken: { id: string; titel: string; status: string; agentId: string | null }[] = [];
+                try {
+                  const plan = JSON.parse(w.plan_json as string);
+                  taken = (plan.taken ?? []).map((t: Record<string, unknown>) => ({
+                    id: t.id,
+                    titel: t.titel,
+                    status: t.status,
+                    agentId: t.agentId,
+                  }));
+                } catch {/* invalid json */}
+
+                return {
+                  commandId: w.command_id,
+                  opdracht: w.opdracht,
+                  workerStatus: w.worker_status,
+                  commandStatus: w.command_status,
+                  huidigeTaakId: w.huidige_taak_id,
+                  poging: w.poging,
+                  fout: w.fout,
+                  laatsteHeartbeat: w.laatste_heartbeat,
+                  taken,
+                };
+              });
+
+              send({ type: "worker_progress", workers: workerProgress });
+            }
+          } catch {/* worker_runs table might not exist yet */}
         } catch (err) {
           send({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
         }

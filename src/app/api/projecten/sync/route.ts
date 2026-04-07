@@ -432,23 +432,27 @@ export async function POST() {
         tasks = parseTodoMd(todoContent);
       }
 
-      // Get existing tasks for this project
+      // TODO.md is the single source of truth for tasks.
+      // Delete ALL existing tasks for this project and re-insert from TODO.md.
+      // This prevents stale tasks from lingering when titles change.
       const existingTaken = await db
-        .select({ id: taken.id, titel: taken.titel, status: taken.status })
+        .select({ id: taken.id })
         .from(taken)
         .where(eq(taken.projectId, project.id));
-
-      const existingMap = new Map(existingTaken.map((t) => [t.titel, t]));
-      const todoTitles = new Set(tasks.map((t) => t.titel));
 
       let toegevoegd = 0;
       let bijgewerkt = 0;
       let verwijderd = 0;
 
-      // Add/update tasks from TODO.md
-      for (const task of tasks) {
-        const existing = existingMap.get(task.titel);
-        if (!existing) {
+      if (tasks.length > 0) {
+        // Delete all existing tasks for this project
+        if (existingTaken.length > 0) {
+          await db.delete(taken).where(eq(taken.projectId, project.id));
+          verwijderd = existingTaken.length;
+        }
+
+        // Re-insert all tasks from TODO.md
+        for (const task of tasks) {
           await db.insert(taken).values({
             projectId: project.id,
             toegewezenAan: gebruiker.id,
@@ -461,34 +465,6 @@ export async function POST() {
             uitvoerder: classifyUitvoerder(task.titel),
           });
           toegevoegd++;
-        } else {
-          // TODO.md checkbox is the source of truth
-          if (task.done && existing.status !== "afgerond") {
-            await db.update(taken).set({ status: "afgerond" }).where(eq(taken.id, existing.id));
-            bijgewerkt++;
-          } else if (!task.done && existing.status === "afgerond") {
-            await db.update(taken).set({ status: "open" }).where(eq(taken.id, existing.id));
-            bijgewerkt++;
-          }
-          // Update fase/volgorde/uitvoerder
-          await db
-            .update(taken)
-            .set({
-              fase: task.fase || null,
-              volgorde: task.volgorde,
-              uitvoerder: classifyUitvoerder(task.titel),
-            })
-            .where(eq(taken.id, existing.id));
-        }
-      }
-
-      // Remove tasks that are no longer in TODO.md (only auto-synced ones)
-      if (tasks.length > 0) {
-        for (const existing of existingTaken) {
-          if (!todoTitles.has(existing.titel)) {
-            await db.delete(taken).where(eq(taken.id, existing.id));
-            verwijderd++;
-          }
         }
       }
 

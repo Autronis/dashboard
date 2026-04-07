@@ -65,10 +65,11 @@ function parseTodoMd(content: string): ParsedTask[] {
       currentFase = headerMatch[1].trim();
       continue;
     }
-    const taskMatch = line.match(/^[-*]?\s*\[([xX ])\]\s*(.+)/);
+    const taskMatch = line.match(/^[-*]?\s*\[([xX ~])\]\s*(.+)/);
     if (taskMatch) {
+      const marker = taskMatch[1].toLowerCase();
       tasks.push({
-        done: taskMatch[1].toLowerCase() === "x",
+        done: marker === "x",
         titel: taskMatch[2].trim(),
         fase: currentFase,
         volgorde: order++,
@@ -308,12 +309,13 @@ async function autoCreateProjectPlan(
           sections.push(line.trim().replace(/^Phase/i, "Fase"));
           continue;
         }
-        const taskMatch = line.match(/^[-*]?\s*\[([xX ])\]\s*(.+)/);
+        const taskMatch = line.match(/^[-*]?\s*\[([xX ~])\]\s*(.+)/);
         if (taskMatch) {
-          sections.push(`${taskMatch[1].toLowerCase() === "x" ? "✅" : "⬜"} ${taskMatch[2].trim()}`);
+          const icon = taskMatch[1].toLowerCase() === "x" ? "✅" : taskMatch[1] === "~" ? "🔧" : "⬜";
+          sections.push(`${icon} ${taskMatch[2].trim()}`);
         }
       }
-      const allTasks = lines.filter((l) => l.match(/^\s*[-*]?\s*\[[xX ]\]/));
+      const allTasks = lines.filter((l) => l.match(/^\s*[-*]?\s*\[[xX ~]\]/));
       const doneTasks = lines.filter((l) => l.match(/^\s*[-*]?\s*\[[xX]\]/));
       if (allTasks.length > 0) {
         sections.push("", `Voortgang: ${doneTasks.length}/${allTasks.length} taken (${Math.round((doneTasks.length / allTasks.length) * 100)}%)`);

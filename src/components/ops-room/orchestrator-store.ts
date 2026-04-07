@@ -78,6 +78,8 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   activeAgents: new Set<string>(),
   abortControllers: new Map<string, AbortController>(),
   autoApproveTimers: new Map<string, ReturnType<typeof setTimeout>>(),
+  serverWorkerMode: true, // default: server-side worker
+  activeWorkerTokens: new Map<string, string>(),
 
   loadFromDb: async () => {
     try {
@@ -600,6 +602,49 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const cmd = state.commands.find((c) => c.id === commandId);
     if (!cmd?.plan || !cmd.plan.goedgekeurd) return;
 
+    // === SERVER WORKER MODE ===
+    if (state.serverWorkerMode && cmd.dbId) {
+      addLog(set, "theo", "info", "Server-worker modus: uitvoering draait server-side door");
+      set((s) => ({
+        commands: s.commands.map((c) =>
+          c.id === commandId ? { ...c, status: "in_progress" as const } : c
+        ),
+      }));
+
+      try {
+        const res = await fetch("/api/ops-room/worker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+          body: JSON.stringify({ commandId: cmd.dbId, action: "start" }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          set((s) => {
+            const tokens = new Map(s.activeWorkerTokens);
+            tokens.set(commandId, data.workerToken);
+            return {
+              activeWorkerTokens: tokens,
+              commands: s.commands.map((c) =>
+                c.id === commandId ? { ...c, branch: data.branch ?? c.branch } : c
+              ),
+            };
+          });
+          addLog(set, "theo", "info", `Worker gestart (branch: ${data.branch}). Laptop mag dicht!`);
+        } else {
+          const err = await res.json();
+          addLog(set, "theo", "error", `Worker starten mislukt: ${err.fout ?? "onbekend"}`);
+          // Fallback to client-side
+          addLog(set, "theo", "info", "Fallback naar client-side uitvoering...");
+        }
+      } catch (e) {
+        addLog(set, "theo", "error", `Worker niet bereikbaar: ${e instanceof Error ? e.message : "onbekend"}`);
+        addLog(set, "theo", "info", "Fallback naar client-side uitvoering...");
+      }
+      // In server-worker mode we return here — SSE events update the UI
+      return;
+    }
+
+    // === CLIENT-SIDE MODE (fallback) ===
     const controller = new AbortController();
     set((s) => {
       const next = new Map(s.abortControllers);
@@ -985,16 +1030,30 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
   killExecution: (commandId?: string) => {
     const state = get();
     if (commandId) {
-      // Kill specific command
+      // Kill specific command — client-side abort
       const controller = state.abortControllers.get(commandId);
       if (controller) controller.abort();
+
+      // Also stop server worker if active
+      const cmd = state.commands.find((c) => c.id === commandId);
+      if (cmd?.dbId) {
+        fetch("/api/ops-room/worker", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+          body: JSON.stringify({ commandId: cmd.dbId, action: "stop" }),
+        }).catch(() => {});
+      }
+
       playError();
       addLog(set, "theo", "error", "Uitvoering handmatig gestopt door Sem!");
       set((s) => {
         const nextControllers = new Map(s.abortControllers);
         nextControllers.delete(commandId);
+        const nextTokens = new Map(s.activeWorkerTokens);
+        nextTokens.delete(commandId);
         return {
           abortControllers: nextControllers,
+          activeWorkerTokens: nextTokens,
           commands: s.commands.map((c) =>
             c.id === commandId ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
           ),
@@ -1005,15 +1064,29 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       state.abortControllers.forEach((c) => c.abort());
       playError();
       addLog(set, "theo", "error", "Alle uitvoeringen gestopt door Sem!");
+      // Stop all server workers
+      state.activeWorkerTokens.forEach((_, cmdId) => {
+        const cmd = state.commands.find((c) => c.id === cmdId);
+        if (cmd?.dbId) {
+          fetch("/api/ops-room/worker", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-ops-token": "autronis-ops-2026" },
+            body: JSON.stringify({ commandId: cmd.dbId, action: "stop" }),
+          }).catch(() => {});
+        }
+      });
       set((s) => ({
         isProcessing: false,
         executingTaskId: null,
         abortControllers: new Map(),
         activeAgents: new Set<string>(),
+        activeWorkerTokens: new Map(),
         commands: s.commands.map((c) =>
           c.status === "in_progress" ? { ...c, status: "rejected" as const, feedback: "Handmatig gestopt" } : c
         ),
       }));
     }
   },
+
+  setServerWorkerMode: (enabled: boolean) => set({ serverWorkerMode: enabled }),
 }));

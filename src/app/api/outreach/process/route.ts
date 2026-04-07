@@ -10,9 +10,23 @@ function generateUnsubscribeToken(email: string): string {
   return createHash("sha256").update(`unsub-${email}-${process.env.SESSION_SECRET || "salt"}`).digest("hex").substring(0, 32);
 }
 
+// GET for Vercel Cron
+export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ fout: "Niet geautoriseerd" }, { status: 401 });
+  }
+  return processOutreach(req);
+}
+
 export async function POST(req: NextRequest) {
+  await requireApiKey(req);
+  return processOutreach(req);
+}
+
+async function processOutreach(req: NextRequest) {
   try {
-    await requireApiKey(req);
 
     const nu = new Date().toISOString();
     const vandaag = nu.split("T")[0];

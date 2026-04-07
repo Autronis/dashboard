@@ -2,13 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, gebruikers } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireApiKey } from "@/lib/auth";
 
 // POST /api/projecten/sync-taken
 // Body: { projectNaam: string, voltooide_taken: string[], nieuwe_taken: string[] }
+// Auth: session cookie OR Bearer API key
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    // Support both session auth and API key auth (for Claude Code)
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      await requireApiKey(req);
+    } else {
+      await requireAuth();
+    }
 
     const body = await req.json();
     const { projectNaam, voltooide_taken, nieuwe_taken } = body as {

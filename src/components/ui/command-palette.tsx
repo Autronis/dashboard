@@ -54,7 +54,7 @@ const pages = [
   { label: "Klanten", icon: Users, href: "/klanten" },
   { label: "Financiën", icon: Euro, href: "/financien" },
   { label: "Analytics", icon: BarChart3, href: "/analytics" },
-  { label: "CRM / Leads", icon: Target, href: "/crm" },
+  { label: "Sales Engine", icon: Target, href: "/sales-engine" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Instellingen", icon: Settings, href: "/instellingen" },

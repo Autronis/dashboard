@@ -64,7 +64,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         label: "Overzicht",
         icon: Layers,
         children: [
-          { label: "Leads", icon: Zap, href: "/leads" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Client Status", icon: Activity, href: "/client-status" },
           { label: "Gezondheid", icon: HeartPulse, href: "/klant-gezondheid" },
@@ -72,7 +71,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         ],
       },
       { label: "Klanten", icon: Users, href: "/klanten" },
-      { label: "Outreach", icon: Mail, href: "/outreach" },
       { label: "Mail Assistent", icon: Sparkles, href: "/mail" },
       { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
     ],

@@ -177,7 +177,6 @@ function getTopNavLinks(): { href: string; label: string; icon: string }[] {
     { href: "/second-brain", label: "Second Brain", icon: "brain" },
     { href: "/financien", label: "Financien", icon: "euro" },
     { href: "/analytics", label: "Analytics", icon: "trending" },
-    { href: "/leads", label: "Leads", icon: "trending" },
     { href: "/klanten", label: "Klanten", icon: "folder" },
     { href: "/sales-engine", label: "Sales Engine", icon: "zap" },
     { href: "/content", label: "Content", icon: "sparkles" },

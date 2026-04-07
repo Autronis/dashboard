@@ -342,8 +342,8 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
             </a>
             {scan.aangemaaktOp && <span>Gescand op {formatDatum(scan.aangemaaktOp)}</span>}
             {lead && (
-              <Link href="/leads" className="hover:text-[var(--accent)]">
-                Bekijk lead →
+              <Link href="/klanten" className="hover:text-[var(--accent)]">
+                Bekijk klant →
               </Link>
             )}
           </div>

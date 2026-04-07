@@ -46,10 +46,17 @@ const PUBLIC_PATHS = [
   "/scan",
   "/api/followup/cron",
   "/api/followup/webhook",
+  "/api/projecten/sync-taken",
+  "/api/projecten/sync-from-agent",
+];
+
+const PUBLIC_PATTERNS = [
+  /^\/api\/projecten\/\d+\/todo-md$/,
 ];
 
 function isPublicPath(pathname: string): boolean {
-  return PUBLIC_PATHS.some((publicPath) => pathname.startsWith(publicPath));
+  return PUBLIC_PATHS.some((publicPath) => pathname.startsWith(publicPath))
+    || PUBLIC_PATTERNS.some((pattern) => pattern.test(pathname));
 }
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {

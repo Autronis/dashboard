@@ -166,6 +166,21 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  // Worker runs table (ops-room server-side worker)
+  client.execute(`CREATE TABLE IF NOT EXISTS worker_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    command_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    huidige_taak_id TEXT,
+    poging INTEGER DEFAULT 0,
+    max_pogingen INTEGER DEFAULT 3,
+    worker_token TEXT NOT NULL,
+    laatste_heartbeat TEXT DEFAULT (datetime('now')),
+    fout TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   // Follow-up tables
   client.execute(`CREATE TABLE IF NOT EXISTS follow_up_templates (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -350,6 +365,21 @@ if (isTurso) {
     kosten_cent INTEGER DEFAULT 0,
     route TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+
+  // Worker runs table (ops-room server-side worker)
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS worker_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    command_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'running',
+    huidige_taak_id TEXT,
+    poging INTEGER DEFAULT 0,
+    max_pogingen INTEGER DEFAULT 3,
+    worker_token TEXT NOT NULL,
+    laatste_heartbeat TEXT DEFAULT (datetime('now')),
+    fout TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);
 
   // Follow-up tables

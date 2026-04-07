@@ -504,7 +504,12 @@ export async function POST() {
       const stats = { totaal: statsResult?.totaal ?? 0, af: statsResult?.af ?? 0 };
 
       const voortgang = stats.totaal > 0 ? Math.round((stats.af / stats.totaal) * 100) : 0;
-      await db.update(projecten).set({ voortgangPercentage: voortgang }).where(eq(projecten.id, project.id));
+      const heeftOpenTaken = stats.totaal > stats.af;
+      await db.update(projecten).set({
+        voortgangPercentage: voortgang,
+        // Reactiveer afgeronde projecten als er open taken bijkomen
+        ...(heeftOpenTaken ? { status: "actief" } : {}),
+      }).where(eq(projecten.id, project.id));
 
       // Auto-create Notion project plan for new projects
       let notionPlanUrl: string | undefined;

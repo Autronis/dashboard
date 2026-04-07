@@ -284,14 +284,16 @@ export async function POST() {
     }
 
     // Auto-complete: projecten met 100% taken afgerond → status afgerond
-    const actieveProjecten = await db
-      .select({ id: projecten.id, naam: projecten.naam })
+    // Auto-reactivate: afgeronde projecten met open taken → status actief
+    const syncProjecten = await db
+      .select({ id: projecten.id, naam: projecten.naam, status: projecten.status })
       .from(projecten)
-      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1)))
+      .where(eq(projecten.isActief, 1))
       .all();
 
     let projectenAfgerond = 0;
-    for (const p of actieveProjecten) {
+    let projectenGereactiveerd = 0;
+    for (const p of syncProjecten) {
       const stats = await db
         .select({
           totaal: sql<number>`COUNT(*)`,
@@ -301,15 +303,22 @@ export async function POST() {
         .where(eq(taken.projectId, p.id))
         .get();
 
-      if (stats && stats.totaal > 0 && stats.totaal === stats.afgerond) {
+      if (stats && stats.totaal > 0 && stats.totaal === stats.afgerond && p.status === "actief") {
         await db.update(projecten)
           .set({ status: "afgerond", bijgewerktOp: new Date().toISOString() })
           .where(eq(projecten.id, p.id))
           .run();
         projectenAfgerond++;
+      } else if (stats && stats.totaal > 0 && stats.totaal > stats.afgerond && p.status === "afgerond") {
+        await db.update(projecten)
+          .set({ status: "actief", bijgewerktOp: new Date().toISOString() })
+          .where(eq(projecten.id, p.id))
+          .run();
+        projectenGereactiveerd++;
       }
     }
     results.projectenAutoAfgerond = projectenAfgerond;
+    results.projectenGereactiveerd = projectenGereactiveerd;
 
     return NextResponse.json({ succes: true, results });
   } catch (error) {

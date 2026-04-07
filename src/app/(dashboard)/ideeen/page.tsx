@@ -802,7 +802,7 @@ export default function IdeeenPage() {
             <BarChart3 className="w-5 h-5 text-blue-400" />
             <h2 className="text-base font-semibold text-autronis-text-primary">Pipeline</h2>
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          <div className="grid grid-cols-4 gap-1.5 sm:flex sm:items-center sm:gap-2">
             {statusOpties.map((s, i) => {
               const count = pipelineStats[s.key as keyof typeof pipelineStats] || 0;
               const colors = { idee: "bg-gray-500/30", uitgewerkt: "bg-blue-500/30", actief: "bg-autronis-accent/30", gebouwd: "bg-emerald-500/30" };
@@ -810,16 +810,16 @@ export default function IdeeenPage() {
               const icons = { idee: Lightbulb, uitgewerkt: FileText, actief: Zap, gebouwd: CheckCircle2 };
               const Icon = icons[s.key as keyof typeof icons];
               return (
-                <div key={s.key} className="flex items-center gap-2 flex-shrink-0 flex-1 min-w-[80px]">
+                <div key={s.key} className="flex items-center gap-2 sm:flex-1">
                   <motion.div
-                    className={cn("rounded-xl p-3 text-center flex-1 cursor-pointer hover:opacity-80 transition-opacity", colors[s.key as keyof typeof colors])}
+                    className={cn("rounded-xl p-2 sm:p-3 text-center flex-1 cursor-pointer hover:opacity-80 transition-opacity", colors[s.key as keyof typeof colors])}
                     initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ delay: i * 0.1, duration: 0.4 }}
                     onClick={() => setFilterStatus(filterStatus === s.key ? "" : s.key)}
                   >
-                    <p className={cn("text-2xl font-bold tabular-nums", textColors[s.key as keyof typeof textColors])}>
+                    <p className={cn("text-lg sm:text-2xl font-bold tabular-nums", textColors[s.key as keyof typeof textColors])}>
                       <AnimatedNumber value={count} />
                     </p>
-                    <p className="flex items-center justify-center gap-1 text-[10px] text-autronis-text-secondary uppercase tracking-wide mt-0.5">
+                    <p className="flex items-center justify-center gap-0.5 sm:gap-1 text-[9px] sm:text-[10px] text-autronis-text-secondary uppercase tracking-wide mt-0.5">
                       <Icon className={cn("w-3 h-3", textColors[s.key as keyof typeof textColors])} />{s.label}
                     </p>
                   </motion.div>

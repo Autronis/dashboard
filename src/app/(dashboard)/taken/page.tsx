@@ -708,8 +708,8 @@ export default function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
-    onSettled: () => { setMutatingCount((c) => c - 1); },
+    onSuccess: () => {},
+    onSettled: () => { setTimeout(() => setMutatingCount((c) => c - 1), 1000); },
   });
 
   const deleteMutation = useMutation({
@@ -747,6 +747,7 @@ export default function TakenPage() {
     },
     onMutate: async ({ id, ...body }) => {
       setMutatingCount((c) => c + 1);
+      // Cancel any in-flight refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({ queryKey: ["taken"] });
       const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
       const patch: Partial<Taak> = {};
@@ -771,8 +772,8 @@ export default function TakenPage() {
       }
       addToast("Kon taak niet bijwerken", "fout");
     },
-    onSuccess: () => { setEditingId(null); queryClient.invalidateQueries({ queryKey: ["taken"] }); queryClient.invalidateQueries({ queryKey: ["deadline-events"] }); },
-    onSettled: () => { setMutatingCount((c) => c - 1); },
+    onSuccess: () => { setEditingId(null); },
+    onSettled: () => { setTimeout(() => setMutatingCount((c) => c - 1), 1000); },
   });
 
   const createMutation = useMutation({

@@ -90,6 +90,15 @@ export async function GET(req: NextRequest) {
       prioriteit: t.prioriteit,
       project: t.projectNaam,
     })),
+    openTaken: takenLijst.map((t) => ({
+      id: t.id,
+      titel: t.titel,
+      status: t.status,
+      fase: t.fase,
+      prioriteit: t.prioriteit,
+      toegewezenAan: t.toegewezenAanNaam,
+      project: t.projectNaam,
+    })),
     recenteActiviteit: activiteit,
   });
 }

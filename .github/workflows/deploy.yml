@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-      - run: npm ci
+      - run: npm ci --force
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Deploy to Vercel

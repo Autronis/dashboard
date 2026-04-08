@@ -16,12 +16,12 @@ import {
   ShieldCheck,
   Search,
   ChevronRight,
+  Download,
 } from "lucide-react";
 import { useKlantGezondheid } from "@/hooks/queries/use-klant-gezondheid";
 import type { KlantHealthScore } from "@/hooks/queries/use-klant-gezondheid";
 import { KPICard } from "@/components/ui/kpi-card";
 import { ProgressRing } from "@/components/ui/progress-ring";
-import { AnimatedNumber } from "@/components/ui/animated-number";
 import { cn } from "@/lib/utils";
 
 function scoreKleur(score: number): string {
@@ -36,13 +36,6 @@ function scoreLabel(score: number): string {
   if (score >= 60) return "Aandacht";
   if (score >= 40) return "Risico";
   return "Kritiek";
-}
-
-function scoreBgKleur(score: number): string {
-  if (score >= 80) return "bg-emerald-500/10";
-  if (score >= 60) return "bg-orange-500/10";
-  if (score >= 40) return "bg-yellow-500/10";
-  return "bg-red-500/10";
 }
 
 function scoreTekstKleur(score: number): string {
@@ -107,13 +100,22 @@ export default function KlantGezondheid() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-autronis-text-primary">
-          Klant Gezondheid
-        </h1>
-        <p className="text-sm text-autronis-text-secondary mt-1">
-          Automatisch berekende gezondheidsscores op basis van communicatie, betalingen, projecten, tevredenheid en activiteit
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-autronis-text-primary">
+            Klant Gezondheid
+          </h1>
+          <p className="text-sm text-autronis-text-secondary mt-1">
+            Automatisch berekende gezondheidsscores op basis van communicatie, betalingen, projecten, tevredenheid en activiteit
+          </p>
+        </div>
+        <a
+          href="/api/klant-gezondheid/export?format=csv"
+          className="flex items-center gap-2 px-3 py-2 bg-autronis-card border border-autronis-border rounded-lg text-sm text-autronis-text-secondary hover:border-autronis-border-hover hover:text-autronis-accent transition-colors"
+        >
+          <Download className="w-4 h-4" />
+          Export CSV
+        </a>
       </div>
 
       {/* KPI Cards */}

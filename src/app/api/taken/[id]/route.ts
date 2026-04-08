@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { taken, teamActiviteit } from "@/lib/db/schema";
+import { taken, teamActiviteit, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
 
 // PUT /api/taken/[id]
@@ -151,6 +151,27 @@ export async function PUT(
           deleteGoogleEvent(gebruiker.id, huidig.googlePlanEventId).catch(() => {});
           await db.update(taken).set({ googlePlanEventId: null }).where(eq(taken.id, Number(id))).execute();
         }
+      }
+    }
+
+    // Auto-update project status when task status changes
+    if (body.status !== undefined && bijgewerkt.projectId) {
+      const stats = await db
+        .select({
+          totaal: sql<number>`COUNT(*)`,
+          afgerond: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+        })
+        .from(taken)
+        .where(eq(taken.projectId, bijgewerkt.projectId))
+        .get();
+
+      if (stats && stats.totaal > 0) {
+        const voortgang = Math.round(((stats.afgerond ?? 0) / stats.totaal) * 100);
+        await db.update(projecten).set({
+          voortgangPercentage: voortgang,
+          ...(voortgang >= 100 ? { status: "afgerond" } : {}),
+          bijgewerktOp: sql`(datetime('now'))`,
+        }).where(eq(projecten.id, bijgewerkt.projectId));
       }
     }
 

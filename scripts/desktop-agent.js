@@ -1,123 +1,120 @@
 #!/usr/bin/env node
 // Autronis Desktop Agent — draait lokaal op je Mac
 // Luistert op https://localhost:3848
-// Opent VS Code in een nieuw venster en tile vensters automatisch
+// Opent VS Code in een nieuw venster en plaatst ALLEEN het nieuwe venster
 
 const https = require("https");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
+const { execSync, exec } = require("child_process");
 
 const PORT = 3848;
-const CODE_PATH = "/opt/homebrew/bin/code";
 const CERT_DIR = path.join(require("os").homedir(), ".autronis");
+const MAX_PER_SCREEN = 5;
 
-// Detect external monitors and tile VS Code + Chrome fullscreen on them
-function tileAllWindows() {
-  // Use NSScreen to find external monitors dynamically
-  const script = `
-    use framework "AppKit"
+// Get current VS Code window count
+function getWindowCount() {
+  try {
+    const result = execSync(`osascript -e 'tell application "System Events" to tell process "Code" to return count of windows'`, { timeout: 3000 }).toString().trim();
+    return parseInt(result) || 0;
+  } catch {
+    return 0;
+  }
+}
 
-    set screenList to current application's NSScreen's screens()
-    set mainScreen to item 1 of screenList
-    set mainH to (item 2 of item 2 of (mainScreen's frame())) as integer
-    set externalScreens to {}
+// Get screen info once
+function getScreenInfo() {
+  try {
+    const scriptPath = path.join(__dirname, "_screens.applescript");
+    fs.writeFileSync(scriptPath, `
+use framework "AppKit"
+set screenList to current application's NSScreen's screens()
+set mainH to (item 2 of item 2 of ((item 1 of screenList)'s frame())) as integer
+set output to ""
+repeat with s in screenList
+  set f to s's frame()
+  set vf to s's visibleFrame()
+  set nsX to (item 1 of item 1 of f) as integer
+  set w to (item 1 of item 2 of f) as integer
+  set h to (item 2 of item 2 of f) as integer
+  set vY to (item 2 of item 1 of vf) as integer
+  set vH to (item 2 of item 2 of vf) as integer
+  set asVY to mainH - vY - vH
+  set output to output & nsX & "," & asVY & "," & w & "," & vH & linefeed
+end repeat
+return output
+`);
+    const result = execSync(`osascript "${scriptPath}"`, { timeout: 3000 }).toString().trim();
 
-    -- Collect external screens with correct Y conversion
-    -- NSScreen Y is bottom-up, AppleScript position Y is top-down
-    repeat with s in screenList
-      set f to s's frame()
-      set vf to s's visibleFrame()
-      set nsX to (item 1 of item 1 of f) as integer
-      set nsY to (item 2 of item 1 of f) as integer
-      set w to (item 1 of item 2 of f) as integer
-      set h to (item 2 of item 2 of f) as integer
-      -- Convert NS Y (bottom-up) to AppleScript Y (top-down)
-      set asY to mainH - nsY - h
-      -- Visible frame for actual usable area
-      set vY to (item 2 of item 1 of vf) as integer
-      set vH to (item 2 of item 2 of vf) as integer
-      set asVY to mainH - vY - vH
+    const screens = result.split("\n").map(line => {
+      const [x, y, w, h] = line.split(",").map(Number);
+      return { x, y, w, h };
+    });
 
-      -- Skip MacBook screen (origin 0,0 in NS coords and smaller)
-      if nsX is not 0 or w > 2000 then
-        set end of externalScreens to {nsX, asVY, w, vH}
-      end if
-    end repeat
+    // Find external screens (not the MacBook at origin 0,0 with smaller width)
+    const external = screens.filter(s => s.x !== 0 || s.w > 2000);
+    if (external.length === 0) return { left: screens[0], right: screens[0] };
 
-    -- Fallback: use all screens
-    if (count of externalScreens) = 0 then
-      repeat with s in screenList
-        set f to s's visibleFrame()
-        set nsX to (item 1 of item 1 of f) as integer
-        set nsY to (item 2 of item 1 of f) as integer
-        set w to (item 1 of item 2 of f) as integer
-        set h to (item 2 of item 2 of f) as integer
-        set asY to mainH - nsY - h
-        set end of externalScreens to {nsX, asY, w, h}
-      end repeat
-    end if
+    // Sort by x position
+    external.sort((a, b) => a.x - b.x);
+    return {
+      left: external[0],
+      right: external.length > 1 ? external[1] : external[0],
+    };
+  } catch {
+    return { left: { x: 0, y: 0, w: 1920, h: 1080 }, right: { x: 1920, y: 0, w: 1920, h: 1080 } };
+  }
+}
 
-    -- Sort: screen1 = leftmost, screen2 = rightmost
-    set screen1 to item 1 of externalScreens
-    set screen2 to screen1
-    if (count of externalScreens) > 1 then
-      set screen2 to item 2 of externalScreens
-      if (item 1 of screen2) < (item 1 of screen1) then
-        set temp to screen1
-        set screen1 to screen2
-        set screen2 to temp
-      end if
-    end if
+// Place ONLY the newest VS Code window (wait for it to appear)
+function placeNewWindow(countBefore) {
+  const screens = getScreenInfo();
+  let attempts = 0;
 
-    set maxPerScreen to 5
-    set s1X to item 1 of screen1
-    set s1W to item 3 of screen1
+  const check = () => {
+    attempts++;
+    const countNow = getWindowCount();
 
-    tell application "System Events"
-      if exists process "Code" then
-        tell process "Code"
-          -- Only move the frontmost (newest) window
-          set newWin to front window
+    if (countNow > countBefore) {
+      // New window appeared! Place it.
+      const leftCount = countBefore; // all existing were on left (assumption)
+      let target, slotIndex;
 
-          -- Count existing windows on left screen (excluding the new one)
-          set leftCount to 0
-          set winList to every window
-          repeat with w in winList
-            if w is not newWin then
-              set wx to item 1 of (position of w)
-              if wx >= s1X and wx < (s1X + s1W) then
-                set leftCount to leftCount + 1
-              end if
-            end if
-          end repeat
+      if (leftCount < MAX_PER_SCREEN) {
+        target = screens.left;
+        slotIndex = leftCount;
+        const slotWidth = Math.floor(target.w / (leftCount + 1));
+        // Only place the new window, don't touch others
+        execSync(`osascript -e '
+          tell application "System Events" to tell process "Code"
+            set newWin to front window
+            set position of newWin to {${target.x + slotIndex * slotWidth}, ${target.y}}
+            set size of newWin to {${slotWidth}, ${target.h}}
+          end tell
+        '`, { timeout: 3000 });
+      } else {
+        target = screens.right;
+        execSync(`osascript -e '
+          tell application "System Events" to tell process "Code"
+            set newWin to front window
+            set position of newWin to {${target.x}, ${target.y}}
+            set size of newWin to {${target.w}, ${target.h}}
+          end tell
+        '`, { timeout: 3000 });
+      }
 
-          -- Decide target screen
-          if leftCount < maxPerScreen then
-            -- Place on left screen in the next slot
-            set sX to item 1 of screen1
-            set sY to item 2 of screen1
-            set sW to item 3 of screen1
-            set sH to item 4 of screen1
-            set slotWidth to (sW / (leftCount + 1)) as integer
-            set position of newWin to {sX + (leftCount * slotWidth), sY}
-            set size of newWin to {slotWidth, sH}
-          else
-            -- Left full, place on right screen
-            set sX to item 1 of screen2
-            set sY to item 2 of screen2
-            set sW to item 3 of screen2
-            set sH to item 4 of screen2
-            set position of newWin to {sX, sY}
-            set size of newWin to {sW, sH}
-          end if
+      console.log(`  Venster geplaatst op ${target === screens.left ? "links" : "rechts"}`);
+    } else if (attempts < 20) {
+      // Window not yet appeared, check again in 500ms
+      setTimeout(check, 500);
+    } else {
+      console.log("  Timeout: geen nieuw venster gedetecteerd");
+    }
+  };
 
-        end tell
-      end if
-    end tell
-  `;
-  exec(`osascript -e '${script.replace(/'/g, "'\\''")}'`, () => {});
+  // Start checking after 1 second
+  setTimeout(check, 1000);
 }
 
 function createHandler() {
@@ -144,15 +141,18 @@ function createHandler() {
             return;
           }
 
+          // Count windows BEFORE opening
+          const countBefore = getWindowCount();
+          console.log(`Openen: ${projectPath} (${countBefore} vensters nu)`);
+
           exec(`open -na "Visual Studio Code" --args "${projectPath}"`, (error) => {
             if (error) {
               console.error(`Fout: ${error.message}`);
               res.writeHead(500, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ fout: error.message }));
             } else {
-              console.log(`Geopend: ${projectPath}`);
-              // Tile windows after a short delay (VS Code needs time to open)
-              setTimeout(tileAllWindows, 1500);
+              // Wait for the new window and place only that one
+              placeNewWindow(countBefore);
               res.writeHead(200, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ succes: true }));
             }
@@ -179,11 +179,11 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
     createHandler()
   );
   server.listen(PORT, () => {
-    console.log(`🟢 Autronis Desktop Agent (HTTPS) op https://localhost:${PORT}`);
+    console.log(`🟢 Autronis Desktop Agent op https://localhost:${PORT}`);
   });
 } else {
   const server = http.createServer(createHandler());
   server.listen(PORT, () => {
-    console.log(`🟡 Autronis Desktop Agent (HTTP) op http://localhost:${PORT}`);
+    console.log(`🟡 Autronis Desktop Agent op http://localhost:${PORT}`);
   });
 }

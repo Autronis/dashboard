@@ -145,7 +145,7 @@ function createHandler() {
           const countBefore = getWindowCount();
           console.log(`Openen: ${projectPath} (${countBefore} vensters nu)`);
 
-          exec(`open -na "Visual Studio Code" --args "${projectPath}"`, (error) => {
+          exec(`/opt/homebrew/bin/code --new-window "${projectPath}"`, (error) => {
             if (error) {
               console.error(`Fout: ${error.message}`);
               res.writeHead(500, { "Content-Type": "application/json" });

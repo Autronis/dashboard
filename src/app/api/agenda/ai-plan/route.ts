@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
 Regels:
 - Prioriteit "HOOG" taken eerst, zo vroeg mogelijk
 - Taken met een deadline vandaag of morgen hebben voorrang
-- Schat de duur in als die niet is opgegeven (development: 60-120min, meeting: 30-60min, administratie: 30min, kleine taken: 15-30min)
+- Schat de duur in als die niet is opgegeven. Sem werkt met AI en is extreem snel: development: 15-30min, meeting: 30min, administratie: 15min, complexe feature: 30-45min. De meeste taken duren 15 min. NOOIT langer dan 45 min per taak.
 - Laat 5-10 min pauze tussen taken
 - Maximaal 8 uur werk, niet alles hoeft gepland als er te veel is
 - Groepeer vergelijkbare taken (bijv. administratie achter elkaar)

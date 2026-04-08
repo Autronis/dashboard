@@ -21,29 +21,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Titel is verplicht" }, { status: 400 });
     }
 
-    const prompt = `Je bent een planning assistent voor Autronis, een AI- en automatiseringsbureau.
-Sem werkt hier als developer. Hij bouwt snel en efficiënt met Claude AI.
-
-Schat hoelang deze taak duurt en maak een concreet stappenplan.
+    const prompt = `Je schat taakduur voor Sem (Autronis). Hij werkt met Claude AI en bouwt extreem snel.
 
 Taak: ${titel}
 ${omschrijving ? `Omschrijving: ${omschrijving}` : ""}
 ${projectNaam ? `Project: ${projectNaam}` : ""}
 
-BELANGRIJK: Sem werkt met AI-assistentie, dus taken gaan VEEL SNELLER dan normaal. Schat LAAG.
-- Bugfix / kleine aanpassing: 15 min
-- Config / setup: 15 min
-- UI component bouwen: 15-30 min
-- Nieuwe pagina/feature: 30 min
-- API endpoint + frontend: 15-30 min
-- Complexe integratie: 30-45 min
-- Onderzoek/analyse: 15 min
-- De meeste taken duren 15-30 minuten. Ga NOOIT boven 60 min tenzij extreem complex.
+DUUR REGELS — volg dit STRIKT, overschat NOOIT:
+- Bugfix / config / kleine aanpassing: 15 min
+- UI component / API endpoint: 15 min
+- Nieuwe pagina of feature: 15-30 min
+- Meerdere pagina's + API + database: 30 min
+- Enorm complexe multi-systeem integratie: 45 min MAX
+
+80% van alle taken duurt 15 minuten. Kies bij twijfel ALTIJD 15 min.
+Het absolute maximum is 45 minuten — NOOIT hoger.
 
 Antwoord ALLEEN in dit exacte JSON format:
-{"geschatteDuur": <minuten, rond af op 15>, "toelichting": "<1 zin waarom, NL>", "stappen": ["<stap 1>", "<stap 2>", "<stap 3>"]}
+{"geschatteDuur": <15 of 30 of 45>, "toelichting": "<1 zin, NL>", "stappen": ["<stap 1>", "<stap 2>", "<stap 3>"]}
 
-Geef 3-5 concrete, actiegerichte stappen. Kort en bondig.`;
+Geef 3-5 korte stappen.`;
 
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -67,8 +64,9 @@ Geef 3-5 concrete, actiegerichte stappen. Kort en bondig.`;
       stappen: string[];
     };
 
-    // Cap op 60 min
-    if (result.geschatteDuur > 60) result.geschatteDuur = 60;
+    // Cap op 45 min, rond af op 15
+    if (result.geschatteDuur > 45) result.geschatteDuur = 45;
+    result.geschatteDuur = Math.round(result.geschatteDuur / 15) * 15 || 15;
 
     return NextResponse.json(result);
   } catch (error) {

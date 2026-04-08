@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const events: DeadlineEvent[] = [];
 
     // 1. Taken met deadline
-    const takenConditions = [isNotNull(taken.deadline), gte(taken.deadline, van), lte(taken.deadline, tot), ne(taken.status, "afgerond")];
+    const takenConditions = [isNotNull(taken.deadline), gte(taken.deadline, van), lte(taken.deadline, tot)];
     const takenRows = await db
       .select({
         id: taken.id,

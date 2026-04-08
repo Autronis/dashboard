@@ -82,7 +82,7 @@ function tileAllWindows() {
         end tell
       end if
 
-      -- Chrome: tile on screen 2 (fullscreen, split evenly)
+      -- Chrome: all windows fullscreen stacked on screen 2
       set browserProcess to "Google Chrome"
       if not (exists process "Google Chrome") then
         set browserProcess to "Safari"
@@ -91,18 +91,15 @@ function tileAllWindows() {
       if exists process browserProcess then
         tell process browserProcess
           set winList to every window
-          set winCount to count of winList
-          if winCount > 0 then
+          if (count of winList) > 0 then
             set sX to item 1 of screen2
             set sY to (item 2 of screen2) * -1 + menuBar
             set sW to item 3 of screen2
             set sH to (item 4 of screen2) - menuBar
-            set perWin to (sW / winCount) as integer
 
-            repeat with i from 1 to winCount
-              set targetWindow to item i of winList
-              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
-              set size of targetWindow to {perWin, sH}
+            repeat with targetWindow in winList
+              set position of targetWindow to {sX, sY}
+              set size of targetWindow to {sW, sH}
             end repeat
           end if
         end tell

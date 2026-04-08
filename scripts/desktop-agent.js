@@ -144,7 +144,7 @@ function createHandler() {
             return;
           }
 
-          exec(`${CODE_PATH} --new-window "${projectPath}"`, (error) => {
+          exec(`open -na "Visual Studio Code" --args "${projectPath}"`, (error) => {
             if (error) {
               console.error(`Fout: ${error.message}`);
               res.writeHead(500, { "Content-Type": "application/json" });

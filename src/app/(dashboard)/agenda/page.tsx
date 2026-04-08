@@ -226,6 +226,7 @@ export default function AgendaPage() {
   const [sidebarTab, setSidebarTab] = useState<"plannen" | "vandaag" | "aankomend">("plannen");
   const [plannenFilter, setPlannenFilter] = useState<"alle" | "hoog" | "bezig">("alle");
   const [expandedProjecten, setExpandedProjecten] = useState<Set<string>>(new Set());
+  const [aiPlanLoading, setAiPlanLoading] = useState(false);
 
   function handlePlanTaak(id: number, start: string, eind: string, duur: number, kalenderId?: number) {
     planTaak.mutate(
@@ -931,6 +932,38 @@ export default function AgendaPage() {
               {takenStats.open + takenStats.bezig}
             </span>
           )}
+        </motion.button>
+
+        <div className="w-px h-5 bg-autronis-border mx-1 hidden sm:block" />
+
+        {/* AI dag vullen */}
+        <motion.button
+          onClick={async () => {
+            const ds = `${selectedDag.getFullYear()}-${String(selectedDag.getMonth() + 1).padStart(2, "0")}-${String(selectedDag.getDate()).padStart(2, "0")}`;
+            setAiPlanLoading(true);
+            try {
+              const res = await fetch("/api/agenda/ai-plan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ datum: ds }),
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.fout || "Kon dag niet plannen");
+              addToast(`${data.totaal} taken ingepland`, "succes");
+              queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+            } catch (err) {
+              addToast(err instanceof Error ? err.message : "AI planning mislukt", "fout");
+            } finally {
+              setAiPlanLoading(false);
+            }
+          }}
+          disabled={aiPlanLoading}
+          whileTap={{ scale: 0.88 }}
+          className="px-2.5 py-1.5 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 text-xs font-medium transition-colors flex items-center gap-1.5 disabled:opacity-50"
+          style={{ boxShadow: "0 0 10px rgba(168,85,247,0.15)" }}
+        >
+          {aiPlanLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+          AI Plan
         </motion.button>
       </div>
      </div>

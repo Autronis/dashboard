@@ -59,6 +59,12 @@ interface ScrapeResultaat {
   formulieren: string[];
   chatWidgets: string[];
   socialMedia: Record<string, string>;
+  socialMediaAnalyse?: {
+    linkedin?: { url: string; heeftBedrijfspagina: boolean; volgersIndicatie: string | null };
+    instagram?: { url: string; postFrequentie: string | null };
+    facebook?: { url: string };
+  } | null;
+  vacatures?: Array<{ platform: string; titel: string; url: string }>;
   googlePlaces?: {
     naam: string;
     adres: string;

@@ -1003,6 +1003,53 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 )}
 
+                {scrapeResultaat.socialMediaAnalyse && (
+                  <div>
+                    <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Social Media Analyse</p>
+                    <div className="space-y-2">
+                      {scrapeResultaat.socialMediaAnalyse.linkedin && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">LinkedIn:</span>
+                          <span className="text-[var(--text-secondary)]">
+                            {scrapeResultaat.socialMediaAnalyse.linkedin.heeftBedrijfspagina ? "Bedrijfspagina" : "Persoonlijk profiel"}
+                            {scrapeResultaat.socialMediaAnalyse.linkedin.volgersIndicatie && ` — ${scrapeResultaat.socialMediaAnalyse.linkedin.volgersIndicatie} volgers`}
+                          </span>
+                        </div>
+                      )}
+                      {scrapeResultaat.socialMediaAnalyse.instagram && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <span className="font-medium">Instagram:</span>
+                          <span className="text-[var(--text-secondary)]">
+                            {scrapeResultaat.socialMediaAnalyse.instagram.postFrequentie ?? "Profiel gevonden"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {(scrapeResultaat.vacatures?.length ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Openstaande Vacatures</p>
+                    <div className="space-y-1">
+                      {scrapeResultaat.vacatures!.map((v, i) => (
+                        <a
+                          key={i}
+                          href={v.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-sm text-[var(--accent)] hover:underline"
+                        >
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-[var(--border)]/30 text-[var(--text-tertiary)]">
+                            {v.platform}
+                          </span>
+                          {v.titel}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-2">Gescande Pagina&apos;s</p>
                   <div className="space-y-1 text-sm text-[var(--text-secondary)]">

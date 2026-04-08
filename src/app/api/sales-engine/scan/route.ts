@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
     try {
       // Scrape website + Google Places (parallel)
       const [scrapeResult, placesData] = await Promise.all([
-        scrapeWebsite(body.websiteUrl),
+        scrapeWebsite(body.websiteUrl, body.bedrijfsnaam),
         fetchGooglePlacesData(body.bedrijfsnaam, body.websiteUrl),
       ]);
       scrapeResult.googlePlaces = placesData;

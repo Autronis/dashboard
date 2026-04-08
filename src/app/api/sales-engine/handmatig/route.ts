@@ -44,7 +44,7 @@ function validateBody(body: Record<string, unknown>): HandmatigScanBody {
 async function processScanBackground(scanId: number, leadId: number, body: HandmatigScanBody) {
   try {
     // Scrape website — update DB mid-scan so frontend can detect phase
-    const scrapeResult = await scrapeWebsite(body.websiteUrl);
+    const scrapeResult = await scrapeWebsite(body.websiteUrl, body.bedrijfsnaam);
     await db.update(salesEngineScans)
       .set({
         scrapeResultaat: JSON.stringify(scrapeResult),

@@ -59,6 +59,18 @@ interface ScrapeResultaat {
   formulieren: string[];
   chatWidgets: string[];
   socialMedia: Record<string, string>;
+  googlePlaces?: {
+    naam: string;
+    adres: string;
+    rating: number | null;
+    aantalReviews: number;
+    reviews: Array<{ auteur: string; rating: number; tekst: string; datum: string }>;
+    openingstijden: string[];
+    telefoon: string | null;
+    website: string | null;
+    placeId: string;
+    categorieen: string[];
+  } | null;
 }
 
 interface BedrijfsProfiel {

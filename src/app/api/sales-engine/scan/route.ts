@@ -155,8 +155,13 @@ export async function POST(req: NextRequest) {
       .all();
 
     try {
-      // Scrape website
-      const scrapeResult = await scrapeWebsite(body.websiteUrl);
+      // Scrape website + Google Places (parallel)
+      const [scrapeResult, placesData] = await Promise.all([
+        scrapeWebsite(body.websiteUrl),
+        fetchGooglePlacesData(body.bedrijfsnaam, body.websiteUrl),
+      ]);
+      scrapeResult.googlePlaces = placesData;
+
       await db.update(salesEngineScans)
         .set({
           scrapeResultaat: JSON.stringify(scrapeResult),

@@ -686,6 +686,97 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         )}
 
+        {/* Google Places Data */}
+        {scrapeResultaat?.googlePlaces && (
+          <div className="bg-[var(--card)] rounded-xl border border-[var(--border)] p-5 space-y-4">
+            <h2 className="font-semibold text-lg flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[var(--accent)]" />
+              Google Reviews & Bedrijfsinfo
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Rating */}
+              {scrapeResultaat.googlePlaces.rating !== null && (
+                <div className="bg-[var(--bg)] rounded-lg p-4 text-center">
+                  <p className="text-3xl font-bold text-yellow-400">
+                    {scrapeResultaat.googlePlaces.rating}
+                    <span className="text-lg text-[var(--text-tertiary)]">/5</span>
+                  </p>
+                  <div className="flex justify-center gap-0.5 my-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={star <= Math.round(scrapeResultaat.googlePlaces!.rating ?? 0)
+                          ? "text-yellow-400" : "text-[var(--border)]"}
+                      >
+                        &#9733;
+                      </span>
+                    ))}
+                  </div>
+                  <p className="text-xs text-[var(--text-tertiary)]">
+                    {scrapeResultaat.googlePlaces.aantalReviews} reviews
+                  </p>
+                </div>
+              )}
+
+              {/* Adres */}
+              {scrapeResultaat.googlePlaces.adres && (
+                <div className="bg-[var(--bg)] rounded-lg p-4">
+                  <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Adres</p>
+                  <p className="text-sm">{scrapeResultaat.googlePlaces.adres}</p>
+                  {scrapeResultaat.googlePlaces.telefoon && (
+                    <p className="text-sm text-[var(--text-secondary)] mt-1">
+                      {scrapeResultaat.googlePlaces.telefoon}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Openingstijden */}
+              {scrapeResultaat.googlePlaces.openingstijden.length > 0 && (
+                <div className="bg-[var(--bg)] rounded-lg p-4">
+                  <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Openingstijden</p>
+                  <div className="space-y-0.5">
+                    {scrapeResultaat.googlePlaces.openingstijden.map((dag) => (
+                      <p key={dag} className="text-xs text-[var(--text-secondary)]">{dag}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Reviews */}
+            {scrapeResultaat.googlePlaces.reviews.length > 0 && (
+              <div>
+                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-2">
+                  Recente Reviews
+                </p>
+                <div className="space-y-3">
+                  {scrapeResultaat.googlePlaces.reviews.map((review, i) => (
+                    <div key={i} className="bg-[var(--bg)] rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium">{review.auteur}</span>
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={`text-xs ${star <= review.rating ? "text-yellow-400" : "text-[var(--border)]"}`}
+                            >
+                              &#9733;
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm text-[var(--text-secondary)]">{review.tekst}</p>
+                      <p className="text-xs text-[var(--text-tertiary)] mt-1">{review.datum}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Scrape Data (collapsible) */}
         {scrapeResultaat && scan.status !== "pending" && (
           <div className="bg-[var(--card)] rounded-xl border border-[var(--border)]">

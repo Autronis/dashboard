@@ -4,7 +4,7 @@ import {
   followUpRegels, followUpLog, followUpTemplates,
   klanten, leads, meetings, notities, leadActiviteiten, offertes,
 } from "@/lib/db/schema";
-import { sendEmailViaSES } from "@/lib/outreach/ses";
+import { Resend } from "resend";
 import { eq, and, max, desc } from "drizzle-orm";
 
 // GET /api/followup/cron — Vercel Cron: dagelijkse follow-up check + e-mail versturen
@@ -214,12 +214,14 @@ export async function GET(req: NextRequest) {
       const htmlBody = inhoud.includes("<") ? inhoud : `<div style="font-family: -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 600px;">${inhoud.replace(/\n/g, "<br>")}</div>`;
 
       try {
-        await sendEmailViaSES({
-          from: fromEmail,
-          fromName,
+        const apiKey = process.env.RESEND_API_KEY;
+        if (!apiKey) throw new Error("RESEND_API_KEY niet geconfigureerd");
+        const resend = new Resend(apiKey);
+        await resend.emails.send({
+          from: `${fromName} <${fromEmail}>`,
           to: trigger.email,
           subject: onderwerp,
-          htmlBody,
+          html: htmlBody,
           replyTo: fromEmail,
         });
 

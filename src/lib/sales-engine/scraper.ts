@@ -43,6 +43,12 @@ export interface ScrapeResult {
   formulieren: string[];
   chatWidgets: string[];
   socialMedia: Record<string, string>;
+  socialMediaAnalyse?: {
+    linkedin?: { url: string; heeftBedrijfspagina: boolean; volgersIndicatie: string | null };
+    instagram?: { url: string; postFrequentie: string | null };
+    facebook?: { url: string };
+  } | null;
+  vacatures?: Array<{ platform: string; titel: string; url: string }>;
   googlePlaces?: {
     naam: string;
     adres: string;
@@ -190,6 +196,105 @@ function detectSocialMedia(html: string): Record<string, string> {
   return social;
 }
 
+async function analyzeSocialMedia(
+  socialMedia: Record<string, string>
+): Promise<ScrapeResult["socialMediaAnalyse"]> {
+  const result: NonNullable<ScrapeResult["socialMediaAnalyse"]> = {};
+
+  // LinkedIn analyse
+  if (socialMedia.linkedin) {
+    const isCompanyPage = /linkedin\.com\/company\//i.test(socialMedia.linkedin);
+    let volgersIndicatie: string | null = null;
+
+    try {
+      const html = await fetchPage(socialMedia.linkedin);
+      if (html) {
+        // LinkedIn public pages sometimes show follower counts in meta/text
+        const followerMatch = html.match(/(\d[\d.,]+)\s*(?:followers|volgers)/i);
+        if (followerMatch) volgersIndicatie = followerMatch[1].replace(/[.,]/g, "");
+      }
+    } catch { /* LinkedIn blocks most scraping, that's fine */ }
+
+    result.linkedin = {
+      url: socialMedia.linkedin,
+      heeftBedrijfspagina: isCompanyPage,
+      volgersIndicatie,
+    };
+  }
+
+  // Instagram analyse
+  if (socialMedia.instagram) {
+    let postFrequentie: string | null = null;
+
+    try {
+      const html = await fetchPage(socialMedia.instagram);
+      if (html) {
+        // Instagram meta description sometimes contains post count
+        const postMatch = html.match(/(\d[\d.,]+)\s*(?:posts|berichten)/i);
+        const metaDesc = html.match(/<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:description["']/i)
+          || html.match(/<meta[^>]*property=["']og:description["'][^>]*content=["']([^"']*)["']/i);
+        if (metaDesc) {
+          const counts = metaDesc[1];
+          if (/\d/.test(counts)) postFrequentie = counts.substring(0, 100);
+        } else if (postMatch) {
+          postFrequentie = `${postMatch[1]} posts`;
+        }
+      }
+    } catch { /* Instagram blocks most scraping, that's fine */ }
+
+    result.instagram = {
+      url: socialMedia.instagram,
+      postFrequentie,
+    };
+  }
+
+  if (socialMedia.facebook) {
+    result.facebook = { url: socialMedia.facebook };
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
+}
+
+async function detectVacatures(
+  bedrijfsnaam: string
+): Promise<Array<{ platform: string; titel: string; url: string }>> {
+  const vacatures: Array<{ platform: string; titel: string; url: string }> = [];
+  const encodedName = encodeURIComponent(bedrijfsnaam);
+
+  // Check Indeed NL
+  try {
+    const indeedUrl = `https://nl.indeed.com/cmp/${encodedName}/jobs`;
+    const html = await fetchPage(indeedUrl);
+    if (html) {
+      const jobRegex = /<a[^>]*href=["']([^"']*\/viewjob[^"']*)["'][^>]*>[\s\S]*?<span[^>]*>([^<]+)<\/span>/gi;
+      let match;
+      let count = 0;
+      while ((match = jobRegex.exec(html)) !== null && count < 5) {
+        const url = match[1].startsWith("http") ? match[1] : `https://nl.indeed.com${match[1]}`;
+        vacatures.push({ platform: "Indeed", titel: match[2].trim(), url });
+        count++;
+      }
+    }
+  } catch { /* Indeed may block, that's fine */ }
+
+  // Check LinkedIn jobs (public search)
+  try {
+    const linkedinUrl = `https://www.linkedin.com/jobs/search/?keywords=${encodedName}&location=Nederland`;
+    const html = await fetchPage(linkedinUrl);
+    if (html) {
+      const jobRegex = /<a[^>]*class="[^"]*base-card__full-link[^"]*"[^>]*href="([^"]+)"[^>]*>[\s\S]*?<span[^>]*>([^<]+)<\/span>/gi;
+      let match;
+      let count = 0;
+      while ((match = jobRegex.exec(html)) !== null && count < 5) {
+        vacatures.push({ platform: "LinkedIn", titel: match[2].trim(), url: match[1] });
+        count++;
+      }
+    }
+  } catch { /* LinkedIn may block, that's fine */ }
+
+  return vacatures;
+}
+
 function findInternalLinks(html: string, baseUrl: string): string[] {
   const links: string[] = [];
   const regex = /href=["']([^"'#]+)["']/gi;
@@ -221,7 +326,7 @@ function isSSRFSafe(url: string): boolean {
   }
 }
 
-export async function scrapeWebsite(websiteUrl: string): Promise<ScrapeResult> {
+export async function scrapeWebsite(websiteUrl: string, bedrijfsnaam?: string): Promise<ScrapeResult> {
   if (!isSSRFSafe(websiteUrl)) {
     throw new Error("URL niet toegestaan: privé netwerk of ongeldig protocol");
   }
@@ -275,5 +380,11 @@ export async function scrapeWebsite(websiteUrl: string): Promise<ScrapeResult> {
     }
   }
 
-  return { homepage, subpaginas, techStack, formulieren, chatWidgets, socialMedia };
+  // Social media analyse + vacatures (parallel, non-blocking)
+  const [socialMediaAnalyse, vacatures] = await Promise.all([
+    analyzeSocialMedia(socialMedia).catch(() => null),
+    bedrijfsnaam ? detectVacatures(bedrijfsnaam).catch(() => []) : Promise.resolve([]),
+  ]);
+
+  return { homepage, subpaginas, techStack, formulieren, chatWidgets, socialMedia, socialMediaAnalyse, vacatures };
 }

@@ -498,6 +498,14 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
               <FileText className="w-4 h-4" />
               Download voorstel (PDF)
             </a>
+            <a
+              href={`/api/sales-engine/${scanId}/presentatie`}
+              download
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 font-medium hover:bg-purple-500/30 transition-colors"
+            >
+              <Rocket className="w-4 h-4" />
+              Download presentatie (PDF)
+            </a>
             {lead && (
               <Link
                 href={`/leads`}

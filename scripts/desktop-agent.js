@@ -151,8 +151,7 @@ function createHandler() {
               res.writeHead(500, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ fout: error.message }));
             } else {
-              // Wait for the new window and place only that one
-              placeNewWindow(countBefore);
+              console.log(`  Geopend`);
               res.writeHead(200, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ succes: true }));
             }

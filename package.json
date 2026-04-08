@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "remotion:studio": "remotion studio src/remotion/index.ts",
-    "remotion:render": "remotion render src/remotion/index.ts AutronisVideo"
+    "remotion:render": "remotion render src/remotion/index.ts AutronisVideo",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

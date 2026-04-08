@@ -62,6 +62,130 @@ function parseUrenPerWeek(text: string | null): number {
   return parseFloat(match[1].replace(",", "."));
 }
 
+function ROIChart({
+  maandelijkseBesparing,
+  investering,
+  terugverdientijdMaanden,
+}: {
+  maandelijkseBesparing: number;
+  investering: number;
+  terugverdientijdMaanden: number;
+}) {
+  const maanden = Array.from({ length: 12 }, (_, i) => i + 1);
+  const besparingData = maanden.map((m) => m * maandelijkseBesparing);
+  const maxY = Math.max(besparingData[11], investering) * 1.15;
+
+  const W = 700;
+  const H = 280;
+  const padL = 60;
+  const padR = 20;
+  const padT = 20;
+  const padB = 40;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  const x = (m: number) => padL + ((m - 1) / 11) * chartW;
+  const y = (val: number) => padT + chartH - (val / maxY) * chartH;
+
+  const besparingPath = maanden
+    .map((m, i) => `${i === 0 ? "M" : "L"}${x(m)},${y(besparingData[i])}`)
+    .join(" ");
+
+  const breakEvenX = terugverdientijdMaanden > 0 && terugverdientijdMaanden <= 12
+    ? padL + ((terugverdientijdMaanden - 1) / 11) * chartW
+    : null;
+
+  return (
+    <div className="space-y-3">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 280 }}>
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
+          <g key={pct}>
+            <line
+              x1={padL} y1={padT + chartH * (1 - pct)}
+              x2={W - padR} y2={padT + chartH * (1 - pct)}
+              stroke="var(--border)" strokeWidth={0.5} strokeDasharray={pct > 0 && pct < 1 ? "4 4" : undefined}
+            />
+            <text
+              x={padL - 8} y={padT + chartH * (1 - pct) + 4}
+              textAnchor="end" fontSize={10} fill="var(--text-tertiary)"
+            >
+              {`€${Math.round((maxY * pct) / 1000)}k`}
+            </text>
+          </g>
+        ))}
+
+        {/* Month labels */}
+        {maanden.map((m) => (
+          <text key={m} x={x(m)} y={H - 8} textAnchor="middle" fontSize={10} fill="var(--text-tertiary)">
+            M{m}
+          </text>
+        ))}
+
+        {/* Investment line */}
+        <line
+          x1={padL} y1={y(investering)}
+          x2={W - padR} y2={y(investering)}
+          stroke="#f87171" strokeWidth={1.5} strokeDasharray="6 4"
+        />
+        <text x={W - padR} y={y(investering) - 6} textAnchor="end" fontSize={10} fill="#f87171">
+          Investering €{investering.toLocaleString("nl-NL")}
+        </text>
+
+        {/* Besparing area */}
+        <path
+          d={`${besparingPath} L${x(12)},${padT + chartH} L${x(1)},${padT + chartH} Z`}
+          fill="url(#besparingGradient)" opacity={0.3}
+        />
+
+        {/* Besparing line */}
+        <path d={besparingPath} fill="none" stroke="#34d399" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Break-even marker */}
+        {breakEvenX && (
+          <g>
+            <line x1={breakEvenX} y1={padT} x2={breakEvenX} y2={padT + chartH} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4 3" />
+            <circle cx={breakEvenX} cy={y(investering)} r={5} fill="var(--accent)" />
+            <text x={breakEvenX} y={padT - 4} textAnchor="middle" fontSize={10} fontWeight="bold" fill="var(--accent)">
+              Break-even
+            </text>
+          </g>
+        )}
+
+        {/* Data points */}
+        {maanden.map((m, i) => (
+          <circle key={m} cx={x(m)} cy={y(besparingData[i])} r={3} fill="#34d399" />
+        ))}
+
+        <defs>
+          <linearGradient id="besparingGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#34d399" stopOpacity={0.4} />
+            <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-6 text-xs text-[var(--text-secondary)]">
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-0.5 bg-emerald-400 rounded" />
+          Cumulatieve besparing
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-0.5 bg-red-400 rounded" style={{ borderTop: "1.5px dashed #f87171" }} />
+          Investering
+        </div>
+        {terugverdientijdMaanden > 0 && terugverdientijdMaanden <= 12 && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+            Break-even na ~{terugverdientijdMaanden} maand{terugverdientijdMaanden !== 1 ? "en" : ""}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function berekenReadinessScore(
   kansen: ScanKans[],
   scrapeResultaat: ScrapeResultaat | null
@@ -512,6 +636,26 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
               </div>
             </motion.div>
           </div>
+        )}
+
+        {/* 12-maanden ROI Grafiek + Break-even */}
+        {scan.status === "completed" && jaarlijkseBesparing > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.15 }}
+            className="bg-[var(--card)] rounded-xl p-5 border border-[var(--border)]"
+          >
+            <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-[var(--accent)]" />
+              12-Maanden ROI Projectie
+            </h2>
+            <ROIChart
+              maandelijkseBesparing={jaarlijkseBesparing / 12}
+              investering={geschatteInvestering}
+              terugverdientijdMaanden={terugverdientijdMaanden}
+            />
+          </motion.div>
         )}
 
         {/* Cal.com Context */}

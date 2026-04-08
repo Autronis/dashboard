@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { salesEngineScans, salesEngineKansen, leads } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq } from "drizzle-orm";
+import { eq, and, ne, desc } from "drizzle-orm";
 
 export async function GET(
   _req: NextRequest,
@@ -38,6 +38,22 @@ export async function GET(
       .orderBy(salesEngineKansen.prioriteit)
       .all();
 
+    // Voorstel historie: eerdere scans van dezelfde lead
+    const historie = scan.leadId
+      ? await db
+          .select({
+            id: salesEngineScans.id,
+            websiteUrl: salesEngineScans.websiteUrl,
+            status: salesEngineScans.status,
+            automationReadinessScore: salesEngineScans.automationReadinessScore,
+            aangemaaktOp: salesEngineScans.aangemaaktOp,
+          })
+          .from(salesEngineScans)
+          .where(and(eq(salesEngineScans.leadId, scan.leadId), ne(salesEngineScans.id, scanId)))
+          .orderBy(desc(salesEngineScans.aangemaaktOp))
+          .all()
+      : [];
+
     return NextResponse.json({
       scan: {
         ...scan,
@@ -46,6 +62,7 @@ export async function GET(
       },
       lead,
       kansen,
+      historie,
     });
   } catch (error) {
     return NextResponse.json(

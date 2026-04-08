@@ -71,50 +71,47 @@ function tileAllWindows() {
       end if
     end if
 
+    set maxPerScreen to 5
+
     tell application "System Events"
-      -- VS Code: tile evenly on screen 1
+      -- VS Code: first 5 on screen 1, overflow to screen 2
       if exists process "Code" then
         tell process "Code"
           set winList to every window
           set winCount to count of winList
           if winCount > 0 then
+            -- Split: first batch on screen 1, rest on screen 2
+            set leftCount to winCount
+            if leftCount > maxPerScreen then set leftCount to maxPerScreen
+            set rightCount to winCount - leftCount
+
+            -- Tile left screen
             set sX to item 1 of screen1
             set sY to item 2 of screen1
             set sW to item 3 of screen1
             set sH to item 4 of screen1
-            set perWin to (sW / winCount) as integer
+            set perWin to (sW / leftCount) as integer
 
-            repeat with i from 1 to winCount
+            repeat with i from 1 to leftCount
               set targetWindow to item i of winList
               set position of targetWindow to {sX + ((i - 1) * perWin), sY}
               set size of targetWindow to {perWin, sH}
             end repeat
-          end if
-        end tell
-      end if
 
-      -- Chrome/Safari: tile evenly on screen 2
-      set browserProcess to "Google Chrome"
-      if not (exists process "Google Chrome") then
-        set browserProcess to "Safari"
-      end if
+            -- Overflow to right screen
+            if rightCount > 0 then
+              set sX to item 1 of screen2
+              set sY to item 2 of screen2
+              set sW to item 3 of screen2
+              set sH to item 4 of screen2
+              set perWin to (sW / rightCount) as integer
 
-      if exists process browserProcess then
-        tell process browserProcess
-          set winList to every window
-          set winCount to count of winList
-          if winCount > 0 then
-            set sX to item 1 of screen2
-            set sY to item 2 of screen2
-            set sW to item 3 of screen2
-            set sH to item 4 of screen2
-            set perWin to (sW / winCount) as integer
-
-            repeat with i from 1 to winCount
-              set targetWindow to item i of winList
-              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
-              set size of targetWindow to {perWin, sH}
-            end repeat
+              repeat with i from 1 to rightCount
+                set targetWindow to item (leftCount + i) of winList
+                set position of targetWindow to {sX + ((i - 1) * perWin), sY}
+                set size of targetWindow to {perWin, sH}
+              end repeat
+            end if
           end if
         end tell
       end if

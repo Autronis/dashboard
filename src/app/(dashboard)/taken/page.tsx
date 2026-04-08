@@ -708,7 +708,13 @@ export default function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSuccess: () => {},
+    onSuccess: () => {
+      // Invalidate related queries after a short delay to not overwrite optimistic update
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+        queryClient.invalidateQueries({ queryKey: ["deadline-events"] });
+      }, 500);
+    },
     onSettled: () => { setTimeout(() => setMutatingCount((c) => c - 1), 1000); },
   });
 

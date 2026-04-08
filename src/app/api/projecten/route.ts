@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       ? lijst.filter((p) => p.status === statusFilter)
       : lijst;
 
-    // Get task counts per project
+    // Get task counts per project (only from active projects, consistent with /api/taken)
     const takenStats = await db
       .select({
         projectId: taken.projectId,
@@ -44,6 +44,8 @@ export async function GET(req: NextRequest) {
         open: sql<number>`sum(case when ${taken.status} != 'afgerond' then 1 else 0 end)`,
       })
       .from(taken)
+      .innerJoin(projecten, eq(taken.projectId, projecten.id))
+      .where(eq(projecten.isActief, 1))
       .groupBy(taken.projectId);
 
     const takenMap = new Map(

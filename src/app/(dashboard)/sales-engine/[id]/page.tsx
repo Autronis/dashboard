@@ -490,14 +490,14 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
         {/* Action Buttons */}
         {scan.status === "completed" && (
           <div className="flex flex-wrap gap-3">
-            <button
-              disabled
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)]/20 text-[var(--accent)] font-medium opacity-50 cursor-not-allowed"
-              title="Binnenkort beschikbaar"
+            <a
+              href={`/api/sales-engine/${scanId}/voorstel`}
+              download
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)]/20 text-[var(--accent)] font-medium hover:bg-[var(--accent)]/30 transition-colors"
             >
               <FileText className="w-4 h-4" />
-              Genereer voorstel
-            </button>
+              Download voorstel (PDF)
+            </a>
             {lead && (
               <Link
                 href={`/leads`}

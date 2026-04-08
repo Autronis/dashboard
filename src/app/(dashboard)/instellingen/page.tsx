@@ -43,13 +43,14 @@ export default function InstellingenPage() {
   // Initialize local state from query data
   const currentBedrijf = bedrijf ?? data?.bedrijf ?? {
     id: null,
-    bedrijfsnaam: "Autronis",
+    bedrijfsnaam: "Autronis VOF",
     adres: "",
     kvkNummer: "",
     btwNummer: "",
     iban: "",
     email: "",
     telefoon: "",
+    website: "",
     standaardBtw: 21,
     betalingstermijnDagen: 30,
     herinneringNaDagen: 7,
@@ -324,6 +325,16 @@ export default function InstellingenPage() {
               value={currentBedrijf.iban}
               onChange={(e) => setBedrijf({ ...currentBedrijf, iban: e.target.value })}
               placeholder="NL00 BANK 0000 0000 00"
+              className={inputClasses}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-autronis-text-secondary">Website</label>
+            <input
+              type="text"
+              value={currentBedrijf.website}
+              onChange={(e) => setBedrijf({ ...currentBedrijf, website: e.target.value })}
+              placeholder="autronis.nl"
               className={inputClasses}
             />
           </div>

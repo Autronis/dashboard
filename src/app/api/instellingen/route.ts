@@ -13,13 +13,14 @@ export async function GET() {
     return NextResponse.json({
       bedrijf: bedrijf || {
         id: null,
-        bedrijfsnaam: "Autronis",
+        bedrijfsnaam: "Autronis VOF",
         adres: null,
         kvkNummer: null,
         btwNummer: null,
         iban: null,
         email: null,
         telefoon: null,
+        website: null,
         logoPad: null,
         standaardBtw: 21,
         betalingstermijnDagen: 30,
@@ -50,6 +51,7 @@ export async function PUT(req: NextRequest) {
       iban: body.iban || null,
       email: body.email || null,
       telefoon: body.telefoon || null,
+      website: body.website || null,
       standaardBtw: body.standaardBtw ?? 21,
       betalingstermijnDagen: body.betalingstermijnDagen ?? 30,
       herinneringNaDagen: body.herinneringNaDagen ?? 7,

@@ -357,6 +357,7 @@ export const bedrijfsinstellingen = sqliteTable("bedrijfsinstellingen", {
   iban: text("iban"),
   email: text("email"),
   telefoon: text("telefoon"),
+  website: text("website"),
   logoPad: text("logo_pad"),
   standaardBtw: real("standaard_btw").default(21),
   betalingstermijnDagen: integer("betalingstermijn_dagen").default(30),

@@ -9,6 +9,7 @@ interface Bedrijf {
   iban: string;
   email: string;
   telefoon: string;
+  website: string;
   standaardBtw: number;
   betalingstermijnDagen: number;
   herinneringNaDagen: number;
@@ -50,6 +51,7 @@ async function fetchInstellingen(): Promise<InstellingenData> {
       iban: b.iban || "",
       email: b.email || "",
       telefoon: b.telefoon || "",
+      website: b.website || "",
     },
     profiel: profielJson.gebruiker,
   };

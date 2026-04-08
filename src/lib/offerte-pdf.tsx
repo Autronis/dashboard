@@ -443,8 +443,8 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
               <Text style={styles.infoLabel}>Van</Text>
               <Text style={styles.infoValue}>
                 <Text style={{ fontWeight: 700 }}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
-                {bedrijf.email ? `\n${bedrijf.email}` : "\nzakelijk@autronis.com"}
-                {"\nautronis.nl"}
+                {bedrijf.email ? `\n${bedrijf.email}` : ""}
+                {bedrijf.website ? `\n${bedrijf.website}` : ""}
                 {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
               </Text>
             </View>
@@ -593,9 +593,9 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
             <View style={styles.footerCol}>
               <Text style={styles.footerLabel}>Bereikbaar</Text>
               <Text style={styles.footerText}>
-                {bedrijf.email || "zakelijk@autronis.com"}
+                {bedrijf.email || ""}
                 {bedrijf.telefoon ? `\n${bedrijf.telefoon}` : ""}
-                {"\nautronis.nl"}
+                {bedrijf.website ? `\n${bedrijf.website}` : ""}
               </Text>
             </View>
             <View style={styles.footerCol}>
@@ -608,7 +608,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
             </View>
           </View>
           <Text style={styles.footerCenter}>
-            Autronis | autronis.nl | zakelijk@autronis.com
+            {[bedrijf.bedrijfsnaam, bedrijf.website, bedrijf.email].filter(Boolean).join(" | ")}
           </Text>
         </View>
       </Page>

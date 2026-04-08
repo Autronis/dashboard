@@ -50,6 +50,7 @@ export interface DeadlineEvent {
   linkHref: string;
   bedrag: number | null;
   googleEventId: string | null;
+  status?: string;
 }
 
 async function fetchDeadlineEvents(jaar: number, maand: number): Promise<DeadlineEvent[]> {

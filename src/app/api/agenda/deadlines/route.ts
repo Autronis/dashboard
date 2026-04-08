@@ -14,6 +14,7 @@ interface DeadlineEvent {
   linkHref: string;
   bedrag: number | null;
   googleEventId: string | null;
+  status?: string;
 }
 
 // GET /api/agenda/deadlines?van=2026-03-01&tot=2026-03-31
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
       .select({
         id: taken.id,
         titel: taken.titel,
+        status: taken.status,
         deadline: taken.deadline,
         projectId: taken.projectId,
         projectNaam: projecten.naam,
@@ -61,6 +63,7 @@ export async function GET(req: NextRequest) {
         linkHref: "/taken",
         bedrag: null,
         googleEventId: row.googleEventId ?? null,
+        status: row.status,
       });
     }
 

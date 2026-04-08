@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, externeKalenders } from "@/lib/db/schema";
-import { eq, or, sql } from "drizzle-orm";
+import { eq, or, and, isNotNull, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
@@ -31,7 +31,8 @@ export async function GET() {
       .where(
         or(
           eq(taken.status, "open"),
-          eq(taken.status, "bezig")
+          eq(taken.status, "bezig"),
+          and(eq(taken.status, "afgerond"), isNotNull(taken.ingeplandStart))
         )
       )
       .orderBy(

@@ -87,9 +87,8 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
   colors: { bg: string; border: string; text: string };
   idx: number;
   onClick?: () => void;
-  onToggle?: (id: number) => void;
+  onToggle?: (id: number, status?: string) => void;
 }) {
-  const [checked, setChecked] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
     data: dragData,
@@ -97,6 +96,8 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
 
   const isTaak = "linkHref" in item && typeof (item as DeadlineEvent).linkHref === "string" && (item as DeadlineEvent).id?.toString().startsWith("taak-");
   const taakId = isTaak ? Number((item as DeadlineEvent).id.toString().replace("taak-", "")) : null;
+  const taakStatus = isTaak ? (item as DeadlineEvent).status : undefined;
+  const checked = taakStatus === "afgerond";
 
   const style: React.CSSProperties = {
     background: checked
@@ -113,9 +114,7 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
   function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
     if (!taakId || !onToggle) return;
-    const next = !checked;
-    setChecked(next);
-    setTimeout(() => onToggle(taakId), next ? 600 : 0);
+    onToggle(taakId, taakStatus);
   }
 
   return (
@@ -171,10 +170,10 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   eindTijd: string | null;
   kalenderKleur: string;
   onUnplan?: (id: number) => void;
-  onToggle?: (id: number) => void;
+  onToggle?: (id: number, status?: string) => void;
   onClick?: () => void;
 }) {
-  const [checked, setChecked] = useState(false);
+  const checked = taak.status === "afgerond";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `taak-${taak.id}`,
     data: { taak },
@@ -259,7 +258,7 @@ interface DagViewProps {
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
-  onTaakToggle?: (id: number) => void;
+  onTaakToggle?: (id: number, status?: string) => void;
   onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
   onDeadlineNaarSlot?: (deadline: DeadlineEvent, datum: string, tijd: string) => void;
 }

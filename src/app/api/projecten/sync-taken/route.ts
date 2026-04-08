@@ -122,12 +122,10 @@ export async function POST(req: NextRequest) {
         ? Math.round(((stats.afgerond ?? 0) / stats.totaal) * 100)
         : 0;
 
-      const heeftOpenTaken = stats && stats.totaal > (stats.afgerond ?? 0);
-
       await db.update(projecten)
         .set({
           voortgangPercentage: voortgang,
-          ...(heeftOpenTaken ? { status: "actief" } : {}),
+          status: voortgang >= 100 ? "afgerond" : "actief",
           bijgewerktOp: sql`(datetime('now'))`,
         })
         .where(eq(projecten.id, project.id));
@@ -246,6 +244,7 @@ export async function POST(req: NextRequest) {
     await db.update(projecten)
       .set({
         voortgangPercentage: voortgang,
+        ...(voortgang >= 100 ? { status: "afgerond" } : {}),
         bijgewerktOp: sql`(datetime('now'))`,
       })
       .where(eq(projecten.id, project.id))

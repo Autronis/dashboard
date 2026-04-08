@@ -416,7 +416,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
               <Image src={getLogoSrc()} style={styles.logoImage} />
               <View style={styles.logoTextWrap}>
                 <Text style={styles.bedrijfsnaam}>
-                  {(bedrijf.bedrijfsnaam || "AUTRONIS").toUpperCase()}
+                  {(bedrijf.bedrijfsnaam || "Autronis VOF").toUpperCase()}
                 </Text>
                 <Text style={styles.tagline}>AI & Automatisering</Text>
               </View>
@@ -443,7 +443,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
             <View style={styles.infoBlock}>
               <Text style={styles.infoLabel}>Van</Text>
               <Text style={styles.infoValue}>
-                <Text style={{ fontWeight: 700 }}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
+                <Text style={{ fontWeight: 700 }}>{bedrijf.bedrijfsnaam || "Autronis VOF"}</Text>
                 {bedrijf.email ? `\n${bedrijf.email}` : ""}
                 {bedrijf.website ? `\n${bedrijf.website}` : ""}
                 {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
@@ -566,7 +566,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
               {"\u2022"} Betaling binnen 14 dagen na factuurdatum{"\n"}
               {"\u2022"} 50% aanbetaling bij akkoord, 50% bij oplevering{"\n"}
               {"\u2022"} Facturatie geschiedt per fase of op basis van bestede uren{"\n"}
-              {"\u2022"} Op al onze diensten zijn de algemene voorwaarden van {bedrijf.bedrijfsnaam || "Autronis"} van toepassing
+              {"\u2022"} Op al onze diensten zijn de algemene voorwaarden van {bedrijf.bedrijfsnaam || "Autronis VOF"} van toepassing
             </Text>
           </View>
 
@@ -587,7 +587,7 @@ export function OffertePDF({ offerte, regels, bedrijf }: OffertePDFProps) {
             <View style={styles.footerCol}>
               <Text style={styles.footerLabel}>Contact</Text>
               <Text style={styles.footerText}>
-                {bedrijf.bedrijfsnaam || "Autronis"}
+                {bedrijf.bedrijfsnaam || "Autronis VOF"}
                 {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
               </Text>
             </View>

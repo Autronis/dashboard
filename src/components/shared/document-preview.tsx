@@ -27,6 +27,7 @@ interface Bedrijf {
   btwNummer?: string | null;
   iban?: string | null;
   telefoon?: string | null;
+  website?: string | null;
 }
 
 interface DocumentPreviewProps {

@@ -13,32 +13,70 @@ const PORT = 3848;
 const CODE_PATH = "/opt/homebrew/bin/code";
 const CERT_DIR = path.join(require("os").homedir(), ".autronis");
 
-// Tile all VS Code windows evenly on the left half of the screen
-function tileVSCodeWindows() {
+// Tile VS Code (left 60%) and Chrome/browser (right 40%) automatically
+function tileAllWindows() {
   const script = `
+    tell application "Finder"
+      set screenBounds to bounds of window of desktop
+      set screenWidth to item 3 of screenBounds
+      set screenHeight to item 4 of screenBounds
+    end tell
+
+    set menuBarHeight to 25
+    set winHeight to screenHeight - menuBarHeight
+
+    -- VS Code: left 60%
+    set codeWidth to (screenWidth * 0.6) as integer
     tell application "System Events"
-      tell process "Code"
-        set winList to every window
-        set winCount to count of winList
-        if winCount = 0 then return
-
-        tell application "Finder"
-          set screenBounds to bounds of window of desktop
-          set screenWidth to item 3 of screenBounds
-          set screenHeight to item 4 of screenBounds
+      if exists process "Code" then
+        tell process "Code"
+          set winList to every window
+          set winCount to count of winList
+          if winCount > 0 then
+            set perWin to (codeWidth / winCount) as integer
+            repeat with i from 1 to winCount
+              set targetWindow to item i of winList
+              set position of targetWindow to {(i - 1) * perWin, menuBarHeight}
+              set size of targetWindow to {perWin, winHeight}
+            end repeat
+          end if
         end tell
+      end if
 
-        -- Use left 60% of screen for VS Code
-        set totalWidth to (screenWidth * 0.6) as integer
-        set winWidth to (totalWidth / winCount) as integer
-        set winHeight to screenHeight - 25
+      -- Chrome: right 40%
+      set browserWidth to screenWidth - codeWidth
+      if exists process "Google Chrome" then
+        tell process "Google Chrome"
+          set winList to every window
+          set winCount to count of winList
+          if winCount > 0 then
+            set perWin to (browserWidth / winCount) as integer
+            repeat with i from 1 to winCount
+              set targetWindow to item i of winList
+              set position of targetWindow to {codeWidth + ((i - 1) * perWin), menuBarHeight}
+              set size of targetWindow to {perWin, winHeight}
+            end repeat
+          end if
+        end tell
+      end if
 
-        repeat with i from 1 to winCount
-          set targetWindow to item i of winList
-          set position of targetWindow to {(i - 1) * winWidth, 25}
-          set size of targetWindow to {winWidth, winHeight}
-        end repeat
-      end tell
+      -- Safari: right 40% (if no Chrome)
+      if not (exists process "Google Chrome") then
+        if exists process "Safari" then
+          tell process "Safari"
+            set winList to every window
+            set winCount to count of winList
+            if winCount > 0 then
+              set perWin to (browserWidth / winCount) as integer
+              repeat with i from 1 to winCount
+                set targetWindow to item i of winList
+                set position of targetWindow to {codeWidth + ((i - 1) * perWin), menuBarHeight}
+                set size of targetWindow to {perWin, winHeight}
+              end repeat
+            end if
+          end tell
+        end if
+      end if
     end tell
   `;
   exec(`osascript -e '${script.replace(/'/g, "'\\''")}'`, () => {});
@@ -76,7 +114,7 @@ function createHandler() {
             } else {
               console.log(`Geopend: ${projectPath}`);
               // Tile windows after a short delay (VS Code needs time to open)
-              setTimeout(tileVSCodeWindows, 1500);
+              setTimeout(tileAllWindows, 1500);
               res.writeHead(200, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ succes: true }));
             }

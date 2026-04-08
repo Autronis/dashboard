@@ -20,37 +20,50 @@ function tileAllWindows() {
     use framework "AppKit"
 
     set screenList to current application's NSScreen's screens()
+    set mainScreen to item 1 of screenList
+    set mainH to (item 2 of item 2 of (mainScreen's frame())) as integer
     set externalScreens to {}
 
-    -- Find external screens (not the built-in MacBook display)
+    -- Collect external screens with correct Y conversion
+    -- NSScreen Y is bottom-up, AppleScript position Y is top-down
     repeat with s in screenList
       set f to s's frame()
+      set vf to s's visibleFrame()
+      set nsX to (item 1 of item 1 of f) as integer
+      set nsY to (item 2 of item 1 of f) as integer
       set w to (item 1 of item 2 of f) as integer
       set h to (item 2 of item 2 of f) as integer
-      set x to (item 1 of item 1 of f) as integer
-      -- Skip the MacBook screen (usually at origin 0,0 and smaller)
-      -- External monitors are typically wider or at different positions
-      if x is not 0 or w > 2000 then
-        set end of externalScreens to {x, (item 2 of item 1 of f) as integer, w, h}
+      -- Convert NS Y (bottom-up) to AppleScript Y (top-down)
+      set asY to mainH - nsY - h
+      -- Visible frame for actual usable area
+      set vY to (item 2 of item 1 of vf) as integer
+      set vH to (item 2 of item 2 of vf) as integer
+      set asVY to mainH - vY - vH
+
+      -- Skip MacBook screen (origin 0,0 in NS coords and smaller)
+      if nsX is not 0 or w > 2000 then
+        set end of externalScreens to {nsX, asVY, w, vH}
       end if
     end repeat
 
-    -- If no external screens found, use all screens
+    -- Fallback: use all screens
     if (count of externalScreens) = 0 then
       repeat with s in screenList
-        set f to s's frame()
-        set end of externalScreens to {(item 1 of item 1 of f) as integer, (item 2 of item 1 of f) as integer, (item 1 of item 2 of f) as integer, (item 2 of item 2 of f) as integer}
+        set f to s's visibleFrame()
+        set nsX to (item 1 of item 1 of f) as integer
+        set nsY to (item 2 of item 1 of f) as integer
+        set w to (item 1 of item 2 of f) as integer
+        set h to (item 2 of item 2 of f) as integer
+        set asY to mainH - nsY - h
+        set end of externalScreens to {nsX, asY, w, h}
       end repeat
     end if
 
-    -- Sort screens left to right by x position
-    -- Screen 1 (leftmost external) = VS Code
-    -- Screen 2 (rightmost external) = Chrome/Safari
+    -- Sort: screen1 = leftmost, screen2 = rightmost
     set screen1 to item 1 of externalScreens
     set screen2 to screen1
     if (count of externalScreens) > 1 then
       set screen2 to item 2 of externalScreens
-      -- Ensure screen1 is leftmost
       if (item 1 of screen2) < (item 1 of screen1) then
         set temp to screen1
         set screen1 to screen2
@@ -58,19 +71,17 @@ function tileAllWindows() {
       end if
     end if
 
-    set menuBar to 25
-
     tell application "System Events"
-      -- VS Code: tile on screen 1 (fullscreen, split evenly)
+      -- VS Code: tile evenly on screen 1
       if exists process "Code" then
         tell process "Code"
           set winList to every window
           set winCount to count of winList
           if winCount > 0 then
             set sX to item 1 of screen1
-            set sY to (item 2 of screen1) * -1 + menuBar
+            set sY to item 2 of screen1
             set sW to item 3 of screen1
-            set sH to (item 4 of screen1) - menuBar
+            set sH to item 4 of screen1
             set perWin to (sW / winCount) as integer
 
             repeat with i from 1 to winCount
@@ -82,7 +93,7 @@ function tileAllWindows() {
         end tell
       end if
 
-      -- Chrome: all windows fullscreen stacked on screen 2
+      -- Chrome/Safari: tile evenly on screen 2
       set browserProcess to "Google Chrome"
       if not (exists process "Google Chrome") then
         set browserProcess to "Safari"
@@ -91,15 +102,18 @@ function tileAllWindows() {
       if exists process browserProcess then
         tell process browserProcess
           set winList to every window
-          if (count of winList) > 0 then
+          set winCount to count of winList
+          if winCount > 0 then
             set sX to item 1 of screen2
-            set sY to (item 2 of screen2) * -1 + menuBar
+            set sY to item 2 of screen2
             set sW to item 3 of screen2
-            set sH to (item 4 of screen2) - menuBar
+            set sH to item 4 of screen2
+            set perWin to (sW / winCount) as integer
 
-            repeat with targetWindow in winList
-              set position of targetWindow to {sX, sY}
-              set size of targetWindow to {sW, sH}
+            repeat with i from 1 to winCount
+              set targetWindow to item i of winList
+              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
+              set size of targetWindow to {perWin, sH}
             end repeat
           end if
         end tell

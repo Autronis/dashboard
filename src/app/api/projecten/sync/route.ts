@@ -507,6 +507,55 @@ export async function POST() {
       });
     }
 
+    // Remote sync: push taken to production database (fire-and-forget)
+    const remoteUrl = process.env.NEXT_PUBLIC_URL || "https://dashboard.autronis.nl";
+    const isLocalhost = remoteUrl.includes("localhost");
+    if (!isLocalhost) {
+      try {
+        const configPath = path.join(process.env.HOME || "", ".config/autronis/claude-sync.json");
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+          const apiKey = config.api_key;
+          const dashUrl = config.dashboard_url || remoteUrl;
+
+          for (const dir of dirs) {
+            const todoPath = path.join(PROJECTS_DIR, dir, "TODO.md");
+            if (!fs.existsSync(todoPath)) continue;
+
+            const todoContent = fs.readFileSync(todoPath, "utf8");
+            const todoTasks = parseTodoMd(todoContent);
+            if (todoTasks.length === 0) continue;
+
+            const projectNaam = DIR_TO_PROJECT[dir] || (() => {
+              const briefPath = path.join(PROJECTS_DIR, dir, "PROJECT_BRIEF.md");
+              if (fs.existsSync(briefPath)) {
+                const parsed = parseProjectBrief(fs.readFileSync(briefPath, "utf8"));
+                if (parsed.naam) return parsed.naam;
+              }
+              return dir.replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+            })();
+
+            fetch(`${dashUrl}/api/projecten/sync-taken`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({
+                projectNaam,
+                replace_all: true,
+                alle_taken: todoTasks.map((t) => ({
+                  titel: t.titel,
+                  status: t.done ? "afgerond" : "open",
+                  fase: t.fase,
+                  volgorde: t.volgorde,
+                })),
+              }),
+            }).catch(() => {});
+          }
+        }
+      } catch {
+        // Remote sync is best-effort
+      }
+    }
+
     return NextResponse.json({
       succes: true,
       resultaten: results,

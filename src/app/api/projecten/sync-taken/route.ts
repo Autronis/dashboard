@@ -18,10 +18,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { projectNaam, voltooide_taken, nieuwe_taken } = body as {
+    const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken } = body as {
       projectNaam: string;
       voltooide_taken?: string[];
       nieuwe_taken?: string[];
+      replace_all?: boolean;
+      alle_taken?: Array<{ titel: string; status: string; fase?: string; volgorde?: number }>;
     };
 
     if (!projectNaam) {
@@ -44,6 +46,62 @@ export async function POST(req: NextRequest) {
     // Get default user
     const defaultUser = await db.select().from(gebruikers).limit(1).get();
     const userId = defaultUser?.id ?? 1;
+
+    // Replace all mode: delete all tasks and re-insert from payload
+    if (replaceAll && alle_taken && alle_taken.length > 0) {
+      await db.delete(taken).where(eq(taken.projectId, project.id));
+
+      const HANDMATIG_PATTERNS = [
+        /account aanmaken/i, /api.?key/i, /domein/i, /hosting/i, /betaling/i,
+        /registr/i, /meeting/i, /contract/i, /offerte versturen/i, /factur.*versturen/i,
+        /klant.*contact/i, /content.*schrijven/i, /logo/i, /branding/i, /kvk/i,
+        /deploy.*productie/i, /live.*zetten/i, /handmatig/i, /uitprinten/i, /opsturen/i,
+      ];
+
+      for (const t of alle_taken) {
+        const uitvoerder = HANDMATIG_PATTERNS.some((p) => p.test(t.titel)) ? "handmatig" : "claude";
+        await db.insert(taken).values({
+          projectId: project.id,
+          toegewezenAan: userId,
+          aangemaaktDoor: userId,
+          titel: t.titel,
+          status: t.status === "afgerond" ? "afgerond" : "open",
+          prioriteit: "normaal",
+          fase: t.fase || null,
+          volgorde: t.volgorde ?? 0,
+          uitvoerder,
+        });
+      }
+
+      // Recalculate voortgang
+      const stats = await db
+        .select({
+          totaal: sql<number>`COUNT(*)`,
+          afgerond: sql<number>`SUM(CASE WHEN ${taken.status} = 'afgerond' THEN 1 ELSE 0 END)`,
+        })
+        .from(taken)
+        .where(eq(taken.projectId, project.id))
+        .get();
+
+      const voortgang = stats && stats.totaal > 0
+        ? Math.round(((stats.afgerond ?? 0) / stats.totaal) * 100)
+        : 0;
+
+      const heeftOpenTaken = stats && stats.totaal > (stats.afgerond ?? 0);
+
+      await db.update(projecten)
+        .set({
+          voortgangPercentage: voortgang,
+          ...(heeftOpenTaken ? { status: "actief" } : {}),
+          bijgewerktOp: sql`(datetime('now'))`,
+        })
+        .where(eq(projecten.id, project.id));
+
+      return NextResponse.json({
+        replaced: alle_taken.length,
+        voortgang,
+      });
+    }
 
     let matched = 0;
     let added = 0;

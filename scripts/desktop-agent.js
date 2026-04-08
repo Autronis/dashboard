@@ -10,7 +10,7 @@ const fs = require("fs");
 const path = require("path");
 const { exec } = require("child_process");
 
-const PORT = 3847;
+const PORT = 3848;
 const CERT_DIR = path.join(require("os").homedir(), ".autronis");
 
 function createHandler() {
@@ -38,7 +38,7 @@ function createHandler() {
             return;
           }
 
-          exec(`code --new-window "${projectPath}"`, (error) => {
+          exec(`/opt/homebrew/bin/code --new-window "${projectPath}"`, (error) => {
             if (error) {
               console.error(`Fout: ${error.message}`);
               res.writeHead(500, { "Content-Type": "application/json" });

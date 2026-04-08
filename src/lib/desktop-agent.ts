@@ -5,7 +5,7 @@ export async function openProjectInVSCode(projectDir: string): Promise<{ succes:
 
   // Local desktop agent op http://localhost:3847 (Autronis Dashboard.app)
   try {
-    const res = await fetch("http://localhost:3847/open", {
+    const res = await fetch("http://localhost:3848/open", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ path: fullPath }),

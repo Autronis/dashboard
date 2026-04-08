@@ -151,6 +151,34 @@ if (isTurso) {
   // Bedrijfsinstellingen website column
   client.execute("ALTER TABLE bedrijfsinstellingen ADD COLUMN website TEXT").catch(() => {});
 
+  // Dedup taken: remove duplicate tasks (same project + title), keep afgerond > open, lowest id
+  client.execute(`
+    DELETE FROM taken WHERE id NOT IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (
+          PARTITION BY project_id, LOWER(TRIM(titel))
+          ORDER BY
+            CASE status WHEN 'afgerond' THEN 0 WHEN 'bezig' THEN 1 ELSE 2 END,
+            id ASC
+        ) AS rn
+        FROM taken
+        WHERE project_id IS NOT NULL
+      ) WHERE rn = 1
+    ) AND project_id IS NOT NULL
+  `).then((r: { rowsAffected: number }) => {
+    if (r.rowsAffected > 0) {
+      // Recalculate voortgang for all projects after dedup
+      client.execute(`
+        UPDATE projecten SET voortgang_percentage = (
+          SELECT CASE WHEN COUNT(*) = 0 THEN 0
+            ELSE ROUND(100.0 * SUM(CASE WHEN t.status = 'afgerond' THEN 1 ELSE 0 END) / COUNT(*))
+          END FROM taken t WHERE t.project_id = projecten.id
+        ), bijgewerkt_op = datetime('now')
+        WHERE is_actief = 1
+      `).catch(() => {});
+    }
+  }).catch(() => {});
+
   // Uitgaven is_buitenland column
   client.execute("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT").catch(() => {});
 

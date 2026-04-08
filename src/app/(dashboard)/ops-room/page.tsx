@@ -75,16 +75,89 @@ export default function OpsRoomPage() {
     return map;
   }, [dbCommands]);
 
+  // Fetch projecten met open/bezig taken → auto-assign idle builders
+  const { data: projectenMetTaken } = useQuery({
+    queryKey: ["ops-projecten-taken"],
+    queryFn: async () => {
+      const res = await fetch("/api/taken");
+      if (!res.ok) return [];
+      const data = await res.json();
+      const taken = (data.taken ?? []) as { id: number; titel: string; status: string; projectNaam: string | null }[];
+      // Groepeer open/bezig taken per project
+      const perProject = new Map<string, { titel: string; count: number }>();
+      for (const t of taken) {
+        if ((t.status === "open" || t.status === "bezig") && t.projectNaam) {
+          const existing = perProject.get(t.projectNaam);
+          if (existing) {
+            existing.count++;
+          } else {
+            perProject.set(t.projectNaam, { titel: t.titel, count: 1 });
+          }
+        }
+      }
+      return Array.from(perProject.entries()).map(([project, info]) => ({ project, titel: info.titel, count: info.count }));
+    },
+    refetchInterval: 30_000,
+  });
+
   // Merge: mock roster as base, overlay live data
-  // Only agents with real live activity show as working, rest stays idle/standby
+  // Idle builders worden automatisch toegewezen aan projecten met open taken
   const agents = useMemo(() => {
-    if (!liveAgents || liveAgents.length === 0) return mockAgents;
+    // Bouw auto-assignment map: wijs idle builders toe aan projecten met open taken
+    const autoAssignments = new Map<string, { project: string; titel: string }>();
+    if (projectenMetTaken && projectenMetTaken.length > 0) {
+      const builderIds = mockAgents
+        .filter((a) => a.rol === "builder")
+        .map((a) => a.id);
+      // Set van agents die al actief zijn (via orchestrator, DB, of live)
+      const alreadyActive = new Set<string>();
+      if (liveAgents) {
+        for (const a of liveAgents) {
+          if (a.status === "working") alreadyActive.add(a.id);
+        }
+      }
+      for (const id of orchestratorAgents.keys()) alreadyActive.add(id);
+      for (const id of dbActiveAgents.keys()) alreadyActive.add(id);
+
+      const idleBuilders = builderIds.filter((id) => !alreadyActive.has(id));
+      let builderIdx = 0;
+      for (const pmt of projectenMetTaken) {
+        // Wijs builders toe proportioneel aan aantal taken (min 1, max 3 per project)
+        const amount = Math.min(3, Math.max(1, Math.ceil(pmt.count / 2)));
+        for (let i = 0; i < amount && builderIdx < idleBuilders.length; i++) {
+          autoAssignments.set(idleBuilders[builderIdx], { project: pmt.project, titel: pmt.titel });
+          builderIdx++;
+        }
+      }
+    }
+
+    if (!liveAgents || liveAgents.length === 0) {
+      // Geen live data — pas auto-assignments toe op mock agents
+      return mockAgents.map((mock) => {
+        const auto = autoAssignments.get(mock.id);
+        if (auto) {
+          return {
+            ...mock,
+            status: "working" as const,
+            huidigeTaak: {
+              id: `auto-${mock.id}`,
+              beschrijving: auto.titel,
+              project: auto.project,
+              startedAt: new Date().toISOString(),
+              status: "bezig" as const,
+            },
+          };
+        }
+        return mock;
+      });
+    }
+
     const liveMap = new Map(liveAgents.map((a) => [a.id, a]));
 
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
       if (!live) {
-        // No live data — management stays active, builders go idle
+        // No live data — management stays active, builders check assignments
         const alwaysActive = new Set(["theo", "toby", "jones", "ari", "rodi", "brent"]);
         if (alwaysActive.has(mock.id)) return mock;
         // Check if orchestrator or DB has this agent active
@@ -100,6 +173,21 @@ export default function OpsRoomPage() {
               startedAt: new Date().toISOString(),
               status: "bezig" as const,
             } : mock.huidigeTaak,
+          };
+        }
+        // Auto-assign aan project met open taken
+        const auto = autoAssignments.get(mock.id);
+        if (auto) {
+          return {
+            ...mock,
+            status: "working" as const,
+            huidigeTaak: {
+              id: `auto-${mock.id}`,
+              beschrijving: auto.titel,
+              project: auto.project,
+              startedAt: new Date().toISOString(),
+              status: "bezig" as const,
+            },
           };
         }
         // No activity → standby
@@ -123,7 +211,7 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
     return [...merged, ...extraLive];
-  }, [liveAgents, orchestratorAgents, dbActiveAgents]);
+  }, [liveAgents, orchestratorAgents, dbActiveAgents, projectenMetTaken]);
   const isLive = liveAgents && liveAgents.length > 0;
 
   // Convert orchestrator logs + live API data to TaskLogEntry format

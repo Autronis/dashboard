@@ -1013,7 +1013,7 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
-              onTaakAfgerond={handleTaakToggle}
+              onTaakToggle={handleTaakToggle}
               onDeadlineNaarSlot={(dl, datum, tijd) => {
                 if (dl.type === "taak") {
                   const taakId = Number(dl.id.replace("taak-", ""));
@@ -2024,12 +2024,10 @@ export default function AgendaPage() {
                                       >
                                         <div className="flex items-start gap-2">
                                           <button
-                                            className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 text-autronis-text-secondary/40 hover:text-emerald-400 transition-colors flex-shrink-0"
+                                            className="mt-0.5 w-4.5 h-4.5 rounded-full border-2 border-autronis-text-secondary/30 hover:border-emerald-400/60 flex items-center justify-center flex-shrink-0 transition-all"
                                             onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
                                             title="Afvinken"
-                                          >
-                                            <Check className="w-3.5 h-3.5" />
-                                          </button>
+                                          />
                                           <div className="flex-1 min-w-0">
                                             <p className="text-xs font-medium truncate" style={{ color: gpk.text }}>{taak.titel}</p>
                                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -2089,12 +2087,10 @@ export default function AgendaPage() {
                           >
                             <div className="flex items-start gap-2">
                               <button
-                                className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 transition-colors flex-shrink-0"
-                                style={{ color: taak.kalenderKleur || "#22c55e" }}
-                                onClick={() => handleTaakToggle(taak.id)}
+                                className="mt-0.5 w-4.5 h-4.5 rounded-full border-2 border-autronis-text-secondary/30 hover:border-emerald-400/60 flex items-center justify-center flex-shrink-0 transition-all"
+                                onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
                                 title="Afvinken"
                               >
-                                <CheckSquare className="w-3.5 h-3.5" />
                               </button>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>

@@ -80,16 +80,16 @@ interface TooltipState {
 }
 
 // ─── Draggable hele-dag item ───
-function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, onAfgerond }: {
+function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, onToggle }: {
   item: AnyEvent;
   dragId: string;
   dragData: Record<string, unknown>;
   colors: { bg: string; border: string; text: string };
   idx: number;
   onClick?: () => void;
-  onAfgerond?: (id: number) => void;
+  onToggle?: (id: number) => void;
 }) {
-  const [afgevinkt, setAfgevinkt] = useState(false);
+  const [checked, setChecked] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
     data: dragData,
@@ -99,22 +99,23 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
   const taakId = isTaak ? Number((item as DeadlineEvent).id.toString().replace("taak-", "")) : null;
 
   const style: React.CSSProperties = {
-    background: afgevinkt
-      ? `linear-gradient(135deg, rgba(16,185,129,0.15) 0%, transparent 100%)`
+    background: checked
+      ? `linear-gradient(135deg, rgba(16,185,129,0.12) 0%, transparent 100%)`
       : `linear-gradient(135deg, ${colors.bg} 0%, transparent 100%)`,
-    borderLeftColor: afgevinkt ? "#10b981" : colors.border,
-    color: afgevinkt ? "#6b7280" : colors.text,
+    borderLeftColor: checked ? "#10b981" : colors.border,
+    color: checked ? "#6b7280" : colors.text,
     borderColor: `${colors.border}30`,
     boxShadow: `0 2px 8px ${colors.border}20`,
-    opacity: isDragging ? 0.4 : afgevinkt ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : checked ? 0.5 : 1,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
   };
 
-  function handleAfgerond(e: React.MouseEvent) {
+  function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!taakId || !onAfgerond) return;
-    setAfgevinkt(true);
-    setTimeout(() => onAfgerond(taakId), 800);
+    if (!taakId || !onToggle) return;
+    const next = !checked;
+    setChecked(next);
+    setTimeout(() => onToggle(taakId), next ? 600 : 0);
   }
 
   return (
@@ -123,33 +124,46 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: idx * 0.06, duration: 0.25 }}
-      className={cn(
-        "px-3 py-2 rounded-lg text-sm font-medium border cursor-grab border-l-[3px] flex items-center gap-1.5",
-        afgevinkt && "pointer-events-none"
-      )}
+      className="px-3 py-2 rounded-lg text-sm font-medium border cursor-grab border-l-[3px] flex items-center gap-2"
       style={style}
       onClick={onClick}
     >
-      <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
-        <GripVertical className="w-3 h-3 opacity-50" />
-      </div>
-      <span className={cn("min-w-0 truncate flex-1", afgevinkt && "line-through")}>{item.titel}</span>
-      {isTaak && onAfgerond && !afgevinkt && (
-        <button
-          className="p-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex-shrink-0"
-          onClick={handleAfgerond}
-          title="Afvinken"
-        >
-          <Check className="w-3.5 h-3.5" />
-        </button>
+      {isTaak && onToggle && (
+        <TaakCheckCircle checked={checked} onClick={handleToggle} />
       )}
-      {afgevinkt && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+      {(!isTaak || !onToggle) && (
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
+          <GripVertical className="w-3 h-3 opacity-50" />
+        </div>
+      )}
+      <span className={cn("min-w-0 truncate flex-1", checked && "line-through opacity-50")}>{item.titel}</span>
+      {isTaak && onToggle && (
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
+          <GripVertical className="w-3 h-3 opacity-30" />
+        </div>
+      )}
     </motion.div>
   );
 }
 
 // ─── Draggable task block ───
-function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onAfgerond, onClick }: {
+function TaakCheckCircle({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+        checked
+          ? "bg-emerald-500 border-emerald-500"
+          : "border-autronis-text-secondary/30 hover:border-emerald-400/60"
+      )}
+    >
+      {checked && <Check className="w-3 h-3 text-white" />}
+    </button>
+  );
+}
+
+function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onToggle, onClick }: {
   taak: AgendaTaak;
   top: number;
   height: number;
@@ -157,10 +171,10 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   eindTijd: string | null;
   kalenderKleur: string;
   onUnplan?: (id: number) => void;
-  onAfgerond?: (id: number) => void;
+  onToggle?: (id: number) => void;
   onClick?: () => void;
 }) {
-  const [afgevinkt, setAfgevinkt] = useState(false);
+  const [checked, setChecked] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `taak-${taak.id}`,
     data: { taak },
@@ -169,71 +183,47 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   const style: React.CSSProperties = {
     top: `${top}px`,
     height: `${height}px`,
-    background: afgevinkt
-      ? `linear-gradient(135deg, rgba(16,185,129,0.15) 40%, rgba(14,23,25,0.1) 100%)`
+    background: checked
+      ? `linear-gradient(135deg, rgba(16,185,129,0.12) 40%, rgba(14,23,25,0.05) 100%)`
       : `linear-gradient(135deg, ${kalenderKleur}24 40%, rgba(14,23,25,0.1) 100%)`,
-    borderLeftColor: afgevinkt ? "#10b981" : kalenderKleur,
+    borderLeftColor: checked ? "#10b981" : kalenderKleur,
     boxShadow: `0 2px 10px ${kalenderKleur}25, inset 0 1px 0 ${kalenderKleur}25`,
-    opacity: isDragging ? 0.4 : afgevinkt ? 0.6 : 1,
+    opacity: isDragging ? 0.4 : checked ? 0.5 : 1,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
   };
 
-  function handleAfgerond(e: React.MouseEvent) {
+  function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
-    setAfgevinkt(true);
-    setTimeout(() => onAfgerond?.(taak.id), 800);
+    const next = !checked;
+    setChecked(next);
+    setTimeout(() => onToggle?.(taak.id), next ? 600 : 0);
   }
 
   return (
     <div
       ref={setNodeRef}
-      className={cn(
-        "absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-8 sm:pr-10 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center",
-        afgevinkt && "pointer-events-none"
-      )}
+      className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center"
       style={style}
       onClick={onClick}
     >
-      <div className="flex items-center gap-1.5">
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
-          <GripVertical className="w-3 h-3 text-autronis-text-tertiary" />
-        </div>
+      <div className="flex items-center gap-2">
+        <TaakCheckCircle checked={checked} onClick={handleToggle} />
         <p className={cn(
           "text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all",
-          afgevinkt && "line-through text-autronis-text-secondary"
+          checked && "line-through text-autronis-text-secondary/50"
         )}>{taak.titel}</p>
-        {afgevinkt && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
+          <GripVertical className="w-3 h-3 text-autronis-text-tertiary" />
+        </div>
       </div>
-      {height >= 36 && !afgevinkt && (
-        <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-4">
+      {height >= 36 && (
+        <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-7">
           <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: kalenderKleur + "B3" }} />
           <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: kalenderKleur + "B3" }}>
             {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
           </span>
           {taak.projectNaam && (
             <span className="text-[10px] text-autronis-text-secondary/50 ml-auto overflow-hidden">{taak.projectNaam}</span>
-          )}
-        </div>
-      )}
-      {!afgevinkt && (
-        <div className="absolute top-1/2 -translate-y-1/2 right-1.5 flex items-center gap-0.5">
-          {onAfgerond && (
-            <button
-              className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-              onClick={handleAfgerond}
-              title="Afvinken"
-            >
-              <Check className="w-3.5 h-3.5" />
-            </button>
-          )}
-          {onUnplan && (
-            <button
-              className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-              onClick={(e) => { e.stopPropagation(); onUnplan(taak.id); }}
-              title="Uit agenda halen"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
           )}
         </div>
       )}
@@ -516,7 +506,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       dragData={{ deadlineItem: dl }}
                       colors={colors}
                       idx={idx}
-                      onAfgerond={onTaakToggle}
+                      onToggle={onTaakToggle}
                     />
                   );
                 }
@@ -708,7 +698,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 eindTijd={eindTijd}
                 kalenderKleur={taak.kalenderKleur || "#22c55e"}
                 onUnplan={onUnplanTaak}
-                onAfgerond={onTaakToggle}
+                onToggle={onTaakToggle}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               />
             );

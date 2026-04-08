@@ -10,7 +10,10 @@ import { eq, like, sql } from "drizzle-orm";
 import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
-const PROJECTS_BASE = "c:/Users/semmi/OneDrive/Claude AI/Projects";
+const PROJECTS_BASE = process.env.PROJECTS_BASE_PATH
+  || (process.platform === "win32"
+    ? "c:/Users/semmi/OneDrive/Claude AI/Projects"
+    : `${process.env.HOME || "/Users/semmiegijs"}/Autronis/Projects`);
 
 // POST /api/ideeen/[id]/start-project — idee omzetten naar project
 export async function POST(
@@ -92,33 +95,63 @@ export async function POST(
     const slug = idee.naam.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
     const projectDir = path.join(PROJECTS_BASE, slug);
 
+    const projectBrief = generateProjectBrief(idee);
+    const masterPrompt = generateMasterPrompt(idee, slug);
+    const rules = generateRules();
+
+    // AI-generated detailed plan
+    let todoContent: string;
+    try {
+      const plan = await generateDetailedPlan(idee);
+      todoContent = plan.todoMd;
+      // Sync fases + taken to database
+      await syncPlanToDatabase(project.id, gebruiker.id, plan.fases);
+    } catch {
+      // Fallback to simple plan
+      todoContent = generateSimpleTodo(idee);
+    }
+
+    const projectFiles = {
+      "PROJECT_BRIEF.md": projectBrief,
+      "MASTER_PROMPT.md": masterPrompt,
+      "RULES.md": rules,
+      "TODO.md": todoContent,
+    };
+
+    // Probeer lokaal aan te maken (werkt op Mac/PC, niet op Vercel)
     try {
       await mkdir(projectDir, { recursive: true });
-
-      const projectBrief = generateProjectBrief(idee);
-      const masterPrompt = generateMasterPrompt(idee, slug);
-      const rules = generateRules();
-
-      // AI-generated detailed plan
-      let todoContent: string;
-      try {
-        const plan = await generateDetailedPlan(idee);
-        todoContent = plan.todoMd;
-        // Sync fases + taken to database
-        await syncPlanToDatabase(project.id, gebruiker.id, plan.fases);
-      } catch {
-        // Fallback to simple plan
-        todoContent = generateSimpleTodo(idee);
-      }
-
-      await Promise.all([
-        writeFile(path.join(projectDir, "PROJECT_BRIEF.md"), projectBrief, "utf-8"),
-        writeFile(path.join(projectDir, "MASTER_PROMPT.md"), masterPrompt, "utf-8"),
-        writeFile(path.join(projectDir, "RULES.md"), rules, "utf-8"),
-        writeFile(path.join(projectDir, "TODO.md"), todoContent, "utf-8"),
-      ]);
+      await Promise.all(
+        Object.entries(projectFiles).map(([name, content]) =>
+          writeFile(path.join(projectDir, name), content, "utf-8")
+        )
+      );
     } catch {
-      // Directory aanmaken mislukt — project is wel aangemaakt in DB
+      // Lokaal aanmaken mislukt (bijv. op Vercel) — probeer via sync server
+    }
+
+    // Probeer via lokale sync server (Mac/PC via Tailscale)
+    const syncUrls = [
+      process.env.LOCAL_SYNC_URL,           // Expliciet geconfigureerd
+      "http://100.118.188.41:3456",          // Mac via Tailscale
+      "http://localhost:3456",               // Lokaal
+    ].filter(Boolean);
+
+    for (const syncUrl of syncUrls) {
+      try {
+        await fetch(`${syncUrl}/create-project`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${process.env.SESSION_SECRET || "autronis-dashboard-2026-geheim-minimaal-32-tekens!!"}`,
+          },
+          body: JSON.stringify({ slug, files: projectFiles }),
+          signal: AbortSignal.timeout(5000),
+        });
+        break; // Eerste succesvolle sync is genoeg
+      } catch {
+        // Sync server niet bereikbaar — probeer volgende
+      }
     }
 
     // 6. Plan in Notion aanmaken + notionId opslaan

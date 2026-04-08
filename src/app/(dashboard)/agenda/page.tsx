@@ -20,6 +20,7 @@ import {
   MapPin,
   Users,
   Video,
+  Check,
   CheckSquare,
   ListTodo,
   Zap,
@@ -244,6 +245,23 @@ export default function AgendaPage() {
       onSuccess: () => addToast("Taak uit agenda gehaald", "succes"),
       onError: () => addToast("Kon taak niet uitplannen", "fout"),
     });
+  }
+
+  async function handleTaakAfgerond(id: number) {
+    try {
+      const res = await fetch(`/api/taken/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "afgerond" }),
+      });
+      if (!res.ok) throw new Error();
+      addToast("Taak afgerond", "succes");
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["deadline-events"] });
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+    } catch {
+      addToast("Kon taak niet afvinken", "fout");
+    }
   }
 
   function openPlanModal(taak: AgendaTaak, datum?: string, tijd?: string) {
@@ -994,6 +1012,7 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
+              onTaakAfgerond={handleTaakAfgerond}
               onDeadlineNaarSlot={(dl, datum, tijd) => {
                 if (dl.type === "taak") {
                   const taakId = Number(dl.id.replace("taak-", ""));
@@ -1604,16 +1623,22 @@ export default function AgendaPage() {
                         {height > 48 && taak.projectNaam && (
                           <p className="text-[9px] opacity-55 mt-0.5 truncate">{taak.projectNaam}</p>
                         )}
-                        <button
-                          className="absolute top-1 right-1 p-0.5 rounded bg-black/20 text-white/60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUnplanTaak(taak.id);
-                          }}
-                          title="Uit agenda halen"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                        <div className="absolute top-1 right-1 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <button
+                            className="p-0.5 rounded bg-emerald-500/30 text-white/80 hover:bg-emerald-500/50 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleTaakAfgerond(taak.id); }}
+                            title="Afvinken"
+                          >
+                            <Check className="w-3 h-3" />
+                          </button>
+                          <button
+                            className="p-0.5 rounded bg-black/20 text-white/60 hover:bg-black/30 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleUnplanTaak(taak.id); }}
+                            title="Uit agenda halen"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                     );
                   });
@@ -1997,11 +2022,13 @@ export default function AgendaPage() {
                                         style={{ backgroundColor: gpk.bg, borderColor: `${gpk.border}30`, borderLeftColor: gpk.border, color: gpk.text }}
                                       >
                                         <div className="flex items-start gap-2">
-                                          <div className="flex flex-col gap-px mt-1 opacity-30 group-hover:opacity-60 flex-shrink-0">
-                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                                            <div className="w-1 h-1 rounded-full bg-autronis-text-secondary" />
-                                          </div>
+                                          <button
+                                            className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 text-autronis-text-secondary/40 hover:text-emerald-400 transition-colors flex-shrink-0"
+                                            onClick={(e) => { e.stopPropagation(); handleTaakAfgerond(taak.id); }}
+                                            title="Afvinken"
+                                          >
+                                            <Check className="w-3.5 h-3.5" />
+                                          </button>
                                           <div className="flex-1 min-w-0">
                                             <p className="text-xs font-medium truncate" style={{ color: gpk.text }}>{taak.titel}</p>
                                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
@@ -2060,7 +2087,14 @@ export default function AgendaPage() {
                             }}
                           >
                             <div className="flex items-start gap-2">
-                              <CheckSquare className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: taak.kalenderKleur || "#22c55e" }} />
+                              <button
+                                className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 transition-colors flex-shrink-0"
+                                style={{ color: taak.kalenderKleur || "#22c55e" }}
+                                onClick={() => handleTaakAfgerond(taak.id)}
+                                title="Afvinken"
+                              >
+                                <CheckSquare className="w-3.5 h-3.5" />
+                              </button>
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium text-autronis-text-primary truncate">{taak.titel}</p>
                                 {taak.projectNaam && (

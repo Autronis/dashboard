@@ -133,6 +133,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   onAfgerond?: (id: number) => void;
   onClick?: () => void;
 }) {
+  const [afgevinkt, setAfgevinkt] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `taak-${taak.id}`,
     data: { taak },
@@ -141,27 +142,42 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   const style: React.CSSProperties = {
     top: `${top}px`,
     height: `${height}px`,
-    background: `linear-gradient(135deg, ${kalenderKleur}24 40%, rgba(14,23,25,0.1) 100%)`,
-    borderLeftColor: kalenderKleur,
+    background: afgevinkt
+      ? `linear-gradient(135deg, rgba(16,185,129,0.15) 40%, rgba(14,23,25,0.1) 100%)`
+      : `linear-gradient(135deg, ${kalenderKleur}24 40%, rgba(14,23,25,0.1) 100%)`,
+    borderLeftColor: afgevinkt ? "#10b981" : kalenderKleur,
     boxShadow: `0 2px 10px ${kalenderKleur}25, inset 0 1px 0 ${kalenderKleur}25`,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.4 : afgevinkt ? 0.6 : 1,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
   };
+
+  function handleAfgerond(e: React.MouseEvent) {
+    e.stopPropagation();
+    setAfgevinkt(true);
+    setTimeout(() => onAfgerond?.(taak.id), 800);
+  }
 
   return (
     <div
       ref={setNodeRef}
-      className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-grab overflow-hidden transition-[filter] hover:brightness-115 z-[3] group"
+      className={cn(
+        "absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center",
+        afgevinkt && "pointer-events-none"
+      )}
       style={style}
       onClick={onClick}
     >
-      <div className="flex items-start gap-1.5">
-        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-0.5 touch-none">
+      <div className="flex items-center gap-1.5">
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
           <GripVertical className="w-3 h-3 text-autronis-text-tertiary" />
         </div>
-        <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1">{taak.titel}</p>
+        <p className={cn(
+          "text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all",
+          afgevinkt && "line-through text-autronis-text-secondary"
+        )}>{taak.titel}</p>
+        {afgevinkt && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
       </div>
-      {height >= 36 && (
+      {height >= 36 && !afgevinkt && (
         <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-4">
           <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: kalenderKleur + "B3" }} />
           <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: kalenderKleur + "B3" }}>
@@ -172,26 +188,28 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
           )}
         </div>
       )}
-      <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-        {onAfgerond && (
-          <button
-            className="p-0.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onAfgerond(taak.id); }}
-            title="Afvinken"
-          >
-            <Check className="w-3 h-3" />
-          </button>
-        )}
-        {onUnplan && (
-          <button
-            className="p-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-            onClick={(e) => { e.stopPropagation(); onUnplan(taak.id); }}
-            title="Uit agenda halen"
-          >
-            <X className="w-3 h-3" />
-          </button>
-        )}
-      </div>
+      {!afgevinkt && (
+        <div className="absolute top-1/2 -translate-y-1/2 right-1.5 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+          {onAfgerond && (
+            <button
+              className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+              onClick={handleAfgerond}
+              title="Afvinken"
+            >
+              <Check className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {onUnplan && (
+            <button
+              className="p-1 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+              onClick={(e) => { e.stopPropagation(); onUnplan(taak.id); }}
+              title="Uit agenda halen"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

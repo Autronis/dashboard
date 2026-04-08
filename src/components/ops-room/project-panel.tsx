@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { FolderOpen, FileCode, UserPlus } from "lucide-react";
+import { FolderOpen, FileCode, UserPlus, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getProjectColor } from "./project-colors";
 import { PixelAvatar } from "./pixel-avatar";
@@ -20,6 +20,19 @@ interface DbProject {
   voortgangPercentage: number | null;
 }
 
+interface TeamMember {
+  naam: string;
+  taak: string;
+}
+
+interface TeamLiveData {
+  projectStatus: Array<{
+    projectId: number;
+    projectNaam: string;
+    medewerkers: TeamMember[];
+  }>;
+}
+
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   actief: { bg: "bg-green-500/15", text: "text-green-400", label: "Actief" },
   in_progress: { bg: "bg-amber-500/15", text: "text-amber-400", label: "In progress" },
@@ -27,6 +40,21 @@ const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }>
   afgerond: { bg: "bg-gray-500/15", text: "text-gray-400", label: "Afgerond" },
   gepauzeerd: { bg: "bg-gray-500/15", text: "text-gray-500", label: "Gepauzeerd" },
 };
+
+// Avatar colors for team members
+const MEMBER_COLORS: Record<string, string> = {
+  sem: "#17B8A5",
+  syb: "#a855f7",
+};
+
+function getMemberColor(naam: string): string {
+  const key = naam.toLowerCase();
+  return MEMBER_COLORS[key] || "#6b7280";
+}
+
+function getInitials(naam: string): string {
+  return naam.split(" ").map(w => w[0]).join("").toUpperCase().slice(0, 2);
+}
 
 export function ProjectPanel({ agents }: ProjectPanelProps) {
   const [hoveredProject, setHoveredProject] = useState<string | null>(null);
@@ -48,7 +76,6 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
         body: JSON.stringify({ agentId, projectNaam }),
       });
       if (res.ok) {
-        // Refresh agent data
         queryClient.invalidateQueries({ queryKey: ["ops-room"] });
       }
     } catch { /* ignore */ }
@@ -71,31 +98,53 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     staleTime: 60_000,
   });
 
+  // Fetch team/live data to see which humans are working on which projects
+  const { data: teamLive } = useQuery<TeamLiveData>({
+    queryKey: ["team-live-ops"],
+    queryFn: async () => {
+      const res = await fetch("/api/team/live");
+      if (!res.ok) return { projectStatus: [] };
+      return res.json();
+    },
+    refetchInterval: 10_000,
+    staleTime: 5_000,
+  });
+
   // Normalize project name for grouping: lowercase, strip hyphens/spaces
   function normalizeKey(s: string): string {
     return s.toLowerCase().replace(/[-_\s]/g, "");
   }
 
+  // Build map of projectId → team members working on it
+  const teamByProjectId = useMemo(() => {
+    const map = new Map<number, TeamMember[]>();
+    if (!teamLive?.projectStatus) return map;
+    for (const ps of teamLive.projectStatus) {
+      map.set(ps.projectId, ps.medewerkers);
+    }
+    return map;
+  }, [teamLive]);
+
   const activeProjects = useMemo(() => {
     // Use normalized key for grouping, keep best display name (prefer capitalized)
     const keyToDisplay = new Map<string, string>();
-    const map = new Map<string, { agents: Agent[]; hasError: boolean; files: string[] }>();
+    const map = new Map<string, { agents: Agent[]; hasError: boolean; files: string[]; teamMembers: TeamMember[]; dbProjectId: number | null }>();
+
+    // First: add projects from active agents
     agents.forEach((a) => {
       if (a.huidigeTaak) {
         const proj = a.huidigeTaak.project;
         const key = normalizeKey(proj);
-        // Prefer the display name that has uppercase or spaces (more human-readable)
         if (!keyToDisplay.has(key) || proj.match(/[A-Z\s]/)) {
           keyToDisplay.set(key, proj);
         }
         const display = keyToDisplay.get(key)!;
         if (!map.has(display)) {
-          // Move existing key if needed
           if (map.has(proj) && display !== proj) {
             map.set(display, map.get(proj)!);
             map.delete(proj);
           } else {
-            map.set(display, { agents: [], hasError: false, files: [] });
+            map.set(display, { agents: [], hasError: false, files: [], teamMembers: [], dbProjectId: null });
           }
         }
         const entry = map.get(display)!;
@@ -107,8 +156,38 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
         if (fileMatch) entry.files.push(...fileMatch);
       }
     });
+
+    // Second: add projects from team/live (human users working on tasks)
+    if (dbProjects && teamLive?.projectStatus) {
+      for (const ps of teamLive.projectStatus) {
+        const dbp = dbProjects.find(p => p.id === ps.projectId);
+        const projName = ps.projectNaam || dbp?.naam || `Project ${ps.projectId}`;
+        const key = normalizeKey(projName);
+
+        // Find existing entry or create new
+        let existingKey: string | null = null;
+        for (const [k] of map) {
+          if (normalizeKey(k) === key) { existingKey = k; break; }
+        }
+
+        if (existingKey) {
+          const entry = map.get(existingKey)!;
+          entry.teamMembers = ps.medewerkers;
+          entry.dbProjectId = ps.projectId;
+        } else {
+          map.set(projName, {
+            agents: [],
+            hasError: false,
+            files: [],
+            teamMembers: ps.medewerkers,
+            dbProjectId: ps.projectId,
+          });
+        }
+      }
+    }
+
     return map;
-  }, [agents]);
+  }, [agents, dbProjects, teamLive]);
 
   const projectIdMap = useMemo(() => {
     const map = new Map<string, DbProject>();
@@ -123,7 +202,11 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
     return s.toLowerCase().replace(/[^a-z0-9]/g, "");
   }
 
-  function findDbProject(projectName: string): DbProject | null {
+  function findDbProject(projectName: string, dbProjectId?: number | null): DbProject | null {
+    if (dbProjectId && dbProjects) {
+      const found = dbProjects.find(p => p.id === dbProjectId);
+      if (found) return found;
+    }
     const lower = projectName.toLowerCase();
     if (projectIdMap.has(lower)) return projectIdMap.get(lower)!;
     for (const [dbName, proj] of projectIdMap) {
@@ -149,14 +232,15 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
         </span>
       </div>
       <div className="p-3 space-y-2">
-        {Array.from(activeProjects.entries()).map(([proj, { agents: projAgents, hasError, files }]) => {
+        {Array.from(activeProjects.entries()).map(([proj, { agents: projAgents, hasError, files, teamMembers, dbProjectId }]) => {
           const color = getProjectColor(proj);
-          const dbProject = findDbProject(proj);
+          const dbProject = findDbProject(proj, dbProjectId);
           const voortgang = dbProject?.voortgangPercentage ?? null;
           const status = dbProject?.status ?? "actief";
           const statusStyle = STATUS_COLORS[status] ?? STATUS_COLORS.actief;
           const isHovered = hoveredProject === proj;
           const uniqueFiles = [...new Set(files)].slice(0, 4);
+          const hasActivity = projAgents.length > 0 || teamMembers.length > 0;
 
           const content = (
             <div className="relative">
@@ -204,9 +288,23 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
                     </div>
                   )}
 
-                  {/* Agent pixel avatars + names */}
+                  {/* Team members + Agent pixel avatars */}
                   <div className="flex items-center gap-1.5">
                     <div className="flex -space-x-1">
+                      {/* Human team members first */}
+                      {teamMembers.map((member) => (
+                        <div
+                          key={`member-${member.naam}`}
+                          className="relative shrink-0 w-5 h-5 rounded-full border-2 border-autronis-card flex items-center justify-center text-[8px] font-bold text-white"
+                          style={{ backgroundColor: getMemberColor(member.naam) }}
+                          title={`${member.naam}: ${member.taak}`}
+                        >
+                          {getInitials(member.naam)}
+                          {/* Green pulse to show active */}
+                          <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-400 border border-autronis-card animate-pulse" />
+                        </div>
+                      ))}
+                      {/* Agent avatars */}
                       {projAgents.slice(0, 5).map((agent) => (
                         <div
                           key={agent.id}
@@ -223,8 +321,13 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
                       )}
                     </div>
                     <span className="text-[10px] text-autronis-text-tertiary truncate">
-                      {projAgents.slice(0, 3).map(a => a.naam).join(", ")}
-                      {projAgents.length > 3 ? ` +${projAgents.length - 3}` : ""}
+                      {[
+                        ...teamMembers.map(m => m.naam),
+                        ...projAgents.slice(0, 3).map(a => a.naam),
+                      ].slice(0, 3).join(", ")}
+                      {(teamMembers.length + projAgents.length) > 3
+                        ? ` +${teamMembers.length + projAgents.length - 3}`
+                        : ""}
                     </span>
                   </div>
                 </div>
@@ -233,28 +336,55 @@ export function ProjectPanel({ agents }: ProjectPanelProps) {
                 <span
                   className={cn(
                     "w-2.5 h-2.5 rounded-full shrink-0 transition-all",
-                    hasError ? "bg-red-400" : "bg-green-400 animate-pulse"
+                    hasError ? "bg-red-400" : hasActivity ? "bg-green-400 animate-pulse" : "bg-gray-500"
                   )}
                 />
               </div>
 
-              {/* Hover tooltip: affected files */}
-              {isHovered && uniqueFiles.length > 0 && (
+              {/* Hover tooltip: team tasks + affected files */}
+              {isHovered && (teamMembers.length > 0 || uniqueFiles.length > 0) && (
                 <div className="mt-2 pt-2 border-t border-autronis-border/20">
-                  <p className="text-[9px] text-autronis-text-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
-                    <FileCode className="w-2.5 h-2.5" />
-                    Bestanden
-                  </p>
-                  <div className="flex flex-wrap gap-1">
-                    {uniqueFiles.map((file) => (
-                      <span
-                        key={file}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-autronis-border/20 text-autronis-text-secondary"
-                      >
-                        {file}
-                      </span>
-                    ))}
-                  </div>
+                  {teamMembers.length > 0 && (
+                    <div className="mb-1.5">
+                      <p className="text-[9px] text-autronis-text-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <User className="w-2.5 h-2.5" />
+                        Actief
+                      </p>
+                      <div className="space-y-0.5">
+                        {teamMembers.map((m) => (
+                          <div key={m.naam} className="flex items-center gap-1.5">
+                            <span
+                              className="w-3 h-3 rounded-full flex items-center justify-center text-[6px] font-bold text-white shrink-0"
+                              style={{ backgroundColor: getMemberColor(m.naam) }}
+                            >
+                              {getInitials(m.naam)}
+                            </span>
+                            <span className="text-[9px] text-autronis-text-secondary truncate">
+                              {m.naam}: {m.taak}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {uniqueFiles.length > 0 && (
+                    <>
+                      <p className="text-[9px] text-autronis-text-tertiary uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <FileCode className="w-2.5 h-2.5" />
+                        Bestanden
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {uniqueFiles.map((file) => (
+                          <span
+                            key={file}
+                            className="px-1.5 py-0.5 rounded text-[9px] font-mono bg-autronis-border/20 text-autronis-text-secondary"
+                          >
+                            {file}
+                          </span>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

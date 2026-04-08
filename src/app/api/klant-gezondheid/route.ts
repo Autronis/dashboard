@@ -30,6 +30,7 @@ function dagenTussen(van: string | null, tot: Date): number | null {
 
 // ─── GET: Health scores ophalen ──────────────────────────────────
 export async function GET() {
+  const startTime = performance.now();
   try {
     await requireAuth();
 
@@ -249,6 +250,9 @@ export async function GET() {
     const aandacht = resultaten.filter((r) => r.totaalScore >= 60 && r.totaalScore < 80).length;
     const gezond = resultaten.filter((r) => r.totaalScore >= 80).length;
 
+    const duur = Math.round(performance.now() - startTime);
+    console.info(`[klant-gezondheid] ${resultaten.length} klanten berekend in ${duur}ms | gem=${gemiddelde} kritiek=${kritiek} risico=${risico} aandacht=${aandacht} gezond=${gezond}`);
+
     return NextResponse.json({
       klanten: resultaten,
       kpis: {
@@ -261,6 +265,8 @@ export async function GET() {
       },
     });
   } catch (error) {
+    const duur = Math.round(performance.now() - startTime);
+    console.error(`[klant-gezondheid] Fout na ${duur}ms:`, error instanceof Error ? error.message : error);
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },
       { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 },

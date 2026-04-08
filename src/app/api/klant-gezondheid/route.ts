@@ -19,7 +19,6 @@ import {
   berekenTevredenheidScore,
   berekenActiviteitScore,
   berekenTotaalScore,
-  clamp,
 } from "@/lib/health-score";
 
 // ─── Helper ─────────────────────────────────────────────────────
@@ -204,13 +203,13 @@ export async function GET() {
         openTakenMap.get(klant.id) ?? 0,
       );
 
-      const totaalScore = clamp(
-        comm.score * WEIGHTS.communicatie +
-        betaling.score * WEIGHTS.betaling +
-        project.score * WEIGHTS.project +
-        tevredenheid.score * WEIGHTS.tevredenheid +
-        activiteit.score * WEIGHTS.activiteit,
-      );
+      const totaalScore = berekenTotaalScore({
+        communicatie: comm.score,
+        betaling: betaling.score,
+        project: project.score,
+        tevredenheid: tevredenheid.score,
+        activiteit: activiteit.score,
+      });
 
       const vorigeScore = vorigeMap.get(klant.id) ?? null;
       const trend = vorigeScore !== null ? totaalScore - vorigeScore : null;

@@ -740,6 +740,12 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                 <p className="text-sm">{aiAnalyse.bedrijfsProfiel?.doelgroep}</p>
               </div>
             </div>
+            {aiAnalyse.concurrentiePositie && (
+              <div className="mt-4 pt-4 border-t border-[var(--border)]">
+                <p className="text-xs text-[var(--text-tertiary)] uppercase tracking-wider mb-1">Concurrentiepositie</p>
+                <p className="text-sm text-[var(--text-secondary)]">{aiAnalyse.concurrentiePositie}</p>
+              </div>
+            )}
           </motion.div>
         )}
 

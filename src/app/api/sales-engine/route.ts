@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { salesEngineScans, salesEngineKansen, leads } from "@/lib/db/schema";
+import { salesEngineScans, salesEngineKansen, leads, offertes, outreachSequenties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -61,6 +61,20 @@ export async function GET(req: NextRequest) {
     const completed = scans.filter((s) => s.status === "completed").length;
     const failed = scans.filter((s) => s.status === "failed").length;
 
+    // Conversie analytics: scans → outreach → offertes → geaccepteerd
+    const outreachCount = await db
+      .select({ count: sql<number>`COUNT(DISTINCT ${outreachSequenties.leadId})` })
+      .from(outreachSequenties)
+      .get();
+
+    const offerteStats = await db
+      .select({
+        totaal: sql<number>`COUNT(*)`,
+        geaccepteerd: sql<number>`SUM(CASE WHEN ${offertes.status} = 'geaccepteerd' THEN 1 ELSE 0 END)`,
+      })
+      .from(offertes)
+      .get();
+
     return NextResponse.json({
       scans: scansWithKansen,
       kpis: {
@@ -68,6 +82,12 @@ export async function GET(req: NextRequest) {
         dezeWeek,
         succesRatio: totaal > 0 ? Math.round((completed / totaal) * 100) : 0,
         failed,
+      },
+      conversie: {
+        scans: completed,
+        outreach: outreachCount?.count ?? 0,
+        offertes: offerteStats?.totaal ?? 0,
+        geaccepteerd: offerteStats?.geaccepteerd ?? 0,
       },
     });
   } catch (error) {

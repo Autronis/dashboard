@@ -75,7 +75,7 @@ export default function OpsRoomPage() {
     return map;
   }, [dbCommands]);
 
-  // Fetch projecten met open/bezig taken → auto-assign idle builders
+  // Fetch taken met status "bezig" → die projecten zijn actief en krijgen builders
   const { data: projectenMetTaken } = useQuery({
     queryKey: ["ops-projecten-taken"],
     queryFn: async () => {
@@ -83,10 +83,10 @@ export default function OpsRoomPage() {
       if (!res.ok) return [];
       const data = await res.json();
       const taken = (data.taken ?? []) as { id: number; titel: string; status: string; projectNaam: string | null }[];
-      // Groepeer open/bezig taken per project
+      // Alleen taken met status "bezig" — dat zijn projecten waar actief aan gewerkt wordt
       const perProject = new Map<string, { titel: string; count: number }>();
       for (const t of taken) {
-        if ((t.status === "open" || t.status === "bezig") && t.projectNaam) {
+        if (t.status === "bezig" && t.projectNaam) {
           const existing = perProject.get(t.projectNaam);
           if (existing) {
             existing.count++;

@@ -247,20 +247,21 @@ export default function AgendaPage() {
     });
   }
 
-  async function handleTaakAfgerond(id: number) {
+  async function handleTaakToggle(id: number, huidigeStatus?: string) {
+    const nieuweStatus = huidigeStatus === "afgerond" ? "open" : "afgerond";
     try {
       const res = await fetch(`/api/taken/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "afgerond" }),
+        body: JSON.stringify({ status: nieuweStatus }),
       });
       if (!res.ok) throw new Error();
-      addToast("Taak afgerond", "succes");
+      addToast(nieuweStatus === "afgerond" ? "Taak afgerond" : "Taak heropend", "succes");
       queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
       queryClient.invalidateQueries({ queryKey: ["deadline-events"] });
       queryClient.invalidateQueries({ queryKey: ["taken"] });
     } catch {
-      addToast("Kon taak niet afvinken", "fout");
+      addToast("Kon taak niet bijwerken", "fout");
     }
   }
 
@@ -1012,7 +1013,7 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
-              onTaakAfgerond={handleTaakAfgerond}
+              onTaakAfgerond={handleTaakToggle}
               onDeadlineNaarSlot={(dl, datum, tijd) => {
                 if (dl.type === "taak") {
                   const taakId = Number(dl.id.replace("taak-", ""));
@@ -1626,7 +1627,7 @@ export default function AgendaPage() {
                         <div className="absolute top-1 right-1 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                           <button
                             className="p-0.5 rounded bg-emerald-500/30 text-white/80 hover:bg-emerald-500/50 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); handleTaakAfgerond(taak.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
                             title="Afvinken"
                           >
                             <Check className="w-3 h-3" />
@@ -2024,7 +2025,7 @@ export default function AgendaPage() {
                                         <div className="flex items-start gap-2">
                                           <button
                                             className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 text-autronis-text-secondary/40 hover:text-emerald-400 transition-colors flex-shrink-0"
-                                            onClick={(e) => { e.stopPropagation(); handleTaakAfgerond(taak.id); }}
+                                            onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
                                             title="Afvinken"
                                           >
                                             <Check className="w-3.5 h-3.5" />
@@ -2090,7 +2091,7 @@ export default function AgendaPage() {
                               <button
                                 className="mt-0.5 p-0.5 rounded hover:bg-emerald-500/20 transition-colors flex-shrink-0"
                                 style={{ color: taak.kalenderKleur || "#22c55e" }}
-                                onClick={() => handleTaakAfgerond(taak.id)}
+                                onClick={() => handleTaakToggle(taak.id)}
                                 title="Afvinken"
                               >
                                 <CheckSquare className="w-3.5 h-3.5" />

@@ -269,12 +269,12 @@ interface DagViewProps {
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
-  onTaakAfgerond?: (id: number) => void;
+  onTaakToggle?: (id: number) => void;
   onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
   onDeadlineNaarSlot?: (deadline: DeadlineEvent, datum: string, tijd: string) => void;
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onTaakAfgerond, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -516,7 +516,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       dragData={{ deadlineItem: dl }}
                       colors={colors}
                       idx={idx}
-                      onAfgerond={onTaakAfgerond}
+                      onAfgerond={onTaakToggle}
                     />
                   );
                 }
@@ -708,7 +708,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 eindTijd={eindTijd}
                 kalenderKleur={taak.kalenderKleur || "#22c55e"}
                 onUnplan={onUnplanTaak}
-                onAfgerond={onTaakAfgerond}
+                onAfgerond={onTaakToggle}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               />
             );

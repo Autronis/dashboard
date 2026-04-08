@@ -148,6 +148,9 @@ if (isTurso) {
     client.execute(`ALTER TABLE btw_aangiftes ADD COLUMN ${col}`).catch(() => {});
   }
 
+  // Bedrijfsinstellingen website column
+  client.execute("ALTER TABLE bedrijfsinstellingen ADD COLUMN website TEXT").catch(() => {});
+
   // Uitgaven is_buitenland column
   client.execute("ALTER TABLE uitgaven ADD COLUMN is_buitenland TEXT").catch(() => {});
 

@@ -20,6 +20,8 @@ export async function GET() {
         ingeplandStart: taken.ingeplandStart,
         ingeplandEind: taken.ingeplandEind,
         toegewezenAanId: taken.toegewezenAan,
+        uitvoerder: taken.uitvoerder,
+        projectMap: taken.projectMap,
         projectNaam: projecten.naam,
         kalenderId: taken.kalenderId,
         kalenderNaam: externeKalenders.naam,

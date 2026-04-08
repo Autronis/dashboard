@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
         prioriteit: taken.prioriteit,
         deadline: taken.deadline,
         geschatteDuur: taken.geschatteDuur,
+        uitvoerder: taken.uitvoerder,
+        projectMap: taken.projectMap,
         projectNaam: projecten.naam,
       })
       .from(taken)
@@ -58,6 +60,7 @@ export async function POST(req: NextRequest) {
     const takenLijst = nietIngepland.map((t) => {
       const parts = [`ID:${t.id} "${t.titel}"`];
       if (t.prioriteit === "hoog") parts.push("(HOOG)");
+      if (t.uitvoerder === "claude") parts.push("[AI-TAAK]");
       if (t.deadline) parts.push(`deadline:${t.deadline}`);
       if (t.geschatteDuur) parts.push(`geschat:${t.geschatteDuur}min`);
       if (t.projectNaam) parts.push(`project:${t.projectNaam}`);
@@ -78,6 +81,7 @@ Regels:
 - Laat 5-10 min pauze tussen taken
 - Maximaal 8 uur werk, niet alles hoeft gepland als er te veel is
 - Groepeer vergelijkbare taken (bijv. administratie achter elkaar)
+- BELANGRIJK: Groepeer [AI-TAAK] taken achter elkaar in één aaneengesloten blok. De gebruiker start deze als batch via Claude Code terwijl hij iets anders doet. Plan ze bij voorkeur als eerste blok van de dag of direct na de lunch.
 - Zware/creatieve taken in de ochtend, lichte taken na de lunch
 
 Antwoord ALLEEN met een JSON array, geen uitleg:

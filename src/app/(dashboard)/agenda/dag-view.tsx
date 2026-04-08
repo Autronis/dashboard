@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
@@ -209,6 +209,23 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
           "text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all",
           checked && "line-through text-autronis-text-secondary/50"
         )}>{taak.titel}</p>
+        {taak.uitvoerder === "claude" && !checked && (
+          <button
+            className="p-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors flex-shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              const projectDir = taak.projectMap || "";
+              const prompt = `Voer deze taak uit: "${taak.titel}"${taak.projectNaam ? ` (project: ${taak.projectNaam})` : ""}`;
+              const cmd = projectDir
+                ? `cd "${projectDir}" && claude "${prompt}"`
+                : `claude "${prompt}"`;
+              navigator.clipboard.writeText(cmd);
+            }}
+            title="Kopieer Claude Code commando"
+          >
+            <Terminal className="w-3 h-3" />
+          </button>
+        )}
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
           <GripVertical className="w-3 h-3 text-autronis-text-tertiary" />
         </div>

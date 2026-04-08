@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { leads, salesEngineScans, salesEngineKansen } from "@/lib/db/schema";
 import { requireApiKey } from "@/lib/auth";
 import { scrapeWebsite } from "@/lib/sales-engine/scraper";
+import { fetchGooglePlacesData } from "@/lib/sales-engine/google-places";
 import { analyzeWithClaude } from "@/lib/sales-engine/analyzer";
 import { generateEmailSequence, extractEmailInput } from "@/lib/outreach/email-generator";
 import { outreachSequenties, outreachEmails, outreachDomeinen, outreachOptOuts } from "@/lib/db/schema";

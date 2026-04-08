@@ -47,9 +47,26 @@ export async function POST(req: NextRequest) {
     const defaultUser = await db.select().from(gebruikers).limit(1).get();
     const userId = defaultUser?.id ?? 1;
 
-    // Replace all mode: delete all tasks and re-insert from payload
+    // Replace all mode: sync tasks from payload, respecting existing statuses
     if (replaceAll && alle_taken && alle_taken.length > 0) {
-      await db.delete(taken).where(eq(taken.projectId, project.id));
+      // Get existing tasks to preserve their status
+      const existing = await db
+        .select({ id: taken.id, titel: taken.titel, status: taken.status })
+        .from(taken)
+        .where(eq(taken.projectId, project.id))
+        .all();
+
+      const existingByTitle = new Map(
+        existing.map((t) => [t.titel.toLowerCase().trim(), t])
+      );
+
+      // Delete tasks not in the new payload
+      const newTitles = new Set(alle_taken.map((t) => t.titel.toLowerCase().trim()));
+      for (const ex of existing) {
+        if (!newTitles.has(ex.titel.toLowerCase().trim())) {
+          await db.delete(taken).where(eq(taken.id, ex.id));
+        }
+      }
 
       const HANDMATIG_PATTERNS = [
         /account aanmaken/i, /api.?key/i, /domein/i, /hosting/i, /betaling/i,
@@ -59,18 +76,36 @@ export async function POST(req: NextRequest) {
       ];
 
       for (const t of alle_taken) {
+        const key = t.titel.toLowerCase().trim();
+        const ex = existingByTitle.get(key);
         const uitvoerder = HANDMATIG_PATTERNS.some((p) => p.test(t.titel)) ? "handmatig" : "claude";
-        await db.insert(taken).values({
-          projectId: project.id,
-          toegewezenAan: userId,
-          aangemaaktDoor: userId,
-          titel: t.titel,
-          status: t.status === "afgerond" ? "afgerond" : "open",
-          prioriteit: "normaal",
-          fase: t.fase || null,
-          volgorde: t.volgorde ?? 0,
-          uitvoerder,
-        });
+
+        // Determine status: never downgrade afgerond → open
+        const payloadStatus = t.status === "afgerond" ? "afgerond" : "open";
+        const finalStatus = ex?.status === "afgerond" ? "afgerond" : payloadStatus;
+
+        if (ex) {
+          // Update existing task (preserve afgerond status)
+          await db.update(taken).set({
+            status: finalStatus,
+            fase: t.fase || null,
+            volgorde: t.volgorde ?? 0,
+            bijgewerktOp: sql`(datetime('now'))`,
+          }).where(eq(taken.id, ex.id));
+        } else {
+          // Insert new task
+          await db.insert(taken).values({
+            projectId: project.id,
+            toegewezenAan: userId,
+            aangemaaktDoor: userId,
+            titel: t.titel,
+            status: finalStatus,
+            prioriteit: "normaal",
+            fase: t.fase || null,
+            volgorde: t.volgorde ?? 0,
+            uitvoerder,
+          });
+        }
       }
 
       // Recalculate voortgang

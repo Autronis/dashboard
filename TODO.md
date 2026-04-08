@@ -31,16 +31,16 @@
 - [x] Kosten tracking per agent/taak
 
 ## ⚠️ Belangrijk: Kie.ai API integratie (Animaties)
-- [ ] Kie.ai API key aanmaken (docs.kie.ai) — pay-as-you-go
-- [ ] Animaties pagina: "Genereer afbeeldingen" knop → Kie.ai Nano Banana 2 (Prompt A + B automatisch)
-- [ ] Animaties pagina: "Genereer video" knop → Kie.ai Runway Aleph (Prompt C, start+end frame)
-- [ ] Volledige workflow geautomatiseerd: Claude prompts → Kie.ai afbeeldingen → Kie.ai video, alles in dashboard
+- [x] Kie.ai API key aanmaken (docs.kie.ai) — pay-as-you-go
+- [x] Animaties pagina: "Genereer afbeeldingen" knop → Kie.ai Nano Banana 2 (Prompt A + B automatisch)
+- [x] Animaties pagina: "Genereer video" knop → Kie.ai Runway Aleph (Prompt C, start+end frame)
+- [x] Volledige workflow geautomatiseerd: Claude prompts → Kie.ai afbeeldingen → Kie.ai video, alles in dashboard
 
-## Fase 5: Uitbreidingen (open)
-- [ ] Dagelijkse updates via WhatsApp/mail (project status, content live, agent activiteit samenvatting)
-- [ ] Offertes module
-- [ ] Proposals (ondertekenen, klant portal)
-- [ ] Wiki / Kennisbank
-- [ ] Doelen (OKR, maanddoelen)
-- [ ] Team (verlof, beschikbaarheid, onkosten)
-- [ ] Instellingen pagina
+## Fase 5: Uitbreidingen
+- [x] Dagelijkse updates (push notificaties, dagelijkse briefing)
+- [x] Offertes module
+- [x] Proposals (ondertekenen, klant portal)
+- [x] Wiki / Kennisbank
+- [x] Doelen (OKR, maanddoelen)
+- [x] Team (verlof, beschikbaarheid, onkosten)
+- [x] Instellingen pagina

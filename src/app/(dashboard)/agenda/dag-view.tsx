@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee, CheckSquare, X, Video, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
@@ -122,7 +122,7 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick }: 
 }
 
 // ─── Draggable task block ───
-function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onClick }: {
+function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onAfgerond, onClick }: {
   taak: AgendaTaak;
   top: number;
   height: number;
@@ -130,6 +130,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   eindTijd: string | null;
   kalenderKleur: string;
   onUnplan?: (id: number) => void;
+  onAfgerond?: (id: number) => void;
   onClick?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -171,15 +172,26 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
           )}
         </div>
       )}
-      {onUnplan && (
-        <button
-          className="absolute top-1.5 right-1.5 p-0.5 rounded bg-red-500/20 text-red-400 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-          onClick={(e) => { e.stopPropagation(); onUnplan(taak.id); }}
-          title="Uit agenda halen"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
+      <div className="absolute top-1.5 right-1.5 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        {onAfgerond && (
+          <button
+            className="p-0.5 rounded bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onAfgerond(taak.id); }}
+            title="Afvinken"
+          >
+            <Check className="w-3 h-3" />
+          </button>
+        )}
+        {onUnplan && (
+          <button
+            className="p-0.5 rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onUnplan(taak.id); }}
+            title="Uit agenda halen"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -212,11 +224,12 @@ interface DagViewProps {
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onUnplanTaak?: (id: number) => void;
+  onTaakAfgerond?: (id: number) => void;
   onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
   onDeadlineNaarSlot?: (deadline: DeadlineEvent, datum: string, tijd: string) => void;
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onTaakAfgerond, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -649,6 +662,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 eindTijd={eindTijd}
                 kalenderKleur={taak.kalenderKleur || "#22c55e"}
                 onUnplan={onUnplanTaak}
+                onAfgerond={onTaakAfgerond}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
               />
             );

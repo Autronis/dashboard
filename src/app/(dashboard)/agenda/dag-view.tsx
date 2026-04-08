@@ -563,6 +563,45 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* AI-taken batch banner */}
+      {(() => {
+        const aiTaken = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart && t.status !== "afgerond");
+        if (aiTaken.length === 0) return null;
+
+        function kopieeerBatchCmd() {
+          // Groepeer per project
+          const perProject = new Map<string, typeof aiTaken>();
+          for (const t of aiTaken) {
+            const dir = t.projectMap || "~";
+            if (!perProject.has(dir)) perProject.set(dir, []);
+            perProject.get(dir)!.push(t);
+          }
+          const cmds: string[] = [];
+          for (const [dir, projectTaken] of perProject) {
+            const takenTekst = projectTaken.map((t) => `- ${t.titel}`).join("\\n");
+            const prompt = `Voer deze taken uit:\\n${takenTekst}`;
+            cmds.push(`cd "${dir}" && claude "${prompt}"`);
+          }
+          navigator.clipboard.writeText(cmds.join(" && "));
+        }
+
+        return (
+          <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl border border-purple-500/20 bg-purple-500/5">
+            <Terminal className="w-4 h-4 text-purple-400 flex-shrink-0" />
+            <span className="text-xs text-purple-300 flex-1">
+              {aiTaken.length} AI-{aiTaken.length === 1 ? "taak" : "taken"} ingepland
+            </span>
+            <button
+              onClick={kopieeerBatchCmd}
+              className="px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[11px] font-medium transition-colors"
+            >
+              Kopieer commando
+            </button>
+          </div>
+        );
+      })()}
+
       <div ref={scrollRef} className="relative border border-autronis-border/30 rounded-xl overflow-x-auto">
         <div className="relative" style={{ height: `${uren.length * UUR_HOOGTE}px`, minWidth: "280px" }}>
           {/* Uur lijnen */}

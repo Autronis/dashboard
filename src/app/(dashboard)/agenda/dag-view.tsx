@@ -80,28 +80,42 @@ interface TooltipState {
 }
 
 // ─── Draggable hele-dag item ───
-function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick }: {
+function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, onAfgerond }: {
   item: AnyEvent;
   dragId: string;
   dragData: Record<string, unknown>;
   colors: { bg: string; border: string; text: string };
   idx: number;
   onClick?: () => void;
+  onAfgerond?: (id: number) => void;
 }) {
+  const [afgevinkt, setAfgevinkt] = useState(false);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: dragId,
     data: dragData,
   });
 
+  const isTaak = "linkHref" in item && typeof (item as DeadlineEvent).linkHref === "string" && (item as DeadlineEvent).id?.toString().startsWith("taak-");
+  const taakId = isTaak ? Number((item as DeadlineEvent).id.toString().replace("taak-", "")) : null;
+
   const style: React.CSSProperties = {
-    background: `linear-gradient(135deg, ${colors.bg} 0%, transparent 100%)`,
-    borderLeftColor: colors.border,
-    color: colors.text,
+    background: afgevinkt
+      ? `linear-gradient(135deg, rgba(16,185,129,0.15) 0%, transparent 100%)`
+      : `linear-gradient(135deg, ${colors.bg} 0%, transparent 100%)`,
+    borderLeftColor: afgevinkt ? "#10b981" : colors.border,
+    color: afgevinkt ? "#6b7280" : colors.text,
     borderColor: `${colors.border}30`,
     boxShadow: `0 2px 8px ${colors.border}20`,
-    opacity: isDragging ? 0.4 : 1,
+    opacity: isDragging ? 0.4 : afgevinkt ? 0.5 : 1,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
   };
+
+  function handleAfgerond(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!taakId || !onAfgerond) return;
+    setAfgevinkt(true);
+    setTimeout(() => onAfgerond(taakId), 800);
+  }
 
   return (
     <motion.div
@@ -109,14 +123,27 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick }: 
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: idx * 0.06, duration: 0.25 }}
-      className="px-3 py-2 rounded-lg text-sm font-medium border cursor-grab border-l-[3px] flex items-center gap-1.5"
+      className={cn(
+        "px-3 py-2 rounded-lg text-sm font-medium border cursor-grab border-l-[3px] flex items-center gap-1.5",
+        afgevinkt && "pointer-events-none"
+      )}
       style={style}
       onClick={onClick}
     >
       <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
         <GripVertical className="w-3 h-3 opacity-50" />
       </div>
-      <span className="min-w-0 truncate">{item.titel}</span>
+      <span className={cn("min-w-0 truncate flex-1", afgevinkt && "line-through")}>{item.titel}</span>
+      {isTaak && onAfgerond && !afgevinkt && (
+        <button
+          className="p-0.5 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors flex-shrink-0"
+          onClick={handleAfgerond}
+          title="Afvinken"
+        >
+          <Check className="w-3.5 h-3.5" />
+        </button>
+      )}
+      {afgevinkt && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />}
     </motion.div>
   );
 }
@@ -161,7 +188,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
     <div
       ref={setNodeRef}
       className={cn(
-        "absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center",
+        "absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-8 sm:pr-10 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center",
         afgevinkt && "pointer-events-none"
       )}
       style={style}
@@ -189,7 +216,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
         </div>
       )}
       {!afgevinkt && (
-        <div className="absolute top-1/2 -translate-y-1/2 right-1.5 flex items-center gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-1/2 -translate-y-1/2 right-1.5 flex items-center gap-0.5">
           {onAfgerond && (
             <button
               className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
@@ -489,6 +516,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       dragData={{ deadlineItem: dl }}
                       colors={colors}
                       idx={idx}
+                      onAfgerond={onTaakAfgerond}
                     />
                   );
                 }

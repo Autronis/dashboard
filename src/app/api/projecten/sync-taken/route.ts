@@ -161,14 +161,16 @@ export async function POST(req: NextRequest) {
         const trimmed = titel.trim();
         if (!trimmed) continue;
 
-        // Check if task already exists (case-insensitive)
+        // Check if task already exists (case-insensitive, also check substring match)
         const bestaat = await db
-          .select({ id: taken.id })
+          .select({ id: taken.id, titel: taken.titel })
           .from(taken)
           .where(
             and(
               eq(taken.projectId, project.id),
-              sql`LOWER(${taken.titel}) = LOWER(${trimmed})`
+              sql`(LOWER(TRIM(${taken.titel})) = LOWER(TRIM(${trimmed}))
+                OR LOWER(TRIM(${taken.titel})) LIKE '%' || LOWER(TRIM(${trimmed})) || '%'
+                OR LOWER(TRIM(${trimmed})) LIKE '%' || LOWER(TRIM(${taken.titel})) || '%')`
             )
           )
           .get();

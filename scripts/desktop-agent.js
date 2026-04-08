@@ -13,69 +13,99 @@ const PORT = 3848;
 const CODE_PATH = "/opt/homebrew/bin/code";
 const CERT_DIR = path.join(require("os").homedir(), ".autronis");
 
-// Tile VS Code (left 60%) and Chrome/browser (right 40%) automatically
+// Detect external monitors and tile VS Code + Chrome fullscreen on them
 function tileAllWindows() {
+  // Use NSScreen to find external monitors dynamically
   const script = `
-    tell application "Finder"
-      set screenBounds to bounds of window of desktop
-      set screenWidth to item 3 of screenBounds
-      set screenHeight to item 4 of screenBounds
-    end tell
+    use framework "AppKit"
 
-    set menuBarHeight to 25
-    set winHeight to screenHeight - menuBarHeight
+    set screenList to current application's NSScreen's screens()
+    set externalScreens to {}
 
-    -- VS Code: left 60%
-    set codeWidth to (screenWidth * 0.6) as integer
+    -- Find external screens (not the built-in MacBook display)
+    repeat with s in screenList
+      set f to s's frame()
+      set w to (item 1 of item 2 of f) as integer
+      set h to (item 2 of item 2 of f) as integer
+      set x to (item 1 of item 1 of f) as integer
+      -- Skip the MacBook screen (usually at origin 0,0 and smaller)
+      -- External monitors are typically wider or at different positions
+      if x is not 0 or w > 2000 then
+        set end of externalScreens to {x, (item 2 of item 1 of f) as integer, w, h}
+      end if
+    end repeat
+
+    -- If no external screens found, use all screens
+    if (count of externalScreens) = 0 then
+      repeat with s in screenList
+        set f to s's frame()
+        set end of externalScreens to {(item 1 of item 1 of f) as integer, (item 2 of item 1 of f) as integer, (item 1 of item 2 of f) as integer, (item 2 of item 2 of f) as integer}
+      end repeat
+    end if
+
+    -- Sort screens left to right by x position
+    -- Screen 1 (leftmost external) = VS Code
+    -- Screen 2 (rightmost external) = Chrome/Safari
+    set screen1 to item 1 of externalScreens
+    set screen2 to screen1
+    if (count of externalScreens) > 1 then
+      set screen2 to item 2 of externalScreens
+      -- Ensure screen1 is leftmost
+      if (item 1 of screen2) < (item 1 of screen1) then
+        set temp to screen1
+        set screen1 to screen2
+        set screen2 to temp
+      end if
+    end if
+
+    set menuBar to 25
+
     tell application "System Events"
+      -- VS Code: tile on screen 1 (fullscreen, split evenly)
       if exists process "Code" then
         tell process "Code"
           set winList to every window
           set winCount to count of winList
           if winCount > 0 then
-            set perWin to (codeWidth / winCount) as integer
+            set sX to item 1 of screen1
+            set sY to (item 2 of screen1) * -1 + menuBar
+            set sW to item 3 of screen1
+            set sH to (item 4 of screen1) - menuBar
+            set perWin to (sW / winCount) as integer
+
             repeat with i from 1 to winCount
               set targetWindow to item i of winList
-              set position of targetWindow to {(i - 1) * perWin, menuBarHeight}
-              set size of targetWindow to {perWin, winHeight}
+              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
+              set size of targetWindow to {perWin, sH}
             end repeat
           end if
         end tell
       end if
 
-      -- Chrome: right 40%
-      set browserWidth to screenWidth - codeWidth
-      if exists process "Google Chrome" then
-        tell process "Google Chrome"
+      -- Chrome: tile on screen 2 (fullscreen, split evenly)
+      set browserProcess to "Google Chrome"
+      if not (exists process "Google Chrome") then
+        set browserProcess to "Safari"
+      end if
+
+      if exists process browserProcess then
+        tell process browserProcess
           set winList to every window
           set winCount to count of winList
           if winCount > 0 then
-            set perWin to (browserWidth / winCount) as integer
+            set sX to item 1 of screen2
+            set sY to (item 2 of screen2) * -1 + menuBar
+            set sW to item 3 of screen2
+            set sH to (item 4 of screen2) - menuBar
+            set perWin to (sW / winCount) as integer
+
             repeat with i from 1 to winCount
               set targetWindow to item i of winList
-              set position of targetWindow to {codeWidth + ((i - 1) * perWin), menuBarHeight}
-              set size of targetWindow to {perWin, winHeight}
+              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
+              set size of targetWindow to {perWin, sH}
             end repeat
           end if
         end tell
-      end if
-
-      -- Safari: right 40% (if no Chrome)
-      if not (exists process "Google Chrome") then
-        if exists process "Safari" then
-          tell process "Safari"
-            set winList to every window
-            set winCount to count of winList
-            if winCount > 0 then
-              set perWin to (browserWidth / winCount) as integer
-              repeat with i from 1 to winCount
-                set targetWindow to item i of winList
-                set position of targetWindow to {codeWidth + ((i - 1) * perWin), menuBarHeight}
-                set size of targetWindow to {perWin, winHeight}
-              end repeat
-            end if
-          end tell
-        end if
       end if
     end tell
   `;

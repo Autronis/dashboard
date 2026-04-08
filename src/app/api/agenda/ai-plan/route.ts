@@ -83,9 +83,11 @@ Regels:
 - Groepeer vergelijkbare taken (bijv. administratie achter elkaar)
 - BELANGRIJK: Groepeer [AI-TAAK] taken achter elkaar in één aaneengesloten blok. De gebruiker start deze als batch via Claude Code terwijl hij iets anders doet. Plan ze bij voorkeur als eerste blok van de dag of direct na de lunch.
 - Zware/creatieve taken in de ochtend, lichte taken na de lunch
+- Als een taak niet inplanbaar is (bijv. wachten op iets), SKIP die taak. Zet hem NIET in de output.
+- Start en eind MOETEN het format "HH:MM" hebben (bijv. "08:00", "14:30"). NOOIT tekst, NOOIT "WACHTRIJ" of iets anders.
 
 Antwoord ALLEEN met een JSON array, geen uitleg:
-[{"id": 123, "start": "08:00", "eind": "09:30", "duur": 90}]`,
+[{"id": 123, "start": "08:00", "eind": "08:30", "duur": 30}]`,
       messages: [{
         role: "user",
         content: `Plan deze taken in voor ${datum}:
@@ -104,14 +106,21 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
 
     const planning: Array<{ id: number; start: string; eind: string; duur: number }> = JSON.parse(jsonMatch[0]);
 
-    // Plan de taken in
+    // Plan de taken in — valideer tijden strikt
+    const tijdRegex = /^\d{2}:\d{2}$/;
     const gepland: Array<{ id: number; titel: string; start: string; eind: string }> = [];
     for (const item of planning) {
       const taak = nietIngepland.find((t) => t.id === item.id);
       if (!taak) continue;
 
+      // Skip als start/eind geen geldig HH:MM format is
+      if (!tijdRegex.test(item.start) || !tijdRegex.test(item.eind)) continue;
+
       const startISO = `${datum}T${item.start}:00`;
       const eindISO = `${datum}T${item.eind}:00`;
+
+      // Valideer dat het geldige dates zijn
+      if (isNaN(new Date(startISO).getTime()) || isNaN(new Date(eindISO).getTime())) continue;
 
       await db
         .update(taken)

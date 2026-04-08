@@ -79,7 +79,7 @@ export async function GET(
     const pdfBuffer = await renderToBuffer(<PresentatiePDF data={data} />);
     const filename = `Autronis-Presentatie-${data.bedrijfsnaam.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
 
-    return new NextResponse(pdfBuffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,

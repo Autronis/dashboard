@@ -220,11 +220,9 @@ export function DocumentPreview({
               {t.from}
             </p>
             <p className="text-xs text-gray-600 leading-relaxed">
-              <span className="font-semibold text-gray-800">{b?.bedrijfsnaam || "Autronis"}</span>
-              <br />
-              {b?.email || "zakelijk@autronis.com"}
-              <br />
-              autronis.nl
+              <span className="font-semibold text-gray-800">{b?.bedrijfsnaam || "Autronis VOF"}</span>
+              {b?.email && <><br />{b.email}</>}
+              {b?.website && <><br />{b.website}</>}
               {b?.adres && (
                 <>
                   <br />
@@ -421,9 +419,9 @@ export function DocumentPreview({
       <div className="px-8 py-4 flex justify-between items-start text-[10px]">
         <div className="text-gray-400 leading-relaxed">
           <span style={{ color: TEAL }} className="font-semibold">
-            {bedrijf?.bedrijfsnaam || "Autronis"}
+            {bedrijf?.bedrijfsnaam || "Autronis VOF"}
           </span>{" "}
-          | {bedrijf?.email || "zakelijk@autronis.com"} | autronis.nl
+          {bedrijf?.email ? `| ${bedrijf.email} ` : ""}{bedrijf?.website ? `| ${bedrijf.website}` : ""}
         </div>
         <div className="text-gray-400 text-right leading-relaxed">
           {[

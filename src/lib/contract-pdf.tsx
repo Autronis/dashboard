@@ -205,7 +205,11 @@ interface ContractPDFProps {
     bedrijfsnaam: string | null;
     adres: string | null;
     kvkNummer: string | null;
+    btwNummer: string | null;
     email: string | null;
+    telefoon: string | null;
+    website: string | null;
+    iban: string | null;
   };
 }
 
@@ -312,7 +316,7 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
     .replace(/Plaats en datum:[\s\S]*$/i, "")
     .trim();
   const contentElements = parseMarkdownToElements(inhoudZonderHandtekening);
-  const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis";
+  const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis VOF";
 
   return (
     <Document>
@@ -403,7 +407,7 @@ export function ContractPDF({ contract, bedrijf }: ContractPDFProps) {
 
         {/* Footer — fixed on every page */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>{bedrijfsnaam} | {bedrijf.email || "zakelijk@autronis.com"}</Text>
+          <Text style={styles.footerText}>{[bedrijfsnaam, bedrijf.email, bedrijf.website, bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}` : null].filter(Boolean).join(" | ")}</Text>
           <Text style={styles.footerCenter} render={({ pageNumber, totalPages: tp }) => `Pagina ${pageNumber} van ${tp}`} />
         </View>
       </Page>

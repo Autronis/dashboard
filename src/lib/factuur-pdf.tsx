@@ -307,6 +307,7 @@ interface FactuurPDFProps {
     btwNummer: string | null;
     email: string | null;
     telefoon: string | null;
+    website: string | null;
     iban: string | null;
   };
   taal?: Taal;
@@ -431,7 +432,7 @@ export function FactuurPDF({ factuur, regels, bedrijf, taal = "nl" }: FactuurPDF
           <View style={styles.betaling}>
             <Text style={styles.betalingText}>
               {bedrijf.iban
-                ? t.payTo(bedrijf.iban, bedrijf.bedrijfsnaam || "Autronis")
+                ? t.payTo(bedrijf.iban, bedrijf.bedrijfsnaam || "Autronis VOF")
                 : ""}
               {factuur.vervaldatum
                 ? `\n${t.paymentTerm(formatDatumPDF(factuur.vervaldatum, taal))}`
@@ -447,14 +448,14 @@ export function FactuurPDF({ factuur, regels, bedrijf, taal = "nl" }: FactuurPDF
             <View style={styles.footerCol}>
               <Text style={styles.footerLabel}>{t.contact}</Text>
               <Text style={styles.footerText}>
-                {bedrijf.bedrijfsnaam || "Autronis"}
+                {bedrijf.bedrijfsnaam || "Autronis VOF"}
                 {bedrijf.adres ? `\n${bedrijf.adres}` : ""}
               </Text>
             </View>
             <View style={styles.footerCol}>
               <Text style={styles.footerLabel}>{t.reachable}</Text>
               <Text style={styles.footerText}>
-                {bedrijf.email || "zakelijk@autronis.com"}
+                {bedrijf.email || ""}
                 {bedrijf.telefoon ? `\n${bedrijf.telefoon}` : ""}
               </Text>
             </View>

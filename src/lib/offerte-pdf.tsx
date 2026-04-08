@@ -364,6 +364,7 @@ interface OffertePDFProps {
     btwNummer: string | null;
     email: string | null;
     telefoon: string | null;
+    website: string | null;
     iban: string | null;
   };
 }

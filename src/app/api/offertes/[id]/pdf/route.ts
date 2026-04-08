@@ -55,12 +55,13 @@ export async function GET(
         offerte,
         regels,
         bedrijf: bedrijf || {
-          bedrijfsnaam: "Autronis",
+          bedrijfsnaam: "Autronis VOF",
           adres: null,
           kvkNummer: null,
           btwNummer: null,
           email: null,
           telefoon: null,
+          website: null,
           iban: null,
         },
       }) as any

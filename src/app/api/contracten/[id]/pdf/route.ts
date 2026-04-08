@@ -49,15 +49,20 @@ export async function GET(
           aangemaaktOp: contract.aangemaaktOp,
         },
         bedrijf: bedrijf || {
-          bedrijfsnaam: "Autronis",
+          bedrijfsnaam: "Autronis VOF",
           adres: null,
           kvkNummer: null,
+          btwNummer: null,
           email: null,
+          telefoon: null,
+          website: null,
+          iban: null,
         },
       }) as any
     );
 
-    const filename = `Autronis_Contract_${contract.titel.replace(/\s+/g, "_")}.pdf`;
+    const prefix = (bedrijf?.bedrijfsnaam || "Autronis VOF").replace(/\s+/g, "_");
+    const filename = `${prefix}_Contract_${contract.titel.replace(/\s+/g, "_")}.pdf`;
 
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {

@@ -5,10 +5,7 @@ import { requireApiKey } from "@/lib/auth";
 import { scrapeWebsite } from "@/lib/sales-engine/scraper";
 import { fetchGooglePlacesData } from "@/lib/sales-engine/google-places";
 import { analyzeWithClaude } from "@/lib/sales-engine/analyzer";
-import { generateEmailSequence, extractEmailInput } from "@/lib/outreach/email-generator";
-import { outreachSequenties, outreachEmails, outreachDomeinen, outreachOptOuts } from "@/lib/db/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
-import { randomUUID } from "crypto";
 
 interface ScanRequestBody {
   naam: string;

@@ -78,79 +78,39 @@ function tileAllWindows() {
     tell application "System Events"
       if exists process "Code" then
         tell process "Code"
-          set winList to every window
-          set winCount to count of winList
-          if winCount = 0 then return
+          -- Only move the frontmost (newest) window
+          set newWin to front window
 
-          -- Count which windows are on which screen based on current position
-          set leftWins to {}
-          set rightWins to {}
+          -- Count existing windows on left screen (excluding the new one)
+          set leftCount to 0
+          set winList to every window
           repeat with w in winList
-            set wx to item 1 of (position of w)
-            if wx >= s1X and wx < (s1X + s1W) then
-              set end of leftWins to w
-            else
-              set end of rightWins to w
+            if w is not newWin then
+              set wx to item 1 of (position of w)
+              if wx >= s1X and wx < (s1X + s1W) then
+                set leftCount to leftCount + 1
+              end if
             end if
           end repeat
 
-          -- The new window (frontmost) hasn't been placed yet, add to left or right
-          set newWin to item 1 of winList
-
-          -- Check if new window should go left or right
-          -- If left screen has < max, put it there. Otherwise right.
-          set onLeft to count of leftWins
-          set onRight to count of rightWins
-
-          -- If the new window is not yet on either screen, decide where
-          set newOnLeft to false
-          repeat with w in leftWins
-            if w is newWin then set newOnLeft to true
-          end repeat
-          set newOnRight to false
-          repeat with w in rightWins
-            if w is newWin then set newOnRight to true
-          end repeat
-
-          if onLeft > maxPerScreen and not newOnRight then
-            -- Move new window to right screen
-            set end of rightWins to newWin
-            -- Remove from leftWins if it was there
-            set newLeftWins to {}
-            repeat with w in leftWins
-              if w is not newWin then set end of newLeftWins to w
-            end repeat
-            set leftWins to newLeftWins
-          end if
-
-          -- Tile left screen windows
-          if (count of leftWins) > 0 then
+          -- Decide target screen
+          if leftCount < maxPerScreen then
+            -- Place on left screen in the next slot
             set sX to item 1 of screen1
             set sY to item 2 of screen1
             set sW to item 3 of screen1
             set sH to item 4 of screen1
-            set perWin to (sW / (count of leftWins)) as integer
-
-            repeat with i from 1 to (count of leftWins)
-              set targetWindow to item i of leftWins
-              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
-              set size of targetWindow to {perWin, sH}
-            end repeat
-          end if
-
-          -- Tile right screen windows
-          if (count of rightWins) > 0 then
+            set slotWidth to (sW / (leftCount + 1)) as integer
+            set position of newWin to {sX + (leftCount * slotWidth), sY}
+            set size of newWin to {slotWidth, sH}
+          else
+            -- Left full, place on right screen
             set sX to item 1 of screen2
             set sY to item 2 of screen2
             set sW to item 3 of screen2
             set sH to item 4 of screen2
-            set perWin to (sW / (count of rightWins)) as integer
-
-            repeat with i from 1 to (count of rightWins)
-              set targetWindow to item i of rightWins
-              set position of targetWindow to {sX + ((i - 1) * perWin), sY}
-              set size of targetWindow to {perWin, sH}
-            end repeat
+            set position of newWin to {sX, sY}
+            set size of newWin to {sW, sH}
           end if
 
         end tell

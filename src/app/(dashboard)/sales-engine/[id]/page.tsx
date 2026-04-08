@@ -2,7 +2,6 @@
 
 import { use, useState } from "react";
 import { useSalesEngineScanDetail, type AIAnalyse, type ScrapeResultaat, type ScanKans } from "@/hooks/queries/use-sales-engine";
-import { useGenerateOutreach } from "@/hooks/queries/use-outreach";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -358,7 +357,6 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
   const [isRestarting, setIsRestarting] = useState(false);
   const { addToast } = useToast();
   const router = useRouter();
-  const generateOutreach = useGenerateOutreach();
 
   const STANDAARD_UURTARIEF = 95;
 
@@ -515,26 +513,6 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                 Bekijk lead
               </Link>
             )}
-            <button
-              onClick={() => {
-                generateOutreach.mutate(scanId, {
-                  onSuccess: (outreachData) => {
-                    addToast("Outreach sequentie aangemaakt", "succes");
-                    router.push(`/outreach/${outreachData.sequentieId}`);
-                  },
-                  onError: (err) => addToast(err.message, "fout"),
-                });
-              }}
-              disabled={generateOutreach.isPending}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)] text-white font-medium hover:bg-[var(--accent)]/80 transition-colors disabled:opacity-50"
-            >
-              {generateOutreach.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Mail className="w-4 h-4" />
-              )}
-              {generateOutreach.isPending ? "Emails genereren..." : "Genereer Outreach"}
-            </button>
           </div>
         )}
 

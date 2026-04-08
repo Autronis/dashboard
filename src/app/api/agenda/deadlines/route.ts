@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
         linkHref: "/taken",
         bedrag: null,
         googleEventId: row.googleEventId ?? null,
-        status: row.status,
+        status: row.status ?? undefined,
       });
     }
 

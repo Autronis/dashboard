@@ -193,9 +193,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
 
   function handleToggle(e: React.MouseEvent) {
     e.stopPropagation();
-    const next = !checked;
-    setChecked(next);
-    setTimeout(() => onToggle?.(taak.id), next ? 600 : 0);
+    onToggle?.(taak.id, taak.status);
   }
 
   return (

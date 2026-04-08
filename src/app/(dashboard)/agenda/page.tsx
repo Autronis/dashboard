@@ -1013,7 +1013,7 @@ export default function AgendaPage() {
               ingeplandeTaken={ingeplandeTaken}
               onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
               onUnplanTaak={handleUnplanTaak}
-              onTaakToggle={handleTaakToggle}
+              onTaakToggle={(id, status) => handleTaakToggle(id, status)}
               onDeadlineNaarSlot={(dl, datum, tijd) => {
                 if (dl.type === "taak") {
                   const taakId = Number(dl.id.replace("taak-", ""));

@@ -225,18 +225,27 @@ export function CategorieBadge({ categorie }: { categorie: string }) {
   );
 }
 
-export function LocatieBadge({ locatie }: { locatie: "kantoor" | "thuis" | null }) {
+export function LocatieBadge({
+  locatie,
+  onClick,
+}: {
+  locatie: "kantoor" | "thuis" | null;
+  onClick?: () => void;
+}) {
   if (!locatie) return null;
   const isKantoor = locatie === "kantoor";
   const Icon = isKantoor ? Building2 : Home;
   return (
     <span
+      onClick={onClick}
       className={cn(
         "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
         isKantoor
           ? "bg-blue-500/10 text-blue-400"
-          : "bg-orange-500/10 text-orange-400"
+          : "bg-orange-500/10 text-orange-400",
+        onClick && "cursor-pointer hover:ring-1 hover:ring-current/30 transition-all"
       )}
+      title={onClick ? "Klik om te wisselen" : undefined}
     >
       <Icon className="w-3 h-3" />
       {isKantoor ? "Kantoor" : "Thuis"}

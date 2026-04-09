@@ -20,6 +20,7 @@ interface Registratie {
   eindTijd: string | null;
   duurMinuten: number | null;
   categorie: string;
+  locatie?: "kantoor" | "thuis" | null;
 }
 
 interface HandmatigModalProps {
@@ -47,6 +48,7 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
   const [startTijd, setStartTijd] = useState("09:00");
   const [eindTijd, setEindTijd] = useState("10:00");
   const [categorie, setCategorie] = useState("development");
+  const [locatie, setLocatie] = useState<"kantoor" | "thuis">(detectLocatie());
   const [fouten, setFouten] = useState<Record<string, string>>({});
 
   // Reset form when opening
@@ -57,6 +59,7 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
       setProjectId(String(registratie.projectId));
       setOmschrijving(registratie.omschrijving || "");
       setCategorie(registratie.categorie);
+      setLocatie(registratie.locatie || detectLocatie());
       if (registratie.startTijd) {
         const start = new Date(registratie.startTijd);
         setDatum(start.toISOString().split("T")[0]);
@@ -73,6 +76,7 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
       setStartTijd("09:00");
       setEindTijd("10:00");
       setCategorie("development");
+      setLocatie(detectLocatie());
     }
     setFouten({});
   }, [open, registratie, projecten]);
@@ -116,7 +120,7 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
           eindTijd: eindISO,
           duurMinuten,
           categorie,
-          locatie: registratie ? undefined : detectLocatie(),
+          locatie,
           isHandmatig: registratie ? undefined : true,
         }),
       });
@@ -210,12 +214,23 @@ export function HandmatigModal({ open, onClose, projecten, registratie, onOpgesl
           />
         </div>
 
-        <SelectField
-          label="Categorie"
-          value={categorie}
-          onChange={(e) => setCategorie(e.target.value)}
-          opties={CATEGORIEEN}
-        />
+        <div className="grid grid-cols-2 gap-4">
+          <SelectField
+            label="Categorie"
+            value={categorie}
+            onChange={(e) => setCategorie(e.target.value)}
+            opties={CATEGORIEEN}
+          />
+          <SelectField
+            label="Locatie"
+            value={locatie}
+            onChange={(e) => setLocatie(e.target.value as "kantoor" | "thuis")}
+            opties={[
+              { waarde: "kantoor", label: "Kantoor" },
+              { waarde: "thuis", label: "Thuis" },
+            ]}
+          />
+        </div>
 
         {/* Duration preview */}
         {startTijd && eindTijd && startTijd < eindTijd && (

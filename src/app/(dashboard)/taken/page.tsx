@@ -591,7 +591,7 @@ export default function TakenPage() {
   const [nieuwPrompt, setNieuwPrompt] = useState("");
   const [nieuwProjectMap, setNieuwProjectMap] = useState("");
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(true);
   const [quickAddFase, setQuickAddFase] = useState<{ projectId: number; fase: string } | null>(null);
   const [quickAddTitel, setQuickAddTitel] = useState("");
   const [flashedFases, setFlashedFases] = useState<Set<string>>(new Set());

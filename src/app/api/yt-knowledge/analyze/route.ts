@@ -4,6 +4,9 @@ import { requireAuth } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import { YoutubeTranscript } from "youtube-transcript";
 
+// Increase timeout for long Claude API calls
+export const maxDuration = 60;
+
 const SYSTEM_PROMPT = `Je bent een expert in het analyseren van YouTube video's over Claude Code.
 Je ontvangt een transcript van een video en produceert een gestructureerde analyse.
 

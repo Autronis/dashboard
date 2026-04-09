@@ -193,3 +193,61 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// POST /api/projecten — create project (or return existing)
+// Supports both session auth and Bearer API key (for Claude Code)
+export async function POST(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    let userId: number;
+    if (authHeader?.startsWith("Bearer ")) {
+      userId = await requireApiKey(req);
+    } else {
+      const gebruiker = await requireAuth();
+      userId = gebruiker.id;
+    }
+
+    const body = (await req.json()) as {
+      naam: string;
+      omschrijving?: string;
+      status?: "actief" | "afgerond" | "on-hold";
+      klantId?: number;
+    };
+
+    if (!body.naam?.trim()) {
+      return NextResponse.json({ fout: "naam is verplicht" }, { status: 400 });
+    }
+
+    // Check if project already exists (case-insensitive)
+    const existing = await db
+      .select()
+      .from(projecten)
+      .where(sql`LOWER(${projecten.naam}) = LOWER(${body.naam.trim()})`)
+      .get();
+
+    if (existing) {
+      return NextResponse.json({ project: existing, bestaand: true });
+    }
+
+    // Create new project
+    const [project] = await db
+      .insert(projecten)
+      .values({
+        naam: body.naam.trim(),
+        omschrijving: body.omschrijving || null,
+        status: body.status || "actief",
+        klantId: body.klantId || null,
+        aangemaaktDoor: userId,
+        isActief: 1,
+        voortgangPercentage: 0,
+      })
+      .returning();
+
+    return NextResponse.json({ project, bestaand: false }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}

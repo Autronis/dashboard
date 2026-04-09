@@ -33,14 +33,25 @@ export async function POST(req: NextRequest) {
     const errors: string[] = [];
 
     // Find project (case-insensitive)
-    const project = await db
+    let project = await db
       .select()
       .from(projecten)
       .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
       .get();
 
     if (!project) {
-      return NextResponse.json({ fout: `Project "${projectNaam}" niet gevonden` }, { status: 404 });
+      // Auto-create project if it doesn't exist
+      const [nieuwProject] = await db
+        .insert(projecten)
+        .values({
+          naam: projectNaam.trim(),
+          status: "actief",
+          isActief: 1,
+          voortgangPercentage: 0,
+          aangemaaktDoor: userId,
+        })
+        .returning();
+      project = nieuwProject;
     }
 
     // Get default user

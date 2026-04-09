@@ -102,21 +102,26 @@ export async function POST(req: NextRequest) {
         const uren = Math.floor(v.seconden / 3600);
         const minuten = Math.round((v.seconden % 3600) / 60);
         const duur = uren > 0 ? `${uren}u ${minuten}m` : `${minuten}m`;
-        const titels = Array.from(v.titels).slice(0, 8);
+        const titels = Array.from(v.titels).slice(0, 20);
 
         // Extract project names from VS Code titles
         const projecten = new Set<string>();
         const bestanden = new Set<string>();
         for (const t of titels) {
-          const vsMatch = t.match(/^(.+?)\s*[-—]\s*(.+?)\s*[-—]\s*Visual Studio Code$/);
+          const vsMatch = t.match(/^(.+?)\s*[-—]\s*(.+?)\s*[-—]\s*(?:Visual Studio Code|Cursor)$/);
           if (vsMatch) { bestanden.add(vsMatch[1].trim()); projecten.add(vsMatch[2].trim()); }
+          const claudeMatch = t.match(/^(.+?)\s*[-—]\s*Claude(?:\s|$)/);
+          if (claudeMatch) projecten.add(`Claude: ${claudeMatch[1].trim()}`);
           const chromeMatch = t.match(/^(.+?)\s*[-—]\s*Google Chrome$/);
           if (chromeMatch) projecten.add(chromeMatch[1].trim());
+          const termMatch = t.match(/(?:~\/|\/Users\/\w+\/)(?:.*\/)?([^\/\s]+)/);
+          if (termMatch) projecten.add(termMatch[1].trim());
         }
 
         const projectStr = projecten.size > 0 ? ` (projecten: ${Array.from(projecten).join(", ")})` : "";
-        const bestandStr = bestanden.size > 0 ? ` bestanden: ${Array.from(bestanden).slice(0, 5).join(", ")}` : "";
-        return `- ${key.split("|")[0]} [${v.categorie}] ${duur}${projectStr}${bestandStr}`;
+        const bestandStr = bestanden.size > 0 ? ` bestanden: ${Array.from(bestanden).slice(0, 10).join(", ")}` : "";
+        const titelStr = titels.length > 0 ? `\n  vensters: ${titels.slice(0, 10).join(" | ")}` : "";
+        return `- ${key.split("|")[0]} [${v.categorie}] ${duur}${projectStr}${bestandStr}${titelStr}`;
       })
       .join("\n");
 
@@ -157,15 +162,24 @@ ${activiteitenLijst}
 
 Genereer JSON:
 {
-  "kort": "2-3 zinnen samenvatting. Noem SPECIFIEK welke projecten er aan gewerkt is en wat er gedaan is. Niet vaag. Voorbeeld: 'Gewerkt aan het Autronis Dashboard: belasting module uitgebreid, screen time tracker verbeterd. 2u development, 45m communicatie via Discord.'",
-  "detail": "Gedetailleerd overzicht per project/activiteit als markdown bullets. Per project: wat is er gedaan (op basis van bestandsnamen en venstertitels), hoelang. Wees concreet."
+  "kort": "3-4 zinnen. Beschrijf CONCREET wat Sem heeft gedaan, niet alleen welke apps open stonden. Leid af uit bestandsnamen en venstertitels WAT er gebouwd/bewerkt is. Voorbeeld: 'Screen time regels en locatie-detectie verbeterd in het Autronis Dashboard. Email-feature gebouwd voor documenten module. 3u development in VS Code, 30m communicatie via Discord. Tussendoor YouTube tutorials over Claude API gekeken.'",
+  "detail": "Gedetailleerd markdown overzicht. Per project een ## heading met:\n- Wat er concreet gedaan is (afgeleid uit bestandsnamen, venstertitels, URLs)\n- Welke bestanden/componenten er bewerkt zijn\n- Hoelang per activiteit\n- Als er Claude Code of terminal tijd was: wat werd er waarschijnlijk gebouwd/gefixt\nWees specifiek, niet vaag. 'Gewerkt aan dashboard' is FOUT. 'Tijdregistratie locatie-toggle gebouwd, print CSS herschreven voor documenten export' is GOED."
 }
 
 Alleen JSON, geen uitleg.`,
-      system: `Je bent een productiviteitsassistent voor Sem, developer bij Autronis (AI/automation bureau).
-Schrijf een nauwkeurige dagsamenvatting op basis van de schermtijd data. Wees SPECIFIEK over welke projecten en bestanden er aan gewerkt is.
-Koppel schermtijd aan agenda items als die overlappen (bijv. "Tijdens de meeting van 10:30 met X was je in Google Meet").`,
-      maxTokens: 1024,
+      system: `Je bent een productiviteitsassistent voor Sem, developer bij Autronis (AI/automation bureau, VOF met Syb).
+Je analyseert schermtijd data en schrijft CONCRETE, SPECIFIEKE samenvattingen.
+
+REGELS:
+- Leid uit bestandsnamen af WELKE feature/component er gebouwd werd (bijv. "share-document-modal.tsx" → "deelfunctie voor documenten gebouwd")
+- Leid uit venstertitels af WAT er gedaan werd (bijv. "print.css — autronis-dashboard" → "print styling aangepast")
+- Claude Code/Terminal tijd = development. Leid uit de projectnaam af WAARAAN gewerkt werd
+- Als er meerdere projecten waren, beschrijf per project wat er gedaan is
+- Noem concrete features, componenten, bestanden — niet alleen "gecodeerd"
+- Koppel schermtijd aan agenda items als die overlappen
+- Chrome tabs op dashboard.autronis.nl = testen/reviewen van eigen werk, niet "browsing"
+- YouTube met dev-gerelateerde titels = leren, niet afleiding`,
+      maxTokens: 1500,
     });
     let parsed: { kort: string; detail: string };
     try {

@@ -604,6 +604,23 @@
   <span class="flow-step">Klaar</span>
 </div>
 
+<h3>Command Status Flow</h3>
+<div class="flow">
+  <span class="flow-step">pending</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">intake</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">planning</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step active">awaiting_approval</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">in_progress</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">review</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">completed</span>
+</div>
+
 <h3>Permissie-niveaus</h3>
 <table>
   <thead><tr><th>Niveau</th><th>Wanneer</th><th>Actie</th></tr></thead>
@@ -635,6 +652,34 @@
                                              └──→ Follow-up regels
 
 <span class="node">Lead</span> → Contact → Offerte → <span class="node">Gewonnen</span> → Contract → <span class="node">Project</span></div>
+
+<div class="connection-box"><span class="node">Bank Transacties</span> ──→ <span class="node">Matching</span> ──→ <span class="node">Facturen</span>
+       │                            │
+       ├──→ Uitgaven                ├──→ BTW Aangiftes
+       ├──→ Abonnementen            ├──→ Belasting Deadlines
+       ├──→ Inkomsten               └──→ Reserves
+       └──→ Categorisatie
+                                    <span class="node">Kilometers</span> ──→ Aftrekposten
+                                    <span class="node">Investeringen</span> ──→ Afschrijvingen</div>
+
+<div class="connection-box"><span class="node">Schermtijd</span> ──→ Categorisatie ──→ <span class="node">Tijdregistratie</span>
+                                       │
+<span class="node">Focus Sessies</span> ──→ Taken ──→ Projecten  │
+                     │                  │
+<span class="node">Dagritme</span> ──→ Stemming/Energie          │
+<span class="node">Gewoontes</span> ──→ Streaks                  │
+                                       │
+Alles ──→ <span class="node">Dagelijkse Briefing</span> ←────────┘</div>
+
+<div class="connection-box"><span class="node">Inzichten</span> ──→ <span class="node">Content Posts</span> ──→ Publicatie (LinkedIn/Instagram)
+   │              │
+   │              ├──→ Banners
+   │              └──→ Video's (Remotion)
+   │
+   ├──→ Case Studies
+   └──→ Animaties (Scroll-stop / Logo)
+
+<span class="node">Learning Radar</span> ──→ <span class="node">Second Brain</span> ──→ Video Samenvattingen</div>
 
 <div class="section-divider"></div>
 
@@ -873,6 +918,10 @@
     <p>concurrenten, concurrentSnapshots, concurrentScans</p>
   </div>
   <div class="info-card">
+    <h4>Team & HR (4)</h4>
+    <p>verlof, feestdagen, beschikbaarheid, teamActiviteit</p>
+  </div>
+  <div class="info-card">
     <h4>Contracten & Proposals (4)</h4>
     <p>contracten, proposals, proposalRegels, klanttevredenheid</p>
   </div>
@@ -956,7 +1005,58 @@
 
 <div class="section-divider"></div>
 
-<h2><span class="num">15</span> Wat maakt het anders?</h2>
+<h2><span class="num">15</span> AI Generatie — Waar Zit AI Overal?</h2>
+
+<p>AI is geen losse feature — het zit verweven in bijna elk onderdeel van het systeem:</p>
+
+<table>
+  <thead><tr><th>Onderdeel</th><th>Wat de AI doet</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A.R.I. (Ctrl+A)</strong></td><td>Context-aware AI assistent op elke pagina. Weet welke pagina je bekijkt, geeft gerichte suggesties, ondersteunt meerdere conversaties en streaming</td></tr>
+    <tr><td><strong>Dagelijkse Briefing</strong></td><td>AI-gegenereerd dagrapport uit 8+ databronnen: agenda, taken, projecten, financiën, schermtijd, belasting deadlines, gewoontes, concurrent scans, radar items</td></tr>
+    <tr><td><strong>Ideeën Scoring</strong></td><td>AI scoort elk idee op haalbaarheid, marktpotentie, en Autronis-fit. Berekent impact, effort, en revenue potential</td></tr>
+    <tr><td><strong>Project Creatie</strong></td><td>AI genereert PROJECT_BRIEF.md, MASTER_PROMPT.md, RULES.md, en TODO.md met 4-8 fases en 15-30 taken</td></tr>
+    <tr><td><strong>Sales Engine</strong></td><td>AI scant websites van prospects, detecteert automatiseringskansen in 12+ categorieën, berekent automation readiness score (0-100), genereert voorstel</td></tr>
+    <tr><td><strong>Content Engine</strong></td><td>AI genereert LinkedIn/Instagram posts in 7 formaten (thought leadership, tip, storytelling, how-to, etc.). Batch generatie per week met hashtags</td></tr>
+    <tr><td><strong>Video Studio</strong></td><td>Chat-based AI video scripting: scenes, accenten, kleuren, iconen, duur, CTA's → Remotion rendering</td></tr>
+    <tr><td><strong>Banners</strong></td><td>AI genereert banners in 5 templates (quote, stat, tip, case study, capsule) met AI-achtergrond generatie</td></tr>
+    <tr><td><strong>Animaties</strong></td><td>AI image prompts voor scroll-stop content: exploded views, particle assembly, x-ray effecten</td></tr>
+    <tr><td><strong>Mail Assistent</strong></td><td>AI analyseert inkomende mail, genereert antwoord in 4 tonen (professioneel, vriendelijk, kort, formeel)</td></tr>
+    <tr><td><strong>Meeting Intelligence</strong></td><td>Transcripties automatisch opgehaald (Recall.ai), AI genereert samenvatting, actiepunten, besluiten, en sentiment analyse</td></tr>
+    <tr><td><strong>Learning Radar</strong></td><td>AI scoort en filtert nieuws uit 8+ bronnen op relevantie. Categoriseert automatisch (AI tools, trends, opportunities, must-reads)</td></tr>
+    <tr><td><strong>Second Brain</strong></td><td>AI-gestuurde tagging en samenvatting van opgeslagen kennis (tekst, URL, PDF, code)</td></tr>
+    <tr><td><strong>Video Samenvattingen</strong></td><td>YouTube video's transcriberen, samenvatten, key takeaways extraheren, stappenplan genereren, relevantie scoren</td></tr>
+    <tr><td><strong>Contract Analyse</strong></td><td>AI analyseert contracten op risico's en voorwaarden</td></tr>
+    <tr><td><strong>Klant Health Score</strong></td><td>AI berekent score 0-100 over 5 dimensies: communicatie, betaling, project voortgang, tevredenheid, activiteit</td></tr>
+    <tr><td><strong>Concurrent Monitoring</strong></td><td>AI genereert samenvattingen van concurrentielandschap, detecteert website changes, berekent overlap- en dreigingsscores</td></tr>
+    <tr><td><strong>Schermtijd</strong></td><td>AI categoriseert app-gebruik automatisch en geeft suggesties voor productiviteitsverbetering</td></tr>
+    <tr><td><strong>Mealplanner</strong></td><td>AI genereert weekmenu's met volledige voedingswaarden, automatische boodschappenlijst met prijzen</td></tr>
+    <tr><td><strong>Belasting Tips</strong></td><td>AI-gegenereerde fiscale tips: aftrekposten, regelingen, subsidies</td></tr>
+    <tr><td><strong>Klant Verrijking</strong></td><td>AI analyseert klant-website en vult CRM automatisch in (branche, diensten, tech stack)</td></tr>
+    <tr><td><strong>Taken Classificatie</strong></td><td>AI bepaalt automatisch of een taak door Claude of handmatig uitgevoerd moet worden</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">16</span> Achtergrond Services</h2>
+
+<table>
+  <thead><tr><th>Service</th><th>Type</th><th>Wat het doet</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Project Sync Server</strong></td><td>LaunchAgent, poort 3456</td><td>Maakt projectmappen aan bij dashboard triggers</td></tr>
+    <tr><td><strong>USB Sync</strong></td><td>LaunchAgent, WatchPaths</td><td>Auto-sync docs bij USB mount</td></tr>
+    <tr><td><strong>SpeakToText</strong></td><td>Login Item, App</td><td>Dicteer-app met persoonlijk woordenboek (Whisper)</td></tr>
+    <tr><td><strong>Screentime Tracker</strong></td><td>Login Item, App</td><td>Trackt app-gebruik, synct elke 30 sec naar dashboard</td></tr>
+    <tr><td><strong>Tailscale</strong></td><td>Login Item, VPN</td><td>Netwerk tussen Mac, PC, telefoon</td></tr>
+    <tr><td><strong>SysteemMonitor</strong></td><td>LaunchAgent</td><td>Systeem monitoring</td></tr>
+    <tr><td><strong>WindowManager</strong></td><td>LaunchAgent</td><td>Window management</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">17</span> Wat maakt het anders?</h2>
 
 <p><strong>Context-aware AI.</strong> De AI weet niet alleen hoe je code schrijft, maar ook wat je bedrijf doet, wie je klanten zijn, wat de prioriteiten zijn, en wat er vorige week is besloten. Het is geen generieke copilot — het is een partner die het hele bedrijf kent.</p>
 
@@ -972,7 +1072,7 @@
 
 <div class="section-divider"></div>
 
-<h2><span class="num">16</span> Wat kost het?</h2>
+<h2><span class="num">18</span> Wat kost het?</h2>
 
 <table>
   <thead><tr><th>Item</th><th>Kosten</th></tr></thead>

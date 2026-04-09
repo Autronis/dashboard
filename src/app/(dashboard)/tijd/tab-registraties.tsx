@@ -9,7 +9,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { TijdCategorie } from "@/types";
-import { detectLocatie } from "@/lib/detect-locatie";
+import { detectLocatie, registreerLocatie } from "@/lib/detect-locatie";
 import {
   type Periode,
   berekenVanTot,
@@ -209,6 +209,23 @@ export function TabRegistraties() {
     },
     onError: () => addToast("Kon registratie niet verwijderen", "fout"),
   });
+
+  // Toggle locatie
+  const toggleLocatie = useCallback(async (reg: Registratie) => {
+    const nieuweLocatie = reg.locatie === "kantoor" ? "thuis" : "kantoor";
+    try {
+      const res = await fetch(`/api/tijdregistraties/${reg.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locatie: nieuweLocatie }),
+      });
+      if (!res.ok) throw new Error();
+      registreerLocatie(nieuweLocatie);
+      invalidateRegistraties();
+    } catch {
+      addToast("Kon locatie niet wijzigen", "fout");
+    }
+  }, [invalidateRegistraties, addToast]);
 
   // Inline save
   const handleInlineSave = useCallback(async (
@@ -601,7 +618,7 @@ export function TabRegistraties() {
                                 {reg.projectNaam}
                               </span>
                               <CategorieBadge categorie={reg.categorie} />
-                              <LocatieBadge locatie={reg.locatie} />
+                              <LocatieBadge locatie={reg.locatie} onClick={() => toggleLocatie(reg)} />
                               {!isActief && reg.eindTijd && (
                                 <span className="text-xs text-autronis-text-secondary tabular-nums ml-auto">
                                   {formatTijdstip(reg.startTijd)}–{formatTijdstip(reg.eindTijd)}

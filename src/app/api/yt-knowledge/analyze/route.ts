@@ -120,7 +120,9 @@ export async function POST(request: NextRequest) {
       messages: [{ role: "user", content: `Analyseer dit transcript:\n\n${truncated}` }],
     });
 
-    const raw = response.content[0].type === "text" ? response.content[0].text : "";
+    let raw = response.content[0].type === "text" ? response.content[0].text : "";
+    // Strip markdown code fences if present
+    raw = raw.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
     const data = JSON.parse(raw);
 
     // Write analysis to Turso

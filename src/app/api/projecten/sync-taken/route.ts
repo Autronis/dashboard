@@ -244,7 +244,7 @@ export async function POST(req: NextRequest) {
     await db.update(projecten)
       .set({
         voortgangPercentage: voortgang,
-        ...(voortgang >= 100 ? { status: "afgerond" } : {}),
+        status: voortgang >= 100 ? "afgerond" : "actief",
         bijgewerktOp: sql`(datetime('now'))`,
       })
       .where(eq(projecten.id, project.id))

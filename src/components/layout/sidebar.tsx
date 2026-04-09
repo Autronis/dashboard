@@ -115,6 +115,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
       { label: "Second Brain", icon: Brain, href: "/second-brain" },
       { label: "Wiki", icon: BookOpen, href: "/wiki" },
       { label: "Learning Radar", icon: Radar, href: "/radar" },
+      { label: "YT Knowledge", icon: Video, href: "/yt-knowledge" },
       { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
     ],
   },

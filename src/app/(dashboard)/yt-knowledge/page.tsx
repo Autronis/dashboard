@@ -53,8 +53,6 @@ interface Stats {
 
 // ============ CONSTANTS ============
 
-const API_BASE = "http://localhost:8000";
-
 const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   done: { label: "Verwerkt", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", icon: CheckCircle2 },
   pending: { label: "Wacht", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25", icon: Clock },
@@ -111,32 +109,11 @@ export default function YtKnowledgePage() {
     setLoading(true);
     setError(null);
     try {
-      const [videosRes, statsRes] = await Promise.all([
-        fetch(`${API_BASE}/api/videos`),
-        fetch(`${API_BASE}/api/stats`),
-      ]);
-      if (!videosRes.ok || !statsRes.ok) throw new Error("API niet bereikbaar");
-      const videosData = await videosRes.json();
-      const statsData = await statsRes.json();
-
-      // Fetch analyses for done videos
-      const withAnalysis = await Promise.all(
-        videosData.map(async (v: VideoItem) => {
-          if (v.status === "done") {
-            try {
-              const res = await fetch(`${API_BASE}/api/videos/${v.id}`);
-              const full = await res.json();
-              return { ...v, analysis: full.analysis };
-            } catch {
-              return v;
-            }
-          }
-          return v;
-        })
-      );
-
-      setVideos(withAnalysis);
-      setStats(statsData);
+      const res = await fetch("/api/yt-knowledge");
+      if (!res.ok) throw new Error("Kon data niet laden");
+      const data = await res.json();
+      setVideos(data.videos);
+      setStats(data.stats);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
@@ -159,27 +136,18 @@ export default function YtKnowledgePage() {
     setAnalyzing(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/videos?url=${encodeURIComponent(analyzeUrl)}`, { method: "POST" });
+      const res = await fetch("/api/yt-knowledge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: analyzeUrl }),
+      });
       if (!res.ok) throw new Error("Kon video niet toevoegen");
-      const data = await res.json();
-      if (data.status === "already_done") {
-        setError("Deze video is al geanalyseerd");
-      }
       setAnalyzeUrl("");
       fetchData();
     } catch {
       setError("Video toevoegen mislukt");
     } finally {
       setAnalyzing(false);
-    }
-  };
-
-  const handleAnalyze = async (videoId: string) => {
-    try {
-      await fetch(`${API_BASE}/api/videos/${videoId}/analyze`, { method: "POST" });
-      fetchData();
-    } catch {
-      setError("Analyse starten mislukt");
     }
   };
 
@@ -323,14 +291,7 @@ export default function YtKnowledgePage() {
                         <span>{timeAgo(video.discovered_at)}</span>
                       </div>
                     </div>
-                    {(video.status === "pending" || video.status === "failed") && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAnalyze(video.id); }}
-                        className="px-2 py-1 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition"
-                      >
-                        Analyseer
-                      </button>
-                    )}
+                    {}
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border", sc.color)}>
                       <StatusIcon className={cn("w-3 h-3", video.status === "processing" && "animate-spin")} />
                       {sc.label}

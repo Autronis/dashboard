@@ -228,6 +228,35 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  // YT Knowledge Pipeline tables
+  client.execute(`CREATE TABLE IF NOT EXISTS ytk_videos (
+    id TEXT PRIMARY KEY,
+    youtube_id TEXT UNIQUE,
+    title TEXT,
+    channel_name TEXT DEFAULT '',
+    channel_id TEXT DEFAULT '',
+    url TEXT,
+    published_at TEXT DEFAULT '',
+    duration INTEGER DEFAULT 0,
+    discovered_at TEXT,
+    processed_at TEXT,
+    status TEXT DEFAULT 'pending'
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS ytk_analyses (
+    id TEXT PRIMARY KEY,
+    video_id TEXT REFERENCES ytk_videos(id),
+    summary TEXT,
+    features TEXT,
+    steps TEXT,
+    tips TEXT,
+    relevance_score INTEGER,
+    relevance_reason TEXT,
+    raw_transcript TEXT,
+    model_used TEXT,
+    created_at TEXT
+  )`).catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

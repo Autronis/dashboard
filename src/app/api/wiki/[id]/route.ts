@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { wikiArtikelen, gebruikers } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+
+function authCheck(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return requireApiKey(req);
+  }
+  return requireAuth();
+}
 
 // GET /api/wiki/[id]
 export async function GET(
@@ -10,7 +18,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    await authCheck(_req);
     const { id } = await params;
 
     const [artikel] = await db
@@ -49,7 +57,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    await authCheck(req);
     const { id } = await params;
     const body = await req.json();
     const { titel, inhoud, categorie, tags, gepubliceerd } = body;
@@ -93,7 +101,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    await authCheck(_req);
     const { id } = await params;
 
     const [bestaand] = await db

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, klanten, taken, tijdregistraties } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { projecten, klanten, taken, tijdregistraties, gebruikers } from "@/lib/db/schema";
+import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq, sql, and, desc, gte } from "drizzle-orm";
 
 // GET /api/projecten — All active projects with client name + task stats + activity

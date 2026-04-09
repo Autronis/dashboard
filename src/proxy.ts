@@ -49,6 +49,7 @@ const PUBLIC_PATHS = [
   "/api/projecten/sync-taken",
   "/api/projecten/sync-from-agent",
   "/api/projecten/taken",
+  "/api/wiki",
 ];
 
 const PUBLIC_PATTERNS = [

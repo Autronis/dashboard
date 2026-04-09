@@ -48,6 +48,7 @@ const PUBLIC_PATHS = [
   "/api/followup/webhook",
   "/api/projecten/sync-taken",
   "/api/projecten/sync-from-agent",
+  "/api/projecten/taken",
 ];
 
 const PUBLIC_PATTERNS = [

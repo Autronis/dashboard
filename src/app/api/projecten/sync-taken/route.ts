@@ -3,6 +3,9 @@ import { db } from "@/lib/db";
 import { taken, projecten, gebruikers } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { requireAuth, requireApiKey } from "@/lib/auth";
+import { createNotionDocument } from "@/lib/notion";
+import { categorizeDocument } from "@/lib/ai/documenten";
+import type { PlanPayload } from "@/types/documenten";
 
 // POST /api/projecten/sync-taken
 // Body: { projectNaam: string, voltooide_taken: string[], nieuwe_taken: string[] }
@@ -56,6 +59,23 @@ export async function POST(req: NextRequest) {
         })
         .returning();
       project = nieuwProject;
+
+      // Auto-create a Plan / Roadmap document for new projects
+      try {
+        const user = defaultUser?.naam ?? "Claude";
+        const planContent = `# ${projectNaam.trim()} — Plan & Roadmap\n\n## Doel\n_Beschrijf het doel van dit project._\n\n## Scope\n_Wat valt er binnen en buiten scope?_\n\n## Fases\n1. **Fase 1:** _..._\n2. **Fase 2:** _..._\n3. **Fase 3:** _..._\n\n## Tijdlijn\n_Wanneer moet wat af?_\n\n## Beslissingen\n_Belangrijke keuzes en waarom._`;
+        const planPayload: PlanPayload = {
+          type: "plan",
+          titel: `${projectNaam.trim()} — Roadmap`,
+          projectId: nieuwProject.id,
+          status: "concept",
+          content: planContent,
+        };
+        const samenvatting = `Plan/roadmap voor project ${projectNaam.trim()}`;
+        await createNotionDocument(planPayload, samenvatting, user, undefined, projectNaam.trim());
+      } catch {
+        // Non-critical: don't block sync if document creation fails
+      }
     }
 
     // Replace all mode: sync tasks from payload, respecting existing statuses

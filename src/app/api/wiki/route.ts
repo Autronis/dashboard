@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { wikiArtikelen, gebruikers } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq, and, like, or, desc, sql } from "drizzle-orm";
 
 // GET /api/wiki — list articles with optional filters
@@ -66,7 +66,14 @@ export async function GET(req: NextRequest) {
 // POST /api/wiki — create article
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const authHeader = req.headers.get("authorization");
+    let userId: number;
+    if (authHeader?.startsWith("Bearer ")) {
+      userId = await requireApiKey(req);
+    } else {
+      const gebruiker = await requireAuth();
+      userId = gebruiker.id;
+    }
     const body = await req.json();
     const { titel, inhoud, categorie, tags } = body;
 
@@ -81,7 +88,7 @@ export async function POST(req: NextRequest) {
         inhoud: inhoud || "",
         categorie: categorie || "processen",
         tags: JSON.stringify(tags || []),
-        auteurId: gebruiker.id,
+        auteurId: userId,
         gepubliceerd: 1,
       })
       .returning();

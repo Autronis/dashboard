@@ -69,6 +69,29 @@ NEXT_PUBLIC_URL=...       # Publieke URL voor webhooks/links
 NOTION_API_KEY=...        # Notion integratie
 ```
 
+## Taken Ophalen bij Sessiestart (VERPLICHT)
+Bij het BEGIN van elke sessie MOET je de openstaande taken ophalen uit het dashboard. Dit is de single source of truth — niet TODO.md, niet de conversatie.
+
+### Hoe taken ophalen:
+```bash
+CONFIG=$(cat ~/.config/autronis/claude-sync.json)
+URL=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['dashboard_url'])")
+KEY=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['api_key'])")
+
+# Haal openstaande taken op
+curl -s -X POST "$URL/api/projecten/sync-taken" \
+  -H "Authorization: Bearer $KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"projectNaam": "Autronis Dashboard", "voltooide_taken": [], "nieuwe_taken": []}' 
+```
+Als dit geen taken retourneert, vraag Sem welke taken open staan of check het dashboard visueel.
+
+### Workflow:
+1. **Sessiestart** → taken ophalen → toon aan Sem → vraag wat oppakken
+2. **Taak afronden** → DIRECT syncen als voltooide_taken
+3. **Nieuwe taak ontdekt** → DIRECT syncen als nieuwe_taken
+4. **Sessie-einde** → check of alles gesynct is
+
 ## Team Sync (VERPLICHT)
 Dit project wordt gedeeld door Sem (id=1) en Syb (id=2). Gebruik de team sync API bij ELKE sessie.
 

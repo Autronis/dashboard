@@ -186,6 +186,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
         <>
           {/* Overlay */}
           <motion.div
+            data-print-hide
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -201,10 +202,11 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 26 }}
+            data-print-panel
             className={`fixed right-0 top-0 z-50 h-full bg-autronis-card border-l border-autronis-border shadow-2xl overflow-y-auto ${fullscreen ? "w-full max-w-full" : "w-[420px] max-w-[92vw]"}`}
           >
             {/* Header */}
-            <div className="sticky top-0 z-10 bg-autronis-card border-b border-autronis-border px-5 py-3.5 flex items-center justify-between">
+            <div data-print-hide className="sticky top-0 z-10 bg-autronis-card border-b border-autronis-border px-5 py-3.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: config.color }} />
                 <span className={`text-xs font-semibold ${config.textClass}`}>{config.label}</span>
@@ -338,7 +340,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
               </div>
 
               {/* AI Chat */}
-              <div className="rounded-xl border border-autronis-border overflow-hidden">
+              <div data-print-hide className="rounded-xl border border-autronis-border overflow-hidden">
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-autronis-bg border-b border-autronis-border">
                   <Bot className="w-4 h-4 text-autronis-accent" />
                   <span className="text-xs font-semibold text-autronis-text-primary">AI Assistent</span>
@@ -434,9 +436,9 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                 </div>
               </div>
 
-              {/* Actions — hidden in fullscreen */}
+              {/* Actions — hidden in fullscreen and print */}
               {!fullscreen && (
-                <div className="space-y-2 pb-4">
+                <div data-print-hide className="space-y-2 pb-4">
                   <a
                     href={doc.notionUrl}
                     target="_blank"
@@ -463,7 +465,14 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                     Deel via e-mail
                   </button>
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => {
+                      const wasShowingContent = showContent;
+                      setShowContent(true);
+                      requestAnimationFrame(() => {
+                        window.print();
+                        if (!wasShowingContent) setShowContent(false);
+                      });
+                    }}
                     className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-autronis-border text-sm text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 transition-colors"
                   >
                     <FileDown className="w-4 h-4" />

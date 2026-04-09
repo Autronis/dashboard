@@ -290,9 +290,11 @@ export default function YtKnowledgePage() {
                   className="bg-autronis-card rounded-xl border border-autronis-border overflow-hidden"
                 >
                   {/* Video header */}
-                  <button
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setExpandedId(isExpanded ? null : video.id)}
-                    className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-autronis-border/10 transition-colors"
+                    className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-autronis-border/10 transition-colors cursor-pointer"
                   >
                     <Play className="w-4 h-4 text-autronis-text-secondary shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -339,7 +341,7 @@ export default function YtKnowledgePage() {
                     ) : (
                       <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />
                     )}
-                  </button>
+                  </div>
 
                   {/* Expanded analysis */}
                   <AnimatePresence>

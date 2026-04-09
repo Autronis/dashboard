@@ -89,6 +89,20 @@ export async function POST(request: NextRequest) {
   const video = videoResult.rows[0];
   const youtubeId = video.youtube_id as string;
 
+  // Fetch title from YouTube
+  try {
+    const pageRes = await fetch(`https://www.youtube.com/watch?v=${youtubeId}`);
+    const pageHtml = await pageRes.text();
+    const titleMatch = pageHtml.match(/<title>(.+?)<\/title>/);
+    if (titleMatch) {
+      const title = titleMatch[1].replace(" - YouTube", "").trim();
+      await tursoClient.execute({
+        sql: "UPDATE ytk_videos SET title = ? WHERE id = ? AND (title IS NULL OR title = '')",
+        args: [title, dbVideoId],
+      });
+    }
+  } catch { /* title is optional */ }
+
   // Update status to processing
   await tursoClient.execute({
     sql: "UPDATE ytk_videos SET status = 'processing' WHERE id = ?",

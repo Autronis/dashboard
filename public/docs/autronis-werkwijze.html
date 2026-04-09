@@ -660,21 +660,40 @@
 <div class="grid-2">
   <div class="info-card">
     <h4>Mac (Kantoor)</h4>
-    <p>Tailscale IP: 100.118.188.41</p>
-    <p>Projecten: ~/Autronis/Projects/</p>
-    <p>Services: sync server, USB sync, screentime, Tailscale</p>
+    <p><strong>Tailscale IP:</strong> 100.118.188.41</p>
+    <p><strong>Projecten:</strong> ~/Autronis/Projects/</p>
+    <p><strong>Services:</strong> project sync server (:3456), USB sync (LaunchAgent), screentime tracker, Tailscale VPN</p>
+    <p><strong>USB sync:</strong> automatisch via LaunchAgent (<code>nl.autronis.usb-sync</code>) — detecteert USB mount en synct docs/specs/CLAUDE.md naar stick</p>
   </div>
   <div class="info-card">
     <h4>PC (Thuis)</h4>
-    <p>Projecten: OneDrive\Claude AI\Projects\</p>
-    <p>Sync: USB auto-sync, GitHub pull</p>
+    <p><strong>Projecten:</strong> C:\Users\semmi\OneDrive\Claude AI\Projects\</p>
+    <p><strong>USB sync:</strong> automatisch via Windows Scheduled Task (geconfigureerd met <code>setup-auto-sync-pc.ps1</code>) — importeert docs/specs van USB bij mount</p>
+    <p><strong>Code sync:</strong> <code>git pull</code> van GitHub repos</p>
+    <p><strong>Claude Code:</strong> zelfde sessie-structuur, paden starten met <code>c--Users-semmi-...</code></p>
   </div>
 </div>
 
+<h3>Hoe Mac ↔ PC samenwerken</h3>
+<table>
+  <thead><tr><th>Wat</th><th>Hoe het synct</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Code</strong></td><td>GitHub (<code>git push</code> op Mac → <code>git pull</code> op PC en vice versa)</td></tr>
+    <tr><td><strong>Docs, specs, .env</strong></td><td>USB stick — auto-sync bij mount op beide machines. Mac: LaunchAgent, PC: Scheduled Task</td></tr>
+    <tr><td><strong>CLAUDE.md, TODO.md, RULES.md</strong></td><td>USB stick — zodat Claude Code op beide machines dezelfde instructies heeft</td></tr>
+    <tr><td><strong>Database</strong></td><td>Turso cloud — zelfde data overal, geen sync nodig</td></tr>
+    <tr><td><strong>Dashboard</strong></td><td>dashboard.autronis.nl — Vercel hosted, zelfde overal</td></tr>
+    <tr><td><strong>Netwerk</strong></td><td>Tailscale VPN — machines onderling bereikbaar via IP voor SSH</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Wat NIET synct via USB:</strong> broncode (staat op GitHub), node_modules, build artifacts, .git mappen.</p>
+
 <div class="info-card accent">
   <h4>Telefoon (Onderweg)</h4>
-  <p>WoL app → Mac wakker maken → Tailscale → Termius SSH → <code>cd ~/Autronis/Projects/[project] && claude</code></p>
-  <p>Of: Dashboard in Safari → project starten → sync server maakt map aan → SSH → werken</p>
+  <p><strong>Flow:</strong> WoL app → Mac wakker maken → Tailscale → Termius SSH → <code>cd ~/Autronis/Projects/[project] && claude</code></p>
+  <p><strong>Of via dashboard:</strong> Safari → project starten → sync server maakt map aan op Mac → SSH → werken</p>
+  <p><strong>Siri Shortcut:</strong> "Hey Siri, start Mac" → WoL → SSH → Claude Code</p>
 </div>
 
 <div class="section-divider"></div>
@@ -961,23 +980,6 @@
 
 <p>De ROI zit in snelheid en schaalbaarheid: wat normaal dagen kost, doe je in uren. De AI schrijft code, genereert documenten, beheert taken, en bouwt features — allemaal vanuit dezelfde werkplek. En doordat alles eigen code is, betaal je geen per-seat of per-feature fees die meeschalen.</p>
 
-<div class="section-divider"></div>
-
-<h2><span class="num">17</span> Hoe begin je?</h2>
-
-<ol>
-  <li><strong>Installeer Claude Code</strong> en maak een workspace-structuur aan met CLAUDE.md als centraal contextbestand</li>
-  <li><strong>Bouw je dashboard</strong> — begin met de basis: taken, projecten, klanten. Gebruik Next.js + Turso voor een snelle, schaalbare setup</li>
-  <li><strong>Schrijf je context</strong> — wie ben je, wat doet je bedrijf, wat zijn de werkafspraken. Hoe meer context, hoe beter de AI meewerkt</li>
-  <li><strong>Zet sync op</strong> — GitHub voor code, USB/cloud voor docs, API voor dashboard-taken. Zorg dat je overal dezelfde staat hebt</li>
-  <li><strong>Voeg agents toe</strong> — begin met 2-3 specialisaties (builder, reviewer, researcher) en breid uit waar nodig</li>
-  <li><strong>Automatiseer project creatie</strong> — van "Start Project" tot volledig ingerichte map met taken en bestanden</li>
-</ol>
-
-<div class="info-card accent">
-  <h4>Het belangrijkste</h4>
-  <p>Begin simpel. De workspace groeit organisch mee met je werk. Na een paar weken heb je een AI die je business kent en mee kan bouwen. Na een paar maanden heb je een volledig ecosysteem dat steeds slimmer wordt.</p>
-</div>
 
 </div>
 

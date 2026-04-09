@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autronis — Werkwijze & Systeem Architectuur</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --accent: #17B8A5;
+    --accent-dark: #128C7E;
+    --dark: #0E1719;
+    --dark-card: #111920;
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-light: #E8ECED;
+    --text-muted: #8A9BA0;
+    --bg-light: #F8FAFB;
+    --bg-teal: #F0FDFA;
+    --border: #E2E8F0;
+    --border-teal: #CCFBF1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--text-primary);
+    line-height: 1.7;
+    background: #fff;
+  }
+
+  /* COVER PAGE */
+  .cover {
+    min-height: 100vh;
+    background: var(--dark);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 200px;
+    background: linear-gradient(180deg, transparent 0%, rgba(23,184,165,0.08) 50%, rgba(23,184,165,0.15) 100%);
+  }
+
+  .cover-wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 120px;
+  }
+
+  .cover-logo {
+    width: 200px;
+    margin-bottom: 20px;
+    z-index: 1;
+  }
+
+  .cover-title {
+    font-size: 42px;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    z-index: 1;
+    margin-bottom: 8px;
+  }
+
+  .cover-subtitle {
+    font-size: 20px;
+    color: var(--accent);
+    text-align: center;
+    z-index: 1;
+    font-weight: 500;
+    margin-bottom: 60px;
+  }
+
+  .cover-meta {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    z-index: 1;
+  }
+
+  .cover-meta strong {
+    color: var(--text-light);
+  }
+
+  /* WAVE SVG */
+  .wave-divider {
+    width: 100%;
+    height: 80px;
+    overflow: hidden;
+  }
+
+  .wave-divider svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .wave-bottom {
+    margin-top: -1px;
+  }
+
+  /* PAGE LAYOUT */
+  .page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 60px 40px;
+  }
+
+  /* HEADER BAR */
+  .header-bar {
+    background: var(--dark);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+  }
+
+  .header-bar img {
+    height: 28px;
+  }
+
+  .header-bar span {
+    color: var(--text-light);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+
+  .header-bar::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+  }
+
+  /* HEADINGS */
+  h1 {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid var(--accent);
+  }
+
+  h2 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-top: 48px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  h2 .num {
+    background: var(--accent);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--accent-dark);
+    margin-top: 28px;
+    margin-bottom: 10px;
+  }
+
+  h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-top: 20px;
+    margin-bottom: 8px;
+  }
+
+  p {
+    margin-bottom: 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  /* INTRO BOX */
+  .intro-box {
+    background: var(--bg-teal);
+    border-left: 4px solid var(--accent);
+    padding: 20px 24px;
+    border-radius: 0 12px 12px 0;
+    margin-bottom: 32px;
+  }
+
+  .intro-box p {
+    margin: 0;
+    color: var(--accent-dark);
+    font-weight: 500;
+  }
+
+  /* INFO CARD */
+  .info-card {
+    background: var(--bg-light);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+
+  .info-card.dark {
+    background: var(--dark);
+    border-color: transparent;
+    color: var(--text-light);
+  }
+
+  .info-card.dark p,
+  .info-card.dark li {
+    color: var(--text-muted);
+  }
+
+  .info-card.dark strong {
+    color: var(--text-light);
+  }
+
+  /* TABLES */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 13px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  thead th {
+    background: var(--dark);
+    color: var(--text-light);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.3px;
+  }
+
+  tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr:nth-child(even) {
+    background: var(--bg-light);
+  }
+
+  tbody tr:hover {
+    background: var(--bg-teal);
+  }
+
+  /* CODE BLOCKS */
+  .code-block {
+    background: var(--dark);
+    color: var(--text-light);
+    padding: 20px;
+    border-radius: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.8;
+    overflow-x: auto;
+    margin-bottom: 20px;
+  }
+
+  .code-block .comment { color: #5A6B70; }
+  .code-block .accent { color: var(--accent); }
+  .code-block .dim { color: #5A6B70; }
+
+  /* LISTS */
+  ul, ol {
+    margin-bottom: 16px;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  li strong {
+    color: var(--accent-dark);
+  }
+
+  /* FLOW DIAGRAM */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+
+  .flow-step {
+    background: var(--dark);
+    color: var(--text-light);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .flow-step.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .flow-arrow {
+    color: var(--accent);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  /* SECTION DIVIDER */
+  .section-divider {
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    margin: 48px 0;
+    border-radius: 3px;
+  }
+
+  /* GRID */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  /* BADGE */
+  .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  /* FOOTER */
+  .footer {
+    background: var(--dark);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+  }
+
+  .footer::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-dark));
+  }
+
+  .footer-left {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .footer-left strong {
+    color: var(--accent);
+  }
+
+  .footer-right {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  /* PAGE BREAK */
+  .page-break {
+    page-break-before: always;
+  }
+
+  /* PRINT */
+  @media print {
+    body { background: #fff; }
+    .cover { min-height: 100vh; }
+    .page { padding: 40px 30px; }
+    .header-bar { position: fixed; top: 0; left: 0; right: 0; }
+    .page-break { page-break-before: always; }
+  }
+
+  /* CONNECTION DIAGRAM */
+  .connection-box {
+    background: var(--dark);
+    color: var(--text-light);
+    padding: 24px;
+    border-radius: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    white-space: pre;
+    overflow-x: auto;
+  }
+
+  .connection-box .node {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .connection-box .arrow {
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="cover">
+  <div class="cover-subtitle" style="font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; color: var(--text-muted);">AI & Automatisering</div>
+  <div class="cover-title">Werkwijze &<br>Systeem Architectuur</div>
+  <div class="cover-subtitle">Hoe Autronis draait — van dashboard tot deployment</div>
+  <div class="cover-meta">
+    Prepared by <strong>Autronis</strong><br>
+    April 2026
+  </div>
+  <svg class="cover-wave" viewBox="0 0 1440 120" preserveAspectRatio="none" style="position:absolute;bottom:0;left:0;right:0;">
+    <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,80 1440,60 L1440,120 L0,120 Z" fill="rgba(23,184,165,0.08)"/>
+    <path d="M0,80 C480,20 960,100 1440,40 L1440,120 L0,120 Z" fill="rgba(23,184,165,0.05)"/>
+  </svg>
+</div>
+
+<!-- CONTENT -->
+<div class="page">
+
+<h1>Wat is het?</h1>
+
+<div class="intro-box">
+  <p>Autronis draait op een zelfgebouwd ecosystem: een centraal dashboard met 48+ features, 95+ database tabellen, multi-agent AI orchestratie, en automatische synchronisatie tussen Mac, PC en telefoon. Geen externe SaaS — alles is eigen code.</p>
+</div>
+
+<p>Het dashboard (dashboard.autronis.nl) is het zenuwcentrum. Daaromheen draaien projectmappen met Claude Code als development partner, agents die taken uitvoeren, en sync-systemen die alles verbinden. Je praat met de AI, en de AI bouwt mee — met volledige context over het bedrijf, klanten, en projecten.</p>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">1</span> Architectuur — Drie Lagen</h2>
+
+<h3>1. Context Layer — "Wat weet de AI?"</h3>
+<p>De AI leest bij elke sessie automatisch bestanden die beschrijven:</p>
+<ul>
+  <li><strong>CLAUDE.md</strong> — globale bedrijfsregels, sync-instructies, werkafspraken</li>
+  <li><strong>PROJECT_BRIEF.md</strong> — per project: wat het is, waarom, voor wie</li>
+  <li><strong>MASTER_PROMPT.md</strong> — context specifiek voor Claude Code sessies</li>
+  <li><strong>TODO.md</strong> — AI-gegenereerd stappenplan met fases en taken</li>
+  <li><strong>Auto-memory</strong> — patronen die de AI leert over sessies heen (correcties, voorkeuren)</li>
+  <li><strong>Dashboard data</strong> — via API: klanten, taken, projectstatus, financiën</li>
+</ul>
+
+<h3>2. Build & Deliver Layer — "Hoe bouwt de AI?"</h3>
+<ul>
+  <li><strong>Claude Code</strong> — AI development partner met directe toegang tot codebase, terminal, en tools</li>
+  <li><strong>Ops Room</strong> — 24 AI-agents (builders, reviewers, architects) die taken parallel uitvoeren</li>
+  <li><strong>Dashboard</strong> — 48+ features gebouwd in Next.js + TypeScript + Turso</li>
+  <li><strong>Custom Skills</strong> — scroll-stop-prompter, SEO strategy, website-builder-3d</li>
+  <li><strong>Hooks</strong> — automatische activity reporting en dashboard sync bij elke actie</li>
+</ul>
+
+<h3>3. Internal Operations — "Wat draait op de achtergrond?"</h3>
+<ul>
+  <li><strong>Project Sync Server</strong> — maakt automatisch projectmappen aan bij "Start Project"</li>
+  <li><strong>USB Sync</strong> — docs/specs automatisch gesynchroniseerd tussen Mac en PC</li>
+  <li><strong>Screentime Tracker</strong> — app-gebruik monitoring, productiviteitsanalyse</li>
+  <li><strong>Dagelijkse Briefing</strong> — AI-gegenereerde dagstart met prioriteiten en quick wins</li>
+  <li><strong>Follow-up Automatisering</strong> — triggers bij inactieve klanten of vervallen offertes</li>
+</ul>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">2</span> Het Dashboard — 48+ Features</h2>
+
+<p>Alles in één interface. Gebouwd in Next.js + TypeScript + Tailwind + Turso (cloud SQLite).</p>
+
+<table>
+  <thead>
+    <tr><th>Sectie</th><th>Features</th><th>Wat het doet</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Home</strong></td><td>Dashboard, A.R.I., Briefing</td><td>KPI's, AI assistent (Ctrl+A), dagelijks rapport</td></tr>
+    <tr><td><strong>Mijn Dag</strong></td><td>Taken, Agenda, Tijd, Focus, Dagritme, Meetings, Ideeën, Projecten, Documenten</td><td>Takenbeheer met fases, Google Calendar sync, tijdregistratie, focus sessies (Pomodoro/Deep work), stemming & energie tracking, meeting transcripties</td></tr>
+    <tr><td><strong>Sales</strong></td><td>Leads, Klanten, Sales Engine, Outreach, Follow-up, Mail, Prijscalculator, Client Portal, Health Scores</td><td>CRM, lead pipeline, website scanning → kansen detectie, email campagnes met A/B testing, automatische follow-ups, client health scoring (0-100)</td></tr>
+    <tr><td><strong>Geld</strong></td><td>Financiën, Offertes, Contracten, Proposals, Facturen, Belasting, Kilometers</td><td>Multi-tab financieel dashboard, Revolut sync, 7 contracttypes, PDF generatie, BTW aangiftes, km registratie (€0,23/km), urencriterium</td></tr>
+    <tr><td><strong>Creatie</strong></td><td>Content Engine, Video Studio, Banners, Animaties, Case Studies</td><td>AI posts (LinkedIn/Instagram), Remotion video's, banner templates, scroll-stop animaties, case study pipeline</td></tr>
+    <tr><td><strong>Kennis</strong></td><td>Second Brain, Wiki, Learning Radar, Video Samenvattingen, Contract Analyse</td><td>Persoonlijke kennisbank, bedrijfswiki, nieuws aggregatie (8+ bronnen), YouTube samenvattingen</td></tr>
+    <tr><td><strong>Strategie</strong></td><td>OKR's, Concurrenten, Gewoontes</td><td>Kwartaaldoelen, concurrent monitoring met change detection, habit tracking met streaks</td></tr>
+    <tr><td><strong>Beheer</strong></td><td>Team, Schermtijd, Mealplan, API Gebruik, Instellingen, 2FA, Audit Log</td><td>Agent activiteit, productiviteitsanalyse, maaltijdplanning, API kosten tracking, beveiliging</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">3</span> Project Creatie Flow</h2>
+
+<p>Van idee tot werkend project — volledig geautomatiseerd:</p>
+
+<div class="flow">
+  <span class="flow-step">Idee toevoegen</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">AI Scoring</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step active">Start Project</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Map + bestanden</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Taken in DB</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Notion sync</span>
+</div>
+
+<p>Bij "Start Project" gebeurt automatisch:</p>
+<ol>
+  <li>Project record in database aangemaakt</li>
+  <li>Projectmap <code>~/Autronis/Projects/[naam]/</code> aangemaakt</li>
+  <li>AI genereert PROJECT_BRIEF.md, MASTER_PROMPT.md, RULES.md, TODO.md</li>
+  <li>Taken worden per fase in de database gezet (claude/handmatig)</li>
+  <li>Notion pagina gegenereerd</li>
+  <li>Optioneel: Ops Room agents geactiveerd</li>
+</ol>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>Modus: Team</h4>
+    <p>Ops Room agents worden ingeschakeld. Daan doet intake, Jones plant, builders bouwen, Toby reviewt.</p>
+  </div>
+  <div class="info-card">
+    <h4>Modus: Zelf</h4>
+    <p>Je werkt er zelf aan via Claude Code. Alle context-bestanden zijn direct beschikbaar.</p>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">4</span> Ops Room — Multi-Agent Systeem</h2>
+
+<p>24 AI-agents verdeeld over twee teams. Elke agent heeft een specialisatie en naam.</p>
+
+<div class="grid-2">
+  <div class="info-card dark">
+    <h4 style="color:var(--accent);margin-top:0;">Team Sem — 16 agents</h4>
+    <p><strong>Management:</strong> Jones (architect), Toby (reviewer), Daan (intake)</p>
+    <p><strong>Builders:</strong> Wout, Bas, Gabriel, Tijmen, Pedro, Vincent</p>
+    <p><strong>Support:</strong> Ari (research), Rodi (automation), Brent (interviewer)</p>
+    <p><strong>Pool:</strong> Adam, Noah, Jack, Nikkie, Xia, Thijs, Leonard, Rijk</p>
+  </div>
+  <div class="info-card dark">
+    <h4 style="color:var(--accent);margin-top:0;">Team Syb — 8 agents</h4>
+    <p><strong>Orchestrator:</strong> Autro</p>
+    <p><strong>Builders:</strong> Finn (frontend), Wout-Syb (automation)</p>
+    <p><strong>Support:</strong> Daan, Ari-Syb (research), Bas-Syb (prompts)</p>
+    <p><strong>Quality:</strong> Leo (reviewer), Gabriel-Syb (docs)</p>
+  </div>
+</div>
+
+<h3>Workflow</h3>
+<div class="flow">
+  <span class="flow-step">Opdracht</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Intake</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Planning</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step active">Goedkeuring</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Uitvoering</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Review</span>
+  <span class="flow-arrow">→</span>
+  <span class="flow-step">Klaar</span>
+</div>
+
+<h3>Permissie-niveaus</h3>
+<table>
+  <thead><tr><th>Niveau</th><th>Wanneer</th><th>Actie</th></tr></thead>
+  <tbody>
+    <tr><td><span class="badge" style="background:#16A34A;">Groen</span></td><td>Code schrijven, patronen toepassen</td><td>Agent mag zelfstandig</td></tr>
+    <tr><td><span class="badge" style="background:#EA580C;">Geel</span></td><td>Nieuwe bestanden, env vars</td><td>Notificatie, ga door tenzij bezwaar</td></tr>
+    <tr><td><span class="badge" style="background:#DC2626;">Rood</span></td><td>Git push, deploy, DB wijzigingen</td><td>WACHT op goedkeuring</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">5</span> Data Hubs — Hoe Alles Verbonden Is</h2>
+
+<div class="connection-box"><span class="node">Klanten</span> ──→ <span class="node">Projecten</span> ──→ <span class="node">Taken</span>
+   │              │           │
+   ├──→ Facturen  ├──→ Tijd   ├──→ Focus Sessies
+   ├──→ Offertes  ├──→ Docs   └──→ Schermtijd
+   ├──→ Contracten│
+   ├──→ Leads     ├──→ Meetings
+   ├──→ Portal    │
+   ├──→ Health    └──→ Automaties
+   ├──→ Outreach
+   └──→ Follow-ups</div>
+
+<div class="connection-box"><span class="node">Sales Engine Scan</span> ──→ <span class="node">Kansen</span> ──→ <span class="node">Outreach Sequentie</span>
+       │                                    │
+       └──→ Voorstel/Presentatie            ├──→ Email tracking
+                                             └──→ Follow-up regels
+
+<span class="node">Lead</span> → Contact → Offerte → <span class="node">Gewonnen</span> → Contract → <span class="node">Project</span></div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">6</span> Synchronisatie</h2>
+
+<table>
+  <thead><tr><th>Systeem</th><th>Wat</th><th>Hoe</th></tr></thead>
+  <tbody>
+    <tr><td><strong>GitHub</strong></td><td>Code</td><td>17 repos op github.com/autronis/, auto-push via post-commit hook</td></tr>
+    <tr><td><strong>USB Stick</strong></td><td>Docs, specs, .env</td><td>Automatisch bij mount (Mac: LaunchAgent, PC: Scheduled Task)</td></tr>
+    <tr><td><strong>Turso</strong></td><td>Database</td><td>Cloud SQLite — zelfde data overal (Mac, PC, Vercel)</td></tr>
+    <tr><td><strong>Claude Code → Dashboard</strong></td><td>Taken</td><td>API sync na elke sessie + hook herinnering</td></tr>
+    <tr><td><strong>Project Sync Server</strong></td><td>Projectmappen</td><td>Poort 3456, via Tailscale bereikbaar</td></tr>
+    <tr><td><strong>Google Calendar</strong></td><td>Agenda</td><td>Bidirectionele OAuth sync</td></tr>
+    <tr><td><strong>Screentime</strong></td><td>App-gebruik</td><td>Desktop app → dashboard API elke 30 sec</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">7</span> Multi-Device Setup</h2>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>Mac (Kantoor)</h4>
+    <p>Tailscale IP: 100.118.188.41</p>
+    <p>Projecten: ~/Autronis/Projects/</p>
+    <p>Services: sync server, USB sync, screentime, Tailscale</p>
+  </div>
+  <div class="info-card">
+    <h4>PC (Thuis)</h4>
+    <p>Projecten: OneDrive\Claude AI\Projects\</p>
+    <p>Sync: USB auto-sync, GitHub pull</p>
+  </div>
+</div>
+
+<div class="info-card dark">
+  <h4 style="color:var(--accent);margin-top:0;">Telefoon (Onderweg)</h4>
+  <p>WoL app → Mac wakker maken → Tailscale → Termius SSH → <code style="color:var(--accent);">cd ~/Autronis/Projects/[project] && claude</code></p>
+  <p>Of: Dashboard in Safari → project starten → sync server maakt map aan → SSH → werken</p>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">8</span> Sessie Management</h2>
+
+<div class="code-block">
+<span class="accent">/handoff</span>  <span class="comment">→ Schrijft HANDOFF.md met volledige sessie-staat</span>
+<span class="accent">/pickup</span>   <span class="comment">→ Leest HANDOFF.md, vat samen, gaat verder</span>
+<span class="accent">/commit</span>   <span class="comment">→ Wijzigingen opslaan + dashboard sync</span>
+</div>
+
+<p>Claude Code waarschuwt automatisch wanneer de context hoog wordt (25%+) en stelt voor om <code>/handoff</code> te doen. De volgende chat pakt naadloos de draad op via <code>/pickup</code>.</p>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">9</span> Technische Stack</h2>
+
+<table>
+  <thead><tr><th>Component</th><th>Technologie</th></tr></thead>
+  <tbody>
+    <tr><td>AI Engine</td><td>Claude Code (CLI + VS Code + Opus 4.6)</td></tr>
+    <tr><td>Dashboard</td><td>Next.js + TypeScript + Tailwind + Drizzle ORM</td></tr>
+    <tr><td>Database</td><td>Turso (cloud SQLite, 95+ tabellen)</td></tr>
+    <tr><td>Hosting</td><td>Vercel (dashboard), GitHub Pages (website)</td></tr>
+    <tr><td>Workflows</td><td>n8n (self-hosted op Hostinger)</td></tr>
+    <tr><td>Video Rendering</td><td>Remotion</td></tr>
+    <tr><td>PDF Generatie</td><td>React-PDF</td></tr>
+    <tr><td>Netwerk</td><td>Tailscale VPN</td></tr>
+    <tr><td>Email</td><td>AWS SES (outreach)</td></tr>
+    <tr><td>Meeting Transcripties</td><td>Recall.ai</td></tr>
+    <tr><td>Mobiel</td><td>Tailscale + Termius + WoL + Siri Shortcuts</td></tr>
+    <tr><td>Sync</td><td>USB scripts + LaunchAgents + project sync server</td></tr>
+  </tbody>
+</table>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">10</span> Externe Koppelingen</h2>
+
+<table>
+  <thead><tr><th>Service</th><th>Functie</th></tr></thead>
+  <tbody>
+    <tr><td>Turso</td><td>Cloud database</td></tr>
+    <tr><td>Vercel</td><td>Dashboard hosting + auto-deploy</td></tr>
+    <tr><td>GitHub</td><td>Code opslag (17 repos)</td></tr>
+    <tr><td>Google Calendar</td><td>Agenda sync</td></tr>
+    <tr><td>Notion</td><td>Projectplannen + documentatie</td></tr>
+    <tr><td>Anthropic / OpenAI / Groq</td><td>AI providers</td></tr>
+    <tr><td>Tailscale</td><td>VPN netwerk</td></tr>
+    <tr><td>Rinkel</td><td>Zakelijk telefoon (VoIP)</td></tr>
+    <tr><td>Revolut</td><td>Bankrekening + API sync</td></tr>
+    <tr><td>Mollie</td><td>Betalingsverwerking</td></tr>
+    <tr><td>n8n</td><td>Workflow automation</td></tr>
+    <tr><td>AWS SES</td><td>Email verzending</td></tr>
+    <tr><td>Firecrawl</td><td>Website scraping</td></tr>
+    <tr><td>Remotion</td><td>Video rendering</td></tr>
+    <tr><td>Recall.ai</td><td>Meeting transcripties</td></tr>
+  </tbody>
+</table>
+
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-left">
+    <strong>Autronis</strong> — AI & Automatisering
+  </div>
+  <div class="footer-right">
+    autronis.nl &nbsp;|&nbsp; dashboard.autronis.nl
+  </div>
+</div>
+
+<!-- WAVE AT BOTTOM -->
+<svg width="100%" height="60" viewBox="0 0 1440 60" preserveAspectRatio="none" style="display:block;background:var(--dark);">
+  <path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,40 1440,30 L1440,60 L0,60 Z" fill="rgba(23,184,165,0.15)"/>
+  <path d="M0,40 C480,10 960,50 1440,20 L1440,60 L0,60 Z" fill="rgba(23,184,165,0.08)"/>
+</svg>
+
+</body>
+</html>

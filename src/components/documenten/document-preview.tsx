@@ -226,7 +226,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
             </div>
 
             {/* Content */}
-            <div className={`py-6 space-y-6 ${fullscreen ? "px-10 max-w-3xl mx-auto" : "px-5"}`}>
+            <div data-print-content className={`py-6 space-y-6 ${fullscreen ? "px-10 max-w-3xl mx-auto" : "px-5"}`}>
 
               {/* Title */}
               <h2 className={`font-bold text-autronis-text-primary leading-tight ${fullscreen ? "text-2xl" : "text-lg"}`}>{doc.titel}</h2>
@@ -284,6 +284,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
               <div>
                 {!fullscreen && (
                   <button
+                    data-print-hide
                     onClick={() => setShowContent(!showContent)}
                     className="flex items-center gap-1.5 text-xs font-medium text-autronis-accent hover:text-autronis-accent-hover transition-colors mb-3"
                   >

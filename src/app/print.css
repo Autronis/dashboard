@@ -42,6 +42,11 @@
     text-shadow: none !important;
   }
 
+  /* ── Hide the main page content when printing from preview ── */
+  main {
+    display: none !important;
+  }
+
   /* ── Document print container ── */
   [data-print-content] {
     display: block !important;

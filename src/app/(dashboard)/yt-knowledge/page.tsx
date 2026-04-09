@@ -153,7 +153,13 @@ export default function YtKnowledgePage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ videoId: added.id }),
-        }).then(() => fetchData());
+        }).then(async (r) => {
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            setError(`Analyse mislukt: ${err.error || "onbekend"} ${err.detail || ""}`);
+          }
+          fetchData();
+        });
       }
     } catch {
       setError("Video toevoegen mislukt");
@@ -310,8 +316,14 @@ export default function YtKnowledgePage() {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ videoId: video.id }),
-                          }).then(() => fetchData());
-                          fetchData(); // Immediately show "processing"
+                          }).then(async (r) => {
+                            if (!r.ok) {
+                              const err = await r.json().catch(() => ({}));
+                              setError(`Analyse mislukt: ${err.error || "onbekend"} ${err.detail || ""}`);
+                            }
+                            fetchData();
+                          });
+                          fetchData();
                         }}
                         className="px-2 py-1 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition"
                       >

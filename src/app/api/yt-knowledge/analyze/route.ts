@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { tursoClient } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
+import { YoutubeTranscript } from "youtube-transcript";
 
 const SYSTEM_PROMPT = `Je bent een expert in het analyseren van YouTube video's over Claude Code.
 Je ontvangt een transcript van een video en produceert een gestructureerde analyse.
@@ -35,38 +36,19 @@ Regels:
 - Als de video niet over Claude Code gaat, geef relevance_score 1 en leg uit waarom`;
 
 async function fetchTranscript(videoId: string): Promise<string | null> {
-  // Use youtube-transcript-api via a public proxy or direct scraping
   try {
-    const res = await fetch(
-      `https://www.youtube.com/watch?v=${videoId}`,
-      { headers: { "Accept-Language": "en" } }
-    );
-    const html = await res.text();
-
-    // Extract captions URL from page
-    const captionMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
-    if (!captionMatch) return null;
-
-    const tracks = JSON.parse(captionMatch[1]);
-    if (!tracks.length) return null;
-
-    // Prefer English, then any available
-    const track = tracks.find((t: { languageCode: string }) => t.languageCode === "en") || tracks[0];
-    const captionRes = await fetch(track.baseUrl + "&fmt=json3");
-    const captionData = await captionRes.json();
-
-    if (!captionData.events) return null;
-
-    return captionData.events
-      .filter((e: { segs?: unknown[] }) => e.segs)
-      .map((e: { segs: { utf8: string }[] }) =>
-        e.segs.map((s: { utf8: string }) => s.utf8).join("")
-      )
-      .join(" ")
-      .replace(/\n/g, " ")
-      .trim();
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
+    if (!transcript.length) return null;
+    return transcript.map((t) => t.text).join(" ").trim();
   } catch {
-    return null;
+    // Try without language preference
+    try {
+      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+      if (!transcript.length) return null;
+      return transcript.map((t) => t.text).join(" ").trim();
+    } catch {
+      return null;
+    }
   }
 }
 
@@ -178,6 +160,7 @@ export async function POST(request: NextRequest) {
       sql: "UPDATE ytk_videos SET status = 'failed' WHERE id = ?",
       args: [dbVideoId],
     });
+    console.error("YTK analyze error:", e);
     return NextResponse.json({ error: "Analyse mislukt", detail: String(e) }, { status: 500 });
   }
 }

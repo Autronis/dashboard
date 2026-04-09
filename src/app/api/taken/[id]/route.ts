@@ -169,7 +169,7 @@ export async function PUT(
         const voortgang = Math.round(((stats.afgerond ?? 0) / stats.totaal) * 100);
         await db.update(projecten).set({
           voortgangPercentage: voortgang,
-          ...(voortgang >= 100 ? { status: "afgerond" } : {}),
+          status: voortgang >= 100 ? "afgerond" : "actief",
           bijgewerktOp: sql`(datetime('now'))`,
         }).where(eq(projecten.id, bijgewerkt.projectId));
       }

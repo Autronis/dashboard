@@ -19,6 +19,10 @@
     {
       "path": "/api/ops-room/worker-cron",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/wiki/import/cron",
+      "schedule": "0 12 * * *"
     }
   ]
 }

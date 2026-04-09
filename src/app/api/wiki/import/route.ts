@@ -3,23 +3,32 @@ import { db } from "@/lib/db";
 import { wikiArtikelen } from "@/lib/db/schema";
 import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
-import { readFileSync, readdirSync, existsSync } from "fs";
-import { join, basename } from "path";
 
-const DOCS_DIR = join(process.cwd(), "public", "docs");
+// Known docs files — add new ones here or pass via request body
+const KNOWN_DOCS = ["autronis-werkwijze.html", "autronis-skills.html"];
+
+function getBaseUrl(req: NextRequest): string {
+  const host = req.headers.get("host") || "localhost:3000";
+  const proto = host.includes("localhost") ? "http" : "https";
+  return `${proto}://${host}`;
+}
+
+async function fetchDocContent(baseUrl: string, filename: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${baseUrl}/docs/${filename}`);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
 
 function extractBodyContent(html: string): string {
-  // Remove everything before <body> and after </body>
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
   const content = bodyMatch ? bodyMatch[1] : html;
-
-  // Remove <script> tags
   let cleaned = content.replace(/<script[\s\S]*?<\/script>/gi, "");
-  // Remove <style> tags
   cleaned = cleaned.replace(/<style[\s\S]*?<\/style>/gi, "");
-  // Remove cover page (usually the first section)
   cleaned = cleaned.replace(/<div class="cover">[\s\S]*?<\/div>\s*(?=<div|<section|<h[12])/i, "");
-
   return cleaned.trim();
 }
 
@@ -37,17 +46,16 @@ function inferCategorie(filename: string, title: string): string {
 function extractTitle(html: string, filename: string): string {
   const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i);
   if (titleMatch) {
-    return titleMatch[1]
-      .replace(/Autronis\s*[—–-]\s*/i, "")
-      .trim();
+    return titleMatch[1].replace(/Autronis\s*[—–-]\s*/i, "").trim();
   }
-  return basename(filename, ".html")
+  return filename
+    .replace(/\.html?$/i, "")
     .replace(/^autronis-/i, "")
     .replace(/-/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-// GET /api/wiki/import — scan docs directory for importable files
+// GET /api/wiki/import — scan known docs for import status
 export async function GET(req: NextRequest) {
   try {
     const authHeader = req.headers.get("authorization");
@@ -57,28 +65,25 @@ export async function GET(req: NextRequest) {
       await requireAuth();
     }
 
-    if (!existsSync(DOCS_DIR)) {
-      return NextResponse.json({ bestanden: [], bericht: "Geen docs directory gevonden" });
-    }
-
-    const files = readdirSync(DOCS_DIR).filter(
-      (f) => f.endsWith(".html") || f.endsWith(".md") || f.endsWith(".txt")
-    );
-
-    // Check which are already imported
+    const baseUrl = getBaseUrl(req);
     const existing = await db
       .select({ titel: wikiArtikelen.titel })
       .from(wikiArtikelen)
       .all();
     const existingTitles = new Set(existing.map((e) => e.titel.toLowerCase().trim()));
 
-    const bestanden = files.map((f) => {
-      const fullPath = join(DOCS_DIR, f);
-      const html = readFileSync(fullPath, "utf-8");
-      const titel = extractTitle(html, f);
-      const alGeimporteerd = existingTitles.has(titel.toLowerCase().trim());
-      return { bestand: f, titel, categorie: inferCategorie(f, titel), alGeimporteerd };
-    });
+    const bestanden = [];
+    for (const filename of KNOWN_DOCS) {
+      const html = await fetchDocContent(baseUrl, filename);
+      if (!html) continue;
+      const titel = extractTitle(html, filename);
+      bestanden.push({
+        bestand: filename,
+        titel,
+        categorie: inferCategorie(filename, titel),
+        alGeimporteerd: existingTitles.has(titel.toLowerCase().trim()),
+      });
+    }
 
     return NextResponse.json({ bestanden });
   } catch (error) {
@@ -101,37 +106,27 @@ export async function POST(req: NextRequest) {
       userId = gebruiker.id;
     }
 
-    const body = (await req.json()) as {
+    const body = (await req.json().catch(() => ({}))) as {
       bestanden?: string[];
       overschrijven?: boolean;
     };
 
-    if (!existsSync(DOCS_DIR)) {
-      return NextResponse.json({ fout: "Geen docs directory gevonden" }, { status: 404 });
-    }
-
-    const filesToImport = body.bestanden
-      ? body.bestanden
-      : readdirSync(DOCS_DIR).filter(
-          (f) => f.endsWith(".html") || f.endsWith(".md") || f.endsWith(".txt")
-        );
-
+    const baseUrl = getBaseUrl(req);
+    const filesToImport = body.bestanden || KNOWN_DOCS;
     const results: Array<{ bestand: string; titel: string; status: string; id?: number }> = [];
 
     for (const filename of filesToImport) {
-      const fullPath = join(DOCS_DIR, filename);
-      if (!existsSync(fullPath)) {
+      const raw = await fetchDocContent(baseUrl, filename);
+      if (!raw) {
         results.push({ bestand: filename, titel: "", status: "niet gevonden" });
         continue;
       }
 
-      const raw = readFileSync(fullPath, "utf-8");
       const titel = extractTitle(raw, filename);
       const categorie = inferCategorie(filename, titel);
       const isHtml = filename.endsWith(".html");
       const inhoud = isHtml ? extractBodyContent(raw) : raw;
 
-      // Check if already exists
       const existing = await db
         .select({ id: wikiArtikelen.id })
         .from(wikiArtikelen)
@@ -160,7 +155,7 @@ export async function POST(req: NextRequest) {
             titel,
             inhoud,
             categorie: categorie as typeof wikiArtikelen.categorie.enumValues[number],
-            tags: JSON.stringify([filename.endsWith(".html") ? "html-import" : "import"]),
+            tags: JSON.stringify([isHtml ? "html-import" : "import"]),
             auteurId: userId,
             gepubliceerd: 1,
           })

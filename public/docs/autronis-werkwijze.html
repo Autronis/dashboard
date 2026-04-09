@@ -63,9 +63,10 @@
   }
 
   .cover-logo {
-    width: 200px;
+    width: 160px;
     margin-bottom: 20px;
     z-index: 1;
+    filter: brightness(0) invert(1);
   }
 
   .cover-title {
@@ -445,6 +446,7 @@
 
 <!-- COVER PAGE -->
 <div class="cover">
+  <img class="cover-logo" src="../logo-dashboard.png" alt="Autronis" onerror="this.style.display='none'">
   <div class="cover-subtitle" style="font-size: 13px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 40px; color: var(--text-muted);">AI & Automatisering</div>
   <div class="cover-title">Werkwijze &<br>Systeem Architectuur</div>
   <div class="cover-subtitle">Hoe Autronis draait — van dashboard tot deployment</div>

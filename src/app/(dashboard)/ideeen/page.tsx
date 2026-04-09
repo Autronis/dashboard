@@ -151,7 +151,7 @@ export default function IdeeenPage() {
       setTimeout(() => inzichtInputRef.current?.focus(), 150);
     }
   }, []);
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatus, setFilterStatus] = useState("idee");
   const [filterCategorie, setFilterCategorie] = useState("");
   const [filterDoelgroep, setFilterDoelgroep] = useState("");
   const [filterMinScore, setFilterMinScore] = useState(0);

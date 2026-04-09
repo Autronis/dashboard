@@ -19,9 +19,18 @@ export async function GET(req: NextRequest) {
     const vorigJaarStart = `${jaar - 1}-01-01T00:00:00`;
     const vorigJaarEind = `${jaar - 1}-12-31T23:59:59`;
 
-    // ── Tijdregistraties (uren + omzet) ──
-    const entries = await db
-      .select({
+    // ── Fetch all data in parallel ──
+    const [
+      entries,
+      vorigJaarEntries,
+      screenEntries,
+      gebruikersList,
+      projectList,
+      klantList,
+      urenDitJaar,
+      urenVorigJaar,
+    ] = await Promise.all([
+      db.select({
         duurMinuten: tijdregistraties.duurMinuten,
         startTijd: tijdregistraties.startTijd,
         uurtarief: klanten.uurtarief,
@@ -31,39 +40,29 @@ export async function GET(req: NextRequest) {
         gebruikerNaam: gebruikers.naam,
         gebruikerId: tijdregistraties.gebruikerId,
       })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .innerJoin(gebruikers, eq(tijdregistraties.gebruikerId, gebruikers.id))
-      .where(
-        and(
+        .from(tijdregistraties)
+        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+        .innerJoin(gebruikers, eq(tijdregistraties.gebruikerId, gebruikers.id))
+        .where(and(
           gte(tijdregistraties.startTijd, jaarStart),
           lte(tijdregistraties.startTijd, jaarEind),
           sql`${tijdregistraties.eindTijd} IS NOT NULL`,
           or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-        )
-      );
+        )),
 
-    const vorigJaarEntries = await db
-      .select({
-        duurMinuten: tijdregistraties.duurMinuten,
-        uurtarief: klanten.uurtarief,
-      })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(
-        and(
+      db.select({ duurMinuten: tijdregistraties.duurMinuten, uurtarief: klanten.uurtarief })
+        .from(tijdregistraties)
+        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+        .where(and(
           gte(tijdregistraties.startTijd, vorigJaarStart),
           lte(tijdregistraties.startTijd, vorigJaarEind),
           sql`${tijdregistraties.eindTijd} IS NOT NULL`,
           or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-        )
-      );
+        )),
 
-    // ── Screen time entries (actieve uren) ──
-    const screenEntries = await db
-      .select({
+      db.select({
         duurSeconden: screenTimeEntries.duurSeconden,
         startTijd: screenTimeEntries.startTijd,
         gebruikerId: screenTimeEntries.gebruikerId,
@@ -71,36 +70,28 @@ export async function GET(req: NextRequest) {
         klantId: screenTimeEntries.klantId,
         categorie: screenTimeEntries.categorie,
       })
-      .from(screenTimeEntries)
-      .where(
-        and(
+        .from(screenTimeEntries)
+        .where(and(
           gte(screenTimeEntries.startTijd, jaarStart),
           lte(screenTimeEntries.startTijd, jaarEind),
           sql`${screenTimeEntries.categorie} != 'inactief'`
-        )
-      );
+        )),
 
-    // ── Gebruiker namen ophalen ──
-    const gebruikersList = await db
-      .select({ id: gebruikers.id, naam: gebruikers.naam })
-      .from(gebruikers);
+      db.select({ id: gebruikers.id, naam: gebruikers.naam }).from(gebruikers),
+
+      db.select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId }).from(projecten),
+
+      db.select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief })
+        .from(klanten)
+        .where(or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))),
+
+      berekenActieveUren(1, `${jaar}-01-01`, `${jaar}-12-31`),
+      berekenActieveUren(1, `${jaar - 1}-01-01`, `${jaar - 1}-12-31`),
+    ]);
+
     const gebruikerNamen = new Map(gebruikersList.map((g) => [g.id, g.naam]));
-
-    // ── Project/klant namen ophalen ──
-    const projectList = await db
-      .select({ id: projecten.id, naam: projecten.naam, klantId: projecten.klantId })
-      .from(projecten);
     const projectNamen = new Map(projectList.map((p) => [p.id, p]));
-
-    const klantList = await db
-      .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief })
-      .from(klanten)
-      .where(or(eq(klanten.isDemo, 0), isNull(klanten.isDemo)));
     const klantData = new Map(klantList.map((k) => [k.id, k]));
-
-    // === KPIs (uren uit screen time via berekenActieveUren) ===
-    const urenDitJaar = await berekenActieveUren(1, `${jaar}-01-01`, `${jaar}-12-31`);
-    const urenVorigJaar = await berekenActieveUren(1, `${jaar - 1}-01-01`, `${jaar - 1}-12-31`);
 
     let omzetDitJaar = 0;
     for (const e of entries) {

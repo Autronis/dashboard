@@ -41,10 +41,23 @@ export async function GET() {
     const vandaag = now.toISOString().slice(0, 10);
 
     // ============ FETCH ALL DATA IN PARALLEL ============
+    const maand3geleden = new Date(jaar, maand - 3, 1).toISOString().slice(0, 10);
 
-    // Time entries last 90 days with project + client
-    const entries = await db
-      .select({
+    const [
+      entries,
+      entriesJaar,
+      actieveProjecten,
+      alleKlanten,
+      openFacturen,
+      betaaldeFacturen,
+      openOffertes,
+      actieveLeads,
+      kostenJaar,
+      inkomstenL3,
+      kostenL3,
+    ] = await Promise.all([
+      // Time entries last 90 days with project + client
+      db.select({
         duurMinuten: tijdregistraties.duurMinuten,
         startTijd: tijdregistraties.startTijd,
         categorie: tijdregistraties.categorie,
@@ -58,21 +71,18 @@ export async function GET() {
         werkelijkeUren: projecten.werkelijkeUren,
         deadline: projecten.deadline,
       })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(
-        and(
+        .from(tijdregistraties)
+        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+        .where(and(
           gte(tijdregistraties.startTijd, dag90geleden),
           lte(tijdregistraties.startTijd, vandaag + "T23:59:59"),
           or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-        )
-      )
-      .all();
+        ))
+        .all(),
 
-    // All year entries for YTD calculations
-    const entriesJaar = await db
-      .select({
+      // All year entries for YTD calculations
+      db.select({
         duurMinuten: tijdregistraties.duurMinuten,
         startTijd: tijdregistraties.startTijd,
         categorie: tijdregistraties.categorie,
@@ -82,148 +92,83 @@ export async function GET() {
         projectNaam: projecten.naam,
         projectId: projecten.id,
       })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(
-        and(
+        .from(tijdregistraties)
+        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+        .where(and(
           gte(tijdregistraties.startTijd, jaarStart),
           lte(tijdregistraties.startTijd, jaarEind + "T23:59:59"),
           or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-        )
-      )
-      .all();
+        ))
+        .all(),
 
-    // Active projects
-    const actieveProjecten = await db
-      .select({
-        id: projecten.id,
-        naam: projecten.naam,
-        klantId: projecten.klantId,
-        klantNaam: klanten.bedrijfsnaam,
-        uurtarief: klanten.uurtarief,
-        geschatteUren: projecten.geschatteUren,
-        werkelijkeUren: projecten.werkelijkeUren,
-        deadline: projecten.deadline,
-        status: projecten.status,
+      // Active projects
+      db.select({
+        id: projecten.id, naam: projecten.naam, klantId: projecten.klantId,
+        klantNaam: klanten.bedrijfsnaam, uurtarief: klanten.uurtarief,
+        geschatteUren: projecten.geschatteUren, werkelijkeUren: projecten.werkelijkeUren,
+        deadline: projecten.deadline, status: projecten.status,
       })
-      .from(projecten)
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
-      .all();
+        .from(projecten)
+        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
+        .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
+        .all(),
 
-    // All clients
-    const alleKlanten = await db
-      .select()
-      .from(klanten)
-      .where(and(eq(klanten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
-      .all();
+      // All clients
+      db.select().from(klanten)
+        .where(and(eq(klanten.isActief, 1), or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))))
+        .all(),
 
-    // Open invoices (verzonden + te_laat)
-    const openFacturen = await db
-      .select({
-        id: facturen.id,
-        klantId: facturen.klantId,
-        bedragExclBtw: facturen.bedragExclBtw,
-        bedragInclBtw: facturen.bedragInclBtw,
-        status: facturen.status,
-        vervaldatum: facturen.vervaldatum,
-        factuurdatum: facturen.factuurdatum,
+      // Open invoices
+      db.select({
+        id: facturen.id, klantId: facturen.klantId, bedragExclBtw: facturen.bedragExclBtw,
+        bedragInclBtw: facturen.bedragInclBtw, status: facturen.status,
+        vervaldatum: facturen.vervaldatum, factuurdatum: facturen.factuurdatum,
       })
-      .from(facturen)
-      .where(
-        and(
-          eq(facturen.isActief, 1),
-          or(eq(facturen.status, "verzonden"), eq(facturen.status, "te_laat"))
-        )
-      )
-      .all();
+        .from(facturen)
+        .where(and(eq(facturen.isActief, 1), or(eq(facturen.status, "verzonden"), eq(facturen.status, "te_laat"))))
+        .all(),
 
-    // Paid invoices this year
-    const betaaldeFacturen = await db
-      .select({
-        klantId: facturen.klantId,
-        bedragExclBtw: facturen.bedragExclBtw,
-        betaaldOp: facturen.betaaldOp,
+      // Paid invoices this year
+      db.select({ klantId: facturen.klantId, bedragExclBtw: facturen.bedragExclBtw, betaaldOp: facturen.betaaldOp })
+        .from(facturen)
+        .where(and(eq(facturen.isActief, 1), eq(facturen.status, "betaald"), gte(facturen.betaaldOp, jaarStart), lte(facturen.betaaldOp, jaarEind)))
+        .all(),
+
+      // Pipeline: open offertes
+      db.select({
+        id: offertes.id, klantNaam: klanten.bedrijfsnaam, titel: offertes.titel,
+        bedragExclBtw: offertes.bedragExclBtw, status: offertes.status,
+        geldigTot: offertes.geldigTot, datum: offertes.datum, type: offertes.type,
       })
-      .from(facturen)
-      .where(
-        and(
-          eq(facturen.isActief, 1),
-          eq(facturen.status, "betaald"),
-          gte(facturen.betaaldOp, jaarStart),
-          lte(facturen.betaaldOp, jaarEind)
-        )
-      )
-      .all();
+        .from(offertes)
+        .innerJoin(klanten, eq(offertes.klantId, klanten.id))
+        .where(and(eq(offertes.isActief, 1), or(eq(offertes.status, "verzonden"), eq(offertes.status, "concept"))))
+        .all(),
 
-    // Pipeline: open/active offertes
-    const openOffertes = await db
-      .select({
-        id: offertes.id,
-        klantNaam: klanten.bedrijfsnaam,
-        titel: offertes.titel,
-        bedragExclBtw: offertes.bedragExclBtw,
-        status: offertes.status,
-        geldigTot: offertes.geldigTot,
-        datum: offertes.datum,
-        type: offertes.type,
-      })
-      .from(offertes)
-      .innerJoin(klanten, eq(offertes.klantId, klanten.id))
-      .where(
-        and(
-          eq(offertes.isActief, 1),
-          or(eq(offertes.status, "verzonden"), eq(offertes.status, "concept"))
-        )
-      )
-      .all();
+      // Active leads
+      db.select().from(leads)
+        .where(and(eq(leads.isActief, 1), ne(leads.status, "verloren"), ne(leads.status, "gewonnen")))
+        .all(),
 
-    // Active leads
-    const actieveLeads = await db
-      .select()
-      .from(leads)
-      .where(
-        and(
-          eq(leads.isActief, 1),
-          ne(leads.status, "verloren"),
-          ne(leads.status, "gewonnen")
-        )
-      )
-      .all();
+      // Costs this year
+      db.select({ totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)` })
+        .from(uitgaven)
+        .where(and(gte(uitgaven.datum, jaarStart), lte(uitgaven.datum, jaarEind)))
+        .get(),
 
-    // Costs this year
-    const kostenJaar = await db
-      .select({
-        totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
-      })
-      .from(uitgaven)
-      .where(and(gte(uitgaven.datum, jaarStart), lte(uitgaven.datum, jaarEind)))
-      .get();
+      // Last 3 months income
+      db.select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)` })
+        .from(facturen)
+        .where(and(eq(facturen.status, "betaald"), gte(facturen.betaaldOp, maand3geleden), lte(facturen.betaaldOp, vandaag)))
+        .get(),
 
-    // Last 3 months income/costs for cash flow
-    const maand3geleden = new Date(jaar, maand - 3, 1).toISOString().slice(0, 10);
-    const inkomstenL3 = await db
-      .select({
-        totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
-      })
-      .from(facturen)
-      .where(
-        and(
-          eq(facturen.status, "betaald"),
-          gte(facturen.betaaldOp, maand3geleden),
-          lte(facturen.betaaldOp, vandaag)
-        )
-      )
-      .get();
-
-    const kostenL3 = await db
-      .select({
-        totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
-      })
-      .from(uitgaven)
-      .where(and(gte(uitgaven.datum, maand3geleden), lte(uitgaven.datum, vandaag)))
-      .get();
+      // Last 3 months costs
+      db.select({ totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)` })
+        .from(uitgaven)
+        .where(and(gte(uitgaven.datum, maand3geleden), lte(uitgaven.datum, vandaag)))
+        .get(),
+    ]);
 
     // ============ CALCULATIONS ============
 

@@ -32,6 +32,10 @@ export async function POST(req: NextRequest) {
 
     const errors: string[] = [];
 
+    // Get default user
+    const defaultUser = await db.select().from(gebruikers).limit(1).get();
+    const userId = defaultUser?.id ?? 1;
+
     // Find project (case-insensitive)
     let project = await db
       .select()
@@ -53,10 +57,6 @@ export async function POST(req: NextRequest) {
         .returning();
       project = nieuwProject;
     }
-
-    // Get default user
-    const defaultUser = await db.select().from(gebruikers).limit(1).get();
-    const userId = defaultUser?.id ?? 1;
 
     // Replace all mode: sync tasks from payload, respecting existing statuses
     if (replaceAll && alle_taken && alle_taken.length > 0) {

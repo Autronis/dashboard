@@ -146,18 +146,40 @@ export default function YtKnowledgePage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Auto-refresh when there are processing videos
+  useEffect(() => {
+    const hasProcessing = videos.some((v) => v.status === "processing" || v.status === "pending");
+    if (!hasProcessing) return;
+    const interval = setInterval(fetchData, 5000);
+    return () => clearInterval(interval);
+  }, [videos, fetchData]);
+
   const handleAddVideo = async () => {
     if (!analyzeUrl.trim()) return;
     setAnalyzing(true);
+    setError(null);
     try {
       const res = await fetch(`${API_BASE}/api/videos?url=${encodeURIComponent(analyzeUrl)}`, { method: "POST" });
       if (!res.ok) throw new Error("Kon video niet toevoegen");
+      const data = await res.json();
+      if (data.status === "already_done") {
+        setError("Deze video is al geanalyseerd");
+      }
       setAnalyzeUrl("");
       fetchData();
     } catch {
       setError("Video toevoegen mislukt");
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleAnalyze = async (videoId: string) => {
+    try {
+      await fetch(`${API_BASE}/api/videos/${videoId}/analyze`, { method: "POST" });
+      fetchData();
+    } catch {
+      setError("Analyse starten mislukt");
     }
   };
 
@@ -301,8 +323,16 @@ export default function YtKnowledgePage() {
                         <span>{timeAgo(video.discovered_at)}</span>
                       </div>
                     </div>
+                    {(video.status === "pending" || video.status === "failed") && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleAnalyze(video.id); }}
+                        className="px-2 py-1 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition"
+                      >
+                        Analyseer
+                      </button>
+                    )}
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border", sc.color)}>
-                      <StatusIcon className="w-3 h-3" />
+                      <StatusIcon className={cn("w-3 h-3", video.status === "processing" && "animate-spin")} />
                       {sc.label}
                     </span>
                     {isExpanded ? (

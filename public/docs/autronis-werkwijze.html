@@ -738,7 +738,195 @@
 
 <div class="section-divider"></div>
 
-<h2><span class="num">11</span> Wat maakt het anders?</h2>
+<h2><span class="num">11</span> Mappenstructuur</h2>
+
+<h3>Workspace (Mac)</h3>
+<div class="code-block">~/Autronis/
+├── CLAUDE.md                    <span class="comment">← Globale regels voor Claude Code</span>
+├── HOE-WERKT-ALLES.md           <span class="comment">← Volledig systeemoverzicht</span>
+├── sync-to-usb.sh               <span class="comment">← USB sync script (Mac → USB)</span>
+├── sync-from-usb.sh             <span class="comment">← USB import script (USB → Mac)</span>
+├── Business-ideas/              <span class="comment">← Ideeën backlog</span>
+└── Projects/
+    ├── autronis-dashboard/      <span class="comment">← Het dashboard (Next.js + Turso)</span>
+    ├── autronis-website/        <span class="comment">← Website (autronis.nl)</span>
+    ├── speak-to-text/           <span class="comment">← Dicteer-app (Swift)</span>
+    ├── sales-engine/            <span class="comment">← Sales automation</span>
+    ├── learning-radar/          <span class="comment">← AI/tech nieuws radar</span>
+    ├── agent-office--ops-room/  <span class="comment">← Agent orchestration</span>
+    ├── financial-dashboard/     <span class="comment">← Cashflow & MRR</span>
+    └── ...                      <span class="comment">← 17 repos totaal</span></div>
+
+<h3>Claude Code Structuur</h3>
+<div class="code-block">~/.claude/
+├── settings.json                <span class="comment">← Hooks, permissions, directories</span>
+├── hooks/
+│   ├── report-activity.sh       <span class="comment">← PostToolUse: meldt activiteit aan Ops Room</span>
+│   └── sync-dashboard.sh        <span class="comment">← Stop: herinnering dashboard sync</span>
+├── skills/
+│   ├── scroll-stop-prompter/    <span class="comment">← AI image/video prompt generator</span>
+│   ├── seo-strategy/            <span class="comment">← SEO analyse en optimalisatie</span>
+│   └── website-builder-3d/      <span class="comment">← Scroll-driven video website builder</span>
+└── projects/                    <span class="comment">← Per-project sessies + auto-memory</span>
+    └── [project]/memory/        <span class="comment">← Patronen die AI leert over sessies</span></div>
+
+<h3>Per Project</h3>
+<div class="code-block">~/Autronis/Projects/[project]/
+├── .claude/settings.json        <span class="comment">← Project-specifieke instellingen</span>
+├── CLAUDE.md                    <span class="comment">← Project-specifieke instructies</span>
+├── PROJECT_BRIEF.md             <span class="comment">← Wat het project is</span>
+├── MASTER_PROMPT.md             <span class="comment">← Context voor Claude Code sessies</span>
+├── RULES.md                     <span class="comment">← Coding regels</span>
+├── TODO.md                      <span class="comment">← Taken met fases en checkboxes</span>
+└── [broncode...]</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">12</span> Hooks & Automatisering</h2>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>PostToolUse → report-activity.sh</h4>
+    <p>Draait async na elke tool-aanroep. Meldt aan de Ops Room welke agent actief is. Mapt project → agent (dashboard → wout, website → pedro, etc.). Real-time zichtbaar in het dashboard.</p>
+  </div>
+  <div class="info-card">
+    <h4>Stop → sync-dashboard.sh</h4>
+    <p>Bij sessie-einde: herinnering om voltooide taken te syncen naar het dashboard. Check of USB stick gemount is voor docs sync.</p>
+  </div>
+</div>
+
+<p><strong>Settings.json</strong> bevat: hooks configuratie, goedgekeurde commands (git, npm, curl, etc.), en extra directories die Claude Code mag benaderen.</p>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">13</span> Database Opbouw — 95+ Tabellen</h2>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>Kern (8)</h4>
+    <p>gebruikers, klanten, projecten, taken, ideeen, tijdregistraties, documenten, notities</p>
+  </div>
+  <div class="info-card">
+    <h4>Financieel (12)</h4>
+    <p>facturen, factuurRegels, offertes, offerteRegels, uitgaven, inkomsten, abonnementen, bankTransacties, revolutVerbinding, investeringen, onkostenDeclaraties, mollieInstellingen</p>
+  </div>
+  <div class="info-card">
+    <h4>Belasting & KM (12)</h4>
+    <p>belastingDeadlines, btwAangiftes, urenCriterium, voorlopigeAanslagen, belastingReserveringen, belastingTips, belastingAuditLog, kilometerRegistraties, opgeslagenRoutes, terugkerendeRitten, kmStanden, brandstofKosten</p>
+  </div>
+  <div class="info-card">
+    <h4>Sales (8)</h4>
+    <p>leads, leadActiviteiten, salesEngineScans, salesEngineKansen, outreachDomeinen, outreachSequenties, outreachEmails, outreachOptOuts</p>
+  </div>
+  <div class="info-card">
+    <h4>Follow-up (3)</h4>
+    <p>followUpRegels, followUpTemplates, followUpLog</p>
+  </div>
+  <div class="info-card">
+    <h4>Content (7)</h4>
+    <p>contentPosts, contentVideos, contentBanners, contentProfiel, contentInzichten, radarBronnen, radarItems</p>
+  </div>
+  <div class="info-card">
+    <h4>Productiviteit (7)</h4>
+    <p>screenTimeEntries, screenTimeRegels, screenTimeSuggesties, screenTimeSamenvattingen, focusSessies, dagritme, briefings</p>
+  </div>
+  <div class="info-card">
+    <h4>Gewoontes & Doelen (5)</h4>
+    <p>gewoontes, gewoonteLogboek, okrObjectives, okrKeyResults, okrCheckIns</p>
+  </div>
+  <div class="info-card">
+    <h4>Kennis (4)</h4>
+    <p>secondBrainItems, videoSamenvattingen, wikiArtikelen, sops</p>
+  </div>
+  <div class="info-card">
+    <h4>Concurrentie (3)</h4>
+    <p>concurrenten, concurrentSnapshots, concurrentScans</p>
+  </div>
+  <div class="info-card">
+    <h4>Contracten & Proposals (4)</h4>
+    <p>contracten, proposals, proposalRegels, klanttevredenheid</p>
+  </div>
+  <div class="info-card">
+    <h4>Ops Room (3)</h4>
+    <p>agentActiviteit, agentProjecten, orchestratorCommands</p>
+  </div>
+  <div class="info-card">
+    <h4>Communicatie (3)</h4>
+    <p>meetings, clientBerichten, clientPortalTokens</p>
+  </div>
+  <div class="info-card">
+    <h4>Integraties (5)</h4>
+    <p>agendaItems, externeKalenders, googleTokens, webhookEndpoints, webhookLogs</p>
+  </div>
+  <div class="info-card">
+    <h4>Systeem (8)</h4>
+    <p>sessies, backupCodes, auditLog, verwerkingsregister, apiKeys, apiTokenGebruik, aiGesprekken, bedrijfsinstellingen</p>
+  </div>
+  <div class="info-card">
+    <h4>Overig (4)</h4>
+    <p>assetGallery, mealplanPlans, clientAutomaties, projectTemplates</p>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">14</span> Regels & Conventies</h2>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>Code</h4>
+    <ul>
+      <li>TypeScript altijd, nooit plain JavaScript</li>
+      <li>Nooit <code>any</code> gebruiken</li>
+      <li>Nooit <code>console.log</code> in productie</li>
+      <li>Code in Engels, UI-teksten in Nederlands</li>
+      <li>Commit messages in Engels</li>
+      <li>Kleine, logische commits</li>
+      <li>Branch per feature</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4>Dashboard Design</h4>
+    <ul>
+      <li>Dark theme: bg <code>#192225</code>, accent <code>#17B8A5</code></li>
+      <li>Framer Motion animaties</li>
+      <li>Rounded 2xl cards</li>
+      <li>API responses in Nederlands</li>
+      <li>Factuurnummer: <code>AUT-YYYY-NNN</code></li>
+      <li>Soft delete via <code>is_actief</code> flag</li>
+      <li>BTW 21%, betalingstermijn 30 dagen</li>
+    </ul>
+  </div>
+</div>
+
+<div class="grid-2">
+  <div class="info-card">
+    <h4>Claude Code Werkwijze</h4>
+    <ul>
+      <li>GitHub: altijd naar <code>github.com/autronis/</code></li>
+      <li>Dashboard sync na elke sessie (verplicht)</li>
+      <li>USB sync als stick gemount is</li>
+      <li>Geen losse bestanden in Projects/</li>
+      <li>SpeakToText dictionary bijwerken</li>
+      <li>Beknopt en to-the-point antwoorden</li>
+    </ul>
+  </div>
+  <div class="info-card">
+    <h4>AI Principes</h4>
+    <ul>
+      <li>Eerst lezen, dan aanpassen</li>
+      <li>Geen extra features die niet gevraagd zijn</li>
+      <li>DRY, KISS — geen speculative abstractions</li>
+      <li>Context waarschuwing bij 25%+</li>
+      <li>Handoff/pickup bij sessie-wissel</li>
+      <li>Auto-memory voor patronen over sessies</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section-divider"></div>
+
+<h2><span class="num">15</span> Wat maakt het anders?</h2>
 
 <p><strong>Context-aware AI.</strong> De AI weet niet alleen hoe je code schrijft, maar ook wat je bedrijf doet, wie je klanten zijn, wat de prioriteiten zijn, en wat er vorige week is besloten. Het is geen generieke copilot — het is een partner die het hele bedrijf kent.</p>
 
@@ -754,7 +942,7 @@
 
 <div class="section-divider"></div>
 
-<h2><span class="num">12</span> Wat kost het?</h2>
+<h2><span class="num">16</span> Wat kost het?</h2>
 
 <table>
   <thead><tr><th>Item</th><th>Kosten</th></tr></thead>
@@ -775,7 +963,7 @@
 
 <div class="section-divider"></div>
 
-<h2><span class="num">13</span> Hoe begin je?</h2>
+<h2><span class="num">17</span> Hoe begin je?</h2>
 
 <ol>
   <li><strong>Installeer Claude Code</strong> en maak een workspace-structuur aan met CLAUDE.md als centraal contextbestand</li>

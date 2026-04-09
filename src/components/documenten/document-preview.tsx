@@ -4,7 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DocumentBase, DOCUMENT_TYPE_CONFIG } from "@/types/documenten";
 import { useImproveDocument } from "@/hooks/queries/use-documenten";
-import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Loader2, ChevronDown, FileText, Maximize2, Minimize2, Send, Bot } from "lucide-react";
+import { X, ExternalLink, Copy, Calendar, User, Archive, FileDown, Loader2, ChevronDown, FileText, Maximize2, Minimize2, Send, Bot, Mail } from "lucide-react";
+import { ShareDocumentModal } from "@/components/documenten/share-document-modal";
 
 interface DocumentPreviewProps {
   document: DocumentBase | null;
@@ -40,6 +41,7 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
   // Keep for potential future use
   const _improveDocument = useImproveDocument();
 
@@ -454,6 +456,13 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
                     </button>
                   )}
                   <button
+                    onClick={() => setShowShareModal(true)}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-autronis-border text-sm text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 transition-colors"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Deel via e-mail
+                  </button>
+                  <button
                     onClick={() => window.print()}
                     className="flex items-center gap-2 w-full px-4 py-2.5 rounded-xl border border-autronis-border text-sm text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 transition-colors"
                   >
@@ -473,6 +482,16 @@ export function DocumentPreview({ document: doc, open, onClose, onDuplicate, onA
               )}
             </div>
           </motion.div>
+
+          {doc && (
+            <ShareDocumentModal
+              open={showShareModal}
+              onClose={() => setShowShareModal(false)}
+              documentId={doc.notionId}
+              documentTitel={doc.titel}
+              klantNaam={doc.klantNaam}
+            />
+          )}
         </>
       )}
     </AnimatePresence>

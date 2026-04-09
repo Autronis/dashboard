@@ -50,6 +50,15 @@ function parseTags(tagsJson: string | null): string[] {
   }
 }
 
+function isHtmlContent(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("<") && (
+    trimmed.startsWith("<h1") || trimmed.startsWith("<h2") || trimmed.startsWith("<p") ||
+    trimmed.startsWith("<div") || trimmed.startsWith("<section") || trimmed.startsWith("<article") ||
+    trimmed.startsWith("<!") || trimmed.startsWith("<html")
+  );
+}
+
 function renderMarkdown(text: string): string {
   let html = text
     // Escape HTML
@@ -245,8 +254,28 @@ export default function WikiArtikelPage() {
         {/* Content */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-8">
           <div
-            className="wiki-content"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(artikel.inhoud || "") }}
+            className="wiki-content prose max-w-none
+              [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:text-autronis-text-primary [&_h1]:mt-8 [&_h1]:mb-4
+              [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-autronis-text-primary [&_h2]:mt-8 [&_h2]:mb-3
+              [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-autronis-text-primary [&_h3]:mt-6 [&_h3]:mb-2
+              [&_p]:text-autronis-text-secondary [&_p]:leading-relaxed [&_p]:my-2
+              [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ul]:text-autronis-text-secondary
+              [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_ol]:text-autronis-text-secondary
+              [&_li]:mb-1 [&_li]:leading-relaxed
+              [&_pre]:bg-autronis-bg [&_pre]:border [&_pre]:border-autronis-border [&_pre]:rounded-xl [&_pre]:p-4 [&_pre]:my-4 [&_pre]:overflow-x-auto
+              [&_code]:text-autronis-accent [&_code]:text-sm
+              [&_strong]:text-autronis-text-primary [&_strong]:font-semibold
+              [&_a]:text-autronis-accent [&_a]:underline
+              [&_hr]:border-autronis-border [&_hr]:my-6
+              [&_blockquote]:border-l-2 [&_blockquote]:border-autronis-accent/30 [&_blockquote]:pl-4 [&_blockquote]:italic
+              [&_table]:w-full [&_table]:border-collapse [&_table]:my-4
+              [&_th]:border [&_th]:border-autronis-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:text-autronis-text-primary [&_th]:bg-autronis-bg
+              [&_td]:border [&_td]:border-autronis-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-autronis-text-secondary"
+            dangerouslySetInnerHTML={{
+              __html: isHtmlContent(artikel.inhoud || "")
+                ? artikel.inhoud || ""
+                : renderMarkdown(artikel.inhoud || ""),
+            }}
           />
         </div>
 

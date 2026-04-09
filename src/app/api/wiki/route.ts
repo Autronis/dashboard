@@ -7,7 +7,12 @@ import { eq, and, like, or, desc, sql } from "drizzle-orm";
 // GET /api/wiki — list articles with optional filters
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    const authHeader = req.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      await requireApiKey(req);
+    } else {
+      await requireAuth();
+    }
     const { searchParams } = new URL(req.url);
     const categorie = searchParams.get("categorie");
     const zoek = searchParams.get("zoek");

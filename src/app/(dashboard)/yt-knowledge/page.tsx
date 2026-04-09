@@ -136,14 +136,25 @@ export default function YtKnowledgePage() {
     setAnalyzing(true);
     setError(null);
     try {
-      const res = await fetch("/api/yt-knowledge", {
+      // 1. Add video to DB
+      const addRes = await fetch("/api/yt-knowledge", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: analyzeUrl }),
       });
-      if (!res.ok) throw new Error("Kon video niet toevoegen");
+      if (!addRes.ok) throw new Error("Kon video niet toevoegen");
+      const added = await addRes.json();
       setAnalyzeUrl("");
       fetchData();
+
+      // 2. Trigger analysis in background
+      if (added.status === "pending") {
+        fetch("/api/yt-knowledge/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId: added.id }),
+        }).then(() => fetchData());
+      }
     } catch {
       setError("Video toevoegen mislukt");
     } finally {
@@ -291,7 +302,22 @@ export default function YtKnowledgePage() {
                         <span>{timeAgo(video.discovered_at)}</span>
                       </div>
                     </div>
-                    {}
+                    {(video.status === "pending" || video.status === "failed") && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetch("/api/yt-knowledge/analyze", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ videoId: video.id }),
+                          }).then(() => fetchData());
+                          fetchData(); // Immediately show "processing"
+                        }}
+                        className="px-2 py-1 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition"
+                      >
+                        Analyseer
+                      </button>
+                    )}
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border", sc.color)}>
                       <StatusIcon className={cn("w-3 h-3", video.status === "processing" && "animate-spin")} />
                       {sc.label}

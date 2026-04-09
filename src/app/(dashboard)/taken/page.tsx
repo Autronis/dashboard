@@ -634,10 +634,11 @@ export default function TakenPage() {
 
   const gegroepeerd = useMemo(() => {
     const groepen = groepeerTaken(gefilterdeTaken);
-    // Toon alleen projecten met open/bezig taken, tenzij we op "afgerond" filteren
-    if (statusFilter === "afgerond" || statusFilter === "alle") return groepen;
-    return groepen.filter((p) => p.totaal > p.afgerond);
-  }, [gefilterdeTaken, statusFilter]);
+    // Hide fully completed projects when hideCompleted is on or filtering by non-afgerond status
+    if (hideCompleted) return groepen.filter((p) => p.afgerond < p.totaal);
+    if (statusFilter !== "afgerond" && statusFilter !== "alle") return groepen.filter((p) => p.totaal > p.afgerond);
+    return groepen;
+  }, [gefilterdeTaken, statusFilter, hideCompleted]);
 
   // "Vandaag doen" — top 5 niet-afgeronde taken
   const vandaagTaken = useMemo(() => {

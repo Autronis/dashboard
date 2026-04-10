@@ -29,7 +29,10 @@ export async function createRecallBot(meetingUrl: string, meetingTitle: string):
     recording_config: {
       transcript: {
         provider: {
-          meeting_captions: {},
+          deepgram_streaming: {
+            language: "nl",
+            model: "nova-3",
+          },
         },
       },
     },

@@ -26,6 +26,13 @@ export async function createRecallBot(meetingUrl: string, meetingTitle: string):
   const body: Record<string, unknown> = {
     meeting_url: meetingUrl,
     bot_name: "Autronis Notulist",
+    recording_config: {
+      transcript: {
+        provider: {
+          meeting_captions: {},
+        },
+      },
+    },
     metadata: {
       meeting_title: meetingTitle,
     },
@@ -60,22 +67,35 @@ export async function getRecallBot(botId: string): Promise<RecallBot> {
   return res.json();
 }
 
-// Get transcript from bot
+// Get transcript from bot via recording artifacts
 export async function getRecallTranscript(botId: string): Promise<string> {
-  const res = await fetch(`${RECALL_BASE}/bot/${botId}/transcript/`, {
+  // First get bot details to find transcript artifact
+  const botRes = await fetch(`${RECALL_BASE}/bot/${botId}/`, { headers: headers() });
+  if (!botRes.ok) throw new Error(`Recall bot fetch failed: ${botRes.status}`);
+  const bot = await botRes.json();
+
+  const recording = bot.recordings?.[0];
+  if (!recording) throw new Error("Geen recording gevonden");
+
+  const transcriptArtifact = recording.media_shortcuts?.transcript;
+  if (!transcriptArtifact?.id) throw new Error("Geen transcript beschikbaar");
+
+  // Fetch the transcript artifact data
+  const res = await fetch(`${RECALL_BASE}/recordings/${recording.id}/artifacts/${transcriptArtifact.id}/data/`, {
     headers: headers(),
   });
-
-  if (!res.ok) throw new Error(`Recall transcript fetch failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Transcript ophalen mislukt: ${res.status}`);
   const data = await res.json();
 
-  // Format transcript: "Speaker: text"
+  // Format transcript segments
   if (Array.isArray(data)) {
     return data
-      .map((segment: { speaker: string; words: Array<{ text: string }> }) => {
-        const text = segment.words.map((w) => w.text).join(" ");
-        return segment.speaker ? `${segment.speaker}: ${text}` : text;
+      .map((seg: { speaker: string; speaker_id?: number; words?: Array<{ text: string }>; text?: string }) => {
+        const text = seg.text || seg.words?.map((w) => w.text).join(" ") || "";
+        const speaker = seg.speaker || `Spreker ${seg.speaker_id ?? "?"}`;
+        return text.trim() ? `${speaker}: ${text.trim()}` : "";
       })
+      .filter(Boolean)
       .join("\n\n");
   }
 

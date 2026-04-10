@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { screenTimeEntries, projecten, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, asc, sql } from "drizzle-orm";
+import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 
 // ─── Cache ───
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
@@ -97,7 +98,8 @@ JSON array met exact ${sessies.length} strings:`;
         body: JSON.stringify({ model: "llama-3.3-70b-versatile", max_tokens: 1024, messages: [{ role: "user", content: prompt }] }),
       });
       if (r.ok) {
-        const d = await r.json() as { choices: Array<{ message: { content: string } }> };
+        const d = await r.json() as { choices: Array<{ message: { content: string } }>; usage?: { prompt_tokens: number; completion_tokens: number } };
+        if (d.usage) logTokenUsage("groq", "llama-3.3-70b-versatile", d.usage.prompt_tokens, d.usage.completion_tokens, "/api/screen-time/sessies");
         const t = d.choices?.[0]?.message?.content || "";
         const m = t.match(/\[[\s\S]*\]/);
         if (m) {
@@ -128,7 +130,8 @@ JSON array met exact ${sessies.length} strings:`;
         body: JSON.stringify({ model: "gpt-4o-mini", max_tokens: 1024, messages: [{ role: "user", content: prompt }] }),
       });
       if (r.ok) {
-        const d = await r.json() as { choices: Array<{ message: { content: string } }> };
+        const d = await r.json() as { choices: Array<{ message: { content: string } }>; usage?: { prompt_tokens: number; completion_tokens: number } };
+        if (d.usage) logTokenUsage("openai", "gpt-4o-mini", d.usage.prompt_tokens, d.usage.completion_tokens, "/api/screen-time/sessies");
         const t = d.choices?.[0]?.message?.content || "";
         const m = t.match(/\[[\s\S]*\]/);
         if (m) {

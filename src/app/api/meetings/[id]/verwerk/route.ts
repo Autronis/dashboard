@@ -122,7 +122,12 @@ Antwoord als JSON:
 
   const data = (await response.json()) as {
     choices: Array<{ message: { content: string } }>;
+    usage?: { prompt_tokens: number; completion_tokens: number };
   };
+
+  if (data.usage) {
+    logTokenUsage("openai", "gpt-4o-mini", data.usage.prompt_tokens, data.usage.completion_tokens, "/api/meetings/verwerk");
+  }
 
   const content = data.choices[0]?.message?.content;
   if (!content) {

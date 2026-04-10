@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 
 interface VerrijkResultaat {
   branche: string | null;
@@ -85,6 +86,9 @@ ${websiteText}`,
   }
 
   const data = await response.json();
+  if (data.usage) {
+    logTokenUsage("openai", "gpt-4o-mini", data.usage.prompt_tokens, data.usage.completion_tokens, "/api/klanten/verrijk");
+  }
   const content = data.choices?.[0]?.message?.content;
   if (!content) throw new Error("Geen antwoord van AI");
 

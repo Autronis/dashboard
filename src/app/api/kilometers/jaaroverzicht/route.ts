@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { kilometerRegistraties, klanten, brandstofKosten } from "@/lib/db/schema";
+import { kilometerRegistraties, klanten, brandstofKosten, kmStanden } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -126,6 +126,34 @@ export async function GET(req: NextRequest) {
       ? Math.round(((brandstofResult?.totaalBedrag ?? 0) / totaalKm) * 100) / 100
       : 0;
 
+    // Calculate werkelijk zakelijk percentage from km-standen
+    const kmStandenData = await db
+      .select()
+      .from(kmStanden)
+      .where(
+        and(
+          eq(kmStanden.gebruikerId, gebruiker.id),
+          eq(kmStanden.jaar, parseInt(jaar))
+        )
+      )
+      .all();
+
+    let werkelijkPercentage: number | null = null;
+    let totaalGereden: number | null = null;
+    let ontbrekendeMaanden: number[] = [];
+
+    if (kmStandenData.length > 0) {
+      totaalGereden = kmStandenData.reduce((sum, ks) => sum + (ks.eindStand - ks.beginStand), 0);
+      if (totaalGereden > 0) {
+        werkelijkPercentage = Math.round((totaalKm / totaalGereden) * 1000) / 10;
+      }
+      const huidigeMaand = parseInt(jaar) === new Date().getFullYear() ? new Date().getMonth() + 1 : 12;
+      const ingevuldeMaanden = new Set(kmStandenData.map((ks) => ks.maand));
+      for (let m = 1; m <= huidigeMaand; m++) {
+        if (!ingevuldeMaanden.has(m)) ontbrekendeMaanden.push(m);
+      }
+    }
+
     return NextResponse.json({
       jaar: parseInt(jaar),
       totaalKm,
@@ -147,6 +175,9 @@ export async function GET(req: NextRequest) {
       })),
       vorigJaarKm,
       verschilVorigJaar: totaalKm - vorigJaarKm,
+      werkelijkPercentage,
+      totaalGereden,
+      ontbrekendeMaanden,
       brandstof: {
         totaalBedrag: Math.round((brandstofResult?.totaalBedrag ?? 0) * 100) / 100,
         totaalLiters: Math.round((brandstofResult?.totaalLiters ?? 0) * 100) / 100,

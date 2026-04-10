@@ -60,6 +60,9 @@ export interface JaaroverzichtData {
   perKlant: Array<{ klantId: number | null; klantNaam: string; km: number; ritten: number; bedrag: number }>;
   vorigJaarKm: number;
   verschilVorigJaar: number;
+  werkelijkPercentage: number | null;
+  totaalGereden: number | null;
+  ontbrekendeMaanden: number[];
   brandstof?: {
     totaalBedrag: number;
     totaalLiters: number;

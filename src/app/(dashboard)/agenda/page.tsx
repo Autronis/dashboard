@@ -1044,7 +1044,17 @@ export default function AgendaPage() {
               onItemClick={(item) => openItemDetail(item)}
               onSlotClick={(d) => openNieuwModal(d)}
               ingeplandeTaken={ingeplandeTaken}
-              onPlanTaak={(taak, datum, tijd) => openPlanModal(taak, datum, tijd)}
+              onPlanTaak={(taak, datum, tijd) => {
+                if (datum && tijd) {
+                  // Direct inplannen bij drag & drop (geen modal)
+                  const duur = taak.geschatteDuur || 30;
+                  const startStr = `${datum}T${tijd}:00`;
+                  const eindDate = new Date(new Date(startStr).getTime() + duur * 60000);
+                  handlePlanTaak(taak.id, startStr, eindDate.toISOString(), duur);
+                } else {
+                  openPlanModal(taak, datum, tijd);
+                }
+              }}
               onUnplanTaak={handleUnplanTaak}
               onTaakToggle={(id, status) => handleTaakToggle(id, status)}
               onDeadlineNaarSlot={(dl, datum, tijd) => {

@@ -34,7 +34,44 @@
   .tag-syb { background: #2a1a0a; color: #f80; border: 1px solid #4a2a0a; }
   .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
   .legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #888; }
-  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } }
+  /* ATLAS intro */
+  .atlas-intro { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 28px; margin-bottom: 32px; }
+  .atlas-intro p { color: #aaa; line-height: 1.6; font-size: 14px; margin-bottom: 24px; }
+  .atlas-intro strong { color: #fff; }
+  .atlas-intro code { background: #222; padding: 2px 6px; border-radius: 3px; font-size: 13px; color: #4cc; }
+
+  /* Architecture diagram */
+  .arch-diagram { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .arch-layer { display: flex; align-items: center; gap: 16px; width: 100%; }
+  .arch-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; width: 50px; text-align: right; flex-shrink: 0; }
+  .arch-boxes { display: flex; gap: 8px; flex: 1; }
+  .arch-box { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #ddd; text-align: center; flex: 1; }
+  .arch-box code { background: #222; padding: 1px 4px; border-radius: 3px; font-size: 12px; color: #4cc; }
+  .arch-you { border-color: #4a9; color: #4a9; font-weight: 600; flex: 1; }
+  .arch-core { border-color: #49c; }
+  .arch-infra { border-color: #444; }
+  .arch-sub { font-size: 11px; color: #666; }
+  .arch-arrow { color: #444; font-size: 18px; text-align: center; margin: 2px 0 2px 66px; }
+
+  /* How it works */
+  .how-section { margin-bottom: 32px; }
+  .how-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .how-card { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 20px; }
+  .how-number { font-size: 24px; font-weight: 700; color: #333; margin-bottom: 4px; }
+  .how-title { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+  .how-text { font-size: 13px; color: #999; line-height: 1.5; }
+  .how-text code { background: #1a1a1a; padding: 1px 5px; border-radius: 3px; font-size: 12px; color: #4cc; }
+  .how-text strong { color: #ccc; }
+
+  /* Workflow */
+  .workflow-section { margin-bottom: 32px; }
+  .workflow { background: #111; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; }
+  .wf-step { display: flex; align-items: center; gap: 12px; padding: 8px 0; font-size: 13px; color: #aaa; }
+  .wf-time { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; width: 70px; flex-shrink: 0; }
+  .wf-step code { background: #1a1a1a; border: 1px solid #333; padding: 2px 8px; border-radius: 4px; font-size: 12px; color: #4cc; margin-right: 2px; }
+  .wf-connector { width: 2px; height: 12px; background: #333; margin-left: 35px; }
+
+  @media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .how-grid { grid-template-columns: 1fr; } }
   @media print {
     body { background: #fff; color: #222; padding: 20px; }
     .container { max-width: 100%; }
@@ -45,14 +82,108 @@
     .card-desc { color: #555; }
     h1, h2 { color: #000; }
     h2 { border-bottom-color: #ccc; }
+    .atlas-intro, .how-card, .workflow { background: #f5f5f5; border-color: #ddd; }
+    .atlas-intro p, .how-text, .wf-step { color: #444; }
+    .arch-box { background: #f0f0f0; border-color: #ccc; color: #333; }
+    .arch-you { border-color: #2a7a5a; color: #2a7a5a; }
   }
 </style>
 </head>
 <body>
 <div class="container">
 
-<h1>ATLAS — Alle Skills</h1>
+<h1>ATLAS</h1>
 <p class="subtitle">Autronis Task, Logic & Automation System — april 2026</p>
+
+<!-- ===================== WAT IS ATLAS ===================== -->
+<div class="atlas-intro">
+  <h2 style="border: none; margin-top: 0;">Wat is ATLAS?</h2>
+  <p>ATLAS is het operationeel systeem van Autronis. Het verbindt alles: het dashboard, AI agents, skills, hooks, automatisering en projectbeheer in één systeem. Je bedient het vanuit <strong>Claude Code</strong> met slash commands.</p>
+
+  <div class="arch-diagram">
+    <div class="arch-layer">
+      <div class="arch-label">Jij</div>
+      <div class="arch-box arch-you">Claude Code terminal — typ <code>/command</code></div>
+    </div>
+    <div class="arch-arrow">&#8595;</div>
+    <div class="arch-layer">
+      <div class="arch-label">ATLAS</div>
+      <div class="arch-boxes">
+        <div class="arch-box arch-core">Skills<br><span class="arch-sub">60 slash commands</span></div>
+        <div class="arch-box arch-core">Agent Team<br><span class="arch-sub">9 AI agents</span></div>
+        <div class="arch-box arch-core">Hooks<br><span class="arch-sub">automatische acties</span></div>
+      </div>
+    </div>
+    <div class="arch-arrow">&#8595;</div>
+    <div class="arch-layer">
+      <div class="arch-label">Infra</div>
+      <div class="arch-boxes">
+        <div class="arch-box arch-infra">Dashboard<br><span class="arch-sub">dashboard.autronis.nl</span></div>
+        <div class="arch-box arch-infra">Supabase<br><span class="arch-sub">database & auth</span></div>
+        <div class="arch-box arch-infra">n8n<br><span class="arch-sub">workflows</span></div>
+        <div class="arch-box arch-infra">GitHub<br><span class="arch-sub">code & deploys</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== HOE WERKT HET ===================== -->
+<div class="how-section">
+  <h2 style="border: none;">Hoe werkt het?</h2>
+
+  <div class="how-grid">
+    <div class="how-card">
+      <div class="how-number">1</div>
+      <div class="how-title">Skills = Slash Commands</div>
+      <div class="how-text">Elke skill is een <code>/command</code> die je typt in Claude Code. Bijvoorbeeld <code>/ship</code> om te deployen, <code>/ping Klant</code> voor een klantoverzicht, of <code>/autro</code> om het hele agent team aan te sturen. Skills zitten in <code>~/.claude/skills/</code>.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-number">2</div>
+      <div class="how-title">Agent Team</div>
+      <div class="how-text">9 gespecialiseerde AI agents die samenwerken. <strong>Autro</strong> is de CEO die taken verdeelt. <strong>Daan</strong> interviewt, <strong>Coen</strong> codeert backend, <strong>Finn</strong> bouwt frontend, <strong>Wout</strong> maakt n8n flows, <strong>Bas</strong> schrijft prompts, <strong>Ari</strong> doet research, <strong>Leo</strong> test, en <strong>Gabriel</strong> logt alles.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-number">3</div>
+      <div class="how-title">Hooks = Automatisch</div>
+      <div class="how-text">Hooks draaien automatisch op de achtergrond. Bijvoorbeeld: elke keer dat je een taak afrondt, wordt het dashboard gesynct. Elke keer dat je code commit, draait er een quality check. Je hoeft er niet over na te denken.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-number">4</div>
+      <div class="how-title">Dashboard = Bron van Waarheid</div>
+      <div class="how-text"><a href="https://dashboard.autronis.nl" style="color: #49c;">dashboard.autronis.nl</a> is waar alles samenkomt: projecten, taken, klanten, financiën, ops room. Skills syncen automatisch met het dashboard.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-number">5</div>
+      <div class="how-title">Sessie Flow</div>
+      <div class="how-text">Start met <code>/prime</code> of <code>/go</code>. Werk met skills en agents. Bij hoge context: <code>/handoff</code> schrijft alles op. Nieuwe chat: <code>/pickup</code> pakt het op. Klaar: <code>/end</code> sluit alles netjes af.</div>
+    </div>
+    <div class="how-card">
+      <div class="how-number">6</div>
+      <div class="how-title">MCP Servers</div>
+      <div class="how-text">ATLAS is verbonden met externe tools via MCP: <strong>Supabase</strong> (database), <strong>n8n</strong> (workflows), <strong>Playwright</strong> (browser testing), <strong>Discord</strong> (communicatie). Agents gebruiken deze automatisch.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DAGELIJKSE WORKFLOW ===================== -->
+<div class="workflow-section">
+  <h2 style="border: none;">Dagelijkse Workflow</h2>
+  <div class="workflow">
+    <div class="wf-step"><span class="wf-time">Ochtend</span><code>/prime</code> of <code>/brief</code> — context laden, dagbriefing</div>
+    <div class="wf-connector"></div>
+    <div class="wf-step"><span class="wf-time">Werken</span><code>/build</code> — taken uit dashboard oppakken en uitvoeren</div>
+    <div class="wf-connector"></div>
+    <div class="wf-step"><span class="wf-time">Bouwen</span><code>/autro</code> — groot project? Agent team stuurt alles aan</div>
+    <div class="wf-connector"></div>
+    <div class="wf-step"><span class="wf-time">Klanten</span><code>/ping</code> <code>/mail</code> <code>/invoice</code> — klantwerk afhandelen</div>
+    <div class="wf-connector"></div>
+    <div class="wf-step"><span class="wf-time">Deploy</span><code>/ship</code> — klaarmaken en live zetten</div>
+    <div class="wf-connector"></div>
+    <div class="wf-step"><span class="wf-time">Einde</span><code>/end</code> of <code>/handoff</code> — sessie afsluiten, alles gesynct</div>
+  </div>
+</div>
+
+<h2 style="border: none; margin-top: 48px;">Alle Skills <span class="badge">60 totaal</span></h2>
 
 <div class="stats">
   <div class="stat"><div class="stat-number">60</div><div class="stat-label">Totaal skills</div></div>

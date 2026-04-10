@@ -145,16 +145,36 @@ fn get_browser_url(app: &str, hwnd: windows::Win32::Foundation::HWND) -> Option<
 pub fn get_active_window() -> Option<WindowInfo> {
     use std::process::Command;
 
-    // Single osascript call for both app name and window title
+    // Single osascript call that tries multiple methods to get window title
+    // Method 1: System Events front window name (works for most apps)
+    // Method 2: AXTitle attribute via System Events (works for Electron apps like VS Code)
+    // Method 3: Direct app AppleScript (works for some apps)
     let output = Command::new("osascript")
         .args(["-e", r#"
 tell application "System Events"
     set frontApp to first application process whose frontmost is true
     set appName to name of frontApp
     set winTitle to ""
+
+    -- Method 1: standard window name
     try
         set winTitle to name of front window of frontApp
     end try
+
+    -- Method 2: AXTitle attribute (works better for Electron apps)
+    if winTitle is "" then
+        try
+            set winTitle to value of attribute "AXTitle" of front window of frontApp
+        end try
+    end if
+
+    -- Method 3: first window title attribute
+    if winTitle is "" then
+        try
+            set winTitle to title of front window of frontApp
+        end try
+    end if
+
     return appName & "|||" & winTitle
 end tell
 "#])

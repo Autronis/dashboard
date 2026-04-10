@@ -296,32 +296,46 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     const slotData = over.data.current as { uur?: number; datumStr?: string } | undefined;
     if (!slotData?.datumStr || slotData.uur === undefined) return;
 
-    // Find the latest ending task/event that overlaps with or ends into this slot
+    // Find the latest ending task/event that would conflict with this slot
+    // Check ALL tasks that end after slotStart — so tasks from previous slots
+    // that run into this slot are properly accounted for
     const slotStart = slotData.uur * 60;
     let laatsteEind = slotStart; // default: start of the hour
     const draggedId = (active.data.current?.taak as AgendaTaak | undefined)?.id;
 
-    // Check ALL scheduled tasks — any task that ends after slotStart counts
+    // Helper: get minutes-of-day from ISO string, handling both local and UTC formats
+    function minOfDay(iso: string): number {
+      // If no "Z" suffix, treat as local time — parse directly
+      if (!iso.endsWith("Z") && !iso.includes("+")) {
+        const [, timePart] = iso.split("T");
+        if (timePart) {
+          const [h, m] = timePart.split(":").map(Number);
+          return h * 60 + (m || 0);
+        }
+      }
+      // UTC or offset — use Date object (converts to local)
+      const d = new Date(iso);
+      return d.getHours() * 60 + d.getMinutes();
+    }
+
     for (const t of ingeplandeTaken) {
       if (!t.ingeplandStart || t.id === draggedId) continue;
-      const tStartMin = new Date(t.ingeplandStart).getHours() * 60 + new Date(t.ingeplandStart).getMinutes();
+      const tStartMin = minOfDay(t.ingeplandStart);
       const tEindMin = t.ingeplandEind
-        ? new Date(t.ingeplandEind).getHours() * 60 + new Date(t.ingeplandEind).getMinutes()
+        ? minOfDay(t.ingeplandEind)
         : tStartMin + (t.geschatteDuur || 30);
-      // Task ends after slot start AND starts before slot end (slot + 60 min)
-      if (tEindMin > slotStart && tStartMin < slotStart + 60) {
+      if (tEindMin > slotStart && tStartMin <= slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, tEindMin);
       }
     }
 
-    // Check agenda items
     for (const item of items) {
       const startStr = "startDatum" in item ? item.startDatum : "";
       if (!startStr || startStr.length <= 10) continue;
-      const iStartMin = new Date(startStr).getHours() * 60 + new Date(startStr).getMinutes();
+      const iStartMin = minOfDay(startStr);
       const eindStr = "eindDatum" in item ? (item as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
-      const iEindMin = eindStr ? new Date(eindStr).getHours() * 60 + new Date(eindStr).getMinutes() : iStartMin + 60;
-      if (iEindMin > slotStart && iStartMin < slotStart + 60) {
+      const iEindMin = eindStr ? minOfDay(eindStr) : iStartMin + 60;
+      if (iEindMin > slotStart && iStartMin <= slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, iEindMin);
       }
     }

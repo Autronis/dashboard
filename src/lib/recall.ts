@@ -26,14 +26,6 @@ export async function createRecallBot(meetingUrl: string, meetingTitle: string):
   const body: Record<string, unknown> = {
     meeting_url: meetingUrl,
     bot_name: "Autronis Notulist",
-    transcription_options: {
-      provider: "default",
-      language: "nl",
-    },
-    real_time_transcription: {
-      destination_url: webhookUrl,
-      partial_results: false,
-    },
     metadata: {
       meeting_title: meetingTitle,
     },

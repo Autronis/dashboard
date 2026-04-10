@@ -7,36 +7,39 @@ import { YoutubeTranscript } from "youtube-transcript";
 // Increase timeout for long Claude API calls
 export const maxDuration = 60;
 
-const SYSTEM_PROMPT = `Je bent een expert in het analyseren van YouTube video's over Claude Code.
-Je ontvangt een transcript van een video en produceert een gestructureerde analyse.
+const SYSTEM_PROMPT = `Je bent een expert-analist die YouTube video's diepgaand analyseert over AI coding tools, Claude Code, AI agents, en automation.
+
+Je doel: extraheer ALLES wat bruikbaar is uit het transcript. Wees uitgebreid en compleet — dit wordt een kennisbank waar de gebruiker later in zoekt. Mis niets.
 
 Context over de gebruiker:
-Autronis is een Nederlands bedrijf dat werkt met: Next.js, Turso (SQLite), Vercel, Python tooling, n8n automation workflows, en een dashboard voor projectbeheer. Score hoger als de video direct toepasbaar is voor deze stack.
+Autronis is een Nederlands tech-bedrijf (Sem & Syb) dat werkt met: Next.js, Turso (SQLite), Vercel, Python, Claude Code, n8n automation, en een custom dashboard. Ze bouwen AI-gestuurde tools en automatisering voor klanten. Score hoger als de video direct toepasbaar is voor hun stack en werkwijze.
 
-Antwoord ALLEEN met valid JSON in exact dit format:
+Antwoord ALLEEN met valid JSON (geen markdown fences) in exact dit format:
 {
-  "summary": "Korte TL;DR, 2-3 zinnen",
+  "summary": "Uitgebreide samenvatting van 4-6 zinnen. Beschrijf het hoofdonderwerp, de key insights, en waarom dit relevant is.",
   "features": [
-    {"name": "Feature naam", "description": "Wat het doet", "category": "core | workflow | integration | tips"}
+    {"name": "Feature naam", "description": "Uitgebreide beschrijving van wat deze feature doet, hoe het werkt, en wanneer je het zou gebruiken. Minimaal 2 zinnen.", "category": "core | workflow | integration | tips"}
   ],
   "steps": [
-    {"order": 1, "title": "Stap titel", "description": "Wat je moet doen", "code_snippet": "optioneel code"}
+    {"order": 1, "title": "Duidelijke stap titel", "description": "Gedetailleerde uitleg van wat je moet doen in deze stap. Inclusief context, waarom deze stap belangrijk is, en mogelijke valkuilen. Minimaal 2-3 zinnen.", "code_snippet": "Exacte code, commando's, of configuratie als die genoemd worden. Laat leeg als er geen code bij hoort."}
   ],
   "tips": [
-    {"tip": "De tip zelf", "context": "Wanneer/waarom nuttig"}
+    {"tip": "De volledige tip uitgeschreven", "context": "Wanneer en waarom dit nuttig is, en wat er misgaat als je het niet doet"}
   ],
   "relevance_score": 8,
-  "relevance_reason": "Uitleg waarom deze score"
+  "relevance_reason": "Gedetailleerde uitleg van 2-3 zinnen waarom deze score. Noem specifiek welke onderdelen relevant zijn voor de Autronis stack."
 }
 
 Regels:
-- summary: max 3 zinnen, Nederlands
-- features: alle Claude Code mogelijkheden die genoemd worden
-- steps: concreet stappenplan om de getoonde technieken zelf toe te passen
-- tips: handige tips en tricks die genoemd worden
-- relevance_score: 1-10, gebaseerd op hoe nuttig dit is voor de gebruiker's stack
-- relevance_reason: korte uitleg van de score
-- Als de video niet over Claude Code gaat, geef relevance_score 1 en leg uit waarom`;
+- summary: 4-6 zinnen, Nederlands, geef een compleet beeld van de video
+- features: ELKE tool, feature, techniek, of concept dat genoemd wordt. Wees uitgebreid in de beschrijving. Typisch 5-15 features per video.
+- steps: Maak een compleet, reproduceerbaar stappenplan van ALLES wat de spreker demonstreert of uitlegt. Alsof je het zelf na wilt doen. Typisch 5-15 stappen. Neem altijd code/commando's mee als die genoemd worden.
+- tips: ELKE tip, best practice, waarschuwing, of advies. Ook impliciete tips die de spreker terloops noemt. Typisch 5-10 tips.
+- relevance_score: 1-10. Score 8+ als het direct toepasbaar is voor Claude Code / AI coding / automation. Score 5-7 als het indirect nuttig is. Score 1-4 als het niet relevant is.
+- relevance_reason: Wees specifiek over welke delen van de video waardevol zijn
+- Als de video niet over AI/coding/automation gaat, geef relevance_score 1
+
+BELANGRIJK: Wees UITGEBREID. Dit is een kennisbank — meer detail is altijd beter. Sla niets over.`;
 
 async function fetchTranscript(videoId: string): Promise<string | null> {
   try {
@@ -115,7 +118,7 @@ export async function POST(request: NextRequest) {
     const anthropic = new Anthropic();
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: `Analyseer dit transcript:\n\n${truncated}` }],
     });

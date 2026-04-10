@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tursoClient } from "@/lib/db";
+import { tursoClient, db } from "@/lib/db";
+import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import Anthropic from "@anthropic-ai/sdk";
 import { YoutubeTranscript } from "youtube-transcript";
@@ -151,6 +152,44 @@ export async function POST(request: NextRequest) {
       sql: "UPDATE ytk_videos SET status = 'done', processed_at = datetime('now') WHERE id = ?",
       args: [dbVideoId],
     });
+
+    // Auto-create idea for top-tier videos (score >= 9)
+    if (data.relevance_score >= 9) {
+      try {
+        const defaultUser = await db.select().from(gebruikers).limit(1).get();
+        const userId = defaultUser?.id ?? 1;
+
+        const videoTitle = (video.title as string) || youtubeId;
+        const videoUrl = `https://youtube.com/watch?v=${youtubeId}`;
+
+        // Build rich description with link to analysis
+        const stepsText = data.steps
+          .map((s: { order: number; title: string; description: string; code_snippet?: string }) =>
+            `${s.order}. **${s.title}**\n   ${s.description}${s.code_snippet ? `\n   \`${s.code_snippet}\`` : ""}`
+          ).join("\n");
+        const tipsText = data.tips
+          .map((t: { tip: string; context: string }) => `- ${t.tip} — _${t.context}_`).join("\n");
+        const featuresText = data.features
+          .map((f: { name: string; description: string }) => `- **${f.name}**: ${f.description}`).join("\n");
+
+        const omschrijving = `${data.summary}\n\n**Relevantie:** ${data.relevance_score}/10 — ${data.relevance_reason}\n\n[Bekijk video](${videoUrl})`;
+
+        const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}\n\n---\n_Bron: [${videoTitle}](${videoUrl}) — YT Knowledge Pipeline analyse_`;
+
+        await db.insert(ideeen).values({
+          naam: `[YTK] ${videoTitle}`,
+          categorie: "dev_tools",
+          status: "idee",
+          prioriteit: "hoog",
+          omschrijving,
+          uitwerking,
+          isAiSuggestie: 1,
+          aangemaaktDoor: userId,
+        });
+      } catch {
+        // Non-critical: don't block if idea creation fails
+      }
+    }
 
     return NextResponse.json({
       status: "done",

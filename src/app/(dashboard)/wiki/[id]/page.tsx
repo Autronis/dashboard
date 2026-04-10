@@ -10,6 +10,7 @@ import {
   Tag,
   User,
   Clock,
+  FileDown,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -207,6 +208,13 @@ export default function WikiArtikelPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => window.open(`/api/wiki/${id}/pdf`, "_blank")}
+                className="inline-flex items-center gap-2 px-4 py-2 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 rounded-xl text-sm font-medium transition-colors"
+              >
+                <FileDown className="w-4 h-4" />
+                PDF
+              </button>
               <Link
                 href={`/wiki/${id}/bewerken`}
                 className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors"

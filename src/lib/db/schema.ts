@@ -1480,6 +1480,27 @@ export const brandstofKosten = sqliteTable("brandstof_kosten", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ LOCATIE ALIASSEN ============
+export const locatieAliassen = sqliteTable("locatie_aliassen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  alias: text("alias").notNull(),
+  genormaliseerdeNaam: text("genormaliseerde_naam").notNull(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => [
+  uniqueIndex("locatie_aliassen_gebruiker_alias").on(table.gebruikerId, table.alias),
+]);
+
+// ============ KM STAND FOTOS ============
+export const kmStandFotos = sqliteTable("km_stand_fotos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kmStandId: integer("km_stand_id").references(() => kmStanden.id).notNull(),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id).notNull(),
+  bestandsnaam: text("bestandsnaam").notNull(),
+  bestandspad: text("bestandspad").notNull(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ MEALPLAN ============
 export const mealplanPlans = sqliteTable("mealplan_plans", {
   id: integer("id").primaryKey({ autoIncrement: true }),

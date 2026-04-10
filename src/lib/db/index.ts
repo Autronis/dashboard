@@ -250,12 +250,14 @@ if (isTurso) {
     features TEXT,
     steps TEXT,
     tips TEXT,
+    links TEXT,
     relevance_score INTEGER,
     relevance_reason TEXT,
     raw_transcript TEXT,
     model_used TEXT,
     created_at TEXT
   )`).catch(() => {});
+  client.execute("ALTER TABLE ytk_analyses ADD COLUMN links TEXT").catch(() => {});
 
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {

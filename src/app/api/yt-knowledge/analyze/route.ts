@@ -28,6 +28,9 @@ Antwoord ALLEEN met valid JSON (geen markdown fences) in exact dit format:
   "tips": [
     {"tip": "De volledige tip uitgeschreven", "context": "Wanneer en waarom dit nuttig is, en wat er misgaat als je het niet doet"}
   ],
+  "links": [
+    {"url": "https://example.com", "label": "Korte beschrijving van de link", "type": "tool | docs | community | github | course | other"}
+  ],
   "relevance_score": 8,
   "relevance_reason": "Gedetailleerde uitleg van 2-3 zinnen waarom deze score. Noem specifiek welke onderdelen relevant zijn voor de Autronis stack."
 }
@@ -37,6 +40,7 @@ Regels:
 - features: ELKE tool, feature, techniek, of concept dat genoemd wordt. Wees uitgebreid in de beschrijving. Typisch 5-15 features per video.
 - steps: Maak een compleet, reproduceerbaar stappenplan van ALLES wat de spreker demonstreert of uitlegt. Alsof je het zelf na wilt doen. Typisch 5-15 stappen. Neem altijd code/commando's mee als die genoemd worden.
 - tips: ELKE tip, best practice, waarschuwing, of advies. Ook impliciete tips die de spreker terloops noemt. Typisch 5-10 tips.
+- links: ALLE nuttige links uit de video beschrijving en transcript. GitHub repos, Skool communities, documentatie, tools, courses, etc. Alleen echte URLs, geen verzonnen links.
 - relevance_score: 1-10. Score 8+ als het direct toepasbaar is voor Claude Code / AI coding / automation. Score 5-7 als het indirect nuttig is. Score 1-4 als het niet relevant is.
 - relevance_reason: Wees specifiek over welke delen van de video waardevol zijn
 - Als de video niet over AI/coding/automation gaat, geef relevance_score 1
@@ -79,7 +83,8 @@ export async function POST(request: NextRequest) {
   const video = videoResult.rows[0];
   const youtubeId = video.youtube_id as string;
 
-  // Fetch title from YouTube
+  // Fetch title + description from YouTube
+  let videoDescription = "";
   try {
     const pageRes = await fetch(`https://www.youtube.com/watch?v=${youtubeId}`);
     const pageHtml = await pageRes.text();
@@ -91,7 +96,12 @@ export async function POST(request: NextRequest) {
         args: [title, dbVideoId],
       });
     }
-  } catch { /* title is optional */ }
+    // Extract description from meta tag or initial data
+    const descMatch = pageHtml.match(/"shortDescription":"((?:[^"\\]|\\.)*)"/);
+    if (descMatch) {
+      videoDescription = descMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+    }
+  } catch { /* title/description is optional */ }
 
   // Update status to processing
   await tursoClient.execute({
@@ -122,7 +132,7 @@ export async function POST(request: NextRequest) {
       model: "claude-sonnet-4-20250514",
       max_tokens: 8192,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `Analyseer dit transcript:\n\n${truncated}` }],
+      messages: [{ role: "user", content: `Analyseer dit transcript:\n\n${truncated}${videoDescription ? `\n\n--- VIDEO BESCHRIJVING ---\n${videoDescription}` : ""}` }],
     });
 
     let raw = response.content[0].type === "text" ? response.content[0].text : "";
@@ -133,7 +143,7 @@ export async function POST(request: NextRequest) {
     // Write analysis to Turso
     const analysisId = crypto.randomUUID();
     await tursoClient.execute({
-      sql: "INSERT INTO ytk_analyses (id, video_id, summary, features, steps, tips, relevance_score, relevance_reason, raw_transcript, model_used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
+      sql: "INSERT INTO ytk_analyses (id, video_id, summary, features, steps, tips, links, relevance_score, relevance_reason, raw_transcript, model_used, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))",
       args: [
         analysisId,
         dbVideoId,
@@ -141,6 +151,7 @@ export async function POST(request: NextRequest) {
         JSON.stringify(data.features),
         JSON.stringify(data.steps),
         JSON.stringify(data.tips),
+        JSON.stringify(data.links || []),
         data.relevance_score,
         data.relevance_reason,
         truncated,

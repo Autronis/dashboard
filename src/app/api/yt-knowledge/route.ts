@@ -6,9 +6,10 @@ export async function GET() {
   await requireAuth();
   if (!tursoClient) return NextResponse.json({ error: "No Turso connection" }, { status: 500 });
 
-  const [videosResult, statsResult] = await Promise.all([
+  const [videosResult, statsResult, channelsResult] = await Promise.all([
     tursoClient.execute("SELECT v.id, v.youtube_id, v.title, v.channel_name, v.url, v.status, v.discovered_at, a.summary, a.features, a.steps, a.tips, a.relevance_score, a.relevance_reason FROM ytk_videos v LEFT JOIN ytk_analyses a ON v.id = a.video_id ORDER BY v.discovered_at DESC LIMIT 100"),
     tursoClient.execute("SELECT COUNT(*) as total, SUM(CASE WHEN status = 'done' THEN 1 ELSE 0 END) as processed, AVG(CASE WHEN a.relevance_score IS NOT NULL THEN a.relevance_score END) as avg_score FROM ytk_videos v LEFT JOIN ytk_analyses a ON v.id = a.video_id"),
+    tursoClient.execute("SELECT id, channel_id, name, active FROM ytk_channels ORDER BY name"),
   ]);
 
   const videos = videosResult.rows.map((r: Record<string, unknown>) => ({
@@ -36,7 +37,14 @@ export async function GET() {
     avg_relevance_score: Math.round((Number(s.avg_score) || 0) * 10) / 10,
   };
 
-  return NextResponse.json({ videos, stats });
+  const channels = channelsResult.rows.map((r: Record<string, unknown>) => ({
+    id: r.id,
+    channel_id: r.channel_id,
+    name: r.name,
+    active: r.active === 1,
+  }));
+
+  return NextResponse.json({ videos, stats, channels });
 }
 
 export async function POST(request: NextRequest) {

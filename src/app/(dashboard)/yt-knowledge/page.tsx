@@ -19,6 +19,10 @@ import {
   CheckCircle2,
   XCircle,
   Play,
+  Rss,
+  Plus,
+  Trash2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -49,6 +53,13 @@ interface Stats {
   total_videos: number;
   processed: number;
   avg_relevance_score: number;
+}
+
+interface Channel {
+  id: string;
+  channel_id: string;
+  name: string;
+  active: boolean;
 }
 
 // ============ CONSTANTS ============
@@ -104,6 +115,9 @@ export default function YtKnowledgePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [analyzeUrl, setAnalyzeUrl] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [showChannels, setShowChannels] = useState(false);
+  const [newChannelUrl, setNewChannelUrl] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);

@@ -296,7 +296,38 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     const slotData = over.data.current as { uur?: number; datumStr?: string } | undefined;
     if (!slotData?.datumStr || slotData.uur === undefined) return;
 
-    const nieuweTijd = `${String(slotData.uur).padStart(2, "0")}:00`;
+    // Find the latest ending task in this hour slot to stack after it
+    const slotStart = slotData.uur * 60;
+    const slotEnd = slotStart + 60;
+    let laatsteEind = slotStart; // default: start of the hour
+
+    for (const t of dagTaken) {
+      if (!t.ingeplandStart || t.id === (active.data.current?.taak as AgendaTaak | undefined)?.id) continue;
+      const tStart = new Date(t.ingeplandStart);
+      const tStartMin = tStart.getHours() * 60 + tStart.getMinutes();
+      const tEindMin = t.ingeplandEind
+        ? new Date(t.ingeplandEind).getHours() * 60 + new Date(t.ingeplandEind).getMinutes()
+        : tStartMin + (t.geschatteDuur || 30);
+      // Task overlaps with this slot
+      if (tStartMin < slotEnd && tEindMin > slotStart) {
+        laatsteEind = Math.max(laatsteEind, tEindMin);
+      }
+    }
+
+    // Also check agenda items (events)
+    for (const item of timed) {
+      const startStr = "startDatum" in item ? item.startDatum : "";
+      if (startStr.length <= 10) continue;
+      const iStart = new Date(startStr);
+      const iStartMin = iStart.getHours() * 60 + iStart.getMinutes();
+      const eindStr = "eindDatum" in item ? (item as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
+      const iEindMin = eindStr ? new Date(eindStr).getHours() * 60 + new Date(eindStr).getMinutes() : iStartMin + 60;
+      if (iStartMin < slotEnd && iEindMin > slotStart) {
+        laatsteEind = Math.max(laatsteEind, iEindMin);
+      }
+    }
+
+    const nieuweTijd = `${String(Math.floor(laatsteEind / 60)).padStart(2, "0")}:${String(laatsteEind % 60).padStart(2, "0")}`;
 
     if (active.data.current?.taak) {
       const taak = active.data.current.taak as AgendaTaak;
@@ -309,7 +340,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       onDeadlineNaarSlot?.(dl, slotData.datumStr, nieuweTijd);
     }
     setActiveHeledag(null);
-  }, [onPlanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot]);
+  }, [onPlanTaak, onHeleDagNaarSlot, onDeadlineNaarSlot, dagTaken, timed]);
 
   // Track actively dragged item for DragOverlay
   const [activeHeledag, setActiveHeledag] = useState<{ item: AnyEvent; colors: { bg: string; border: string; text: string } } | null>(null);

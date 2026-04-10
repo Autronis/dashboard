@@ -23,6 +23,10 @@
     {
       "path": "/api/wiki/import/cron",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/meetings/auto-record",
+      "schedule": "*/5 7-18 * * 1-5"
     }
   ]
 }

@@ -455,6 +455,31 @@ export function useAfstandBerekening() {
   });
 }
 
+// ─── Calendar Suggesties ─────────────────────────────────────────────────────
+
+interface CalendarSuggestie {
+  eventId: string;
+  titel: string;
+  locatie: string;
+  startTijd: string;
+  afstandKm: number | null;
+  klantId: number | null;
+  klantNaam: string | null;
+}
+
+export function useCalendarSuggesties() {
+  return useQuery({
+    queryKey: ["kilometers", "suggesties"],
+    queryFn: async (): Promise<CalendarSuggestie[]> => {
+      const res = await fetch("/api/kilometers/suggesties");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.suggesties ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 // ─── Locatie Autocomplete ────────────────────────────────────────────────────
 
 interface LocatieSuggestie {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAutoSync } from "@/hooks/use-auto-sync";
 import {
@@ -597,6 +598,9 @@ export default function TakenPage() {
   const [flashedFases, setFlashedFases] = useState<Set<string>>(new Set());
   const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectSectionsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const taakElementsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const [highlightedTaakId, setHighlightedTaakId] = useState<number | null>(null);
+  const searchParams = useSearchParams();
   const [mutatingCount, setMutatingCount] = useState(0);
 
   const apiStatusFilter = statusFilter === "verlopen" ? "open" : statusFilter;
@@ -624,6 +628,33 @@ export default function TakenPage() {
   const projectVoortgang = data?.projecten ?? [];
 
   const vandaag = new Date().toISOString().slice(0, 10);
+
+  // Deep link: scroll naar taak via ?taakId=X
+  useEffect(() => {
+    const taakIdParam = searchParams.get("taakId");
+    if (!taakIdParam || loading || taken.length === 0) return;
+    const taakId = Number(taakIdParam);
+    if (!taakId) return;
+
+    // Find the task's project and expand it
+    const taak = taken.find((t) => t.id === taakId);
+    if (taak?.projectId) {
+      setCollapsedProjects((prev) => { const next = new Set(prev); next.delete(taak.projectId!); return next; });
+    }
+    // Reset filters so the task is visible
+    setStatusFilter("alle");
+    setHideCompleted(false);
+
+    // Scroll after render
+    setTimeout(() => {
+      const el = taakElementsRef.current.get(taakId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHighlightedTaakId(taakId);
+        setTimeout(() => setHighlightedTaakId(null), 3000);
+      }
+    }, 300);
+  }, [searchParams, loading, taken]);
 
   const gefilterdeTaken = useMemo(() => {
     let result = taken;

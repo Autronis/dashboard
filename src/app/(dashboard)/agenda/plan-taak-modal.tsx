@@ -119,7 +119,7 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
               </div>
               {/* Link naar taak */}
               <Link
-                href="/taken"
+                href={`/taken?taakId=${taak.id}`}
                 className="inline-flex items-center gap-1 text-[11px] text-autronis-accent hover:text-autronis-accent-hover mt-1.5 transition-colors"
                 onClick={(e) => e.stopPropagation()}
               >

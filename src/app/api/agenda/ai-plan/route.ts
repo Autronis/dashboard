@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     const claudeBlokInfo = claudeSessieDuur > 0
       ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig (ID:-1). Dit is een AI-sessie die ${claudeTaken.length} taken AUTOMATISCH uitvoert — Sem hoeft hier NIKS voor te doen. Plan dit blok als EERSTE van de dag (start 08:00).
 
-Omdat Sem VRIJ is tijdens de Claude sessie, mag je zijn niet-development taken (meetings, administratie, communicatie) TIJDENS de Claude sessie inplannen. Alleen development taken die Sem ZELF moet doen plan je NA de Claude sessie.`
+CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens de Claude sessie. Je MOET niet-development taken (administratie, meetings, communicatie, telefoon, planning) TIJDENS de Claude sessie plannen. Dat is het hele punt — Claude werkt, Sem doet ondertussen admin/sales/meetings. Plan deze taken dus OVERLAPPEND met het Claude sessie blok (tussen 08:00 en het einde van de sessie). Alleen development taken die Sem ZELF achter de computer moet doen plan je NA de Claude sessie.`
       : "";
 
     const client = new Anthropic();

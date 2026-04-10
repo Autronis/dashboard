@@ -195,6 +195,38 @@ export function useKmStanden(jaar: number) {
   });
 }
 
+export function useKmStandFoto(kmStandId: number | null) {
+  return useQuery({
+    queryKey: ["kilometers", "km-stand-foto", kmStandId],
+    queryFn: async () => {
+      if (!kmStandId) return null;
+      const res = await fetch(`/api/kilometers/km-stand/foto?kmStandId=${kmStandId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.foto as { id: number; bestandspad: string; bestandsnaam: string } | null;
+    },
+    enabled: !!kmStandId,
+    staleTime: 60000,
+  });
+}
+
+export function useUploadKmStandFoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kmStandId, foto }: { kmStandId: number; foto: File }) => {
+      const formData = new FormData();
+      formData.append("foto", foto);
+      formData.append("kmStandId", String(kmStandId));
+      const res = await fetch("/api/kilometers/km-stand/foto", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload mislukt");
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["kilometers", "km-stand-foto", variables.kmStandId] });
+    },
+  });
+}
+
 export function useSaveKmStand() {
   const queryClient = useQueryClient();
   return useMutation({

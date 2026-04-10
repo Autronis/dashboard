@@ -51,6 +51,8 @@ backups/
 
 # Uploads
 uploads/
+public/uploads/km-standen/*
+!public/uploads/km-standen/.gitkeep
 
 # Environment
 .env.local

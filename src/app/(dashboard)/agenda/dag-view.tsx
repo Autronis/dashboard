@@ -296,34 +296,32 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
     const slotData = over.data.current as { uur?: number; datumStr?: string } | undefined;
     if (!slotData?.datumStr || slotData.uur === undefined) return;
 
-    // Find the latest ending task/event in this hour slot to stack after it
+    // Find the latest ending task/event that overlaps with or ends into this slot
     const slotStart = slotData.uur * 60;
-    const slotEnd = slotStart + 60;
     let laatsteEind = slotStart; // default: start of the hour
     const draggedId = (active.data.current?.taak as AgendaTaak | undefined)?.id;
 
-    // Check all scheduled tasks from props
+    // Check ALL scheduled tasks — any task that ends after slotStart counts
     for (const t of ingeplandeTaken) {
       if (!t.ingeplandStart || t.id === draggedId) continue;
-      const tStart = new Date(t.ingeplandStart);
-      const tStartMin = tStart.getHours() * 60 + tStart.getMinutes();
+      const tStartMin = new Date(t.ingeplandStart).getHours() * 60 + new Date(t.ingeplandStart).getMinutes();
       const tEindMin = t.ingeplandEind
         ? new Date(t.ingeplandEind).getHours() * 60 + new Date(t.ingeplandEind).getMinutes()
         : tStartMin + (t.geschatteDuur || 30);
-      if (tStartMin < slotEnd && tEindMin > slotStart) {
+      // Task ends after slot start AND starts before slot end (slot + 60 min)
+      if (tEindMin > slotStart && tStartMin < slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, tEindMin);
       }
     }
 
-    // Check agenda items from props
+    // Check agenda items
     for (const item of items) {
       const startStr = "startDatum" in item ? item.startDatum : "";
       if (!startStr || startStr.length <= 10) continue;
-      const iStart = new Date(startStr);
-      const iStartMin = iStart.getHours() * 60 + iStart.getMinutes();
+      const iStartMin = new Date(startStr).getHours() * 60 + new Date(startStr).getMinutes();
       const eindStr = "eindDatum" in item ? (item as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
       const iEindMin = eindStr ? new Date(eindStr).getHours() * 60 + new Date(eindStr).getMinutes() : iStartMin + 60;
-      if (iStartMin < slotEnd && iEindMin > slotStart) {
+      if (iEindMin > slotStart && iStartMin < slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, iEindMin);
       }
     }

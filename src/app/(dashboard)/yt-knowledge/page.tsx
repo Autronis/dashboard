@@ -45,6 +45,7 @@ interface AnalysisData {
   features: { name: string; description: string; category: string }[];
   steps: { order: number; title: string; description: string; code_snippet: string }[];
   tips: { tip: string; context: string }[];
+  links: { url: string; label: string; type: string }[];
   relevance_score: number;
   relevance_reason: string;
 }
@@ -540,7 +541,29 @@ export default function YtKnowledgePage() {
                             </div>
                           )}
 
-                          {/* Link */}
+                          {/* Links */}
+                          {video.analysis.links?.length > 0 && (
+                            <div>
+                              <h4 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
+                                <ExternalLink className="w-3 h-3" /> Links ({video.analysis.links.length})
+                              </h4>
+                              <div className="space-y-1">
+                                {video.analysis.links.map((l, i) => (
+                                  <a
+                                    key={i}
+                                    href={l.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-sm group"
+                                  >
+                                    <span className="text-autronis-accent group-hover:underline">{l.label}</span>
+                                    <span className="text-xs text-autronis-text-secondary px-1.5 py-0.5 rounded bg-autronis-bg">{l.type}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           <a
                             href={video.url || `https://youtube.com/watch?v=${video.youtube_id}`}
                             target="_blank"

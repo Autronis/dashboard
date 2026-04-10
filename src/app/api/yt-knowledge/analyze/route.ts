@@ -186,7 +186,10 @@ export async function POST(request: NextRequest) {
 
         const omschrijving = `${data.summary}\n\n**Relevantie:** ${data.relevance_score}/10 — ${data.relevance_reason}\n\n[Bekijk video](${videoUrl})`;
 
-        const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}\n\n---\n_Bron: [${videoTitle}](${videoUrl}) — YT Knowledge Pipeline analyse_`;
+        const linksText = (data.links || [])
+          .map((l: { url: string; label: string; type: string }) => `- [${l.label}](${l.url}) _(${l.type})_`).join("\n");
+
+        const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}${linksText ? `\n\n## Links\n${linksText}` : ""}\n\n---\n_Bron: [${videoTitle}](${videoUrl}) — YT Knowledge Pipeline analyse_`;
 
         const ideaTitle = data.idea_title || videoTitle;
         await db.insert(ideeen).values({

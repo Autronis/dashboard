@@ -729,57 +729,118 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             );
           })}
 
-          {/* Claude sessie blok — groepeer aansluitende AI-taken visueel */}
+          {/* Claude sessie blok — één blok met checklist */}
           {(() => {
-            const claudeTaken = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart && t.status !== "afgerond");
-            if (claudeTaken.length < 2) return null;
+            const claudeTaken = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
+            if (claudeTaken.length === 0) return null;
 
-            // Sort by start time
-            const sorted = [...claudeTaken].sort((a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime());
-
-            // Find contiguous groups (max 15min gap)
-            const groups: typeof sorted[] = [];
-            let current = [sorted[0]];
-            for (let i = 1; i < sorted.length; i++) {
-              const prevEnd = new Date(sorted[i - 1].ingeplandEind || sorted[i - 1].ingeplandStart!).getTime();
-              const curStart = new Date(sorted[i].ingeplandStart!).getTime();
-              if (curStart - prevEnd <= 15 * 60000) {
-                current.push(sorted[i]);
-              } else {
-                if (current.length >= 2) groups.push(current);
-                current = [sorted[i]];
-              }
+            // Groepeer Claude taken die exact dezelfde start/eind hebben (= sessie blok)
+            const sessies = new Map<string, typeof claudeTaken>();
+            for (const t of claudeTaken) {
+              const key = `${t.ingeplandStart}|${t.ingeplandEind}`;
+              if (!sessies.has(key)) sessies.set(key, []);
+              sessies.get(key)!.push(t);
             }
-            if (current.length >= 2) groups.push(current);
 
-            return groups.map((group, gi) => {
-              const firstStart = new Date(group[0].ingeplandStart!);
-              const lastEnd = new Date(group[group.length - 1].ingeplandEind || group[group.length - 1].ingeplandStart!);
-              const startMin = firstStart.getHours() * 60 + firstStart.getMinutes();
-              const eindMin = lastEnd.getHours() * 60 + lastEnd.getMinutes();
-              const blockTop = ((startMin - startUur * 60) / 60) * UUR_HOOGTE;
-              const blockHeight = Math.max(28, ((eindMin - startMin) / 60) * UUR_HOOGTE);
-              const startLabel = firstStart.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
-              const eindLabel = lastEnd.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+            return Array.from(sessies.entries()).map(([key, group]) => {
+              if (group.length < 2) return null; // Enkele Claude taken als normaal blok
+              const startDate = new Date(group[0].ingeplandStart!);
+              const eindDate = group[0].ingeplandEind ? new Date(group[0].ingeplandEind) : startDate;
+              const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
+              const eindMinuten = eindDate.getHours() * 60 + eindDate.getMinutes();
+              const duurMin = Math.max(30, eindMinuten - startMinuten);
+              const blockTop = ((startMinuten - startUur * 60) / 60) * UUR_HOOGTE;
+              const blockHeight = Math.max(60, (duurMin / 60) * UUR_HOOGTE);
+              const startLabel = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+              const eindLabel = eindDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+              const afgerond = group.filter((t) => t.status === "afgerond").length;
 
               return (
                 <div
-                  key={`claude-sessie-${gi}`}
-                  className="absolute left-10 sm:left-14 right-0 rounded-xl border-2 border-dashed border-purple-500/25 pointer-events-none z-[2]"
-                  style={{ top: `${blockTop - 4}px`, height: `${blockHeight + 8}px`, background: "rgba(168,85,247,0.04)" }}
+                  key={`claude-sessie-${key}`}
+                  className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
+                  style={{
+                    top: `${blockTop}px`,
+                    height: `${blockHeight}px`,
+                    background: "linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(168,85,247,0.05) 100%)",
+                    borderColor: "#a855f7",
+                    boxShadow: "0 2px 12px rgba(168,85,247,0.15)",
+                  }}
                 >
-                  <div className="absolute -top-3 left-2 flex items-center gap-1 bg-autronis-card px-2 py-0.5 rounded-md">
-                    <Terminal className="w-3 h-3 text-purple-400" />
-                    <span className="text-[10px] font-semibold text-purple-400">Claude sessie · {startLabel}–{eindLabel} · {group.length} taken</span>
+                  {/* Header */}
+                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-purple-500/20">
+                    <Terminal className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+                    <span className="text-xs font-semibold text-purple-300 flex-1">
+                      Claude sessie · {startLabel}–{eindLabel}
+                    </span>
+                    <span className="text-[10px] text-purple-400/70 tabular-nums">{afgerond}/{group.length}</span>
+                    <button
+                      className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[10px] font-medium transition-colors"
+                      onClick={() => {
+                        const perProject = new Map<string, typeof group>();
+                        for (const t of group) {
+                          const dir = t.projectMap || "~";
+                          if (!perProject.has(dir)) perProject.set(dir, []);
+                          perProject.get(dir)!.push(t);
+                        }
+                        const cmds: string[] = [];
+                        for (const [dir, pt] of perProject) {
+                          const takenTekst = pt.map((t) => `- ${t.titel}`).join("\\n");
+                          cmds.push(`cd "${dir}" && claude "Voer deze taken uit:\\n${takenTekst}"`);
+                        }
+                        navigator.clipboard.writeText(cmds.join(" && "));
+                      }}
+                    >
+                      Kopieer
+                    </button>
+                  </div>
+                  {/* Takenlijst */}
+                  <div className="px-3 py-1 overflow-y-auto" style={{ maxHeight: `${blockHeight - 32}px` }}>
+                    {group.map((taak) => {
+                      const done = taak.status === "afgerond";
+                      return (
+                        <div key={taak.id} className="flex items-center gap-2 py-0.5 group/item">
+                          <button
+                            onClick={() => onTaakToggle?.(taak.id, taak.status)}
+                            className={cn(
+                              "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                              done ? "bg-purple-500 border-purple-500" : "border-purple-400/40 hover:border-purple-400"
+                            )}
+                          >
+                            {done && <Check className="w-2.5 h-2.5 text-white" />}
+                          </button>
+                          <span className={cn(
+                            "text-xs truncate flex-1",
+                            done ? "line-through text-purple-400/40" : "text-purple-200"
+                          )}>
+                            {taak.titel}
+                          </span>
+                          {taak.projectNaam && (
+                            <span className="text-[9px] text-purple-400/40 truncate max-w-20 hidden group-hover/item:inline">{taak.projectNaam}</span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
             });
           })()}
 
-          {/* Ingeplande taken als draggable blokken */}
+          {/* Ingeplande taken als draggable blokken (alleen niet-sessie taken) */}
           {dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
+
+            // Skip Claude taken die onderdeel zijn van een sessie (2+ met zelfde start/eind)
+            if (taak.uitvoerder === "claude") {
+              const sameSession = dagTaken.filter((t) =>
+                t.uitvoerder === "claude" &&
+                t.ingeplandStart === taak.ingeplandStart &&
+                t.ingeplandEind === taak.ingeplandEind
+              );
+              if (sameSession.length >= 2) return null; // Gerenderd als sessie-blok hierboven
+            }
+
             const startDate = new Date(taak.ingeplandStart);
             const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
             const duurMin = taak.geschatteDuur || 60;
@@ -789,7 +850,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const startTijd = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
             const eindTijd = taak.ingeplandEind ? new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
-            // Claude taken = paars, handmatig = groen
+            // Claude taken = paars, handmatig = projectkleur/groen
             const kleur = taak.uitvoerder === "claude" ? "#a855f7" : (taak.kalenderKleur || "#22c55e");
 
             return (

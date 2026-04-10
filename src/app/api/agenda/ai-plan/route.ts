@@ -2,20 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, or, isNull } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import Anthropic from "@anthropic-ai/sdk";
 
 // POST /api/agenda/ai-plan — AI vult de dag met taken
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    await requireAuth();
     const { datum } = await req.json();
 
     if (!datum) {
       return NextResponse.json({ fout: "Datum is verplicht" }, { status: 400 });
     }
 
-    // Haal alle open/bezig taken op die NIET ingepland zijn
+    // Haal alle open/bezig taken op
     const openTaken = await db
       .select({
         id: taken.id,
@@ -30,18 +30,23 @@ export async function POST(req: NextRequest) {
       })
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))
-      .where(
-        or(eq(taken.status, "open"), eq(taken.status, "bezig"))
-      )
+      .where(or(eq(taken.status, "open"), eq(taken.status, "bezig")))
       .all();
 
-    const nietIngepland = openTaken.filter((t) => !t.geschatteDuur || true); // alle open taken
-
-    if (nietIngepland.length === 0) {
+    if (openTaken.length === 0) {
       return NextResponse.json({ fout: "Geen open taken om in te plannen" }, { status: 400 });
     }
 
-    // Haal bestaande agenda items op voor die dag (om conflicten te voorkomen)
+    // Split in Claude taken en handmatige taken
+    const claudeTaken = openTaken.filter((t) => t.uitvoerder === "claude");
+    const handmatigeTaken = openTaken.filter((t) => t.uitvoerder !== "claude");
+
+    // Bereken Claude sessie duur: 15 min per taak, min 15, max 120
+    const claudeSessieDuur = claudeTaken.length > 0
+      ? Math.min(120, Math.max(15, claudeTaken.length * 15))
+      : 0;
+
+    // Bestaande ingeplande taken op deze dag (vermijd conflicten)
     const bestaandeIngepland = await db
       .select({
         id: taken.id,
@@ -57,15 +62,20 @@ export async function POST(req: NextRequest) {
       .filter((t) => t.ingeplandStart?.startsWith(datum))
       .map((t) => `- ${t.titel}: ${t.ingeplandStart?.slice(11, 16)} – ${t.ingeplandEind?.slice(11, 16)}`);
 
-    const takenLijst = nietIngepland.map((t) => {
+    // Bouw de takenlijst voor AI — ZONDER Claude taken (die plannen we zelf)
+    const takenLijst = handmatigeTaken.map((t) => {
       const parts = [`ID:${t.id} "${t.titel}"`];
       if (t.prioriteit === "hoog") parts.push("(HOOG)");
-      if (t.uitvoerder === "claude") parts.push("[AI-TAAK]");
       if (t.deadline) parts.push(`deadline:${t.deadline}`);
       if (t.geschatteDuur) parts.push(`geschat:${t.geschatteDuur}min`);
       if (t.projectNaam) parts.push(`project:${t.projectNaam}`);
       return parts.join(" ");
     }).join("\n");
+
+    // Claude sessie info voor de AI planner
+    const claudeBlokInfo = claudeSessieDuur > 0
+      ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig. Dit is een AI-sessie die ${claudeTaken.length} taken automatisch uitvoert. Plan dit blok als EERSTE van de dag (start 08:00) of direct na de lunch. Geef dit blok ID:-1 in je output. De overige taken plan je daaromheen.`
+      : "";
 
     const client = new Anthropic();
 
@@ -81,18 +91,18 @@ Regels:
 - Laat 5-10 min pauze tussen taken
 - Maximaal 8 uur werk, niet alles hoeft gepland als er te veel is
 - Groepeer vergelijkbare taken (bijv. administratie achter elkaar)
-- BELANGRIJK: Groepeer [AI-TAAK] taken achter elkaar in één aaneengesloten blok. De gebruiker start deze als batch via Claude Code terwijl hij iets anders doet. Plan ze bij voorkeur als eerste blok van de dag of direct na de lunch.
 - Zware/creatieve taken in de ochtend, lichte taken na de lunch
-- Als een taak niet inplanbaar is (bijv. wachten op iets), SKIP die taak. Zet hem NIET in de output.
-- Start en eind MOETEN het format "HH:MM" hebben (bijv. "08:00", "14:30"). NOOIT tekst, NOOIT "WACHTRIJ" of iets anders.
+- Als een taak niet inplanbaar is (bijv. wachten op iets), SKIP die taak
+- Start en eind MOETEN het format "HH:MM" hebben
 
 Antwoord ALLEEN met een JSON array, geen uitleg:
 [{"id": 123, "start": "08:00", "eind": "08:30", "duur": 30}]`,
       messages: [{
         role: "user",
         content: `Plan deze taken in voor ${datum}:
+${claudeBlokInfo}
 
-${takenLijst}
+${takenLijst || "(Geen handmatige taken)"}
 
 ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${alIngepland.join("\n")}` : ""}`,
       }],
@@ -106,20 +116,40 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
 
     const planning: Array<{ id: number; start: string; eind: string; duur: number }> = JSON.parse(jsonMatch[0]);
 
-    // Plan de taken in — valideer tijden strikt
     const tijdRegex = /^\d{2}:\d{2}$/;
     const gepland: Array<{ id: number; titel: string; start: string; eind: string }> = [];
-    for (const item of planning) {
-      const taak = nietIngepland.find((t) => t.id === item.id);
-      if (!taak) continue;
 
-      // Skip als start/eind geen geldig HH:MM format is
+    // Plan het Claude sessie blok (ID:-1) — alle Claude taken krijgen dezelfde start/eind
+    const claudeBlok = planning.find((item) => item.id === -1);
+    if (claudeBlok && claudeTaken.length > 0 && tijdRegex.test(claudeBlok.start) && tijdRegex.test(claudeBlok.eind)) {
+      const startISO = `${datum}T${claudeBlok.start}:00`;
+      const eindISO = `${datum}T${claudeBlok.eind}:00`;
+
+      if (!isNaN(new Date(startISO).getTime()) && !isNaN(new Date(eindISO).getTime())) {
+        for (const taak of claudeTaken) {
+          await db
+            .update(taken)
+            .set({
+              ingeplandStart: startISO,
+              ingeplandEind: eindISO,
+              geschatteDuur: claudeBlok.duur,
+            })
+            .where(eq(taken.id, taak.id));
+
+          gepland.push({ id: taak.id, titel: taak.titel, start: claudeBlok.start, eind: claudeBlok.eind });
+        }
+      }
+    }
+
+    // Plan handmatige taken individueel
+    for (const item of planning) {
+      if (item.id === -1) continue; // Skip Claude blok (al verwerkt)
+      const taak = handmatigeTaken.find((t) => t.id === item.id);
+      if (!taak) continue;
       if (!tijdRegex.test(item.start) || !tijdRegex.test(item.eind)) continue;
 
       const startISO = `${datum}T${item.start}:00`;
       const eindISO = `${datum}T${item.eind}:00`;
-
-      // Valideer dat het geldige dates zijn
       if (isNaN(new Date(startISO).getTime()) || isNaN(new Date(eindISO).getTime())) continue;
 
       await db

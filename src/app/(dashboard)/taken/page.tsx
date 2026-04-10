@@ -1141,7 +1141,7 @@ export default function TakenPage() {
                 const StatusIcon = sc.icon;
                 const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
                 return (
-                  <div key={taak.id} className={cn("flex items-center gap-3 px-4 py-1.5 hover:bg-autronis-bg/30 transition-colors group", taak.status === "afgerond" && "opacity-40")}>
+                  <div key={taak.id} ref={(el: HTMLDivElement | null) => { if (el) taakElementsRef.current.set(taak.id, el); else taakElementsRef.current.delete(taak.id); }} className={cn("flex items-center gap-3 px-4 py-1.5 hover:bg-autronis-bg/30 transition-colors group", taak.status === "afgerond" && "opacity-40", highlightedTaakId === taak.id && "ring-2 ring-autronis-accent ring-offset-2 ring-offset-autronis-bg rounded-lg")}>
                     <button onClick={() => handleStatusToggle(taak)} className={cn("flex-shrink-0", sc.color)}>
                       <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                     </button>
@@ -1285,6 +1285,7 @@ export default function TakenPage() {
                                       return (
                                         <motion.div
                                           key={taak.id}
+                                          ref={(el: HTMLDivElement | null) => { if (el) taakElementsRef.current.set(taak.id, el); else taakElementsRef.current.delete(taak.id); }}
                                           initial={{ opacity: 0, x: -6 }}
                                           animate={{ opacity: taak.status === "afgerond" ? 0.4 : 1, x: 0 }}
                                           transition={{ duration: 0.18, delay: Math.min(fase.taken.indexOf(taak) * 0.03, 0.3) }}
@@ -1293,7 +1294,8 @@ export default function TakenPage() {
                                           className={cn(
                                             "hover-slide-bg bg-autronis-bg/30 rounded-lg border-l-[3px] transition-colors cursor-grab active:cursor-grabbing group",
                                             taak.prioriteit === "hoog" ? "urgent-pulse" : taak.prioriteit === "normaal" ? "normaal-pulse" : "",
-                                            pc.borderColor
+                                            pc.borderColor,
+                                            highlightedTaakId === taak.id && "ring-2 ring-autronis-accent ring-offset-2 ring-offset-autronis-bg"
                                           )}
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">

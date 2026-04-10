@@ -444,3 +444,13 @@ export function useKlantenProjecten() {
     staleTime: 60_000,
   });
 }
+
+export function useAfstandBerekening() {
+  return useMutation({
+    mutationFn: async ({ van, naar }: { van: string; naar: string }) => {
+      const res = await fetch(`/api/kilometers/distance?van=${encodeURIComponent(van)}&naar=${encodeURIComponent(naar)}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<{ afstandMeters: number; afstandKm: number; duurSeconden: number; duurTekst: string }>;
+    },
+  });
+}

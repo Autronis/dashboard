@@ -16,6 +16,7 @@ interface KmStandPanelProps {
 
 export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const { data } = useKmStanden(jaar);
   const saveMutation = useSaveKmStand();
   const uploadMutation = useUploadKmStandFoto();
@@ -46,10 +47,11 @@ export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
   }
 
   async function handleFotoVerwijderen() {
-    if (!foto) return;
+    if (!foto || !kmStandId) return;
     try {
       const res = await fetch(`/api/kilometers/km-stand/foto?id=${foto.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Verwijderen mislukt");
+      queryClient.invalidateQueries({ queryKey: ["kilometers", "km-stand-foto", kmStandId] });
       addToast("Foto verwijderd", "succes");
     } catch {
       addToast("Foto verwijderen mislukt", "fout");

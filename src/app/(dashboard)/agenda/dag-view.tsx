@@ -318,8 +318,16 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       return d.getHours() * 60 + d.getMinutes();
     }
 
+    // Skip Claude session tasks — they run on the left side, don't conflict with handmatige taken
+    const claudeSessionIds = new Set<number>();
+    const allClaude = ingeplandeTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
+    if (allClaude.length >= 2) {
+      for (const t of allClaude) claudeSessionIds.add(t.id);
+    }
+
     for (const t of ingeplandeTaken) {
       if (!t.ingeplandStart || t.id === draggedId) continue;
+      if (claudeSessionIds.has(t.id)) continue; // Skip Claude session tasks
       const tStartMin = minOfDay(t.ingeplandStart);
       const tEindMin = t.ingeplandEind
         ? minOfDay(t.ingeplandEind)

@@ -1345,7 +1345,7 @@ export default function IdeeenPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {aiSorted.map((idee) => (
-                <div key={idee.id} className="bg-autronis-card border border-autronis-border rounded-2xl p-3 sm:p-6 hover:border-autronis-accent/50 transition-all card-glow">
+                <div key={idee.id} className="bg-autronis-card border border-autronis-border rounded-2xl p-3 sm:p-6 hover:border-autronis-accent/50 transition-all card-glow cursor-pointer" onClick={() => setDetailIdee(idee)}>
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">
                       <h3 className="text-base font-semibold text-autronis-text-primary truncate">{idee.naam}</h3>

@@ -1,0 +1,216 @@
+- generic [ref=e2]:
+  - complementary [ref=e3]:
+    - generic [ref=e4]:
+      - link "Autronis Autronis" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "Autronis" [ref=e6]
+        - generic [ref=e7]: Autronis
+      - button [ref=e8]:
+        - img [ref=e9]
+    - navigation [ref=e11]:
+      - link "Dashboard" [ref=e12] [cursor=pointer]:
+        - /url: /
+        - img [ref=e13]
+        - generic [ref=e18]: Dashboard
+      - link "Ops Room" [ref=e19] [cursor=pointer]:
+        - /url: /ops-room
+        - img [ref=e20]
+        - generic [ref=e26]: Ops Room
+      - link "Analytics" [ref=e27] [cursor=pointer]:
+        - /url: /analytics
+        - img [ref=e28]
+        - generic [ref=e30]: Analytics
+      - link "Taken" [ref=e31] [cursor=pointer]:
+        - /url: /taken
+        - img [ref=e32]
+        - generic [ref=e35]: Taken
+      - link "Agenda" [ref=e36] [cursor=pointer]:
+        - /url: /agenda
+        - img [ref=e38]
+        - generic [ref=e40]: Agenda
+      - link "Weekreview" [ref=e41] [cursor=pointer]:
+        - /url: /weekreview
+        - img [ref=e42]
+        - generic [ref=e44]: Weekreview
+      - link "Mealplanner" [ref=e45] [cursor=pointer]:
+        - /url: /mealplan
+        - img [ref=e46]
+        - generic [ref=e51]: Mealplanner
+      - generic [ref=e52]:
+        - button "Mijn dag 7" [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]:
+            - generic [ref=e55]: Mijn dag
+            - generic [ref=e56]: "7"
+          - img [ref=e57]
+        - generic [ref=e60]:
+          - link "Tijd" [ref=e61] [cursor=pointer]:
+            - /url: /tijd
+            - img [ref=e62]
+            - generic [ref=e65]: Tijd
+          - link "Focus" [ref=e66] [cursor=pointer]:
+            - /url: /focus
+            - img [ref=e67]
+            - generic [ref=e73]: Focus
+          - link "Dagritme" [ref=e74] [cursor=pointer]:
+            - /url: /dagritme
+            - img [ref=e75]
+            - generic [ref=e80]: Dagritme
+          - link "Meetings" [ref=e81] [cursor=pointer]:
+            - /url: /meetings
+            - img [ref=e82]
+            - generic [ref=e85]: Meetings
+          - link "Ideeën" [ref=e86] [cursor=pointer]:
+            - /url: /ideeen
+            - img [ref=e87]
+            - generic [ref=e89]: Ideeën
+          - link "Projecten" [ref=e90] [cursor=pointer]:
+            - /url: /projecten
+            - img [ref=e91]
+            - generic [ref=e93]: Projecten
+          - link "Documenten" [ref=e94] [cursor=pointer]:
+            - /url: /documenten
+            - img [ref=e95]
+            - generic [ref=e98]: Documenten
+      - generic [ref=e99]:
+        - button "Sales & Klanten 4" [ref=e100] [cursor=pointer]:
+          - generic [ref=e101]:
+            - generic [ref=e102]: Sales & Klanten
+            - generic [ref=e103]: "4"
+          - img [ref=e104]
+        - generic [ref=e107]:
+          - button "Overzicht" [ref=e109]:
+            - img [ref=e110]
+            - generic [ref=e114]: Overzicht
+            - img [ref=e115]
+          - link "Klanten" [ref=e117] [cursor=pointer]:
+            - /url: /klanten
+            - img [ref=e118]
+            - generic [ref=e123]: Klanten
+          - link "Mail Assistent" [ref=e124] [cursor=pointer]:
+            - /url: /mail
+            - img [ref=e125]
+            - generic [ref=e128]: Mail Assistent
+          - link "Prijscalculator" [ref=e129] [cursor=pointer]:
+            - /url: /prijscalculator
+            - img [ref=e130]
+            - generic [ref=e132]: Prijscalculator
+      - generic [ref=e133]:
+        - button "Geld 4" [ref=e134] [cursor=pointer]:
+          - generic [ref=e135]:
+            - generic [ref=e136]: Geld
+            - generic [ref=e137]: "4"
+          - img [ref=e138]
+        - generic [ref=e141]:
+          - button "Opstellen" [ref=e143]:
+            - img [ref=e144]
+            - generic [ref=e146]: Opstellen
+            - img [ref=e147]
+          - link "Financiën" [ref=e149] [cursor=pointer]:
+            - /url: /financien
+            - img [ref=e150]
+            - generic [ref=e152]: Financiën
+          - link "Belasting" [ref=e153] [cursor=pointer]:
+            - /url: /belasting
+            - img [ref=e154]
+            - generic [ref=e156]: Belasting
+          - link "Kilometers" [ref=e157] [cursor=pointer]:
+            - /url: /kilometers
+            - img [ref=e158]
+            - generic [ref=e162]: Kilometers
+      - generic [ref=e163]:
+        - button "Creatie 5" [ref=e164] [cursor=pointer]:
+          - generic [ref=e165]:
+            - generic [ref=e166]: Creatie
+            - generic [ref=e167]: "5"
+          - img [ref=e168]
+        - generic [ref=e171]:
+          - link "Content Engine" [ref=e172] [cursor=pointer]:
+            - /url: /content
+            - img [ref=e173]
+            - generic [ref=e176]: Content Engine
+          - link "Video Studio" [ref=e177] [cursor=pointer]:
+            - /url: /content/videos/studio
+            - img [ref=e178]
+            - generic [ref=e181]: Video Studio
+          - link "Banners" [ref=e182] [cursor=pointer]:
+            - /url: /content/banners
+            - img [ref=e183]
+            - generic [ref=e185]: Banners
+          - link "Animaties" [ref=e186] [cursor=pointer]:
+            - /url: /animaties
+            - img [ref=e187]
+            - generic [ref=e190]: Animaties
+          - link "Case Studies" [ref=e191] [cursor=pointer]:
+            - /url: /case-studies
+            - img [ref=e192]
+            - generic [ref=e195]: Case Studies
+      - generic [ref=e196]:
+        - button "Kennis 5" [ref=e197] [cursor=pointer]:
+          - generic [ref=e198]:
+            - generic [ref=e199]: Kennis
+            - generic [ref=e200]: "5"
+          - img [ref=e201]
+        - generic [ref=e204]:
+          - link "Second Brain" [ref=e205] [cursor=pointer]:
+            - /url: /second-brain
+            - img [ref=e206]
+            - generic [ref=e214]: Second Brain
+          - link "Wiki" [ref=e215] [cursor=pointer]:
+            - /url: /wiki
+            - img [ref=e216]
+            - generic [ref=e218]: Wiki
+          - link "Learning Radar" [ref=e219] [cursor=pointer]:
+            - /url: /radar
+            - img [ref=e220]
+            - generic [ref=e227]: Learning Radar
+          - link "YT Knowledge" [ref=e228] [cursor=pointer]:
+            - /url: /yt-knowledge
+            - img [ref=e229]
+            - generic [ref=e232]: YT Knowledge
+          - link "Contract Analyzer" [ref=e233] [cursor=pointer]:
+            - /url: /contract-analyse
+            - img [ref=e234]
+            - generic [ref=e236]: Contract Analyzer
+      - generic [ref=e237]:
+        - button "Inzicht & Strategie 1" [ref=e238] [cursor=pointer]:
+          - generic [ref=e239]:
+            - generic [ref=e240]: Inzicht & Strategie
+            - generic [ref=e241]: "1"
+          - img [ref=e242]
+        - button "Vastleggen" [ref=e247]:
+          - img [ref=e248]
+          - generic [ref=e251]: Vastleggen
+          - img [ref=e252]
+      - generic [ref=e254]:
+        - button "Beheer 3" [ref=e255] [cursor=pointer]:
+          - generic [ref=e256]:
+            - generic [ref=e257]: Beheer
+            - generic [ref=e258]: "3"
+          - img [ref=e259]
+        - generic [ref=e262]:
+          - link "Team" [ref=e263] [cursor=pointer]:
+            - /url: /team
+            - img [ref=e264]
+            - generic [ref=e268]: Team
+          - link "API Gebruik" [ref=e269] [cursor=pointer]:
+            - /url: /api-gebruik
+            - img [ref=e270]
+            - generic [ref=e272]: API Gebruik
+          - link "Instellingen" [ref=e273] [cursor=pointer]:
+            - /url: /instellingen
+            - img [ref=e274]
+            - generic [ref=e277]: Instellingen
+    - generic [ref=e280]: ⌘K zoeken
+  - banner [ref=e281]:
+    - generic [ref=e283]:
+      - button "Focus" [ref=e284]:
+        - img [ref=e285]
+        - generic [ref=e289]: Focus
+      - button "Notificaties" [ref=e291]:
+        - img [ref=e292]
+      - generic [ref=e296]:
+        - img "Sem Gijsberts" [ref=e297]
+        - generic [ref=e298]: Sem Gijsberts
+      - button "Uitloggen" [ref=e299]:
+        - img [ref=e300]
+  - main [ref=e303]

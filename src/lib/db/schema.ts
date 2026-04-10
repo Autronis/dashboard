@@ -942,6 +942,7 @@ export const meetings = sqliteTable("meetings", {
   titel: text("titel").notNull(),
   datum: text("datum").notNull(),
   duurMinuten: integer("duur_minuten"),
+  meetingUrl: text("meeting_url"),
   audioPad: text("audio_pad"),
   transcript: text("transcript"),
   samenvatting: text("samenvatting"),

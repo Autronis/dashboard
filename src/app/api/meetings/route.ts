@@ -318,6 +318,7 @@ export async function POST(req: NextRequest) {
     const datum = formData.get("datum") as string | null;
     const klantId = formData.get("klantId") as string | null;
     const projectId = formData.get("projectId") as string | null;
+    const meetingUrl = formData.get("meetingUrl") as string | null;
     const audio = formData.get("audio") as File | null;
 
     if (!titel || !datum) {
@@ -354,8 +355,9 @@ export async function POST(req: NextRequest) {
         datum,
         klantId: klantId ? Number(klantId) : null,
         projectId: projectId ? Number(projectId) : null,
+        meetingUrl: meetingUrl || null,
         audioPad,
-        status: "verwerken",
+        status: meetingUrl ? null : "verwerken",
         aangemaaktDoor: gebruiker.id,
       })
       .run();

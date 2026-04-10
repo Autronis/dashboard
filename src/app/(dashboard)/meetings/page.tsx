@@ -1727,6 +1727,21 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
             </div>
           )}
 
+          {/* Meeting URL */}
+          <div>
+            <label className="block text-sm font-medium text-autronis-text-secondary mb-1.5">Meeting link (optioneel)</label>
+            <input
+              type="url"
+              value={meetingUrl}
+              onChange={(e) => setMeetingUrl(e.target.value)}
+              placeholder="https://meet.google.com/... of Zoom link"
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+            />
+            {meetingUrl.trim() && (
+              <p className="text-[11px] text-autronis-accent mt-1.5">Recall bot zal automatisch deelnemen en opnemen</p>
+            )}
+          </div>
+
           {/* AI Voorbereiding */}
           <VoorbereidingPanel klantId={klantId} projectId={projectId} titel={titel} />
 

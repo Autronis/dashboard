@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { kilometerRegistraties, klanten, projecten } from "@/lib/db/schema";
+import { kilometerRegistraties, klanten, projecten, locatieAliassen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 
@@ -93,13 +93,31 @@ export async function POST(req: NextRequest) {
 
     const kmWaarde = isRetour ? parseFloat(kilometers) * 2 : parseFloat(kilometers);
 
+    // Resolve aliases
+    const resolveAlias = async (locatie: string) => {
+      const found = await db
+        .select()
+        .from(locatieAliassen)
+        .where(
+          and(
+            eq(locatieAliassen.gebruikerId, gebruiker.id),
+            eq(locatieAliassen.alias, locatie.trim().toLowerCase())
+          )
+        )
+        .get();
+      return found ? found.genormaliseerdeNaam : locatie.trim();
+    };
+
+    const resolvedVan = await resolveAlias(vanLocatie);
+    const resolvedNaar = await resolveAlias(naarLocatie);
+
     const [nieuw] = await db
       .insert(kilometerRegistraties)
       .values({
         gebruikerId: gebruiker.id,
         datum,
-        vanLocatie: vanLocatie.trim(),
-        naarLocatie: naarLocatie.trim(),
+        vanLocatie: resolvedVan,
+        naarLocatie: resolvedNaar,
         kilometers: kmWaarde,
         isRetour: isRetour ? 1 : 0,
         zakelijkDoel: zakelijkDoel?.trim() || null,

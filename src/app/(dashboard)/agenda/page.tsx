@@ -1999,9 +1999,46 @@ export default function AgendaPage() {
                   </div>
 
                   {takenPerProject.length === 0 ? (
-                    <p className="text-xs text-autronis-text-secondary py-4 text-center">
-                      {plannenFilter !== "alle" ? "Geen taken voor dit filter" : "Alle taken zijn ingepland!"}
-                    </p>
+                    <div className="py-3 space-y-3">
+                      <p className="text-xs text-autronis-text-secondary text-center">
+                        {plannenFilter !== "alle" ? "Geen taken voor dit filter" : "Alle taken zijn ingepland!"}
+                      </p>
+                      {plannenFilter === "alle" && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 px-2">
+                            <span className="text-[10px] font-semibold text-autronis-text-secondary/60 uppercase tracking-wider">Wat je nu kunt doen</span>
+                          </div>
+                          {[
+                            { tekst: "Lead opvolgen — bel of mail een prospect", kleur: "text-green-400/70", icon: "📞" },
+                            { tekst: "LinkedIn post schrijven over recent werk", kleur: "text-blue-400/70", icon: "✍️" },
+                            { tekst: "Offerte opstellen voor openstaande lead", kleur: "text-amber-400/70", icon: "📄" },
+                            { tekst: "Portfolio/case study bijwerken", kleur: "text-purple-400/70", icon: "🎨" },
+                            { tekst: "Netwerken — connecties leggen op LinkedIn", kleur: "text-cyan-400/70", icon: "🤝" },
+                            { tekst: "Content plannen — blog, video, social media", kleur: "text-pink-400/70", icon: "📱" },
+                          ].map((s) => (
+                            <button
+                              key={s.tekst}
+                              onClick={() => {
+                                setSelectedItem(null);
+                                setTitel(s.tekst);
+                                setOmschrijving("");
+                                setType("afspraak");
+                                setStartDatum(selectedDay || datumStr(jaar, maand, vandaag.getDate()));
+                                setStartTijd("09:00");
+                                setEindTijd("09:30");
+                                setHeleDag(false);
+                                setModalOpen(true);
+                              }}
+                              className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-accent/10 transition-colors w-full text-left group"
+                            >
+                              <span className="text-xs">{s.icon}</span>
+                              <span className={`text-xs ${s.kleur} group-hover:text-autronis-accent transition-colors`}>{s.tekst}</span>
+                              <span className="text-[9px] text-autronis-text-secondary/30 ml-auto hidden group-hover:inline">+ inplannen</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-0.5">
                       {takenPerProject.map((groep) => {

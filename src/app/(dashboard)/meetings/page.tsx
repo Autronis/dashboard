@@ -1593,6 +1593,7 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
   const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
   const [klantId, setKlantId] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<number | null>(null);
+  const [meetingUrl, setMeetingUrl] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [transcript, setTranscript] = useState("");
   const [inputModus, setInputModus] = useState<"upload" | "opname" | "transcript">("upload");
@@ -1635,6 +1636,7 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
     formData.append("datum", datum);
     if (klantId) formData.append("klantId", String(klantId));
     if (projectId) formData.append("projectId", String(projectId));
+    if (meetingUrl.trim()) formData.append("meetingUrl", meetingUrl.trim());
     if (audioFile) formData.append("audio", audioFile);
     if (transcript.trim()) formData.append("transcript", transcript);
 

@@ -870,23 +870,6 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       </div>
                     ))}
 
-                    {/* Suggesties — wat kun je doen terwijl Claude werkt */}
-                    {afgerond < group.length && blockHeight > 120 && (
-                      <div className="mt-1.5 pt-1.5 border-t border-purple-500/10 px-1">
-                        <span className="text-[9px] font-semibold text-purple-400/40 uppercase tracking-wider">Terwijl Claude werkt</span>
-                        {[
-                          "Lead opvolgen — bel/mail een prospect",
-                          "LinkedIn post schrijven over recent werk",
-                          "Offerte versturen naar openstaande lead",
-                          "Netwerk — connecties leggen op LinkedIn",
-                        ].slice(0, Math.floor((blockHeight - 120) / 16)).map((s) => (
-                          <div key={s} className="flex items-center gap-1.5 py-0.5">
-                            <span className="text-[9px] text-purple-400/30">💡</span>
-                            <span className="text-[10px] text-purple-300/40 italic">{s}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
               );

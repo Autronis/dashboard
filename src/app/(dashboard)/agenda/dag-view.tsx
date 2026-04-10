@@ -162,7 +162,7 @@ function TaakCheckCircle({ checked, onClick }: { checked: boolean; onClick: (e: 
   );
 }
 
-function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onToggle, onClick }: {
+function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onToggle, onClick, halfRight }: {
   taak: AgendaTaak;
   top: number;
   height: number;
@@ -172,6 +172,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   onUnplan?: (id: number) => void;
   onToggle?: (id: number, status?: string) => void;
   onClick?: () => void;
+  halfRight?: boolean;
 }) {
   const checked = taak.status === "afgerond";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -199,7 +200,10 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   return (
     <div
       ref={setNodeRef}
-      className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[3] group flex flex-col justify-center"
+      className={cn(
+        "absolute rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[4] group flex flex-col justify-center",
+        halfRight ? "left-[52%] right-1.5 sm:right-3" : "left-12 sm:left-16 right-1.5 sm:right-3"
+      )}
       style={style}
       onClick={onClick}
     >
@@ -788,7 +792,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               return (
                 <div
                   key={`claude-sessie-${gi}`}
-                  className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
+                  className="absolute left-12 sm:left-16 right-[50%] rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
                   style={{
                     top: `${blockTop}px`,
                     height: `${blockHeight}px`,

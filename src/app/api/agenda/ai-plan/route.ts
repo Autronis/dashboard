@@ -74,7 +74,9 @@ export async function POST(req: NextRequest) {
 
     // Claude sessie info voor de AI planner
     const claudeBlokInfo = claudeSessieDuur > 0
-      ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig. Dit is een AI-sessie die ${claudeTaken.length} taken automatisch uitvoert. Plan dit blok als EERSTE van de dag (start 08:00) of direct na de lunch. Geef dit blok ID:-1 in je output. De overige taken plan je daaromheen.`
+      ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig (ID:-1). Dit is een AI-sessie die ${claudeTaken.length} taken AUTOMATISCH uitvoert — Sem hoeft hier NIKS voor te doen. Plan dit blok als EERSTE van de dag (start 08:00).
+
+Omdat Sem VRIJ is tijdens de Claude sessie, mag je zijn niet-development taken (meetings, administratie, communicatie) TIJDENS de Claude sessie inplannen. Alleen development taken die Sem ZELF moet doen plan je NA de Claude sessie.`
       : "";
 
     const client = new Anthropic();
@@ -94,6 +96,7 @@ Regels:
 - Zware/creatieve taken in de ochtend, lichte taken na de lunch
 - Als een taak niet inplanbaar is (bijv. wachten op iets), SKIP die taak
 - Start en eind MOETEN het format "HH:MM" hebben
+- Als er een Claude sessie (ID:-1) is: plan meetings, admin en communicatie taken TIJDENS die sessie (Sem is vrij). Plan development taken die Sem ZELF moet doen PAS NA de sessie.
 
 Antwoord ALLEEN met een JSON array, geen uitleg:
 [{"id": 123, "start": "08:00", "eind": "08:30", "duur": 30}]`,

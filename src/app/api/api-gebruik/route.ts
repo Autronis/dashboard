@@ -293,7 +293,7 @@ function buildStaticEntries(): ApiUsageResult[] {
   ];
 }
 
-async function fetchRouteBreakdown(): Promise<Array<{ route: string; provider: string; aantalCalls: number; kostenCent: number; tokens: number }>> {
+async function fetchRouteBreakdown(): Promise<Array<{ route: string | null; provider: string; aantalCalls: number; kostenCent: number; tokens: number }>> {
   try {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);

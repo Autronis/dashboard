@@ -153,8 +153,40 @@ function ApiCard({ api }: { api: ApiEntry }) {
   );
 }
 
+const ROUTE_LABELS: Record<string, string> = {
+  "/api/ai/chat": "AI Chat",
+  "/api/yt-knowledge/analyze": "YouTube Analyse",
+  "/api/agenda/ai-plan": "Agenda AI Planning",
+  "/api/agenda/taken/schat-duur": "Taak Duurschatting",
+  "/api/second-brain/verwerken": "Second Brain",
+  "/api/second-brain/zoeken": "Second Brain Zoeken",
+  "/api/bank/transacties/analyse": "Bank Analyse",
+  "/api/bank/bonnetje": "Bonnetje Scan",
+  "/api/bank/email-factuur": "Email Factuur",
+  "/api/contract-analyse": "Contract Analyse",
+  "/api/documenten/ai-create": "Document Generatie",
+  "/api/belasting/tips/genereer": "Belasting Tips",
+  "/api/ideeen/analyse": "Ideeën Analyse",
+  "/api/mealplan": "Mealplan",
+  "/api/mealplan/chat": "Mealplan Chat",
+  "/api/radar/vraag-claude": "Radar Vraag",
+  "/api/radar/week-samenvatting": "Radar Samenvatting",
+  "/api/ops-room/orchestrate": "Ops Room",
+  "/api/ops-room/execute": "Ops Room Execute",
+  "/api/animaties/generate": "Animatie Generatie",
+  "/api/content/videos/chat": "Video Chat",
+  "/api/meetings/transcript": "Meeting Transcript",
+  "/api/meetings/verwerk": "Meeting Verwerking",
+  "/api/klanten/verrijk": "Klant Verrijking",
+  "/api/screen-time/sessies": "Screen Time Sessies",
+  "/api/uitgaven/scan": "Uitgaven Scan",
+  "ai/client": "AI Client (Groq/Anthropic)",
+};
+
 export default function ApiGebruikPage() {
   const [apis, setApis] = useState<ApiEntry[]>([]);
+  const [totaal, setTotaal] = useState<{ kostenEuro: string; aantalCalls: number } | null>(null);
+  const [routeBreakdown, setRouteBreakdown] = useState<RouteBreakdown[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { addToast } = useToast();
@@ -168,6 +200,8 @@ export default function ApiGebruikPage() {
       if (!res.ok) throw new Error("Kon API gebruik niet ophalen");
       const data = await res.json();
       setApis(data.apis);
+      setTotaal(data.totaal ?? null);
+      setRouteBreakdown(data.routeBreakdown ?? []);
       if (isRefresh) addToast("Gebruik ververst", "succes");
     } catch {
       addToast("Fout bij ophalen API gebruik", "fout");
@@ -211,7 +245,7 @@ export default function ApiGebruikPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
             <div className="text-2xl font-bold text-autronis-text-primary">{apis.length}</div>
             <div className="text-xs text-autronis-text-secondary mt-1">Totaal API&apos;s</div>
@@ -224,6 +258,12 @@ export default function ApiGebruikPage() {
             <div className="text-2xl font-bold text-autronis-accent">{withUsageCount}</div>
             <div className="text-xs text-autronis-text-secondary mt-1">Met usage data</div>
           </div>
+          {totaal && (
+            <div className="bg-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
+              <div className="text-2xl font-bold text-autronis-accent">&euro;{totaal.kostenEuro}</div>
+              <div className="text-xs text-autronis-text-secondary mt-1">AI kosten deze maand · {totaal.aantalCalls} calls</div>
+            </div>
+          )}
         </div>
 
         {/* Loading */}
@@ -251,6 +291,78 @@ export default function ApiGebruikPage() {
             </div>
           );
         })}
+
+        {/* Route breakdown */}
+        {!loading && routeBreakdown.length > 0 && (
+          <div>
+            <h2 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wider mb-4">
+              Kosten per feature
+            </h2>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-autronis-border">
+                    <th className="text-left p-4 text-xs font-semibold text-autronis-text-secondary">Feature</th>
+                    <th className="text-left p-4 text-xs font-semibold text-autronis-text-secondary">Provider</th>
+                    <th className="text-right p-4 text-xs font-semibold text-autronis-text-secondary">Calls</th>
+                    <th className="text-right p-4 text-xs font-semibold text-autronis-text-secondary">Tokens</th>
+                    <th className="text-right p-4 text-xs font-semibold text-autronis-text-secondary">Kosten</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routeBreakdown.map((r, i) => {
+                    const maxKosten = routeBreakdown[0]?.kostenCent || 1;
+                    const barWidth = Math.max(4, (r.kostenCent / maxKosten) * 100);
+                    return (
+                      <tr key={i} className="border-b border-autronis-border/50 last:border-0 hover:bg-autronis-accent/5 transition-colors">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <span className="text-autronis-text-primary font-medium">
+                                {ROUTE_LABELS[r.route || ""] || r.route || "Onbekend"}
+                              </span>
+                              {r.route && !ROUTE_LABELS[r.route] && (
+                                <span className="block text-xs text-autronis-text-secondary">{r.route}</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            r.provider === "anthropic" ? "bg-orange-500/10 text-orange-400" :
+                            r.provider === "openai" ? "bg-green-500/10 text-green-400" :
+                            "bg-blue-500/10 text-blue-400"
+                          }`}>
+                            {r.provider === "anthropic" ? "Claude" : r.provider === "openai" ? "GPT" : r.provider}
+                          </span>
+                        </td>
+                        <td className="p-4 text-right text-autronis-text-secondary">{r.aantalCalls}</td>
+                        <td className="p-4 text-right text-autronis-text-secondary">
+                          {r.tokens >= 1_000_000 ? `${(r.tokens / 1_000_000).toFixed(1)}M` :
+                           r.tokens >= 1_000 ? `${(r.tokens / 1_000).toFixed(1)}K` :
+                           r.tokens}
+                        </td>
+                        <td className="p-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="w-16 h-1.5 bg-autronis-border rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-autronis-accent rounded-full"
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            </div>
+                            <span className="text-autronis-text-primary font-medium min-w-[60px] text-right">
+                              {r.kostenCent > 0 ? `€${(r.kostenCent / 100).toFixed(2)}` : "Gratis"}
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </PageTransition>
   );

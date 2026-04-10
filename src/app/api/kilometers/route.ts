@@ -111,6 +111,39 @@ export async function POST(req: NextRequest) {
     const resolvedVan = await resolveAlias(vanLocatie);
     const resolvedNaar = await resolveAlias(naarLocatie);
 
+    // Duplicate detection (skip if forceer=true)
+    if (!body.forceer) {
+      const mogelijkeDuplicaten = await db
+        .select()
+        .from(kilometerRegistraties)
+        .where(
+          and(
+            eq(kilometerRegistraties.gebruikerId, gebruiker.id),
+            eq(kilometerRegistraties.datum, datum)
+          )
+        )
+        .all();
+
+      const duplicaat = mogelijkeDuplicaten.find((r) => {
+        const vanLower = resolvedVan.toLowerCase();
+        const naarLower = resolvedNaar.toLowerCase();
+        const zelfdeRoute =
+          (r.vanLocatie.toLowerCase() === vanLower &&
+           r.naarLocatie.toLowerCase() === naarLower) ||
+          (r.vanLocatie.toLowerCase() === naarLower &&
+           r.naarLocatie.toLowerCase() === vanLower);
+        const vergelijkbareKm = Math.abs(r.kilometers - kmWaarde) / Math.max(kmWaarde, 1) < 0.1;
+        return zelfdeRoute && vergelijkbareKm;
+      });
+
+      if (duplicaat) {
+        return NextResponse.json({
+          waarschuwing: "duplicate",
+          bestaandeRit: duplicaat,
+        });
+      }
+    }
+
     const [nieuw] = await db
       .insert(kilometerRegistraties)
       .values({

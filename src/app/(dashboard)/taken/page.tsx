@@ -558,7 +558,15 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
 }
 
 // ─── Main Page ───
-export default function TakenPage() {
+export default function TakenPageWrapper() {
+  return (
+    <Suspense>
+      <TakenPage />
+    </Suspense>
+  );
+}
+
+function TakenPage() {
   useAutoSync();
   const { addToast } = useToast();
   const queryClient = useQueryClient();

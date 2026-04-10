@@ -64,10 +64,18 @@ impl Storage {
         if let Some((id, last_app, last_duration)) = last {
             if last_app == app {
                 let now = Utc::now().to_rfc3339();
-                self.conn.execute(
-                    "UPDATE entries SET end_time = ?1, duration_secs = ?2, title = ?3 WHERE id = ?4",
-                    params![now, last_duration + duration_secs, title, id],
-                )?;
+                // Only update title if the new one is non-empty (AppleScript can intermittently fail)
+                if title.is_empty() {
+                    self.conn.execute(
+                        "UPDATE entries SET end_time = ?1, duration_secs = ?2 WHERE id = ?3",
+                        params![now, last_duration + duration_secs, id],
+                    )?;
+                } else {
+                    self.conn.execute(
+                        "UPDATE entries SET end_time = ?1, duration_secs = ?2, title = ?3 WHERE id = ?4",
+                        params![now, last_duration + duration_secs, title, id],
+                    )?;
+                }
                 return Ok(());
             }
         }

@@ -80,19 +80,20 @@ export async function getRecallTranscript(botId: string): Promise<string> {
   const transcriptArtifact = recording.media_shortcuts?.transcript;
   if (!transcriptArtifact?.id) throw new Error("Geen transcript beschikbaar");
 
-  // Fetch the transcript artifact data
-  const res = await fetch(`${RECALL_BASE}/recordings/${recording.id}/artifacts/${transcriptArtifact.id}/data/`, {
-    headers: headers(),
-  });
+  // Use the pre-signed download_url from the artifact data
+  const downloadUrl = transcriptArtifact.data?.download_url;
+  if (!downloadUrl) throw new Error("Geen transcript download URL beschikbaar");
+
+  const res = await fetch(downloadUrl);
   if (!res.ok) throw new Error(`Transcript ophalen mislukt: ${res.status}`);
   const data = await res.json();
 
-  // Format transcript segments
+  // Format transcript segments — Recall returns participant-based segments with words
   if (Array.isArray(data)) {
     return data
-      .map((seg: { speaker: string; speaker_id?: number; words?: Array<{ text: string }>; text?: string }) => {
+      .map((seg: { participant?: { name?: string }; speaker?: string; speaker_id?: number; words?: Array<{ text: string }>; text?: string }) => {
         const text = seg.text || seg.words?.map((w) => w.text).join(" ") || "";
-        const speaker = seg.speaker || `Spreker ${seg.speaker_id ?? "?"}`;
+        const speaker = seg.participant?.name || seg.speaker || `Spreker ${seg.speaker_id ?? "?"}`;
         return text.trim() ? `${speaker}: ${text.trim()}` : "";
       })
       .filter(Boolean)

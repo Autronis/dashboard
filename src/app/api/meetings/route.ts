@@ -140,7 +140,7 @@ async function fetchCalendarMeetings(): Promise<CalendarMeeting[]> {
 
   const allMeetings: CalendarMeeting[] = [];
   const now = new Date();
-  const van = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
+  const van = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
   const tot = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days ahead
 
   for (const kalender of kalenders) {

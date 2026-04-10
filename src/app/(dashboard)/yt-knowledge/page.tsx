@@ -128,6 +128,7 @@ export default function YtKnowledgePage() {
       const data = await res.json();
       setVideos(data.videos);
       setStats(data.stats);
+      setChannels(data.channels || []);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
@@ -179,6 +180,39 @@ export default function YtKnowledgePage() {
       setError("Video toevoegen mislukt");
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const handleAddChannel = async () => {
+    if (!newChannelUrl.trim()) return;
+    try {
+      const res = await fetch("/api/yt-knowledge/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: newChannelUrl }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || "Kanaal toevoegen mislukt");
+        return;
+      }
+      setNewChannelUrl("");
+      fetchData();
+    } catch {
+      setError("Kanaal toevoegen mislukt");
+    }
+  };
+
+  const handleDeleteChannel = async (id: string) => {
+    try {
+      await fetch("/api/yt-knowledge/channels", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      fetchData();
+    } catch {
+      setError("Kanaal verwijderen mislukt");
     }
   };
 
@@ -266,10 +300,71 @@ export default function YtKnowledgePage() {
           />
         </div>
 
+        {/* Channels */}
+        <div className="bg-autronis-card rounded-xl border border-autronis-border overflow-hidden">
+          <button
+            onClick={() => setShowChannels(!showChannels)}
+            className="w-full px-4 py-2.5 flex items-center gap-2 text-left hover:bg-autronis-border/10 transition-colors"
+          >
+            <Rss className="w-4 h-4 text-autronis-accent" />
+            <span className="text-sm font-medium text-autronis-text-primary">Kanalen</span>
+            <span className="text-xs text-autronis-text-secondary">({channels.length})</span>
+            <div className="flex-1" />
+            {showChannels ? <ChevronUp className="w-4 h-4 text-autronis-text-secondary" /> : <ChevronDown className="w-4 h-4 text-autronis-text-secondary" />}
+          </button>
+          {showChannels && (
+            <div className="px-4 pb-3 space-y-2 border-t border-autronis-border pt-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newChannelUrl}
+                  onChange={(e) => setNewChannelUrl(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddChannel()}
+                  placeholder="YouTube kanaal URL (bijv. youtube.com/@kanaal)"
+                  className="flex-1 rounded-lg border border-autronis-border bg-autronis-bg px-3 py-1.5 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary outline-none focus:border-autronis-accent transition"
+                />
+                <button
+                  onClick={handleAddChannel}
+                  disabled={!newChannelUrl.trim()}
+                  className="px-3 py-1.5 rounded-lg bg-autronis-accent text-white text-xs font-medium hover:bg-autronis-accent-hover transition disabled:opacity-50"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              {channels.length === 0 && (
+                <p className="text-xs text-autronis-text-secondary">Nog geen kanalen. Voeg een YouTube kanaal toe om automatisch nieuwe video&apos;s te ontdekken.</p>
+              )}
+              <div className="space-y-1">
+                {channels.map((ch) => (
+                  <div key={ch.id} className="flex items-center gap-2 text-sm">
+                    <Rss className="w-3 h-3 text-autronis-text-secondary" />
+                    <span className="text-autronis-text-primary flex-1">{ch.name}</span>
+                    <a
+                      href={`https://youtube.com/channel/${ch.channel_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-autronis-text-secondary hover:text-autronis-accent"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <button
+                      onClick={() => handleDeleteChannel(ch.id)}
+                      className="text-autronis-text-secondary hover:text-red-400 transition"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Error */}
         {error && (
-          <div className="bg-red-500/10 border border-red-500/25 rounded-lg p-3 text-sm text-red-400">
-            {error} — Is de API server actief? (<code className="text-xs">python cli.py serve</code>)
+          <div className="bg-red-500/10 border border-red-500/25 rounded-lg p-3 text-sm text-red-400 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300"><X className="w-4 h-4" /></button>
           </div>
         )}
 

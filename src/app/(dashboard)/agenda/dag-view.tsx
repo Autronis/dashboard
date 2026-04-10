@@ -734,18 +734,32 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const claudeTaken = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
             if (claudeTaken.length === 0) return null;
 
-            // Groepeer Claude taken die exact dezelfde start/eind hebben (= sessie blok)
-            const sessies = new Map<string, typeof claudeTaken>();
-            for (const t of claudeTaken) {
-              const key = `${t.ingeplandStart}|${t.ingeplandEind}`;
-              if (!sessies.has(key)) sessies.set(key, []);
-              sessies.get(key)!.push(t);
-            }
+            // Sort by start time
+            const sorted = [...claudeTaken].sort((a, b) =>
+              new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime()
+            );
 
-            return Array.from(sessies.entries()).map(([key, group]) => {
+            // Groepeer Claude taken die overlappen of aansluiten (max 15 min gap)
+            const sessies: typeof sorted[] = [];
+            let current = [sorted[0]];
+            for (let i = 1; i < sorted.length; i++) {
+              const prevEnd = Math.max(
+                ...current.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())
+              );
+              const curStart = new Date(sorted[i].ingeplandStart!).getTime();
+              if (curStart - prevEnd <= 15 * 60000) {
+                current.push(sorted[i]);
+              } else {
+                sessies.push(current);
+                current = [sorted[i]];
+              }
+            }
+            sessies.push(current);
+
+            return sessies.map((group, gi) => {
               if (group.length < 2) return null; // Enkele Claude taken als normaal blok
-              const startDate = new Date(group[0].ingeplandStart!);
-              const eindDate = group[0].ingeplandEind ? new Date(group[0].ingeplandEind) : startDate;
+              const startDate = new Date(Math.min(...group.map((t) => new Date(t.ingeplandStart!).getTime())));
+              const eindDate = new Date(Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())));
               const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
               const eindMinuten = eindDate.getHours() * 60 + eindDate.getMinutes();
               const duurMin = Math.max(30, eindMinuten - startMinuten);
@@ -757,7 +771,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
               return (
                 <div
-                  key={`claude-sessie-${key}`}
+                  key={`claude-sessie-${gi}`}
                   className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
                   style={{
                     top: `${blockTop}px`,
@@ -831,14 +845,26 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           {dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
 
-            // Skip Claude taken die onderdeel zijn van een sessie (2+ met zelfde start/eind)
+            // Skip Claude taken die onderdeel zijn van een sessie-blok (2+ overlappend/aansluitend)
             if (taak.uitvoerder === "claude") {
-              const sameSession = dagTaken.filter((t) =>
-                t.uitvoerder === "claude" &&
-                t.ingeplandStart === taak.ingeplandStart &&
-                t.ingeplandEind === taak.ingeplandEind
-              );
-              if (sameSession.length >= 2) return null; // Gerenderd als sessie-blok hierboven
+              const allClaude = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
+              if (allClaude.length >= 2) {
+                const sorted = [...allClaude].sort((a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime());
+                let inSessie = false;
+                let group = [sorted[0]];
+                for (let i = 1; i < sorted.length; i++) {
+                  const prevEnd = Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime()));
+                  const curStart = new Date(sorted[i].ingeplandStart!).getTime();
+                  if (curStart - prevEnd <= 15 * 60000) {
+                    group.push(sorted[i]);
+                  } else {
+                    if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
+                    group = [sorted[i]];
+                  }
+                }
+                if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
+                if (inSessie) return null;
+              }
             }
 
             const startDate = new Date(taak.ingeplandStart);

@@ -1,0 +1,176 @@
+<h2>Pijler D — Mobiele UX</h2>
+<p class="subtitle">2 features die het loggen onderweg effortless maken.</p>
+
+<!-- Feature 14: Floating Quick Entry -->
+<div class="section">
+  <h3>14. Floating Quick-Entry Button</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Mobiel — FAB button</div>
+      <div class="mockup-body" style="padding: 0; position: relative; height: 480px; overflow: hidden; background: #0E1719;">
+        <!-- Status bar -->
+        <div style="padding: 0.3rem 1rem; display: flex; justify-content: space-between; font-size: 0.65rem; color: #888;">
+          <span>9:41</span>
+          <span>●●●● WiFi 🔋</span>
+        </div>
+        <!-- Header -->
+        <div style="padding: 0.8rem 1rem; border-bottom: 1px solid #2A3538;">
+          <div style="font-weight: 600; color: #ccc;">Kilometers — April 2026</div>
+        </div>
+        <!-- Stats row -->
+        <div style="display: flex; padding: 0.8rem 1rem; gap: 0.8rem;">
+          <div style="flex: 1; text-align: center; padding: 0.5rem; background: #192225; border-radius: 10px;">
+            <div style="font-size: 1.1rem; font-weight: 700;">1.247</div>
+            <div style="font-size: 0.6rem; color: #888;">km</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 0.5rem; background: #192225; border-radius: 10px;">
+            <div style="font-size: 1.1rem; font-weight: 700; color: #17B8A5;">€286</div>
+            <div style="font-size: 0.6rem; color: #888;">aftrek</div>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 0.5rem; background: #192225; border-radius: 10px;">
+            <div style="font-size: 1.1rem; font-weight: 700;">18</div>
+            <div style="font-size: 0.6rem; color: #888;">ritten</div>
+          </div>
+        </div>
+        <!-- Trip list -->
+        <div style="padding: 0 1rem;">
+          <div style="padding: 0.7rem 0; border-bottom: 1px solid #2A3538; display: flex; justify-content: space-between; font-size: 0.8rem;">
+            <div>
+              <div style="color: #ccc;">Kantoor → Klant A</div>
+              <div style="color: #888; font-size: 0.7rem;">Vandaag · Klantbezoek</div>
+            </div>
+            <div style="color: #17B8A5; font-weight: 600;">124 km</div>
+          </div>
+          <div style="padding: 0.7rem 0; border-bottom: 1px solid #2A3538; display: flex; justify-content: space-between; font-size: 0.8rem;">
+            <div>
+              <div style="color: #ccc;">Kantoor → Boekhouder</div>
+              <div style="color: #888; font-size: 0.7rem;">Gisteren · Boekhouder</div>
+            </div>
+            <div style="color: #17B8A5; font-weight: 600;">18 km</div>
+          </div>
+          <div style="padding: 0.7rem 0; border-bottom: 1px solid #2A3538; display: flex; justify-content: space-between; font-size: 0.8rem;">
+            <div>
+              <div style="color: #ccc;">Kantoor → Klant B</div>
+              <div style="color: #888; font-size: 0.7rem;">8 apr · Meeting</div>
+            </div>
+            <div style="color: #17B8A5; font-weight: 600;">67 km</div>
+          </div>
+        </div>
+        <!-- FAB Button -->
+        <div style="position: absolute; bottom: 24px; right: 20px; width: 56px; height: 56px; background: #17B8A5; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: white; box-shadow: 0 4px 20px rgba(23,184,165,0.4);">
+          +
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Na tik op + → Quick sheet</div>
+      <div class="mockup-body" style="padding: 0; position: relative; height: 480px; overflow: hidden; background: #0E1719;">
+        <!-- Dimmed background -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; height: 180px; background: rgba(0,0,0,0.5);"></div>
+        <!-- Bottom sheet -->
+        <div style="position: absolute; bottom: 0; left: 0; right: 0; background: #192225; border-radius: 20px 20px 0 0; padding: 1.2rem;">
+          <div style="width: 40px; height: 4px; background: #2A3538; border-radius: 2px; margin: 0 auto 1rem;"></div>
+          <div style="font-weight: 600; color: #ccc; margin-bottom: 1rem;">Nieuwe rit</div>
+
+          <!-- Saved routes as quick buttons -->
+          <div class="label" style="margin-bottom: 0.5rem;">Snelkeuze</div>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; overflow-x: auto;">
+            <div style="flex-shrink: 0; padding: 0.5rem 0.8rem; background: rgba(23,184,165,0.1); border: 1px solid rgba(23,184,165,0.2); border-radius: 10px; font-size: 0.8rem;">
+              <div style="color: #17B8A5;">Kantoor → Klant A</div>
+              <div style="color: #888; font-size: 0.7rem;">124 km · ↩ retour</div>
+            </div>
+            <div style="flex-shrink: 0; padding: 0.5rem 0.8rem; background: rgba(23,184,165,0.1); border: 1px solid rgba(23,184,165,0.2); border-radius: 10px; font-size: 0.8rem;">
+              <div style="color: #17B8A5;">Kantoor → Boekhouder</div>
+              <div style="color: #888; font-size: 0.7rem;">18 km · ↩ retour</div>
+            </div>
+          </div>
+
+          <!-- Quick form -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem;">
+            <div>
+              <div class="label">Van</div>
+              <div class="mock-input" style="font-size: 0.85rem;">Autronis Kantoor</div>
+            </div>
+            <div>
+              <div class="label">Naar</div>
+              <div class="mock-input" style="font-size: 0.85rem; color: #888;">Typ locatie...</div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-top: 0.6rem;">
+            <div>
+              <div class="label">Km</div>
+              <div class="mock-input" style="font-size: 0.85rem; color: #17B8A5;">Auto-berekend</div>
+            </div>
+            <div>
+              <div class="label">Type</div>
+              <div class="mock-input" style="font-size: 0.85rem;">Klantbezoek ▾</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <div class="mock-button" style="flex: 1; text-align: center; background: #17B8A5; color: white; padding: 0.7rem; border-radius: 12px; font-weight: 600;">
+              Toevoegen
+            </div>
+            <div class="mock-button" style="flex: 1; text-align: center; padding: 0.7rem; border-radius: 12px; border: 1px solid rgba(23,184,165,0.2);">
+              ↩ + Retour
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 0.8rem; font-size: 0.85rem; color: #999;">
+    <strong style="color: #ccc;">Flow:</strong> FAB tik → bottom sheet met snelkeuze routes bovenaan → 1 tik op route = direct toegevoegd.
+    Of handmatig invullen met autocomplete + auto-km. "Van" wordt automatisch ingevuld met je meest gebruikte vertreklocatie.
+  </div>
+</div>
+
+<!-- Feature 15: Km-stand Foto Upload -->
+<div class="section">
+  <h3>15. Km-stand Foto Upload</h3>
+  <div class="mockup">
+    <div class="mockup-header">Km-stand panel — met foto-optie</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div>
+          <div class="label">Begin stand</div>
+          <div class="mock-input" style="margin-bottom: 0.8rem;">42.847</div>
+          <div class="label">Eind stand</div>
+          <div class="mock-input">44.094</div>
+          <div style="margin-top: 0.8rem; padding: 0.6rem; background: rgba(23,184,165,0.06); border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+              <span style="color: #888;">Totaal gereden</span>
+              <span style="color: #17B8A5; font-weight: 600;">1.247 km</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-top: 0.3rem;">
+              <span style="color: #888;">Zakelijk gelogd</span>
+              <span style="color: #ccc;">1.028 km</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-top: 0.3rem;">
+              <span style="color: #888;">Zakelijk %</span>
+              <span style="color: #17B8A5; font-weight: 600;">82.4%</span>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="label">Foto bewijs (optioneel)</div>
+          <div style="border: 2px dashed #2A3538; border-radius: 12px; padding: 1.5rem; text-align: center; margin-top: 0.3rem;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">📷</div>
+            <div style="font-size: 0.85rem; color: #888;">Tik om foto te maken<br>of upload bestand</div>
+            <div style="font-size: 0.7rem; color: #666; margin-top: 0.5rem;">Foto van je kilometerteller</div>
+          </div>
+          <div style="margin-top: 0.8rem; padding: 0.6rem; background: rgba(23,184,165,0.06); border-radius: 8px; font-size: 0.8rem; color: #999;">
+            <strong style="color: #ccc;">Waarom?</strong><br>
+            Belastingdienst kan foto als bewijs vragen. Wordt opgeslagen bij km-stand en meegenomen in het belastingrapport.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 2rem; padding: 1.2rem; background: rgba(23,184,165,0.08); border: 1px solid rgba(23,184,165,0.2); border-radius: 12px; text-align: center;">
+  <p style="margin: 0; color: #ccc; font-size: 1rem;">
+    <strong style="color: #17B8A5;">Alle 15 features doorgesproken!</strong><br>
+    <span style="font-size: 0.9rem; color: #999;">Laat het me weten in de terminal, dan schrijf ik de volledige spec.</span>
+  </p>
+</div>

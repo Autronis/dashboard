@@ -910,6 +910,19 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             // Claude taken = paars, handmatig = projectkleur/groen
             const kleur = taak.uitvoerder === "claude" ? "#a855f7" : (taak.kalenderKleur || "#22c55e");
 
+            // Check of deze taak overlapt met een Claude sessie-blok
+            let overlapt = false;
+            if (taak.uitvoerder !== "claude") {
+              const allClaude = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
+              if (allClaude.length >= 2) {
+                const taakStart = new Date(taak.ingeplandStart).getTime();
+                const taakEind = taak.ingeplandEind ? new Date(taak.ingeplandEind).getTime() : taakStart + (duurMin * 60000);
+                const sessieStart = Math.min(...allClaude.map((t) => new Date(t.ingeplandStart!).getTime()));
+                const sessieEind = Math.max(...allClaude.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime()));
+                overlapt = taakStart < sessieEind && taakEind > sessieStart;
+              }
+            }
+
             return (
               <DraggableTaakBlock
                 key={`taak-dag-${taak.id}`}
@@ -922,6 +935,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 onUnplan={onUnplanTaak}
                 onToggle={onTaakToggle}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
+                halfRight={overlapt}
               />
             );
           })}

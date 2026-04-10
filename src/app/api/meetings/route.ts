@@ -200,6 +200,9 @@ export async function GET(req: NextRequest) {
   try {
     await requireAuth();
 
+    // Ensure meeting_url column exists
+    try { await db.run(sql`ALTER TABLE meetings ADD COLUMN meeting_url TEXT`); } catch { /* already exists */ }
+
     const { searchParams } = new URL(req.url);
     const klantId = searchParams.get("klantId");
     const projectId = searchParams.get("projectId");
@@ -236,7 +239,7 @@ export async function GET(req: NextRequest) {
       query = query.where(eq(meetings.projectId, Number(projectId)));
     }
 
-    const dbMeetings = query.all();
+    const dbMeetings = await query.all();
 
     // Enrich DB meetings with source info
     const enrichedDbMeetings = dbMeetings.map((m) => ({

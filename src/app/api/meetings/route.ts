@@ -395,7 +395,22 @@ export async function POST(req: NextRequest) {
       .where(eq(meetings.id, Number(result.lastInsertRowid)))
       .get();
 
-    return NextResponse.json({ meeting }, { status: 201 });
+    // Auto-dispatch Recall bot if meeting URL is provided
+    let recallBot = null;
+    if (meetingUrl?.trim()) {
+      try {
+        const { createRecallBot, isRecallConfigured } = await import("@/lib/recall");
+        if (isRecallConfigured()) {
+          const bot = await createRecallBot(meetingUrl.trim(), titel);
+          await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id}, status = 'verwerken' WHERE id = ${Number(result.lastInsertRowid)}`);
+          recallBot = bot;
+        }
+      } catch {
+        // Recall dispatch failed — meeting is still saved
+      }
+    }
+
+    return NextResponse.json({ meeting, recallBot }, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Onbekende fout";
     if (message === "Niet geauthenticeerd") {

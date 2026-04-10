@@ -454,3 +454,38 @@ export function useAfstandBerekening() {
     },
   });
 }
+
+// ─── Locatie Autocomplete ────────────────────────────────────────────────────
+
+interface LocatieSuggestie {
+  locatie: string;
+  aantalGebruikt: number;
+  bron: "eigen" | "google";
+}
+
+export function useLocatieSuggesties(zoekterm: string) {
+  return useQuery({
+    queryKey: ["kilometers", "locaties", zoekterm],
+    queryFn: async (): Promise<LocatieSuggestie[]> => {
+      if (!zoekterm || zoekterm.length < 2) return [];
+
+      const eigenRes = await fetch(`/api/kilometers/locaties?q=${encodeURIComponent(zoekterm)}`);
+      const eigenData = await eigenRes.json();
+      const eigen: LocatieSuggestie[] = (eigenData.locaties ?? []).map(
+        (l: { locatie: string; aantalGebruikt: number }) => ({ ...l, bron: "eigen" as const })
+      );
+
+      if (eigen.length >= 3) return eigen;
+
+      const googleRes = await fetch(`/api/kilometers/locaties/google?q=${encodeURIComponent(zoekterm)}`);
+      const googleData = await googleRes.json();
+      const google: LocatieSuggestie[] = (googleData.suggesties ?? []).map(
+        (s: { description: string }) => ({ locatie: s.description, aantalGebruikt: 0, bron: "google" as const })
+      );
+
+      return [...eigen, ...google];
+    },
+    enabled: zoekterm.length >= 2,
+    staleTime: 10000,
+  });
+}

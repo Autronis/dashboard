@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { tursoClient, db } from "@/lib/db";
 import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { YoutubeTranscript } from "youtube-transcript";
 
 // Increase timeout for long Claude API calls
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
 
   // Analyze with Claude
   try {
-    const anthropic = new Anthropic();
+    const anthropic = Anthropic(undefined, "/api/yt-knowledge/analyze");
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 8192,

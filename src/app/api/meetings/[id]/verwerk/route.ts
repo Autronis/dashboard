@@ -4,6 +4,7 @@ import { meetings, taken, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { readFile } from "fs/promises";
+import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 
 interface Actiepunt {
   tekst: string;

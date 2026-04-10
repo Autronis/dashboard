@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { taken, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, or } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // POST /api/agenda/ai-plan — AI vult de dag met taken
 export async function POST(req: NextRequest) {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens de Claude sessie. Je MOET niet-development taken (administratie, meetings, communicatie, telefoon, planning) TIJDENS de Claude sessie plannen. Dat is het hele punt — Claude werkt, Sem doet ondertussen admin/sales/meetings. Plan deze taken dus OVERLAPPEND met het Claude sessie blok (tussen 08:00 en het einde van de sessie). Alleen development taken die Sem ZELF achter de computer moet doen plan je NA de Claude sessie.`
       : "";
 
-    const client = new Anthropic();
+    const client = Anthropic(undefined, "/api/agenda/ai-plan");
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",

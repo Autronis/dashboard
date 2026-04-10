@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { meetings, taken, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 
 interface Actiepunt {
   tekst: string;
@@ -80,7 +81,12 @@ Antwoord als JSON:
 
   const data = (await response.json()) as {
     choices: Array<{ message: { content: string } }>;
+    usage?: { prompt_tokens: number; completion_tokens: number };
   };
+
+  if (data.usage) {
+    logTokenUsage("openai", "gpt-4o-mini", data.usage.prompt_tokens, data.usage.completion_tokens, "/api/meetings/transcript");
+  }
 
   const content = data.choices[0]?.message?.content;
   if (!content) {

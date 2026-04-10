@@ -1410,13 +1410,13 @@ export default function IdeeenPage() {
             {detailIdee.omschrijving && (
               <div className="mb-5">
                 <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Omschrijving</h4>
-                <p className="text-sm text-autronis-text-primary whitespace-pre-wrap leading-relaxed">{detailIdee.omschrijving}</p>
+                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: (() => { try { const { marked: m } = require("marked"); return m.parse(detailIdee.omschrijving, { breaks: true }); } catch { return detailIdee.omschrijving; } })() }} />
               </div>
             )}
             {detailIdee.uitwerking && (
               <div className="mb-5">
                 <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Uitwerking</h4>
-                <p className="text-sm text-autronis-text-primary whitespace-pre-wrap leading-relaxed">{detailIdee.uitwerking}</p>
+                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: (() => { try { const { marked: m } = require("marked"); return m.parse(detailIdee.uitwerking, { breaks: true }); } catch { return detailIdee.uitwerking; } })() }} />
               </div>
             )}
 

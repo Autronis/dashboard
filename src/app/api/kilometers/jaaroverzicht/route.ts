@@ -61,6 +61,19 @@ export async function GET(req: NextRequest) {
       .orderBy(sql`SUM(${kilometerRegistraties.kilometers}) DESC`)
       .all();
 
+    // Per doel type
+    const perDoelType = await db
+      .select({
+        type: kilometerRegistraties.doelType,
+        km: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
+        ritten: sql<number>`COUNT(*)`,
+        bedrag: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers} * COALESCE(${kilometerRegistraties.tariefPerKm}, 0.23)), 0)`,
+      })
+      .from(kilometerRegistraties)
+      .where(and(...conditions))
+      .groupBy(kilometerRegistraties.doelType)
+      .all();
+
     // Vergelijking vorig jaar
     const vorigJaar = String(parseInt(jaar) - 1);
     const vorigResult = await db
@@ -172,6 +185,12 @@ export async function GET(req: NextRequest) {
         km: Math.round(k.km * 100) / 100,
         ritten: k.ritten,
         bedrag: Math.round(k.km * 0.23 * 100) / 100,
+      })),
+      perDoelType: perDoelType.map((d) => ({
+        type: d.type,
+        km: Math.round(d.km * 100) / 100,
+        ritten: d.ritten,
+        bedrag: Math.round(d.bedrag * 100) / 100,
       })),
       vorigJaarKm,
       verschilVorigJaar: totaalKm - vorigJaarKm,

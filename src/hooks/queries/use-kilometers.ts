@@ -58,6 +58,7 @@ export interface JaaroverzichtData {
   tariefPerKm: number;
   perMaand: Array<{ maand: number; km: number; ritten: number; bedrag: number }>;
   perKlant: Array<{ klantId: number | null; klantNaam: string; km: number; ritten: number; bedrag: number }>;
+  perDoelType: Array<{ type: string | null; km: number; ritten: number; bedrag: number }>;
   vorigJaarKm: number;
   verschilVorigJaar: number;
   werkelijkPercentage: number | null;

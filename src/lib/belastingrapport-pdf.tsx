@@ -125,6 +125,12 @@ interface CategorieRow {
   bedrag: number;
 }
 
+interface BrandstofMaandRow {
+  maand: number;
+  bedrag: number;
+  liters: number | null;
+}
+
 interface BelastingrapportProps {
   jaar: number;
   gebruikerNaam: string;
@@ -137,6 +143,9 @@ interface BelastingrapportProps {
   totaalAftrekbaar: number;
   categorieën: CategorieRow[];
   totaalBrandstof: number;
+  werkelijkPercentage: number | null;
+  totaalGereden: number | null;
+  brandstofPerMaand: BrandstofMaandRow[];
 }
 
 export function BelastingrapportPDF({
@@ -151,6 +160,9 @@ export function BelastingrapportPDF({
   totaalAftrekbaar,
   categorieën,
   totaalBrandstof,
+  werkelijkPercentage,
+  totaalGereden,
+  brandstofPerMaand,
 }: BelastingrapportProps) {
   const logo = getLogoSrc();
   const generatieDatum = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });

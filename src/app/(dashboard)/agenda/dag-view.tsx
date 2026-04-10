@@ -146,18 +146,19 @@ function DraggableHeleDagItem({ item, dragId, dragData, colors, idx, onClick, on
 }
 
 // ─── Draggable task block ───
-function TaakCheckCircle({ checked, onClick }: { checked: boolean; onClick: (e: React.MouseEvent) => void }) {
+function TaakCheckCircle({ checked, onClick, small }: { checked: boolean; onClick: (e: React.MouseEvent) => void; small?: boolean }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+        "rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
+        small ? "w-3.5 h-3.5 border-[1.5px]" : "w-5 h-5",
         checked
           ? "bg-emerald-500 border-emerald-500"
           : "border-autronis-text-secondary/30 hover:border-emerald-400/60"
       )}
     >
-      {checked && <Check className="w-3 h-3 text-white" />}
+      {checked && <Check className={small ? "w-2 h-2 text-white" : "w-3 h-3 text-white"} />}
     </button>
   );
 }
@@ -202,20 +203,23 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
       ref={setNodeRef}
       className={cn(
         "absolute rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[4] group flex flex-col justify-center",
-        halfRight ? "left-[52%] right-1.5 sm:right-3" : "left-12 sm:left-16 right-1.5 sm:right-3"
+        halfRight ? "left-[51%] right-1.5 sm:right-3" : "left-12 sm:left-16 right-1.5 sm:right-3"
       )}
       style={style}
       onClick={onClick}
     >
-      <div className="flex items-center gap-2">
-        <TaakCheckCircle checked={checked} onClick={handleToggle} />
+      <div className="flex items-center gap-1.5">
+        <TaakCheckCircle checked={checked} onClick={handleToggle} small />
+        <span className="text-[10px] tabular-nums flex-shrink-0 font-medium" style={{ color: kalenderKleur + "B3" }}>
+          {startTijd}
+        </span>
         <p className={cn(
-          "text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all",
+          "text-xs font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all truncate",
           checked && "line-through text-autronis-text-secondary/50"
         )}>{taak.titel}</p>
         {taak.uitvoerder === "claude" && !checked && (
           <button
-            className="p-1 rounded-lg bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors flex-shrink-0"
+            className="p-0.5 rounded bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 transition-colors flex-shrink-0"
             onClick={(e) => {
               e.stopPropagation();
               const projectDir = taak.projectMap || "";
@@ -227,7 +231,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
             }}
             title="Kopieer Claude Code commando"
           >
-            <Terminal className="w-3 h-3" />
+            <Terminal className="w-2.5 h-2.5" />
           </button>
         )}
         <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none flex-shrink-0">
@@ -235,13 +239,12 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
         </div>
       </div>
       {height >= 36 && (
-        <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-7">
-          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" style={{ color: kalenderKleur + "B3" }} />
-          <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: kalenderKleur + "B3" }}>
-            {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
+        <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-6">
+          <span className="text-[10px] tabular-nums" style={{ color: kalenderKleur + "80" }}>
+            {startTijd}{eindTijd ? `–${eindTijd}` : ""}
           </span>
           {taak.projectNaam && (
-            <span className="text-[10px] text-autronis-text-secondary/50 ml-auto overflow-hidden">{taak.projectNaam}</span>
+            <span className="text-[10px] text-autronis-text-secondary/50 ml-auto overflow-hidden truncate">{taak.projectNaam}</span>
           )}
         </div>
       )}
@@ -792,7 +795,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               return (
                 <div
                   key={`claude-sessie-${gi}`}
-                  className="absolute left-12 sm:left-16 right-[50%] rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
+                  className="absolute left-12 sm:left-16 right-[50.5%] rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
                   style={{
                     top: `${blockTop}px`,
                     height: `${blockHeight}px`,

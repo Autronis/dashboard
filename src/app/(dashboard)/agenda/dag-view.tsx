@@ -324,7 +324,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       const tEindMin = t.ingeplandEind
         ? minOfDay(t.ingeplandEind)
         : tStartMin + (t.geschatteDuur || 30);
-      if (tEindMin > slotStart && tStartMin <= slotStart + 60) {
+      if (tEindMin > slotStart && tStartMin < slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, tEindMin);
       }
     }
@@ -335,7 +335,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
       const iStartMin = minOfDay(startStr);
       const eindStr = "eindDatum" in item ? (item as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
       const iEindMin = eindStr ? minOfDay(eindStr) : iStartMin + 60;
-      if (iEindMin > slotStart && iStartMin <= slotStart + 60) {
+      if (iEindMin > slotStart && iStartMin < slotStart + 60) {
         laatsteEind = Math.max(laatsteEind, iEindMin);
       }
     }

@@ -1,0 +1,207 @@
+<h2>Pijler C — Analytics & Rapportage</h2>
+<p class="subtitle">4 features die je data omzetten in inzicht.</p>
+
+<!-- Feature 10: Dashboard Widget -->
+<div class="section">
+  <h3>10. Dashboard Widget (Hoofdpagina)</h3>
+  <div class="mockup">
+    <div class="mockup-header">Nieuwe kaart op het hoofddashboard</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="background: #192225; border: 1px solid #2A3538; border-radius: 16px; padding: 1.5rem; max-width: 400px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-weight: 600; color: #ccc;">🚗 Kilometers</div>
+          <div style="font-size: 0.75rem; color: #888;">April 2026</div>
+        </div>
+        <div style="display: flex; gap: 1.5rem; margin-bottom: 1.2rem;">
+          <div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #fff;">1.247</div>
+            <div style="font-size: 0.75rem; color: #888;">km deze maand</div>
+          </div>
+          <div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #17B8A5;">€286</div>
+            <div style="font-size: 0.75rem; color: #888;">aftrekbaar</div>
+          </div>
+          <div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #ccc;">18</div>
+            <div style="font-size: 0.75rem; color: #888;">ritten</div>
+          </div>
+        </div>
+        <!-- Mini bar chart -->
+        <div style="display: flex; gap: 3px; align-items: end; height: 50px; margin-bottom: 0.8rem;">
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 60%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 45%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 80%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 35%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 70%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 90%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 55%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 40%;"></div>
+          <div style="flex: 1; background: rgba(23,184,165,0.2); border-radius: 3px 3px 0 0; height: 75%;"></div>
+          <div style="flex: 1; background: #17B8A5; border-radius: 3px 3px 0 0; height: 65%;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: #666;">
+          <span>Wk 1</span><span>Wk 2</span><span>Wk 3</span><span>Wk 4</span><span>Nu</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid #2A3538;">
+          <div style="font-size: 0.8rem; color: #888;">
+            <span style="color: #4ade80;">↑ 12%</span> vs vorige maand
+          </div>
+          <div style="font-size: 0.8rem; color: #17B8A5; cursor: pointer;">Bekijk →</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 11: Goal-Type Analytics -->
+<div class="section">
+  <h3>11. Goal-Type Analytics</h3>
+  <div class="mockup">
+    <div class="mockup-header">Nieuwe analytics sectie op de km pagina</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <!-- Donut chart mockup -->
+        <div>
+          <div class="label">Verdeling per type</div>
+          <div style="position: relative; width: 160px; height: 160px; margin: 0.8rem auto;">
+            <svg viewBox="0 0 160 160" style="transform: rotate(-90deg);">
+              <circle cx="80" cy="80" r="60" fill="none" stroke="#17B8A5" stroke-width="20" stroke-dasharray="140 237" />
+              <circle cx="80" cy="80" r="60" fill="none" stroke="#4DC9B4" stroke-width="20" stroke-dasharray="80 297" stroke-dashoffset="-140" />
+              <circle cx="80" cy="80" r="60" fill="none" stroke="#0d8a7a" stroke-width="20" stroke-dasharray="50 327" stroke-dashoffset="-220" />
+              <circle cx="80" cy="80" r="60" fill="none" stroke="#2A3538" stroke-width="20" stroke-dasharray="107 270" stroke-dashoffset="-270" />
+            </svg>
+            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center;">
+              <div style="font-size: 1.2rem; font-weight: 700;">2.847</div>
+              <div style="font-size: 0.65rem; color: #888;">km totaal</div>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; font-size: 0.75rem;">
+            <span><span style="color: #17B8A5;">●</span> Klantbezoek 42%</span>
+            <span><span style="color: #4DC9B4;">●</span> Meeting 24%</span>
+            <span><span style="color: #0d8a7a;">●</span> Training 15%</span>
+            <span><span style="color: #2A3538;">●</span> Overig 19%</span>
+          </div>
+        </div>
+        <!-- Top klanten -->
+        <div>
+          <div class="label">Top klanten (km)</div>
+          <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.8rem;">
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.2rem;">
+                <span>Klant A</span><span style="color: #17B8A5;">842 km</span>
+              </div>
+              <div style="height: 6px; background: #2A3538; border-radius: 3px;">
+                <div style="height: 100%; width: 100%; background: #17B8A5; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.2rem;">
+                <span>Klant B</span><span style="color: #4DC9B4;">634 km</span>
+              </div>
+              <div style="height: 6px; background: #2A3538; border-radius: 3px;">
+                <div style="height: 100%; width: 75%; background: #4DC9B4; border-radius: 3px;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.2rem;">
+                <span>Klant C</span><span style="color: #0d8a7a;">389 km</span>
+              </div>
+              <div style="height: 6px; background: #2A3538; border-radius: 3px;">
+                <div style="height: 100%; width: 46%; background: #0d8a7a; border-radius: 3px;"></div>
+              </div>
+            </div>
+          </div>
+          <div class="label" style="margin-top: 1.2rem;">Trend (6 maanden)</div>
+          <div style="display: flex; gap: 2px; align-items: end; height: 40px; margin-top: 0.5rem;">
+            <div style="flex: 1; background: rgba(23,184,165,0.15); border-radius: 2px 2px 0 0; height: 50%;"></div>
+            <div style="flex: 1; background: rgba(23,184,165,0.15); border-radius: 2px 2px 0 0; height: 65%;"></div>
+            <div style="flex: 1; background: rgba(23,184,165,0.15); border-radius: 2px 2px 0 0; height: 40%;"></div>
+            <div style="flex: 1; background: rgba(23,184,165,0.15); border-radius: 2px 2px 0 0; height: 80%;"></div>
+            <div style="flex: 1; background: rgba(23,184,165,0.15); border-radius: 2px 2px 0 0; height: 70%;"></div>
+            <div style="flex: 1; background: #17B8A5; border-radius: 2px 2px 0 0; height: 90%;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.6rem; color: #666; margin-top: 0.2rem;">
+            <span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mrt</span><span>Apr</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 12: Brandstof Analytics -->
+<div class="section">
+  <h3>12. Brandstof Analytics</h3>
+  <div class="mockup">
+    <div class="mockup-header">Brandstof-inzichten panel (op km pagina)</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.2rem;">
+        <div style="text-align: center; padding: 0.8rem; background: #0E1719; border-radius: 10px;">
+          <div style="font-size: 1.3rem; font-weight: 700; color: #fff;">€412</div>
+          <div style="font-size: 0.7rem; color: #888;">deze maand</div>
+        </div>
+        <div style="text-align: center; padding: 0.8rem; background: #0E1719; border-radius: 10px;">
+          <div style="font-size: 1.3rem; font-weight: 700; color: #17B8A5;">€0.14</div>
+          <div style="font-size: 0.7rem; color: #888;">per km</div>
+        </div>
+        <div style="text-align: center; padding: 0.8rem; background: #0E1719; border-radius: 10px;">
+          <div style="font-size: 1.3rem; font-weight: 700; color: #ccc;">1:14.2</div>
+          <div style="font-size: 0.7rem; color: #888;">km/liter</div>
+        </div>
+        <div style="text-align: center; padding: 0.8rem; background: #0E1719; border-radius: 10px;">
+          <div style="font-size: 1.3rem; font-weight: 700;">
+            <span style="color: #4ade80;">↓ 8%</span>
+          </div>
+          <div style="font-size: 0.7rem; color: #888;">vs vorige maand</div>
+        </div>
+      </div>
+      <div style="padding: 0.8rem; background: rgba(23,184,165,0.06); border-radius: 8px; font-size: 0.8rem; color: #999;">
+        Berekend uit brandstofkosten + km-standen. Meer tankbeurten met liters + km-stand = nauwkeuriger.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 13: Email Samenvatting -->
+<div class="section">
+  <h3>13. Maandelijkse Email-Samenvatting</h3>
+  <div class="mockup">
+    <div class="mockup-header">Automatische email — 1e van de maand</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="max-width: 380px; margin: 0 auto; background: #fff; border-radius: 10px; overflow: hidden;">
+        <div style="padding: 1rem 1.2rem; background: #0E1719;">
+          <div style="color: #17B8A5; font-weight: 600; font-size: 0.9rem;">Autronis Kilometerrapport</div>
+          <div style="color: #888; font-size: 0.75rem;">Maart 2026 — Samenvatting</div>
+        </div>
+        <div style="padding: 1.2rem; color: #333; font-size: 0.85rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 1rem;">
+            <div style="text-align: center; padding: 0.6rem; background: #f5f5f5; border-radius: 8px;">
+              <div style="font-size: 1.2rem; font-weight: 700;">1.847 km</div>
+              <div style="font-size: 0.7rem; color: #888;">totaal gereden</div>
+            </div>
+            <div style="text-align: center; padding: 0.6rem; background: #f5f5f5; border-radius: 8px;">
+              <div style="font-size: 1.2rem; font-weight: 700; color: #17B8A5;">€424,81</div>
+              <div style="font-size: 0.7rem; color: #888;">aftrekbaar</div>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: #666; margin-bottom: 0.8rem;">
+            📊 22 ritten · 4 klanten bezocht · €187 brandstof<br>
+            ⚠️ Km-stand maart nog niet ingevuld
+          </div>
+          <div style="text-align: center;">
+            <div style="display: inline-block; padding: 0.5rem 1.5rem; background: #17B8A5; color: white; border-radius: 8px; font-size: 0.85rem; font-weight: 600;">
+              Bekijk in dashboard →
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 0.8rem; font-size: 0.8rem; color: #999;">
+        Via Resend API (al geconfigureerd). Inclusief waarschuwingen voor ontbrekende data.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 2rem; text-align: center; color: #888; font-size: 0.9rem;">
+  Klopt dit? Dan doen we nog Pijler D (Mobiel) en schrijven we de spec.
+</div>

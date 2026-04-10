@@ -239,7 +239,28 @@ export async function GET(req: NextRequest) {
       query = query.where(eq(meetings.projectId, Number(projectId)));
     }
 
-    const dbMeetings = await query.all();
+    let dbMeetings;
+    try {
+      dbMeetings = await query.all();
+    } catch {
+      // Fallback without dynamic query
+      dbMeetings = await db
+        .select({
+          id: meetings.id, titel: meetings.titel, datum: meetings.datum,
+          duurMinuten: meetings.duurMinuten, status: meetings.status,
+          klantId: meetings.klantId, projectId: meetings.projectId,
+          klantNaam: klanten.bedrijfsnaam, projectNaam: projecten.naam,
+          samenvatting: meetings.samenvatting, actiepunten: meetings.actiepunten,
+          sentiment: meetings.sentiment, tags: meetings.tags,
+          transcript: meetings.transcript, audioPad: meetings.audioPad,
+          aangemaaktOp: meetings.aangemaaktOp,
+        })
+        .from(meetings)
+        .leftJoin(klanten, eq(meetings.klantId, klanten.id))
+        .leftJoin(projecten, eq(meetings.projectId, projecten.id))
+        .orderBy(desc(meetings.datum))
+        .all();
+    }
 
     // Enrich DB meetings with source info
     const enrichedDbMeetings = dbMeetings.map((m) => ({

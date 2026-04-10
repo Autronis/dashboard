@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { meetings, klanten, projecten, externeKalenders } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -312,6 +312,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
+
+    // Ensure meeting_url column exists
+    try { await db.run(sql`ALTER TABLE meetings ADD COLUMN meeting_url TEXT`); } catch { /* already exists */ }
 
     const formData = await req.formData();
     const titel = formData.get("titel") as string | null;

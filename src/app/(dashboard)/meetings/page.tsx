@@ -505,6 +505,12 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
                 {sc.label}
               </span>
             )}
+            {meeting.recallBotId && meeting.status !== "klaar" && meeting.status !== "mislukt" && (
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400 flex items-center gap-1.5 flex-shrink-0">
+                <Radio className="w-3 h-3 animate-pulse" />
+                Bot actief
+              </span>
+            )}
             {meeting.bron === "kalender" && (
               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 flex-shrink-0">
                 Kalender
@@ -864,6 +870,12 @@ export default function MeetingsPage() {
                     <span className={cn("px-2.5 py-0.5 rounded-full text-xs font-medium flex items-center gap-1.5", sc.bg, sc.color)}>
                       {m.status === "verwerken" && <Loader2 className="w-3 h-3 animate-spin" />}
                       {sc.label}
+                    </span>
+                  )}
+                  {m.recallBotId && m.status !== "klaar" && m.status !== "mislukt" && (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/15 text-red-400 flex items-center gap-1.5">
+                      <Radio className="w-3 h-3 animate-pulse" />
+                      Bot actief
                     </span>
                   )}
                   {m.deelnemers.length > 0 && (

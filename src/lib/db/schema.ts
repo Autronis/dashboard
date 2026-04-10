@@ -952,6 +952,7 @@ export const meetings = sqliteTable("meetings", {
   sentiment: text("sentiment"),
   tags: text("tags").default("[]"),
   status: text("status", { enum: ["verwerken", "klaar", "mislukt"] }).default("verwerken"),
+  recallBotId: text("recall_bot_id"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

@@ -28,11 +28,6 @@ function extractMeetUrl(text: string): string | null {
   return match ? match[1] : null;
 }
 
-async function ensureColumns() {
-  try { await db.run(sql`ALTER TABLE meetings ADD COLUMN recall_bot_id TEXT`); } catch { /* exists */ }
-  try { await db.run(sql`ALTER TABLE meetings ADD COLUMN meeting_url TEXT`); } catch { /* exists */ }
-}
-
 // POST /api/meetings/auto-record — Check upcoming meetings and dispatch bots
 export async function POST(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -47,8 +42,6 @@ export async function POST(request: NextRequest) {
     if (!isRecallConfigured()) {
       return NextResponse.json({ fout: "Recall niet geconfigureerd" }, { status: 500 });
     }
-
-    await ensureColumns();
 
     const now = new Date();
     const fiveMinAhead = new Date(now.getTime() + 5 * 60 * 1000);

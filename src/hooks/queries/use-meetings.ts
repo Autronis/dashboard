@@ -22,6 +22,7 @@ export interface Meeting {
   sentiment: string | null;
   tags: string[];
   status: "verwerken" | "klaar" | "mislukt" | null;
+  recallBotId: string | null;
   klantNaam: string | null;
   projectNaam: string | null;
   aangemaaktOp: string | null;

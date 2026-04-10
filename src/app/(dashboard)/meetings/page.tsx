@@ -1602,7 +1602,12 @@ interface UploadModalProps {
 
 function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: UploadModalProps) {
   const [titel, setTitel] = useState("");
-  const [datum, setDatum] = useState(new Date().toISOString().slice(0, 10));
+  const [datum, setDatum] = useState(() => {
+    const now = new Date();
+    const offset = now.getTimezoneOffset();
+    const local = new Date(now.getTime() - offset * 60000);
+    return local.toISOString().slice(0, 16);
+  });
   const [klantId, setKlantId] = useState<number | null>(null);
   const [projectId, setProjectId] = useState<number | null>(null);
   const [meetingUrl, setMeetingUrl] = useState("");
@@ -1696,11 +1701,11 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
             />
           </div>
 
-          {/* Datum */}
+          {/* Datum & Tijd */}
           <div>
-            <label className="block text-sm font-medium text-autronis-text-secondary mb-1.5">Datum</label>
+            <label className="block text-sm font-medium text-autronis-text-secondary mb-1.5">Datum & tijd</label>
             <input
-              type="date"
+              type="datetime-local"
               value={datum}
               onChange={(e) => setDatum(e.target.value)}
               className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"

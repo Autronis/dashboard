@@ -62,6 +62,7 @@ import { FocusWidget } from "@/components/focus/focus-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
+import { KilometerWidget } from "./components/KilometerWidget";
 
 // ============ HELPERS ============
 
@@ -1045,6 +1046,9 @@ export default function DashboardPage() {
               <IdeeVanDeDag />
               <RadarWidget />
             </div>
+
+            {/* Kilometer widget */}
+            <KilometerWidget />
           </div>
 
           {/* Right column */}

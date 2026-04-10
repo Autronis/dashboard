@@ -1362,7 +1362,7 @@ export default function IdeeenPage() {
                     {idee.doelgroep && <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full", idee.doelgroep === "klant" ? "bg-blue-500/15 text-blue-400" : "bg-autronis-accent/15 text-autronis-accent")}>{idee.doelgroep === "klant" ? "Klant" : "Persoonlijk"}</span>}
                     {idee.verdienmodel && <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-autronis-border/50 text-autronis-text-secondary">{idee.verdienmodel}</span>}
                   </div>
-                  <div className="flex items-center gap-2 pt-3 border-t border-autronis-border">
+                  <div className="flex items-center gap-2 pt-3 border-t border-autronis-border" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => handlePromoveer(idee.id)} disabled={promoveerMutation.isPending} className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-xs font-medium transition-colors disabled:opacity-50">
                       <ArrowUpCircle className="w-3.5 h-3.5" />Promoveer
                     </button>

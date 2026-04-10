@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { marked } from "marked";
 import {
   Lightbulb,
   Plus,
@@ -1410,13 +1411,13 @@ export default function IdeeenPage() {
             {detailIdee.omschrijving && (
               <div className="mb-5">
                 <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Omschrijving</h4>
-                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: (() => { try { const { marked: m } = require("marked"); return m.parse(detailIdee.omschrijving, { breaks: true }); } catch { return detailIdee.omschrijving; } })() }} />
+                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: marked.parse(detailIdee.omschrijving, { breaks: true }) as string }} />
               </div>
             )}
             {detailIdee.uitwerking && (
               <div className="mb-5">
                 <h4 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Uitwerking</h4>
-                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: (() => { try { const { marked: m } = require("marked"); return m.parse(detailIdee.uitwerking, { breaks: true }); } catch { return detailIdee.uitwerking; } })() }} />
+                <div className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown" dangerouslySetInnerHTML={{ __html: marked.parse(detailIdee.uitwerking, { breaks: true }) as string }} />
               </div>
             )}
 

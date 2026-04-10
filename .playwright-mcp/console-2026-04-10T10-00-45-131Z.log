@@ -40,3 +40,66 @@
 [ 1382274ms] [LOG] [Fast Refresh] done in 147ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
 [ 1403185ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
 [ 1403199ms] [LOG] [Fast Refresh] done in 90ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1433557ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1433856ms] [LOG] [Fast Refresh] done in 367ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1451800ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1451864ms] [LOG] [Fast Refresh] done in 124ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1458497ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1458541ms] [LOG] [Fast Refresh] done in 128ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1464165ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1464180ms] [LOG] [Fast Refresh] done in 85ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1487688ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1487690ms] [LOG] [Fast Refresh] done in 103ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1487795ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1487811ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1491283ms] [ERROR] In HTML, %s cannot be a descendant of <%s>.
+This will cause a hydration error.%s <a> a 
+
+  ...
+    <div className="p-6 space-y-6">
+      <div>
+      <div>
+      <div>
+      <motion.div className="grid grid-...">
+        <div className="grid grid-..." style={{}} ref={function useMotionRef.useCallback}>
+          <AnimatePresence mode="popLayout">
+            <PresenceChild isPresent={true} initial={undefined} custom={undefined} presenceAffectsLayout={true} ...>
+              <PopChild pop={true} isPresent={true} anchorX="left" anchorY="top" root={undefined}>
+                <PopChildMeasure isPresent={true} childRef={{current:null}} sizeRef={{...}} pop={true}>
+                  <motion.div layout={true} initial={{opacity:0,y:16, ...}} animate={{opacity:1,y:0,scale:1}} ...>
+                    <MeasureLayout>
+                    <div style={{opacity:0, ...}} ref={function useMotionRef.useCallback}>
+                      <ProjectCard project={{id:10,naam:"In...", ...}} ...>
+                        <LinkComponent href="/projecten/10" className="block bg-a...">
+>                         <a
+>                           className="block bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-3...."
+>                           ref={function}
+>                           onClick={function onClick}
+>                           onMouseEnter={function onMouseEnter}
+>                           onTouchStart={function onTouchStart}
+>                           href="/projecten/10"
+>                         >
+                            <div>
+                            <div>
+                            <div>
+                            <div>
+                            <div className="absolute t...">
+                              <button>
+                              <button>
+                              <LinkComponent href="/projecten/10" className="p-1.5 roun..." title="Details" ...>
+>                               <a
+>                                 className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autr..."
+>                                 title="Details"
+>                                 ref={function}
+>                                 onClick={function onClick}
+>                                 onMouseEnter={function onMouseEnter}
+>                                 onTouchStart={function onTouchStart}
+>                                 href="/projecten/10"
+>                               >
+            ...
+      ...
+ @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 1491284ms] [ERROR] <%s> cannot contain a nested %s.
+See this log for the ancestor stack trace. a <a> @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 1502883ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[ 1502893ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297

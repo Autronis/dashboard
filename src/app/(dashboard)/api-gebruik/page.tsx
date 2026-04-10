@@ -26,6 +26,14 @@ interface ApiEntry {
   fout?: string;
 }
 
+interface RouteBreakdown {
+  route: string;
+  provider: string;
+  aantalCalls: number;
+  kostenCent: number;
+  tokens: number;
+}
+
 const categorieIcons: Record<string, typeof Brain> = {
   ai: Brain,
   email: Mail,

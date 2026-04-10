@@ -17,6 +17,7 @@ Autronis is een Nederlands tech-bedrijf (Sem & Syb) dat werkt met: Next.js, Turs
 
 Antwoord ALLEEN met valid JSON (geen markdown fences) in exact dit format:
 {
+  "idea_title": "Korte, actiegerichte Nederlandse titel die beschrijft wat je hiermee kunt DOEN. Niet de videotitel, maar het idee erachter. Bijv: 'AI-gestuurde sales automatisering met Claude' of 'Obsidian als kennisbank koppelen aan Claude Code'.",
   "summary": "Uitgebreide samenvatting van 4-6 zinnen. Beschrijf het hoofdonderwerp, de key insights, en waarom dit relevant is.",
   "features": [
     {"name": "Feature naam", "description": "Uitgebreide beschrijving van wat deze feature doet, hoe het werkt, en wanneer je het zou gebruiken. Minimaal 2 zinnen.", "category": "core | workflow | integration | tips"}
@@ -176,8 +177,9 @@ export async function POST(request: NextRequest) {
 
         const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}\n\n---\n_Bron: [${videoTitle}](${videoUrl}) — YT Knowledge Pipeline analyse_`;
 
+        const ideaTitle = data.idea_title || videoTitle;
         await db.insert(ideeen).values({
-          naam: `[YTK] ${videoTitle}`,
+          naam: ideaTitle,
           categorie: "dev_tools",
           status: "idee",
           prioriteit: "hoog",

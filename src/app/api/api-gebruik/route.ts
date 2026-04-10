@@ -60,12 +60,12 @@ function formatTokens(count: number): string {
   return String(count);
 }
 
-async function fetchAnthropicUsage(): Promise<ApiUsageResult> {
+async function fetchAnthropicUsage(allStats: TokenStats[]): Promise<ApiUsageResult> {
   if (!process.env.ANTHROPIC_API_KEY) {
     return { naam: "Anthropic (Claude)", categorie: "ai", status: "niet_geconfigureerd", dashboardUrl: "https://console.anthropic.com/settings/billing" };
   }
 
-  const stats = (await fetchTokenStats()).find(s => s.provider === "anthropic");
+  const stats = allStats.find(s => s.provider === "anthropic");
 
   if (!stats || stats.aantalCalls === 0) {
     return {
@@ -97,12 +97,49 @@ async function fetchAnthropicUsage(): Promise<ApiUsageResult> {
   };
 }
 
-async function fetchGroqUsage(): Promise<ApiUsageResult> {
+async function fetchOpenAIUsage(allStats: TokenStats[]): Promise<ApiUsageResult> {
+  if (!process.env.OPENAI_API_KEY) {
+    return { naam: "OpenAI (GPT)", categorie: "ai", status: "niet_geconfigureerd", dashboardUrl: "https://platform.openai.com/usage" };
+  }
+
+  const stats = allStats.find(s => s.provider === "openai");
+
+  if (!stats || stats.aantalCalls === 0) {
+    return {
+      naam: "OpenAI (GPT)",
+      categorie: "ai",
+      status: "actief",
+      gebruik: {
+        verbruikt: "Nog geen data",
+        eenheid: "tokens",
+        details: "Tracking actief — gebruik wordt automatisch bijgehouden",
+      },
+      dashboardUrl: "https://platform.openai.com/usage",
+    };
+  }
+
+  const totalTokens = stats.totalInput + stats.totalOutput;
+  const kostenEuro = (stats.totalKosten / 100).toFixed(2);
+
+  return {
+    naam: "OpenAI (GPT)",
+    categorie: "ai",
+    status: "actief",
+    gebruik: {
+      verbruikt: `€${kostenEuro}`,
+      eenheid: "deze maand",
+      details: `${formatTokens(totalTokens)} tokens (${formatTokens(stats.totalInput)} in / ${formatTokens(stats.totalOutput)} uit) · ${stats.aantalCalls} calls`,
+    },
+    dashboardUrl: "https://platform.openai.com/usage",
+  };
+}
+
+async function fetchGroqUsage(allStats: TokenStats[]): Promise<ApiUsageResult> {
   if (!process.env.GROQ_API_KEY) {
     return { naam: "Groq", categorie: "ai", status: "niet_geconfigureerd", dashboardUrl: "https://console.groq.com/settings/billing" };
   }
 
-  const stats = (await fetchTokenStats()).find(s => s.provider === "groq");
+  const stats = allStats.find(s => s.provider === "groq");
 
   if (!stats || stats.aantalCalls === 0) {
     return {
@@ -194,12 +231,6 @@ async function fetchFirecrawlUsage(): Promise<ApiUsageResult> {
 function buildStaticEntries(): ApiUsageResult[] {
   return [
     {
-      naam: "OpenAI",
-      categorie: "ai",
-      status: process.env.OPENAI_API_KEY ? "actief" : "niet_geconfigureerd",
-      dashboardUrl: "https://platform.openai.com/usage",
-    },
-    {
       naam: "Resend",
       categorie: "email",
       status: process.env.RESEND_API_KEY ? "actief" : "niet_geconfigureerd",
@@ -262,18 +293,62 @@ function buildStaticEntries(): ApiUsageResult[] {
   ];
 }
 
+async function fetchRouteBreakdown(): Promise<Array<{ route: string; provider: string; aantalCalls: number; kostenCent: number; tokens: number }>> {
+  try {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    const monthStart = startOfMonth.toISOString().slice(0, 19).replace("T", " ");
+
+    const rows = await db
+      .select({
+        route: apiTokenGebruik.route,
+        provider: apiTokenGebruik.provider,
+        aantalCalls: sql<number>`COUNT(*)`,
+        kostenCent: sql<number>`COALESCE(SUM(${apiTokenGebruik.kostenCent}), 0)`,
+        tokens: sql<number>`COALESCE(SUM(${apiTokenGebruik.inputTokens}) + SUM(${apiTokenGebruik.outputTokens}), 0)`,
+      })
+      .from(apiTokenGebruik)
+      .where(gte(apiTokenGebruik.aangemaaktOp, monthStart))
+      .groupBy(apiTokenGebruik.route, apiTokenGebruik.provider)
+      .orderBy(sql`SUM(${apiTokenGebruik.kostenCent}) DESC`)
+      .all();
+
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
 export async function GET() {
   await requireAuth();
 
-  const [anthropic, groq, fal, firecrawl] = await Promise.all([
-    fetchAnthropicUsage(),
-    fetchGroqUsage(),
+  const allStats = await fetchTokenStats();
+
+  const [anthropic, openai, groq, fal, firecrawl] = await Promise.all([
+    fetchAnthropicUsage(allStats),
+    fetchOpenAIUsage(allStats),
+    fetchGroqUsage(allStats),
     fetchFalUsage(),
     fetchFirecrawlUsage(),
   ]);
 
   const staticEntries = buildStaticEntries();
-  const apis = [anthropic, groq, fal, firecrawl, ...staticEntries];
+  const apis = [anthropic, openai, groq, fal, firecrawl, ...staticEntries];
 
-  return NextResponse.json({ apis });
+  // Total AI costs this month
+  const totaalAiKostenCent = allStats.reduce((sum, s) => sum + s.totalKosten, 0);
+  const totaalAiCalls = allStats.reduce((sum, s) => sum + s.aantalCalls, 0);
+
+  // Per-route breakdown for cost insights
+  const routeBreakdown = await fetchRouteBreakdown();
+
+  return NextResponse.json({
+    apis,
+    totaal: {
+      kostenEuro: (totaalAiKostenCent / 100).toFixed(2),
+      aantalCalls: totaalAiCalls,
+    },
+    routeBreakdown,
+  });
 }

@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "mcp__plugin_playwright_playwright__browser_navigate",
-      "mcp__plugin_playwright_playwright__browser_snapshot"
+      "mcp__plugin_playwright_playwright__browser_snapshot",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "mcp__plugin_playwright_playwright__browser_fill_form"
     ],
     "additionalDirectories": [
       "/Users/semmiegijs/.claude/projects/-Users-semmiegijs-Autronis-Projects-autronis-dashboard"

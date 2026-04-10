@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Client } from "@notionhq/client";
 import { db } from "@/lib/db";
-import { ideeen } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { ideeen, gebruikers } from "@/lib/db/schema";
+import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq, and, asc } from "drizzle-orm";
 
 // GET /api/ideeen — lijst met optionele filters
@@ -38,7 +38,16 @@ export async function GET(req: NextRequest) {
 // POST /api/ideeen — nieuw idee aanmaken
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    // Support both session auth and API key auth (for Claude Code / YTK pipeline)
+    const authHeader = req.headers.get("authorization");
+    let gebruiker;
+    if (authHeader?.startsWith("Bearer ")) {
+      await requireApiKey(req);
+      const defaultUser = await db.select().from(gebruikers).limit(1).get();
+      gebruiker = defaultUser ?? { id: 1, naam: "Claude" };
+    } else {
+      gebruiker = await requireAuth();
+    }
     const body = await req.json();
     const { naam, nummer, categorie, status, omschrijving, uitwerking, prioriteit } = body;
 

@@ -1,3 +1,4 @@
 {"type":"server-started","port":65254,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:65254","screen_dir":"/Users/semmiegijs/Autronis/Projects/autronis-dashboard/.superpowers/brainstorm/92608-1775852652/content","state_dir":"/Users/semmiegijs/Autronis/Projects/autronis-dashboard/.superpowers/brainstorm/92608-1775852652/state"}
 {"type":"screen-added","file":"/Users/semmiegijs/Autronis/Projects/autronis-dashboard/.superpowers/brainstorm/92608-1775852652/content/01-overview.html"}
 {"type":"screen-added","file":"/Users/semmiegijs/Autronis/Projects/autronis-dashboard/.superpowers/brainstorm/92608-1775852652/content/02-automatisering.html"}
+{"type":"screen-added","file":"/Users/semmiegijs/Autronis/Projects/autronis-dashboard/.superpowers/brainstorm/92608-1775852652/content/03-slimme-features.html"}

@@ -1,0 +1,158 @@
+<h2>Pijler B — Slimme Features</h2>
+<p class="subtitle">4 features die je data schoon houden en je belastingrapport waterdicht maken.</p>
+
+<!-- Feature 6: Locatie-normalisatie -->
+<div class="section">
+  <h3>6. Locatie-Normalisatie</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Nu — Chaos</div>
+      <div class="mockup-body" style="padding: 1.2rem; font-size: 0.85rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="padding: 0.5rem 0.8rem; background: rgba(255,100,100,0.08); border-radius: 6px; display: flex; justify-content: space-between;">
+            <span>"kantoor"</span><span style="color: #888;">3 ritten</span>
+          </div>
+          <div style="padding: 0.5rem 0.8rem; background: rgba(255,100,100,0.08); border-radius: 6px; display: flex; justify-content: space-between;">
+            <span>"Kantoor"</span><span style="color: #888;">5 ritten</span>
+          </div>
+          <div style="padding: 0.5rem 0.8rem; background: rgba(255,100,100,0.08); border-radius: 6px; display: flex; justify-content: space-between;">
+            <span>"Autronis kantoor"</span><span style="color: #888;">2 ritten</span>
+          </div>
+          <div style="padding: 0.5rem 0.8rem; background: rgba(255,100,100,0.08); border-radius: 6px; display: flex; justify-content: space-between;">
+            <span>"office"</span><span style="color: #888;">1 rit</span>
+          </div>
+        </div>
+        <div style="margin-top: 0.8rem; color: #f87171; font-size: 0.8rem;">→ 4 varianten voor dezelfde plek</div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Nieuw — Genormaliseerd</div>
+      <div class="mockup-body" style="padding: 1.2rem; font-size: 0.85rem;">
+        <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <div style="padding: 0.5rem 0.8rem; background: rgba(23,184,165,0.08); border-radius: 6px; display: flex; justify-content: space-between;">
+            <span style="font-weight: 600;">Autronis Kantoor, Eindhoven</span><span style="color: #17B8A5;">11 ritten</span>
+          </div>
+        </div>
+        <div style="margin-top: 1rem; font-size: 0.8rem; color: #999;">
+          <strong style="color: #ccc;">Hoe:</strong><br>
+          • Locatie-aliassen tabel: "kantoor", "office", "Kantoor" → "Autronis Kantoor, Eindhoven"<br>
+          • Bij invoer: autocomplete matcht op aliassen<br>
+          • Eenmalige migratie: bestaande varianten samenvoegen
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 7: Duplicate Detection -->
+<div class="section">
+  <h3>7. Duplicate Detection</h3>
+  <div class="mockup">
+    <div class="mockup-header">Waarschuwing bij mogelijke dubbele rit</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="padding: 1rem; background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.25); border-radius: 10px;">
+        <div style="display: flex; gap: 0.8rem; align-items: start;">
+          <div style="font-size: 1.3rem; margin-top: 2px;">⚠️</div>
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #fbbf24;">Mogelijke dubbele rit</div>
+            <div style="color: #ccc; font-size: 0.85rem; margin-top: 0.4rem;">
+              Je hebt vandaag al een rit gelogd:
+            </div>
+            <div style="margin-top: 0.6rem; padding: 0.6rem; background: rgba(0,0,0,0.2); border-radius: 6px; font-size: 0.85rem;">
+              <div style="display: flex; justify-content: space-between;">
+                <span>Autronis Kantoor → Philips HTC</span>
+                <span style="color: #17B8A5;">124.3 km</span>
+              </div>
+              <div style="color: #888; font-size: 0.75rem; margin-top: 0.2rem;">Vandaag 09:15 — Klantbezoek</div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; margin-top: 0.8rem;">
+              <div class="mock-button" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">Toch toevoegen</div>
+              <div class="mock-button" style="background: transparent; border: 1px solid #2A3538; font-size: 0.8rem; padding: 0.4rem 0.8rem;">Annuleren</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top: 0.8rem; font-size: 0.8rem; color: #999;">
+        Detecteert: zelfde datum + zelfde van/naar (of omgekeerd) + vergelijkbare km (±10%)
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 8: Privé/Zakelijk Split -->
+<div class="section">
+  <h3>8. Privé/Zakelijk Split op Werkelijke Data</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Nu — Vast percentage</div>
+      <div class="mockup-body" style="padding: 1.2rem; font-size: 0.85rem;">
+        <div style="text-align: center; padding: 1rem;">
+          <div style="font-size: 2rem; font-weight: 700; color: #f87171;">75%</div>
+          <div style="color: #888;">Hardcoded zakelijk percentage</div>
+          <div style="margin-top: 0.5rem; color: #f87171; font-size: 0.8rem;">
+            Niet onderbouwd met data<br>
+            Belastingdienst kan dit aanvechten
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Nieuw — Berekend uit data</div>
+      <div class="mockup-body" style="padding: 1.2rem; font-size: 0.85rem;">
+        <div style="text-align: center; padding: 0.5rem;">
+          <div style="font-size: 2rem; font-weight: 700; color: #17B8A5;">82.4%</div>
+          <div style="color: #888;">Berekend zakelijk percentage</div>
+        </div>
+        <div style="margin-top: 0.5rem; font-size: 0.8rem; color: #999;">
+          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+            <span>Totaal gereden (km-stand)</span><span style="color: #ccc;">14.230 km</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0;">
+            <span>Gelogde zakelijke km</span><span style="color: #17B8A5;">11.726 km</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; padding: 0.3rem 0; border-top: 1px solid #2A3538; margin-top: 0.3rem; padding-top: 0.5rem;">
+            <span>Werkelijk zakelijk %</span><span style="color: #17B8A5; font-weight: 600;">82.4%</span>
+          </div>
+        </div>
+        <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(23,184,165,0.06); border-radius: 6px; font-size: 0.75rem; color: #17B8A5;">
+          ✓ Onderbouwd met km-standen + rittenlog = waterdicht voor belasting
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feature 9: Verbeterd belastingrapport -->
+<div class="section">
+  <h3>9. Verbeterd Belastingrapport</h3>
+  <div class="mockup">
+    <div class="mockup-header">Nieuwe secties in het PDF rapport</div>
+    <div class="mockup-body" style="padding: 1.5rem; font-size: 0.85rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div style="padding: 0.8rem; background: #0E1719; border-radius: 8px;">
+          <div style="color: #17B8A5; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Nieuw: Km-stand bewijs</div>
+          <div style="color: #ccc; margin-top: 0.4rem;">Maandelijkse begin/eindstand tabel met berekend privé-km</div>
+        </div>
+        <div style="padding: 0.8rem; background: #0E1719; border-radius: 8px;">
+          <div style="color: #17B8A5; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Nieuw: Zakelijk % onderbouwing</div>
+          <div style="color: #ccc; margin-top: 0.4rem;">Werkelijk percentage op basis van km-standen vs gelogde ritten</div>
+        </div>
+        <div style="padding: 0.8rem; background: #0E1719; border-radius: 8px;">
+          <div style="color: #17B8A5; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Nieuw: Brandstofkosten detail</div>
+          <div style="color: #ccc; margin-top: 0.4rem;">Per-maand brandstof + verbruik/km berekening</div>
+        </div>
+        <div style="padding: 0.8rem; background: #0E1719; border-radius: 8px;">
+          <div style="color: #17B8A5; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;">Nieuw: Foto-bijlagen</div>
+          <div style="color: #ccc; margin-top: 0.4rem;">Km-stand foto's als bijlage in het rapport (pijler D)</div>
+        </div>
+      </div>
+      <div style="margin-top: 1rem; padding: 0.8rem; background: rgba(23,184,165,0.06); border-radius: 8px; font-size: 0.8rem; color: #999;">
+        <strong style="color: #ccc;">Doel:</strong> Een rapport dat je boekhouder direct kan indienen — geen vragen meer.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 2rem; text-align: center; color: #888; font-size: 0.9rem;">
+  Klopt dit? Laat het weten in de terminal, dan gaan we door naar Pijler C.
+</div>

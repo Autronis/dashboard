@@ -769,6 +769,22 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const eindLabel = eindDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
               const afgerond = group.filter((t) => t.status === "afgerond").length;
 
+              // Groepeer per project
+              const perProject = new Map<string, typeof group>();
+              for (const t of group) {
+                const proj = t.projectNaam || "Overig";
+                if (!perProject.has(proj)) perProject.set(proj, []);
+                perProject.get(proj)!.push(t);
+              }
+
+              // Genereer slimme beschrijving
+              const beschrijving = Array.from(perProject.entries())
+                .map(([proj, taken]) => {
+                  const titels = taken.slice(0, 3).map((t) => t.titel.toLowerCase()).join(", ");
+                  return `${proj}: ${titels}${taken.length > 3 ? ` +${taken.length - 3}` : ""}`;
+                })
+                .join(" → ");
+
               return (
                 <div
                   key={`claude-sessie-${gi}`}
@@ -784,21 +800,19 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   {/* Header */}
                   <div className="flex items-center gap-2 px-3 py-1.5 border-b border-purple-500/20">
                     <Terminal className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-purple-300 flex-1">
+                    <span className="text-xs font-semibold text-purple-300">
                       Claude sessie · {startLabel}–{eindLabel}
+                    </span>
+                    <span className="text-[10px] text-purple-400/50 italic truncate flex-1 hidden sm:inline">
+                      jij bent vrij
                     </span>
                     <span className="text-[10px] text-purple-400/70 tabular-nums">{afgerond}/{group.length}</span>
                     <button
                       className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[10px] font-medium transition-colors"
                       onClick={() => {
-                        const perProject = new Map<string, typeof group>();
-                        for (const t of group) {
-                          const dir = t.projectMap || "~";
-                          if (!perProject.has(dir)) perProject.set(dir, []);
-                          perProject.get(dir)!.push(t);
-                        }
                         const cmds: string[] = [];
-                        for (const [dir, pt] of perProject) {
+                        for (const [, pt] of perProject) {
+                          const dir = pt[0].projectMap || "~";
                           const takenTekst = pt.map((t) => `- ${t.titel}`).join("\\n");
                           cmds.push(`cd "${dir}" && claude "Voer deze taken uit:\\n${takenTekst}"`);
                         }
@@ -808,33 +822,46 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       Kopieer
                     </button>
                   </div>
-                  {/* Takenlijst */}
-                  <div className="px-3 py-1 overflow-y-auto" style={{ maxHeight: `${blockHeight - 32}px` }}>
-                    {group.map((taak) => {
-                      const done = taak.status === "afgerond";
-                      return (
-                        <div key={taak.id} className="flex items-center gap-2 py-0.5 group/item">
-                          <button
-                            onClick={() => onTaakToggle?.(taak.id, taak.status)}
-                            className={cn(
-                              "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all",
-                              done ? "bg-purple-500 border-purple-500" : "border-purple-400/40 hover:border-purple-400"
-                            )}
-                          >
-                            {done && <Check className="w-2.5 h-2.5 text-white" />}
-                          </button>
-                          <span className={cn(
-                            "text-xs truncate flex-1",
-                            done ? "line-through text-purple-400/40" : "text-purple-200"
-                          )}>
-                            {taak.titel}
-                          </span>
-                          {taak.projectNaam && (
-                            <span className="text-[9px] text-purple-400/40 truncate max-w-20 hidden group-hover/item:inline">{taak.projectNaam}</span>
-                          )}
-                        </div>
-                      );
-                    })}
+
+                  {/* Beschrijving */}
+                  <div className="px-3 py-1 border-b border-purple-500/10">
+                    <p className="text-[10px] text-purple-300/60 truncate">{beschrijving}</p>
+                  </div>
+
+                  {/* Takenlijst per project */}
+                  <div className="px-2 py-1 overflow-y-auto" style={{ maxHeight: `${blockHeight - 56}px` }}>
+                    {Array.from(perProject.entries()).map(([proj, projectTaken]) => (
+                      <div key={proj}>
+                        {perProject.size > 1 && (
+                          <div className="flex items-center gap-1.5 mt-1 mb-0.5 px-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400/50" />
+                            <span className="text-[10px] font-semibold text-purple-400/70">{proj}</span>
+                          </div>
+                        )}
+                        {projectTaken.map((taak) => {
+                          const done = taak.status === "afgerond";
+                          return (
+                            <div key={taak.id} className="flex items-center gap-2 py-0.5 px-1">
+                              <button
+                                onClick={() => onTaakToggle?.(taak.id, taak.status)}
+                                className={cn(
+                                  "w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center flex-shrink-0 transition-all",
+                                  done ? "bg-purple-500 border-purple-500" : "border-purple-400/40 hover:border-purple-400"
+                                )}
+                              >
+                                {done && <Check className="w-2 h-2 text-white" />}
+                              </button>
+                              <span className={cn(
+                                "text-[11px] truncate flex-1",
+                                done ? "line-through text-purple-400/30" : "text-purple-200"
+                              )}>
+                                {taak.titel}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );

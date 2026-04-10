@@ -729,7 +729,55 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             );
           })}
 
-          {/* Ingeplande taken als draggable groene blokken */}
+          {/* Claude sessie blok — groepeer aansluitende AI-taken visueel */}
+          {(() => {
+            const claudeTaken = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart && t.status !== "afgerond");
+            if (claudeTaken.length < 2) return null;
+
+            // Sort by start time
+            const sorted = [...claudeTaken].sort((a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime());
+
+            // Find contiguous groups (max 15min gap)
+            const groups: typeof sorted[] = [];
+            let current = [sorted[0]];
+            for (let i = 1; i < sorted.length; i++) {
+              const prevEnd = new Date(sorted[i - 1].ingeplandEind || sorted[i - 1].ingeplandStart!).getTime();
+              const curStart = new Date(sorted[i].ingeplandStart!).getTime();
+              if (curStart - prevEnd <= 15 * 60000) {
+                current.push(sorted[i]);
+              } else {
+                if (current.length >= 2) groups.push(current);
+                current = [sorted[i]];
+              }
+            }
+            if (current.length >= 2) groups.push(current);
+
+            return groups.map((group, gi) => {
+              const firstStart = new Date(group[0].ingeplandStart!);
+              const lastEnd = new Date(group[group.length - 1].ingeplandEind || group[group.length - 1].ingeplandStart!);
+              const startMin = firstStart.getHours() * 60 + firstStart.getMinutes();
+              const eindMin = lastEnd.getHours() * 60 + lastEnd.getMinutes();
+              const blockTop = ((startMin - startUur * 60) / 60) * UUR_HOOGTE;
+              const blockHeight = Math.max(28, ((eindMin - startMin) / 60) * UUR_HOOGTE);
+              const startLabel = firstStart.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+              const eindLabel = lastEnd.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+
+              return (
+                <div
+                  key={`claude-sessie-${gi}`}
+                  className="absolute left-10 sm:left-14 right-0 rounded-xl border-2 border-dashed border-purple-500/25 pointer-events-none z-[2]"
+                  style={{ top: `${blockTop - 4}px`, height: `${blockHeight + 8}px`, background: "rgba(168,85,247,0.04)" }}
+                >
+                  <div className="absolute -top-3 left-2 flex items-center gap-1 bg-autronis-card px-2 py-0.5 rounded-md">
+                    <Terminal className="w-3 h-3 text-purple-400" />
+                    <span className="text-[10px] font-semibold text-purple-400">Claude sessie · {startLabel}–{eindLabel} · {group.length} taken</span>
+                  </div>
+                </div>
+              );
+            });
+          })()}
+
+          {/* Ingeplande taken als draggable blokken */}
           {dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
             const startDate = new Date(taak.ingeplandStart);
@@ -741,6 +789,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const startTijd = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
             const eindTijd = taak.ingeplandEind ? new Date(taak.ingeplandEind).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" }) : null;
 
+            // Claude taken = paars, handmatig = groen
+            const kleur = taak.uitvoerder === "claude" ? "#a855f7" : (taak.kalenderKleur || "#22c55e");
+
             return (
               <DraggableTaakBlock
                 key={`taak-dag-${taak.id}`}
@@ -749,7 +800,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 height={height}
                 startTijd={startTijd}
                 eindTijd={eindTijd}
-                kalenderKleur={taak.kalenderKleur || "#22c55e"}
+                kalenderKleur={kleur}
                 onUnplan={onUnplanTaak}
                 onToggle={onTaakToggle}
                 onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}

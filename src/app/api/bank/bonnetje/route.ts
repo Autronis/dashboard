@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
-import fs from "fs";
-import path from "path";
 
 const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -83,14 +81,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Geen bonnetje meegestuurd" }, { status: 400 });
     }
 
-    // 1. Save the receipt image
-    const uploadsDir = path.join(process.cwd(), "data", "uploads", "bonnetjes");
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    // 1. Save the receipt image to Supabase Storage
+    const { uploadToStorage } = await import("@/lib/supabase");
     const ext = mediaType.includes("png") ? ".png" : ".jpg";
+    const year = new Date().getFullYear();
     const fileName = `bon_${Date.now()}${ext}`;
-    const filePath = path.join(uploadsDir, fileName);
-    fs.writeFileSync(filePath, buffer);
-    const bonPad = `data/uploads/bonnetjes/${fileName}`;
+    const storagePath = `${year}/bonnetjes/${fileName}`;
+    await uploadToStorage(storagePath, buffer, mediaType);
+    const bonPad = storagePath;
 
     // 2. OCR via Claude Vision
     const bonData = await analyseerBonnetje(base64, mediaType);
@@ -140,6 +138,7 @@ export async function POST(req: NextRequest) {
         if (matchedTransactie.score >= 12) {
           await db.update(bankTransacties).set({
             bonPad,
+            storageUrl: storagePath,
             categorie: bonData.categorie || undefined,
             btwBedrag: bonData.btwBedrag || undefined,
           }).where(eq(bankTransacties.id, matchedTransactie.id));

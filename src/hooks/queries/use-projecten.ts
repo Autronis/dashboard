@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useRef } from "react";
 
 export interface Project {
   id: number;
@@ -22,6 +22,7 @@ export interface Project {
   totaalMinuten: number;
   laatsteActiviteit: string | null;
   sparkline: number[];
+  taakTitels: string;
 }
 
 export interface ProjectKpis {

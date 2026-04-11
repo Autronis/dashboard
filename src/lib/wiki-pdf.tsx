@@ -197,269 +197,221 @@ type Block =
   | { type: "skill-grid"; cards: SkillCard[] }
   | { type: "table"; rows: string[][] };
 
-function parseHtmlContent(html: string): Block[] {
-  const blocks: Block[] = [];
-
-  // Helper to extract all matches of a regex
-  function matchAll(str: string, re: RegExp): RegExpExecArray[] {
-    const results: RegExpExecArray[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(str)) !== null) results.push(m);
-    return results;
-  }
-
-  // 1. Architecture diagrams
-  const archRe = /<div class="arch-diagram">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
-  const archSections = matchAll(html, archRe);
-  for (const sec of archSections) {
-    const content = sec[1];
-    const layers: ArchLayer[] = [];
-
-    // Parse each arch-layer
-    const layerRe = /<div class="arch-layer">([\s\S]*?)(?=<div class="arch-(?:layer|arrow)">|$)/gi;
-    const layerMatches = matchAll(content, layerRe);
-    for (const lm of layerMatches) {
-      const layerHtml = lm[1];
-      const labelMatch = layerHtml.match(/<div class="arch-label">(.*?)<\/div>/);
-      const label = labelMatch ? stripHtml(labelMatch[1]) : "";
-      const isYou = layerHtml.includes("arch-you");
-
-      const boxes: ArchBox[] = [];
-      const boxRe = /<div class="arch-box[^"]*">([\s\S]*?)<\/div>/gi;
-      const boxMatches = matchAll(layerHtml, boxRe);
-      for (const bm of boxMatches) {
-        const boxHtml = bm[1];
-        const parts = boxHtml.split(/<br\s*\/?>/i);
-        const title = stripHtml(parts[0] || "");
-        const subMatch = boxHtml.match(/<span class="arch-sub">(.*?)<\/span>/);
-        const sub = subMatch ? stripHtml(subMatch[1]) : (parts[1] ? stripHtml(parts[1]) : "");
-        if (title) boxes.push({ title, sub });
-      }
-      if (label || boxes.length) layers.push({ label, boxes, isYou });
+/** Find the closing tag for a div opened at startIdx, counting nesting */
+function extractBlock(html: string, startIdx: number): string {
+  let depth = 0;
+  let i = startIdx;
+  while (i < html.length) {
+    if (html.substring(i).startsWith("<div")) { depth++; i += 4; }
+    else if (html.substring(i).startsWith("</div>")) {
+      depth--;
+      if (depth === 0) return html.substring(startIdx, i + 6);
+      i += 6;
     }
-    if (layers.length) blocks.push({ type: "arch-diagram", layers });
+    else { i++; }
   }
+  return html.substring(startIdx);
+}
 
-  // 2. How-grid cards
-  const howRe = /<div class="how-grid">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
-  const howSections = matchAll(html, howRe);
-  for (const sec of howSections) {
-    const cards: HowCard[] = [];
-    const cardRe = /<div class="how-card">([\s\S]*?)(?=<div class="how-card">|<\/div>\s*<\/div>)/gi;
-    const cardMatches = matchAll(sec[1], cardRe);
-    for (const cm of cardMatches) {
-      const numMatch = cm[1].match(/<div class="how-number">(.*?)<\/div>/);
-      const titleMatch = cm[1].match(/<div class="how-title">(.*?)<\/div>/);
-      const textMatch = cm[1].match(/<div class="how-text">([\s\S]*?)<\/div>/);
+function matchAll(str: string, re: RegExp): RegExpExecArray[] {
+  const results: RegExpExecArray[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(str)) !== null) results.push(m);
+  return results;
+}
+
+function parseArchDiagram(blockHtml: string): Block {
+  const layers: ArchLayer[] = [];
+  // Split by arch-arrow to get layers
+  const parts = blockHtml.split(/<div class="arch-arrow">[\s\S]*?<\/div>/);
+  for (const part of parts) {
+    const labelMatch = part.match(/<div class="arch-label">(.*?)<\/div>/);
+    const label = labelMatch ? stripHtml(labelMatch[1]) : "";
+    const isYou = part.includes("arch-you");
+    const boxes: ArchBox[] = [];
+    const boxMatches = matchAll(part, /<div class="arch-box[^"]*">([\s\S]*?)<\/div>/gi);
+    for (const bm of boxMatches) {
+      const boxHtml = bm[1];
+      const parts2 = boxHtml.split(/<br\s*\/?>/i);
+      const title = stripHtml(parts2[0] || "");
+      const subMatch = boxHtml.match(/<span class="arch-sub">(.*?)<\/span>/);
+      const sub = subMatch ? stripHtml(subMatch[1]) : "";
+      if (title) boxes.push({ title, sub });
+    }
+    if (label || boxes.length) layers.push({ label, boxes, isYou });
+  }
+  return { type: "arch-diagram", layers };
+}
+
+function parseHowGrid(blockHtml: string): Block {
+  const cards: HowCard[] = [];
+  // Each how-card is a self-contained div
+  const cardBlocks = blockHtml.split(/<div class="how-card">/);
+  for (const cb of cardBlocks.slice(1)) {
+    const numMatch = cb.match(/<div class="how-number">(.*?)<\/div>/);
+    const titleMatch = cb.match(/<div class="how-title">(.*?)<\/div>/);
+    const textMatch = cb.match(/<div class="how-text">([\s\S]*?)<\/div>/);
+    cards.push({
+      number: numMatch ? stripHtml(numMatch[1]) : "",
+      title: titleMatch ? stripHtml(titleMatch[1]) : "",
+      text: textMatch ? stripHtml(textMatch[1]) : "",
+    });
+  }
+  return { type: "how-grid", cards };
+}
+
+function parseWorkflow(blockHtml: string): Block {
+  const steps: WfStep[] = [];
+  const stepMatches = matchAll(blockHtml, /<div class="wf-step">([\s\S]*?)<\/div>/gi);
+  for (const sm of stepMatches) {
+    const timeMatch = sm[1].match(/<span class="wf-time">(.*?)<\/span>/);
+    const time = timeMatch ? stripHtml(timeMatch[1]) : "";
+    const text = stripHtml(sm[1].replace(/<span class="wf-time">.*?<\/span>/, ""));
+    if (text) steps.push({ time, text });
+  }
+  return { type: "workflow", steps };
+}
+
+function parseStats(blockHtml: string): Block {
+  const items: StatItem[] = [];
+  const statParts = blockHtml.split(/<div class="stat">/);
+  for (const sp of statParts.slice(1)) {
+    const numMatch = sp.match(/<div class="stat-number">(.*?)<\/div>/);
+    const labelMatch = sp.match(/<div class="stat-label">(.*?)<\/div>/);
+    if (numMatch && labelMatch) {
+      items.push({ number: stripHtml(numMatch[1]), label: stripHtml(labelMatch[1]) });
+    }
+  }
+  return { type: "stats", items };
+}
+
+function parseLegend(blockHtml: string): Block {
+  const items: LegendItem[] = [];
+  const itemMatches = matchAll(blockHtml, /<div class="legend-item">([\s\S]*?)<\/div>/gi);
+  for (const im of itemMatches) {
+    const tagMatch = im[1].match(/<span class="(tag[^"]*)"[^>]*>.*?<\/span>\s*(.*)/);
+    if (tagMatch) items.push({ text: stripHtml(tagMatch[2]), className: tagMatch[1] });
+  }
+  return { type: "legend", items };
+}
+
+function parseSkillGrid(blockHtml: string): Block {
+  const cards: SkillCard[] = [];
+  const cardParts = blockHtml.split(/<div class="card">/);
+  for (const cp of cardParts.slice(1)) {
+    const nameMatch = cp.match(/<span class="card-name">(.*?)<\/span>/);
+    const cmdMatch = cp.match(/<span class="card-cmd">(.*?)<\/span>/);
+    const descMatch = cp.match(/<div class="card-desc">([\s\S]*?)<\/div>/);
+    const tags: { text: string; className: string }[] = [];
+    const tagMatches = matchAll(cp, /<span class="(tag[^"]*)"[^>]*>(.*?)<\/span>/gi);
+    for (const tm of tagMatches) {
+      if (!tm[1].includes("card-")) tags.push({ text: stripHtml(tm[2]), className: tm[1] });
+    }
+    if (nameMatch) {
       cards.push({
-        number: numMatch ? stripHtml(numMatch[1]) : "",
-        title: titleMatch ? stripHtml(titleMatch[1]) : "",
-        text: textMatch ? stripHtml(textMatch[1]) : "",
-      });
-    }
-    if (cards.length) blocks.push({ type: "how-grid", cards });
-  }
-
-  // 3. Workflow steps
-  const wfRe = /<div class="workflow">([\s\S]*?)<\/div>\s*<\/div>/gi;
-  const wfSections = matchAll(html, wfRe);
-  for (const sec of wfSections) {
-    const steps: WfStep[] = [];
-    const stepRe = /<div class="wf-step">([\s\S]*?)<\/div>/gi;
-    const stepMatches = matchAll(sec[1], stepRe);
-    for (const sm of stepMatches) {
-      const timeMatch = sm[1].match(/<span class="wf-time">(.*?)<\/span>/);
-      const time = timeMatch ? stripHtml(timeMatch[1]) : "";
-      const text = stripHtml(sm[1].replace(/<span class="wf-time">.*?<\/span>/, ""));
-      if (text) steps.push({ time, text });
-    }
-    if (steps.length) blocks.push({ type: "workflow", steps });
-  }
-
-  // 4. Stats
-  const statsRe = /<div class="stats">([\s\S]*?)<\/div>\s*<\/div>/gi;
-  const statsSections = matchAll(html, statsRe);
-  for (const sec of statsSections) {
-    const items: StatItem[] = [];
-    const statRe = /<div class="stat">([\s\S]*?)<\/div>\s*<\/div>/gi;
-    const statMatches = matchAll(sec[1], statRe);
-    for (const sm of statMatches) {
-      const numMatch = sm[1].match(/<div class="stat-number">(.*?)<\/div>/);
-      const labelMatch = sm[1].match(/<div class="stat-label">(.*?)<\/div>/);
-      items.push({
-        number: numMatch ? stripHtml(numMatch[1]) : "",
-        label: labelMatch ? stripHtml(labelMatch[1]) : "",
-      });
-    }
-    if (items.length) blocks.push({ type: "stats", items });
-  }
-
-  // 5. Legend
-  const legendRe = /<div class="legend">([\s\S]*?)<\/div>\s*<\/div>/gi;
-  const legendSections = matchAll(html, legendRe);
-  for (const sec of legendSections) {
-    const items: LegendItem[] = [];
-    const itemRe = /<div class="legend-item">([\s\S]*?)<\/div>/gi;
-    const itemMatches = matchAll(sec[1], itemRe);
-    for (const im of itemMatches) {
-      const tagMatch = im[1].match(/<span class="(tag[^"]*)"[^>]*>.*?<\/span>\s*(.*)/);
-      if (tagMatch) {
-        items.push({ text: stripHtml(tagMatch[2]), className: tagMatch[1] });
-      }
-    }
-    if (items.length) blocks.push({ type: "legend", items });
-  }
-
-  // 6. Skill card grids
-  const gridRe = /<div class="grid">([\s\S]*?)(?=<(?:h2|div class="grid")|\s*$)/gi;
-  const gridSections = matchAll(html, gridRe);
-  for (const sec of gridSections) {
-    const cards: SkillCard[] = [];
-    const cardRe = /<div class="card">([\s\S]*?)(?=<div class="card">|<\/div>\s*(?:<\/div>|<h2|<div class="grid"))/gi;
-    const cardMatches = matchAll(sec[1], cardRe);
-    for (const cm of cardMatches) {
-      const nameMatch = cm[1].match(/<span class="card-name">(.*?)<\/span>/);
-      const cmdMatch = cm[1].match(/<span class="card-cmd">(.*?)<\/span>/);
-      const descMatch = cm[1].match(/<div class="card-desc">([\s\S]*?)<\/div>/);
-
-      const tags: { text: string; className: string }[] = [];
-      const tagRe = /<span class="(tag[^"]*)">(.*?)<\/span>/gi;
-      const tagMatches = matchAll(cm[1], tagRe);
-      for (const tm of tagMatches) {
-        if (!tm[1].includes("card-")) {
-          tags.push({ text: stripHtml(tm[2]), className: tm[1] });
-        }
-      }
-
-      cards.push({
-        name: nameMatch ? stripHtml(nameMatch[1]) : "",
+        name: stripHtml(nameMatch[1]),
         cmd: cmdMatch ? stripHtml(cmdMatch[1]) : "",
         desc: descMatch ? stripHtml(descMatch[1]) : "",
         tags,
       });
     }
-    if (cards.length) blocks.push({ type: "skill-grid", cards });
   }
+  return { type: "skill-grid", cards };
+}
 
-  // 7. Now parse remaining text content (headings, paragraphs, etc.)
-  // Remove already-parsed structured blocks to avoid duplicates
-  let remaining = html
-    .replace(/<div class="arch-diagram">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, "{{BLOCK}}")
-    .replace(/<div class="how-grid">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi, "{{BLOCK}}")
-    .replace(/<div class="workflow">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
-    .replace(/<div class="stats">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
-    .replace(/<div class="legend">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
-    .replace(/<div class="grid">[\s\S]*?(?=<h2|$)/gi, "{{BLOCK}}");
+function parseHtmlContent(html: string): Block[] {
+  const blocks: Block[] = [];
+  const lines = html.split("\n");
 
-  // Build ordered list of text blocks from remaining HTML
-  const textBlocks: Block[] = [];
-  const lines = remaining.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    if (line.startsWith("<!--")) continue;
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed === "{{BLOCK}}") continue;
-    if (trimmed.startsWith("<!--")) continue;
-
-    // Headings
-    const h1m = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    if (h1m) { const t = stripHtml(h1m[1]); if (t) textBlocks.push({ type: "h1", text: t }); continue; }
-    const h2m = trimmed.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
-    if (h2m) { const t = stripHtml(h2m[1]); if (t) textBlocks.push({ type: "h2", text: t }); continue; }
-    const h3m = trimmed.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
-    if (h3m) { const t = stripHtml(h3m[1]); if (t) textBlocks.push({ type: "h3", text: t }); continue; }
-
-    // HR
-    if (/<hr/i.test(trimmed)) { textBlocks.push({ type: "hr" }); continue; }
-
-    // Code blocks
-    if (/<pre[^>]*>/i.test(trimmed) || (/<code[^>]*>/i.test(trimmed) && trimmed.includes("</code>"))) {
-      const t = stripHtml(trimmed);
-      if (t) textBlocks.push({ type: "code-block", text: t });
+    // Structured blocks — extract full block and parse
+    if (line.includes('class="arch-diagram"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseArchDiagram(blockHtml));
+      // Skip lines covered by this block
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
+      continue;
+    }
+    if (line.includes('class="how-grid"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseHowGrid(blockHtml));
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
+      continue;
+    }
+    if (line.includes('class="workflow"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseWorkflow(blockHtml));
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
+      continue;
+    }
+    if (line.includes('class="stats"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseStats(blockHtml));
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
+      continue;
+    }
+    if (line.includes('class="legend"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseLegend(blockHtml));
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
+      continue;
+    }
+    if (line.includes('class="grid"')) {
+      const pos = html.indexOf(line);
+      const blockHtml = extractBlock(html, pos);
+      blocks.push(parseSkillGrid(blockHtml));
+      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
+      i = endLine - 1;
       continue;
     }
 
+    // Skip wrapper divs (container, section wrappers, etc.)
+    if (/^<div class="(container|atlas-intro|how-section|workflow-section|logo-header)"/.test(line)) continue;
+    if (/^<\/div>$/.test(line)) continue;
+    if (/^<img /.test(line)) continue;
+
+    // Headings
+    const h1m = line.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1m) { const t = stripHtml(h1m[1]); if (t) blocks.push({ type: "h1", text: t }); continue; }
+    const h2m = line.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    if (h2m) { const t = stripHtml(h2m[1]); if (t) blocks.push({ type: "h2", text: t }); continue; }
+    const h3m = line.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+    if (h3m) { const t = stripHtml(h3m[1]); if (t) blocks.push({ type: "h3", text: t }); continue; }
+
+    // HR
+    if (/<hr/i.test(line)) { blocks.push({ type: "hr" }); continue; }
+
     // Paragraphs
-    if (/<p[^>]*>/i.test(trimmed)) {
-      const t = stripHtml(trimmed);
-      if (t) textBlocks.push({ type: "paragraph", text: t });
-      continue;
+    if (/<p[^>]*>/i.test(line)) {
+      const t = stripHtml(line); if (t) blocks.push({ type: "paragraph", text: t }); continue;
     }
 
     // List items
-    if (/<li[^>]*>/i.test(trimmed)) {
-      const t = stripHtml(trimmed);
-      if (t) textBlocks.push({ type: "list-item", text: t });
-      continue;
+    if (/<li[^>]*>/i.test(line)) {
+      const t = stripHtml(line); if (t) blocks.push({ type: "list-item", text: t }); continue;
     }
 
-    // Divs with actual text (not wrapper divs)
-    if (/<div[^>]*>/i.test(trimmed)) {
-      const t = stripHtml(trimmed);
-      if (t && t.length > 2) textBlocks.push({ type: "paragraph", text: t });
-      continue;
-    }
-
-    // Plain text
-    const t = stripHtml(trimmed);
-    if (t && t.length > 1) textBlocks.push({ type: "paragraph", text: t });
-  }
-
-  // Merge: interleave text blocks with structured blocks based on source order
-  // For now: text blocks first (they contain headings/intros), then structured blocks after their heading
-  // We need to reconstruct the original order by position in the HTML
-
-  // Simple approach: find position of each block in original HTML and sort
-  interface OrderedBlock { pos: number; block: Block }
-  const ordered: OrderedBlock[] = [];
-
-  // Text blocks: find position by searching for their content
-  for (const tb of textBlocks) {
-    if (tb.type === "hr") {
-      ordered.push({ pos: html.indexOf("<hr"), block: tb });
-      continue;
-    }
-    const text = "text" in tb ? tb.text : "";
-    const searchStr = text.substring(0, 30);
-    const pos = html.indexOf(searchStr);
-    ordered.push({ pos: pos >= 0 ? pos : ordered.length * 1000, block: tb });
-  }
-
-  // Structured blocks: find position
-  const structuredPositions: { re: RegExp; type: string }[] = [
-    { re: /class="arch-diagram"/gi, type: "arch-diagram" },
-    { re: /class="how-grid"/gi, type: "how-grid" },
-    { re: /class="workflow"/gi, type: "workflow" },
-    { re: /class="stats"/gi, type: "stats" },
-    { re: /class="legend"/gi, type: "legend" },
-    { re: /class="grid"/gi, type: "skill-grid" },
-  ];
-
-  const structuredBlocks = blocks.filter(b =>
-    ["arch-diagram", "how-grid", "workflow", "stats", "legend", "skill-grid"].includes(b.type)
-  );
-
-  for (const sb of structuredBlocks) {
-    const sp = structuredPositions.find(p => p.type === sb.type);
-    if (sp) {
-      const m = sp.re.exec(html);
-      ordered.push({ pos: m ? m.index : 9999, block: sb });
+    // Blockquote
+    if (/<blockquote/i.test(line)) {
+      const t = stripHtml(line); if (t) blocks.push({ type: "blockquote", text: t }); continue;
     }
   }
 
-  ordered.sort((a, b) => a.pos - b.pos);
-
-  // Deduplicate: remove text blocks that are just fragments of structured blocks
-  const finalBlocks: Block[] = [];
-  const seen = new Set<string>();
-  for (const ob of ordered) {
-    const key = ob.block.type + ("text" in ob.block ? ob.block.text.substring(0, 40) : "");
-    if (!seen.has(key)) {
-      seen.add(key);
-      finalBlocks.push(ob.block);
-    }
-  }
-
-  return finalBlocks;
+  return blocks;
 }
 
 // ===== MARKDOWN PARSER (fallback) =====

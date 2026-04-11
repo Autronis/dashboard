@@ -569,20 +569,22 @@ export default function ProjectenPage() {
   const projecten = data?.projecten ?? [];
   const serverKpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
 
+  const matchesZoek = useCallback((p: Project, q: string): boolean => {
+    return (
+      p.naam.toLowerCase().includes(q) ||
+      (p.klantNaam ?? "").toLowerCase().includes(q) ||
+      (p.omschrijving ?? "").toLowerCase().includes(q) ||
+      (p.taakTitels ?? "").toLowerCase().includes(q)
+    );
+  }, []);
+
   const filtered = useMemo(() => {
     return projecten.filter((p) => {
       if (activeTab !== "alle" && p.status !== activeTab) return false;
-      if (zoek) {
-        const q = zoek.toLowerCase();
-        return (
-          p.naam.toLowerCase().includes(q) ||
-          (p.klantNaam ?? "").toLowerCase().includes(q) ||
-          (p.omschrijving ?? "").toLowerCase().includes(q)
-        );
-      }
+      if (zoek) return matchesZoek(p, zoek.toLowerCase());
       return true;
     });
-  }, [projecten, activeTab, zoek]);
+  }, [projecten, activeTab, zoek, matchesZoek]);
 
   // Sort: health urgency first, then deadline, then activity
   const sorted = useMemo(() => {
@@ -605,10 +607,7 @@ export default function ProjectenPage() {
 
   const tabCounts = useMemo(() => {
     const base = zoek
-      ? projecten.filter((p) => {
-          const q = zoek.toLowerCase();
-          return p.naam.toLowerCase().includes(q) || (p.klantNaam ?? "").toLowerCase().includes(q) || (p.omschrijving ?? "").toLowerCase().includes(q);
-        })
+      ? projecten.filter((p) => matchesZoek(p, zoek.toLowerCase()))
       : projecten;
     return {
       actief: base.filter((p) => p.status === "actief").length,
@@ -616,7 +615,7 @@ export default function ProjectenPage() {
       "on-hold": base.filter((p) => p.status === "on-hold").length,
       alle: base.length,
     };
-  }, [projecten, zoek]);
+  }, [projecten, zoek, matchesZoek]);
 
   // Contextual KPIs based on current tab + search
   const kpis = useMemo(() => {
@@ -718,7 +717,7 @@ export default function ProjectenPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
               <input
                 type="text"
-                placeholder="Zoek project of klant..."
+                placeholder="Zoek project, klant of taak..."
                 value={zoek}
                 onChange={(e) => setZoek(e.target.value)}
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"

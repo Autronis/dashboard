@@ -152,7 +152,7 @@ function genPrompt(taak: FaseTaak, projectNaam: string, fase: string): string {
   return `Werk aan taak "${taak.titel}" in project ${projectNaam}. Dit valt onder ${fase}. Check de TODO.md en bestaande code. Vink de taak af in TODO.md als je klaar bent.`;
 }
 
-function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projectNaam: string; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
+function FaseSection({ fase, projectNaam, onStatusToggle, onBulkAfvinken }: { fase: Fase; projectNaam: string; onStatusToggle?: (taakId: number, huidigStatus: string) => void; onBulkAfvinken?: (taakIds: number[]) => void }) {
   const [open, setOpen] = useState(fase.afgerond < fase.totaal);
   const percentage = fase.totaal > 0 ? Math.round((fase.afgerond / fase.totaal) * 100) : 0;
   const isComplete = percentage >= 100;
@@ -163,7 +163,7 @@ function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projec
     <div className={cn("bg-autronis-card border rounded-2xl overflow-hidden card-glow", isComplete ? "border-green-500/20" : isNotStarted ? "border-autronis-border/50 opacity-80" : "border-autronis-border")}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors group/fase"
       >
         <div className="flex items-center gap-3">
           <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
@@ -180,6 +180,19 @@ function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projec
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {!isComplete && fase.taken.some((t) => t.status !== "afgerond") && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const openIds = fase.taken.filter((t) => t.status !== "afgerond").map((t) => t.id);
+                onBulkAfvinken?.(openIds);
+              }}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors font-medium opacity-0 group-hover/fase:opacity-100"
+              title="Alle open taken afvinken"
+            >
+              Alles afvinken
+            </button>
+          )}
           <span className={cn("text-sm font-bold tabular-nums", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{percentage}%</span>
           <div className="w-20"><ProgressBar percentage={percentage} /></div>
         </div>
@@ -551,6 +564,27 @@ export default function ProjectDetailPage() {
     }
   }, [fetchProject, addToast]);
 
+  const handleBulkAfvinken = useCallback(async (taakIds: number[]) => {
+    // Optimistic update
+    setFases((prev) => prev.map((f) => {
+      const updatedTaken = f.taken.map((t) => taakIds.includes(t.id) ? { ...t, status: "afgerond" } : t);
+      return { ...f, taken: updatedTaken, afgerond: updatedTaken.filter((t) => t.status === "afgerond").length };
+    }));
+    // Fire all status updates in parallel
+    const results = await Promise.allSettled(
+      taakIds.map((id) =>
+        fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "afgerond" }) })
+      )
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) {
+      addToast(`${failed} taken konden niet worden bijgewerkt`, "fout");
+      fetchProject();
+    } else {
+      addToast(`${taakIds.length} taken afgevinkt`, "succes");
+    }
+  }, [fetchProject, addToast]);
+
   const techStack = useMemo(() => extractTechStack(project?.omschrijving ?? null), [project?.omschrijving]);
   const samenvatting = useMemo(() => {
     if (!project) return "";
@@ -777,7 +811,7 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="space-y-3">
               {fases.map((fase) => (
-                <FaseSection key={fase.naam} fase={fase} projectNaam={project.naam} onStatusToggle={handleTaakStatusToggle} />
+                <FaseSection key={fase.naam} fase={fase} projectNaam={project.naam} onStatusToggle={handleTaakStatusToggle} onBulkAfvinken={handleBulkAfvinken} />
               ))}
             </div>
           )}

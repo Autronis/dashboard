@@ -150,4 +150,3 @@ main().catch((err) => {
   sqlite.close();
   process.exit(1);
 });
-// test

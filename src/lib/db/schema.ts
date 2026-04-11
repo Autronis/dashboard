@@ -1146,6 +1146,8 @@ export const ideeen = sqliteTable("ideeen", {
   impact: integer("impact"),
   effort: integer("effort"),
   revenuePotential: integer("revenue_potential"),
+  bron: text("bron"),
+  bronTekst: text("bron_tekst"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),

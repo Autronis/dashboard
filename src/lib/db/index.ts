@@ -77,6 +77,14 @@ if (isTurso) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
 
+  // Add bron / bron_tekst columns to ideeen on Turso
+  for (const col of [
+    "ALTER TABLE ideeen ADD COLUMN bron TEXT",
+    "ALTER TABLE ideeen ADD COLUMN bron_tekst TEXT",
+  ]) {
+    client.execute(col).catch(() => { /* column may already exist */ });
+  }
+
   // Add missing columns to bank_transacties on Turso
   for (const col of [
     "ALTER TABLE bank_transacties ADD COLUMN ai_beschrijving TEXT",
@@ -389,6 +397,15 @@ if (isTurso) {
   const trCols = sqliteDb.prepare("PRAGMA table_info(tijdregistraties)").all() as { name: string }[];
   if (!trCols.some((c: { name: string }) => c.name === "locatie")) {
     sqliteDb.exec("ALTER TABLE tijdregistraties ADD COLUMN locatie TEXT");
+  }
+
+  // Ideeen bron / bron_tekst columns
+  const ideeCols = sqliteDb.prepare("PRAGMA table_info(ideeen)").all() as { name: string }[];
+  if (!ideeCols.some((c: { name: string }) => c.name === "bron")) {
+    sqliteDb.exec("ALTER TABLE ideeen ADD COLUMN bron TEXT");
+  }
+  if (!ideeCols.some((c: { name: string }) => c.name === "bron_tekst")) {
+    sqliteDb.exec("ALTER TABLE ideeen ADD COLUMN bron_tekst TEXT");
   }
 
   // API token gebruik table

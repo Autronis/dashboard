@@ -26,6 +26,8 @@ export interface Idee {
   impact: number | null;
   effort: number | null;
   revenuePotential: number | null;
+  bron: string | null;
+  bronTekst: string | null;
 }
 
 // ============ FETCH FUNCTIONS ============

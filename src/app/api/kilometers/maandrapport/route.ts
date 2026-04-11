@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
 
       const dashboardUrl = process.env.NEXT_PUBLIC_URL ?? "https://dashboard.autronis.nl";
 
-      await resend.emails.send({
+      await getResend().emails.send({
         from: "Autronis <noreply@autronis.nl>",
         to: user.email,
         subject: `Kilometerrapport ${maandNaam} ${jaar}`,

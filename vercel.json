@@ -35,6 +35,10 @@
     {
       "path": "/api/kilometers/maandrapport",
       "schedule": "0 8 1 * *"
+    },
+    {
+      "path": "/api/administratie/gmail-sync",
+      "schedule": "*/30 7-22 * * *"
     }
   ]
 }

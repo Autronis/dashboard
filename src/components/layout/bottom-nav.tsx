@@ -75,6 +75,7 @@ export function BottomNav() {
                 <button
                   onClick={() => setMoreOpen(false)}
                   className="p-1.5 rounded-lg hover:bg-autronis-border text-autronis-text-secondary"
+                  aria-label="Menu sluiten"
                 >
                   <X className="w-5 h-5" />
                 </button>

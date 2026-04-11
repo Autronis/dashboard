@@ -218,6 +218,7 @@ function LauncherItem({
             : "text-autronis-text-secondary hover:bg-autronis-border/30 hover:text-autronis-text-primary"
         )}
         title={isCollapsed ? item.label : undefined}
+        aria-expanded={open}
       >
         {isActive && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-autronis-accent rounded-r" />
@@ -526,12 +527,13 @@ export function Sidebar() {
               <span className="text-lg font-bold text-autronis-text-primary tracking-tight">Autronis</span>
             )}
           </Link>
-          <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-autronis-border/30 text-autronis-text-secondary lg:hidden ml-auto">
+          <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-autronis-border/30 text-autronis-text-secondary lg:hidden ml-auto" aria-label="Menu sluiten">
             <X className="w-5 h-5" />
           </button>
           <button
             onClick={() => setCollapsed(!isCollapsed)}
             className={cn("hidden lg:flex p-1 rounded-lg hover:bg-autronis-border/30 text-autronis-text-secondary transition-transform duration-300", isCollapsed ? "ml-auto rotate-180" : "ml-auto")}
+            aria-label={isCollapsed ? "Sidebar uitklappen" : "Sidebar inklappen"}
           >
             <ChevronLeft className="w-4 h-4" />
           </button>

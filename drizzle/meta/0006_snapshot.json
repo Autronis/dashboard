@@ -1,9 +1,136 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "70258392-6dff-43ce-ad29-fe375f5e1806",
-  "prevId": "4202eb17-7e98-477e-91b7-7b233c7ec215",
+  "id": "d4fe48d0-c5c6-456b-beb3-173b1d96310c",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
+    "abonnementen": {
+      "name": "abonnementen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "naam": {
+          "name": "naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "leverancier": {
+          "name": "leverancier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bedrag": {
+          "name": "bedrag",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "frequentie": {
+          "name": "frequentie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'maandelijks'"
+        },
+        "categorie": {
+          "name": "categorie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'tools'"
+        },
+        "start_datum": {
+          "name": "start_datum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "volgende_betaling": {
+          "name": "volgende_betaling",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notities": {
+          "name": "notities",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "abonnementen_project_id_projecten_id_fk": {
+          "name": "abonnementen_project_id_projecten_id_fk",
+          "tableFrom": "abonnementen",
+          "tableTo": "projecten",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "agenda_items": {
       "name": "agenda_items",
       "columns": {
@@ -169,6 +296,22 @@
           "autoincrement": false,
           "default": 0
         },
+        "team": {
+          "name": "team",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'sem'"
+        },
+        "verdieping": {
+          "name": "verdieping",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 1
+        },
         "laatst_gezien": {
           "name": "laatst_gezien",
           "type": "text",
@@ -200,9 +343,98 @@
             "status"
           ],
           "isUnique": false
+        },
+        "idx_agent_activiteit_team": {
+          "name": "idx_agent_activiteit_team",
+          "columns": [
+            "team"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "agent_projecten": {
+      "name": "agent_projecten",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "agent_id": {
+          "name": "agent_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_naam": {
+          "name": "project_naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "specialisatie": {
+          "name": "specialisatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'actief'"
+        },
+        "toegewezen_op": {
+          "name": "toegewezen_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "afgerond_op": {
+          "name": "afgerond_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "agent_projecten_project_id_projecten_id_fk": {
+          "name": "agent_projecten_project_id_projecten_id_fk",
+          "tableFrom": "agent_projecten",
+          "tableTo": "projecten",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -367,6 +599,216 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "api_token_gebruik": {
+      "name": "api_token_gebruik",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "input_tokens": {
+          "name": "input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "output_tokens": {
+          "name": "output_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "kosten_cent": {
+          "name": "kosten_cent",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "route": {
+          "name": "route",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "idx_atg_provider_datum": {
+          "name": "idx_atg_provider_datum",
+          "columns": [
+            "provider",
+            "aangemaakt_op"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "asset_gallery": {
+      "name": "asset_gallery",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "product_naam": {
+          "name": "product_naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "eind_effect": {
+          "name": "eind_effect",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "manifest": {
+          "name": "manifest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prompt_a": {
+          "name": "prompt_a",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prompt_b": {
+          "name": "prompt_b",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prompt_video": {
+          "name": "prompt_video",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "afbeelding_url": {
+          "name": "afbeelding_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "video_url": {
+          "name": "video_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "lokaal_pad": {
+          "name": "lokaal_pad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_favoriet": {
+          "name": "is_favoriet",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "asset_gallery_project_id_projecten_id_fk": {
+          "name": "asset_gallery_project_id_projecten_id_fk",
+          "tableFrom": "asset_gallery",
+          "tableTo": "projecten",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "audit_log": {
       "name": "audit_log",
       "columns": {
@@ -440,6 +882,76 @@
         "audit_log_gebruiker_id_gebruikers_id_fk": {
           "name": "audit_log_gebruiker_id_gebruikers_id_fk",
           "tableFrom": "audit_log",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "auto_instellingen": {
+      "name": "auto_instellingen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "zakelijk_percentage": {
+          "name": "zakelijk_percentage",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 75
+        },
+        "tarief_per_km": {
+          "name": "tarief_per_km",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0.23
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "auto_instellingen_gebruiker_id_unique": {
+          "name": "auto_instellingen_gebruiker_id_unique",
+          "columns": [
+            "gebruiker_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "auto_instellingen_gebruiker_id_gebruikers_id_fk": {
+          "name": "auto_instellingen_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "auto_instellingen",
           "tableTo": "gebruikers",
           "columnsFrom": [
             "gebruiker_id"
@@ -582,6 +1094,92 @@
           "notNull": false,
           "autoincrement": false
         },
+        "revolut_transactie_id": {
+          "name": "revolut_transactie_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "merchant_naam": {
+          "name": "merchant_naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "merchant_categorie": {
+          "name": "merchant_categorie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ai_beschrijving": {
+          "name": "ai_beschrijving",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_abonnement": {
+          "name": "is_abonnement",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "overbodigheid_score": {
+          "name": "overbodigheid_score",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "fiscaal_type": {
+          "name": "fiscaal_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "subsidie_mogelijkheden": {
+          "name": "subsidie_mogelijkheden",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "btw_bedrag": {
+          "name": "btw_bedrag",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "kia_aftrek": {
+          "name": "kia_aftrek",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_verlegging": {
+          "name": "is_verlegging",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "bon_pad": {
+          "name": "bon_pad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "aangemaakt_op": {
           "name": "aangemaakt_op",
           "type": "text",
@@ -666,6 +1264,13 @@
         },
         "telefoon": {
           "name": "telefoon",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "website": {
+          "name": "website",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -920,6 +1525,103 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "belasting_tips": {
+      "name": "belasting_tips",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "categorie": {
+          "name": "categorie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "beschrijving": {
+          "name": "beschrijving",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "voordeel": {
+          "name": "voordeel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bron": {
+          "name": "bron",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bron_naam": {
+          "name": "bron_naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "jaar": {
+          "name": "jaar",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_ai_gegenereerd": {
+          "name": "is_ai_gegenereerd",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "toegepast": {
+          "name": "toegepast",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "toegepast_op": {
+          "name": "toegepast_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "beschikbaarheid": {
       "name": "beschikbaarheid",
       "columns": {
@@ -968,6 +1670,107 @@
           "tableTo": "gebruikers",
           "columnsFrom": [
             "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "brandstof_kosten": {
+      "name": "brandstof_kosten",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "datum": {
+          "name": "datum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bedrag": {
+          "name": "bedrag",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "liters": {
+          "name": "liters",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "km_stand": {
+          "name": "km_stand",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bank_transactie_id": {
+          "name": "bank_transactie_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notitie": {
+          "name": "notitie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "brandstof_kosten_gebruiker_id_gebruikers_id_fk": {
+          "name": "brandstof_kosten_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "brandstof_kosten",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "brandstof_kosten_bank_transactie_id_bank_transacties_id_fk": {
+          "name": "brandstof_kosten_bank_transactie_id_bank_transacties_id_fk",
+          "tableFrom": "brandstof_kosten",
+          "tableTo": "bank_transacties",
+          "columnsFrom": [
+            "bank_transactie_id"
           ],
           "columnsTo": [
             "id"
@@ -1129,6 +1932,101 @@
           "autoincrement": false,
           "default": 0
         },
+        "rubriek_1a_omzet": {
+          "name": "rubriek_1a_omzet",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_1a_btw": {
+          "name": "rubriek_1a_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_1b_omzet": {
+          "name": "rubriek_1b_omzet",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_1b_btw": {
+          "name": "rubriek_1b_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_4a_omzet": {
+          "name": "rubriek_4a_omzet",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_4a_btw": {
+          "name": "rubriek_4a_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_4b_omzet": {
+          "name": "rubriek_4b_omzet",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_4b_btw": {
+          "name": "rubriek_4b_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_5a_btw": {
+          "name": "rubriek_5a_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "rubriek_5b_btw": {
+          "name": "rubriek_5b_btw",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "saldo": {
+          "name": "saldo",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "betalingskenmerk": {
+          "name": "betalingskenmerk",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "status": {
           "name": "status",
           "type": "text",
@@ -1162,6 +2060,119 @@
       },
       "indexes": {},
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "client_automaties": {
+      "name": "client_automaties",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "klant_id": {
+          "name": "klant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "naam": {
+          "name": "naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'overig'"
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'onbekend'"
+        },
+        "last_run_at": {
+          "name": "last_run_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "last_run_status": {
+          "name": "last_run_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notities": {
+          "name": "notities",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "client_automaties_klant_id_klanten_id_fk": {
+          "name": "client_automaties_klant_id_klanten_id_fk",
+          "tableFrom": "client_automaties",
+          "tableTo": "klanten",
+          "columnsFrom": [
+            "klant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -1243,6 +2254,117 @@
           "tableTo": "gebruikers",
           "columnsFrom": [
             "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "client_health_scores": {
+      "name": "client_health_scores",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "klant_id": {
+          "name": "klant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "totaal_score": {
+          "name": "totaal_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "communicatie_score": {
+          "name": "communicatie_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "betaling_score": {
+          "name": "betaling_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "project_score": {
+          "name": "project_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "tevredenheid_score": {
+          "name": "tevredenheid_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "activiteit_score": {
+          "name": "activiteit_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "details": {
+          "name": "details",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'{}'"
+        },
+        "berekend_op": {
+          "name": "berekend_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "idx_chs_klant": {
+          "name": "idx_chs_klant",
+          "columns": [
+            "klant_id"
+          ],
+          "isUnique": false
+        },
+        "idx_chs_datum": {
+          "name": "idx_chs_datum",
+          "columns": [
+            "berekend_op"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "client_health_scores_klant_id_klanten_id_fk": {
+          "name": "client_health_scores_klant_id_klanten_id_fk",
+          "tableFrom": "client_health_scores",
+          "tableTo": "klanten",
+          "columnsFrom": [
+            "klant_id"
           ],
           "columnsTo": [
             "id"
@@ -2231,6 +3353,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "offerte_id": {
+          "name": "offerte_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "titel": {
           "name": "titel",
           "type": "text",
@@ -2260,6 +3389,42 @@
           "notNull": false,
           "autoincrement": false,
           "default": "'concept'"
+        },
+        "verloopdatum": {
+          "name": "verloopdatum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ondertekening_token": {
+          "name": "ondertekening_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ondertekening_ip": {
+          "name": "ondertekening_ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ondertekend_op": {
+          "name": "ondertekend_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
         },
         "aangemaakt_door": {
           "name": "aangemaakt_door",
@@ -2300,12 +3465,134 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "contracten_offerte_id_offertes_id_fk": {
+          "name": "contracten_offerte_id_offertes_id_fk",
+          "tableFrom": "contracten",
+          "tableTo": "offertes",
+          "columnsFrom": [
+            "offerte_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "contracten_aangemaakt_door_gebruikers_id_fk": {
           "name": "contracten_aangemaakt_door_gebruikers_id_fk",
           "tableFrom": "contracten",
           "tableTo": "gebruikers",
           "columnsFrom": [
             "aangemaakt_door"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "dagritme": {
+      "name": "dagritme",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "datum": {
+          "name": "datum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stemming": {
+          "name": "stemming",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "intentie": {
+          "name": "intentie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "prioriteiten": {
+          "name": "prioriteiten",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "voltooide_taken": {
+          "name": "voltooide_taken",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "reflectie": {
+          "name": "reflectie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "verschuivingen": {
+          "name": "verschuivingen",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "energie": {
+          "name": "energie",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "dagritme_gebruiker_id_gebruikers_id_fk": {
+          "name": "dagritme_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "dagritme",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
           ],
           "columnsTo": [
             "id"
@@ -2803,6 +4090,27 @@
             "factuurnummer"
           ],
           "isUnique": true
+        },
+        "idx_facturen_klant_id": {
+          "name": "idx_facturen_klant_id",
+          "columns": [
+            "klant_id"
+          ],
+          "isUnique": false
+        },
+        "idx_facturen_project_id": {
+          "name": "idx_facturen_project_id",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": false
+        },
+        "idx_facturen_status": {
+          "name": "idx_facturen_status",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -3085,6 +4393,374 @@
           "tableTo": "tijdregistraties",
           "columnsFrom": [
             "tijdregistratie_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "follow_up_log": {
+      "name": "follow_up_log",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "regel_id": {
+          "name": "regel_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "contact_type": {
+          "name": "contact_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "contact_id": {
+          "name": "contact_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "offerte_id": {
+          "name": "offerte_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'getriggerd'"
+        },
+        "dagen_geleden": {
+          "name": "dagen_geleden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "email_verstuurd": {
+          "name": "email_verstuurd",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "foutmelding": {
+          "name": "foutmelding",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notitie": {
+          "name": "notitie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "verstuurd_op": {
+          "name": "verstuurd_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "idx_ful_contact": {
+          "name": "idx_ful_contact",
+          "columns": [
+            "contact_type",
+            "contact_id"
+          ],
+          "isUnique": false
+        },
+        "idx_ful_status": {
+          "name": "idx_ful_status",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_ful_datum": {
+          "name": "idx_ful_datum",
+          "columns": [
+            "aangemaakt_op"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "follow_up_log_regel_id_follow_up_regels_id_fk": {
+          "name": "follow_up_log_regel_id_follow_up_regels_id_fk",
+          "tableFrom": "follow_up_log",
+          "tableTo": "follow_up_regels",
+          "columnsFrom": [
+            "regel_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "follow_up_log_template_id_follow_up_templates_id_fk": {
+          "name": "follow_up_log_template_id_follow_up_templates_id_fk",
+          "tableFrom": "follow_up_log",
+          "tableTo": "follow_up_templates",
+          "columnsFrom": [
+            "template_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "follow_up_log_offerte_id_offertes_id_fk": {
+          "name": "follow_up_log_offerte_id_offertes_id_fk",
+          "tableFrom": "follow_up_log",
+          "tableTo": "offertes",
+          "columnsFrom": [
+            "offerte_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "follow_up_regels": {
+      "name": "follow_up_regels",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "naam": {
+          "name": "naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "doelgroep": {
+          "name": "doelgroep",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'beide'"
+        },
+        "dagen_drempel": {
+          "name": "dagen_drempel",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "aangemaakt_door": {
+          "name": "aangemaakt_door",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "follow_up_regels_template_id_follow_up_templates_id_fk": {
+          "name": "follow_up_regels_template_id_follow_up_templates_id_fk",
+          "tableFrom": "follow_up_regels",
+          "tableTo": "follow_up_templates",
+          "columnsFrom": [
+            "template_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "follow_up_regels_aangemaakt_door_gebruikers_id_fk": {
+          "name": "follow_up_regels_aangemaakt_door_gebruikers_id_fk",
+          "tableFrom": "follow_up_regels",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "aangemaakt_door"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "follow_up_templates": {
+      "name": "follow_up_templates",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "naam": {
+          "name": "naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "onderwerp": {
+          "name": "onderwerp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "inhoud": {
+          "name": "inhoud",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'email'"
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "aangemaakt_door": {
+          "name": "aangemaakt_door",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "follow_up_templates_aangemaakt_door_gebruikers_id_fk": {
+          "name": "follow_up_templates_aangemaakt_door_gebruikers_id_fk",
+          "tableFrom": "follow_up_templates",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "aangemaakt_door"
           ],
           "columnsTo": [
             "id"
@@ -4017,6 +5693,13 @@
           "autoincrement": false,
           "default": 0.23
         },
+        "terugkerende_rit_id": {
+          "name": "terugkerende_rit_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "aangemaakt_op": {
           "name": "aangemaakt_op",
           "type": "text",
@@ -4131,6 +5814,14 @@
           "notNull": false,
           "autoincrement": false
         },
+        "klant_type": {
+          "name": "klant_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'klant'"
+        },
         "is_actief": {
           "name": "is_actief",
           "type": "integer",
@@ -4195,6 +5886,14 @@
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
+        },
+        "taal": {
+          "name": "taal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "'nl'"
         },
         "klant_sinds": {
           "name": "klant_sinds",
@@ -4344,6 +6043,170 @@
           "tableTo": "projecten",
           "columnsFrom": [
             "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "km_stand_fotos": {
+      "name": "km_stand_fotos",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "km_stand_id": {
+          "name": "km_stand_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bestandsnaam": {
+          "name": "bestandsnaam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bestandspad": {
+          "name": "bestandspad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "km_stand_fotos_km_stand_id_km_standen_id_fk": {
+          "name": "km_stand_fotos_km_stand_id_km_standen_id_fk",
+          "tableFrom": "km_stand_fotos",
+          "tableTo": "km_standen",
+          "columnsFrom": [
+            "km_stand_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "km_stand_fotos_gebruiker_id_gebruikers_id_fk": {
+          "name": "km_stand_fotos_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "km_stand_fotos",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "km_standen": {
+      "name": "km_standen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "jaar": {
+          "name": "jaar",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "maand": {
+          "name": "maand",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "begin_stand": {
+          "name": "begin_stand",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "eind_stand": {
+          "name": "eind_stand",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "km_standen_gebruiker_jaar_maand": {
+          "name": "km_standen_gebruiker_jaar_maand",
+          "columns": [
+            "gebruiker_id",
+            "jaar",
+            "maand"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "km_standen_gebruiker_id_gebruikers_id_fk": {
+          "name": "km_standen_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "km_standen",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
           ],
           "columnsTo": [
             "id"
@@ -4576,6 +6439,157 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "locatie_aliassen": {
+      "name": "locatie_aliassen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "alias": {
+          "name": "alias",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "genormaliseerde_naam": {
+          "name": "genormaliseerde_naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "locatie_aliassen_gebruiker_alias": {
+          "name": "locatie_aliassen_gebruiker_alias",
+          "columns": [
+            "gebruiker_id",
+            "alias"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "locatie_aliassen_gebruiker_id_gebruikers_id_fk": {
+          "name": "locatie_aliassen_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "locatie_aliassen",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "mealplan_plans": {
+      "name": "mealplan_plans",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "plan_json": {
+          "name": "plan_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "settings_json": {
+          "name": "settings_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "chat_json": {
+          "name": "chat_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "restjes_json": {
+          "name": "restjes_json",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "mealplan_plans_gebruiker_id_gebruikers_id_fk": {
+          "name": "mealplan_plans_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "mealplan_plans",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "meetings": {
       "name": "meetings",
       "columns": {
@@ -4617,6 +6631,13 @@
         "duur_minuten": {
           "name": "duur_minuten",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "meeting_url": {
+          "name": "meeting_url",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -4688,6 +6709,13 @@
           "notNull": false,
           "autoincrement": false,
           "default": "'verwerken'"
+        },
+        "recall_bot_id": {
+          "name": "recall_bot_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "aangemaakt_door": {
           "name": "aangemaakt_door",
@@ -6380,6 +8408,27 @@
           "autoincrement": false,
           "default": 1
         },
+        "notion_page_id": {
+          "name": "notion_page_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "notion_url": {
+          "name": "notion_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_dir": {
+          "name": "project_dir",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "aangemaakt_door": {
           "name": "aangemaakt_door",
           "type": "integer",
@@ -6404,7 +8453,23 @@
           "default": "(datetime('now'))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_projecten_klant_id": {
+          "name": "idx_projecten_klant_id",
+          "columns": [
+            "klant_id"
+          ],
+          "isUnique": false
+        },
+        "idx_projecten_status_actief": {
+          "name": "idx_projecten_status_actief",
+          "columns": [
+            "status",
+            "is_actief"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "projecten_klant_id_klanten_id_fk": {
           "name": "projecten_klant_id_klanten_id_fk",
@@ -6651,6 +8716,81 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
+    "push_subscriptions": {
+      "name": "push_subscriptions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "endpoint": {
+          "name": "endpoint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "keys_p256dh": {
+          "name": "keys_p256dh",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "keys_auth": {
+          "name": "keys_auth",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "push_subscriptions_endpoint_unique": {
+          "name": "push_subscriptions_endpoint_unique",
+          "columns": [
+            "endpoint"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "push_subscriptions_gebruiker_id_gebruikers_id_fk": {
+          "name": "push_subscriptions_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "push_subscriptions",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
     "radar_bronnen": {
       "name": "radar_bronnen",
       "columns": {
@@ -6879,6 +9019,96 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "revolut_verbinding": {
+      "name": "revolut_verbinding",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "token_verloopt_op": {
+          "name": "token_verloopt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "webhook_id": {
+          "name": "webhook_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "webhook_secret": {
+          "name": "webhook_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "laatste_sync_op": {
+          "name": "laatste_sync_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        },
+        "bijgewerkt_op": {
+          "name": "bijgewerkt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -7232,6 +9462,13 @@
           "notNull": false,
           "autoincrement": false,
           "default": "'agent'"
+        },
+        "locatie": {
+          "name": "locatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
         },
         "aangemaakt_op": {
           "name": "aangemaakt_op",
@@ -7991,6 +10228,41 @@
           "notNull": false,
           "autoincrement": false
         },
+        "google_plan_event_id": {
+          "name": "google_plan_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "geschatte_duur": {
+          "name": "geschatte_duur",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ingepland_start": {
+          "name": "ingepland_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "ingepland_eind": {
+          "name": "ingepland_eind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "kalender_id": {
+          "name": "kalender_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "aangemaakt_op": {
           "name": "aangemaakt_op",
           "type": "text",
@@ -8008,7 +10280,29 @@
           "default": "(datetime('now'))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_taken_project_id": {
+          "name": "idx_taken_project_id",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": false
+        },
+        "idx_taken_status": {
+          "name": "idx_taken_status",
+          "columns": [
+            "status"
+          ],
+          "isUnique": false
+        },
+        "idx_taken_toegewezen": {
+          "name": "idx_taken_toegewezen",
+          "columns": [
+            "toegewezen_aan"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "taken_project_id_projecten_id_fk": {
           "name": "taken_project_id_projecten_id_fk",
@@ -8042,6 +10336,305 @@
           "tableTo": "gebruikers",
           "columnsFrom": [
             "aangemaakt_door"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "taken_kalender_id_externe_kalenders_id_fk": {
+          "name": "taken_kalender_id_externe_kalenders_id_fk",
+          "tableFrom": "taken",
+          "tableTo": "externe_kalenders",
+          "columnsFrom": [
+            "kalender_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "team_activiteit": {
+      "name": "team_activiteit",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "taak_id": {
+          "name": "taak_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "bericht": {
+          "name": "bericht",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "team_activiteit_gebruiker_id_gebruikers_id_fk": {
+          "name": "team_activiteit_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "team_activiteit",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_activiteit_taak_id_taken_id_fk": {
+          "name": "team_activiteit_taak_id_taken_id_fk",
+          "tableFrom": "team_activiteit",
+          "tableTo": "taken",
+          "columnsFrom": [
+            "taak_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "team_activiteit_project_id_projecten_id_fk": {
+          "name": "team_activiteit_project_id_projecten_id_fk",
+          "tableFrom": "team_activiteit",
+          "tableTo": "projecten",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "terugkerende_ritten": {
+      "name": "terugkerende_ritten",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "gebruiker_id": {
+          "name": "gebruiker_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "naam": {
+          "name": "naam",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "van_locatie": {
+          "name": "van_locatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "naar_locatie": {
+          "name": "naar_locatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "kilometers": {
+          "name": "kilometers",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "is_retour": {
+          "name": "is_retour",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 0
+        },
+        "doel_type": {
+          "name": "doel_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "klant_id": {
+          "name": "klant_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "frequentie": {
+          "name": "frequentie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "dag_van_week": {
+          "name": "dag_van_week",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "dag_van_maand": {
+          "name": "dag_van_maand",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "start_datum": {
+          "name": "start_datum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "eind_datum": {
+          "name": "eind_datum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_actief": {
+          "name": "is_actief",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": 1
+        },
+        "laatste_generatie": {
+          "name": "laatste_generatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "terugkerende_ritten_gebruiker_id_gebruikers_id_fk": {
+          "name": "terugkerende_ritten_gebruiker_id_gebruikers_id_fk",
+          "tableFrom": "terugkerende_ritten",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "gebruiker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "terugkerende_ritten_klant_id_klanten_id_fk": {
+          "name": "terugkerende_ritten_klant_id_klanten_id_fk",
+          "tableFrom": "terugkerende_ritten",
+          "tableTo": "klanten",
+          "columnsFrom": [
+            "klant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "terugkerende_ritten_project_id_projecten_id_fk": {
+          "name": "terugkerende_ritten_project_id_projecten_id_fk",
+          "tableFrom": "terugkerende_ritten",
+          "tableTo": "projecten",
+          "columnsFrom": [
+            "project_id"
           ],
           "columnsTo": [
             "id"
@@ -8122,6 +10715,13 @@
           "autoincrement": false,
           "default": 0
         },
+        "locatie": {
+          "name": "locatie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "aangemaakt_op": {
           "name": "aangemaakt_op",
           "type": "text",
@@ -8131,7 +10731,23 @@
           "default": "(datetime('now'))"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_tijdreg_project_id": {
+          "name": "idx_tijdreg_project_id",
+          "columns": [
+            "project_id"
+          ],
+          "isUnique": false
+        },
+        "idx_tijdreg_gebruiker_start": {
+          "name": "idx_tijdreg_gebruiker_start",
+          "columns": [
+            "gebruiker_id",
+            "start_tijd"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "tijdregistraties_gebruiker_id_gebruikers_id_fk": {
           "name": "tijdregistraties_gebruiker_id_gebruikers_id_fk",
@@ -8235,6 +10851,13 @@
         },
         "bonnetje_url": {
           "name": "bonnetje_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "is_buitenland": {
+          "name": "is_buitenland",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
@@ -8365,6 +10988,46 @@
           "onUpdate": "no action"
         }
       },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "verborgen_kalender_meetings": {
+      "name": "verborgen_kalender_meetings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "kalender_event_id": {
+          "name": "kalender_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "verborgen_op": {
+          "name": "verborgen_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {
+        "verborgen_kalender_meetings_kalender_event_id_unique": {
+          "name": "verborgen_kalender_meetings_kalender_event_id_unique",
+          "columns": [
+            "kalender_event_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -8521,6 +11184,129 @@
       },
       "indexes": {},
       "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "video_samenvattingen": {
+      "name": "video_samenvattingen",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "youtube_url": {
+          "name": "youtube_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "youtube_id": {
+          "name": "youtube_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "titel": {
+          "name": "titel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "kanaal": {
+          "name": "kanaal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "thumbnail_url": {
+          "name": "thumbnail_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "transcript": {
+          "name": "transcript",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "samenvatting": {
+          "name": "samenvatting",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "key_takeaways": {
+          "name": "key_takeaways",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "stappenplan": {
+          "name": "stappenplan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "relevantie_score": {
+          "name": "relevantie_score",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_door": {
+          "name": "aangemaakt_door",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "aangemaakt_op": {
+          "name": "aangemaakt_op",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false,
+          "default": "(datetime('now'))"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "video_samenvattingen_aangemaakt_door_gebruikers_id_fk": {
+          "name": "video_samenvattingen_aangemaakt_door_gebruikers_id_fk",
+          "tableFrom": "video_samenvattingen",
+          "tableTo": "gebruikers",
+          "columnsFrom": [
+            "aangemaakt_door"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}

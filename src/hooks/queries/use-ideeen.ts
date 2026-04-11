@@ -312,3 +312,25 @@ export function useConfidenceRecalc() {
     },
   });
 }
+
+export function useProjectPreview(ideeId: number | null) {
+  return useQuery({
+    queryKey: ["project-preview", ideeId],
+    queryFn: async () => {
+      const res = await fetch(`/api/ideeen/${ideeId}/start-project`);
+      if (!res.ok) throw new Error("Preview laden mislukt");
+      const data = await res.json();
+      return data.preview as {
+        geschatteUren: number;
+        geschatteDoorlooptijd: string;
+        fases: number;
+        eersteTaken: string[];
+        vergelijkbaarProject: string | null;
+        suggestieModus: "team" | "zelf";
+        actieveProjecten: number;
+      };
+    },
+    enabled: ideeId !== null && ideeId > 0,
+    staleTime: 60_000,
+  });
+}

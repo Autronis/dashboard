@@ -9,6 +9,7 @@ import { requireAuth } from "@/lib/auth";
 import { eq, like, sql } from "drizzle-orm";
 import { createEnrichedNotionPlan } from "@/lib/notion-plan-generator";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { aiCompleteJson } from "@/lib/ai/client";
 
 const PROJECTS_BASE = process.env.PROJECTS_BASE_PATH
   || (process.platform === "win32"
@@ -213,6 +214,76 @@ export async function POST(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },
       { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
     );
+  }
+}
+
+// GET /api/ideeen/[id]/start-project — Preview before starting
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const { id } = await params;
+    const ideeId = Number(id);
+
+    const idee = await db.select().from(ideeen).where(eq(ideeen.id, ideeId)).get();
+    if (!idee) return NextResponse.json({ fout: "Idee niet gevonden" }, { status: 404 });
+
+    // Find similar completed projects
+    const vergelijkbaar = await db
+      .select({ naam: projecten.naam })
+      .from(projecten)
+      .where(eq(projecten.status, "afgerond"))
+      .limit(5)
+      .all();
+
+    // Count active projects for workload context
+    const actieveResult = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(projecten)
+      .where(eq(projecten.status, "actief"))
+      .get();
+
+    // AI preview
+    let preview = {
+      geschatteUren: 20,
+      geschatteDoorlooptijd: "2-3 weken",
+      fases: 3,
+      eersteTaken: ["Setup project structuur", "Eerste feature bouwen", "Testen en deployen"],
+      vergelijkbaarProject: null as string | null,
+    };
+
+    try {
+      const aiResult = await aiCompleteJson<{
+        geschatteUren: number;
+        geschatteDoorlooptijd: string;
+        fases: number;
+        eersteTaken: string[];
+        vergelijkbaarProject: string | null;
+      }>({
+        system: `Geef een korte project preview. Antwoord ALLEEN met JSON: {"geschatteUren": number, "geschatteDoorlooptijd": "string", "fases": number, "eersteTaken": ["taak1", "taak2", "taak3"], "vergelijkbaarProject": "naam of null"}`,
+        prompt: `Idee: "${idee.naam}" — ${idee.omschrijving || "geen omschrijving"}. Vergelijkbare afgeronde projecten: ${vergelijkbaar.map(p => p.naam).join(", ") || "geen"}. Huidige werkdruk: ${actieveResult?.count ?? 0} actieve projecten.`,
+        maxTokens: 300,
+      });
+      preview = aiResult;
+    } catch { /* use defaults */ }
+
+    const suggestieModus = (preview.geschatteUren || 20) > 10 ? "team" : "zelf";
+
+    return NextResponse.json({
+      preview: {
+        ...preview,
+        suggestieModus,
+        actieveProjecten: actieveResult?.count ?? 0,
+      },
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : "Onbekende fout";
+    if (message === "Niet geauthenticeerd") {
+      return NextResponse.json({ fout: message }, { status: 401 });
+    }
+    return NextResponse.json({ fout: message }, { status: 500 });
   }
 }
 

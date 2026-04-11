@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { kilometerRegistraties, klanten, brandstofKosten } from "@/lib/db/schema";
+import { kilometerRegistraties, klanten, brandstofKosten, kmStanden } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -59,6 +59,19 @@ export async function GET(req: NextRequest) {
       .where(and(...conditions))
       .groupBy(kilometerRegistraties.klantId)
       .orderBy(sql`SUM(${kilometerRegistraties.kilometers}) DESC`)
+      .all();
+
+    // Per doel type
+    const perDoelType = await db
+      .select({
+        type: kilometerRegistraties.doelType,
+        km: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers}), 0)`,
+        ritten: sql<number>`COUNT(*)`,
+        bedrag: sql<number>`COALESCE(SUM(${kilometerRegistraties.kilometers} * COALESCE(${kilometerRegistraties.tariefPerKm}, 0.23)), 0)`,
+      })
+      .from(kilometerRegistraties)
+      .where(and(...conditions))
+      .groupBy(kilometerRegistraties.doelType)
       .all();
 
     // Vergelijking vorig jaar
@@ -126,6 +139,34 @@ export async function GET(req: NextRequest) {
       ? Math.round(((brandstofResult?.totaalBedrag ?? 0) / totaalKm) * 100) / 100
       : 0;
 
+    // Calculate werkelijk zakelijk percentage from km-standen
+    const kmStandenData = await db
+      .select()
+      .from(kmStanden)
+      .where(
+        and(
+          eq(kmStanden.gebruikerId, gebruiker.id),
+          eq(kmStanden.jaar, parseInt(jaar))
+        )
+      )
+      .all();
+
+    let werkelijkPercentage: number | null = null;
+    let totaalGereden: number | null = null;
+    let ontbrekendeMaanden: number[] = [];
+
+    if (kmStandenData.length > 0) {
+      totaalGereden = kmStandenData.reduce((sum, ks) => sum + (ks.eindStand - ks.beginStand), 0);
+      if (totaalGereden > 0) {
+        werkelijkPercentage = Math.round((totaalKm / totaalGereden) * 1000) / 10;
+      }
+      const huidigeMaand = parseInt(jaar) === new Date().getFullYear() ? new Date().getMonth() + 1 : 12;
+      const ingevuldeMaanden = new Set(kmStandenData.map((ks) => ks.maand));
+      for (let m = 1; m <= huidigeMaand; m++) {
+        if (!ingevuldeMaanden.has(m)) ontbrekendeMaanden.push(m);
+      }
+    }
+
     return NextResponse.json({
       jaar: parseInt(jaar),
       totaalKm,
@@ -145,8 +186,17 @@ export async function GET(req: NextRequest) {
         ritten: k.ritten,
         bedrag: Math.round(k.km * 0.23 * 100) / 100,
       })),
+      perDoelType: perDoelType.map((d) => ({
+        type: d.type,
+        km: Math.round(d.km * 100) / 100,
+        ritten: d.ritten,
+        bedrag: Math.round(d.bedrag * 100) / 100,
+      })),
       vorigJaarKm,
       verschilVorigJaar: totaalKm - vorigJaarKm,
+      werkelijkPercentage,
+      totaalGereden,
+      ontbrekendeMaanden,
       brandstof: {
         totaalBedrag: Math.round((brandstofResult?.totaalBedrag ?? 0) * 100) / 100,
         totaalLiters: Math.round((brandstofResult?.totaalLiters ?? 0) * 100) / 100,

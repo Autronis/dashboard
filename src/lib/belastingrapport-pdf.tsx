@@ -125,6 +125,12 @@ interface CategorieRow {
   bedrag: number;
 }
 
+interface BrandstofMaandRow {
+  maand: number;
+  bedrag: number;
+  liters: number | null;
+}
+
 interface BelastingrapportProps {
   jaar: number;
   gebruikerNaam: string;
@@ -137,6 +143,9 @@ interface BelastingrapportProps {
   totaalAftrekbaar: number;
   categorieën: CategorieRow[];
   totaalBrandstof: number;
+  werkelijkPercentage: number | null;
+  totaalGereden: number | null;
+  brandstofPerMaand: BrandstofMaandRow[];
 }
 
 export function BelastingrapportPDF({
@@ -151,6 +160,9 @@ export function BelastingrapportPDF({
   totaalAftrekbaar,
   categorieën,
   totaalBrandstof,
+  werkelijkPercentage,
+  totaalGereden,
+  brandstofPerMaand,
 }: BelastingrapportProps) {
   const logo = getLogoSrc();
   const generatieDatum = new Date().toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
@@ -354,6 +366,138 @@ export function BelastingrapportPDF({
           <Text style={s.footerText}>Samenvatting</Text>
         </View>
       </Page>
+
+      {/* Km-stand Bewijs Page */}
+      {kmStanden.length > 0 && (
+        <Page size="A4" style={s.page}>
+          <View style={s.header}>
+            <Text style={s.headerTitle}>Km-stand Bewijs {jaar}</Text>
+            <Text style={s.headerSub}>Overzicht tellerstand per maand</Text>
+          </View>
+          <View style={s.accentLine} />
+
+          <View style={s.body}>
+            <Text style={s.sectionTitle}>Km-standen per maand</Text>
+            {/* Table header */}
+            <View style={[s.tableHeader, { backgroundColor: TEAL }]}>
+              <Text style={[s.tableHeaderCell, { width: "22%", color: "#FFFFFF" }]}>MAAND</Text>
+              <Text style={[s.tableHeaderCell, { width: "20%", textAlign: "right", color: "#FFFFFF" }]}>BEGINSTAND</Text>
+              <Text style={[s.tableHeaderCell, { width: "20%", textAlign: "right", color: "#FFFFFF" }]}>EINDSTAND</Text>
+              <Text style={[s.tableHeaderCell, { width: "20%", textAlign: "right", color: "#FFFFFF" }]}>TOTAAL GEREDEN</Text>
+              <Text style={[s.tableHeaderCell, { width: "18%", textAlign: "right", color: "#FFFFFF" }]}>PRIV&#201; KM</Text>
+            </View>
+            {kmStanden
+              .sort((a, b) => a.maand - b.maand)
+              .map((k, idx) => {
+                const totaalMaand = k.eindStand - k.beginStand;
+                const maandRitten = rittenPerMaand[k.maand] || [];
+                const gelogdZakelijk = maandRitten.reduce((sum, r) => sum + r.kilometers, 0);
+                const privaKm = Math.max(0, totaalMaand - gelogdZakelijk);
+                return (
+                  <View key={k.maand} style={[s.tableRow, { backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }]}>
+                    <Text style={[s.tableCell, { width: "22%" }]}>{MAAND_NAMEN[k.maand - 1]}</Text>
+                    <Text style={[s.tableCell, { width: "20%", textAlign: "right" }]}>{k.beginStand.toLocaleString("nl-NL")}</Text>
+                    <Text style={[s.tableCell, { width: "20%", textAlign: "right" }]}>{k.eindStand.toLocaleString("nl-NL")}</Text>
+                    <Text style={[s.tableCellBold, { width: "20%", textAlign: "right" }]}>{totaalMaand.toLocaleString("nl-NL")} km</Text>
+                    <Text style={[s.tableCell, { width: "18%", textAlign: "right" }]}>{Math.round(privaKm).toLocaleString("nl-NL")} km</Text>
+                  </View>
+                );
+              })}
+          </View>
+
+          <View style={s.footer}>
+            <Text style={s.footerText}>Autronis — Kilometerregistratie {jaar}</Text>
+            <Text style={s.footerText}>Km-stand Bewijs</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* Zakelijk % Onderbouwing Page */}
+      {werkelijkPercentage !== null && totaalGereden !== null && (
+        <Page size="A4" style={s.page}>
+          <View style={s.header}>
+            <Text style={s.headerTitle}>Zakelijk % Onderbouwing {jaar}</Text>
+            <Text style={s.headerSub}>Berekening werkelijk zakelijk percentage</Text>
+          </View>
+          <View style={s.accentLine} />
+
+          <View style={s.body}>
+            <View style={s.summaryCard}>
+              <Text style={s.summaryTitle}>Berekening zakelijk percentage</Text>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Totaal gereden (van km-standen)</Text>
+                <Text style={s.summaryValue}>{Math.round(totaalGereden).toLocaleString("nl-NL")} km</Text>
+              </View>
+              <View style={s.summaryRow}>
+                <Text style={s.summaryLabel}>Totaal zakelijk gelogd</Text>
+                <Text style={s.summaryValue}>{Math.round(totaalZakelijkKm).toLocaleString("nl-NL")} km</Text>
+              </View>
+              <View style={s.summaryHighlight}>
+                <Text style={s.summaryHighlightLabel}>Werkelijk zakelijk %</Text>
+                <Text style={s.summaryHighlightValue}>{werkelijkPercentage.toFixed(1)}%</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={s.footer}>
+            <Text style={s.footerText}>Autronis — Kilometerregistratie {jaar}</Text>
+            <Text style={s.footerText}>Zakelijk % Onderbouwing</Text>
+          </View>
+        </Page>
+      )}
+
+      {/* Brandstofkosten Detail Page */}
+      {brandstofPerMaand.length > 0 && (
+        <Page size="A4" style={s.page}>
+          <View style={s.header}>
+            <Text style={s.headerTitle}>Brandstofkosten Detail {jaar}</Text>
+            <Text style={s.headerSub}>Brandstofkosten per maand</Text>
+          </View>
+          <View style={s.accentLine} />
+
+          <View style={s.body}>
+            <Text style={s.sectionTitle}>Brandstofkosten per maand</Text>
+            {/* Table header */}
+            <View style={[s.tableHeader, { backgroundColor: TEAL }]}>
+              <Text style={[s.tableHeaderCell, { width: "30%", color: "#FFFFFF" }]}>MAAND</Text>
+              <Text style={[s.tableHeaderCell, { width: "25%", textAlign: "right", color: "#FFFFFF" }]}>BEDRAG</Text>
+              <Text style={[s.tableHeaderCell, { width: "20%", textAlign: "right", color: "#FFFFFF" }]}>LITERS</Text>
+              <Text style={[s.tableHeaderCell, { width: "25%", textAlign: "right", color: "#FFFFFF" }]}>KM/LITER</Text>
+            </View>
+            {brandstofPerMaand
+              .sort((a, b) => a.maand - b.maand)
+              .map((b, idx) => {
+                const maandRitten = rittenPerMaand[b.maand] || [];
+                const maandKm = maandRitten.reduce((sum, r) => sum + r.kilometers, 0);
+                const kmPerLiter = b.liters && b.liters > 0 ? maandKm / b.liters : null;
+                return (
+                  <View key={b.maand} style={[s.tableRow, { backgroundColor: idx % 2 === 0 ? "#FFFFFF" : "#F9FAFB" }]}>
+                    <Text style={[s.tableCell, { width: "30%" }]}>{MAAND_NAMEN[b.maand - 1]}</Text>
+                    <Text style={[s.tableCellBold, { width: "25%", textAlign: "right" }]}>{formatBedrag(b.bedrag)}</Text>
+                    <Text style={[s.tableCell, { width: "20%", textAlign: "right" }]}>{b.liters !== null ? `${b.liters.toFixed(2)} L` : "—"}</Text>
+                    <Text style={[s.tableCell, { width: "25%", textAlign: "right" }]}>{kmPerLiter !== null ? `${kmPerLiter.toFixed(1)} km/L` : "—"}</Text>
+                  </View>
+                );
+              })}
+            {/* Totaal row */}
+            <View style={s.subtotalRow}>
+              <Text style={[s.subtotalLabel, { width: "30%" }]}>Totaal</Text>
+              <Text style={[s.subtotalValue, { width: "25%", textAlign: "right" }]}>{formatBedrag(brandstofPerMaand.reduce((sum, b) => sum + b.bedrag, 0))}</Text>
+              <Text style={[s.subtotalValue, { width: "20%", textAlign: "right" }]}>
+                {brandstofPerMaand.some((b) => b.liters !== null)
+                  ? `${brandstofPerMaand.reduce((sum, b) => sum + (b.liters ?? 0), 0).toFixed(2)} L`
+                  : "—"}
+              </Text>
+              <Text style={[s.subtotalLabel, { width: "25%" }]} />
+            </View>
+          </View>
+
+          <View style={s.footer}>
+            <Text style={s.footerText}>Autronis — Kilometerregistratie {jaar}</Text>
+            <Text style={s.footerText}>Brandstofkosten Detail</Text>
+          </View>
+        </Page>
+      )}
     </Document>
   );
 }

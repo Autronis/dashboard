@@ -32,6 +32,18 @@ interface WebhookPayload {
   };
 }
 
+const BRANDSTOF_KEYWORDS = [
+  "shell", "bp", "totalenergies", "tango", "tinq", "esso",
+  "texaco", "gulf", "tamoil", "argos", "avia", "firezone",
+];
+
+function isBrandstofTransactie(merchantName: string | undefined, categoryCode: string | undefined): boolean {
+  if (categoryCode === "5541" || categoryCode === "5542") return true;
+  if (!merchantName) return false;
+  const lower = merchantName.toLowerCase();
+  return BRANDSTOF_KEYWORDS.some((kw) => lower.includes(kw));
+}
+
 // Try to auto-match an incoming payment to an open invoice
 async function autoMatchFactuur(transactieId: number, bedrag: number, omschrijving: string): Promise<boolean> {
   // Find open invoices (verzonden or te_laat) with matching amount (incl BTW)
@@ -161,16 +173,23 @@ export async function POST(req: NextRequest) {
         if (!inserted) continue;
 
         if (isUitgaand) {
-          // Auto-detect fuel transactions (MCC 5541/5542 = gas stations)
-          const mcc = tx.merchant?.category_code;
-          if (mcc === "5541" || mcc === "5542") {
-            await db.insert(brandstofKosten).values({
-              gebruikerId: 1,
-              datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
-              bedrag: Math.abs(leg.amount),
-              bankTransactieId: inserted.id,
-              notitie: `Auto: ${merchantNaam}`,
-            });
+          // Auto-detect fuel transactions (MCC 5541/5542 = gas stations, or keyword match)
+          if (isBrandstofTransactie(tx.merchant?.name, tx.merchant?.category_code)) {
+            const bestaand = await db
+              .select({ id: brandstofKosten.id })
+              .from(brandstofKosten)
+              .where(eq(brandstofKosten.bankTransactieId, inserted.id))
+              .get();
+
+            if (!bestaand) {
+              await db.insert(brandstofKosten).values({
+                gebruikerId: 1,
+                datum: (tx.completed_at || tx.created_at || payload.timestamp).split("T")[0],
+                bedrag: Math.abs(leg.amount),
+                bankTransactieId: inserted.id,
+                notitie: `Auto: ${tx.merchant?.name ?? merchantNaam}`,
+              });
+            }
           }
         } else {
           // Inkomende betaling → probeer automatisch te matchen aan factuur

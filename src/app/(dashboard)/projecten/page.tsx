@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,12 +27,14 @@ import {
   LayoutGrid,
   TrendingDown,
   Minus,
+  Copy,
+  Plus,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useProjectenMetKpis } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
-import { Confetti } from "@/components/ui/confetti-dynamic";
+
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
@@ -415,9 +417,9 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: P
         <button
           onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }}
           title="Kopieer Claude prompt"
-          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-blue-400 hover:border-blue-400/40 transition-colors"
+          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-purple-400 hover:border-purple-400/40 transition-colors"
         >
-          <Code2 className="w-3.5 h-3.5" />
+          <Copy className="w-3.5 h-3.5" />
         </button>
         <Link
           href={`/projecten/${project.id}`}
@@ -463,7 +465,7 @@ function ProjectRow({ project, onStartTimer, onOpenVSCode, zoek }: { project: Pr
       )}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button onClick={(e) => { e.preventDefault(); onStartTimer(project); }} className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors"><Play className="w-3.5 h-3.5" /></button>
-        <button onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }} className="p-1 text-autronis-text-secondary hover:text-blue-400 transition-colors"><Code2 className="w-3.5 h-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }} className="p-1 text-autronis-text-secondary hover:text-purple-400 transition-colors" title="Kopieer Claude prompt"><Copy className="w-3.5 h-3.5" /></button>
       </div>
     </Link>
   );
@@ -482,8 +484,9 @@ export default function ProjectenPage() {
   const [activeTab, setActiveTab] = useState<string>("actief");
   const [syncing, setSyncing] = useState(false);
   const [weergave, setWeergave] = useState<"grid" | "lijst">("grid");
-  const [showConfetti, setShowConfetti] = useState(false);
-  const confettiFired = useRef(false);
+  const [showNieuwProject, setShowNieuwProject] = useState(false);
+  const [nieuwProjectNaam, setNieuwProjectNaam] = useState("");
+  const [nieuwProjectBezig, setNieuwProjectBezig] = useState(false);
   const { addToast } = useToast();
   const timer = useTimer();
 
@@ -506,6 +509,32 @@ export default function ProjectenPage() {
       setSyncing(false);
     }
   }, [addToast, refetch]);
+
+  const handleNieuwProject = useCallback(async () => {
+    if (!nieuwProjectNaam.trim()) return;
+    setNieuwProjectBezig(true);
+    try {
+      const res = await fetch("/api/projecten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ naam: nieuwProjectNaam.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.fout || "Aanmaken mislukt");
+      if (json.bestaand) {
+        addToast(`Project "${json.project.naam}" bestaat al`, "fout");
+      } else {
+        addToast(`Project "${json.project.naam}" aangemaakt`, "succes");
+        refetch();
+      }
+      setShowNieuwProject(false);
+      setNieuwProjectNaam("");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
+    } finally {
+      setNieuwProjectBezig(false);
+    }
+  }, [nieuwProjectNaam, addToast, refetch]);
 
   const handleOpenVSCode = useCallback(async (project: Project) => {
     const prompt = `Werk aan ${project.naam}, pak de openstaande taken op en begin met de hoogste prioriteit`;
@@ -538,44 +567,69 @@ export default function ProjectenPage() {
   }, [timer, addToast]);
 
   const projecten = data?.projecten ?? [];
-  const kpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
+  const serverKpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
 
-  // Confetti disabled
-  void confettiFired;
+  const matchesZoek = useCallback((p: Project, q: string): boolean => {
+    return (
+      p.naam.toLowerCase().includes(q) ||
+      (p.klantNaam ?? "").toLowerCase().includes(q) ||
+      (p.omschrijving ?? "").toLowerCase().includes(q) ||
+      (p.taakTitels ?? "").toLowerCase().includes(q)
+    );
+  }, []);
 
   const filtered = useMemo(() => {
     return projecten.filter((p) => {
       if (activeTab !== "alle" && p.status !== activeTab) return false;
-      if (zoek) {
-        const q = zoek.toLowerCase();
-        return (
-          p.naam.toLowerCase().includes(q) ||
-          (p.klantNaam ?? "").toLowerCase().includes(q) ||
-          (p.omschrijving ?? "").toLowerCase().includes(q)
-        );
-      }
+      if (zoek) return matchesZoek(p, zoek.toLowerCase());
       return true;
     });
-  }, [projecten, activeTab, zoek]);
+  }, [projecten, activeTab, zoek, matchesZoek]);
 
-  // Sort: most activity first
+  // Sort: health urgency first, then deadline, then activity
   const sorted = useMemo(() => {
+    const healthWeight: Record<HealthStatus, number> = { "achter": 0, "risico": 1, "on-track": 2 };
     return [...filtered].sort((a, b) => {
-      // Active sessions with activity this week first
+      // Health status first (achter > risico > on-track)
+      const ha = healthWeight[getProjectHealth(a).status];
+      const hb = healthWeight[getProjectHealth(b).status];
+      if (ha !== hb) return ha - hb;
+      // Then by deadline urgency (soonest first, no deadline last)
+      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      if (da !== db) return da - db;
+      // Then by weekly activity
       if (a.takenDezeWeek !== b.takenDezeWeek) return b.takenDezeWeek - a.takenDezeWeek;
-      // Then by total progress
-      if (a.takenVoortgang !== b.takenVoortgang) return b.takenVoortgang - a.takenVoortgang;
       // Then by name
       return a.naam.localeCompare(b.naam);
     });
   }, [filtered]);
 
-  const tabCounts = useMemo(() => ({
-    actief: projecten.filter((p) => p.status === "actief").length,
-    afgerond: projecten.filter((p) => p.status === "afgerond").length,
-    "on-hold": projecten.filter((p) => p.status === "on-hold").length,
-    alle: projecten.length,
-  }), [projecten]);
+  const tabCounts = useMemo(() => {
+    const base = zoek
+      ? projecten.filter((p) => matchesZoek(p, zoek.toLowerCase()))
+      : projecten;
+    return {
+      actief: base.filter((p) => p.status === "actief").length,
+      afgerond: base.filter((p) => p.status === "afgerond").length,
+      "on-hold": base.filter((p) => p.status === "on-hold").length,
+      alle: base.length,
+    };
+  }, [projecten, zoek, matchesZoek]);
+
+  // Contextual KPIs based on current tab + search
+  const kpis = useMemo(() => {
+    const isFiltered = activeTab !== "alle" || zoek;
+    if (!isFiltered) return serverKpis;
+    return {
+      totaal: filtered.length,
+      actief: filtered.filter((p) => p.status === "actief").length,
+      afgerond: filtered.filter((p) => p.status === "afgerond").length,
+      onHold: filtered.filter((p) => p.status === "on-hold").length,
+      takenOpen: filtered.reduce((sum, p) => sum + (p.takenTotaal - p.takenAfgerond), 0),
+      totaleUren: filtered.reduce((sum, p) => sum + p.totaalMinuten, 0),
+    };
+  }, [filtered, activeTab, zoek, serverKpis]);
 
   return (
     <PageTransition>
@@ -588,14 +642,23 @@ export default function ProjectenPage() {
               {kpis.actief} actief &middot; {kpis.takenOpen} open taken &middot; {Math.round(kpis.totaleUren / 60)}u totaal
             </p>
           </div>
-          <button
-            onClick={syncProjecten}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-            {syncing ? "Syncing..." : "Sync projecten"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNieuwProject(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-primary text-sm font-medium rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nieuw project
+            </button>
+            <button
+              onClick={syncProjecten}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
+              {syncing ? "Syncing..." : "Sync projecten"}
+            </button>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -654,7 +717,7 @@ export default function ProjectenPage() {
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary" />
               <input
                 type="text"
-                placeholder="Zoek project of klant..."
+                placeholder="Zoek project, klant of taak..."
                 value={zoek}
                 onChange={(e) => setZoek(e.target.value)}
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent"
@@ -716,7 +779,54 @@ export default function ProjectenPage() {
           </motion.div>
         )}
 
-        <Confetti active={showConfetti} />
+
+        {/* Nieuw project modal */}
+        <AnimatePresence>
+          {showNieuwProject && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowNieuwProject(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Nieuw project</h2>
+                <input
+                  type="text"
+                  placeholder="Projectnaam..."
+                  value={nieuwProjectNaam}
+                  onChange={(e) => setNieuwProjectNaam(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleNieuwProject()}
+                  autoFocus
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent mb-4"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => { setShowNieuwProject(false); setNieuwProjectNaam(""); }}
+                    className="px-4 py-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                  >
+                    Annuleren
+                  </button>
+                  <button
+                    onClick={handleNieuwProject}
+                    disabled={nieuwProjectBezig || !nieuwProjectNaam.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {nieuwProjectBezig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Aanmaken
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

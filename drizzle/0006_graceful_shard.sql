@@ -1,0 +1,3 @@
+-- Baseline migration: all tables already exist in the database.
+-- This file was generated to sync Drizzle Kit's snapshot state with the current schema.
+-- No SQL statements need to run.

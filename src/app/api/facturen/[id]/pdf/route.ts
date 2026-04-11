@@ -70,6 +70,20 @@ export async function GET(
       }) as any
     );
 
+    // Store PDF in Supabase Storage if not already stored
+    const { uploadToStorage } = await import("@/lib/supabase");
+    const year = factuur.factuurdatum ? new Date(factuur.factuurdatum).getFullYear() : new Date().getFullYear();
+    const storagePath = `${year}/facturen-uitgaand/${factuur.factuurnummer}.pdf`;
+
+    try {
+      await uploadToStorage(storagePath, Buffer.from(pdfBuffer), "application/pdf");
+      await db.update(facturen)
+        .set({ pdfStorageUrl: storagePath })
+        .where(eq(facturen.id, Number(id)));
+    } catch {
+      // Upload may fail if file already exists (upsert: false) — ignore
+    }
+
     return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",

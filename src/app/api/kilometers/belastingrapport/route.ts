@@ -65,9 +65,9 @@ export async function GET(req: NextRequest) {
     const zakelijkPercentage = inst?.zakelijkPercentage ?? 75;
     const tariefPerKm = inst?.tariefPerKm ?? 0.23;
 
-    // 5. Get brandstofkosten totaal
+    // 5. Get brandstofkosten totaal + per maand
     const brandstof = await db
-      .select({ bedrag: brandstofKosten.bedrag })
+      .select({ datum: brandstofKosten.datum, bedrag: brandstofKosten.bedrag, liters: brandstofKosten.liters })
       .from(brandstofKosten)
       .where(
         and(
@@ -78,10 +78,40 @@ export async function GET(req: NextRequest) {
       );
     const totaalBrandstof = brandstof.reduce((sum, b) => sum + b.bedrag, 0);
 
+    // Group brandstof by month
+    const brandstofMaandMap = new Map<number, { bedrag: number; liters: number | null }>();
+    for (const b of brandstof) {
+      const maand = parseInt(b.datum.slice(5, 7));
+      const existing = brandstofMaandMap.get(maand);
+      if (existing) {
+        existing.bedrag += b.bedrag;
+        if (b.liters !== null) {
+          existing.liters = (existing.liters ?? 0) + b.liters;
+        }
+      } else {
+        brandstofMaandMap.set(maand, { bedrag: b.bedrag, liters: b.liters ?? null });
+      }
+    }
+    const brandstofPerMaand = Array.from(brandstofMaandMap.entries()).map(([maand, data]) => ({
+      maand,
+      bedrag: data.bedrag,
+      liters: data.liters,
+    }));
+
     // 6. Calculate totals
     const totaalKm = ritten.reduce((sum, r) => sum + r.kilometers, 0);
     const totaalZakelijkKm = totaalKm * (zakelijkPercentage / 100);
     const totaalAftrekbaar = totaalZakelijkKm * tariefPerKm;
+
+    // Calculate werkelijk percentage from km-standen
+    let totaalGereden: number | null = null;
+    let werkelijkPercentage: number | null = null;
+    if (standen.length > 0) {
+      totaalGereden = standen.reduce((sum, k) => sum + (k.eindStand - k.beginStand), 0);
+      if (totaalGereden > 0) {
+        werkelijkPercentage = (totaalKm / totaalGereden) * 100;
+      }
+    }
 
     // 7. Build category summary
     const catMap = new Map<string, { ritten: number; km: number; bedrag: number }>();
@@ -113,6 +143,9 @@ export async function GET(req: NextRequest) {
         totaalAftrekbaar,
         categorieën,
         totaalBrandstof,
+        werkelijkPercentage,
+        totaalGereden,
+        brandstofPerMaand,
       }) as any
     );
 

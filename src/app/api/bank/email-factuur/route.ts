@@ -3,8 +3,6 @@ import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
-import fs from "fs";
-import path from "path";
 
 const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -64,13 +62,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Geen factuur PDF meegestuurd" }, { status: 400 });
     }
 
-    // Save PDF
-    const uploadsDir = path.join(process.cwd(), "data", "uploads", "facturen-inbox");
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    // Save PDF to Supabase Storage
+    const { uploadToStorage } = await import("@/lib/supabase");
+    const year = new Date().getFullYear();
     const fileName = `factuur_${Date.now()}_${pdfFileName.replace(/[^a-zA-Z0-9.-]/g, "_")}`;
-    const filePath = path.join(uploadsDir, fileName);
-    fs.writeFileSync(filePath, Buffer.from(pdfBase64, "base64"));
-    const factuurPad = `data/uploads/facturen-inbox/${fileName}`;
+    const storagePath = `${year}/facturen-inkomend/${fileName}`;
+    await uploadToStorage(storagePath, Buffer.from(pdfBase64, "base64"), "application/pdf");
+    const factuurPad = storagePath;
 
     // Parse PDF with Claude Vision (first page as image)
     // For now, use the filename + email context to extract info
@@ -129,6 +127,7 @@ Alleen JSON.`;
         // Auto-link
         await db.update(bankTransacties).set({
           bonPad: factuurPad,
+          storageUrl: storagePath,
           status: "gematcht",
           isVerlegging: parsed.isBuitenlands ? 1 : undefined,
           btwBedrag: parsed.btwBedrag || undefined,

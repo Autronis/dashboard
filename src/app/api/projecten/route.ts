@@ -99,6 +99,17 @@ export async function GET(req: NextRequest) {
 
     const urenMap = new Map(urenStats.map((u) => [u.projectId, u.totaalMinuten || 0]));
 
+    // Get concatenated task titles per project (for search)
+    const taakTitelsData = await db
+      .select({
+        projectId: taken.projectId,
+        titels: sql<string>`group_concat(${taken.titel}, ' | ')`,
+      })
+      .from(taken)
+      .groupBy(taken.projectId);
+
+    const taakTitelsMap = new Map(taakTitelsData.map((t) => [t.projectId, t.titels || ""]));
+
     // Get last 7 days activity per project (for sparkline)
     const zevenDagenGeleden = new Date();
     zevenDagenGeleden.setDate(zevenDagenGeleden.getDate() - 7);
@@ -119,22 +130,16 @@ export async function GET(req: NextRequest) {
       )
       .groupBy(taken.projectId, sql`substr(${taken.bijgewerktOp}, 1, 10)`);
 
-    // Build sparkline data per project (7 days)
-    const sparklineMap = new Map<number, number[]>();
-    for (const row of dagActiviteit) {
-      if (!row.projectId) continue;
-      if (!sparklineMap.has(row.projectId)) sparklineMap.set(row.projectId, []);
-      sparklineMap.get(row.projectId)!.push(row.count);
-    }
-
-    // Generate 7-day sparkline with proper day alignment
+    // Build sparkline data per project (7 days, aligned by date)
     const vandaag = new Date();
     const projectSparklines = new Map<number, number[]>();
-    for (const [projectId, activities] of sparklineMap) {
-      const dagMap = new Map<string, number>();
-      for (const row of dagActiviteit.filter((r) => r.projectId === projectId)) {
-        dagMap.set(row.dag, row.count);
-      }
+    const dagMapPerProject = new Map<number, Map<string, number>>();
+    for (const row of dagActiviteit) {
+      if (!row.projectId) continue;
+      if (!dagMapPerProject.has(row.projectId)) dagMapPerProject.set(row.projectId, new Map());
+      dagMapPerProject.get(row.projectId)!.set(row.dag, row.count);
+    }
+    for (const [projectId, dagMap] of dagMapPerProject) {
       const sparkline: number[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(vandaag);
@@ -169,6 +174,7 @@ export async function GET(req: NextRequest) {
         totaalMinuten,
         laatsteActiviteit,
         sparkline,
+        taakTitels: taakTitelsMap.get(p.id) || "",
       };
     });
 

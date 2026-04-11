@@ -12,6 +12,7 @@ import {
   HelpCircle,
   MessageSquare,
   Trash2,
+  EyeOff,
   ChevronDown,
   Plus,
   Loader2,
@@ -50,6 +51,7 @@ import {
   useVerwerkMeeting,
   useSubmitTranscript,
   useDeleteMeeting,
+  useHideMeeting,
   useUpdateMeeting,
   useUploadMeetingAudio,
   useMeetingVoorbereiding,
@@ -455,10 +457,11 @@ function UpcomingMeetingCard({ meeting, onSelect }: { meeting: Meeting; onSelect
 
 // ============ MEETING LIST ITEM ============
 
-function MeetingListItem({ meeting, onSelect, onDelete }: {
+function MeetingListItem({ meeting, onSelect, onDelete, onHide }: {
   meeting: Meeting;
   onSelect: () => void;
   onDelete: () => void;
+  onHide?: () => void;
 }) {
   const isDb = meeting.bron === "database";
   const sc = meeting.status && statusConfig[meeting.status];
@@ -589,7 +592,7 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
               Deelnemen
             </a>
           )}
-          {isDb && (
+          {isDb ? (
             <Trash2
               className="w-4 h-4 text-autronis-text-secondary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
               onClick={(e) => {
@@ -597,7 +600,15 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
                 onDelete();
               }}
             />
-          )}
+          ) : onHide ? (
+            <EyeOff
+              className="w-4 h-4 text-autronis-text-secondary hover:text-amber-400 transition-colors opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHide();
+              }}
+            />
+          ) : null}
           <ChevronRight className="w-4 h-4 text-autronis-text-secondary/50" />
         </div>
       </div>
@@ -629,6 +640,7 @@ export default function MeetingsPage() {
   const verwerkMutation = useVerwerkMeeting();
   const transcriptMutation = useSubmitTranscript();
   const deleteMutation = useDeleteMeeting();
+  const hideMutation = useHideMeeting();
   const updateMutation = useUpdateMeeting();
   const uploadAudioMutation = useUploadMeetingAudio();
 
@@ -714,6 +726,19 @@ export default function MeetingsPage() {
       });
     },
     [deleteMutation, addToast, selectedId]
+  );
+
+  const handleHide = useCallback(
+    (kalenderEventId: string) => {
+      hideMutation.mutate(kalenderEventId, {
+        onSuccess: () => {
+          addToast("Meeting verborgen", "succes");
+          if (selectedId === kalenderEventId) setSelectedId(null);
+        },
+        onError: () => addToast("Kon meeting niet verbergen", "fout"),
+      });
+    },
+    [hideMutation, addToast, selectedId]
   );
 
   const handleToggleDone = useCallback((index: number) => {
@@ -891,12 +916,22 @@ export default function MeetingsPage() {
                   ))}
                 </div>
               </div>
-              <button
-                onClick={() => handleDelete(m.id as number)}
-                className="p-2 text-autronis-text-secondary hover:text-red-400 transition-colors"
-              >
-                <Trash2 className="w-5 h-5" />
-              </button>
+              {m.bron === "database" ? (
+                <button
+                  onClick={() => handleDelete(m.id as number)}
+                  className="p-2 text-autronis-text-secondary hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleHide(m.id as string)}
+                  className="p-2 text-autronis-text-secondary hover:text-amber-400 transition-colors"
+                  title="Verberg deze meeting"
+                >
+                  <EyeOff className="w-5 h-5" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -1571,6 +1606,7 @@ export default function MeetingsPage() {
                   meeting={m}
                   onSelect={() => setSelectedId(m.id)}
                   onDelete={() => { if (typeof m.id === "number") handleDelete(m.id); }}
+                  onHide={m.bron === "kalender" ? () => handleHide(m.id as string) : undefined}
                 />
               ))}
             </motion.div>

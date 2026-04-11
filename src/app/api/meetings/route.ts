@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { meetings, klanten, projecten, externeKalenders } from "@/lib/db/schema";
+import { meetings, klanten, projecten, externeKalenders, verborgenKalenderMeetings } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc, sql } from "drizzle-orm";
 import { writeFile, mkdir } from "fs/promises";
@@ -288,6 +288,18 @@ export async function GET(req: NextRequest) {
       // Calendar fetch failed, return DB only
     }
 
+    // Fetch hidden calendar event IDs
+    let verborgenIds = new Set<string>();
+    try {
+      await db.run(sql`CREATE TABLE IF NOT EXISTS verborgen_kalender_meetings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kalender_event_id TEXT NOT NULL UNIQUE,
+        verborgen_op TEXT DEFAULT (datetime('now'))
+      )`);
+      const verborgen = await db.select({ kalenderEventId: verborgenKalenderMeetings.kalenderEventId }).from(verborgenKalenderMeetings).all();
+      verborgenIds = new Set(verborgen.map((v) => v.kalenderEventId));
+    } catch { /* table may not exist yet */ }
+
     // Deduplicate: if a calendar event matches a DB meeting by title+date (same day), skip calendar version
     const dbDateTitles = new Set(
       dbMeetings.map(
@@ -297,6 +309,7 @@ export async function GET(req: NextRequest) {
 
     const uniqueCalendarMeetings = calendarMeetings
       .filter((cm) => {
+        if (verborgenIds.has(cm.id)) return false;
         const key = `${cm.titel.toLowerCase().trim()}|${cm.datum.slice(0, 10)}`;
         return !dbDateTitles.has(key);
       })

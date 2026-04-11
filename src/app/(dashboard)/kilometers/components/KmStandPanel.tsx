@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Gauge, Save, Check, AlertCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Gauge, Save, Check, AlertCircle, Camera, Trash2, Image } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useKmStanden, useSaveKmStand } from "@/hooks/queries/use-kilometers";
+import { useKmStanden, useSaveKmStand, useKmStandFoto, useUploadKmStandFoto } from "@/hooks/queries/use-kilometers";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface KmStandPanelProps {
@@ -15,13 +16,47 @@ interface KmStandPanelProps {
 
 export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const { data } = useKmStanden(jaar);
   const saveMutation = useSaveKmStand();
+  const uploadMutation = useUploadKmStandFoto();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [beginStand, setBeginStand] = useState("");
   const [eindStand, setEindStand] = useState("");
   const [fout, setFout] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  // Get current km-stand ID for this maand/jaar
+  const huidigeStand = data?.standen.find((s) => s.maand === maand && s.jaar === jaar);
+  const kmStandId = huidigeStand?.id ?? null;
+
+  const { data: foto } = useKmStandFoto(kmStandId);
+
+  async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !kmStandId) return;
+    try {
+      await uploadMutation.mutateAsync({ kmStandId, foto: file });
+      addToast("Foto opgeslagen", "succes");
+    } catch {
+      addToast("Foto uploaden mislukt", "fout");
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleFotoVerwijderen() {
+    if (!foto || !kmStandId) return;
+    try {
+      const res = await fetch(`/api/kilometers/km-stand/foto?id=${foto.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Verwijderen mislukt");
+      queryClient.invalidateQueries({ queryKey: ["kilometers", "km-stand-foto", kmStandId] });
+      addToast("Foto verwijderd", "succes");
+    } catch {
+      addToast("Foto verwijderen mislukt", "fout");
+    }
+  }
 
   // Pre-fill from existing data
   useEffect(() => {
@@ -146,6 +181,57 @@ export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
           </button>
         </div>
       </div>
+
+      {/* Foto km-stand */}
+      {kmStandId && (
+        <div className="mt-4 pt-4 border-t border-autronis-border">
+          <div className="flex items-center gap-2 mb-2">
+            <Image className="w-3.5 h-3.5 text-autronis-accent" />
+            <span className="text-xs text-autronis-text-secondary">Foto km-stand (belastingbewijs)</span>
+          </div>
+          {foto ? (
+            <div className="flex items-center gap-3">
+              <a href={foto.bestandspad} target="_blank" rel="noopener noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={foto.bestandspad}
+                  alt="Km-stand foto"
+                  className="w-16 h-16 object-cover rounded-xl border border-autronis-border hover:opacity-80 transition-opacity"
+                />
+              </a>
+              <button
+                onClick={handleFotoVerwijderen}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Verwijderen
+              </button>
+            </div>
+          ) : (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFotoUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadMutation.isPending}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-3 w-full border border-dashed border-autronis-border rounded-xl text-sm text-autronis-text-secondary hover:border-autronis-accent hover:text-autronis-accent transition-colors",
+                  uploadMutation.isPending && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                <Camera className="w-4 h-4" />
+                {uploadMutation.isPending ? "Uploaden..." : "Foto toevoegen"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Error */}
       {fout && (

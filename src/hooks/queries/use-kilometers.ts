@@ -58,8 +58,12 @@ export interface JaaroverzichtData {
   tariefPerKm: number;
   perMaand: Array<{ maand: number; km: number; ritten: number; bedrag: number }>;
   perKlant: Array<{ klantId: number | null; klantNaam: string; km: number; ritten: number; bedrag: number }>;
+  perDoelType: Array<{ type: string | null; km: number; ritten: number; bedrag: number }>;
   vorigJaarKm: number;
   verschilVorigJaar: number;
+  werkelijkPercentage: number | null;
+  totaalGereden: number | null;
+  ontbrekendeMaanden: number[];
   brandstof?: {
     totaalBedrag: number;
     totaalLiters: number;
@@ -188,6 +192,38 @@ export function useKmStanden(jaar: number) {
       return res.json();
     },
     staleTime: 60_000,
+  });
+}
+
+export function useKmStandFoto(kmStandId: number | null) {
+  return useQuery({
+    queryKey: ["kilometers", "km-stand-foto", kmStandId],
+    queryFn: async () => {
+      if (!kmStandId) return null;
+      const res = await fetch(`/api/kilometers/km-stand/foto?kmStandId=${kmStandId}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.foto as { id: number; bestandspad: string; bestandsnaam: string } | null;
+    },
+    enabled: !!kmStandId,
+    staleTime: 60000,
+  });
+}
+
+export function useUploadKmStandFoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ kmStandId, foto }: { kmStandId: number; foto: File }) => {
+      const formData = new FormData();
+      formData.append("foto", foto);
+      formData.append("kmStandId", String(kmStandId));
+      const res = await fetch("/api/kilometers/km-stand/foto", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload mislukt");
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["kilometers", "km-stand-foto", variables.kmStandId] });
+    },
   });
 }
 
@@ -442,5 +478,75 @@ export function useKlantenProjecten() {
       return { klanten, projecten };
     },
     staleTime: 60_000,
+  });
+}
+
+export function useAfstandBerekening() {
+  return useMutation({
+    mutationFn: async ({ van, naar }: { van: string; naar: string }) => {
+      const res = await fetch(`/api/kilometers/distance?van=${encodeURIComponent(van)}&naar=${encodeURIComponent(naar)}`);
+      if (!res.ok) return null;
+      return res.json() as Promise<{ afstandMeters: number; afstandKm: number; duurSeconden: number; duurTekst: string }>;
+    },
+  });
+}
+
+// ─── Calendar Suggesties ─────────────────────────────────────────────────────
+
+interface CalendarSuggestie {
+  eventId: string;
+  titel: string;
+  locatie: string;
+  startTijd: string;
+  afstandKm: number | null;
+  klantId: number | null;
+  klantNaam: string | null;
+}
+
+export function useCalendarSuggesties() {
+  return useQuery({
+    queryKey: ["kilometers", "suggesties"],
+    queryFn: async (): Promise<CalendarSuggestie[]> => {
+      const res = await fetch("/api/kilometers/suggesties");
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.suggesties ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+// ─── Locatie Autocomplete ────────────────────────────────────────────────────
+
+interface LocatieSuggestie {
+  locatie: string;
+  aantalGebruikt: number;
+  bron: "eigen" | "google";
+}
+
+export function useLocatieSuggesties(zoekterm: string) {
+  return useQuery({
+    queryKey: ["kilometers", "locaties", zoekterm],
+    queryFn: async (): Promise<LocatieSuggestie[]> => {
+      if (!zoekterm || zoekterm.length < 2) return [];
+
+      const eigenRes = await fetch(`/api/kilometers/locaties?q=${encodeURIComponent(zoekterm)}`);
+      const eigenData = await eigenRes.json();
+      const eigen: LocatieSuggestie[] = (eigenData.locaties ?? []).map(
+        (l: { locatie: string; aantalGebruikt: number }) => ({ ...l, bron: "eigen" as const })
+      );
+
+      if (eigen.length >= 3) return eigen;
+
+      const googleRes = await fetch(`/api/kilometers/locaties/google?q=${encodeURIComponent(zoekterm)}`);
+      const googleData = await googleRes.json();
+      const google: LocatieSuggestie[] = (googleData.suggesties ?? []).map(
+        (s: { description: string }) => ({ locatie: s.description, aantalGebruikt: 0, bron: "google" as const })
+      );
+
+      return [...eigen, ...google];
+    },
+    enabled: zoekterm.length >= 2,
+    staleTime: 10000,
   });
 }

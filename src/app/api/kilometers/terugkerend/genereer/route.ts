@@ -34,19 +34,26 @@ function matchesDayOfMonth(d: Date, dagVanMaand: number): boolean {
 }
 
 // POST /api/kilometers/terugkerend/genereer — Generate pending recurring trips
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const gebruiker = await requireAuth();
+    const authHeader = req.headers.get("authorization");
+    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+    let gebruikerId: number | null = null;
+    if (!isCron) {
+      const gebruiker = await requireAuth();
+      gebruikerId = gebruiker.id;
+    }
+
     const vandaag = formatDate(new Date());
 
     const actieveRitten = await db
       .select()
       .from(terugkerendeRitten)
       .where(
-        and(
-          eq(terugkerendeRitten.gebruikerId, gebruiker.id),
-          eq(terugkerendeRitten.isActief, 1)
-        )
+        gebruikerId
+          ? and(eq(terugkerendeRitten.isActief, 1), eq(terugkerendeRitten.gebruikerId, gebruikerId))
+          : eq(terugkerendeRitten.isActief, 1)
       );
 
     let aangemaakt = 0;
@@ -99,7 +106,7 @@ export async function POST() {
 
           if (!bestaand) {
             await db.insert(kilometerRegistraties).values({
-              gebruikerId: gebruiker.id,
+              gebruikerId: rit.gebruikerId,
               datum,
               vanLocatie: rit.vanLocatie,
               naarLocatie: rit.naarLocatie,
@@ -123,6 +130,19 @@ export async function POST() {
         .update(terugkerendeRitten)
         .set({ laatsteGeneratie: vandaag })
         .where(eq(terugkerendeRitten.id, rit.id));
+    }
+
+    if (isCron && aangemaakt > 0) {
+      const { sendPushToUser } = await import("@/lib/push");
+      const uniqueUsers = [...new Set(actieveRitten.map((r) => r.gebruikerId))];
+      for (const uid of uniqueUsers) {
+        await sendPushToUser(uid, {
+          titel: "Ritten toegevoegd",
+          bericht: `${aangemaakt} terugkerende rit(ten) automatisch gelogd`,
+          url: "/kilometers",
+          tag: "km-terugkerend",
+        }).catch(() => {});
+      }
     }
 
     return NextResponse.json({ aangemaakt });

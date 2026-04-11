@@ -241,3 +241,21 @@ export function useDeleteMeeting() {
     },
   });
 }
+
+export function useHideMeeting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (kalenderEventId: string) => {
+      const res = await fetch("/api/meetings/verberg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kalenderEventId }),
+      });
+      if (!res.ok) throw new Error("Verbergen mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["meetings"] });
+    },
+  });
+}

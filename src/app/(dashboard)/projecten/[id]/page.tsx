@@ -11,13 +11,11 @@ import {
   Clock,
   Code2,
   ChevronDown,
-  ChevronRight,
   FolderKanban,
   ListTodo,
   Loader2,
   Pause,
   RefreshCw,
-  Sparkles,
   AlertTriangle,
   AlertCircle,
   Play,
@@ -30,44 +28,8 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
-
-// ============ Types ============
-
-interface FaseTaak {
-  id: number;
-  titel: string;
-  status: string;
-  prioriteit: string;
-  deadline: string | null;
-  uitvoerder: string | null;
-  bijgewerktOp: string | null;
-}
-
-interface Fase {
-  naam: string;
-  taken: FaseTaak[];
-  totaal: number;
-  afgerond: number;
-}
-
-interface ProjectDetail {
-  id: number;
-  naam: string;
-  omschrijving: string | null;
-  klantId: number | null;
-  klantNaam: string | null;
-  status: string;
-  voortgangPercentage: number;
-  deadline: string | null;
-  geschatteUren: number | null;
-  werkelijkeUren: number | null;
-  aangemaaktOp: string | null;
-  bijgewerktOp: string | null;
-  totaalTaken: number;
-  afgerondTaken: number;
-  voortgang: number;
-  totaalMinuten: number;
-}
+import { useProjectDetail } from "@/hooks/queries/use-projecten";
+import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecten";
 
 // ============ Sub-components ============
 
@@ -153,7 +115,7 @@ function genPrompt(taak: FaseTaak, projectNaam: string, fase: string): string {
   return `Werk aan taak "${taak.titel}" in project ${projectNaam}. Dit valt onder ${fase}. Check de TODO.md en bestaande code. Vink de taak af in TODO.md als je klaar bent.`;
 }
 
-function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projectNaam: string; onStatusToggle?: (taakId: number, huidigStatus: string) => void }) {
+function FaseSection({ fase, projectNaam, onStatusToggle, onBulkAfvinken }: { fase: Fase; projectNaam: string; onStatusToggle?: (taakId: number, huidigStatus: string) => void; onBulkAfvinken?: (taakIds: number[]) => void }) {
   const [open, setOpen] = useState(fase.afgerond < fase.totaal);
   const percentage = fase.totaal > 0 ? Math.round((fase.afgerond / fase.totaal) * 100) : 0;
   const isComplete = percentage >= 100;
@@ -164,7 +126,7 @@ function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projec
     <div className={cn("bg-autronis-card border rounded-2xl overflow-hidden card-glow", isComplete ? "border-green-500/20" : isNotStarted ? "border-autronis-border/50 opacity-80" : "border-autronis-border")}>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors"
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors group/fase"
       >
         <div className="flex items-center gap-3">
           <motion.div animate={{ rotate: open ? 0 : -90 }} transition={{ duration: 0.2 }}>
@@ -181,6 +143,19 @@ function FaseSection({ fase, projectNaam, onStatusToggle }: { fase: Fase; projec
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {!isComplete && fase.taken.some((t) => t.status !== "afgerond") && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const openIds = fase.taken.filter((t) => t.status !== "afgerond").map((t) => t.id);
+                onBulkAfvinken?.(openIds);
+              }}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors font-medium opacity-0 group-hover/fase:opacity-100"
+              title="Alle open taken afvinken"
+            >
+              Alles afvinken
+            </button>
+          )}
           <span className={cn("text-sm font-bold tabular-nums", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{percentage}%</span>
           <div className="w-20"><ProgressBar percentage={percentage} /></div>
         </div>
@@ -474,37 +449,16 @@ export default function ProjectDetailPage() {
   const { addToast } = useToast();
   const timer = useTimer();
 
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [fases, setFases] = useState<Fase[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { project, fases, isLoading: loading, isError, error, refetch, setFases } = useProjectDetail(id);
   const [syncing, setSyncing] = useState(false);
   const [openingVSCode, setOpeningVSCode] = useState(false);
   const pendingToggles = useRef<Set<number>>(new Set());
 
-  const fetchProject = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projecten/${id}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          addToast("Project niet gevonden", "fout");
-          router.push("/projecten");
-          return;
-        }
-        throw new Error("Kon project niet laden");
-      }
-      const data = await res.json();
-      setProject(data.project);
-      setFases(data.fases);
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : "Fout bij laden", "fout");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, addToast, router]);
-
-  useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
+  // Redirect on error
+  if (isError && error?.message === "Project niet gevonden") {
+    addToast("Project niet gevonden", "fout");
+    router.push("/projecten");
+  }
 
   const syncTaken = useCallback(async () => {
     if (!project) return;
@@ -518,38 +472,60 @@ export default function ProjectDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Sync mislukt");
       addToast(`Sync voltooid: ${data.matched} afgerond, ${data.added} nieuw`, "succes");
-      fetchProject();
+      refetch();
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Sync mislukt", "fout");
     } finally {
       setSyncing(false);
     }
-  }, [project, addToast, fetchProject]);
+  }, [project, addToast, refetch]);
 
   // Inline optimistic status toggle
   const handleTaakStatusToggle = useCallback(async (taakId: number, huidigStatus: string) => {
     if (pendingToggles.current.has(taakId)) return;
     const volgende = huidigStatus === "open" ? "bezig" : huidigStatus === "bezig" ? "afgerond" : "open";
     // Optimistic update
-    setFases((prev) => prev.map((f) => ({
-      ...f,
-      taken: f.taken.map((t) => t.id === taakId ? { ...t, status: volgende } : t),
-      afgerond: f.taken.some((t) => t.id === taakId)
-        ? f.taken.filter((t) => t.id !== taakId || volgende === "afgerond").filter((t) => t.status === "afgerond").length +
-          (volgende === "afgerond" ? 1 : 0)
-        : f.afgerond,
-    })));
+    setFases((prev) => prev.map((f) => {
+      const updatedTaken = f.taken.map((t) => t.id === taakId ? { ...t, status: volgende } : t);
+      return {
+        ...f,
+        taken: updatedTaken,
+        afgerond: updatedTaken.filter((t) => t.status === "afgerond").length,
+        totaal: updatedTaken.length,
+      };
+    }));
     pendingToggles.current.add(taakId);
     try {
       const res = await fetch(`/api/taken/${taakId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: volgende }) });
       if (!res.ok) throw new Error();
     } catch {
       addToast("Kon status niet bijwerken", "fout");
-      fetchProject(); // revert by refetching
+      refetch(); // revert by refetching
     } finally {
       pendingToggles.current.delete(taakId);
     }
-  }, [fetchProject, addToast]);
+  }, [refetch, addToast]);
+
+  const handleBulkAfvinken = useCallback(async (taakIds: number[]) => {
+    // Optimistic update
+    setFases((prev) => prev.map((f) => {
+      const updatedTaken = f.taken.map((t) => taakIds.includes(t.id) ? { ...t, status: "afgerond" } : t);
+      return { ...f, taken: updatedTaken, afgerond: updatedTaken.filter((t) => t.status === "afgerond").length };
+    }));
+    // Fire all status updates in parallel
+    const results = await Promise.allSettled(
+      taakIds.map((id) =>
+        fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "afgerond" }) })
+      )
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+    if (failed > 0) {
+      addToast(`${failed} taken konden niet worden bijgewerkt`, "fout");
+      refetch();
+    } else {
+      addToast(`${taakIds.length} taken afgevinkt`, "succes");
+    }
+  }, [refetch, addToast]);
 
   const techStack = useMemo(() => extractTechStack(project?.omschrijving ?? null), [project?.omschrijving]);
   const samenvatting = useMemo(() => {
@@ -752,7 +728,7 @@ export default function ProjectDetailPage() {
         {/* AI Samenvatting */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-purple-400" />
+            <ListTodo className="w-4 h-4 text-autronis-accent" />
             <h2 className="text-sm font-medium text-autronis-text-secondary uppercase tracking-wider">
               Samenvatting
             </h2>
@@ -777,7 +753,7 @@ export default function ProjectDetailPage() {
           ) : (
             <div className="space-y-3">
               {fases.map((fase) => (
-                <FaseSection key={fase.naam} fase={fase} projectNaam={project.naam} onStatusToggle={handleTaakStatusToggle} />
+                <FaseSection key={fase.naam} fase={fase} projectNaam={project.naam} onStatusToggle={handleTaakStatusToggle} onBulkAfvinken={handleBulkAfvinken} />
               ))}
             </div>
           )}

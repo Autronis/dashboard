@@ -12,9 +12,14 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const zoek = searchParams.get("zoek");
 
+    const terugkerend = searchParams.get("terugkerend");
+
     const conditions = [eq(facturen.isActief, 1)];
     if (status) {
       conditions.push(eq(facturen.status, status as "concept" | "verzonden" | "betaald" | "te_laat"));
+    }
+    if (terugkerend === "true") {
+      conditions.push(eq(facturen.isTerugkerend, 1));
     }
 
     let query = db
@@ -111,6 +116,10 @@ export async function POST(req: NextRequest) {
       btwPercentage,
       notities,
       regels,
+      isTerugkerend,
+      terugkeerAantal,
+      terugkeerEenheid,
+      volgendeFactuurdatum,
     } = body;
 
     if (!klantId) {
@@ -165,6 +174,11 @@ export async function POST(req: NextRequest) {
         vervaldatum: vervaldatum || null,
         notities: notities?.trim() || null,
         aangemaaktDoor: gebruiker.id,
+        isTerugkerend: isTerugkerend ? 1 : 0,
+        terugkeerAantal: isTerugkerend ? (terugkeerAantal || 1) : null,
+        terugkeerEenheid: isTerugkerend ? terugkeerEenheid : null,
+        terugkeerStatus: isTerugkerend ? "actief" : null,
+        volgendeFactuurdatum: isTerugkerend ? volgendeFactuurdatum : null,
       })
       .returning();
 

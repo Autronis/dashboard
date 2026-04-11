@@ -61,7 +61,10 @@ export const projecten = sqliteTable("projecten", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
-});
+}, (table) => ({
+  idxKlantId: index("idx_projecten_klant_id").on(table.klantId),
+  idxStatusActief: index("idx_projecten_status_actief").on(table.status, table.isActief),
+}));
 
 // ============ TIJDREGISTRATIES ============
 export const tijdregistraties = sqliteTable("tijdregistraties", {
@@ -76,7 +79,10 @@ export const tijdregistraties = sqliteTable("tijdregistraties", {
   isHandmatig: integer("is_handmatig").default(0),
   locatie: text("locatie", { enum: ["kantoor", "thuis"] }),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
-});
+}, (table) => ({
+  idxProjectId: index("idx_tijdreg_project_id").on(table.projectId),
+  idxGebruikerStart: index("idx_tijdreg_gebruiker_start").on(table.gebruikerId, table.startTijd),
+}));
 
 // ============ FACTUREN ============
 export const facturen = sqliteTable("facturen", {
@@ -99,7 +105,11 @@ export const facturen = sqliteTable("facturen", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
-});
+}, (table) => ({
+  idxKlantId: index("idx_facturen_klant_id").on(table.klantId),
+  idxProjectId: index("idx_facturen_project_id").on(table.projectId),
+  idxStatus: index("idx_facturen_status").on(table.status),
+}));
 
 // ============ FACTUUR REGELS ============
 export const factuurRegels = sqliteTable("factuur_regels", {
@@ -293,7 +303,11 @@ export const taken = sqliteTable("taken", {
   kalenderId: integer("kalender_id").references(() => externeKalenders.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
-});
+}, (table) => ({
+  idxProjectId: index("idx_taken_project_id").on(table.projectId),
+  idxStatus: index("idx_taken_status").on(table.status),
+  idxToegewezenAan: index("idx_taken_toegewezen").on(table.toegewezenAan),
+}));
 
 // ============ NOTITIES ============
 export const notities = sqliteTable("notities", {

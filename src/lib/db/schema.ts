@@ -1169,6 +1169,11 @@ export const ideeen = sqliteTable("ideeen", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+  bron: text("bron"),
+  bronTekst: text("bron_tekst"),
+  confidenceBreakdown: text("confidence_breakdown"),
+  confidenceBijgewerktOp: text("confidence_bijgewerkt_op"),
+  geparkeerd: integer("geparkeerd").default(0),
 });
 
 // ============ FOCUS SESSIES ============

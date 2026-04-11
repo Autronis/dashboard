@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { MaandrapportPDF } from "@/lib/maandrapport-pdf";
-import React from "react";
 
 export async function GET(req: NextRequest) {
   try {
@@ -26,12 +25,15 @@ export async function GET(req: NextRequest) {
     }
 
     const { maandrapport } = await dataRes.json();
-    const buffer = await renderToBuffer(React.createElement(MaandrapportPDF, { data: maandrapport }));
+    const pdfBuffer = await renderToBuffer(
+      <MaandrapportPDF data={maandrapport} />
+    );
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(pdfBuffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="belastingoverzicht-${maand}.pdf"`,
+        "Cache-Control": "private, max-age=60",
       },
     });
   } catch (error) {

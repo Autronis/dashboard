@@ -105,6 +105,7 @@ export const facturen = sqliteTable("facturen", {
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+  pdfStorageUrl: text("pdf_storage_url"),
 }, (table) => ({
   idxKlantId: index("idx_facturen_klant_id").on(table.klantId),
   idxProjectId: index("idx_facturen_project_id").on(table.projectId),
@@ -563,6 +564,24 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   kiaAftrek: real("kia_aftrek"),
   isVerlegging: integer("is_verlegging").default(0),
   bonPad: text("bon_pad"),
+  storageUrl: text("storage_url"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ INKOMENDE FACTUREN ============
+export const inkomendeFacturen = sqliteTable("inkomende_facturen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  leverancier: text("leverancier").notNull(),
+  bedrag: real("bedrag").notNull(),
+  btwBedrag: real("btw_bedrag"),
+  factuurnummer: text("factuurnummer"),
+  datum: text("datum").notNull(),
+  storageUrl: text("storage_url").notNull(),
+  emailId: text("email_id").unique(),
+  bankTransactieId: integer("bank_transactie_id").references(() => bankTransacties.id),
+  uitgaveId: integer("uitgave_id").references(() => uitgaven.id),
+  status: text("status", { enum: ["gematcht", "onbekoppeld", "handmatig_gematcht"] }).default("onbekoppeld"),
+  verwerkOp: text("verwerk_op").notNull(),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 

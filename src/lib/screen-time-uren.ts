@@ -1,11 +1,10 @@
 import { db } from "@/lib/db";
-import { screenTimeEntries, projecten } from "@/lib/db/schema";
-import { eq, and, sql, asc, inArray } from "drizzle-orm";
+import { screenTimeEntries } from "@/lib/db/schema";
+import { eq, and, sql, asc } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
 const SLOT_MS = 30 * 60 * 1000; // 30 min
 const NL_TZ = "Europe/Amsterdam";
-const AUTRONIS_KLANT_ID = 4; // Autronis (intern)
 
 /** Convert UTC ISO string to NL local date string (YYYY-MM-DD) */
 function nlDatum(isoStr: string): string {
@@ -32,14 +31,6 @@ export async function berekenActieveUren(
   const vanUtc = vanExpanded.toISOString().slice(0, 10);
   const totUtc = totExpanded.toISOString().slice(0, 10);
 
-  // Get Autronis project IDs (klantId = 4) to filter company hours
-  const autronisProjecten = await db
-    .select({ id: projecten.id })
-    .from(projecten)
-    .where(eq(projecten.klantId, AUTRONIS_KLANT_ID))
-    .all();
-  const autronisProjectIds = new Set(autronisProjecten.map(p => p.id));
-
   const entries = await db
     .select({
       app: screenTimeEntries.app,
@@ -60,14 +51,12 @@ export async function berekenActieveUren(
     .all();
 
   // Group by NL local date, filtering out skip apps, entries outside range,
-  // and entries NOT linked to an Autronis project (only company hours count for urencriterium)
+  // and entries NOT linked to any project (only company hours count for urencriterium)
   const dagMap = new Map<string, typeof entries>();
   for (const entry of entries) {
     if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
-    // Only count entries linked to Autronis projects or with Autronis klantId
-    const isAutronis = (entry.projectId && autronisProjectIds.has(entry.projectId)) ||
-                       entry.klantId === AUTRONIS_KLANT_ID;
-    if (!isAutronis) continue;
+    // Only count entries linked to a project — all projects are Autronis work
+    if (!entry.projectId) continue;
     const dag = nlDatum(entry.startTijd);
     if (dag < vanDatum || dag > totDatum) continue;
     if (!dagMap.has(dag)) dagMap.set(dag, []);

@@ -1,10 +1,11 @@
 import { db } from "@/lib/db";
-import { screenTimeEntries } from "@/lib/db/schema";
-import { eq, and, sql, asc } from "drizzle-orm";
+import { screenTimeEntries, projecten } from "@/lib/db/schema";
+import { eq, and, sql, asc, inArray } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
 const SLOT_MS = 30 * 60 * 1000; // 30 min
 const NL_TZ = "Europe/Amsterdam";
+const AUTRONIS_KLANT_ID = 4; // Autronis (intern)
 
 /** Convert UTC ISO string to NL local date string (YYYY-MM-DD) */
 function nlDatum(isoStr: string): string {

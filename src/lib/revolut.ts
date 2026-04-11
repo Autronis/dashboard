@@ -275,7 +275,7 @@ export async function getVerbindingStatus() {
 // Build authorization URL
 export function getAuthUrl(): string {
   const clientId = getClientId();
-  const redirectUri = process.env.REVOLUT_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_URL}/api/revolut/callback`;
+  const redirectUri = process.env.REVOLUT_REDIRECT_URI || `${process.env.NEXT_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL}/api/revolut/callback`;
   const baseAuth = process.env.REVOLUT_SANDBOX === "true"
     ? "https://sandbox-business.revolut.com/app-confirm"
     : "https://business.revolut.com/app-confirm";

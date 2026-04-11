@@ -33,11 +33,14 @@ export async function GET(req: NextRequest) {
     const terugkerend = await db
       .select()
       .from(facturen)
-      .where(and(
-        eq(facturen.isTerugkerend, 1),
-        eq(facturen.status, "betaald"),
-        eq(facturen.isActief, 1),
-      ))
+      .where(
+        and(
+          eq(facturen.isTerugkerend, 1),
+          eq(facturen.terugkeerStatus, "actief"),
+          eq(facturen.isActief, 1),
+          lte(facturen.volgendeFactuurdatum, nu)
+        )
+      )
       .all();
 
     let aangemaakt = 0;
@@ -45,12 +48,6 @@ export async function GET(req: NextRequest) {
     const fouten: string[] = [];
 
     for (const f of terugkerend) {
-      if (!f.betaaldOp) continue;
-
-      const interval = f.terugkeerInterval === "wekelijks" ? 7 : 30;
-      const daysSince = Math.floor((Date.now() - new Date(f.betaaldOp).getTime()) / 86400000);
-      if (daysSince < interval) continue;
-
       // Genereer factuurnummer
       const jaar = new Date().getFullYear();
       const maxNr = await db
@@ -84,11 +81,25 @@ export async function GET(req: NextRequest) {
           notities: `Automatisch aangemaakt vanuit ${f.factuurnummer}`,
           isActief: 1,
           aangemaaktDoor: 1,
+          bronFactuurId: f.id,
         })
         .returning()
         .all();
 
       if (!nieuw) continue;
+
+      // Bereken en sla de volgende factuurdatum op de bronFactuur op
+      const aantal = f.terugkeerAantal || 1;
+      const eenheid = f.terugkeerEenheid || (f.terugkeerInterval === "wekelijks" ? "weken" : "maanden");
+      const volgende = new Date(f.volgendeFactuurdatum!);
+
+      if (eenheid === "dagen") volgende.setDate(volgende.getDate() + aantal);
+      else if (eenheid === "weken") volgende.setDate(volgende.getDate() + aantal * 7);
+      else if (eenheid === "maanden") volgende.setMonth(volgende.getMonth() + aantal);
+
+      await db.update(facturen)
+        .set({ volgendeFactuurdatum: volgende.toISOString().slice(0, 10), bijgewerktOp: new Date().toISOString() })
+        .where(eq(facturen.id, f.id));
 
       // Kopieer factuurregels
       const regels = await db

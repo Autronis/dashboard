@@ -36,6 +36,11 @@ export async function GET(req: NextRequest) {
         vervaldatum: facturen.vervaldatum,
         betaaldOp: facturen.betaaldOp,
         aangemaaktOp: facturen.aangemaaktOp,
+        isTerugkerend: facturen.isTerugkerend,
+        terugkeerAantal: facturen.terugkeerAantal,
+        terugkeerEenheid: facturen.terugkeerEenheid,
+        terugkeerStatus: facturen.terugkeerStatus,
+        volgendeFactuurdatum: facturen.volgendeFactuurdatum,
       })
       .from(facturen)
       .innerJoin(klanten, eq(facturen.klantId, klanten.id))

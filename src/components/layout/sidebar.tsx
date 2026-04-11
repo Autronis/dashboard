@@ -33,104 +33,91 @@ function isLauncher(item: NavLink | LauncherLink): item is LauncherLink {
 
 // ─── Navigation structure ───────────────────────────────────────
 const navSections: (NavLink | NavSection | "divider")[] = [
-  // Top-level
+  // Dagelijks — altijd zichtbaar, meest gebruikt
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "Ops Room", icon: Radio, href: "/ops-room" },
-  { label: "Analytics", icon: BarChart3, href: "/analytics" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
-  { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
-  { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
+  { label: "Projecten", icon: FolderKanban, href: "/projecten" },
 
-  // Mijn dag
+  // Werk
   {
-    section: "Mijn dag",
+    section: "Werk",
     items: [
-      { label: "Tijd", icon: Clock, href: "/tijd" },
-      { label: "Focus", icon: Focus, href: "/focus" },
-      { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
-      { label: "Meetings", icon: Mic, href: "/meetings" },
-      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-      { label: "Projecten", icon: FolderKanban, href: "/projecten" },
-      { label: "Documenten", icon: FileText, href: "/documenten" },
-    ],
-  },
-
-  // Sales & Klanten
-  {
-    section: "Sales & Klanten",
-    items: [
+      { label: "Klanten", icon: Users, href: "/klanten" },
       {
-        label: "Overzicht",
-        icon: Layers,
+        label: "Sales",
+        icon: Rocket,
         children: [
           { label: "Leads", icon: Zap, href: "/leads" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
+          { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
           { label: "Client Status", icon: Activity, href: "/client-status" },
           { label: "Gezondheid", icon: HeartPulse, href: "/klant-gezondheid" },
-          { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
         ],
       },
-      { label: "Klanten", icon: Users, href: "/klanten" },
-      { label: "Mail Assistent", icon: Sparkles, href: "/mail" },
-      { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
-    ],
-  },
-
-  // Geld
-  {
-    section: "Geld",
-    items: [
       {
-        label: "Opstellen",
-        icon: PenLine,
+        label: "Financiën",
+        icon: Euro,
         children: [
-          { label: "Offerte", icon: FileText, href: "/offertes" },
-          { label: "Contract", icon: FileText, href: "/offertes/contracten" },
-          { label: "Factuur", icon: Euro, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
+          { label: "Overzicht", icon: Euro, href: "/financien" },
+          { label: "Facturen", icon: Receipt, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
+          { label: "Offertes", icon: FileText, href: "/offertes" },
+          { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
+          { label: "Belasting", icon: Landmark, href: "/belasting" },
         ],
       },
-      { label: "Financiën", icon: Euro, href: "/financien", alsoMatches: [] },
-      { label: "Belasting", icon: Landmark, href: "/belasting" },
       { label: "Kilometers", icon: Car, href: "/kilometers" },
+      { label: "Mail Assistent", icon: Sparkles, href: "/mail" },
     ],
   },
 
-  // Creatie
+  // Operationeel
   {
-    section: "Creatie",
+    section: "Operationeel",
     items: [
+      { label: "Ops Room", icon: Radio, href: "/ops-room" },
+      { label: "Tijd", icon: Clock, href: "/tijd" },
+      { label: "Focus", icon: Focus, href: "/focus" },
+      { label: "Team", icon: Users2, href: "/team" },
+    ],
+  },
+
+  // Kennis & Content
+  {
+    section: "Kennis & Content",
+    items: [
+      { label: "Wiki", icon: BookOpen, href: "/wiki" },
+      { label: "Second Brain", icon: Brain, href: "/second-brain" },
       { label: "Content Engine", icon: Megaphone, href: "/content", alsoMatches: ["/content/posts", "/content/kennisbank", "/content/kalender"] },
       { label: "Video Studio", icon: Video, href: "/content/videos/studio", alsoMatches: ["/content/videos"] },
+    ],
+  },
+
+  // Overig
+  {
+    section: "Overig",
+    items: [
+      { label: "Analytics", icon: BarChart3, href: "/analytics" },
+      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
+      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+      { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
+      { label: "Meetings", icon: Mic, href: "/meetings" },
+      { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
+      { label: "Documenten", icon: FileText, href: "/documenten" },
       { label: "Banners", icon: PenLine, href: "/content/banners" },
       { label: "Animaties", icon: Wand2, href: "/animaties" },
       { label: "Case Studies", icon: Compass, href: "/case-studies" },
-    ],
-  },
-
-  // Kennis
-  {
-    section: "Kennis",
-    items: [
-      { label: "Second Brain", icon: Brain, href: "/second-brain" },
-      { label: "Wiki", icon: BookOpen, href: "/wiki" },
       { label: "Learning Radar", icon: Radar, href: "/radar" },
       { label: "YT Knowledge", icon: Video, href: "/yt-knowledge" },
       { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
-    ],
-  },
-
-  // Inzicht & Strategie
-  {
-    section: "Inzicht & Strategie",
-    items: [
+      { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
       {
-        label: "Vastleggen",
-        icon: Compass,
+        label: "Doelen & Tracking",
+        icon: Crosshair,
         children: [
-          { label: "Doel", icon: Crosshair, href: "/doelen" },
-          { label: "Gewoonte", icon: Flame, href: "/gewoontes" },
-          { label: "Concurrent", icon: Eye, href: "/concurrenten" },
+          { label: "Doelen", icon: Crosshair, href: "/doelen" },
+          { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
+          { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
         ],
       },
     ],
@@ -140,7 +127,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
   {
     section: "Beheer",
     items: [
-      { label: "Team", icon: Users2, href: "/team" },
       { label: "API Gebruik", icon: Activity, href: "/api-gebruik" },
       { label: "Instellingen", icon: Settings, href: "/instellingen" },
     ],

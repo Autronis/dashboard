@@ -316,6 +316,12 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Default: all productive work is Autronis unless explicitly afleiding/overig
+        if (!projectId && categorie !== "afleiding" && categorie !== "overig" && categorie !== "inactief") {
+          projectId = 9; // Autronis Dashboard
+          klantId = 4;   // Autronis (intern)
+        }
+
         // Cap duration at MAX_ENTRY_DURATION_SECONDS
         const cappedDuur = Math.min(chunk.duurSeconden, MAX_ENTRY_DURATION_SECONDS);
 

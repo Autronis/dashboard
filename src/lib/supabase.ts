@@ -8,10 +8,16 @@ function getSupabase(): SupabaseClient {
   if (!_supabase) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_KEY;
-    if (!url || !key) throw new Error("SUPABASE_URL en SUPABASE_SERVICE_KEY zijn vereist");
+    if (!url || !key) {
+      throw new Error("SUPABASE_URL en SUPABASE_SERVICE_KEY zijn vereist. Voeg ze toe aan je environment variables.");
+    }
     _supabase = createClient(url, key);
   }
   return _supabase;
+}
+
+export function isStorageConfigured(): boolean {
+  return !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY);
 }
 
 export async function uploadToStorage(

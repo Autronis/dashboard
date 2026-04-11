@@ -123,6 +123,16 @@ export async function GET(req: NextRequest) {
     // Fetch verdeelregels
     const regels = await db.select().from(verdeelRegels);
 
+    // Known foreign suppliers where no Dutch BTW applies
+    const buitenlandseLeveranciers = ["temu", "turso", "vercel", "google workspace", "stripe"];
+
+    function schatBtw(bedrag: number, omschrijving: string): number | null {
+      const lower = omschrijving.toLowerCase();
+      if (buitenlandseLeveranciers.some((b) => lower.includes(b))) return null;
+      // Dutch BTW: 21% included in price → bedrag / 1.21 * 0.21
+      return Math.round((Math.abs(bedrag) / 1.21) * 0.21 * 100) / 100;
+    }
+
     // Combine into unified list
     let items: RapportItem[] = [
       ...transacties.map((t) => ({
@@ -133,7 +143,7 @@ export async function GET(req: NextRequest) {
         categorie: t.categorie,
         bankNaam: t.bank,
         bedragInclBtw: Math.abs(t.bedrag),
-        btwBedrag: t.btwBedrag,
+        btwBedrag: t.btwBedrag ?? schatBtw(t.bedrag, t.merchantNaam || t.omschrijving),
         eigenaar: t.eigenaar,
         splitRatio: t.splitRatio,
       })),
@@ -145,7 +155,7 @@ export async function GET(req: NextRequest) {
         categorie: u.categorie,
         bankNaam: null,
         bedragInclBtw: u.bedrag,
-        btwBedrag: u.btwBedrag,
+        btwBedrag: u.btwBedrag ?? schatBtw(u.bedrag, u.leverancier || u.omschrijving),
         eigenaar: u.eigenaar,
         splitRatio: u.splitRatio,
       })),

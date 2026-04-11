@@ -320,95 +320,94 @@ function parseSkillGrid(blockHtml: string): Block {
 }
 
 function parseHtmlContent(html: string): Block[] {
+  // Phase 1: Extract all structured blocks, replace them with markers
+  const markers: { pos: number; block: Block }[] = [];
+  let processed = html;
+
+  // Helper: find all occurrences of a class and extract the full div block
+  function extractAndMark(className: string, parser: (html: string) => Block) {
+    const search = `class="${className}"`;
+    let offset = 0;
+    while (true) {
+      const idx = processed.indexOf(search, offset);
+      if (idx === -1) break;
+      // Find the opening <div that contains this class
+      let divStart = processed.lastIndexOf("<div", idx);
+      if (divStart === -1) { offset = idx + 1; continue; }
+      const blockHtml = extractBlock(processed, divStart);
+      const marker = `{{BLOCK_${markers.length}}}`;
+      markers.push({ pos: divStart, block: parser(blockHtml) });
+      processed = processed.substring(0, divStart) + marker + processed.substring(divStart + blockHtml.length);
+      offset = divStart + marker.length;
+    }
+  }
+
+  extractAndMark("arch-diagram", parseArchDiagram);
+  extractAndMark("how-grid", parseHowGrid);
+  extractAndMark("workflow", parseWorkflow);
+  extractAndMark("stats", parseStats);
+  extractAndMark("legend", parseLegend);
+  extractAndMark("grid", parseSkillGrid);
+
+  // Phase 2: Parse remaining text content line by line
   const blocks: Block[] = [];
-  const lines = html.split("\n");
+  const lines = processed.split("\n");
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    if (line.startsWith("<!--")) continue;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith("<!--")) continue;
 
-    // Structured blocks — extract full block and parse
-    if (line.includes('class="arch-diagram"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseArchDiagram(blockHtml));
-      // Skip lines covered by this block
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
-      continue;
-    }
-    if (line.includes('class="how-grid"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseHowGrid(blockHtml));
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
-      continue;
-    }
-    if (line.includes('class="workflow"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseWorkflow(blockHtml));
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
-      continue;
-    }
-    if (line.includes('class="stats"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseStats(blockHtml));
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
-      continue;
-    }
-    if (line.includes('class="legend"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseLegend(blockHtml));
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
-      continue;
-    }
-    if (line.includes('class="grid"')) {
-      const pos = html.indexOf(line);
-      const blockHtml = extractBlock(html, pos);
-      blocks.push(parseSkillGrid(blockHtml));
-      const endLine = html.substring(0, pos + blockHtml.length).split("\n").length;
-      i = endLine - 1;
+    // Check for block markers
+    const markerMatch = trimmed.match(/\{\{BLOCK_(\d+)\}\}/);
+    if (markerMatch) {
+      blocks.push(markers[parseInt(markerMatch[1])].block);
       continue;
     }
 
-    // Skip wrapper divs (container, section wrappers, etc.)
-    if (/^<div class="(container|atlas-intro|how-section|workflow-section|logo-header)"/.test(line)) continue;
-    if (/^<\/div>$/.test(line)) continue;
-    if (/^<img /.test(line)) continue;
+    // Skip wrapper divs and structural tags
+    if (/^<\/?div/.test(trimmed) || /^<img /.test(trimmed) || /^<\/?section/.test(trimmed)) {
+      // But check if it has text content worth keeping
+      if (/<div[^>]*>/.test(trimmed)) {
+        const t = stripHtml(trimmed);
+        // Only keep if it looks like a subtitle/paragraph, not a wrapper
+        if (t && t.length > 10 && !t.startsWith("<")) {
+          blocks.push({ type: "paragraph", text: t });
+        }
+      }
+      continue;
+    }
+    if (/^<\//.test(trimmed)) continue;
 
     // Headings
-    const h1m = line.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const h1m = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
     if (h1m) { const t = stripHtml(h1m[1]); if (t) blocks.push({ type: "h1", text: t }); continue; }
-    const h2m = line.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    const h2m = trimmed.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
     if (h2m) { const t = stripHtml(h2m[1]); if (t) blocks.push({ type: "h2", text: t }); continue; }
-    const h3m = line.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+    const h3m = trimmed.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
     if (h3m) { const t = stripHtml(h3m[1]); if (t) blocks.push({ type: "h3", text: t }); continue; }
 
     // HR
-    if (/<hr/i.test(line)) { blocks.push({ type: "hr" }); continue; }
+    if (/<hr/i.test(trimmed)) { blocks.push({ type: "hr" }); continue; }
 
     // Paragraphs
-    if (/<p[^>]*>/i.test(line)) {
-      const t = stripHtml(line); if (t) blocks.push({ type: "paragraph", text: t }); continue;
+    if (/<p[^>]*>/i.test(trimmed)) {
+      const t = stripHtml(trimmed); if (t) blocks.push({ type: "paragraph", text: t }); continue;
     }
 
     // List items
-    if (/<li[^>]*>/i.test(line)) {
-      const t = stripHtml(line); if (t) blocks.push({ type: "list-item", text: t }); continue;
+    if (/<li[^>]*>/i.test(trimmed)) {
+      const t = stripHtml(trimmed); if (t) blocks.push({ type: "list-item", text: t }); continue;
     }
 
     // Blockquote
-    if (/<blockquote/i.test(line)) {
-      const t = stripHtml(line); if (t) blocks.push({ type: "blockquote", text: t }); continue;
+    if (/<blockquote/i.test(trimmed)) {
+      const t = stripHtml(trimmed); if (t) blocks.push({ type: "blockquote", text: t }); continue;
     }
+
+    // Any remaining content
+    const t = stripHtml(trimmed);
+    if (t && t.length > 1) blocks.push({ type: "paragraph", text: t });
   }
 
   return blocks;

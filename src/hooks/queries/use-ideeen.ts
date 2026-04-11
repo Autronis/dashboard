@@ -277,6 +277,24 @@ export function useSyncBacklog() {
   });
 }
 
+export function useParkeerIdee() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, geparkeerd }: { id: number; geparkeerd: boolean }) => {
+      const res = await fetch(`/api/ideeen/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ geparkeerd: geparkeerd ? 1 : 0 }),
+      });
+      if (!res.ok) throw new Error("Parkeren mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ideeen"] });
+    },
+  });
+}
+
 export function useConfidenceRecalc() {
   const queryClient = useQueryClient();
   return useMutation({

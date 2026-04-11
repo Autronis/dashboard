@@ -3,7 +3,7 @@ import { Client } from "@notionhq/client";
 import { db } from "@/lib/db";
 import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireApiKey } from "@/lib/auth";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 // GET /api/ideeen — lijst met optionele filters
 export async function GET(req: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
       .select()
       .from(ideeen)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(asc(ideeen.nummer))
+      .orderBy(desc(ideeen.aiScore))
       .all();
 
     return NextResponse.json({ ideeen: rows });

@@ -70,6 +70,11 @@ export async function PUT(
     if (body.gepromoveerd !== undefined) updateData.gepromoveerd = body.gepromoveerd;
     if (body.isAiSuggestie !== undefined) updateData.isAiSuggestie = body.isAiSuggestie;
 
+    // Handle confidence/parking fields
+    if (body.bron !== undefined) updateData.bron = body.bron;
+    if (body.bronTekst !== undefined) updateData.bronTekst = body.bronTekst;
+    if (body.geparkeerd !== undefined) updateData.geparkeerd = body.geparkeerd;
+
     const [bijgewerkt] = await db
       .update(ideeen)
       .set(updateData)

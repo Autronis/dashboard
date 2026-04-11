@@ -59,6 +59,7 @@ export async function berekenActieveUren(
   }
 
   let totaalSeconden = 0;
+  let afleidingSeconden = 0;
 
   for (const dagEntries of dagMap.values()) {
     if (dagEntries.length === 0) continue;
@@ -84,7 +85,16 @@ export async function berekenActieveUren(
 
       t = tEnd;
     }
+
+    // Sum distraction time for this day
+    for (const entry of dagEntries) {
+      if (entry.categorie === "afleiding") {
+        afleidingSeconden += Math.max(0, (new Date(entry.eindTijd).getTime() - new Date(entry.startTijd).getTime()) / 1000);
+      }
+    }
   }
 
-  return Math.round((totaalSeconden / 3600) * 100) / 100;
+  // Deep work = activity minus distraction
+  const deepWorkSeconden = Math.max(0, totaalSeconden - afleidingSeconden);
+  return Math.round((deepWorkSeconden / 3600) * 100) / 100;
 }

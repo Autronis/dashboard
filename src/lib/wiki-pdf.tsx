@@ -287,12 +287,161 @@ const styles = StyleSheet.create({
   },
 });
 
-// ===== MARKDOWN PARSER =====
+// ===== CONTENT PARSER =====
 
 interface ParsedElement {
   type: "h1" | "h2" | "h3" | "paragraph" | "list-item" | "ordered-item" | "code-block" | "blockquote" | "hr" | "table";
   content: string;
   rows?: string[][];
+}
+
+function isHtmlContent(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("<") && (
+    trimmed.startsWith("<h1") || trimmed.startsWith("<h2") || trimmed.startsWith("<p") ||
+    trimmed.startsWith("<div") || trimmed.startsWith("<section") || trimmed.startsWith("<!") || trimmed.startsWith("<html")
+  );
+}
+
+/** Strip all HTML tags, decode entities, return plain text */
+function stripHtml(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(?:p|div|li|tr|h[1-6]|blockquote|pre|section)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#8595;/g, "\u2193")
+    .replace(/&#\d+;/g, "")
+    .replace(/&\w+;/g, "")
+    .trim();
+}
+
+/** Extract text content from an HTML tag */
+function getTagText(html: string): string {
+  return stripHtml(html).trim();
+}
+
+function parseHtml(html: string): ParsedElement[] {
+  const elements: ParsedElement[] = [];
+
+  // Process line by line, matching HTML tags
+  // We use regex to find block-level elements
+  const blockPattern = /<(h[1-3]|p|div|pre|code|blockquote|li|hr|table|tr|th|td|ul|ol|section|span|strong|em|a|img|br)[^>]*>([\s\S]*?)<\/\1>|<(hr|br|img)\s*\/?>/gi;
+
+  // First, extract structured content by walking the HTML
+  // Split into meaningful blocks
+  const lines = html.split("\n");
+  let inCodeBlock = false;
+  let codeContent: string[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Skip HTML comments
+    if (trimmed.startsWith("<!--")) continue;
+
+    // Detect code/pre blocks
+    if (/<pre[^>]*>/i.test(trimmed) || (/<code[^>]*>/i.test(trimmed) && !/<\/code>/i.test(trimmed))) {
+      inCodeBlock = true;
+      codeContent = [];
+      const codeText = getTagText(trimmed);
+      if (codeText) codeContent.push(codeText);
+      continue;
+    }
+    if (inCodeBlock) {
+      if (/<\/pre>/i.test(trimmed) || /<\/code>/i.test(trimmed)) {
+        const codeText = getTagText(trimmed);
+        if (codeText) codeContent.push(codeText);
+        elements.push({ type: "code-block", content: codeContent.join("\n") });
+        inCodeBlock = false;
+        codeContent = [];
+      } else {
+        codeContent.push(getTagText(trimmed));
+      }
+      continue;
+    }
+
+    // Headings
+    const h1Match = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1Match) {
+      const text = getTagText(h1Match[1]);
+      if (text) elements.push({ type: "h1", content: text });
+      continue;
+    }
+    const h2Match = trimmed.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    if (h2Match) {
+      const text = getTagText(h2Match[1]);
+      if (text) elements.push({ type: "h2", content: text });
+      continue;
+    }
+    const h3Match = trimmed.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+    if (h3Match) {
+      const text = getTagText(h3Match[1]);
+      if (text) elements.push({ type: "h3", content: text });
+      continue;
+    }
+
+    // HR
+    if (/<hr/i.test(trimmed)) {
+      elements.push({ type: "hr", content: "" });
+      continue;
+    }
+
+    // List items
+    if (/<li[^>]*>/i.test(trimmed)) {
+      const text = getTagText(trimmed);
+      if (text) elements.push({ type: "list-item", content: text });
+      continue;
+    }
+
+    // Blockquote
+    if (/<blockquote[^>]*>/i.test(trimmed)) {
+      const text = getTagText(trimmed);
+      if (text) elements.push({ type: "blockquote", content: text });
+      continue;
+    }
+
+    // Paragraphs
+    if (/<p[^>]*>/i.test(trimmed)) {
+      const text = getTagText(trimmed);
+      if (text) elements.push({ type: "paragraph", content: text });
+      continue;
+    }
+
+    // Inline code (single line)
+    if (/<code[^>]*>.*<\/code>/i.test(trimmed)) {
+      const codeMatch = trimmed.match(/<code[^>]*>([\s\S]*?)<\/code>/i);
+      if (codeMatch) {
+        const text = getTagText(codeMatch[0]);
+        if (text) elements.push({ type: "code-block", content: text });
+      }
+      continue;
+    }
+
+    // Skip structural divs that are just wrappers — extract text from divs with content
+    if (/<div[^>]*>/i.test(trimmed)) {
+      const text = getTagText(trimmed);
+      // Only add if it has actual text content (not just nested tags)
+      if (text && text.length > 1 && !text.startsWith("<")) {
+        elements.push({ type: "paragraph", content: text });
+      }
+      continue;
+    }
+
+    // Any remaining text content
+    const text = stripHtml(trimmed);
+    if (text && text.length > 1) {
+      elements.push({ type: "paragraph", content: text });
+    }
+  }
+
+  return elements;
 }
 
 function parseMarkdown(markdown: string): ParsedElement[] {
@@ -385,6 +534,14 @@ function parseMarkdown(markdown: string): ParsedElement[] {
   }
 
   return elements;
+}
+
+/** Parse content — auto-detect HTML vs markdown */
+function parseContent(content: string): ParsedElement[] {
+  if (isHtmlContent(content)) {
+    return parseHtml(content);
+  }
+  return parseMarkdown(content);
 }
 
 function renderInlineText(text: string): React.ReactElement {
@@ -521,7 +678,7 @@ function formatDatum(datum: string): string {
 export function WikiPDF({ artikel, bedrijf }: WikiPDFProps) {
   const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis";
   const datum = artikel.bijgewerktOp ? formatDatum(artikel.bijgewerktOp) : "";
-  const elements = parseMarkdown(artikel.inhoud || "");
+  const elements = parseContent(artikel.inhoud || "");
   const logoSrc = getLogoSrc();
 
   return (

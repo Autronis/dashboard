@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,7 +11,6 @@ import {
   Clock,
   Code2,
   ChevronDown,
-  ChevronRight,
   FolderKanban,
   ListTodo,
   Loader2,
@@ -29,44 +28,8 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
-
-// ============ Types ============
-
-interface FaseTaak {
-  id: number;
-  titel: string;
-  status: string;
-  prioriteit: string;
-  deadline: string | null;
-  uitvoerder: string | null;
-  bijgewerktOp: string | null;
-}
-
-interface Fase {
-  naam: string;
-  taken: FaseTaak[];
-  totaal: number;
-  afgerond: number;
-}
-
-interface ProjectDetail {
-  id: number;
-  naam: string;
-  omschrijving: string | null;
-  klantId: number | null;
-  klantNaam: string | null;
-  status: string;
-  voortgangPercentage: number;
-  deadline: string | null;
-  geschatteUren: number | null;
-  werkelijkeUren: number | null;
-  aangemaaktOp: string | null;
-  bijgewerktOp: string | null;
-  totaalTaken: number;
-  afgerondTaken: number;
-  voortgang: number;
-  totaalMinuten: number;
-}
+import { useProjectDetail } from "@/hooks/queries/use-projecten";
+import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecten";
 
 // ============ Sub-components ============
 
@@ -486,37 +449,16 @@ export default function ProjectDetailPage() {
   const { addToast } = useToast();
   const timer = useTimer();
 
-  const [project, setProject] = useState<ProjectDetail | null>(null);
-  const [fases, setFases] = useState<Fase[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { project, fases, isLoading: loading, isError, error, refetch, setFases } = useProjectDetail(id);
   const [syncing, setSyncing] = useState(false);
   const [openingVSCode, setOpeningVSCode] = useState(false);
   const pendingToggles = useRef<Set<number>>(new Set());
 
-  const fetchProject = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/projecten/${id}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          addToast("Project niet gevonden", "fout");
-          router.push("/projecten");
-          return;
-        }
-        throw new Error("Kon project niet laden");
-      }
-      const data = await res.json();
-      setProject(data.project);
-      setFases(data.fases);
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : "Fout bij laden", "fout");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, addToast, router]);
-
-  useEffect(() => {
-    fetchProject();
-  }, [fetchProject]);
+  // Redirect on error
+  if (isError && error?.message === "Project niet gevonden") {
+    addToast("Project niet gevonden", "fout");
+    router.push("/projecten");
+  }
 
   const syncTaken = useCallback(async () => {
     if (!project) return;
@@ -530,13 +472,13 @@ export default function ProjectDetailPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Sync mislukt");
       addToast(`Sync voltooid: ${data.matched} afgerond, ${data.added} nieuw`, "succes");
-      fetchProject();
+      refetch();
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Sync mislukt", "fout");
     } finally {
       setSyncing(false);
     }
-  }, [project, addToast, fetchProject]);
+  }, [project, addToast, refetch]);
 
   // Inline optimistic status toggle
   const handleTaakStatusToggle = useCallback(async (taakId: number, huidigStatus: string) => {
@@ -558,11 +500,11 @@ export default function ProjectDetailPage() {
       if (!res.ok) throw new Error();
     } catch {
       addToast("Kon status niet bijwerken", "fout");
-      fetchProject(); // revert by refetching
+      refetch(); // revert by refetching
     } finally {
       pendingToggles.current.delete(taakId);
     }
-  }, [fetchProject, addToast]);
+  }, [refetch, addToast]);
 
   const handleBulkAfvinken = useCallback(async (taakIds: number[]) => {
     // Optimistic update
@@ -579,11 +521,11 @@ export default function ProjectDetailPage() {
     const failed = results.filter((r) => r.status === "rejected").length;
     if (failed > 0) {
       addToast(`${failed} taken konden niet worden bijgewerkt`, "fout");
-      fetchProject();
+      refetch();
     } else {
       addToast(`${taakIds.length} taken afgevinkt`, "succes");
     }
-  }, [fetchProject, addToast]);
+  }, [refetch, addToast]);
 
   const techStack = useMemo(() => extractTechStack(project?.omschrijving ?? null), [project?.omschrijving]);
   const samenvatting = useMemo(() => {

@@ -80,3 +80,81 @@ export function useProjectenMetKpis() {
 
   return query;
 }
+
+// ============ Project Detail ============
+
+export interface FaseTaak {
+  id: number;
+  titel: string;
+  status: string;
+  prioriteit: string;
+  deadline: string | null;
+  uitvoerder: string | null;
+  bijgewerktOp: string | null;
+}
+
+export interface Fase {
+  naam: string;
+  taken: FaseTaak[];
+  totaal: number;
+  afgerond: number;
+}
+
+export interface ProjectDetail {
+  id: number;
+  naam: string;
+  omschrijving: string | null;
+  klantId: number | null;
+  klantNaam: string | null;
+  status: string;
+  voortgangPercentage: number;
+  deadline: string | null;
+  geschatteUren: number | null;
+  werkelijkeUren: number | null;
+  aangemaaktOp: string | null;
+  bijgewerktOp: string | null;
+  totaalTaken: number;
+  afgerondTaken: number;
+  voortgang: number;
+  totaalMinuten: number;
+}
+
+interface ProjectDetailResponse {
+  project: ProjectDetail;
+  fases: Fase[];
+}
+
+async function fetchProjectDetail(id: string): Promise<ProjectDetailResponse> {
+  const res = await fetch(`/api/projecten/${id}`);
+  if (res.status === 404) throw new Error("Project niet gevonden");
+  if (!res.ok) throw new Error("Kon project niet laden");
+  return res.json() as Promise<ProjectDetailResponse>;
+}
+
+export function useProjectDetail(id: string) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["project", id],
+    queryFn: () => fetchProjectDetail(id),
+    staleTime: 30_000,
+    enabled: !!id,
+  });
+
+  const setFases = useCallback((updater: (prev: Fase[]) => Fase[]) => {
+    queryClient.setQueryData<ProjectDetailResponse>(["project", id], (old) => {
+      if (!old) return old;
+      return { ...old, fases: updater(old.fases) };
+    });
+  }, [queryClient, id]);
+
+  return {
+    project: query.data?.project ?? null,
+    fases: query.data?.fases ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
+    setFases,
+  };
+}

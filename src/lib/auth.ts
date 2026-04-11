@@ -61,10 +61,13 @@ export async function requireApiKey(req: NextRequest): Promise<number> {
 
   const token = authHeader.slice(7);
 
-  // Accept dedicated internal API key (for desktop agent / Claude sync)
+  // Accept dedicated internal API key or SESSION_SECRET (for desktop agent / Claude sync)
   const internalKey = process.env.INTERNAL_API_KEY;
   if (internalKey && token === internalKey) {
     return 1; // Sem's user ID
+  }
+  if (token === SESSION_SECRET) {
+    return 1; // Sem's user ID — fallback for desktop agent
   }
 
   const hash = createHash("sha256").update(token).digest("hex");

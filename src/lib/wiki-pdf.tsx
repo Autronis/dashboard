@@ -395,7 +395,7 @@ function renderInlineText(text: string): React.ReactElement {
 
   while (remaining.length > 0) {
     // Bold
-    const boldMatch = remaining.match(/^(.*?)\*\*(.+?)\*\*(.*)/s);
+    const boldMatch = remaining.match(/^([\s\S]*?)\*\*(.+?)\*\*([\s\S]*)/);
     if (boldMatch && boldMatch[1].length < remaining.length) {
       if (boldMatch[1]) {
         parts.push(<Text key={key++}>{boldMatch[1]}</Text>);
@@ -406,7 +406,7 @@ function renderInlineText(text: string): React.ReactElement {
     }
 
     // Inline code
-    const codeMatch = remaining.match(/^(.*?)`([^`]+)`(.*)/s);
+    const codeMatch = remaining.match(/^([\s\S]*?)`([^`]+)`([\s\S]*)/);
     if (codeMatch && codeMatch[1].length < remaining.length) {
       if (codeMatch[1]) {
         parts.push(<Text key={key++}>{codeMatch[1]}</Text>);
@@ -417,7 +417,7 @@ function renderInlineText(text: string): React.ReactElement {
     }
 
     // Link
-    const linkMatch = remaining.match(/^(.*?)\[([^\]]+)\]\(([^)]+)\)(.*)/s);
+    const linkMatch = remaining.match(/^([\s\S]*?)\[([^\]]+)\]\(([^)]+)\)([\s\S]*)/);
     if (linkMatch && linkMatch[1].length < remaining.length) {
       if (linkMatch[1]) {
         parts.push(<Text key={key++}>{linkMatch[1]}</Text>);

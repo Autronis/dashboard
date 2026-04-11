@@ -89,8 +89,20 @@ Als dit geen taken retourneert, vraag Sem welke taken open staan of check het da
 ### Workflow:
 1. **Sessiestart** → taken ophalen → toon aan Sem → vraag wat oppakken
 2. **Taak afronden** → DIRECT syncen als voltooide_taken
-3. **Nieuwe taak ontdekt** → DIRECT syncen als nieuwe_taken
+3. **Nieuwe taak ontdekt** → DIRECT syncen als nieuwe_taken **met fase**
 4. **Sessie-einde** → check of alles gesynct is
+
+### Nieuwe taken toevoegen met fase (VERPLICHT):
+`nieuwe_taken` accepteert zowel strings als objecten. Gebruik ALTIJD objecten met fase zodat taken in het dashboard correct verschijnen:
+```json
+{
+  "nieuwe_taken": [
+    {"titel": "Taak titel", "fase": "Fase 2: Financieel & Compliance"},
+    {"titel": "Andere taak", "fase": "Fase 5: Uitbreidingen", "prioriteit": "hoog"}
+  ]
+}
+```
+Als je geen fase weet, wordt automatisch de meest recente actieve fase gebruikt. Maar geef altijd een fase mee als je die weet.
 
 ## Team Sync (VERPLICHT)
 Dit project wordt gedeeld door Sem (id=1) en Syb (id=2). Gebruik de team sync API bij ELKE sessie.

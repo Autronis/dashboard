@@ -221,10 +221,20 @@ export async function POST(req: NextRequest) {
         .get();
       let volgorde = (maxVolgorde?.max ?? 0) + 1;
 
+      // Auto-detect fase: find the latest non-complete fase for this project
+      const laatsteFase = await db
+        .select({ fase: taken.fase })
+        .from(taken)
+        .where(and(eq(taken.projectId, project.id), sql`${taken.fase} IS NOT NULL AND ${taken.status} != 'afgerond'`))
+        .orderBy(sql`${taken.volgorde} DESC`)
+        .limit(1)
+        .get();
+      const defaultFase = laatsteFase?.fase ?? null;
+
       for (const item of nieuwe_taken) {
         const isObject = typeof item === "object" && item !== null;
         const trimmed = (isObject ? (item as { titel: string }).titel : (item as string)).trim();
-        const fase = isObject ? item.fase || null : null;
+        const fase = (isObject ? item.fase : null) || defaultFase;
         const rawPrio = isObject && item.prioriteit ? item.prioriteit : "normaal";
         const prioriteit = (["laag", "normaal", "hoog"].includes(rawPrio) ? rawPrio : "normaal") as "laag" | "normaal" | "hoog";
         if (!trimmed) continue;

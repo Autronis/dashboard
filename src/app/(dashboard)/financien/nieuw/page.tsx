@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, Eye, PenLine } from "lucide-react";
@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { DocumentPreview } from "@/components/shared/document-preview";
-import { formatBedrag, formatDatum } from "@/lib/utils";
+import { cn, formatBedrag, formatDatum } from "@/lib/utils";
 
 interface Klant {
   id: number;
@@ -89,6 +89,19 @@ export default function NieuweFactuurPage() {
     { omschrijving: "", aantal: 1, eenheidsprijs: 0, btwPercentage: 21 },
   ]);
 
+  const [isTerugkerend, setIsTerugkerend] = useState(false);
+  const [terugkeerAantal, setTerugkeerAantal] = useState(1);
+  const [terugkeerEenheid, setTerugkeerEenheid] = useState<"dagen" | "weken" | "maanden">("maanden");
+
+  const volgendeFactuurdatum = useMemo(() => {
+    if (!isTerugkerend || !factuurdatum) return "";
+    const d = new Date(factuurdatum);
+    if (terugkeerEenheid === "dagen") d.setDate(d.getDate() + terugkeerAantal);
+    else if (terugkeerEenheid === "weken") d.setDate(d.getDate() + terugkeerAantal * 7);
+    else if (terugkeerEenheid === "maanden") d.setMonth(d.getMonth() + terugkeerAantal);
+    return d.toISOString().slice(0, 10);
+  }, [isTerugkerend, factuurdatum, terugkeerAantal, terugkeerEenheid]);
+
   useEffect(() => {
     fetch("/api/klanten").then((r) => r.json()).then((d) => setKlanten(d.klanten || []));
     fetch("/api/projecten").then((r) => r.json()).then((d) => setProjecten(d.projecten || []));
@@ -148,6 +161,10 @@ export default function NieuweFactuurPage() {
           factuurdatum,
           vervaldatum,
           notities: notities.trim() || null,
+          isTerugkerend,
+          terugkeerAantal,
+          terugkeerEenheid,
+          volgendeFactuurdatum: isTerugkerend ? volgendeFactuurdatum : null,
           regels: regels.map((r) => ({
             omschrijving: r.omschrijving.trim(),
             aantal: r.aantal,
@@ -353,6 +370,66 @@ export default function NieuweFactuurPage() {
           rows={3}
           className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors resize-none"
         />
+      </div>
+
+      {/* Herhaling */}
+      <div className="bg-autronis-card rounded-2xl border border-autronis-border p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-autronis-text-primary">Herhaling</h3>
+          <button
+            type="button"
+            onClick={() => setIsTerugkerend(!isTerugkerend)}
+            className={cn(
+              "relative w-11 h-6 rounded-full transition-colors",
+              isTerugkerend ? "bg-autronis-accent" : "bg-autronis-border"
+            )}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform",
+                isTerugkerend && "translate-x-5"
+              )}
+            />
+          </button>
+        </div>
+
+        {isTerugkerend && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-autronis-text-secondary">Elke</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={terugkeerAantal}
+                  onChange={(e) => setTerugkeerAantal(Math.max(1, Number(e.target.value)))}
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-autronis-text-secondary">Eenheid</label>
+                <select
+                  value={terugkeerEenheid}
+                  onChange={(e) => setTerugkeerEenheid(e.target.value as "dagen" | "weken" | "maanden")}
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+                >
+                  <option value="dagen">Dagen</option>
+                  <option value="weken">Weken</option>
+                  <option value="maanden">Maanden</option>
+                </select>
+              </div>
+            </div>
+
+            {volgendeFactuurdatum && (
+              <p className="text-sm text-autronis-text-secondary">
+                Volgende factuur op:{" "}
+                <span className="text-autronis-accent font-medium">
+                  {new Date(volgendeFactuurdatum).toLocaleDateString("nl-NL")}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Acties */}

@@ -76,6 +76,7 @@ import {
   type Investering,
 } from "@/hooks/queries/use-belasting";
 import { PageTransition } from "@/components/ui/page-transition";
+import Link from "next/link";
 import { SkeletonKPI } from "@/components/ui/skeleton";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ProgressRing } from "@/components/ui/progress-ring";
@@ -766,6 +767,14 @@ export default function BelastingPage() {
                 <ChevronUp className="w-4 h-4 rotate-90" />
               </button>
             </div>
+
+            <Link
+              href="/belasting/maandrapport"
+              className="flex items-center gap-2 bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20 rounded-xl px-4 py-2 text-sm font-medium transition-colors"
+            >
+              <FileBarChart className="w-4 h-4" />
+              Maandrapport
+            </Link>
 
             {noData && (
               <button

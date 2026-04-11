@@ -484,6 +484,9 @@ export default function ProjectenPage() {
   const [activeTab, setActiveTab] = useState<string>("actief");
   const [syncing, setSyncing] = useState(false);
   const [weergave, setWeergave] = useState<"grid" | "lijst">("grid");
+  const [showNieuwProject, setShowNieuwProject] = useState(false);
+  const [nieuwProjectNaam, setNieuwProjectNaam] = useState("");
+  const [nieuwProjectBezig, setNieuwProjectBezig] = useState(false);
   const { addToast } = useToast();
   const timer = useTimer();
 
@@ -506,6 +509,32 @@ export default function ProjectenPage() {
       setSyncing(false);
     }
   }, [addToast, refetch]);
+
+  const handleNieuwProject = useCallback(async () => {
+    if (!nieuwProjectNaam.trim()) return;
+    setNieuwProjectBezig(true);
+    try {
+      const res = await fetch("/api/projecten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ naam: nieuwProjectNaam.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.fout || "Aanmaken mislukt");
+      if (json.bestaand) {
+        addToast(`Project "${json.project.naam}" bestaat al`, "fout");
+      } else {
+        addToast(`Project "${json.project.naam}" aangemaakt`, "succes");
+        refetch();
+      }
+      setShowNieuwProject(false);
+      setNieuwProjectNaam("");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
+    } finally {
+      setNieuwProjectBezig(false);
+    }
+  }, [nieuwProjectNaam, addToast, refetch]);
 
   const handleOpenVSCode = useCallback(async (project: Project) => {
     const prompt = `Werk aan ${project.naam}, pak de openstaande taken op en begin met de hoogste prioriteit`;
@@ -538,7 +567,7 @@ export default function ProjectenPage() {
   }, [timer, addToast]);
 
   const projecten = data?.projecten ?? [];
-  const kpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
+  const serverKpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
 
   const filtered = useMemo(() => {
     return projecten.filter((p) => {
@@ -589,6 +618,20 @@ export default function ProjectenPage() {
     };
   }, [projecten, zoek]);
 
+  // Contextual KPIs based on current tab + search
+  const kpis = useMemo(() => {
+    const isFiltered = activeTab !== "alle" || zoek;
+    if (!isFiltered) return serverKpis;
+    return {
+      totaal: filtered.length,
+      actief: filtered.filter((p) => p.status === "actief").length,
+      afgerond: filtered.filter((p) => p.status === "afgerond").length,
+      onHold: filtered.filter((p) => p.status === "on-hold").length,
+      takenOpen: filtered.reduce((sum, p) => sum + (p.takenTotaal - p.takenAfgerond), 0),
+      totaleUren: filtered.reduce((sum, p) => sum + p.totaalMinuten, 0),
+    };
+  }, [filtered, activeTab, zoek, serverKpis]);
+
   return (
     <PageTransition>
       <div className="p-6 space-y-6">
@@ -600,14 +643,23 @@ export default function ProjectenPage() {
               {kpis.actief} actief &middot; {kpis.takenOpen} open taken &middot; {Math.round(kpis.totaleUren / 60)}u totaal
             </p>
           </div>
-          <button
-            onClick={syncProjecten}
-            disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-            {syncing ? "Syncing..." : "Sync projecten"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowNieuwProject(true)}
+              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-primary text-sm font-medium rounded-xl transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Nieuw project
+            </button>
+            <button
+              onClick={syncProjecten}
+              disabled={syncing}
+              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
+              {syncing ? "Syncing..." : "Sync projecten"}
+            </button>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -729,6 +781,53 @@ export default function ProjectenPage() {
         )}
 
 
+        {/* Nieuw project modal */}
+        <AnimatePresence>
+          {showNieuwProject && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+              onClick={() => setShowNieuwProject(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Nieuw project</h2>
+                <input
+                  type="text"
+                  placeholder="Projectnaam..."
+                  value={nieuwProjectNaam}
+                  onChange={(e) => setNieuwProjectNaam(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleNieuwProject()}
+                  autoFocus
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent mb-4"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => { setShowNieuwProject(false); setNieuwProjectNaam(""); }}
+                    className="px-4 py-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                  >
+                    Annuleren
+                  </button>
+                  <button
+                    onClick={handleNieuwProject}
+                    disabled={nieuwProjectBezig || !nieuwProjectNaam.trim()}
+                    className="flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    {nieuwProjectBezig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Aanmaken
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </PageTransition>
   );

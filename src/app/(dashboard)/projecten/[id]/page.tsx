@@ -17,7 +17,6 @@ import {
   Loader2,
   Pause,
   RefreshCw,
-  Sparkles,
   AlertTriangle,
   AlertCircle,
   Play,
@@ -531,14 +530,15 @@ export default function ProjectDetailPage() {
     if (pendingToggles.current.has(taakId)) return;
     const volgende = huidigStatus === "open" ? "bezig" : huidigStatus === "bezig" ? "afgerond" : "open";
     // Optimistic update
-    setFases((prev) => prev.map((f) => ({
-      ...f,
-      taken: f.taken.map((t) => t.id === taakId ? { ...t, status: volgende } : t),
-      afgerond: f.taken.some((t) => t.id === taakId)
-        ? f.taken.filter((t) => t.id !== taakId || volgende === "afgerond").filter((t) => t.status === "afgerond").length +
-          (volgende === "afgerond" ? 1 : 0)
-        : f.afgerond,
-    })));
+    setFases((prev) => prev.map((f) => {
+      const updatedTaken = f.taken.map((t) => t.id === taakId ? { ...t, status: volgende } : t);
+      return {
+        ...f,
+        taken: updatedTaken,
+        afgerond: updatedTaken.filter((t) => t.status === "afgerond").length,
+        totaal: updatedTaken.length,
+      };
+    }));
     pendingToggles.current.add(taakId);
     try {
       const res = await fetch(`/api/taken/${taakId}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: volgende }) });
@@ -752,7 +752,7 @@ export default function ProjectDetailPage() {
         {/* AI Samenvatting */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 card-glow">
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="w-4 h-4 text-purple-400" />
+            <ListTodo className="w-4 h-4 text-autronis-accent" />
             <h2 className="text-sm font-medium text-autronis-text-secondary uppercase tracking-wider">
               Samenvatting
             </h2>

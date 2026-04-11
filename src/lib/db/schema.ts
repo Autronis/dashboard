@@ -104,7 +104,7 @@ export const facturen = sqliteTable("facturen", {
   terugkeerEenheid: text("terugkeer_eenheid", { enum: ["dagen", "weken", "maanden"] }),
   terugkeerStatus: text("terugkeer_status", { enum: ["actief", "gepauzeerd", "gestopt"] }).default("actief"),
   volgendeFactuurdatum: text("volgende_factuurdatum"),
-  bronFactuurId: integer("bron_factuur_id").references(() => facturen.id),
+  bronFactuurId: integer("bron_factuur_id"), // self-referential FK — constraint handled at DB level via migration
   notities: text("notities"),
   isActief: integer("is_actief").default(1),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),

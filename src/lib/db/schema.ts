@@ -957,6 +957,12 @@ export const meetings = sqliteTable("meetings", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+export const verborgenKalenderMeetings = sqliteTable("verborgen_kalender_meetings", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  kalenderEventId: text("kalender_event_id").notNull().unique(),
+  verborgenOp: text("verborgen_op").default(sql`(datetime('now'))`),
+});
+
 // ============ LEARNING RADAR ============
 
 export const radarBronnen = sqliteTable("radar_bronnen", {

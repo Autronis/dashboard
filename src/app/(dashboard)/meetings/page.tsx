@@ -12,6 +12,7 @@ import {
   HelpCircle,
   MessageSquare,
   Trash2,
+  EyeOff,
   ChevronDown,
   Plus,
   Loader2,
@@ -50,6 +51,7 @@ import {
   useVerwerkMeeting,
   useSubmitTranscript,
   useDeleteMeeting,
+  useHideMeeting,
   useUpdateMeeting,
   useUploadMeetingAudio,
   useMeetingVoorbereiding,
@@ -455,10 +457,11 @@ function UpcomingMeetingCard({ meeting, onSelect }: { meeting: Meeting; onSelect
 
 // ============ MEETING LIST ITEM ============
 
-function MeetingListItem({ meeting, onSelect, onDelete }: {
+function MeetingListItem({ meeting, onSelect, onDelete, onHide }: {
   meeting: Meeting;
   onSelect: () => void;
   onDelete: () => void;
+  onHide?: () => void;
 }) {
   const isDb = meeting.bron === "database";
   const sc = meeting.status && statusConfig[meeting.status];
@@ -589,7 +592,7 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
               Deelnemen
             </a>
           )}
-          {isDb && (
+          {isDb ? (
             <Trash2
               className="w-4 h-4 text-autronis-text-secondary hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
               onClick={(e) => {
@@ -597,7 +600,15 @@ function MeetingListItem({ meeting, onSelect, onDelete }: {
                 onDelete();
               }}
             />
-          )}
+          ) : onHide ? (
+            <EyeOff
+              className="w-4 h-4 text-autronis-text-secondary hover:text-amber-400 transition-colors opacity-0 group-hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onHide();
+              }}
+            />
+          ) : null}
           <ChevronRight className="w-4 h-4 text-autronis-text-secondary/50" />
         </div>
       </div>

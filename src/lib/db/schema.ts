@@ -150,6 +150,8 @@ export const uitgaven = sqliteTable("uitgaven", {
   fiscaalAftrekbaar: integer("fiscaal_aftrekbaar").default(1),
   bonnetjeUrl: text("bonnetje_url"),
   isBuitenland: text("is_buitenland", { enum: ["buiten_eu", "binnen_eu"] }),
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "gedeeld"] }),
+  splitRatio: text("split_ratio"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
@@ -565,6 +567,8 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   isVerlegging: integer("is_verlegging").default(0),
   bonPad: text("bon_pad"),
   storageUrl: text("storage_url"),
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "gedeeld"] }),
+  splitRatio: text("split_ratio"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -1655,3 +1659,26 @@ export const clientHealthScores = sqliteTable("client_health_scores", {
   idxKlant: index("idx_chs_klant").on(table.klantId),
   idxDatum: index("idx_chs_datum").on(table.berekendOp),
 }));
+
+// ============ VERDEEL REGELS ============
+export const verdeelRegels = sqliteTable("verdeel_regels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  type: text("type", { enum: ["leverancier", "categorie"] }).notNull(),
+  waarde: text("waarde").notNull(),
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "gedeeld"] }).notNull(),
+  splitRatio: text("split_ratio").notNull(),
+}, (table) => ({
+  uniekTypeWaarde: uniqueIndex("uniek_verdeel_type_waarde").on(table.type, table.waarde),
+}));
+
+// ============ OPENSTAANDE VERREKENINGEN ============
+export const openstaandeVerrekeningen = sqliteTable("openstaande_verrekeningen", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  omschrijving: text("omschrijving").notNull(),
+  bedrag: real("bedrag").notNull(),
+  vanGebruikerId: integer("van_gebruiker_id").notNull().references(() => gebruikers.id),
+  naarGebruikerId: integer("naar_gebruiker_id").notNull().references(() => gebruikers.id),
+  betaald: integer("betaald").default(0),
+  betaaldOp: text("betaald_op"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});

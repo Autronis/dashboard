@@ -90,6 +90,19 @@ export async function requireApiKey(req: NextRequest): Promise<number> {
   return key.aangemaaktDoor;
 }
 
+// ============ HYBRID AUTH (session OR api key) ============
+
+export async function requireAuthOrApiKey(req: NextRequest): Promise<SessionGebruiker> {
+  // Try session auth first
+  try {
+    return await requireAuth();
+  } catch {
+    // Fall back to API key auth
+    const gebruikerId = await requireApiKey(req);
+    return { id: gebruikerId, naam: gebruikerId === 1 ? "Sem Gijsberts" : "Syb", email: "", rol: "admin", themaVoorkeur: null };
+  }
+}
+
 // ============ RATE LIMITER ============
 
 interface RateLimitEntry {

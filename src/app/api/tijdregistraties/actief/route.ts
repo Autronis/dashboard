@@ -1,13 +1,13 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tijdregistraties, projecten, klanten } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, isNull } from "drizzle-orm";
 
 // GET /api/tijdregistraties/actief
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
 
     const [actief] = await db
       .select({

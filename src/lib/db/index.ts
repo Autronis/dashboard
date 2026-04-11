@@ -116,6 +116,38 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => { /* table may already exist */ });
 
+  // Maandrapport — verdeel regels en verrekeningen
+  client.execute(`CREATE TABLE IF NOT EXISTS verdeel_regels (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    waarde TEXT NOT NULL,
+    eigenaar TEXT NOT NULL,
+    split_ratio TEXT NOT NULL
+  )`).catch(() => {});
+
+  client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS uniek_verdeel_type_waarde ON verdeel_regels (type, waarde)`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS openstaande_verrekeningen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    omschrijving TEXT NOT NULL,
+    bedrag REAL NOT NULL,
+    van_gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    naar_gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    betaald INTEGER DEFAULT 0,
+    betaald_op TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  // Eigenaar kolommen op bestaande tabellen
+  for (const col of [
+    "ALTER TABLE uitgaven ADD COLUMN eigenaar TEXT",
+    "ALTER TABLE uitgaven ADD COLUMN split_ratio TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN eigenaar TEXT",
+    "ALTER TABLE bank_transacties ADD COLUMN split_ratio TEXT",
+  ]) {
+    client.execute(col).catch(() => {});
+  }
+
   // Mealplan cache table — ensure correct schema with status/progress columns
   client.execute("SELECT status FROM mealplan_cache LIMIT 1").catch(() => {
     // Column missing or table doesn't exist — recreate

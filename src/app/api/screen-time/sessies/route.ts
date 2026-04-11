@@ -490,8 +490,11 @@ export async function GET(req: NextRequest) {
     // Don't forget the last block
     if (currentBlock && currentBlock.actieveMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
 
-    // Use actieveMin (actual productive time) instead of duurMin (span including gaps)
-    const deepWorkMinuten = Math.round(deepWorkBlocks.reduce((sum, b) => sum + b.actieveMin, 0));
+    // Deep work = total activity minus distraction time
+    const afleidingSecDW = sessies
+      .filter(s => s.categorie === "afleiding")
+      .reduce((sum, s) => sum + Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000), 0);
+    const deepWorkMinuten = Math.max(0, Math.round((totaalActief - afleidingSecDW) / 60));
     const deepWorkTarget = 4 * 60; // 4 hours target per day
 
     // Focus sessions: productive sessions of any length

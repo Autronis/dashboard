@@ -32,6 +32,14 @@ export async function berekenActieveUren(
   const vanUtc = vanExpanded.toISOString().slice(0, 10);
   const totUtc = totExpanded.toISOString().slice(0, 10);
 
+  // Get Autronis project IDs (klantId = 4) to filter company hours
+  const autronisProjecten = await db
+    .select({ id: projecten.id })
+    .from(projecten)
+    .where(eq(projecten.klantId, AUTRONIS_KLANT_ID))
+    .all();
+  const autronisProjectIds = new Set(autronisProjecten.map(p => p.id));
+
   const entries = await db
     .select({
       app: screenTimeEntries.app,
@@ -39,6 +47,8 @@ export async function berekenActieveUren(
       startTijd: screenTimeEntries.startTijd,
       eindTijd: screenTimeEntries.eindTijd,
       duurSeconden: screenTimeEntries.duurSeconden,
+      projectId: screenTimeEntries.projectId,
+      klantId: screenTimeEntries.klantId,
     })
     .from(screenTimeEntries)
     .where(and(
@@ -49,10 +59,15 @@ export async function berekenActieveUren(
     .orderBy(asc(screenTimeEntries.startTijd))
     .all();
 
-  // Group by NL local date, filtering out skip apps and entries outside the requested range
+  // Group by NL local date, filtering out skip apps, entries outside range,
+  // and entries NOT linked to an Autronis project (only company hours count for urencriterium)
   const dagMap = new Map<string, typeof entries>();
   for (const entry of entries) {
     if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
+    // Only count entries linked to Autronis projects or with Autronis klantId
+    const isAutronis = (entry.projectId && autronisProjectIds.has(entry.projectId)) ||
+                       entry.klantId === AUTRONIS_KLANT_ID;
+    if (!isAutronis) continue;
     const dag = nlDatum(entry.startTijd);
     if (dag < vanDatum || dag > totDatum) continue;
     if (!dagMap.has(dag)) dagMap.set(dag, []);
@@ -95,7 +110,7 @@ export async function berekenActieveUren(
     }
   }
 
-  // Deep work = activity minus distraction
+  // Company deep work = Autronis activity minus distraction
   const deepWorkSeconden = Math.max(0, totaalSeconden - afleidingSeconden);
   return Math.round((deepWorkSeconden / 3600) * 100) / 100;
 }

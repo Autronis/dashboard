@@ -97,6 +97,7 @@ function getWeekStart(datum: string): string {
 interface SessieDetail {
   app: string;
   categorie: string;
+  projectId: number | null;
   projectNaam: string | null;
   klantNaam: string | null;
   startTijd: string;

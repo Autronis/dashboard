@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { followUpLog, followUpRegels, klanten, leads } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 
 // GET /api/followup/log — history of triggered follow-ups
 export async function GET(req: NextRequest) {
@@ -47,14 +47,14 @@ export async function GET(req: NextRequest) {
       ? await db
           .select({ id: klanten.id, naam: klanten.bedrijfsnaam })
           .from(klanten)
-          .where(sql`${klanten.id} IN (${sql.raw(klantIds.join(","))})`)
+          .where(inArray(klanten.id, klantIds))
       : [];
 
     const leadNamen = leadIds.length > 0
       ? await db
           .select({ id: leads.id, naam: leads.bedrijfsnaam })
           .from(leads)
-          .where(sql`${leads.id} IN (${sql.raw(leadIds.join(","))})`)
+          .where(inArray(leads.id, leadIds))
       : [];
 
     const naamMap = new Map([

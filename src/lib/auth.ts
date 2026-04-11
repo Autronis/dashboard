@@ -8,8 +8,10 @@ import { apiKeys } from "@/lib/db/schema";
 
 // ============ SESSION CONFIG ============
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET ?? "autronis-dashboard-2026-geheim-minimaal-32-tekens!!";
+const SESSION_SECRET = process.env.SESSION_SECRET;
+if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
+  throw new Error("SESSION_SECRET environment variable is required (min 32 chars)");
+}
 
 export const sessionOptions: SessionOptions = {
   cookieName: "autronis-session",
@@ -59,8 +61,9 @@ export async function requireApiKey(req: NextRequest): Promise<number> {
 
   const token = authHeader.slice(7);
 
-  // Fallback: accept SESSION_SECRET directly (for desktop agent)
-  if (token === SESSION_SECRET) {
+  // Accept dedicated internal API key (for desktop agent / Claude sync)
+  const internalKey = process.env.INTERNAL_API_KEY;
+  if (internalKey && token === internalKey) {
     return 1; // Sem's user ID
   }
 

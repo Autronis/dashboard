@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { meetings, taken, gebruikers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
+import { aiCompleteJson } from "@/lib/ai/client";
+import { createAutoCapture } from "@/lib/ideeen/auto-capture";
 
 interface Actiepunt {
   tekst: string;
@@ -170,4 +172,21 @@ export async function processMeeting(
     })
     .where(eq(meetings.id, meetingId))
     .run();
+
+  // Auto-capture: extract idea signals from transcript
+  try {
+    const signalen = await aiCompleteJson<Array<{ naam: string; quote: string }>>({
+      system: `Scan dit meeting transcript op idee-signalen — momenten waar iemand een behoefte, wens, of kans noemt. Zoek naar patronen als "we zouden kunnen", "klant vraagt om", "het zou handig zijn als", "idee:", of vergelijkbare triggers. Antwoord ALLEEN met JSON array: [{"naam": "korte titel", "quote": "relevante zin uit transcript"}]. Geen ideeën gevonden? Return lege array [].`,
+      prompt: transcript,
+      maxTokens: 500,
+    });
+    for (const signaal of signalen) {
+      await createAutoCapture({
+        naam: signaal.naam,
+        omschrijving: `Uit meeting: ${signaal.quote}`,
+        bron: `meeting:${meetingId}`,
+        bronTekst: signaal.quote,
+      });
+    }
+  } catch { /* non-blocking: don't fail meeting processing for capture errors */ }
 }

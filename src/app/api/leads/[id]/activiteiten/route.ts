@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { leadActiviteiten, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc } from "drizzle-orm";
+import { createAutoCapture } from "@/lib/ideeen/auto-capture";
+import { aiCompleteJson } from "@/lib/ai/client";
 
 // GET /api/leads/[id]/activiteiten
 export async function GET(
@@ -65,6 +67,27 @@ export async function POST(
         omschrijving: body.omschrijving?.trim() || null,
       })
       .returning();
+
+    // Auto-capture: scan note for idea signals (non-blocking)
+    const type = body.type as string;
+    const omschrijving = body.omschrijving?.trim() as string | undefined;
+    if (type === "notitie_toegevoegd" && omschrijving) {
+      try {
+        const signalen = await aiCompleteJson<Array<{ naam: string; quote: string }>>({
+          system: `Scan deze lead-notitie op kans-signalen voor een tech bureau. Zoek naar onvervulde behoeften, feature requests, of marktopportuniteiten. Antwoord ALLEEN met JSON array: [{"naam": "korte titel", "quote": "relevante passage"}]. Geen signalen? Return [].`,
+          prompt: omschrijving,
+          maxTokens: 300,
+        });
+        for (const s of signalen) {
+          await createAutoCapture({
+            naam: s.naam,
+            omschrijving: `Uit lead-notitie: ${s.quote}`,
+            bron: `lead:${id}`,
+            bronTekst: s.quote,
+          });
+        }
+      } catch { /* non-blocking */ }
+    }
 
     return NextResponse.json({ activiteit: nieuw }, { status: 201 });
   } catch (error) {

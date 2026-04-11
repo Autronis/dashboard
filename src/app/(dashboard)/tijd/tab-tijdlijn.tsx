@@ -714,11 +714,9 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
     queryKey: ["projecten-lijst"],
     queryFn: async () => {
       const res = await fetch("/api/projecten");
-      if (!res.ok) throw new Error();
+      if (!res.ok) return [];
       const data = await res.json();
-      return (data.projecten ?? [])
-        .filter((p: { isActief: number }) => p.isActief)
-        .map((p: { id: number; naam: string }) => ({ id: p.id, naam: p.naam }));
+      return (data.projecten ?? []).map((p: { id: number; naam: string }) => ({ id: p.id, naam: p.naam }));
     },
     staleTime: 60_000,
   });

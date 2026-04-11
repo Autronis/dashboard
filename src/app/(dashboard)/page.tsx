@@ -715,7 +715,7 @@ export default function DashboardPage() {
           .filter((d: { dagenOver: number }) => d.dagenOver <= 7 && d.dagenOver >= -30);
         setUrgentDeadlines(urgent);
       })
-      .catch(() => {});
+      .catch(() => addToast("Kon deadlines niet laden", "fout"));
 
     fetch("/api/dashboard/concurrenten").then((r) => r.json()).then(setConcurrentData).catch(() => {});
   }, []);
@@ -753,7 +753,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ projectId: Number(timerProjectId), omschrijving: timerOmschrijving || null, categorie: timerCategorie }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Timer starten mislukt");
       return res.json();
     },
     onSuccess: ({ registratie }) => {
@@ -774,7 +774,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ eindTijd, duurMinuten }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Timer stoppen mislukt");
     },
     onSuccess: () => {
       timer.stop();
@@ -791,7 +791,7 @@ export default function DashboardPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "afgerond" }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Taak bijwerken mislukt");
       return taakId;
     },
     onSuccess: (taakId) => {

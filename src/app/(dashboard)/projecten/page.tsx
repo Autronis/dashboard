@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -27,12 +27,14 @@ import {
   LayoutGrid,
   TrendingDown,
   Minus,
+  Copy,
+  Plus,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useProjectenMetKpis } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
-import { Confetti } from "@/components/ui/confetti-dynamic";
+
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
@@ -415,9 +417,9 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: P
         <button
           onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }}
           title="Kopieer Claude prompt"
-          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-blue-400 hover:border-blue-400/40 transition-colors"
+          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-purple-400 hover:border-purple-400/40 transition-colors"
         >
-          <Code2 className="w-3.5 h-3.5" />
+          <Copy className="w-3.5 h-3.5" />
         </button>
         <Link
           href={`/projecten/${project.id}`}
@@ -463,7 +465,7 @@ function ProjectRow({ project, onStartTimer, onOpenVSCode, zoek }: { project: Pr
       )}
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button onClick={(e) => { e.preventDefault(); onStartTimer(project); }} className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors"><Play className="w-3.5 h-3.5" /></button>
-        <button onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }} className="p-1 text-autronis-text-secondary hover:text-blue-400 transition-colors"><Code2 className="w-3.5 h-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onOpenVSCode(project); }} className="p-1 text-autronis-text-secondary hover:text-purple-400 transition-colors" title="Kopieer Claude prompt"><Copy className="w-3.5 h-3.5" /></button>
       </div>
     </Link>
   );
@@ -482,8 +484,6 @@ export default function ProjectenPage() {
   const [activeTab, setActiveTab] = useState<string>("actief");
   const [syncing, setSyncing] = useState(false);
   const [weergave, setWeergave] = useState<"grid" | "lijst">("grid");
-  const [showConfetti, setShowConfetti] = useState(false);
-  const confettiFired = useRef(false);
   const { addToast } = useToast();
   const timer = useTimer();
 
@@ -540,9 +540,6 @@ export default function ProjectenPage() {
   const projecten = data?.projecten ?? [];
   const kpis = data?.kpis ?? { totaal: 0, actief: 0, afgerond: 0, onHold: 0, takenOpen: 0, totaleUren: 0 };
 
-  // Confetti disabled
-  void confettiFired;
-
   const filtered = useMemo(() => {
     return projecten.filter((p) => {
       if (activeTab !== "alle" && p.status !== activeTab) return false;
@@ -558,24 +555,39 @@ export default function ProjectenPage() {
     });
   }, [projecten, activeTab, zoek]);
 
-  // Sort: most activity first
+  // Sort: health urgency first, then deadline, then activity
   const sorted = useMemo(() => {
+    const healthWeight: Record<HealthStatus, number> = { "achter": 0, "risico": 1, "on-track": 2 };
     return [...filtered].sort((a, b) => {
-      // Active sessions with activity this week first
+      // Health status first (achter > risico > on-track)
+      const ha = healthWeight[getProjectHealth(a).status];
+      const hb = healthWeight[getProjectHealth(b).status];
+      if (ha !== hb) return ha - hb;
+      // Then by deadline urgency (soonest first, no deadline last)
+      const da = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+      const db = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+      if (da !== db) return da - db;
+      // Then by weekly activity
       if (a.takenDezeWeek !== b.takenDezeWeek) return b.takenDezeWeek - a.takenDezeWeek;
-      // Then by total progress
-      if (a.takenVoortgang !== b.takenVoortgang) return b.takenVoortgang - a.takenVoortgang;
       // Then by name
       return a.naam.localeCompare(b.naam);
     });
   }, [filtered]);
 
-  const tabCounts = useMemo(() => ({
-    actief: projecten.filter((p) => p.status === "actief").length,
-    afgerond: projecten.filter((p) => p.status === "afgerond").length,
-    "on-hold": projecten.filter((p) => p.status === "on-hold").length,
-    alle: projecten.length,
-  }), [projecten]);
+  const tabCounts = useMemo(() => {
+    const base = zoek
+      ? projecten.filter((p) => {
+          const q = zoek.toLowerCase();
+          return p.naam.toLowerCase().includes(q) || (p.klantNaam ?? "").toLowerCase().includes(q) || (p.omschrijving ?? "").toLowerCase().includes(q);
+        })
+      : projecten;
+    return {
+      actief: base.filter((p) => p.status === "actief").length,
+      afgerond: base.filter((p) => p.status === "afgerond").length,
+      "on-hold": base.filter((p) => p.status === "on-hold").length,
+      alle: base.length,
+    };
+  }, [projecten, zoek]);
 
   return (
     <PageTransition>
@@ -716,7 +728,7 @@ export default function ProjectenPage() {
           </motion.div>
         )}
 
-        <Confetti active={showConfetti} />
+
       </div>
     </PageTransition>
   );

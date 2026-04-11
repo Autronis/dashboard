@@ -259,6 +259,96 @@ if (isTurso) {
   )`).catch(() => {});
   client.execute("ALTER TABLE ytk_analyses ADD COLUMN links TEXT").catch(() => {});
 
+  // Kilometerregistratie: add missing columns to base table
+  client.execute("ALTER TABLE kilometer_registraties ADD COLUMN opgeslagen_route_id INTEGER REFERENCES opgeslagen_routes(id)").catch(() => {});
+  client.execute("ALTER TABLE kilometer_registraties ADD COLUMN terugkerende_rit_id INTEGER REFERENCES terugkerende_ritten(id)").catch(() => {});
+
+  // Kilometerregistratie tables
+  client.execute(`CREATE TABLE IF NOT EXISTS auto_instellingen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    zakelijk_percentage REAL DEFAULT 75,
+    tarief_per_km REAL DEFAULT 0.23,
+    bijgewerkt_op TEXT DEFAULT (datetime('now')),
+    UNIQUE(gebruiker_id)
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS km_standen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    jaar INTEGER NOT NULL,
+    maand INTEGER NOT NULL,
+    begin_stand REAL NOT NULL,
+    eind_stand REAL NOT NULL,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    UNIQUE(gebruiker_id, jaar, maand)
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS terugkerende_ritten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    naam TEXT NOT NULL,
+    van_locatie TEXT NOT NULL,
+    naar_locatie TEXT NOT NULL,
+    kilometers REAL NOT NULL,
+    is_retour INTEGER DEFAULT 0,
+    doel_type TEXT,
+    klant_id INTEGER REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    frequentie TEXT NOT NULL,
+    dag_van_week INTEGER,
+    dag_van_maand INTEGER,
+    start_datum TEXT NOT NULL,
+    eind_datum TEXT,
+    is_actief INTEGER DEFAULT 1,
+    laatste_generatie TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS brandstof_kosten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    datum TEXT NOT NULL,
+    bedrag REAL NOT NULL,
+    liters REAL,
+    km_stand REAL,
+    bank_transactie_id INTEGER REFERENCES bank_transacties(id),
+    notitie TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS locatie_aliassen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    alias TEXT NOT NULL,
+    genormaliseerde_naam TEXT NOT NULL,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    UNIQUE(gebruiker_id, alias)
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS km_stand_fotos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    km_stand_id INTEGER NOT NULL REFERENCES km_standen(id),
+    gebruiker_id INTEGER NOT NULL REFERENCES gebruikers(id),
+    bestandsnaam TEXT NOT NULL,
+    bestandspad TEXT NOT NULL,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS opgeslagen_routes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    naam TEXT NOT NULL,
+    van_locatie TEXT NOT NULL,
+    naar_locatie TEXT NOT NULL,
+    kilometers REAL NOT NULL,
+    klant_id INTEGER REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    doel_type TEXT,
+    aantal_keer_gebruikt INTEGER DEFAULT 0,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {
   // eslint-disable-next-line @typescript-eslint/no-require-imports

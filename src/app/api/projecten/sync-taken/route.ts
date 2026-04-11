@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken } = body as {
       projectNaam: string;
       voltooide_taken?: string[];
-      nieuwe_taken?: string[];
+      nieuwe_taken?: Array<string | { titel: string; fase?: string; prioriteit?: string }>;
       replace_all?: boolean;
       alle_taken?: Array<{ titel: string; status: string; fase?: string; volgorde?: number }>;
     };
@@ -221,8 +221,12 @@ export async function POST(req: NextRequest) {
         .get();
       let volgorde = (maxVolgorde?.max ?? 0) + 1;
 
-      for (const titel of nieuwe_taken) {
-        const trimmed = titel.trim();
+      for (const item of nieuwe_taken) {
+        const isObject = typeof item === "object" && item !== null;
+        const trimmed = (isObject ? (item as { titel: string }).titel : (item as string)).trim();
+        const fase = isObject ? item.fase || null : null;
+        const rawPrio = isObject && item.prioriteit ? item.prioriteit : "normaal";
+        const prioriteit = (["laag", "normaal", "hoog"].includes(rawPrio) ? rawPrio : "normaal") as "laag" | "normaal" | "hoog";
         if (!trimmed) continue;
 
         // Check if task already exists (case-insensitive, also check substring match)
@@ -246,8 +250,9 @@ export async function POST(req: NextRequest) {
             aangemaaktDoor: userId,
             titel: trimmed,
             status: "open",
-            prioriteit: "normaal",
-            uitvoerder: "claude",
+            prioriteit,
+            uitvoerder: "handmatig",
+            fase,
             volgorde,
           }).run();
           added++;

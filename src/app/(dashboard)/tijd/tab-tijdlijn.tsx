@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Monitor,
   Clock,
@@ -114,10 +114,14 @@ function SessieDetailPanel({
   sessie,
   onClose,
   onLocatieChange,
+  onProjectChange,
+  projecten: beschikbareProjecten,
 }: {
   sessie: SessieDetail;
   onClose: () => void;
   onLocatieChange?: (locatie: "kantoor" | "thuis") => void;
+  onProjectChange?: (projectId: number | null) => void;
+  projecten?: { id: number; naam: string }[];
 }) {
   const parsedTitels = parseBestandenUitTitels(sessie.venstertitels);
   const kleur = CATEGORIE_KLEUREN[sessie.categorie] ?? "#6B7280";
@@ -190,7 +194,23 @@ function SessieDetailPanel({
         </div>
       )}
 
-      {(sessie.projectNaam || sessie.klantNaam) && (
+      {/* Project toewijzing */}
+      {onProjectChange && beschikbareProjecten && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-autronis-text-secondary">Project:</span>
+          <select
+            value={sessie.projectId ?? ""}
+            onChange={(e) => onProjectChange(e.target.value ? Number(e.target.value) : null)}
+            className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-2.5 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+          >
+            <option value="">Geen project</option>
+            {beschikbareProjecten.map((p) => (
+              <option key={p.id} value={p.id}>{p.naam}</option>
+            ))}
+          </select>
+        </div>
+      )}
+      {!onProjectChange && (sessie.projectNaam || sessie.klantNaam) && (
         <div className="flex items-center gap-2 text-sm">
           {sessie.projectNaam && (
             <span className="text-autronis-accent font-medium">{sessie.projectNaam}</span>
@@ -385,6 +405,9 @@ function DagTimeline({
                   <span className="text-[12px] sm:text-[13px] font-semibold text-autronis-text-primary truncate flex-1" title={beschrijving}>
                     {beschrijving}
                   </span>
+                  {sessie.projectId && (
+                    <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-autronis-accent/15 text-autronis-accent shrink-0">Autronis</span>
+                  )}
                   <LocatieBadge locatie={sessie.locatie} />
                 </div>
                 {/* Row 2: Category label (medium/long blocks only) */}
@@ -685,6 +708,33 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
 
   const stats = sessiesData?.stats;
   const selectedSessie = selectedIdx !== null ? alleSessies[selectedIdx] ?? null : null;
+
+  // Fetch projecten for dropdown
+  const { data: projectenData } = useQuery({
+    queryKey: ["projecten-lijst"],
+    queryFn: async () => {
+      const res = await fetch("/api/projecten");
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      return (data.projecten ?? [])
+        .filter((p: { isActief: number }) => p.isActief)
+        .map((p: { id: number; naam: string }) => ({ id: p.id, naam: p.naam }));
+    },
+    staleTime: 60_000,
+  });
+
+  const handleProjectChange = useCallback(async (sessie: ScreenTimeSessie, projectId: number | null) => {
+    try {
+      await fetch("/api/screen-time/project", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ startTijd: sessie.startTijd, eindTijd: sessie.eindTijd, projectId }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["screen-time-sessies"] });
+    } catch {
+      // silent fail
+    }
+  }, [queryClient]);
 
   const handleLocatieChange = useCallback(async (sessie: ScreenTimeSessie, locatie: "kantoor" | "thuis") => {
     // Optimistic update
@@ -1083,6 +1133,8 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
                 setWeekSelectedSessie(null);
               }}
               onLocatieChange={(loc) => handleLocatieChange(activeSessieDetail, loc)}
+              onProjectChange={(pid) => handleProjectChange(activeSessieDetail, pid)}
+              projecten={projectenData}
             />
           </div>
         )}
@@ -1098,6 +1150,8 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
               setWeekSelectedSessie(null);
             }}
             onLocatieChange={(loc) => handleLocatieChange(activeSessieDetail, loc)}
+            onProjectChange={(pid) => handleProjectChange(activeSessieDetail, pid)}
+            projecten={projectenData}
           />
         </div>
       )}

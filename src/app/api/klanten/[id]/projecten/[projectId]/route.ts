@@ -115,6 +115,18 @@ export async function PUT(
       return NextResponse.json({ fout: "Project niet gevonden." }, { status: 404 });
     }
 
+    // When a project is completed, delete all open tasks
+    if (body.status === "afgerond") {
+      await db
+        .delete(taken)
+        .where(
+          and(
+            eq(taken.projectId, Number(projectId)),
+            eq(taken.status, "open")
+          )
+        );
+    }
+
     return NextResponse.json({ project: bijgewerkt });
   } catch (error) {
     return NextResponse.json(

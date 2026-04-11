@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tijdregistraties } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and } from "drizzle-orm";
 
 // PUT /api/tijdregistraties/[id]
@@ -10,7 +10,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const { id } = await params;
     const body = await req.json();
 

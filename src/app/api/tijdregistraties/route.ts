@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { tijdregistraties, projecten, klanten } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte, desc, isNull, isNotNull } from "drizzle-orm";
 
 // GET /api/tijdregistraties?van=2026-03-10&tot=2026-03-16
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 // POST /api/tijdregistraties
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const body = await req.json();
 
     const { projectId, omschrijving, categorie, startTijd, eindTijd, duurMinuten, isHandmatig, locatie } = body;

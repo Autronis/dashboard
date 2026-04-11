@@ -1,0 +1,156 @@
+<h2>Maandelijks Belastingoverzicht — Design</h2>
+<p class="subtitle">Sectie 4 van 4: UI Detail — Uitgaventabel & Eigenaar-tagging</p>
+
+<div class="section">
+  <div class="mockup">
+    <div class="mockup-header">Uitgaventabel met eigenaar-kolom</div>
+    <div class="mockup-body" style="padding: 0;">
+      <!-- Table Header -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 10px 16px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: #71717a; background: #111113; border-bottom: 1px solid #2A3538;">
+        <span>Datum</span>
+        <span>Omschrijving</span>
+        <span>Categorie</span>
+        <span>Bron</span>
+        <span>Incl. BTW</span>
+        <span>BTW</span>
+        <span>Eigenaar</span>
+      </div>
+
+      <!-- Row 1 -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #1e1e21; align-items: center;">
+        <span style="color: #a1a1aa;">01-04</span>
+        <span style="color: #e4e4e7;">Coolblue</span>
+        <span><span style="background: #1e3a5f; color: #60a5fa; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Hardware</span></span>
+        <span style="color: #a1a1aa;">ING</span>
+        <span style="color: #e4e4e7;">€1.662,89</span>
+        <span style="color: #a1a1aa;">€288,60</span>
+        <span><span style="background: #17B8A5; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">Sem</span></span>
+      </div>
+
+      <!-- Row 2 -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #1e1e21; align-items: center;">
+        <span style="color: #a1a1aa;">05-04</span>
+        <span style="color: #e4e4e7;">KVK uittreksel</span>
+        <span><span style="background: #2d1a3b; color: #c084fc; padding: 2px 8px; border-radius: 4px; font-size: 11px;">KVK</span></span>
+        <span style="color: #a1a1aa;">ING</span>
+        <span style="color: #e4e4e7;">€9,60</span>
+        <span style="color: #a1a1aa;">€1,67</span>
+        <span><span style="background: #3b3b1a; color: #facc15; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">50/50</span></span>
+      </div>
+
+      <!-- Row 3 -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #1e1e21; align-items: center;">
+        <span style="color: #a1a1aa;">31-03</span>
+        <span style="color: #e4e4e7;">Kantoorhuur Edisonstraat 60</span>
+        <span><span style="background: #3b2f1a; color: #fb923c; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Kantoor</span></span>
+        <span style="color: #a1a1aa;">Revolut</span>
+        <span style="color: #e4e4e7;">€405,35</span>
+        <span style="color: #a1a1aa;">€70,35</span>
+        <span><span style="background: #3b3b1a; color: #facc15; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500;">25/75</span></span>
+      </div>
+
+      <!-- Row 4 - untagged -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid #1e1e21; align-items: center; background: rgba(251, 146, 60, 0.05);">
+        <span style="color: #a1a1aa;">03-04</span>
+        <span style="color: #e4e4e7;">Temu</span>
+        <span><span style="background: #3b2f1a; color: #fb923c; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Kantoor</span></span>
+        <span style="color: #a1a1aa;">ING</span>
+        <span style="color: #e4e4e7;">€41,19</span>
+        <span style="color: #71717a;">—</span>
+        <span><span style="background: #2A2A2A; color: #71717a; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; border: 1px dashed #3f3f46; cursor: pointer;">+ Tag</span></span>
+      </div>
+
+      <!-- Total row -->
+      <div style="display: grid; grid-template-columns: 70px 1fr 100px 90px 100px 90px 110px; padding: 12px 16px; font-size: 13px; font-weight: 700; color: #fff; background: #111113; border-top: 1px solid #3f3f46;">
+        <span></span>
+        <span>Totaal april 2026</span>
+        <span></span>
+        <span></span>
+        <span>€2.518,64</span>
+        <span>€429,08</span>
+        <span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">BTW Split — Sem</div>
+      <div class="mockup-body">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">ING april (eigen)</span>
+            <span style="color: #e4e4e7;">€352,74</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">ING april (50% gedeeld)</span>
+            <span style="color: #e4e4e7;">€7,60</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">Huur kantoor (25%)</span>
+            <span style="color: #e4e4e7;">€17,59</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding-top: 8px; border-top: 1px solid #3f3f46;">
+            <span style="color: #fff;">Totaal Sem</span>
+            <span style="color: #4ade80;">€377,93</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">BTW Split — Syb</div>
+      <div class="mockup-body">
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">KVK 50%</span>
+            <span style="color: #e4e4e7;">€0,84</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">eHerkenning 50%</span>
+            <span style="color: #e4e4e7;">€5,72</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+            <span style="color: #a1a1aa;">Huur kantoor (25%)</span>
+            <span style="color: #e4e4e7;">€17,59</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding-top: 8px; border-top: 1px solid #3f3f46;">
+            <span style="color: #fff;">Totaal Syb</span>
+            <span style="color: #4ade80;">€24,15</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="mockup">
+    <div class="mockup-header">Verrekening — Openstaand (optioneel, alleen als er items zijn)</div>
+    <div class="mockup-body">
+      <div style="display: flex; flex-direction: column; gap: 8px; max-width: 420px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+          <span style="color: #a1a1aa;">Claude uitgave</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #e4e4e7;">€60,00</span>
+            <span style="width: 18px; height: 18px; border: 1px solid #3f3f46; border-radius: 4px; display: inline-block;"></span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid #1e1e21;">
+          <span style="color: #a1a1aa;">KVK uittreksel (50%)</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #e4e4e7;">€4,80</span>
+            <span style="width: 18px; height: 18px; border: 1px solid #3f3f46; border-radius: 4px; display: inline-block;"></span>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; padding-top: 8px; border-top: 1px solid #3f3f46;">
+          <span style="color: #fff;">Syb → Sem</span>
+          <span style="color: #fb923c;">€106,49</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px; text-align: center; opacity: 0.6;">Uitgaventabel met eigenaar-badges, BTW split kaarten, en afvinkbare verrekening. Klopt dit?</p>

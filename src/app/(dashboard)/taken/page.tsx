@@ -577,6 +577,7 @@ function TakenPage() {
   const [faseFilter, setFaseFilter] = useState("alle");
   const [prioriteitFilter, setPrioriteitFilter] = useState("alle");
   const [uitvoerderFilter, setUitvoerderFilter] = useState("alle");
+  const [toegewezenAanFilter, setToegewezenAanFilter] = useState("alle");
   const [zoek, setZoek] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
@@ -618,6 +619,7 @@ function TakenPage() {
     projectId: projectFilter,
     fase: faseFilter,
     prioriteit: prioriteitFilter,
+    toegewezenAan: toegewezenAanFilter,
   }, { pauseRefetch: mutatingCount > 0 });
 
   const { data: mappenData } = useQuery({
@@ -976,6 +978,7 @@ function TakenPage() {
     faseFilter !== "alle",
     prioriteitFilter !== "alle",
     uitvoerderFilter !== "alle",
+    toegewezenAanFilter !== "alle",
     zoek.length > 0,
     hideCompleted,
   ].filter(Boolean).length;
@@ -1059,6 +1062,12 @@ function TakenPage() {
 
         {/* FILTER BAR — compact */}
         <div className="flex flex-wrap items-center gap-2">
+          <select value={toegewezenAanFilter} onChange={(e) => setToegewezenAanFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
+            <option value="alle">Heel team</option>
+            <option value="1">Sem</option>
+            <option value="2">Syb</option>
+            <option value="geen">Niet toegewezen</option>
+          </select>
           <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
             <option value="alle">Alle projecten</option>
             {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
@@ -1094,7 +1103,7 @@ function TakenPage() {
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-8 pr-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
             </div>
             {activeFilterCount > 0 && (
-              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setZoek(""); setHideCompleted(false); }}
+              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setToegewezenAanFilter("alle"); setZoek(""); setHideCompleted(false); }}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap">
                 <X className="w-3.5 h-3.5" /> Wis filters
               </button>

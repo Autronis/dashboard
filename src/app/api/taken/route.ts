@@ -20,7 +20,8 @@ export async function GET(req: NextRequest) {
     const conditions = [sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`];
     if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));
     if (prioriteit && prioriteit !== "alle") conditions.push(eq(taken.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
-    if (toegewezenAan) conditions.push(eq(taken.toegewezenAan, Number(toegewezenAan)));
+    if (toegewezenAan === "geen") conditions.push(sql`${taken.toegewezenAan} IS NULL`);
+    else if (toegewezenAan) conditions.push(eq(taken.toegewezenAan, Number(toegewezenAan)));
     if (zoek) conditions.push(like(taken.titel, `%${zoek}%`));
     if (projectIdFilter && projectIdFilter !== "alle") conditions.push(eq(taken.projectId, Number(projectIdFilter)));
     if (faseFilter && faseFilter !== "alle") conditions.push(eq(taken.fase, faseFilter));

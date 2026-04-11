@@ -48,6 +48,7 @@ interface TakenFilters {
   projectId?: string;
   fase?: string;
   prioriteit?: string;
+  toegewezenAan?: string;
 }
 
 async function fetchTaken(filters: TakenFilters): Promise<TakenResponse> {
@@ -57,6 +58,7 @@ async function fetchTaken(filters: TakenFilters): Promise<TakenResponse> {
   if (filters.projectId && filters.projectId !== "alle") params.set("projectId", filters.projectId);
   if (filters.fase && filters.fase !== "alle") params.set("fase", filters.fase);
   if (filters.prioriteit && filters.prioriteit !== "alle") params.set("prioriteit", filters.prioriteit);
+  if (filters.toegewezenAan && filters.toegewezenAan !== "alle") params.set("toegewezenAan", filters.toegewezenAan);
 
   const res = await fetch(`/api/taken?${params}`);
   if (!res.ok) throw new Error("Kon taken niet laden");

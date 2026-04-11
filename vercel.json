@@ -26,7 +26,7 @@
     },
     {
       "path": "/api/meetings/auto-record",
-      "schedule": "*/5 7-18 * * 1-5"
+      "schedule": "0 8 * * 1-5"
     },
     {
       "path": "/api/kilometers/terugkerend/genereer",
@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/administratie/gmail-sync",
-      "schedule": "*/30 7-22 * * *"
+      "schedule": "0 9 * * *"
     }
   ]
 }

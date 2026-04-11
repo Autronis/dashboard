@@ -75,7 +75,8 @@ export async function PUT(
       return NextResponse.json({ fout: "Alleen conceptfacturen kunnen bewerkt worden." }, { status: 400 });
     }
 
-    const { klantId, projectId, factuurnummer, factuurdatum, vervaldatum, btwPercentage, notities, regels } = body;
+    const { klantId, projectId, factuurnummer, factuurdatum, vervaldatum, btwPercentage, notities, regels,
+      isTerugkerend, terugkeerAantal, terugkeerEenheid, volgendeFactuurdatum } = body;
 
     // Recalculate totals if regels provided
     let updateData: Record<string, unknown> = { bijgewerktOp: new Date().toISOString() };
@@ -87,6 +88,14 @@ export async function PUT(
     if (vervaldatum !== undefined) updateData.vervaldatum = vervaldatum;
     if (btwPercentage !== undefined) updateData.btwPercentage = btwPercentage;
     if (notities !== undefined) updateData.notities = notities?.trim() || null;
+
+    if (isTerugkerend !== undefined) {
+      updateData.isTerugkerend = isTerugkerend ? 1 : 0;
+      updateData.terugkeerAantal = isTerugkerend ? (terugkeerAantal || 1) : null;
+      updateData.terugkeerEenheid = isTerugkerend ? terugkeerEenheid : null;
+      updateData.terugkeerStatus = isTerugkerend ? "actief" : null;
+      updateData.volgendeFactuurdatum = isTerugkerend ? volgendeFactuurdatum : null;
+    }
 
     if (regels && regels.length > 0) {
       const btwPct = btwPercentage ?? bestaand.btwPercentage ?? 21;

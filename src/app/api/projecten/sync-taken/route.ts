@@ -39,12 +39,22 @@ export async function POST(req: NextRequest) {
     const defaultUser = await db.select().from(gebruikers).limit(1).get();
     const userId = defaultUser?.id ?? 1;
 
-    // Find project (case-insensitive)
+    // Find project (case-insensitive, ignoring dashes/underscores vs spaces)
+    const normalized = projectNaam.trim().toLowerCase().replace(/[-_]/g, " ");
     let project = await db
       .select()
       .from(projecten)
-      .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
+      .where(sql`LOWER(REPLACE(REPLACE(${projecten.naam}, '-', ' '), '_', ' ')) = ${normalized}`)
       .get();
+
+    if (!project) {
+      // Also try exact case-insensitive match as fallback
+      project = await db
+        .select()
+        .from(projecten)
+        .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
+        .get();
+    }
 
     if (!project) {
       // Auto-create project if it doesn't exist

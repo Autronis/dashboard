@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken } = body as {
       projectNaam: string;
       voltooide_taken?: string[];
-      nieuwe_taken?: Array<string | { titel: string; fase?: string; prioriteit?: string }>;
+      nieuwe_taken?: string[];
       replace_all?: boolean;
       alle_taken?: Array<{ titel: string; status: string; fase?: string; volgorde?: number }>;
     };
@@ -221,22 +221,8 @@ export async function POST(req: NextRequest) {
         .get();
       let volgorde = (maxVolgorde?.max ?? 0) + 1;
 
-      // Auto-detect fase: find the latest non-complete fase for this project
-      const laatsteFase = await db
-        .select({ fase: taken.fase })
-        .from(taken)
-        .where(and(eq(taken.projectId, project.id), sql`${taken.fase} IS NOT NULL AND ${taken.status} != 'afgerond'`))
-        .orderBy(sql`${taken.volgorde} DESC`)
-        .limit(1)
-        .get();
-      const defaultFase = laatsteFase?.fase ?? null;
-
-      for (const item of nieuwe_taken) {
-        const isObject = typeof item === "object" && item !== null;
-        const trimmed = (isObject ? (item as { titel: string }).titel : (item as string)).trim();
-        const fase = (isObject ? item.fase : null) || defaultFase;
-        const rawPrio = isObject && item.prioriteit ? item.prioriteit : "normaal";
-        const prioriteit = (["laag", "normaal", "hoog"].includes(rawPrio) ? rawPrio : "normaal") as "laag" | "normaal" | "hoog";
+      for (const titel of nieuwe_taken) {
+        const trimmed = titel.trim();
         if (!trimmed) continue;
 
         // Check if task already exists (case-insensitive, also check substring match)
@@ -260,9 +246,8 @@ export async function POST(req: NextRequest) {
             aangemaaktDoor: userId,
             titel: trimmed,
             status: "open",
-            prioriteit,
-            uitvoerder: "handmatig",
-            fase,
+            prioriteit: "normaal",
+            uitvoerder: "claude",
             volgorde,
           }).run();
           added++;

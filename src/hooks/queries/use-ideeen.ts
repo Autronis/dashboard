@@ -26,11 +26,6 @@ export interface Idee {
   impact: number | null;
   effort: number | null;
   revenuePotential: number | null;
-  bron: string | null;
-  bronTekst: string | null;
-  confidenceBreakdown: string | null;
-  confidenceBijgewerktOp: string | null;
-  geparkeerd: number;
 }
 
 // ============ FETCH FUNCTIONS ============
@@ -274,63 +269,5 @@ export function useSyncBacklog() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ideeen"] });
     },
-  });
-}
-
-export function useParkeerIdee() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, geparkeerd }: { id: number; geparkeerd: boolean }) => {
-      const res = await fetch(`/api/ideeen/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ geparkeerd: geparkeerd ? 1 : 0 }),
-      });
-      if (!res.ok) throw new Error("Parkeren mislukt");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ideeen"] });
-    },
-  });
-}
-
-export function useConfidenceRecalc() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (ideeId?: number) => {
-      const res = await fetch("/api/ideeen/confidence", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(ideeId ? { ideeId } : {}),
-      });
-      if (!res.ok) throw new Error("Herberekening mislukt");
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ideeen"] });
-    },
-  });
-}
-
-export function useProjectPreview(ideeId: number | null) {
-  return useQuery({
-    queryKey: ["project-preview", ideeId],
-    queryFn: async () => {
-      const res = await fetch(`/api/ideeen/${ideeId}/start-project`);
-      if (!res.ok) throw new Error("Preview laden mislukt");
-      const data = await res.json();
-      return data.preview as {
-        geschatteUren: number;
-        geschatteDoorlooptijd: string;
-        fases: number;
-        eersteTaken: string[];
-        vergelijkbaarProject: string | null;
-        suggestieModus: "team" | "zelf";
-        actieveProjecten: number;
-      };
-    },
-    enabled: ideeId !== null && ideeId > 0,
-    staleTime: 60_000,
   });
 }

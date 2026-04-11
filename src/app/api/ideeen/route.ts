@@ -3,25 +3,12 @@ import { Client } from "@notionhq/client";
 import { db } from "@/lib/db";
 import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireApiKey } from "@/lib/auth";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 
 // GET /api/ideeen — lijst met optionele filters
 export async function GET(req: NextRequest) {
   try {
     await requireAuth();
-
-    // Ensure new columns exist
-    try { await db.run(sql`ALTER TABLE ideeen ADD COLUMN bron TEXT`); } catch { /* exists */ }
-    try { await db.run(sql`ALTER TABLE ideeen ADD COLUMN bron_tekst TEXT`); } catch { /* exists */ }
-    try { await db.run(sql`ALTER TABLE ideeen ADD COLUMN confidence_breakdown TEXT`); } catch { /* exists */ }
-    try { await db.run(sql`ALTER TABLE ideeen ADD COLUMN confidence_bijgewerkt_op TEXT`); } catch { /* exists */ }
-    try { await db.run(sql`ALTER TABLE ideeen ADD COLUMN geparkeerd INTEGER DEFAULT 0`); } catch { /* exists */ }
-
-    // One-time migration: scale existing aiScore from 1-10 to 0-100
-    try {
-      await db.run(sql`UPDATE ideeen SET ai_score = ai_score * 10 WHERE ai_score IS NOT NULL AND ai_score <= 10`);
-    } catch { /* already migrated */ }
-
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const categorie = searchParams.get("categorie");
@@ -36,7 +23,7 @@ export async function GET(req: NextRequest) {
       .select()
       .from(ideeen)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(desc(ideeen.aiScore))
+      .orderBy(asc(ideeen.nummer))
       .all();
 
     return NextResponse.json({ ideeen: rows });

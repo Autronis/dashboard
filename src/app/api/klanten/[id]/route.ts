@@ -22,8 +22,8 @@ export async function GET(
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }
 
-    // Projects
-    const projectenLijst = await db
+    // Projects with actual hours (single query instead of N+1)
+    const projectenMetUren = await db
       .select({
         id: projecten.id,
         naam: projecten.naam,
@@ -34,21 +34,13 @@ export async function GET(
         geschatteUren: projecten.geschatteUren,
         werkelijkeUren: projecten.werkelijkeUren,
         isActief: projecten.isActief,
+        werkelijkeMinuten: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)`,
       })
       .from(projecten)
+      .leftJoin(tijdregistraties, eq(tijdregistraties.projectId, projecten.id))
       .where(and(eq(projecten.klantId, Number(id)), eq(projecten.isActief, 1)))
+      .groupBy(projecten.id)
       .orderBy(projecten.naam);
-
-    // Calculate actual hours per project
-    const projectenMetUren = await Promise.all(
-      projectenLijst.map(async (p) => {
-        const [uren] = await db
-          .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
-          .from(tijdregistraties)
-          .where(eq(tijdregistraties.projectId, p.id));
-        return { ...p, werkelijkeMinuten: uren?.totaal || 0 };
-      })
-    );
 
     // Notes
     const notitiesLijst = await db

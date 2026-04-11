@@ -30,7 +30,7 @@ const DARK_BG = "#0E1719";
 const TEXT_PRIMARY = "#E8ECED";
 const TEXT_SECONDARY = "#8A9BA0";
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   // ===== COVER PAGE =====
   coverPage: {
     fontFamily: "Inter",
@@ -41,273 +41,108 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 60,
   },
-  coverLogo: {
-    width: 80,
-    height: 40,
-    marginBottom: 40,
-  },
-  coverLabel: {
-    fontSize: 9,
-    fontWeight: 600,
-    color: TEAL,
-    letterSpacing: 4,
-    textTransform: "uppercase",
-    marginBottom: 20,
-  },
-  coverTitle: {
-    fontSize: 32,
-    fontWeight: 700,
-    color: TEXT_PRIMARY,
-    textAlign: "center",
-    lineHeight: 1.3,
-    marginBottom: 16,
-    maxWidth: 400,
-  },
-  coverLine: {
-    width: 60,
-    height: 3,
-    backgroundColor: TEAL,
-    borderRadius: 2,
-    marginVertical: 24,
-  },
-  coverMeta: {
-    fontSize: 10,
-    color: TEXT_SECONDARY,
-    textAlign: "center",
-    lineHeight: 1.6,
-  },
-  coverCategorie: {
-    fontSize: 8,
-    fontWeight: 600,
-    color: TEAL,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-    marginTop: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: TEAL,
-    borderRadius: 4,
-  },
-  coverFooter: {
-    position: "absolute",
-    bottom: 40,
-    left: 0,
-    right: 0,
-    textAlign: "center",
-    fontSize: 8,
-    color: TEXT_SECONDARY,
-  },
+  coverLogo: { width: 80, height: 40, marginBottom: 40 },
+  coverLabel: { fontSize: 9, fontWeight: 600, color: TEAL, letterSpacing: 4, textTransform: "uppercase", marginBottom: 20 },
+  coverTitle: { fontSize: 32, fontWeight: 700, color: TEXT_PRIMARY, textAlign: "center", lineHeight: 1.3, marginBottom: 16, maxWidth: 400 },
+  coverLine: { width: 60, height: 3, backgroundColor: TEAL, borderRadius: 2, marginVertical: 24 },
+  coverMeta: { fontSize: 10, color: TEXT_SECONDARY, textAlign: "center", lineHeight: 1.6 },
+  coverCategorie: { fontSize: 8, fontWeight: 600, color: TEAL, letterSpacing: 2, textTransform: "uppercase", marginTop: 30, paddingHorizontal: 16, paddingVertical: 6, borderWidth: 1, borderColor: TEAL, borderRadius: 4 },
+  coverFooter: { position: "absolute", bottom: 40, left: 0, right: 0, textAlign: "center", fontSize: 8, color: TEXT_SECONDARY },
   // ===== CONTENT PAGES =====
-  contentPage: {
-    fontFamily: "Inter",
-    fontSize: 10,
-    color: "#1F2937",
-    backgroundColor: "#FFFFFF",
-    paddingTop: 70,
-    paddingBottom: 80,
-    paddingHorizontal: 55,
-  },
-  // ===== PAGE HEADER (fixed) =====
-  pageHeader: {
-    position: "absolute",
-    top: 0,
-    left: 55,
-    right: 55,
-    paddingTop: 25,
-    paddingBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: TEAL,
-  },
-  pageHeaderLogo: {
-    width: 36,
-    height: 18,
-  },
-  pageHeaderBrand: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  pageHeaderBrandText: {
-    fontSize: 9,
-    fontWeight: 600,
-    color: TEAL,
-    letterSpacing: 1,
-  },
-  pageHeaderRight: {
-    fontSize: 8,
-    color: "#9CA3AF",
-  },
-  // ===== CONTENT =====
-  h1: {
-    fontSize: 18,
-    fontWeight: 700,
-    color: "#111827",
-    marginTop: 24,
-    marginBottom: 10,
-  },
-  h2: {
-    fontSize: 14,
-    fontWeight: 700,
-    color: DARK_BG,
-    marginTop: 20,
-    marginBottom: 8,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: TEAL,
-  },
-  h3: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: "#374151",
-    marginTop: 14,
-    marginBottom: 6,
-  },
-  paragraph: {
-    fontSize: 9.5,
-    lineHeight: 1.7,
-    color: "#374151",
-    marginBottom: 6,
-  },
-  listItem: {
-    fontSize: 9.5,
-    lineHeight: 1.7,
-    color: "#374151",
-    marginBottom: 3,
-    paddingLeft: 14,
-  },
-  codeBlock: {
-    backgroundColor: "#F3F4F6",
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 6,
-    padding: 12,
-    marginVertical: 8,
-  },
-  codeText: {
-    fontFamily: "Courier",
-    fontSize: 8,
-    color: "#1F2937",
-    lineHeight: 1.6,
-  },
-  inlineCode: {
-    fontFamily: "Courier",
-    fontSize: 9,
-    backgroundColor: "#F3F4F6",
-    color: "#1F2937",
-  },
-  blockquote: {
-    borderLeftWidth: 3,
-    borderLeftColor: TEAL,
-    paddingLeft: 12,
-    marginVertical: 8,
-  },
-  blockquoteText: {
-    fontSize: 9.5,
-    fontStyle: "italic",
-    color: "#6B7280",
-    lineHeight: 1.7,
-  },
-  hr: {
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-    marginVertical: 16,
-  },
-  bold: {
-    fontWeight: 700,
-  },
-  italic: {
-    fontStyle: "italic",
-  },
-  link: {
-    color: TEAL,
-  },
+  contentPage: { fontFamily: "Inter", fontSize: 10, color: "#1F2937", backgroundColor: "#FFFFFF", paddingTop: 70, paddingBottom: 80, paddingHorizontal: 55 },
+  // ===== PAGE HEADER =====
+  pageHeader: { position: "absolute", top: 0, left: 55, right: 55, paddingTop: 25, paddingBottom: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center", borderBottomWidth: 2, borderBottomColor: TEAL },
+  pageHeaderLogo: { width: 36, height: 18 },
+  pageHeaderBrand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  pageHeaderBrandText: { fontSize: 9, fontWeight: 600, color: TEAL, letterSpacing: 1 },
+  pageHeaderRight: { fontSize: 8, color: "#9CA3AF" },
+  // ===== TEXT CONTENT =====
+  h1: { fontSize: 18, fontWeight: 700, color: "#111827", marginTop: 24, marginBottom: 10 },
+  h2: { fontSize: 14, fontWeight: 700, color: DARK_BG, marginTop: 22, marginBottom: 8, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: TEAL },
+  h3: { fontSize: 11, fontWeight: 600, color: "#374151", marginTop: 14, marginBottom: 6 },
+  paragraph: { fontSize: 9.5, lineHeight: 1.7, color: "#374151", marginBottom: 6 },
+  bold: { fontWeight: 700 },
+  italic: { fontStyle: "italic" },
+  link: { color: TEAL },
+  inlineCode: { fontFamily: "Courier", fontSize: 8.5, backgroundColor: "#F0FAF8", color: "#0F766E", paddingHorizontal: 3, paddingVertical: 1, borderRadius: 2 },
+  listItem: { fontSize: 9.5, lineHeight: 1.7, color: "#374151", marginBottom: 3, paddingLeft: 14 },
+  codeBlock: { backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 6, padding: 12, marginVertical: 8 },
+  codeText: { fontFamily: "Courier", fontSize: 8, color: "#1F2937", lineHeight: 1.6 },
+  blockquote: { borderLeftWidth: 3, borderLeftColor: TEAL, paddingLeft: 12, marginVertical: 8 },
+  blockquoteText: { fontSize: 9.5, fontStyle: "italic", color: "#6B7280", lineHeight: 1.7 },
+  hr: { borderBottomWidth: 1, borderBottomColor: "#E5E7EB", marginVertical: 16 },
+  // ===== ARCHITECTURE DIAGRAM =====
+  archDiagram: { marginVertical: 12, alignItems: "center" },
+  archLayer: { width: "100%", marginVertical: 4 },
+  archLabel: { fontSize: 7, fontWeight: 600, color: TEAL, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 4 },
+  archBoxRow: { flexDirection: "row", gap: 6 },
+  archBoxCore: { flex: 1, backgroundColor: "#F0FAF8", borderWidth: 1, borderColor: TEAL, borderRadius: 6, padding: 10, alignItems: "center" },
+  archBoxInfra: { flex: 1, backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#D1D5DB", borderRadius: 6, padding: 10, alignItems: "center" },
+  archBoxYou: { backgroundColor: DARK_BG, borderRadius: 6, padding: 12, alignItems: "center" },
+  archBoxTitle: { fontSize: 9, fontWeight: 700, color: "#111827", marginBottom: 2 },
+  archBoxSub: { fontSize: 7, color: "#6B7280" },
+  archArrow: { fontSize: 14, color: TEAL, textAlign: "center", marginVertical: 2 },
+  // ===== HOW CARDS =====
+  howGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 10 },
+  howCard: { width: "48%", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 12, marginBottom: 4 },
+  howNumber: { fontSize: 20, fontWeight: 700, color: TEAL, marginBottom: 4 },
+  howTitle: { fontSize: 10, fontWeight: 700, color: "#111827", marginBottom: 6 },
+  howText: { fontSize: 8.5, lineHeight: 1.6, color: "#4B5563" },
+  // ===== WORKFLOW =====
+  workflowContainer: { marginVertical: 10 },
+  wfStep: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
+  wfTime: { width: 60, fontSize: 8, fontWeight: 600, color: TEAL, textTransform: "uppercase" },
+  wfContent: { flex: 1, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 6, paddingVertical: 8, paddingHorizontal: 12 },
+  wfText: { fontSize: 9, color: "#374151" },
+  wfConnector: { width: 1, height: 8, backgroundColor: "#D1D5DB", marginLeft: 30 },
+  // ===== STATS =====
+  statsRow: { flexDirection: "row", gap: 8, marginVertical: 10 },
+  statBox: { flex: 1, backgroundColor: DARK_BG, borderRadius: 8, padding: 12, alignItems: "center" },
+  statNumber: { fontSize: 22, fontWeight: 700, color: TEAL, marginBottom: 2 },
+  statLabel: { fontSize: 7, color: TEXT_SECONDARY, textTransform: "uppercase", letterSpacing: 0.5 },
+  // ===== SKILL CARDS =====
+  skillGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
+  skillCard: { width: "48%", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 10, marginBottom: 4, backgroundColor: "#FFFFFF" },
+  skillCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
+  skillCardName: { fontSize: 10, fontWeight: 700, color: "#111827" },
+  skillCardCmd: { fontSize: 8, fontFamily: "Courier", color: TEAL, backgroundColor: "#F0FAF8", paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
+  skillCardDesc: { fontSize: 8, lineHeight: 1.5, color: "#6B7280", marginBottom: 6 },
+  skillCardTags: { flexDirection: "row", gap: 4, flexWrap: "wrap" },
+  tag: { fontSize: 6, fontWeight: 600, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3, textTransform: "uppercase", letterSpacing: 0.3 },
+  tagAgent: { backgroundColor: "#EDE9FE", color: "#7C3AED" },
+  tagDev: { backgroundColor: "#DBEAFE", color: "#2563EB" },
+  tagOps: { backgroundColor: "#D1FAE5", color: "#059669" },
+  tagClient: { backgroundColor: "#FEF3C7", color: "#D97706" },
+  tagContent: { backgroundColor: "#FCE7F3", color: "#DB2777" },
+  tagResearch: { backgroundColor: "#E0E7FF", color: "#4F46E5" },
+  tagFinance: { backgroundColor: "#CCFBF1", color: "#0F766E" },
+  tagSyb: { backgroundColor: "#F3F4F6", color: "#6B7280" },
+  tagDefault: { backgroundColor: "#F3F4F6", color: "#374151" },
+  // ===== LEGEND =====
+  legendRow: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginVertical: 8, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: "#F9FAFB", borderRadius: 6 },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: 2 },
+  legendText: { fontSize: 7, color: "#6B7280" },
   // ===== TABLE =====
-  table: {
-    marginVertical: 8,
-  },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-  tableHeaderRow: {
-    flexDirection: "row",
-    backgroundColor: DARK_BG,
-    borderRadius: 3,
-  },
-  tableHeaderCell: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-  },
-  tableHeaderText: {
-    fontSize: 7,
-    fontWeight: 600,
-    color: TEXT_PRIMARY,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  tableCell: {
-    flex: 1,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  tableCellText: {
-    fontSize: 9,
-    color: "#374151",
-    lineHeight: 1.5,
-  },
-  tableRowAlt: {
-    backgroundColor: "#F9FAFB",
-  },
+  table: { marginVertical: 8 },
+  tableHeaderRow: { flexDirection: "row", backgroundColor: DARK_BG, borderRadius: 3 },
+  tableHeaderCell: { flex: 1, paddingVertical: 8, paddingHorizontal: 10 },
+  tableHeaderText: { fontSize: 7, fontWeight: 600, color: TEXT_PRIMARY, textTransform: "uppercase", letterSpacing: 0.5 },
+  tableRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#E5E7EB" },
+  tableCell: { flex: 1, paddingVertical: 6, paddingHorizontal: 10 },
+  tableCellText: { fontSize: 9, color: "#374151", lineHeight: 1.5 },
+  tableRowAlt: { backgroundColor: "#F9FAFB" },
   // ===== FOOTER =====
-  footer: {
-    position: "absolute",
-    bottom: 0,
-    left: 55,
-    right: 55,
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    paddingVertical: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  footerText: {
-    fontSize: 7,
-    color: "#9CA3AF",
-  },
-  footerPage: {
-    fontSize: 7,
-    color: "#9CA3AF",
-  },
+  footer: { position: "absolute", bottom: 0, left: 55, right: 55, borderTopWidth: 1, borderTopColor: "#E5E7EB", paddingVertical: 16, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  footerText: { fontSize: 7, color: "#9CA3AF" },
+  footerPage: { fontSize: 7, color: "#9CA3AF" },
 });
 
-// ===== CONTENT PARSER =====
+// ===== HTML HELPERS =====
 
-interface ParsedElement {
-  type: "h1" | "h2" | "h3" | "paragraph" | "list-item" | "ordered-item" | "code-block" | "blockquote" | "hr" | "table";
-  content: string;
-  rows?: string[][];
-}
-
-function isHtmlContent(text: string): boolean {
-  const trimmed = text.trim();
-  return trimmed.startsWith("<") && (
-    trimmed.startsWith("<h1") || trimmed.startsWith("<h2") || trimmed.startsWith("<p") ||
-    trimmed.startsWith("<div") || trimmed.startsWith("<section") || trimmed.startsWith("<!") || trimmed.startsWith("<html")
-  );
-}
-
-/** Strip all HTML tags, decode entities, return plain text */
 function stripHtml(html: string): string {
   return html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(?:p|div|li|tr|h[1-6]|blockquote|pre|section)>/gi, "\n")
+    .replace(/<br\s*\/?>/gi, " ")
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -318,332 +153,550 @@ function stripHtml(html: string): string {
     .replace(/&#8595;/g, "\u2193")
     .replace(/&#\d+;/g, "")
     .replace(/&\w+;/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
-/** Extract text content from an HTML tag */
-function getTagText(html: string): string {
-  return stripHtml(html).trim();
+function getTagColorStyle(tagClass: string) {
+  if (tagClass.includes("tag-agent")) return s.tagAgent;
+  if (tagClass.includes("tag-dev")) return s.tagDev;
+  if (tagClass.includes("tag-ops")) return s.tagOps;
+  if (tagClass.includes("tag-client")) return s.tagClient;
+  if (tagClass.includes("tag-content")) return s.tagContent;
+  if (tagClass.includes("tag-research")) return s.tagResearch;
+  if (tagClass.includes("tag-finance")) return s.tagFinance;
+  if (tagClass.includes("tag-syb")) return s.tagSyb;
+  return s.tagDefault;
 }
 
-function parseHtml(html: string): ParsedElement[] {
-  const elements: ParsedElement[] = [];
+// ===== STRUCTURED HTML PARSER =====
+// Parses Autronis wiki HTML into structured blocks for PDF rendering
 
-  // Process line by line, matching HTML tags
-  // We use regex to find block-level elements
-  const blockPattern = /<(h[1-3]|p|div|pre|code|blockquote|li|hr|table|tr|th|td|ul|ol|section|span|strong|em|a|img|br)[^>]*>([\s\S]*?)<\/\1>|<(hr|br|img)\s*\/?>/gi;
+interface ArchBox { title: string; sub: string }
+interface ArchLayer { label: string; boxes: ArchBox[]; isYou?: boolean }
+interface HowCard { number: string; title: string; text: string }
+interface WfStep { time: string; text: string }
+interface StatItem { number: string; label: string }
+interface SkillCard { name: string; cmd: string; desc: string; tags: { text: string; className: string }[] }
+interface LegendItem { text: string; className: string }
 
-  // First, extract structured content by walking the HTML
-  // Split into meaningful blocks
-  const lines = html.split("\n");
-  let inCodeBlock = false;
-  let codeContent: string[] = [];
+type Block =
+  | { type: "h1"; text: string }
+  | { type: "h2"; text: string }
+  | { type: "h3"; text: string }
+  | { type: "paragraph"; text: string }
+  | { type: "list-item"; text: string }
+  | { type: "code-block"; text: string }
+  | { type: "blockquote"; text: string }
+  | { type: "hr" }
+  | { type: "arch-diagram"; layers: ArchLayer[] }
+  | { type: "how-grid"; cards: HowCard[] }
+  | { type: "workflow"; steps: WfStep[] }
+  | { type: "stats"; items: StatItem[] }
+  | { type: "legend"; items: LegendItem[] }
+  | { type: "skill-grid"; cards: SkillCard[] }
+  | { type: "table"; rows: string[][] };
+
+function parseHtmlContent(html: string): Block[] {
+  const blocks: Block[] = [];
+
+  // Helper to extract all matches of a regex
+  function matchAll(str: string, re: RegExp): RegExpExecArray[] {
+    const results: RegExpExecArray[] = [];
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(str)) !== null) results.push(m);
+    return results;
+  }
+
+  // 1. Architecture diagrams
+  const archRe = /<div class="arch-diagram">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
+  const archSections = matchAll(html, archRe);
+  for (const sec of archSections) {
+    const content = sec[1];
+    const layers: ArchLayer[] = [];
+
+    // Parse each arch-layer
+    const layerRe = /<div class="arch-layer">([\s\S]*?)(?=<div class="arch-(?:layer|arrow)">|$)/gi;
+    const layerMatches = matchAll(content, layerRe);
+    for (const lm of layerMatches) {
+      const layerHtml = lm[1];
+      const labelMatch = layerHtml.match(/<div class="arch-label">(.*?)<\/div>/);
+      const label = labelMatch ? stripHtml(labelMatch[1]) : "";
+      const isYou = layerHtml.includes("arch-you");
+
+      const boxes: ArchBox[] = [];
+      const boxRe = /<div class="arch-box[^"]*">([\s\S]*?)<\/div>/gi;
+      const boxMatches = matchAll(layerHtml, boxRe);
+      for (const bm of boxMatches) {
+        const boxHtml = bm[1];
+        const parts = boxHtml.split(/<br\s*\/?>/i);
+        const title = stripHtml(parts[0] || "");
+        const subMatch = boxHtml.match(/<span class="arch-sub">(.*?)<\/span>/);
+        const sub = subMatch ? stripHtml(subMatch[1]) : (parts[1] ? stripHtml(parts[1]) : "");
+        if (title) boxes.push({ title, sub });
+      }
+      if (label || boxes.length) layers.push({ label, boxes, isYou });
+    }
+    if (layers.length) blocks.push({ type: "arch-diagram", layers });
+  }
+
+  // 2. How-grid cards
+  const howRe = /<div class="how-grid">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/gi;
+  const howSections = matchAll(html, howRe);
+  for (const sec of howSections) {
+    const cards: HowCard[] = [];
+    const cardRe = /<div class="how-card">([\s\S]*?)(?=<div class="how-card">|<\/div>\s*<\/div>)/gi;
+    const cardMatches = matchAll(sec[1], cardRe);
+    for (const cm of cardMatches) {
+      const numMatch = cm[1].match(/<div class="how-number">(.*?)<\/div>/);
+      const titleMatch = cm[1].match(/<div class="how-title">(.*?)<\/div>/);
+      const textMatch = cm[1].match(/<div class="how-text">([\s\S]*?)<\/div>/);
+      cards.push({
+        number: numMatch ? stripHtml(numMatch[1]) : "",
+        title: titleMatch ? stripHtml(titleMatch[1]) : "",
+        text: textMatch ? stripHtml(textMatch[1]) : "",
+      });
+    }
+    if (cards.length) blocks.push({ type: "how-grid", cards });
+  }
+
+  // 3. Workflow steps
+  const wfRe = /<div class="workflow">([\s\S]*?)<\/div>\s*<\/div>/gi;
+  const wfSections = matchAll(html, wfRe);
+  for (const sec of wfSections) {
+    const steps: WfStep[] = [];
+    const stepRe = /<div class="wf-step">([\s\S]*?)<\/div>/gi;
+    const stepMatches = matchAll(sec[1], stepRe);
+    for (const sm of stepMatches) {
+      const timeMatch = sm[1].match(/<span class="wf-time">(.*?)<\/span>/);
+      const time = timeMatch ? stripHtml(timeMatch[1]) : "";
+      const text = stripHtml(sm[1].replace(/<span class="wf-time">.*?<\/span>/, ""));
+      if (text) steps.push({ time, text });
+    }
+    if (steps.length) blocks.push({ type: "workflow", steps });
+  }
+
+  // 4. Stats
+  const statsRe = /<div class="stats">([\s\S]*?)<\/div>\s*<\/div>/gi;
+  const statsSections = matchAll(html, statsRe);
+  for (const sec of statsSections) {
+    const items: StatItem[] = [];
+    const statRe = /<div class="stat">([\s\S]*?)<\/div>\s*<\/div>/gi;
+    const statMatches = matchAll(sec[1], statRe);
+    for (const sm of statMatches) {
+      const numMatch = sm[1].match(/<div class="stat-number">(.*?)<\/div>/);
+      const labelMatch = sm[1].match(/<div class="stat-label">(.*?)<\/div>/);
+      items.push({
+        number: numMatch ? stripHtml(numMatch[1]) : "",
+        label: labelMatch ? stripHtml(labelMatch[1]) : "",
+      });
+    }
+    if (items.length) blocks.push({ type: "stats", items });
+  }
+
+  // 5. Legend
+  const legendRe = /<div class="legend">([\s\S]*?)<\/div>\s*<\/div>/gi;
+  const legendSections = matchAll(html, legendRe);
+  for (const sec of legendSections) {
+    const items: LegendItem[] = [];
+    const itemRe = /<div class="legend-item">([\s\S]*?)<\/div>/gi;
+    const itemMatches = matchAll(sec[1], itemRe);
+    for (const im of itemMatches) {
+      const tagMatch = im[1].match(/<span class="(tag[^"]*)"[^>]*>.*?<\/span>\s*(.*)/);
+      if (tagMatch) {
+        items.push({ text: stripHtml(tagMatch[2]), className: tagMatch[1] });
+      }
+    }
+    if (items.length) blocks.push({ type: "legend", items });
+  }
+
+  // 6. Skill card grids
+  const gridRe = /<div class="grid">([\s\S]*?)(?=<(?:h2|div class="grid")|\s*$)/gi;
+  const gridSections = matchAll(html, gridRe);
+  for (const sec of gridSections) {
+    const cards: SkillCard[] = [];
+    const cardRe = /<div class="card">([\s\S]*?)(?=<div class="card">|<\/div>\s*(?:<\/div>|<h2|<div class="grid"))/gi;
+    const cardMatches = matchAll(sec[1], cardRe);
+    for (const cm of cardMatches) {
+      const nameMatch = cm[1].match(/<span class="card-name">(.*?)<\/span>/);
+      const cmdMatch = cm[1].match(/<span class="card-cmd">(.*?)<\/span>/);
+      const descMatch = cm[1].match(/<div class="card-desc">([\s\S]*?)<\/div>/);
+
+      const tags: { text: string; className: string }[] = [];
+      const tagRe = /<span class="(tag[^"]*)">(.*?)<\/span>/gi;
+      const tagMatches = matchAll(cm[1], tagRe);
+      for (const tm of tagMatches) {
+        if (!tm[1].includes("card-")) {
+          tags.push({ text: stripHtml(tm[2]), className: tm[1] });
+        }
+      }
+
+      cards.push({
+        name: nameMatch ? stripHtml(nameMatch[1]) : "",
+        cmd: cmdMatch ? stripHtml(cmdMatch[1]) : "",
+        desc: descMatch ? stripHtml(descMatch[1]) : "",
+        tags,
+      });
+    }
+    if (cards.length) blocks.push({ type: "skill-grid", cards });
+  }
+
+  // 7. Now parse remaining text content (headings, paragraphs, etc.)
+  // Remove already-parsed structured blocks to avoid duplicates
+  let remaining = html
+    .replace(/<div class="arch-diagram">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>\s*<\/div>/gi, "{{BLOCK}}")
+    .replace(/<div class="how-grid">[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/gi, "{{BLOCK}}")
+    .replace(/<div class="workflow">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
+    .replace(/<div class="stats">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
+    .replace(/<div class="legend">[\s\S]*?<\/div>\s*<\/div>/gi, "{{BLOCK}}")
+    .replace(/<div class="grid">[\s\S]*?(?=<h2|$)/gi, "{{BLOCK}}");
+
+  // Build ordered list of text blocks from remaining HTML
+  const textBlocks: Block[] = [];
+  const lines = remaining.split("\n");
 
   for (const line of lines) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Skip HTML comments
+    if (!trimmed || trimmed === "{{BLOCK}}") continue;
     if (trimmed.startsWith("<!--")) continue;
 
-    // Detect code/pre blocks
-    if (/<pre[^>]*>/i.test(trimmed) || (/<code[^>]*>/i.test(trimmed) && !/<\/code>/i.test(trimmed))) {
-      inCodeBlock = true;
-      codeContent = [];
-      const codeText = getTagText(trimmed);
-      if (codeText) codeContent.push(codeText);
-      continue;
-    }
-    if (inCodeBlock) {
-      if (/<\/pre>/i.test(trimmed) || /<\/code>/i.test(trimmed)) {
-        const codeText = getTagText(trimmed);
-        if (codeText) codeContent.push(codeText);
-        elements.push({ type: "code-block", content: codeContent.join("\n") });
-        inCodeBlock = false;
-        codeContent = [];
-      } else {
-        codeContent.push(getTagText(trimmed));
-      }
-      continue;
-    }
-
     // Headings
-    const h1Match = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
-    if (h1Match) {
-      const text = getTagText(h1Match[1]);
-      if (text) elements.push({ type: "h1", content: text });
-      continue;
-    }
-    const h2Match = trimmed.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
-    if (h2Match) {
-      const text = getTagText(h2Match[1]);
-      if (text) elements.push({ type: "h2", content: text });
-      continue;
-    }
-    const h3Match = trimmed.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
-    if (h3Match) {
-      const text = getTagText(h3Match[1]);
-      if (text) elements.push({ type: "h3", content: text });
-      continue;
-    }
+    const h1m = trimmed.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (h1m) { const t = stripHtml(h1m[1]); if (t) textBlocks.push({ type: "h1", text: t }); continue; }
+    const h2m = trimmed.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+    if (h2m) { const t = stripHtml(h2m[1]); if (t) textBlocks.push({ type: "h2", text: t }); continue; }
+    const h3m = trimmed.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i);
+    if (h3m) { const t = stripHtml(h3m[1]); if (t) textBlocks.push({ type: "h3", text: t }); continue; }
 
     // HR
-    if (/<hr/i.test(trimmed)) {
-      elements.push({ type: "hr", content: "" });
-      continue;
-    }
+    if (/<hr/i.test(trimmed)) { textBlocks.push({ type: "hr" }); continue; }
 
-    // List items
-    if (/<li[^>]*>/i.test(trimmed)) {
-      const text = getTagText(trimmed);
-      if (text) elements.push({ type: "list-item", content: text });
-      continue;
-    }
-
-    // Blockquote
-    if (/<blockquote[^>]*>/i.test(trimmed)) {
-      const text = getTagText(trimmed);
-      if (text) elements.push({ type: "blockquote", content: text });
+    // Code blocks
+    if (/<pre[^>]*>/i.test(trimmed) || (/<code[^>]*>/i.test(trimmed) && trimmed.includes("</code>"))) {
+      const t = stripHtml(trimmed);
+      if (t) textBlocks.push({ type: "code-block", text: t });
       continue;
     }
 
     // Paragraphs
     if (/<p[^>]*>/i.test(trimmed)) {
-      const text = getTagText(trimmed);
-      if (text) elements.push({ type: "paragraph", content: text });
+      const t = stripHtml(trimmed);
+      if (t) textBlocks.push({ type: "paragraph", text: t });
       continue;
     }
 
-    // Inline code (single line)
-    if (/<code[^>]*>.*<\/code>/i.test(trimmed)) {
-      const codeMatch = trimmed.match(/<code[^>]*>([\s\S]*?)<\/code>/i);
-      if (codeMatch) {
-        const text = getTagText(codeMatch[0]);
-        if (text) elements.push({ type: "code-block", content: text });
-      }
+    // List items
+    if (/<li[^>]*>/i.test(trimmed)) {
+      const t = stripHtml(trimmed);
+      if (t) textBlocks.push({ type: "list-item", text: t });
       continue;
     }
 
-    // Skip structural divs that are just wrappers — extract text from divs with content
+    // Divs with actual text (not wrapper divs)
     if (/<div[^>]*>/i.test(trimmed)) {
-      const text = getTagText(trimmed);
-      // Only add if it has actual text content (not just nested tags)
-      if (text && text.length > 1 && !text.startsWith("<")) {
-        elements.push({ type: "paragraph", content: text });
-      }
+      const t = stripHtml(trimmed);
+      if (t && t.length > 2) textBlocks.push({ type: "paragraph", text: t });
       continue;
     }
 
-    // Any remaining text content
-    const text = stripHtml(trimmed);
-    if (text && text.length > 1) {
-      elements.push({ type: "paragraph", content: text });
+    // Plain text
+    const t = stripHtml(trimmed);
+    if (t && t.length > 1) textBlocks.push({ type: "paragraph", text: t });
+  }
+
+  // Merge: interleave text blocks with structured blocks based on source order
+  // For now: text blocks first (they contain headings/intros), then structured blocks after their heading
+  // We need to reconstruct the original order by position in the HTML
+
+  // Simple approach: find position of each block in original HTML and sort
+  interface OrderedBlock { pos: number; block: Block }
+  const ordered: OrderedBlock[] = [];
+
+  // Text blocks: find position by searching for their content
+  for (const tb of textBlocks) {
+    if (tb.type === "hr") {
+      ordered.push({ pos: html.indexOf("<hr"), block: tb });
+      continue;
+    }
+    const text = "text" in tb ? tb.text : "";
+    const searchStr = text.substring(0, 30);
+    const pos = html.indexOf(searchStr);
+    ordered.push({ pos: pos >= 0 ? pos : ordered.length * 1000, block: tb });
+  }
+
+  // Structured blocks: find position
+  const structuredPositions: { re: RegExp; type: string }[] = [
+    { re: /class="arch-diagram"/gi, type: "arch-diagram" },
+    { re: /class="how-grid"/gi, type: "how-grid" },
+    { re: /class="workflow"/gi, type: "workflow" },
+    { re: /class="stats"/gi, type: "stats" },
+    { re: /class="legend"/gi, type: "legend" },
+    { re: /class="grid"/gi, type: "skill-grid" },
+  ];
+
+  const structuredBlocks = blocks.filter(b =>
+    ["arch-diagram", "how-grid", "workflow", "stats", "legend", "skill-grid"].includes(b.type)
+  );
+
+  for (const sb of structuredBlocks) {
+    const sp = structuredPositions.find(p => p.type === sb.type);
+    if (sp) {
+      const m = sp.re.exec(html);
+      ordered.push({ pos: m ? m.index : 9999, block: sb });
     }
   }
 
-  return elements;
+  ordered.sort((a, b) => a.pos - b.pos);
+
+  // Deduplicate: remove text blocks that are just fragments of structured blocks
+  const finalBlocks: Block[] = [];
+  const seen = new Set<string>();
+  for (const ob of ordered) {
+    const key = ob.block.type + ("text" in ob.block ? ob.block.text.substring(0, 40) : "");
+    if (!seen.has(key)) {
+      seen.add(key);
+      finalBlocks.push(ob.block);
+    }
+  }
+
+  return finalBlocks;
 }
 
-function parseMarkdown(markdown: string): ParsedElement[] {
-  const elements: ParsedElement[] = [];
+// ===== MARKDOWN PARSER (fallback) =====
+
+function parseMarkdown(markdown: string): Block[] {
+  const blocks: Block[] = [];
   const lines = markdown.split("\n");
   let i = 0;
 
   while (i < lines.length) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    // Empty line
+    const trimmed = lines[i].trim();
     if (!trimmed) { i++; continue; }
 
-    // Code block
     if (trimmed.startsWith("```")) {
       const codeLines: string[] = [];
       i++;
-      while (i < lines.length && !lines[i].trim().startsWith("```")) {
-        codeLines.push(lines[i]);
-        i++;
-      }
-      elements.push({ type: "code-block", content: codeLines.join("\n") });
-      i++; // skip closing ```
-      continue;
+      while (i < lines.length && !lines[i].trim().startsWith("```")) { codeLines.push(lines[i]); i++; }
+      blocks.push({ type: "code-block", text: codeLines.join("\n") });
+      i++; continue;
     }
-
-    // Table (line with | characters, followed by separator)
     if (trimmed.includes("|") && i + 1 < lines.length && /^\|?\s*[-:]+/.test(lines[i + 1].trim())) {
       const rows: string[][] = [];
-      // Header row
       rows.push(trimmed.split("|").map(c => c.trim()).filter(c => c !== ""));
-      i++; // skip separator
-      i++;
-      // Data rows
+      i += 2;
       while (i < lines.length && lines[i].trim().includes("|")) {
         rows.push(lines[i].trim().split("|").map(c => c.trim()).filter(c => c !== ""));
         i++;
       }
-      elements.push({ type: "table", content: "", rows });
+      blocks.push({ type: "table", rows });
       continue;
     }
-
-    // HR
-    if (/^[-*_]{3,}$/.test(trimmed)) {
-      elements.push({ type: "hr", content: "" });
-      i++; continue;
-    }
-
-    // Headings
-    if (trimmed.startsWith("### ")) {
-      elements.push({ type: "h3", content: trimmed.slice(4) });
-      i++; continue;
-    }
-    if (trimmed.startsWith("## ")) {
-      elements.push({ type: "h2", content: trimmed.slice(3) });
-      i++; continue;
-    }
-    if (trimmed.startsWith("# ")) {
-      elements.push({ type: "h1", content: trimmed.slice(2) });
-      i++; continue;
-    }
-
-    // Blockquote
+    if (/^[-*_]{3,}$/.test(trimmed)) { blocks.push({ type: "hr" }); i++; continue; }
+    if (trimmed.startsWith("### ")) { blocks.push({ type: "h3", text: trimmed.slice(4) }); i++; continue; }
+    if (trimmed.startsWith("## ")) { blocks.push({ type: "h2", text: trimmed.slice(3) }); i++; continue; }
+    if (trimmed.startsWith("# ")) { blocks.push({ type: "h1", text: trimmed.slice(2) }); i++; continue; }
     if (trimmed.startsWith("> ")) {
-      const quoteLines: string[] = [];
-      while (i < lines.length && lines[i].trim().startsWith("> ")) {
-        quoteLines.push(lines[i].trim().slice(2));
-        i++;
-      }
-      elements.push({ type: "blockquote", content: quoteLines.join("\n") });
+      const ql: string[] = [];
+      while (i < lines.length && lines[i].trim().startsWith("> ")) { ql.push(lines[i].trim().slice(2)); i++; }
+      blocks.push({ type: "blockquote", text: ql.join("\n") });
       continue;
     }
-
-    // Unordered list item
-    if (/^[-*]\s/.test(trimmed)) {
-      elements.push({ type: "list-item", content: trimmed.replace(/^[-*]\s/, "") });
-      i++; continue;
-    }
-
-    // Ordered list item
-    if (/^\d+\.\s/.test(trimmed)) {
-      elements.push({ type: "ordered-item", content: trimmed.replace(/^\d+\.\s/, "") });
-      i++; continue;
-    }
-
-    // Paragraph
-    elements.push({ type: "paragraph", content: trimmed });
+    if (/^[-*]\s/.test(trimmed)) { blocks.push({ type: "list-item", text: trimmed.replace(/^[-*]\s/, "") }); i++; continue; }
+    if (/^\d+\.\s/.test(trimmed)) { blocks.push({ type: "list-item", text: trimmed.replace(/^\d+\.\s/, "") }); i++; continue; }
+    blocks.push({ type: "paragraph", text: trimmed });
     i++;
   }
-
-  return elements;
+  return blocks;
 }
 
-/** Parse content — auto-detect HTML vs markdown */
-function parseContent(content: string): ParsedElement[] {
-  if (isHtmlContent(content)) {
-    return parseHtml(content);
-  }
-  return parseMarkdown(content);
+function isHtmlContent(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.startsWith("<") && (
+    trimmed.startsWith("<h1") || trimmed.startsWith("<h2") || trimmed.startsWith("<p") ||
+    trimmed.startsWith("<div") || trimmed.startsWith("<section") || trimmed.startsWith("<!") || trimmed.startsWith("<html")
+  );
 }
+
+function parseContent(content: string): Block[] {
+  return isHtmlContent(content) ? parseHtmlContent(content) : parseMarkdown(content);
+}
+
+// ===== RENDER BLOCKS =====
 
 function renderInlineText(text: string): React.ReactElement {
-  // Handle bold, italic, inline code, and links
   const parts: React.ReactElement[] = [];
   let remaining = text;
   let key = 0;
 
   while (remaining.length > 0) {
-    // Bold
     const boldMatch = remaining.match(/^([\s\S]*?)\*\*(.+?)\*\*([\s\S]*)/);
     if (boldMatch && boldMatch[1].length < remaining.length) {
-      if (boldMatch[1]) {
-        parts.push(<Text key={key++}>{boldMatch[1]}</Text>);
-      }
-      parts.push(<Text key={key++} style={styles.bold}>{boldMatch[2]}</Text>);
-      remaining = boldMatch[3];
-      continue;
+      if (boldMatch[1]) parts.push(<Text key={key++}>{boldMatch[1]}</Text>);
+      parts.push(<Text key={key++} style={s.bold}>{boldMatch[2]}</Text>);
+      remaining = boldMatch[3]; continue;
     }
-
-    // Inline code
     const codeMatch = remaining.match(/^([\s\S]*?)`([^`]+)`([\s\S]*)/);
     if (codeMatch && codeMatch[1].length < remaining.length) {
-      if (codeMatch[1]) {
-        parts.push(<Text key={key++}>{codeMatch[1]}</Text>);
-      }
-      parts.push(<Text key={key++} style={styles.inlineCode}> {codeMatch[2]} </Text>);
-      remaining = codeMatch[3];
-      continue;
+      if (codeMatch[1]) parts.push(<Text key={key++}>{codeMatch[1]}</Text>);
+      parts.push(<Text key={key++} style={s.inlineCode}> {codeMatch[2]} </Text>);
+      remaining = codeMatch[3]; continue;
     }
-
-    // Link
-    const linkMatch = remaining.match(/^([\s\S]*?)\[([^\]]+)\]\(([^)]+)\)([\s\S]*)/);
-    if (linkMatch && linkMatch[1].length < remaining.length) {
-      if (linkMatch[1]) {
-        parts.push(<Text key={key++}>{linkMatch[1]}</Text>);
-      }
-      parts.push(<Text key={key++} style={styles.link}>{linkMatch[2]}</Text>);
-      remaining = linkMatch[4];
-      continue;
-    }
-
-    // No more matches
     parts.push(<Text key={key++}>{remaining}</Text>);
     break;
   }
-
   return <Text>{parts}</Text>;
 }
 
-function renderElement(el: ParsedElement, index: number): React.ReactElement {
-  switch (el.type) {
+function renderBlock(block: Block, index: number): React.ReactElement {
+  switch (block.type) {
     case "h1":
-      return <Text key={index} style={styles.h1} minPresenceAhead={80}>{el.content}</Text>;
+      return <Text key={index} style={s.h1} minPresenceAhead={80}>{block.text}</Text>;
     case "h2":
-      return <Text key={index} style={styles.h2} minPresenceAhead={80}>{el.content}</Text>;
+      return <Text key={index} style={s.h2} minPresenceAhead={80}>{block.text}</Text>;
     case "h3":
-      return <Text key={index} style={styles.h3} minPresenceAhead={60}>{el.content}</Text>;
+      return <Text key={index} style={s.h3} minPresenceAhead={60}>{block.text}</Text>;
     case "paragraph":
-      return <View key={index} style={{ marginBottom: 6 }}><Text style={styles.paragraph}>{renderInlineText(el.content)}</Text></View>;
+      return <View key={index} style={{ marginBottom: 6 }}><Text style={s.paragraph}>{renderInlineText(block.text)}</Text></View>;
     case "list-item":
-      return <View key={index} style={{ marginBottom: 3 }}><Text style={styles.listItem}>{"\u2022  "}{renderInlineText(el.content)}</Text></View>;
-    case "ordered-item":
-      return <View key={index} style={{ marginBottom: 3 }}><Text style={styles.listItem}>{renderInlineText(el.content)}</Text></View>;
+      return <View key={index} style={{ marginBottom: 3 }}><Text style={s.listItem}>{"\u2022  "}{renderInlineText(block.text)}</Text></View>;
     case "code-block":
-      return (
-        <View key={index} style={styles.codeBlock} wrap={false}>
-          <Text style={styles.codeText}>{el.content}</Text>
-        </View>
-      );
+      return <View key={index} style={s.codeBlock} wrap={false}><Text style={s.codeText}>{block.text}</Text></View>;
     case "blockquote":
+      return <View key={index} style={s.blockquote}><Text style={s.blockquoteText}>{block.text}</Text></View>;
+    case "hr":
+      return <View key={index} style={s.hr} />;
+
+    // ===== ARCHITECTURE DIAGRAM =====
+    case "arch-diagram":
       return (
-        <View key={index} style={styles.blockquote}>
-          <Text style={styles.blockquoteText}>{el.content}</Text>
+        <View key={index} style={s.archDiagram} wrap={false}>
+          {block.layers.map((layer, li) => (
+            <React.Fragment key={li}>
+              {li > 0 && <Text style={s.archArrow}>{"\u2193"}</Text>}
+              <View style={s.archLayer}>
+                <Text style={s.archLabel}>{layer.label}</Text>
+                {layer.isYou ? (
+                  layer.boxes.map((box, bi) => (
+                    <View key={bi} style={s.archBoxYou}>
+                      <Text style={[s.archBoxTitle, { color: TEXT_PRIMARY }]}>{box.title}</Text>
+                      {box.sub ? <Text style={[s.archBoxSub, { color: TEXT_SECONDARY }]}>{box.sub}</Text> : null}
+                    </View>
+                  ))
+                ) : (
+                  <View style={s.archBoxRow}>
+                    {layer.boxes.map((box, bi) => (
+                      <View key={bi} style={layer.label === "Infra" ? s.archBoxInfra : s.archBoxCore}>
+                        <Text style={s.archBoxTitle}>{box.title}</Text>
+                        {box.sub ? <Text style={s.archBoxSub}>{box.sub}</Text> : null}
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            </React.Fragment>
+          ))}
         </View>
       );
-    case "hr":
-      return <View key={index} style={styles.hr} />;
-    case "table":
-      if (!el.rows || el.rows.length === 0) return <View key={index} />;
+
+    // ===== HOW CARDS =====
+    case "how-grid":
       return (
-        <View key={index} style={styles.table} wrap={false}>
-          {/* Header */}
-          <View style={styles.tableHeaderRow}>
-            {el.rows[0].map((cell, ci) => (
-              <View key={ci} style={styles.tableHeaderCell}>
-                <Text style={styles.tableHeaderText}>{cell}</Text>
+        <View key={index} style={s.howGrid}>
+          {block.cards.map((card, ci) => (
+            <View key={ci} style={s.howCard} wrap={false}>
+              <Text style={s.howNumber}>{card.number}</Text>
+              <Text style={s.howTitle}>{card.title}</Text>
+              <Text style={s.howText}>{card.text}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    // ===== WORKFLOW =====
+    case "workflow":
+      return (
+        <View key={index} style={s.workflowContainer} wrap={false}>
+          {block.steps.map((step, si) => (
+            <React.Fragment key={si}>
+              {si > 0 && <View style={s.wfConnector} />}
+              <View style={s.wfStep}>
+                <Text style={s.wfTime}>{step.time}</Text>
+                <View style={s.wfContent}>
+                  <Text style={s.wfText}>{step.text}</Text>
+                </View>
               </View>
+            </React.Fragment>
+          ))}
+        </View>
+      );
+
+    // ===== STATS =====
+    case "stats":
+      return (
+        <View key={index} style={s.statsRow} wrap={false}>
+          {block.items.map((item, si) => (
+            <View key={si} style={s.statBox}>
+              <Text style={s.statNumber}>{item.number}</Text>
+              <Text style={s.statLabel}>{item.label}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    // ===== LEGEND =====
+    case "legend":
+      return (
+        <View key={index} style={s.legendRow} wrap={false}>
+          {block.items.map((item, li) => (
+            <View key={li} style={s.legendItem}>
+              <View style={[s.legendDot, { backgroundColor: (getTagColorStyle(item.className) as Record<string, string>).backgroundColor || "#E5E7EB" }]} />
+              <Text style={s.legendText}>{item.text}</Text>
+            </View>
+          ))}
+        </View>
+      );
+
+    // ===== SKILL CARDS =====
+    case "skill-grid":
+      return (
+        <View key={index} style={s.skillGrid}>
+          {block.cards.map((card, ci) => (
+            <View key={ci} style={s.skillCard} wrap={false}>
+              <View style={s.skillCardHeader}>
+                <Text style={s.skillCardName}>{card.name}</Text>
+                <Text style={s.skillCardCmd}>{card.cmd}</Text>
+              </View>
+              <Text style={s.skillCardDesc}>{card.desc}</Text>
+              <View style={s.skillCardTags}>
+                {card.tags.map((tag, ti) => (
+                  <Text key={ti} style={[s.tag, getTagColorStyle(tag.className)]}>{tag.text}</Text>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      );
+
+    // ===== TABLE =====
+    case "table":
+      if (!block.rows || block.rows.length === 0) return <View key={index} />;
+      return (
+        <View key={index} style={s.table} wrap={false}>
+          <View style={s.tableHeaderRow}>
+            {block.rows[0].map((cell, ci) => (
+              <View key={ci} style={s.tableHeaderCell}><Text style={s.tableHeaderText}>{cell}</Text></View>
             ))}
           </View>
-          {/* Data rows */}
-          {el.rows.slice(1).map((row, ri) => (
-            <View key={ri} style={[styles.tableRow, ri % 2 === 1 ? styles.tableRowAlt : {}]}>
+          {block.rows.slice(1).map((row, ri) => (
+            <View key={ri} style={[s.tableRow, ri % 2 === 1 ? s.tableRowAlt : {}]}>
               {row.map((cell, ci) => (
-                <View key={ci} style={styles.tableCell}>
-                  <Text style={styles.tableCellText}>{cell}</Text>
-                </View>
+                <View key={ci} style={s.tableCell}><Text style={s.tableCellText}>{cell}</Text></View>
               ))}
             </View>
           ))}
         </View>
       );
+
     default:
       return <View key={index} />;
   }
@@ -668,59 +721,50 @@ interface WikiPDFProps {
 }
 
 function formatDatum(datum: string): string {
-  return new Date(datum).toLocaleDateString("nl-NL", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  return new Date(datum).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" });
 }
 
 export function WikiPDF({ artikel, bedrijf }: WikiPDFProps) {
   const bedrijfsnaam = bedrijf.bedrijfsnaam || "Autronis";
   const datum = artikel.bijgewerktOp ? formatDatum(artikel.bijgewerktOp) : "";
-  const elements = parseContent(artikel.inhoud || "");
+  const blocks = parseContent(artikel.inhoud || "");
   const logoSrc = getLogoSrc();
 
   return (
     <Document>
       {/* ===== COVER PAGE ===== */}
-      <Page size="A4" style={styles.coverPage}>
-        {logoSrc && <Image src={logoSrc} style={styles.coverLogo} />}
-        <Text style={styles.coverLabel}>{bedrijfsnaam}</Text>
-        <Text style={styles.coverTitle}>{artikel.titel}</Text>
-        <View style={styles.coverLine} />
-        <Text style={styles.coverMeta}>
+      <Page size="A4" style={s.coverPage}>
+        {logoSrc && <Image src={logoSrc} style={s.coverLogo} />}
+        <Text style={s.coverLabel}>{bedrijfsnaam}</Text>
+        <Text style={s.coverTitle}>{artikel.titel}</Text>
+        <View style={s.coverLine} />
+        <Text style={s.coverMeta}>
           {artikel.auteurNaam ? `${artikel.auteurNaam}\n` : ""}
           {datum}
         </Text>
         {artikel.categorie && (
-          <Text style={styles.coverCategorie}>{artikel.categorie}</Text>
+          <Text style={s.coverCategorie}>{artikel.categorie}</Text>
         )}
-        <Text style={styles.coverFooter}>
-          {bedrijfsnaam} — Vertrouwelijk
-        </Text>
+        <Text style={s.coverFooter}>{bedrijfsnaam} — Vertrouwelijk</Text>
       </Page>
 
       {/* ===== CONTENT PAGES ===== */}
-      <Page size="A4" style={styles.contentPage} wrap>
-        {/* Fixed header on every page */}
-        <View style={styles.pageHeader} fixed>
-          <View style={styles.pageHeaderBrand}>
-            {logoSrc && <Image src={logoSrc} style={styles.pageHeaderLogo} />}
-            <Text style={styles.pageHeaderBrandText}>{bedrijfsnaam.toUpperCase()}</Text>
+      <Page size="A4" style={s.contentPage} wrap>
+        <View style={s.pageHeader} fixed>
+          <View style={s.pageHeaderBrand}>
+            {logoSrc && <Image src={logoSrc} style={s.pageHeaderLogo} />}
+            <Text style={s.pageHeaderBrandText}>{bedrijfsnaam.toUpperCase()}</Text>
           </View>
-          <Text style={styles.pageHeaderRight}>{artikel.titel}</Text>
+          <Text style={s.pageHeaderRight}>{artikel.titel}</Text>
         </View>
 
-        {/* Content */}
-        {elements.map((el, i) => renderElement(el, i))}
+        {blocks.map((block, i) => renderBlock(block, i))}
 
-        {/* Fixed footer on every page */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
+        <View style={s.footer} fixed>
+          <Text style={s.footerText}>
             {[bedrijfsnaam, bedrijf.email, bedrijf.website, bedrijf.kvkNummer ? `KvK: ${bedrijf.kvkNummer}` : null].filter(Boolean).join(" | ")}
           </Text>
-          <Text style={styles.footerPage} render={({ pageNumber, totalPages }) => `Pagina ${pageNumber - 1} van ${totalPages - 1}`} />
+          <Text style={s.footerPage} render={({ pageNumber, totalPages }) => `Pagina ${pageNumber - 1} van ${totalPages - 1}`} />
         </View>
       </Page>
     </Document>

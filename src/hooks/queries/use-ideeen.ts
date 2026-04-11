@@ -276,3 +276,21 @@ export function useSyncBacklog() {
     },
   });
 }
+
+export function useConfidenceRecalc() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ideeId?: number) => {
+      const res = await fetch("/api/ideeen/confidence", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(ideeId ? { ideeId } : {}),
+      });
+      if (!res.ok) throw new Error("Herberekening mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ideeen"] });
+    },
+  });
+}

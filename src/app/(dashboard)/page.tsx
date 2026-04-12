@@ -1137,7 +1137,7 @@ export default function DashboardPage() {
                 <div className="space-y-2">
                   {concurrentData.highlights.map((h, i) => (
                     <div key={i} className="flex items-start gap-2.5 text-sm">
-                      <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full", h.type === "kans" ? "bg-green-400" : "bg-autronis-accent")} />
+                      <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full", h.type === "kans" ? "bg-emerald-400" : "bg-autronis-accent")} />
                       <span className="text-autronis-text-secondary">
                         <strong className="text-autronis-text-primary">{h.concurrentNaam}</strong>{" "}{h.tekst}
                       </span>
@@ -1163,7 +1163,7 @@ export default function DashboardPage() {
             <div className="p-2.5">
               <div className="bg-autronis-card border border-autronis-border rounded-xl p-2.5 card-glow">
                 <div className="flex items-center gap-3">
-                  <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm text-autronis-text-primary font-medium truncate block">{timer.omschrijving || "Timer"}</span>
                     <span className="text-xs text-autronis-text-secondary hidden sm:inline">{projecten.find((p) => p.id === timer.projectId)?.naam || ""}</span>

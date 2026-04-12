@@ -24,7 +24,7 @@ function MargeBar({ marge }: { marge: number | null }) {
     <div className="flex items-center gap-2 min-w-[100px]">
       <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all", isPositief ? "bg-green-400" : "bg-red-400")}
+          className={cn("h-full rounded-full transition-all", isPositief ? "bg-emerald-400" : "bg-red-400")}
           style={{ width: `${breedte}%` }}
         />
       </div>
@@ -48,7 +48,7 @@ function ProjectRij({ project }: { project: ProfitProject }) {
         className="w-full flex items-center gap-4 p-4 text-left"
       >
         {/* Profit indicator */}
-        <div className={cn("w-1 self-stretch rounded-full flex-shrink-0", isPositief ? "bg-green-400" : "bg-red-400")} />
+        <div className={cn("w-1 self-stretch rounded-full flex-shrink-0", isPositief ? "bg-emerald-400" : "bg-red-400")} />
 
         {/* Naam + status */}
         <div className="flex-1 min-w-0">

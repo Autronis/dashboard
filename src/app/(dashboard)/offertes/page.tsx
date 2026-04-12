@@ -50,7 +50,7 @@ const statusConfig: Record<string, { bg: string; text: string; label: string; bo
 const pipelineColors: Record<string, string> = {
   concept: "bg-slate-500",
   verzonden: "bg-blue-500",
-  geaccepteerd: "bg-green-500",
+  geaccepteerd: "bg-emerald-500",
   verlopen: "bg-amber-500",
   afgewezen: "bg-red-500",
 };
@@ -620,7 +620,7 @@ export default function OffertesPage() {
                                 transition={{ duration: 0.18, delay: index * 0.03 }}
                                 className={cn(
                                   "border-b border-autronis-border/50 hover:bg-autronis-bg/40 transition-colors relative group",
-                                  isGeaccepteerd && "bg-green-500/[0.03]",
+                                  isGeaccepteerd && "bg-emerald-500/[0.03]",
                                   isOverdue && "bg-amber-500/[0.04]",
                                   isHighValue && !isGeaccepteerd && !isOverdue && "bg-autronis-accent/[0.02]",
                                 )}

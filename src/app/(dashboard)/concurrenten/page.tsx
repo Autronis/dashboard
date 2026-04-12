@@ -1023,7 +1023,7 @@ export default function ConcurrentenPage() {
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-3 bg-green-500/8 border border-emerald-500/20 rounded-xl px-5 py-3"
+              className="flex items-center gap-3 bg-emerald-500/8 border border-emerald-500/20 rounded-xl px-5 py-3"
             >
               <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
               <p className="text-sm text-emerald-400 font-medium">Scan voltooid — data is bijgewerkt</p>

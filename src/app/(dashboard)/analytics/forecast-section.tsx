@@ -117,7 +117,7 @@ export function ForecastSection() {
           <motion.div
             className={cn(
               "h-full rounded-full",
-              data.opKoers ? "bg-green-400" : "bg-red-400"
+              data.opKoers ? "bg-emerald-400" : "bg-red-400"
             )}
             initial={{ width: "0%" }}
             animate={{ width: `${jaardoelPercentage}%` }}

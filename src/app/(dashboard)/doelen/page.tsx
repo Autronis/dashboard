@@ -534,7 +534,7 @@ export default function DoelenPage() {
         {doelen.length > 0 && (() => {
           const gemVoortgang = doelen.reduce((s, d) => s + d.voortgang, 0) / doelen.length;
           const opSchema = doelen.filter((d) => d.voortgang >= 70).length;
-          const barKleur = gemVoortgang >= 70 ? "bg-green-500" : gemVoortgang >= 40 ? "bg-yellow-500" : "bg-red-500";
+          const barKleur = gemVoortgang >= 70 ? "bg-emerald-500" : gemVoortgang >= 40 ? "bg-yellow-500" : "bg-red-500";
           const overallStatus = trackStatus(gemVoortgang, tijdPct);
           const StatusIcon = overallStatus.icon;
           return (

@@ -304,7 +304,7 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
                 <button
                   onClick={handleGoedkeuren}
                   disabled={isBusy || post.status === "goedgekeurd"}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-green-500/25 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors disabled:opacity-50"
                 >
                   <ThumbsUp className="w-3.5 h-3.5" />
                   Goedkeuren
@@ -488,7 +488,7 @@ export default function ContentPostsPage() {
               <button
                 onClick={handleBulkGoedkeuren}
                 disabled={selectedIds.size === 0 || updatePost.isPending}
-                className="flex items-center gap-2 px-5 py-2.5 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors disabled:opacity-60 btn-press"
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors disabled:opacity-60 btn-press"
               >
                 {updatePost.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
                 {selectedIds.size > 0 ? `Goedkeuren (${selectedIds.size})` : "Selecteer posts"}

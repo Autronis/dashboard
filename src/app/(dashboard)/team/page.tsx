@@ -361,7 +361,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
     if (feestdagMap.has(datum)) return "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30";
     const entries = verlofPerDag.get(datum) ?? [];
     if (entries.length === 0)
-      return "bg-emerald-500/10 text-emerald-400/70 hover:bg-green-500/25 cursor-pointer";
+      return "bg-emerald-500/10 text-emerald-400/70 hover:bg-emerald-500/25 cursor-pointer";
     const hasZiek = entries.some((e) => e.type === "ziek");
     const hasSem = entries.some((e) => e.gebruikerId === 1);
     const hasSyb = entries.some((e) => e.gebruikerId === 2);

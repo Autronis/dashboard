@@ -224,7 +224,7 @@ export function RunwaySection() {
                         className={cn(
                           "w-full max-w-[32px] rounded-t-lg transition-colors",
                           isPositive
-                            ? "bg-green-500/40 group-hover:bg-green-400"
+                            ? "bg-emerald-500/40 group-hover:bg-emerald-400"
                             : "bg-red-500/40 group-hover:bg-red-400"
                         )}
                         initial={{ height: "0%" }}

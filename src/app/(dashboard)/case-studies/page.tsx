@@ -1008,7 +1008,7 @@ export default function CaseStudiesPage() {
               <div className="flex items-center gap-2 flex-1 max-w-xs">
                 <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden border border-autronis-border">
                   <motion.div
-                    className={cn("h-full rounded-full transition-colors", formVolledigheid === 100 ? "bg-green-500" : formVolledigheid > 50 ? "bg-autronis-accent" : "bg-autronis-accent/50")}
+                    className={cn("h-full rounded-full transition-colors", formVolledigheid === 100 ? "bg-emerald-500" : formVolledigheid > 50 ? "bg-autronis-accent" : "bg-autronis-accent/50")}
                     animate={{ width: `${formVolledigheid}%` }}
                     transition={{ duration: 0.4 }}
                   />

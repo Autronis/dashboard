@@ -141,7 +141,7 @@ const aanslagStatusConfig: Record<string, { bg: string; text: string }> = {
 
 function getStatusIndicator(status: "ok" | "warning" | "danger") {
   const config = {
-    ok: { bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-green-400" },
+    ok: { bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-400" },
     warning: { bg: "bg-yellow-500/15", text: "text-yellow-400", dot: "bg-yellow-400" },
     danger: { bg: "bg-red-500/15", text: "text-red-400", dot: "bg-red-400" },
   };
@@ -810,7 +810,7 @@ export default function BelastingPage() {
               <motion.div
                 className={cn(
                   "h-full rounded-full",
-                  optimalisatieOk >= 5 ? "bg-green-500" : optimalisatieOk >= 3 ? "bg-yellow-500" : "bg-red-500"
+                  optimalisatieOk >= 5 ? "bg-emerald-500" : optimalisatieOk >= 3 ? "bg-yellow-500" : "bg-red-500"
                 )}
                 initial={{ width: 0 }}
                 animate={{ width: `${(optimalisatieOk / 6) * 100}%` }}
@@ -904,7 +904,7 @@ export default function BelastingPage() {
                       tab.id === "acties"
                         ? (isActive ? "bg-red-400/20 text-red-300" : "bg-red-500/15 text-red-400")
                         : tab.id === "optimalisatie" && tipsData && tipsData.toegepast === tipsData.totaal && tipsData.totaal > 0
-                        ? (isActive ? "bg-green-400/20 text-green-300" : "bg-emerald-500/15 text-emerald-400")
+                        ? (isActive ? "bg-emerald-400/20 text-green-300" : "bg-emerald-500/15 text-emerald-400")
                         : (isActive ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary")
                     )}>
                       {badge}
@@ -1028,7 +1028,7 @@ export default function BelastingPage() {
                     <div className="mt-2">
                       <div className="h-1.5 bg-autronis-bg/50 rounded-full overflow-hidden mb-1.5">
                         <div
-                          className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-green-500" : "bg-autronis-accent")}
+                          className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-emerald-500" : "bg-autronis-accent")}
                           style={{ width: `${Math.min(100, urenCriterium.voortgangPercentage)}%` }}
                         />
                       </div>
@@ -1288,7 +1288,7 @@ export default function BelastingPage() {
                             {(aangifte.status === "open" || aangifte.status === "ingediend") && (
                               <button
                                 onClick={() => handleBtwStatus(aangifte, "betaald")}
-                                className="px-3 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                                className="px-3 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-500/25 transition-colors"
                               >
                                 Betaald
                               </button>
@@ -1404,7 +1404,7 @@ export default function BelastingPage() {
                         </div>
                         <div className="h-2.5 bg-autronis-bg rounded-full overflow-hidden">
                           <div
-                            className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-green-500" : "bg-autronis-accent")}
+                            className={cn("h-full rounded-full transition-all duration-500", urenCriterium.voldoet ? "bg-emerald-500" : "bg-autronis-accent")}
                             style={{ width: `${Math.min(100, urenCriterium.voortgangPercentage)}%` }}
                           />
                         </div>
@@ -1542,7 +1542,7 @@ export default function BelastingPage() {
                           {aanslag.status !== "betaald" && (
                             <button
                               onClick={() => handleMarkAanslagBetaald(aanslag.id, aanslag.bedrag)}
-                              className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                              className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-emerald-500/25 transition-colors"
                             >
                               Betaald
                             </button>
@@ -1774,7 +1774,7 @@ export default function BelastingPage() {
                                 <div className="flex items-center gap-1.5 mt-1">
                                   <div className="w-20 h-1 bg-autronis-bg rounded-full overflow-hidden">
                                     <div
-                                      className={cn("h-full rounded-full", afschrijvingsPct >= 100 ? "bg-green-500" : "bg-autronis-accent")}
+                                      className={cn("h-full rounded-full", afschrijvingsPct >= 100 ? "bg-emerald-500" : "bg-autronis-accent")}
                                       style={{ width: `${afschrijvingsPct}%` }}
                                     />
                                   </div>
@@ -1876,7 +1876,7 @@ export default function BelastingPage() {
                       <div
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
-                          reserveringTekort <= 0 ? "bg-green-500" : reserveringTekort < geschatteBelasting * 0.3 ? "bg-yellow-500" : "bg-red-500"
+                          reserveringTekort <= 0 ? "bg-emerald-500" : reserveringTekort < geschatteBelasting * 0.3 ? "bg-yellow-500" : "bg-red-500"
                         )}
                         style={{ width: `${Math.min(100, geschatteBelasting > 0 ? (totaalGereserveerd / geschatteBelasting) * 100 : 0)}%` }}
                       />

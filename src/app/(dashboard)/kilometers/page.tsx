@@ -89,7 +89,7 @@ const DOEL_RIJ: Record<string, string> = {
   meeting: "bg-blue-500/[0.04] hover:bg-blue-500/[0.08]",
   inkoop: "bg-amber-500/[0.04] hover:bg-amber-500/[0.08]",
   netwerk: "bg-purple-500/[0.04] hover:bg-purple-500/[0.08]",
-  training: "bg-green-500/[0.04] hover:bg-green-500/[0.08]",
+  training: "bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08]",
   boekhouder: "bg-orange-500/[0.04] hover:bg-orange-500/[0.08]",
 };
 

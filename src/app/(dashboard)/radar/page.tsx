@@ -96,7 +96,7 @@ const categorieBadge: Record<string, string> = {
   competitors: "bg-red-500/15 text-red-400 border-red-500/25",
   tutorials: "bg-indigo-500/15 text-indigo-400 border-indigo-500/25",
   trends: "bg-orange-500/15 text-orange-400 border-orange-500/25",
-  kansen: "bg-emerald-500/15 text-emerald-400 border-green-500/25",
+  kansen: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
   must_reads: "bg-rose-500/15 text-rose-400 border-rose-500/25",
   tools: "bg-purple-500/15 text-purple-400 border-purple-500/25",
 };

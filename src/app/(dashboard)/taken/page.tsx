@@ -38,7 +38,7 @@ const prioriteitConfig: Record<string, { color: string; bg: string; label: strin
 const kanbanKolommen = [
   { status: "open", label: "Open", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30", tint: "bg-slate-500/[0.04]" },
   { status: "bezig", label: "Bezig", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", tint: "bg-blue-500/[0.05]" },
-  { status: "afgerond", label: "Afgerond", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", tint: "bg-green-500/[0.04]" },
+  { status: "afgerond", label: "Afgerond", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", tint: "bg-emerald-500/[0.04]" },
 ];
 
 // ─── Progress Bar ───
@@ -48,7 +48,7 @@ function ProgressBar({ afgerond, totaal, size = "md" }: { afgerond: number; tota
   return (
     <div className="flex items-center gap-2">
       <div className={cn("flex-1 rounded-full bg-autronis-border/30", h)}>
-        <div className={cn("rounded-full transition-all duration-500", h, pct === 100 ? "bg-green-400/70" : "bg-autronis-accent/50")} style={{ width: `${pct}%` }} />
+        <div className={cn("rounded-full transition-all duration-500", h, pct === 100 ? "bg-emerald-400/70" : "bg-autronis-accent/50")} style={{ width: `${pct}%` }} />
       </div>
       <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums whitespace-nowrap">{afgerond}/{totaal}</span>
     </div>
@@ -240,7 +240,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak, onEd
           <Play className="w-3.5 h-3.5" /> Start
         </button>
         <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
-          className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
+          className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 transition-colors flex-shrink-0">
           Klaar
         </button>
       </div>
@@ -523,7 +523,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
                 <Play className="w-3.5 h-3.5" /> Start timer
               </button>
               <button onClick={() => { onStatusToggle({ ...taak, status: "bezig" } as Taak); onClose(); }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-sm font-semibold hover:bg-green-500/25 transition-colors">
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/25 transition-colors">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Markeer klaar
               </button>
               <button onClick={() => { onPlanTaak(taak); }}
@@ -1041,7 +1041,7 @@ function TakenPage() {
             { key: "alle", label: "Alle", count: kpis.totaal, dot: "bg-autronis-accent", activeBg: "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent" },
             { key: "open", label: "Open", count: kpis.open, dot: "bg-slate-400", activeBg: "bg-slate-500/15 border-slate-400/40 text-slate-300" },
             { key: "bezig", label: "Bezig", count: kpis.bezig, dot: "bg-blue-400", activeBg: "bg-blue-500/15 border-blue-400/40 text-blue-400" },
-            { key: "afgerond", label: "Afgerond", count: kpis.afgerond, dot: "bg-green-400", activeBg: "bg-emerald-500/15 border-emerald-400/40 text-emerald-400" },
+            { key: "afgerond", label: "Afgerond", count: kpis.afgerond, dot: "bg-emerald-400", activeBg: "bg-emerald-500/15 border-emerald-400/40 text-emerald-400" },
             ...(kpis.verlopen > 0 ? [{ key: "verlopen", label: "Verlopen", count: kpis.verlopen, dot: "bg-red-400", activeBg: "bg-red-500/15 border-red-400/40 text-red-400" }] : []),
           ].map((tab) => (
             <button

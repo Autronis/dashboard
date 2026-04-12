@@ -289,8 +289,8 @@ function getActivityDot(laatsteActiviteit: string | null): { color: string; puls
   if (!laatsteActiviteit) return { color: "bg-slate-500/40", pulse: false, label: "Geen activiteit" };
   const d = new Date(laatsteActiviteit.includes("T") ? laatsteActiviteit : laatsteActiviteit.replace(" ", "T") + "Z");
   const dagen = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (dagen <= 1) return { color: "bg-green-400", pulse: true, label: "Vandaag actief" };
-  if (dagen <= 3) return { color: "bg-green-400/70", pulse: false, label: `${dagen}d geleden` };
+  if (dagen <= 1) return { color: "bg-emerald-400", pulse: true, label: "Vandaag actief" };
+  if (dagen <= 3) return { color: "bg-emerald-400/70", pulse: false, label: `${dagen}d geleden` };
   if (dagen <= 7) return { color: "bg-amber-400", pulse: false, label: `${dagen}d geleden` };
   return { color: "bg-red-400", pulse: false, label: `${dagen}d geleden` };
 }

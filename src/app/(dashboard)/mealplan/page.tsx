@@ -75,7 +75,7 @@ const macroKleuren = {
   eiwit: { text: "text-red-400", bar: "bg-red-500" },
   kh: { text: "text-blue-400", bar: "bg-blue-500" },
   vet: { text: "text-yellow-400", bar: "bg-yellow-500" },
-  vezels: { text: "text-emerald-400", bar: "bg-green-500" },
+  vezels: { text: "text-emerald-400", bar: "bg-emerald-500" },
   suiker: { text: "text-pink-400", bar: "bg-pink-500" },
 };
 

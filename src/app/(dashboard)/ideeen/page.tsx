@@ -1424,7 +1424,7 @@ export default function IdeeenPage() {
             <div className="flex items-center gap-3 pt-4 border-t border-autronis-border flex-wrap">
               <button onClick={() => openEditForm(detailIdee)} className="inline-flex items-center gap-2 px-4 py-2.5 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 rounded-xl text-sm font-medium transition-colors"><Edit className="w-4 h-4" />Bewerken</button>
               {(detailIdee.status === "idee" || detailIdee.status === "uitgewerkt") && (
-                <button onClick={handleStartProject} disabled={startProjectMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/15 text-emerald-400 hover:bg-green-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                <button onClick={handleStartProject} disabled={startProjectMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
                   {startProjectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}Start als project
                 </button>
               )}

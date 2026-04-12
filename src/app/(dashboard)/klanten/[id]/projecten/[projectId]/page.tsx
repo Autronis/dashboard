@@ -426,7 +426,7 @@ export default function ProjectDetailPage() {
                             className={cn(
                               "mt-0.5 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-colors",
                               taak.status === "afgerond"
-                                ? "bg-green-500 border-green-500 text-white"
+                                ? "bg-emerald-500 border-emerald-500 text-white"
                                 : taak.status === "bezig"
                                 ? "border-amber-400 hover:bg-amber-400/20"
                                 : "border-slate-500 hover:bg-slate-500/20"

@@ -181,7 +181,7 @@ export function FiscaleVoordelenTab() {
             {/* Min marker */}
             <div className="absolute h-full w-px bg-orange-400/60" style={{ left: `${(f.kiaMinimum / f.kiaMaximum) * 100}%` }} />
             {/* Fill */}
-            <div className={cn("h-full rounded-full transition-all", kiaInRange ? "bg-green-500" : f.totaalInvesteringen < f.kiaMinimum ? "bg-orange-400" : "bg-red-400")}
+            <div className={cn("h-full rounded-full transition-all", kiaInRange ? "bg-emerald-500" : f.totaalInvesteringen < f.kiaMinimum ? "bg-orange-400" : "bg-red-400")}
               style={{ width: `${kiaPercentage}%` }} />
           </div>
           <div className="flex justify-between text-[10px] text-autronis-text-tertiary mt-1">

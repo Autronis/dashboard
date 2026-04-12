@@ -1634,7 +1634,7 @@ export default function AnimatiesPage() {
                   <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Start frame (je logo/product afbeelding)</label>
                   {logoKieFirstFrame ? (
                     <div className="relative group mb-1">
-                      <img src={logoKieFirstFrame} alt="Start frame" className="w-full max-h-32 object-contain bg-white rounded-lg border border-green-500/50" />
+                      <img src={logoKieFirstFrame} alt="Start frame" className="w-full max-h-32 object-contain bg-white rounded-lg border border-emerald-500/50" />
                       <button onClick={() => setLogoKieFirstFrame("")} className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-all">
                         <X className="w-3 h-3" />
                       </button>
@@ -2276,8 +2276,8 @@ export default function AnimatiesPage() {
                     {kieImgError.A && <p className="text-[10px] text-red-400 mb-1">{kieImgError.A}</p>}
                     {kieImgUrl.A ? (
                       <div className="relative group">
-                        <img src={kieImgUrl.A} alt="A" className="w-full aspect-video object-contain bg-white rounded-lg border border-green-500/50" />
-                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-green-500/80 rounded text-[8px] font-bold text-white">REFERENTIE</div>
+                        <img src={kieImgUrl.A} alt="A" className="w-full aspect-video object-contain bg-white rounded-lg border border-emerald-500/50" />
+                        <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-emerald-500/80 rounded text-[8px] font-bold text-white">REFERENTIE</div>
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -2455,7 +2455,7 @@ export default function AnimatiesPage() {
                     <label className="text-[10px] text-autronis-text-tertiary font-medium mb-1 block">Eind frame (A — assembled)</label>
                     {kieEndFrame ? (
                       <div className="relative group">
-                        <img src={kieEndFrame} alt="End frame" className="w-full aspect-video object-contain bg-white rounded-lg border border-green-500/50" />
+                        <img src={kieEndFrame} alt="End frame" className="w-full aspect-video object-contain bg-white rounded-lg border border-emerald-500/50" />
                         <button onClick={() => setKieEndFrame("")} className="absolute top-1 right-1 p-1 bg-black/60 rounded-md text-white opacity-0 group-hover:opacity-100 transition-all">
                           <X className="w-3 h-3" />
                         </button>
@@ -2468,7 +2468,7 @@ export default function AnimatiesPage() {
                         <div className="flex gap-1 overflow-x-auto pb-1">
                           {gallery.filter(g => g.afbeeldingUrl && !g.videoUrl).slice(0, 8).map(g => (
                             <button key={g.id} onClick={() => setKieEndFrame(g.afbeeldingUrl!)}
-                              className="shrink-0 w-16 h-10 rounded border border-autronis-border hover:border-green-500 overflow-hidden transition-all">
+                              className="shrink-0 w-16 h-10 rounded border border-autronis-border hover:border-emerald-500 overflow-hidden transition-all">
                               <img src={g.afbeeldingUrl!} alt="" className="w-full h-full object-contain bg-white" />
                             </button>
                           ))}

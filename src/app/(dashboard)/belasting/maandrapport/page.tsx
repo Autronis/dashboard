@@ -241,7 +241,7 @@ function UitgavenTabel({
   return (
     <section>
       <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-green-400" />
+        <span className="w-2 h-2 rounded-full bg-emerald-400" />
         Zakelijke uitgaven — {MAAND_NAMEN[maandNr - 1]}
       </h2>
       <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden overflow-x-auto">
@@ -408,7 +408,7 @@ function VerrekeningenSection({
                   onClick={() => onToggle(v.id, !v.betaald)}
                   className={cn(
                     "w-5 h-5 rounded border flex items-center justify-center transition-colors",
-                    v.betaald ? "bg-green-500 border-green-500" : "border-autronis-border hover:border-autronis-text-tertiary"
+                    v.betaald ? "bg-emerald-500 border-emerald-500" : "border-autronis-border hover:border-autronis-text-tertiary"
                   )}
                 >
                   {v.betaald && <Check className="w-3 h-3 text-white" />}
@@ -460,7 +460,7 @@ function SamenvattingSection({ totaalBtw, totaalVerrekening, totaalTerug }: { to
   return (
     <section>
       <h2 className="text-base font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-green-400" />
+        <span className="w-2 h-2 rounded-full bg-emerald-400" />
         Samenvatting — wat krijgt Sem terug?
       </h2>
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 max-w-lg">

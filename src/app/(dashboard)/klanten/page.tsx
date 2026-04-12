@@ -92,7 +92,7 @@ function HighlightMatch({ text, zoek }: { text: string; zoek: string }) {
 
 // Relatie status badge
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  actief: { label: "Actief", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-green-400" },
+  actief: { label: "Actief", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
   stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
   aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
   inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },
@@ -420,7 +420,7 @@ export default function KlantenPage() {
                   onClick={() => toggleGezondheid("groen")}
                   className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "groen" ? "bg-emerald-500/20" : "hover:bg-autronis-bg/50")}
                 >
-                  <div className="w-2 h-2 rounded-full bg-green-400" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{kpis.gezondheid.groen}</span>
                 </button>
                 <button
@@ -531,7 +531,7 @@ export default function KlantenPage() {
             };
             const dotColors: Record<StatusFilter, string> = {
               alles: "",
-              actief: "bg-green-400",
+              actief: "bg-emerald-400",
               stil: "bg-amber-400",
               aandacht_nodig: "bg-red-400 animate-pulse",
               inactief: "bg-slate-400",

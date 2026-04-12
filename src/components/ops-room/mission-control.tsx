@@ -157,7 +157,7 @@ export function MissionControl({ agents }: MissionControlProps) {
             {cmd.status === "awaiting_approval" && pendingApproval && (
               <button
                 onClick={() => approveApproval(pendingApproval.id)}
-                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold hover:bg-green-500/25 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold hover:bg-emerald-500/25 transition-colors"
               >
                 Goedkeuren
               </button>

@@ -101,7 +101,7 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
 };
 
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  actief: { label: "Actieve klant", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-green-400" },
+  actief: { label: "Actieve klant", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
   stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
   aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
   inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },

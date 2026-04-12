@@ -283,7 +283,7 @@ export function LiquiditeitTab() {
                   {/* Income bar */}
                   {week.verwachtInkomsten > 0 && (
                     <div
-                      className="bg-green-500/30 rounded-sm transition-all duration-500"
+                      className="bg-emerald-500/30 rounded-sm transition-all duration-500"
                       style={{ width: `${inkomstenPercentage}%` }}
                     />
                   )}
@@ -311,7 +311,7 @@ export function LiquiditeitTab() {
         {/* Legend */}
         <div className="flex items-center gap-6 mt-6 pt-4 border-t border-autronis-border">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-sm bg-green-500/30" />
+            <div className="w-3 h-3 rounded-sm bg-emerald-500/30" />
             <span className="text-xs text-autronis-text-secondary">Inkomsten</span>
           </div>
           <div className="flex items-center gap-2">

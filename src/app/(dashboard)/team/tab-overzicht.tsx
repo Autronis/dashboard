@@ -145,7 +145,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
           <span
             className={cn(
               "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#192225]",
-              heeftUren ? "bg-green-400" : "bg-slate-500"
+              heeftUren ? "bg-emerald-400" : "bg-slate-500"
             )}
           />
         </div>

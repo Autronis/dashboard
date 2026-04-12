@@ -558,7 +558,7 @@ export function ApprovalPanel() {
                       }
                       handleDbApprove(cmd.id);
                     }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-green-500/25 transition-colors">
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-emerald-500/25 transition-colors">
                       <Check className="w-3 h-3" />Goedkeuren
                     </button>
                     <button onClick={() => {

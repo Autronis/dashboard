@@ -736,7 +736,7 @@ function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["fo
                 <AnimatedBar hoogte={(m.verwacht / maxVal) * 100} index={i * 3 + 1} className="bg-autronis-accent/70" maxWidth="28px" />
               </div>
               <div className="flex flex-col items-center gap-1 flex-1">
-                <AnimatedBar hoogte={(m.bestCase / maxVal) * 100} index={i * 3 + 2} className="bg-green-400/60" maxWidth="28px" />
+                <AnimatedBar hoogte={(m.bestCase / maxVal) * 100} index={i * 3 + 2} className="bg-emerald-400/60" maxWidth="28px" />
               </div>
             </div>
             <div className="text-center space-y-0.5">
@@ -759,7 +759,7 @@ function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["fo
           <div className="w-2.5 h-2.5 rounded-sm bg-autronis-accent/70" /> Verwacht
         </div>
         <div className="flex items-center gap-1.5 text-[10px] text-autronis-text-secondary">
-          <div className="w-2.5 h-2.5 rounded-sm bg-green-400/60" /> Best case
+          <div className="w-2.5 h-2.5 rounded-sm bg-emerald-400/60" /> Best case
         </div>
       </div>
     </div>
@@ -1075,7 +1075,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="w-full h-1.5 bg-autronis-bg rounded-full overflow-hidden">
                     <motion.div
-                      className={cn("h-full rounded-full", jaarDoelPct >= 75 ? "bg-green-400" : jaarDoelPct >= 50 ? "bg-yellow-400" : "bg-autronis-accent")}
+                      className={cn("h-full rounded-full", jaarDoelPct >= 75 ? "bg-emerald-400" : jaarDoelPct >= 50 ? "bg-yellow-400" : "bg-autronis-accent")}
                       initial={{ width: "0%" }}
                       animate={{ width: `${jaarDoelPct}%` }}
                       transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}

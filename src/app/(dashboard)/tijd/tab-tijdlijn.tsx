@@ -248,7 +248,7 @@ function SessieDetailPanel({
                   "w-1.5 h-1.5 rounded-full shrink-0",
                   p.type === "vscode" ? "bg-blue-400" :
                   p.type === "chrome" ? "bg-yellow-400" :
-                  p.type === "tradingview" ? "bg-green-400" :
+                  p.type === "tradingview" ? "bg-emerald-400" :
                   p.type === "discord" ? "bg-indigo-400" :
                   "bg-gray-400"
                 )} />

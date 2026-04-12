@@ -28,6 +28,7 @@ import {
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken, usePlanTaak, useUnplanTaak } from "@/hooks/queries/use-agenda";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -695,62 +696,62 @@ export default function AgendaPage() {
     <PageTransition>
     <div className="p-3 sm:p-4 lg:p-5 xl:p-6 space-y-3 sm:space-y-4">
      <div className="max-w-[1400px] mx-auto space-y-3">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary">Agenda</h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Vandaag: {vandaagItems.length} event{vandaagItems.length !== 1 ? "s" : ""}
-            {takenStats.totaal > 0 && (
-              <span className="text-autronis-accent ml-1">
-                · {takenStats.open + takenStats.bezig} open taken
-              </span>
+      <PageHeader
+        title="Agenda"
+        compact
+        actions={
+          <>
+            {googleConnected === false && (
+              <button
+                onClick={handleGoogleConnect}
+                disabled={googleLoading}
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary rounded-xl text-xs sm:text-sm transition-colors"
+              >
+                {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
+                <span className="hidden sm:inline">Google Calendar koppelen</span>
+                <span className="sm:hidden">Google</span>
+              </button>
             )}
-            {kalenders.length > 0 && (
-              <span className="text-autronis-text-secondary/60 ml-1">
-                · {kalenders.length} kalender{kalenders.length !== 1 ? "s" : ""}
-              </span>
+            {googleConnected === true && (
+              <button
+                onClick={handleGoogleDisconnect}
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl text-xs sm:text-sm transition-colors hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+              >
+                <CalendarCheck className="w-4 h-4" />
+                <span className="hidden sm:inline">Google gekoppeld</span>
+              </button>
             )}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {googleConnected === false && (
             <button
-              onClick={handleGoogleConnect}
-              disabled={googleLoading}
+              onClick={() => setKalenderSettingsOpen(true)}
               className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary rounded-xl text-xs sm:text-sm transition-colors"
             >
-              {googleLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Calendar className="w-4 h-4" />}
-              <span className="hidden sm:inline">Google Calendar koppelen</span>
-              <span className="sm:hidden">Google</span>
+              <Link2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Kalenders</span>
             </button>
-          )}
-          {googleConnected === true && (
             <button
-              onClick={handleGoogleDisconnect}
-              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl text-xs sm:text-sm transition-colors hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+              onClick={() => openNieuwModal()}
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
             >
-              <CalendarCheck className="w-4 h-4" />
-              <span className="hidden sm:inline">Google gekoppeld</span>
+              <Plus className="w-4 h-4" />
+              <span className="hidden xs:inline">Nieuw item</span>
+              <span className="xs:hidden">Nieuw</span>
             </button>
-          )}
-          <button
-            onClick={() => setKalenderSettingsOpen(true)}
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-autronis-bg border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary rounded-xl text-xs sm:text-sm transition-colors"
-          >
-            <Link2 className="w-4 h-4" />
-            <span className="hidden sm:inline">Kalenders</span>
-          </button>
-          <button
-            onClick={() => openNieuwModal()}
-            className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="hidden xs:inline">Nieuw item</span>
-            <span className="xs:hidden">Nieuw</span>
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
+      <p className="text-sm text-autronis-text-secondary -mt-2">
+        Vandaag: {vandaagItems.length} event{vandaagItems.length !== 1 ? "s" : ""}
+        {takenStats.totaal > 0 && (
+          <span className="text-autronis-accent ml-1">
+            · {takenStats.open + takenStats.bezig} open taken
+          </span>
+        )}
+        {kalenders.length > 0 && (
+          <span className="text-autronis-text-secondary/60 ml-1">
+            · {kalenders.length} kalender{kalenders.length !== 1 ? "s" : ""}
+          </span>
+        )}
+      </p>
 
       {/* Vandaag overzicht */}
       <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 space-y-3">

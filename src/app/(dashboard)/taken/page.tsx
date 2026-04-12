@@ -1017,21 +1017,20 @@ function TakenPage() {
               </button>
             </>
           }
-        >
-          <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5">
-            <AnimatedCount value={kpis.open + kpis.bezig} /> actief
-            <span className="text-autronis-border/60">&middot;</span>
-            <AnimatedCount value={kpis.afgerond} /> afgerond
-            {kpis.verlopen > 0 && (
-              <>
-                <span className="text-autronis-border/60">&middot;</span>
-                <button onClick={() => setStatusFilter("verlopen")} className={cn("font-medium transition-colors hover:underline", statusFilter === "verlopen" ? "text-red-300" : "text-red-400")}>
-                  <AnimatedCount value={kpis.verlopen} /> verlopen
-                </button>
-              </>
-            )}
-          </p>
-        </PageHeader>
+        />
+        <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5 -mt-4">
+          <AnimatedCount value={kpis.open + kpis.bezig} /> actief
+          <span className="text-autronis-border/60">&middot;</span>
+          <AnimatedCount value={kpis.afgerond} /> afgerond
+          {kpis.verlopen > 0 && (
+            <>
+              <span className="text-autronis-border/60">&middot;</span>
+              <button onClick={() => setStatusFilter("verlopen")} className={cn("font-medium transition-colors hover:underline", statusFilter === "verlopen" ? "text-red-300" : "text-red-400")}>
+                <AnimatedCount value={kpis.verlopen} /> verlopen
+              </button>
+            </>
+          )}
+        </p>
 
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} onEdit={(id, body) => editMutation.mutate({ id, ...body })} />

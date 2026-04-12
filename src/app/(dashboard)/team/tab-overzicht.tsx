@@ -195,7 +195,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
 
       {/* ---- UREN DEZE WEEK ---- */}
       <div className="p-6 pb-5 space-y-1">
-        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">Deze week</p>
+        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">Deep work deze week</p>
         <div className="flex items-end gap-2">
           <span className="text-4xl font-bold text-autronis-text-primary tabular-nums">
             {user.urenDezeWeek}u

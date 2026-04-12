@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { gebruikers, tijdregistraties, projecten, klanten, taken } from "@/lib/db/schema";
+import { gebruikers, tijdregistraties, projecten, klanten, taken, focusSessies } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, isNull, isNotNull, desc } from "drizzle-orm";
 
@@ -83,29 +83,34 @@ export async function GET(_req: NextRequest) {
 
     const result: UserOverzicht[] = await Promise.all(
       users.map(async (user) => {
-        // ---- Tijdregistraties deze week (completed) ----
+        // ---- Deep work (focus) sessies deze week (voltooid) ----
+        // Alleen tijdregistraties die gekoppeld zijn aan een voltooide focus sessie tellen mee.
         const tijdDezeWeek = await db
           .select({
             duurMinuten: tijdregistraties.duurMinuten,
             projectId: tijdregistraties.projectId,
           })
           .from(tijdregistraties)
+          .innerJoin(focusSessies, eq(focusSessies.tijdregistratieId, tijdregistraties.id))
           .where(
             and(
               eq(tijdregistraties.gebruikerId, user.id),
+              eq(focusSessies.status, "voltooid"),
               isNotNull(tijdregistraties.eindTijd),
               gte(tijdregistraties.startTijd, maandag),
               lte(tijdregistraties.startTijd, zondag + "T23:59:59")
             )
           );
 
-        // ---- Tijdregistraties vorige week (completed) ----
+        // ---- Deep work vorige week ----
         const tijdVorigeWeek = await db
           .select({ duurMinuten: tijdregistraties.duurMinuten })
           .from(tijdregistraties)
+          .innerJoin(focusSessies, eq(focusSessies.tijdregistratieId, tijdregistraties.id))
           .where(
             and(
               eq(tijdregistraties.gebruikerId, user.id),
+              eq(focusSessies.status, "voltooid"),
               isNotNull(tijdregistraties.eindTijd),
               gte(tijdregistraties.startTijd, vorigeWeek.maandag),
               lte(tijdregistraties.startTijd, vorigeWeek.zondag + "T23:59:59")

@@ -22,6 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useInstellingen, type Bedrijf, type Profiel } from "@/hooks/queries/use-instellingen";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
+import { ApiKeysSection } from "./api-keys-section";
 
 export default function InstellingenPage() {
   const { addToast } = useToast();
@@ -673,6 +674,9 @@ export default function InstellingenPage() {
           </div>
         )}
       </div>
+
+      {/* API Keys */}
+      <ApiKeysSection />
     </div>
     </PageTransition>
   );

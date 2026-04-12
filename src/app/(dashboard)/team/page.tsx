@@ -17,7 +17,9 @@ import {
   Star,
   Filter,
   TrendingUp,
+  LayoutGrid,
 } from "lucide-react";
+import { OverzichtTab } from "./tab-overzicht";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -191,12 +193,13 @@ const verlofTypeConfig: Record<string, { icon: typeof Palmtree; color: string; l
 // ============ MAIN COMPONENT ============
 
 export default function TeamPage() {
-  const [activeTab, setActiveTab] = useState<"verlof" | "declaraties" | "capaciteit">("verlof");
+  const [activeTab, setActiveTab] = useState<"overzicht" | "verlof" | "declaraties" | "capaciteit">("overzicht");
   const { data: currentUser } = useCurrentUser();
   const { data: verlofData } = useVerlof(new Date().getFullYear());
   const pendingCount = (verlofData?.verlof ?? []).filter((v) => v.status === "aangevraagd").length;
 
   const tabs = [
+    { key: "overzicht" as const, label: "Overzicht", icon: LayoutGrid },
     { key: "verlof" as const, label: "Verlof", icon: Calendar },
     { key: "declaraties" as const, label: "Declaraties", icon: Receipt },
     { key: "capaciteit" as const, label: "Capaciteit", icon: Users2 },
@@ -246,6 +249,7 @@ export default function TeamPage() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
+            {activeTab === "overzicht" && <OverzichtTab />}
             {activeTab === "verlof" && <VerlofTab currentUser={currentUser} />}
             {activeTab === "declaraties" && <DeclaratiesTab currentUser={currentUser} />}
             {activeTab === "capaciteit" && <CapaciteitTab />}

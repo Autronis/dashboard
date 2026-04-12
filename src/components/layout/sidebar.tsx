@@ -529,6 +529,13 @@ export function Sidebar({ gebruikerId }: { gebruikerId?: number }) {
 
         {/* Navigation */}
         <nav className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5 scrollbar-thin pb-20 max-lg:pb-24">
+          {gebruikerId === 1 && (
+            <NavItem
+              item={{ label: "Persoonlijk", icon: Heart, href: "/persoonlijk" }}
+              isCollapsed={isCollapsed}
+              isActive={isActive("/persoonlijk")}
+            />
+          )}
           {navSections.map((entry, idx) => {
             if (entry === "divider") {
               return <div key={`div-${idx}`} className="my-1.5 mx-3 border-t border-autronis-border/30" />;
@@ -548,13 +555,6 @@ export function Sidebar({ gebruikerId }: { gebruikerId?: number }) {
               <NavItem key={entry.href} item={entry} isCollapsed={isCollapsed} isActive={isActive(entry.href, entry.alsoMatches)} />
             );
           })}
-          {gebruikerId === 1 && (
-            <NavItem
-              item={{ label: "Persoonlijk", icon: Heart, href: "/persoonlijk" }}
-              isCollapsed={isCollapsed}
-              isActive={isActive("/persoonlijk")}
-            />
-          )}
         </nav>
 
         {/* Keyboard shortcut hint */}

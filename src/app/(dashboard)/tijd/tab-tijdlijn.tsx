@@ -33,7 +33,7 @@ import {
   useGenereerPeriodeSamenvatting,
 } from "@/hooks/queries/use-screen-time";
 import type { PeriodeSamenvatting, FocusInzicht, BesteFocusBlok } from "@/hooks/queries/use-screen-time";
-import type { WeekDagData } from "@/hooks/queries/use-screen-time";
+import type { WeekDagData, SessiesData } from "@/hooks/queries/use-screen-time";
 import { useRegistraties } from "@/hooks/queries/use-tijdregistraties";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ScreenTimeCategorie, ScreenTimeSessie } from "@/types";
@@ -735,21 +735,35 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
   }, [queryClient]);
 
   const handleLocatieChange = useCallback(async (sessie: ScreenTimeSessie, locatie: "kantoor" | "thuis") => {
-    // Optimistic update
-    if (sessiesData) {
-      queryClient.setQueryData(["sessies", datum], {
-        ...sessiesData,
-        sessies: sessiesData.sessies.map(s =>
+    // Optimistic update: patch every cached sessies query that contains this session.
+    // Covers day view (["screen-time-sessies", datum, gebruikerId]) and week view
+    // (["screen-time-week-sessies", startDatum]) with matching keys.
+    queryClient.setQueriesData<SessiesData>({ queryKey: ["screen-time-sessies"] }, (old) => {
+      if (!old) return old;
+      return {
+        ...old,
+        sessies: old.sessies.map((s) =>
           s.startTijd === sessie.startTijd && s.eindTijd === sessie.eindTijd
             ? { ...s, locatie }
             : s
         ),
-      });
-    }
+      };
+    });
+    queryClient.setQueriesData<WeekDagData[]>({ queryKey: ["screen-time-week-sessies"] }, (old) => {
+      if (!old) return old;
+      return old.map((dag) => ({
+        ...dag,
+        sessies: dag.sessies.map((s) =>
+          s.startTijd === sessie.startTijd && s.eindTijd === sessie.eindTijd
+            ? { ...s, locatie }
+            : s
+        ),
+      }));
+    });
     if (weekSelectedSessie?.startTijd === sessie.startTijd) {
       setWeekSelectedSessie({ ...weekSelectedSessie, locatie });
     }
-    // Persist
+    // Persist, then refresh from server in both success and failure cases.
     try {
       const res = await fetch("/api/screen-time/locatie", {
         method: "PUT",
@@ -757,10 +771,13 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
         body: JSON.stringify({ startTijd: sessie.startTijd, eindTijd: sessie.eindTijd, locatie }),
       });
       if (!res.ok) throw new Error();
+      queryClient.invalidateQueries({ queryKey: ["screen-time-sessies"] });
+      queryClient.invalidateQueries({ queryKey: ["screen-time-week-sessies"] });
     } catch {
-      queryClient.invalidateQueries({ queryKey: ["sessies", datum] });
+      queryClient.invalidateQueries({ queryKey: ["screen-time-sessies"] });
+      queryClient.invalidateQueries({ queryKey: ["screen-time-week-sessies"] });
     }
-  }, [sessiesData, datum, weekSelectedSessie, queryClient]);
+  }, [weekSelectedSessie, queryClient]);
 
   // Lazy auto-generation for yesterday's summary
   useEffect(() => {

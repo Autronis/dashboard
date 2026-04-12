@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { gebruikers, tijdregistraties, projecten, klanten, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, isNull, isNotNull, desc, ne, notInArray } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, desc, notInArray } from "drizzle-orm";
 
 // ============ HELPERS ============
 
@@ -114,43 +114,43 @@ export async function GET(_req: NextRequest) {
             )
           );
 
-        // ---- Berekeningen ----
-        const minutenDezeWeek = tijdDezeWeek.reduce((sum, r) => sum + (r.duurMinuten ?? 0), 0);
-        const minutenVorigeWeek = tijdVorigeWeek.reduce((sum, r) => sum + (r.duurMinuten ?? 0), 0);
-        const urenDezeWeek = Math.round((minutenDezeWeek / 60) * 10) / 10;
-        const urenVorigeWeek = Math.round((minutenVorigeWeek / 60) * 10) / 10;
+        // ---- Berekeningen (screen_time gebruikt seconden) ----
+        const secondenDezeWeek = tijdDezeWeek.reduce((sum, r) => sum + (r.duurSeconden ?? 0), 0);
+        const secondenVorigeWeek = tijdVorigeWeek.reduce((sum, r) => sum + (r.duurSeconden ?? 0), 0);
+        const urenDezeWeek = Math.round((secondenDezeWeek / 3600) * 10) / 10;
+        const urenVorigeWeek = Math.round((secondenVorigeWeek / 3600) * 10) / 10;
 
         // ---- Autronis vs klant splitsing ----
-        let autronisMinuten = 0;
-        let klantMinuten = 0;
+        let autronisSeconden = 0;
+        let klantSeconden = 0;
 
-        const projectUrenMap = new Map<number, number>();
+        const projectSecondenMap = new Map<number, number>();
 
         for (const entry of tijdDezeWeek) {
-          const minuten = entry.duurMinuten ?? 0;
+          const seconden = entry.duurSeconden ?? 0;
           if (entry.projectId === null) {
-            autronisMinuten += minuten;
+            autronisSeconden += seconden;
             continue;
           }
           const info = projectMap.get(entry.projectId);
           if (!info || info.isAutronis) {
-            autronisMinuten += minuten;
+            autronisSeconden += seconden;
           } else {
-            klantMinuten += minuten;
+            klantSeconden += seconden;
           }
-          projectUrenMap.set(entry.projectId, (projectUrenMap.get(entry.projectId) ?? 0) + minuten);
+          projectSecondenMap.set(entry.projectId, (projectSecondenMap.get(entry.projectId) ?? 0) + seconden);
         }
 
-        const autronisUren = Math.round((autronisMinuten / 60) * 10) / 10;
-        const klantUren = Math.round((klantMinuten / 60) * 10) / 10;
+        const autronisUren = Math.round((autronisSeconden / 3600) * 10) / 10;
+        const klantUren = Math.round((klantSeconden / 3600) * 10) / 10;
 
         // ---- Top 3 projecten ----
-        const topProjecten: TopProject[] = [...projectUrenMap.entries()]
+        const topProjecten: TopProject[] = [...projectSecondenMap.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
-          .map(([pid, minuten]) => ({
+          .map(([pid, seconden]) => ({
             naam: projectMap.get(pid)?.naam ?? "Onbekend project",
-            uren: Math.round((minuten / 60) * 10) / 10,
+            uren: Math.round((seconden / 3600) * 10) / 10,
           }));
 
         // ---- Actieve timer ----

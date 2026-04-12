@@ -1036,7 +1036,7 @@ function TakenPage() {
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} onEdit={(id, body) => editMutation.mutate({ id, ...body })} />
 
         {/* 2. STATUS TABS */}
-        <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+        <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1 overflow-x-auto scrollbar-none">
           {[
             { key: "alle", label: "Alle", count: kpis.totaal, dot: "bg-autronis-accent", activeBg: "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent" },
             { key: "open", label: "Open", count: kpis.open, dot: "bg-slate-400", activeBg: "bg-slate-500/15 border-slate-400/40 text-slate-300" },
@@ -1048,7 +1048,7 @@ function TakenPage() {
               key={tab.key}
               onClick={() => setStatusFilter(tab.key)}
               className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border",
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all border shrink-0",
                 statusFilter === tab.key
                   ? tab.activeBg
                   : "border-transparent text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50"

@@ -84,16 +84,18 @@ const s = StyleSheet.create({
   archArrow: { fontSize: 14, color: TEAL, textAlign: "center", marginVertical: 2 },
   // ===== HOW CARDS =====
   howGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 10 },
-  howCard: { width: "48%", backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 12, marginBottom: 4 },
+  // Vaste breedte ipv percentage — react-pdf handelt % in flex-wrap niet altijd correct
+  howCard: { width: 230, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB", borderLeftWidth: 3, borderLeftColor: TEAL, borderRadius: 8, padding: 12, marginBottom: 8 },
   howNumber: { fontSize: 20, fontWeight: 700, color: TEAL, marginBottom: 4 },
   howTitle: { fontSize: 10, fontWeight: 700, color: "#111827", marginBottom: 6 },
   howText: { fontSize: 8.5, lineHeight: 1.6, color: "#4B5563" },
   // ===== WORKFLOW =====
   workflowContainer: { marginVertical: 10 },
-  wfStep: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  wfTime: { width: 60, fontSize: 8, fontWeight: 600, color: TEAL, textTransform: "uppercase" },
-  wfContent: { flex: 1, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 6, paddingVertical: 8, paddingHorizontal: 12 },
+  wfStep: { flexDirection: "row", alignItems: "flex-start", marginBottom: 4 },
+  wfTime: { width: 60, fontSize: 8, fontWeight: 600, color: TEAL, textTransform: "uppercase", paddingTop: 2 },
+  wfContent: { flex: 1, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB", borderLeftWidth: 2, borderLeftColor: TEAL, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 12 },
   wfText: { fontSize: 9, color: "#374151" },
+  wfCode: { fontFamily: "Courier", fontSize: 8.5, backgroundColor: "#F0FAF8", color: "#0F766E", paddingHorizontal: 3, paddingVertical: 1, borderRadius: 2 },
   wfConnector: { width: 1, height: 8, backgroundColor: "#D1D5DB", marginLeft: 30 },
   // ===== STATS =====
   statsRow: { flexDirection: "row", gap: 8, marginVertical: 10 },
@@ -102,11 +104,12 @@ const s = StyleSheet.create({
   statLabel: { fontSize: 7, color: TEXT_SECONDARY, textTransform: "uppercase", letterSpacing: 0.5 },
   // ===== SKILL CARDS =====
   skillGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginVertical: 8 },
-  skillCard: { width: "48%", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 8, padding: 10, marginBottom: 4, backgroundColor: "#FFFFFF" },
+  // Vaste breedte ipv percentage — react-pdf handelt % in flex-wrap niet altijd correct
+  skillCard: { width: 230, borderWidth: 1, borderColor: "#E5E7EB", borderLeftWidth: 3, borderLeftColor: TEAL, borderRadius: 8, padding: 10, marginBottom: 8, backgroundColor: "#FAFEFE" },
   skillCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
   skillCardName: { fontSize: 10, fontWeight: 700, color: "#111827" },
-  skillCardCmd: { fontSize: 8, fontFamily: "Courier", color: TEAL, backgroundColor: "#F0FAF8", paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3 },
-  skillCardDesc: { fontSize: 8, lineHeight: 1.5, color: "#6B7280", marginBottom: 6 },
+  skillCardCmd: { fontSize: 8, fontFamily: "Courier", color: TEAL, backgroundColor: "#E8F8F6", paddingHorizontal: 4, paddingVertical: 2, borderRadius: 3, borderWidth: 1, borderColor: "#B2E8E2" },
+  skillCardDesc: { fontSize: 8, lineHeight: 1.5, color: "#4B5563", marginBottom: 6 },
   skillCardTags: { flexDirection: "row", gap: 4, flexWrap: "wrap" },
   tag: { fontSize: 6, fontWeight: 600, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 3, textTransform: "uppercase", letterSpacing: 0.3 },
   tagAgent: { backgroundColor: "#EDE9FE", color: "#7C3AED" },
@@ -143,6 +146,27 @@ const s = StyleSheet.create({
 function stripHtml(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&#8595;/g, "\u2193")
+    .replace(/&#\d+;/g, "")
+    .replace(/&\w+;/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Converteert HTML-inline-code (<code>) naar backtick notatie zodat renderInlineText het kan stijlen
+function stripHtmlPreserveCode(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<code[^>]*>([\s\S]*?)<\/code>/gi, (_m, inner) => `\`${stripHtml(inner)}\``)
+    .replace(/<strong[^>]*>([\s\S]*?)<\/strong>/gi, (_m, inner) => `**${stripHtml(inner)}**`)
+    .replace(/<b[^>]*>([\s\S]*?)<\/b>/gi, (_m, inner) => `**${stripHtml(inner)}**`)
     .replace(/<[^>]+>/g, "")
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -311,7 +335,8 @@ function parseSkillGrid(blockHtml: string): Block {
       cards.push({
         name: stripHtml(nameMatch[1]),
         cmd: cmdMatch ? stripHtml(cmdMatch[1]) : "",
-        desc: descMatch ? stripHtml(descMatch[1]) : "",
+        // Behoudt inline-code (<code>) als backtick-notatie voor opmaak in PDF
+        desc: descMatch ? stripHtmlPreserveCode(descMatch[1]) : "",
         tags,
       });
     }

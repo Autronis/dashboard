@@ -1201,20 +1201,6 @@ export const ideeen = sqliteTable("ideeen", {
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
-// ============ FOCUS SESSIES ============
-export const focusSessies = sqliteTable("focus_sessies", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
-  projectId: integer("project_id").references(() => projecten.id),
-  taakId: integer("taak_id").references(() => taken.id),
-  geplandeDuurMinuten: integer("geplande_duur_minuten").notNull(),
-  werkelijkeDuurMinuten: integer("werkelijke_duur_minuten"),
-  reflectie: text("reflectie"),
-  tijdregistratieId: integer("tijdregistratie_id").notNull().references(() => tijdregistraties.id),
-  status: text("status", { enum: ["actief", "voltooid", "afgebroken"] }).notNull().default("actief"),
-  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
-});
-
 // ── SECOND BRAIN ─────────────────────────────────────────
 export const secondBrainItems = sqliteTable("second_brain_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),

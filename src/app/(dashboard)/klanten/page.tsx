@@ -21,6 +21,7 @@ import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { KlantModal } from "./klant-modal";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { useKlanten } from "@/hooks/queries/use-klanten";
 import type { Klant } from "@/hooks/queries/use-klanten";
 import { useQueryClient } from "@tanstack/react-query";
@@ -357,22 +358,19 @@ export default function KlantenPage() {
   return (
     <PageTransition>
       <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Klanten</h1>
-            <span className="text-sm text-autronis-text-secondary">
-              {kpis?.actieveKlanten ?? 0} actieve klanten
-            </span>
-          </div>
-          <button
-            onClick={() => { setBewerkKlant(null); setModalOpen(true); }}
-            className="flex items-center gap-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
-          >
-            <Plus className="w-5 h-5" />
-            Nieuwe klant
-          </button>
-        </div>
+        <PageHeader
+          title="Klanten"
+          description={kpis ? `${kpis.actieveKlanten} actieve klanten` : undefined}
+          actions={
+            <button
+              onClick={() => { setBewerkKlant(null); setModalOpen(true); }}
+              className="flex items-center gap-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+            >
+              <Plus className="w-5 h-5" />
+              Nieuwe klant
+            </button>
+          }
+        />
 
         {/* KPIs */}
         {kpis && (

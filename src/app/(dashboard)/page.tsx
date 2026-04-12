@@ -58,7 +58,6 @@ import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { TeamLiveWidget } from "@/components/team/team-live-widget";
 import { HabitWidget } from "@/components/gewoontes/habit-widget";
-import { FocusWidget } from "@/components/focus/focus-widget";
 import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
@@ -173,7 +172,6 @@ function trackNavVisit(path: string) {
 function getTopNavLinks(): { href: string; label: string; icon: string }[] {
   const allLinks = [
     { href: "/gewoontes", label: "Gewoontes", icon: "flame" },
-    { href: "/focus", label: "Focus", icon: "clock" },
     { href: "/radar", label: "Learning", icon: "radar" },
     { href: "/second-brain", label: "Second Brain", icon: "brain" },
     { href: "/financien", label: "Financien", icon: "euro" },

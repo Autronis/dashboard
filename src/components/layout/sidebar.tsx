@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Clock, Users, Euro, BarChart3, Calendar,
   CheckSquare, ChevronLeft, X, Landmark, Users2, FileText,
   Crosshair, Car, BookOpen, Mic, Radar, Lightbulb, Eye,
-  Megaphone, Video, Flame, Focus, Brain, Zap, FolderKanban,
+  Megaphone, Video, Flame, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
@@ -51,7 +51,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         children: [
           { label: "Projecten", icon: FolderKanban, href: "/projecten" },
           { label: "Tijd", icon: Clock, href: "/tijd" },
-          { label: "Focus", icon: Focus, href: "/focus" },
           { label: "Team", icon: Users2, href: "/team" },
           { label: "Ops Room", icon: Radio, href: "/ops-room" },
           { label: "Meetings", icon: Mic, href: "/meetings" },

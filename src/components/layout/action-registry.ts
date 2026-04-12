@@ -4,7 +4,7 @@ import {
   Zap, CheckSquare, Lightbulb, FileText, Search, Rocket, Inbox, Sparkles,
   Play, Calendar, CheckCircle, Target, Receipt, Landmark, BarChart3, RefreshCw,
   User, Phone, StickyNote, Mail, Home, Clock, Briefcase, TrendingUp, Users,
-  ArrowRight, BookOpen, Download, Bookmark, ShieldOff, Pause, LayoutDashboard,
+  ArrowRight, BookOpen, Download, Bookmark, LayoutDashboard,
 } from "lucide-react";
 
 export type ActionId =
@@ -19,7 +19,6 @@ export type ActionId =
   | "timer-op-taak"
   | "plan-agenda"
   | "taak-klaar"
-  | "focus"
   | "factuur-nieuw"
   | "uitgave-nieuw"
   | "bank-import"
@@ -34,7 +33,6 @@ export type ActionId =
   | "tijd-handmatig"
   | "locatie-toggle"
   | "tijd-week"
-  | "focus-sessie"
   | "project-nieuw"
   | "project-voortgang"
   | "teamlid-toevoegen"
@@ -46,10 +44,6 @@ export type ActionId =
   | "wiki-zoek"
   | "wiki-import"
   | "second-brain-save"
-  | "focus-start"
-  | "focus-block"
-  | "focus-pauze"
-  | "focus-stats"
   | "lead-converteren"
   | "pipeline-view"
   | "followup-sturen"
@@ -82,7 +76,6 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
   "timer-op-taak": { id: "timer-op-taak", label: "Timer op taak", icon: Play, handler: (ctx) => ctx.router.push("/tijd?start=true") },
   "plan-agenda": { id: "plan-agenda", label: "Plan in agenda", icon: Calendar, handler: (ctx) => ctx.router.push("/agenda?plan=true") },
   "taak-klaar": { id: "taak-klaar", label: "Markeer klaar", icon: CheckCircle, handler: (ctx) => ctx.addToast("Selecteer een taak om klaar te markeren", "info") },
-  "focus": { id: "focus", label: "Focus mode", icon: Target, handler: (ctx) => ctx.router.push("/focus") },
   "factuur-nieuw": { id: "factuur-nieuw", label: "Nieuwe factuur", icon: FileText, handler: (ctx) => ctx.router.push("/financien/nieuw") },
   "uitgave-nieuw": { id: "uitgave-nieuw", label: "Uitgave", icon: Receipt, handler: (ctx) => ctx.router.push("/financien?tab=uitgaven&nieuw=true") },
   "bank-import": { id: "bank-import", label: "Bank import", icon: Landmark, handler: (ctx) => ctx.router.push("/financien?tab=bank") },
@@ -97,7 +90,6 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
   "tijd-handmatig": { id: "tijd-handmatig", label: "Handmatige registratie", icon: FileText, handler: (ctx) => ctx.router.push("/tijd?handmatig=true") },
   "locatie-toggle": { id: "locatie-toggle", label: "Thuis/kantoor", icon: Home, handler: (ctx) => ctx.addToast("Selecteer een sessie om locatie te wijzigen", "info") },
   "tijd-week": { id: "tijd-week", label: "Week overzicht", icon: BarChart3, handler: (ctx) => ctx.router.push("/tijd?view=week") },
-  "focus-sessie": { id: "focus-sessie", label: "Focus sessie", icon: Target, handler: (ctx) => ctx.router.push("/focus") },
   "project-nieuw": { id: "project-nieuw", label: "Nieuw project", icon: Briefcase, handler: (ctx) => ctx.router.push("/projecten?nieuw=true") },
   "project-voortgang": { id: "project-voortgang", label: "Voortgang", icon: TrendingUp, handler: (ctx) => ctx.addToast("Selecteer een project om voortgang bij te werken", "info") },
   "teamlid-toevoegen": { id: "teamlid-toevoegen", label: "Teamlid", icon: Users, handler: (ctx) => ctx.router.push("/team?nieuw=true") },
@@ -109,10 +101,6 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
   "wiki-zoek": { id: "wiki-zoek", label: "Zoek in wiki", icon: Search, handler: (ctx) => ctx.openCommandPalette() },
   "wiki-import": { id: "wiki-import", label: "Import URL", icon: Download, handler: (ctx) => ctx.router.push("/wiki?import=true") },
   "second-brain-save": { id: "second-brain-save", label: "Second Brain", icon: Bookmark, handler: (ctx) => ctx.router.push("/second-brain?nieuw=true") },
-  "focus-start": { id: "focus-start", label: "Start focus", icon: Target, handler: (ctx) => ctx.router.push("/focus?start=true") },
-  "focus-block": { id: "focus-block", label: "Block distractions", icon: ShieldOff, handler: (ctx) => ctx.router.push("/focus?block=true") },
-  "focus-pauze": { id: "focus-pauze", label: "Pauze", icon: Pause, handler: (ctx) => ctx.addToast("Pauze alleen beschikbaar tijdens actieve focus sessie", "info") },
-  "focus-stats": { id: "focus-stats", label: "Focus stats", icon: BarChart3, handler: (ctx) => ctx.router.push("/focus?tab=stats") },
   "lead-converteren": { id: "lead-converteren", label: "Lead → klant", icon: ArrowRight, handler: (ctx) => ctx.addToast("Selecteer een lead om te converteren", "info") },
   "pipeline-view": { id: "pipeline-view", label: "Pipeline", icon: BarChart3, handler: (ctx) => ctx.router.push("/sales-engine?view=pipeline") },
   "followup-sturen": { id: "followup-sturen", label: "Follow-up", icon: Mail, handler: (ctx) => ctx.router.push("/followup") },
@@ -122,14 +110,13 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
 export const SHORTCUTS_BY_ROUTE: Record<string, ActionId[]> = {
   "/": ["timer-start", "taak-nieuw", "idee-nieuw", "dagritme", "search"],
   "/ideeen": ["idee-nieuw", "idee-voer-uit", "idee-backlog", "ai-brainstorm", "search"],
-  "/taken": ["taak-nieuw", "timer-op-taak", "plan-agenda", "taak-klaar", "focus"],
+  "/taken": ["taak-nieuw", "timer-op-taak", "plan-agenda", "taak-klaar", "search"],
   "/financien": ["factuur-nieuw", "uitgave-nieuw", "bank-import", "btw-aangifte", "revolut-sync"],
   "/klanten": ["klant-nieuw", "lead-nieuw", "offerte-nieuw", "notitie-nieuw", "mail-nieuw"],
-  "/tijd": ["timer-toggle", "tijd-handmatig", "locatie-toggle", "tijd-week", "focus-sessie"],
+  "/tijd": ["timer-toggle", "tijd-handmatig", "locatie-toggle", "tijd-week", "search"],
   "/projecten": ["project-nieuw", "taak-nieuw", "timer-op-taak", "project-voortgang", "teamlid-toevoegen"],
   "/agenda": ["agenda-nieuw", "plan-agenda", "agenda-vandaag", "google-sync", "meeting-plannen"],
   "/wiki": ["wiki-nieuw", "wiki-zoek", "wiki-import", "second-brain-save", "dashboard"],
-  "/focus": ["focus-start", "focus-block", "focus-pauze", "focus-stats", "idee-nieuw"],
   "/sales-engine": ["lead-nieuw", "offerte-nieuw", "followup-sturen", "pipeline-view", "lead-converteren"],
   "/leads": ["lead-nieuw", "offerte-nieuw", "followup-sturen", "pipeline-view", "lead-converteren"],
   "/offertes": ["lead-nieuw", "offerte-nieuw", "followup-sturen", "pipeline-view", "lead-converteren"],

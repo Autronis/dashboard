@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { useProjectenMetKpis } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
 
@@ -634,32 +635,29 @@ export default function ProjectenPage() {
   return (
     <PageTransition>
       <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">Projecten</h1>
-            <p className="text-autronis-text-secondary mt-1">
-              {kpis.actief} actief &middot; {kpis.takenOpen} open taken &middot; {Math.round(kpis.totaleUren / 60)}u totaal
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowNieuwProject(true)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-primary text-sm font-medium rounded-xl transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Nieuw project
-            </button>
-            <button
-              onClick={syncProjecten}
-              disabled={syncing}
-              className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-              {syncing ? "Syncing..." : "Sync projecten"}
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Projecten"
+          description={`${kpis.actief} actief · ${kpis.takenOpen} open taken · ${Math.round(kpis.totaleUren / 60)}u totaal`}
+          actions={
+            <>
+              <button
+                onClick={() => setShowNieuwProject(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-primary text-sm font-medium rounded-xl transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Nieuw project
+              </button>
+              <button
+                onClick={syncProjecten}
+                disabled={syncing}
+                className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
+                {syncing ? "Syncing..." : "Sync projecten"}
+              </button>
+            </>
+          }
+        />
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

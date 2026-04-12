@@ -103,29 +103,3 @@ export interface ScreenTimeSamenvatting {
   aangemaaktOp: string;
 }
 
-// ============ FOCUS MODE ============
-
-export type FocusSessieStatus = "actief" | "voltooid" | "afgebroken";
-
-export interface FocusSessie {
-  id: number;
-  gebruikerId: number;
-  projectId: number;
-  taakId: number | null;
-  geplandeDuurMinuten: number;
-  werkelijkeDuurMinuten: number | null;
-  reflectie: string | null;
-  tijdregistratieId: number;
-  status: FocusSessieStatus;
-  aangemaaktOp: string;
-  projectNaam?: string;
-  taakTitel?: string;
-}
-
-export interface FocusStatistieken {
-  vandaag: { sessies: number; totaleDuurMinuten: number };
-  week: Array<{ dag: string; duurMinuten: number }>;
-  vorigeWeek: { totaleDuurMinuten: number };
-  streak: number;
-  perProject: Array<{ projectId: number; projectNaam: string; duurMinuten: number; sessies: number }>;
-}

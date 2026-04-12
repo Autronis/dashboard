@@ -989,48 +989,49 @@ function TakenPage() {
   return (
     <PageTransition>
       <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-autronis-text-primary">Taken</h1>
-            <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5">
-              <AnimatedCount value={kpis.open + kpis.bezig} /> actief
-              <span className="text-autronis-border/60">&middot;</span>
-              <AnimatedCount value={kpis.afgerond} /> afgerond
-              {kpis.verlopen > 0 && (
-                <>
-                  <span className="text-autronis-border/60">&middot;</span>
-                  <button onClick={() => setStatusFilter("verlopen")} className={cn("font-medium transition-colors hover:underline", statusFilter === "verlopen" ? "text-red-300" : "text-red-400")}>
-                    <AnimatedCount value={kpis.verlopen} /> verlopen
+        <PageHeader
+          title="Taken"
+          compact
+          actions={
+            <>
+              <div className="flex items-center bg-autronis-bg border border-autronis-border rounded-lg p-0.5">
+                {([
+                  { key: "lijst" as const, icon: List, label: "Lijst" },
+                  { key: "kanban" as const, icon: LayoutGrid, label: "Kanban" },
+                  { key: "compact" as const, icon: ListTodo, label: "Compact" },
+                ]).map((v) => (
+                  <button key={v.key} onClick={() => setWeergave(v.key)} title={v.label}
+                    className={cn("p-1.5 rounded-md transition-colors", weergave === v.key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
+                    <v.icon className="w-4 h-4" />
                   </button>
-                </>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-autronis-bg border border-autronis-border rounded-lg p-0.5">
-              {([
-                { key: "lijst" as const, icon: List, label: "Lijst" },
-                { key: "kanban" as const, icon: LayoutGrid, label: "Kanban" },
-                { key: "compact" as const, icon: ListTodo, label: "Compact" },
-              ]).map((v) => (
-                <button key={v.key} onClick={() => setWeergave(v.key)} title={v.label}
-                  className={cn("p-1.5 rounded-md transition-colors", weergave === v.key ? "bg-autronis-accent text-autronis-bg" : "text-autronis-text-secondary hover:text-autronis-text-primary")}>
-                  <v.icon className="w-4 h-4" />
+                ))}
+              </div>
+              <button onClick={handleSync} disabled={syncing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
+                <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+                Sync
+              </button>
+              <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors" title="Nieuwe taak (N)">
+                <Plus className="w-4 h-4" /> Nieuw
+                <kbd className="ml-0.5 px-1 py-0.5 text-[9px] bg-autronis-bg/20 rounded font-mono">N</kbd>
+              </button>
+            </>
+          }
+        >
+          <p className="text-sm text-autronis-text-secondary flex items-center gap-1.5">
+            <AnimatedCount value={kpis.open + kpis.bezig} /> actief
+            <span className="text-autronis-border/60">&middot;</span>
+            <AnimatedCount value={kpis.afgerond} /> afgerond
+            {kpis.verlopen > 0 && (
+              <>
+                <span className="text-autronis-border/60">&middot;</span>
+                <button onClick={() => setStatusFilter("verlopen")} className={cn("font-medium transition-colors hover:underline", statusFilter === "verlopen" ? "text-red-300" : "text-red-400")}>
+                  <AnimatedCount value={kpis.verlopen} /> verlopen
                 </button>
-              ))}
-            </div>
-            <button onClick={handleSync} disabled={syncing}
-              className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
-              <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
-              Sync
-            </button>
-            <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors" title="Nieuwe taak (N)">
-              <Plus className="w-4 h-4" /> Nieuw
-              <kbd className="ml-0.5 px-1 py-0.5 text-[9px] bg-autronis-bg/20 rounded font-mono">N</kbd>
-            </button>
-          </div>
-        </div>
+              </>
+            )}
+          </p>
+        </PageHeader>
 
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} onEdit={(id, body) => editMutation.mutate({ id, ...body })} />

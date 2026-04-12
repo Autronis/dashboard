@@ -3,6 +3,7 @@ import { screenTimeEntries } from "@/lib/db/schema";
 import { eq, and, sql, asc } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
+const PRODUCTIEF_CATS = new Set(["development", "design", "administratie", "finance", "communicatie"]);
 const SLOT_MS = 30 * 60 * 1000; // 30 min
 const NL_TZ = "Europe/Amsterdam";
 
@@ -50,12 +51,13 @@ export async function berekenActieveUren(
     .orderBy(asc(screenTimeEntries.startTijd))
     .all();
 
-  // Group by NL local date, filtering out skip apps and entries outside range.
-  // Deep work = all active screen time minus distraction (no projectId filter —
-  // matches the /api/screen-time/sessies calculation on the Tijd page).
+  // Group by NL local date. Only count productive categories (Autronis deep work).
+  // Non-productive activity (entertainment, social, afleiding, etc.) is excluded —
+  // if it's clearly not Autronis work, it doesn't count.
   const dagMap = new Map<string, typeof entries>();
   for (const entry of entries) {
     if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
+    if (!entry.categorie || !PRODUCTIEF_CATS.has(entry.categorie)) continue;
     const dag = nlDatum(entry.startTijd);
     if (dag < vanDatum || dag > totDatum) continue;
     if (!dagMap.has(dag)) dagMap.set(dag, []);
@@ -63,7 +65,6 @@ export async function berekenActieveUren(
   }
 
   let totaalSeconden = 0;
-  let afleidingSeconden = 0;
 
   for (const dagEntries of dagMap.values()) {
     if (dagEntries.length === 0) continue;
@@ -89,16 +90,8 @@ export async function berekenActieveUren(
 
       t = tEnd;
     }
-
-    // Sum distraction time for this day
-    for (const entry of dagEntries) {
-      if (entry.categorie === "afleiding") {
-        afleidingSeconden += Math.max(0, (new Date(entry.eindTijd).getTime() - new Date(entry.startTijd).getTime()) / 1000);
-      }
-    }
   }
 
-  // Company deep work = Autronis activity minus distraction
-  const deepWorkSeconden = Math.max(0, totaalSeconden - afleidingSeconden);
-  return Math.round((deepWorkSeconden / 3600) * 100) / 100;
+  // Deep work = productive Autronis activity only (non-productive already filtered out)
+  return Math.round((totaalSeconden / 3600) * 100) / 100;
 }

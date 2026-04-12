@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Sidebar } from "./sidebar";
 import { Header } from "./header";
-import { BottomNav } from "./bottom-nav";
+import { ActionDock } from "./action-dock";
 const WavesBackground = dynamic(
   () => import("./waves-background").then((m) => ({ default: m.WavesBackground })),
   { ssr: false }
@@ -47,6 +47,13 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
     setShortcutsOverlayOpen,
   } = useKeyboardShortcuts();
 
+  // Open command palette when ActionDock search action fires
+  useEffect(() => {
+    const onOpen = () => setCommandPaletteOpen(true);
+    window.addEventListener("autronis:open-command-palette", onOpen);
+    return () => window.removeEventListener("autronis:open-command-palette", onOpen);
+  }, [setCommandPaletteOpen]);
+
   // Run auto-tasks + project sync once per session per day (non-blocking)
   useEffect(() => {
     const key =
@@ -70,7 +77,7 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
           "relative z-[1] transition-all duration-300 env-safe-top",
           "pl-0 lg:pl-64",
           isCollapsed && "lg:pl-16",
-          "pb-20 md:pb-6"
+          "pb-24 md:pb-24"
         )}
       >
         <div className="p-3 sm:p-4 lg:p-6 max-w-[1400px] mx-auto">
@@ -78,8 +85,8 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
         </div>
       </main>
 
-      {/* Mobile bottom nav */}
-      <BottomNav gebruikerId={gebruiker.id} />
+      {/* Action Dock */}
+      <ActionDock />
 
       {/* Floating elements */}
       <ScrollToTop />

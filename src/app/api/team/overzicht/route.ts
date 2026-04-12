@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { gebruikers, tijdregistraties, projecten, klanten, taken, screenTimeEntries } from "@/lib/db/schema";
+import { gebruikers, projecten, klanten, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, isNull, desc, notInArray } from "drizzle-orm";
+import { eq, and, gte, lte, notInArray } from "drizzle-orm";
 
 // ============ HELPERS ============
 
@@ -29,12 +29,6 @@ interface TopProject {
   uren: number;
 }
 
-interface ActieveTimer {
-  projectNaam: string;
-  omschrijving: string | null;
-  startTijd: string;
-}
-
 interface UserOverzicht {
   id: number;
   naam: string;
@@ -43,7 +37,6 @@ interface UserOverzicht {
   autronisUren: number;
   klantUren: number;
   topProjecten: TopProject[];
-  actieveTimer: ActieveTimer | null;
   takenAfgerondDezeWeek: number;
 }
 
@@ -153,37 +146,6 @@ export async function GET(_req: NextRequest) {
             uren: Math.round((seconden / 3600) * 10) / 10,
           }));
 
-        // ---- Actieve timer ----
-        const actieveRows = await db
-          .select({
-            startTijd: tijdregistraties.startTijd,
-            omschrijving: tijdregistraties.omschrijving,
-            projectId: tijdregistraties.projectId,
-          })
-          .from(tijdregistraties)
-          .where(
-            and(
-              eq(tijdregistraties.gebruikerId, user.id),
-              isNull(tijdregistraties.eindTijd)
-            )
-          )
-          .orderBy(desc(tijdregistraties.startTijd))
-          .limit(1);
-
-        let actieveTimer: ActieveTimer | null = null;
-        if (actieveRows.length > 0) {
-          const actief = actieveRows[0];
-          const projectNaam =
-            actief.projectId !== null
-              ? (projectMap.get(actief.projectId)?.naam ?? "Onbekend project")
-              : "Geen project";
-          actieveTimer = {
-            projectNaam,
-            omschrijving: actief.omschrijving,
-            startTijd: actief.startTijd,
-          };
-        }
-
         // ---- Taken afgerond deze week ----
         const takenAfgerond = await db
           .select({ id: taken.id })
@@ -205,7 +167,6 @@ export async function GET(_req: NextRequest) {
           autronisUren,
           klantUren,
           topProjecten,
-          actieveTimer,
           takenAfgerondDezeWeek: takenAfgerond.length,
         };
       })

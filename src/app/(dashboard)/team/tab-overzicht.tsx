@@ -32,18 +32,6 @@ interface OverzichtData {
 
 // ============ HELPERS ============
 
-function formatElapsed(startTijd: string): string {
-  const start = new Date(startTijd);
-  const now = new Date();
-  const diffMs = now.getTime() - start.getTime();
-  if (diffMs < 0) return "0m";
-  const totalMinuten = Math.floor(diffMs / 60000);
-  const uren = Math.floor(totalMinuten / 60);
-  const minuten = totalMinuten % 60;
-  if (uren > 0) return `${uren}u ${minuten}m`;
-  return `${minuten}m`;
-}
-
 function getInitials(naam: string): string {
   return naam
     .split(" ")
@@ -127,21 +115,6 @@ function UrenBar({ autronisUren, klantUren }: { autronisUren: number; klantUren:
       </div>
     </div>
   );
-}
-
-// ============ LIVE ELAPSED TIMER ============
-
-function ElapsedTimer({ startTijd }: { startTijd: string }) {
-  const [elapsed, setElapsed] = useState(() => formatElapsed(startTijd));
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsed(formatElapsed(startTijd));
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, [startTijd]);
-
-  return <span className="font-mono text-[#17B8A5]">{elapsed}</span>;
 }
 
 // ============ USER CARD ============

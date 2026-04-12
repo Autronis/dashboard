@@ -4,6 +4,21 @@ import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lt, sql } from "drizzle-orm";
 
+// Helper for aggregating one month in a single query
+async function maandTotalen(start: string, eind: string) {
+  const [row] = await db
+    .select({
+      inkomsten: sql<number>`COALESCE(SUM(CASE WHEN ${bankTransacties.type} = 'bij' THEN ABS(${bankTransacties.bedrag}) ELSE 0 END), 0)`,
+      uitgaven: sql<number>`COALESCE(SUM(CASE WHEN ${bankTransacties.type} = 'af' THEN ABS(${bankTransacties.bedrag}) ELSE 0 END), 0)`,
+    })
+    .from(bankTransacties)
+    .where(and(gte(bankTransacties.datum, start), lt(bankTransacties.datum, eind)));
+  return {
+    inkomsten: Number(row?.inkomsten ?? 0),
+    uitgaven: Number(row?.uitgaven ?? 0),
+  };
+}
+
 // GET /api/financien/dashboard — KPIs voor de financien pagina header
 export async function GET() {
   try {

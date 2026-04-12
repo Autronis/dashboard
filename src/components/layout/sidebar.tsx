@@ -14,6 +14,7 @@ import {
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, HeartPulse, FolderArchive,
+  Heart,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -446,7 +447,7 @@ function CollapsibleSection({
 }
 
 // ─── Sidebar ────────────────────────────────────────────────────
-export function Sidebar() {
+export function Sidebar({ gebruikerId }: { gebruikerId?: number }) {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
 

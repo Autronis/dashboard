@@ -41,7 +41,7 @@ export function TeamFloat() {
   const actief = bezigMet.length;
 
   return (
-    <div className="fixed bottom-20 md:bottom-6 left-4 lg:left-[17rem] z-40">
+    <div className="hidden md:block fixed bottom-6 left-4 lg:left-[17rem] z-40">
       {/* Collapsed: compact indicator */}
       {!open && (
         <motion.button

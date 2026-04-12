@@ -95,7 +95,6 @@ const s = StyleSheet.create({
   wfTime: { width: 60, fontSize: 8, fontWeight: 600, color: TEAL, textTransform: "uppercase", paddingTop: 2 },
   wfContent: { flex: 1, backgroundColor: "#F9FAFB", borderWidth: 1, borderColor: "#E5E7EB", borderLeftWidth: 2, borderLeftColor: TEAL, borderRadius: 6, paddingVertical: 8, paddingHorizontal: 12 },
   wfText: { fontSize: 9, color: "#374151" },
-  wfCode: { fontFamily: "Courier", fontSize: 8.5, backgroundColor: "#F0FAF8", color: "#0F766E", paddingHorizontal: 3, paddingVertical: 1, borderRadius: 2 },
   wfConnector: { width: 1, height: 8, backgroundColor: "#D1D5DB", marginLeft: 30 },
   // ===== STATS =====
   statsRow: { flexDirection: "row", gap: 8, marginVertical: 10 },
@@ -278,7 +277,8 @@ function parseHowGrid(blockHtml: string): Block {
     cards.push({
       number: numMatch ? stripHtml(numMatch[1]) : "",
       title: titleMatch ? stripHtml(titleMatch[1]) : "",
-      text: textMatch ? stripHtml(textMatch[1]) : "",
+      // Behoudt inline-code en vet voor leesbaarheid in PDF
+      text: textMatch ? stripHtmlPreserveCode(textMatch[1]) : "",
     });
   }
   return { type: "how-grid", cards };
@@ -290,7 +290,8 @@ function parseWorkflow(blockHtml: string): Block {
   for (const sm of stepMatches) {
     const timeMatch = sm[1].match(/<span class="wf-time">(.*?)<\/span>/);
     const time = timeMatch ? stripHtml(timeMatch[1]) : "";
-    const text = stripHtml(sm[1].replace(/<span class="wf-time">.*?<\/span>/, ""));
+    // Behoudt <code> als backtick-notatie zodat commands opgemaakt worden in PDF
+    const text = stripHtmlPreserveCode(sm[1].replace(/<span class="wf-time">.*?<\/span>/, ""));
     if (text) steps.push({ time, text });
   }
   return { type: "workflow", steps };
@@ -582,7 +583,8 @@ function renderBlock(block: Block, index: number): React.ReactElement {
             <View key={ci} style={s.howCard} wrap={false}>
               <Text style={s.howNumber}>{card.number}</Text>
               <Text style={s.howTitle}>{card.title}</Text>
-              <Text style={s.howText}>{card.text}</Text>
+              {/* renderInlineText zorgt dat `code` en **vet** correct opgemaakt worden */}
+              <Text style={s.howText}>{renderInlineText(card.text)}</Text>
             </View>
           ))}
         </View>
@@ -598,7 +600,8 @@ function renderBlock(block: Block, index: number): React.ReactElement {
               <View style={s.wfStep}>
                 <Text style={s.wfTime}>{step.time}</Text>
                 <View style={s.wfContent}>
-                  <Text style={s.wfText}>{step.text}</Text>
+                  {/* renderInlineText zorgt dat `/command` code-opmaak krijgt */}
+                  <Text style={s.wfText}>{renderInlineText(step.text)}</Text>
                 </View>
               </View>
             </React.Fragment>
@@ -640,9 +643,11 @@ function renderBlock(block: Block, index: number): React.ReactElement {
             <View key={ci} style={s.skillCard} wrap={false}>
               <View style={s.skillCardHeader}>
                 <Text style={s.skillCardName}>{card.name}</Text>
-                <Text style={s.skillCardCmd}>{card.cmd}</Text>
+                {/* Toon cmd badge alleen als er een command is */}
+                {card.cmd ? <Text style={s.skillCardCmd}>{card.cmd}</Text> : null}
               </View>
-              <Text style={s.skillCardDesc}>{card.desc}</Text>
+              {/* renderInlineText zorgt dat `code` in omschrijving monospace wordt */}
+              <Text style={s.skillCardDesc}>{renderInlineText(card.desc)}</Text>
               <View style={s.skillCardTags}>
                 {card.tags.map((tag, ti) => (
                   <Text key={ti} style={[s.tag, getTagColorStyle(tag.className)]}>{tag.text}</Text>

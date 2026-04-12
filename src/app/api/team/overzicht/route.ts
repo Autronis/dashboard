@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { gebruikers, tijdregistraties, projecten, klanten, taken, focusSessies } from "@/lib/db/schema";
+import { gebruikers, tijdregistraties, projecten, klanten, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, isNotNull, desc, ne, notInArray } from "drizzle-orm";
 
 // ============ HELPERS ============
 
@@ -83,37 +83,34 @@ export async function GET(_req: NextRequest) {
 
     const result: UserOverzicht[] = await Promise.all(
       users.map(async (user) => {
-        // ---- Deep work (focus) sessies deze week (voltooid) ----
-        // Alleen tijdregistraties die gekoppeld zijn aan een voltooide focus sessie tellen mee.
+        // ---- Deep work deze week ----
+        // Deep work = alle screen_time entries MINUS afleiding + inactief.
+        // Volgens Sem: "alle uren van screen registratie, maar dan minus afleiding".
         const tijdDezeWeek = await db
           .select({
-            duurMinuten: tijdregistraties.duurMinuten,
-            projectId: tijdregistraties.projectId,
+            duurSeconden: screenTimeEntries.duurSeconden,
+            projectId: screenTimeEntries.projectId,
           })
-          .from(tijdregistraties)
-          .innerJoin(focusSessies, eq(focusSessies.tijdregistratieId, tijdregistraties.id))
+          .from(screenTimeEntries)
           .where(
             and(
-              eq(tijdregistraties.gebruikerId, user.id),
-              eq(focusSessies.status, "voltooid"),
-              isNotNull(tijdregistraties.eindTijd),
-              gte(tijdregistraties.startTijd, maandag),
-              lte(tijdregistraties.startTijd, zondag + "T23:59:59")
+              eq(screenTimeEntries.gebruikerId, user.id),
+              notInArray(screenTimeEntries.categorie, ["afleiding", "inactief"]),
+              gte(screenTimeEntries.startTijd, maandag),
+              lte(screenTimeEntries.startTijd, zondag + "T23:59:59")
             )
           );
 
         // ---- Deep work vorige week ----
         const tijdVorigeWeek = await db
-          .select({ duurMinuten: tijdregistraties.duurMinuten })
-          .from(tijdregistraties)
-          .innerJoin(focusSessies, eq(focusSessies.tijdregistratieId, tijdregistraties.id))
+          .select({ duurSeconden: screenTimeEntries.duurSeconden })
+          .from(screenTimeEntries)
           .where(
             and(
-              eq(tijdregistraties.gebruikerId, user.id),
-              eq(focusSessies.status, "voltooid"),
-              isNotNull(tijdregistraties.eindTijd),
-              gte(tijdregistraties.startTijd, vorigeWeek.maandag),
-              lte(tijdregistraties.startTijd, vorigeWeek.zondag + "T23:59:59")
+              eq(screenTimeEntries.gebruikerId, user.id),
+              notInArray(screenTimeEntries.categorie, ["afleiding", "inactief"]),
+              gte(screenTimeEntries.startTijd, vorigeWeek.maandag),
+              lte(screenTimeEntries.startTijd, vorigeWeek.zondag + "T23:59:59")
             )
           );
 

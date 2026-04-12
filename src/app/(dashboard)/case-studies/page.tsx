@@ -1023,7 +1023,7 @@ export default function CaseStudiesPage() {
                     exit={{ opacity: 0 }}
                     className="text-xs text-autronis-text-tertiary flex items-center gap-1"
                   >
-                    <CheckCircle2 className="h-3 w-3 text-green-400" /> Draft opgeslagen
+                    <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Draft opgeslagen
                   </motion.span>
                 )}
               </AnimatePresence>

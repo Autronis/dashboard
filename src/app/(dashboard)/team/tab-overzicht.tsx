@@ -151,7 +151,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
         </div>
         <div>
           <p className="font-semibold text-autronis-text-primary leading-tight">{user.naam}</p>
-          <p className={cn("text-xs mt-0.5", heeftUren ? "text-green-400" : "text-autronis-text-secondary")}>
+          <p className={cn("text-xs mt-0.5", heeftUren ? "text-emerald-400" : "text-autronis-text-secondary")}>
             {heeftUren ? `${user.urenDezeWeek}u deze week` : "Nog geen uren"}
           </p>
         </div>
@@ -170,7 +170,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
             <span
               className={cn(
                 "flex items-center gap-0.5 text-sm font-medium mb-1",
-                urenDelta > 0 ? "text-green-400" : "text-red-400"
+                urenDelta > 0 ? "text-emerald-400" : "text-red-400"
               )}
             >
               {urenDelta > 0 ? (

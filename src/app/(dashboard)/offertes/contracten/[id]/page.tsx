@@ -61,7 +61,7 @@ const TYPE_CONFIG: Record<string, { label: string; icon: typeof Handshake; kleur
 const STATUS_FLOW: { key: string; label: string; kleur: string; bg: string }[] = [
   { key: "concept", label: "Concept", kleur: "text-zinc-400", bg: "bg-zinc-500/20" },
   { key: "verzonden", label: "Verstuurd", kleur: "text-blue-400", bg: "bg-blue-500/20" },
-  { key: "ondertekend", label: "Ondertekend", kleur: "text-green-400", bg: "bg-green-500/20" },
+  { key: "ondertekend", label: "Ondertekend", kleur: "text-emerald-400", bg: "bg-emerald-500/20" },
 ];
 
 const HERSCHRIJF_OPTIES = [
@@ -562,7 +562,7 @@ export default function ContractDetailPage() {
                       </div>
                       <button
                         onClick={handleToepassen}
-                        className="flex items-center gap-1.5 text-xs font-medium text-green-400 hover:text-green-300 transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-green-300 transition-colors"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Toepassen in contract

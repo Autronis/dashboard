@@ -72,13 +72,13 @@ function getProjectIcon(project: Project) {
 // Icon color based on status
 function getIconColor(status: string) {
   if (status === "actief") return "text-blue-400 bg-blue-500/10";
-  if (status === "afgerond") return "text-green-400 bg-green-500/10";
+  if (status === "afgerond") return "text-emerald-400 bg-emerald-500/10";
   return "text-amber-400 bg-amber-500/10";
 }
 
 const statusConfig: Record<string, { icon: typeof Circle; color: string; bg: string; label: string }> = {
   actief: { icon: Loader2, color: "text-blue-400", bg: "bg-blue-500/15", label: "Actief" },
-  afgerond: { icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15", label: "Afgerond" },
+  afgerond: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15", label: "Afgerond" },
   "on-hold": { icon: Pause, color: "text-amber-400", bg: "bg-amber-500/15", label: "On Hold" },
 };
 
@@ -129,7 +129,7 @@ function getProjectHealth(project: Project): { status: HealthStatus; reden: stri
 }
 
 const healthConfig: Record<HealthStatus, { color: string; bg: string; label: string; icon: typeof CheckCircle2 }> = {
-  "on-track": { color: "text-green-400", bg: "bg-green-500/10", label: "On track", icon: CheckCircle2 },
+  "on-track": { color: "text-emerald-400", bg: "bg-emerald-500/10", label: "On track", icon: CheckCircle2 },
   "risico": { color: "text-amber-400", bg: "bg-amber-500/10", label: "Risico", icon: AlertTriangle },
   "achter": { color: "text-red-400", bg: "bg-red-500/10", label: "Achter", icon: AlertCircle },
 };
@@ -267,7 +267,7 @@ function getVelocity(sparkline: number[]): { label: string; icon: typeof Trendin
   const recent = sparkline.slice(4).reduce((a, b) => a + b, 0);
   const previous = sparkline.slice(1, 4).reduce((a, b) => a + b, 0);
   if (recent === 0 && previous === 0) return { label: "geen activiteit", icon: Minus, color: "text-autronis-text-secondary/50" };
-  if (recent > previous) return { label: "sneller dan vorige periode", icon: TrendingUp, color: "text-green-400" };
+  if (recent > previous) return { label: "sneller dan vorige periode", icon: TrendingUp, color: "text-emerald-400" };
   if (recent < previous) return { label: "minder actief", icon: TrendingDown, color: "text-amber-400" };
   return { label: "stabiel tempo", icon: Minus, color: "text-autronis-text-secondary" };
 }

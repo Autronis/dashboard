@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const categorieConfig: Record<string, { label: string; color: string; bg: string; icon: typeof BookOpen }> = {
   processen: { label: "Processen", color: "text-blue-400", bg: "bg-blue-500/15", icon: Layout },
-  klanten: { label: "Klanten", color: "text-green-400", bg: "bg-green-500/15", icon: Users },
+  klanten: { label: "Klanten", color: "text-emerald-400", bg: "bg-emerald-500/15", icon: Users },
   technisch: { label: "Technisch", color: "text-purple-400", bg: "bg-purple-500/15", icon: Database },
   templates: { label: "Templates", color: "text-amber-400", bg: "bg-amber-500/15", icon: FileText },
   financien: { label: "Financieel", color: "text-red-400", bg: "bg-red-500/15", icon: Landmark },

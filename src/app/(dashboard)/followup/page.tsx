@@ -168,7 +168,7 @@ function ContactRow({ contact }: { contact: Contact }) {
 function StatusBadge({ status }: { status: string }) {
   const config: Record<string, { bg: string; text: string; label: string }> = {
     getriggerd: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Getriggerd" },
-    verstuurd: { bg: "bg-green-500/15", text: "text-green-400", label: "Verstuurd" },
+    verstuurd: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Verstuurd" },
     mislukt: { bg: "bg-red-500/15", text: "text-red-400", label: "Mislukt" },
     overgeslagen: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Overgeslagen" },
     gesnoozed: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Gesnoozed" },

@@ -92,7 +92,7 @@ function HighlightMatch({ text, zoek }: { text: string; zoek: string }) {
 
 // Relatie status badge
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  actief: { label: "Actief", bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-400" },
+  actief: { label: "Actief", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-green-400" },
   stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
   aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
   inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },
@@ -237,7 +237,7 @@ function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void
           <a
             href={`tel:${klant.telefoon}`}
             onClick={(e) => e.stopPropagation()}
-            className="p-1.5 rounded-lg bg-autronis-bg/50 border border-autronis-border/50 text-autronis-text-secondary hover:text-green-400 hover:border-green-400/30 transition-colors"
+            className="p-1.5 rounded-lg bg-autronis-bg/50 border border-autronis-border/50 text-autronis-text-secondary hover:text-emerald-400 hover:border-emerald-400/30 transition-colors"
             title={klant.telefoon}
           >
             <Phone className="w-3.5 h-3.5" />
@@ -387,11 +387,11 @@ export default function KlantenPage() {
 
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-green-500/10">
-                  <TrendingUp className="w-4 h-4 text-green-400" />
+                <div className="p-2 rounded-xl bg-emerald-500/10">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
                 </div>
               </div>
-              <AnimatedNumber value={kpis.totaleOmzet} format={(n) => formatBedrag(Math.round(n))} className="text-2xl font-bold text-green-400 tabular-nums" />
+              <AnimatedNumber value={kpis.totaleOmzet} format={(n) => formatBedrag(Math.round(n))} className="text-2xl font-bold text-emerald-400 tabular-nums" />
               <p className="text-xs text-autronis-text-secondary mt-1">Totale omzet</p>
             </div>
 
@@ -418,7 +418,7 @@ export default function KlantenPage() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => toggleGezondheid("groen")}
-                  className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "groen" ? "bg-green-500/20" : "hover:bg-autronis-bg/50")}
+                  className={cn("flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors", filterGezondheid === "groen" ? "bg-emerald-500/20" : "hover:bg-autronis-bg/50")}
                 >
                   <div className="w-2 h-2 rounded-full bg-green-400" />
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{kpis.gezondheid.groen}</span>

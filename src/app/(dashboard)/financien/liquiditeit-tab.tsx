@@ -159,9 +159,9 @@ export function LiquiditeitTab() {
 
         <div className="border border-autronis-border rounded-2xl p-6 card-glow bg-autronis-card">
           <div className="flex items-center gap-3 mb-3">
-            <div className={cn("p-2.5 rounded-xl", data.saldo30 >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
+            <div className={cn("p-2.5 rounded-xl", data.saldo30 >= 0 ? "bg-emerald-500/10" : "bg-red-500/10")}>
               {data.saldo30 >= 0 ? (
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-red-400" />
               )}
@@ -170,7 +170,7 @@ export function LiquiditeitTab() {
           <AnimatedNumber
             value={data.saldo30}
             format={formatBedrag}
-            className={cn("text-2xl font-bold tabular-nums", data.saldo30 >= 0 ? "text-green-400" : "text-red-400")}
+            className={cn("text-2xl font-bold tabular-nums", data.saldo30 >= 0 ? "text-emerald-400" : "text-red-400")}
           />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
             Saldo over 30 dagen
@@ -179,9 +179,9 @@ export function LiquiditeitTab() {
 
         <div className="border border-autronis-border rounded-2xl p-6 card-glow bg-autronis-card">
           <div className="flex items-center gap-3 mb-3">
-            <div className={cn("p-2.5 rounded-xl", data.saldo60 >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
+            <div className={cn("p-2.5 rounded-xl", data.saldo60 >= 0 ? "bg-emerald-500/10" : "bg-red-500/10")}>
               {data.saldo60 >= 0 ? (
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-red-400" />
               )}
@@ -190,7 +190,7 @@ export function LiquiditeitTab() {
           <AnimatedNumber
             value={data.saldo60}
             format={formatBedrag}
-            className={cn("text-2xl font-bold tabular-nums", data.saldo60 >= 0 ? "text-green-400" : "text-red-400")}
+            className={cn("text-2xl font-bold tabular-nums", data.saldo60 >= 0 ? "text-emerald-400" : "text-red-400")}
           />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
             Saldo over 60 dagen
@@ -199,9 +199,9 @@ export function LiquiditeitTab() {
 
         <div className="border border-autronis-border rounded-2xl p-6 card-glow bg-autronis-card">
           <div className="flex items-center gap-3 mb-3">
-            <div className={cn("p-2.5 rounded-xl", data.saldo90 >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
+            <div className={cn("p-2.5 rounded-xl", data.saldo90 >= 0 ? "bg-emerald-500/10" : "bg-red-500/10")}>
               {data.saldo90 >= 0 ? (
-                <TrendingUp className="w-5 h-5 text-green-400" />
+                <TrendingUp className="w-5 h-5 text-emerald-400" />
               ) : (
                 <TrendingDown className="w-5 h-5 text-red-400" />
               )}
@@ -210,7 +210,7 @@ export function LiquiditeitTab() {
           <AnimatedNumber
             value={data.saldo90}
             format={formatBedrag}
-            className={cn("text-2xl font-bold tabular-nums", data.saldo90 >= 0 ? "text-green-400" : "text-red-400")}
+            className={cn("text-2xl font-bold tabular-nums", data.saldo90 >= 0 ? "text-emerald-400" : "text-red-400")}
           />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
             Saldo over 90 dagen
@@ -263,7 +263,7 @@ export function LiquiditeitTab() {
                     Week {idx + 1}
                   </span>
                   <div className="flex items-center gap-4 text-right">
-                    <span className="text-green-400 tabular-nums">
+                    <span className="text-emerald-400 tabular-nums">
                       +{formatBedrag(week.verwachtInkomsten)}
                     </span>
                     <span className="text-red-400 tabular-nums">

@@ -41,7 +41,7 @@ import { ContractenTab } from "./contracten-tab";
 const statusConfig: Record<string, { bg: string; text: string; label: string; border: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept", border: "border-l-slate-500/60" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden", border: "border-l-blue-500/70" },
-  geaccepteerd: { bg: "bg-green-500/15", text: "text-green-400", label: "Geaccepteerd", border: "border-l-green-500" },
+  geaccepteerd: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Geaccepteerd", border: "border-l-green-500" },
   verlopen: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Verlopen", border: "border-l-amber-500/70" },
   afgewezen: { bg: "bg-red-500/15", text: "text-red-400", label: "Afgewezen", border: "border-l-red-500/60" },
 };
@@ -437,10 +437,10 @@ export default function OffertesPage() {
                   </motion.div>
 
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow">
-                    <div className="p-2 bg-green-500/10 rounded-xl w-fit mb-2.5">
-                      <CheckCircle2 className="w-5 h-5 text-green-400" />
+                    <div className="p-2 bg-emerald-500/10 rounded-xl w-fit mb-2.5">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <AnimatedNumber value={kpis.geaccepteerdDezeMaand} className="text-2xl font-bold text-green-400 tabular-nums" />
+                    <AnimatedNumber value={kpis.geaccepteerdDezeMaand} className="text-2xl font-bold text-emerald-400 tabular-nums" />
                     <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Geaccepteerd deze maand</p>
                   </motion.div>
 
@@ -454,7 +454,7 @@ export default function OffertesPage() {
                     <div className="flex items-end gap-2">
                       <AnimatedNumber value={kpis.winRate} format={(n) => `${Math.round(n)}%`} className="text-2xl font-bold text-autronis-text-primary tabular-nums" />
                       {winRateDelta !== null && (
-                        <span className={cn("flex items-center gap-0.5 text-xs font-semibold mb-1", winRateDelta > 0 ? "text-green-400" : winRateDelta < 0 ? "text-red-400" : "text-autronis-text-secondary")}>
+                        <span className={cn("flex items-center gap-0.5 text-xs font-semibold mb-1", winRateDelta > 0 ? "text-emerald-400" : winRateDelta < 0 ? "text-red-400" : "text-autronis-text-secondary")}>
                           {winRateDelta > 0 ? <TrendingUp className="w-3 h-3" /> : winRateDelta < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
                           {winRateDelta > 0 ? "+" : ""}{winRateDelta}%
                         </span>
@@ -686,7 +686,7 @@ export default function OffertesPage() {
                                     {isVerzonden && (
                                       <button
                                         onClick={() => handleQuickStatus(offerte, "geaccepteerd")}
-                                        className="p-1.5 text-autronis-text-secondary hover:text-green-400 rounded-lg hover:bg-green-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                                        className="p-1.5 text-autronis-text-secondary hover:text-emerald-400 rounded-lg hover:bg-emerald-500/10 transition-colors opacity-0 group-hover:opacity-100"
                                         title="Markeer als geaccepteerd"
                                       >
                                         <CheckCircle2 className="w-3.5 h-3.5" />

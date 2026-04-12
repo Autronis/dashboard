@@ -328,7 +328,7 @@ function SuggestiesSection() {
           <button
             onClick={handleAllesGoedkeuren}
             disabled={mutatie.isPending}
-            className="flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/20 rounded-xl text-sm font-medium hover:bg-green-500/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-sm font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
           >
             <CheckCheck className="w-4 h-4" />
             Alles goedkeuren ({suggesties?.length})
@@ -390,7 +390,7 @@ function SuggestiesSection() {
                   <button
                     onClick={() => handleActie(s.id, "goedgekeurd")}
                     disabled={mutatie.isPending}
-                    className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg transition-colors disabled:opacity-50"
+                    className="p-2 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50"
                     title="Goedkeuren"
                   >
                     <Check className="w-4 h-4" />

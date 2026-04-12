@@ -160,7 +160,7 @@ function DonutChart({
 
 function InsightsPanel({ insights, actions }: { insights: DecisionInsight[]; actions: DecisionAction[] }) {
   const insightConfig = {
-    positief: { bg: "bg-green-500/10", border: "border-green-500/20", text: "text-green-400", icon: CheckCircle2 },
+    positief: { bg: "bg-emerald-500/10", border: "border-emerald-500/20", text: "text-emerald-400", icon: CheckCircle2 },
     waarschuwing: { bg: "bg-yellow-500/10", border: "border-yellow-500/20", text: "text-yellow-400", icon: AlertTriangle },
     kritiek: { bg: "bg-red-500/10", border: "border-red-500/20", text: "text-red-400", icon: AlertCircle },
     actie: { bg: "bg-blue-500/10", border: "border-blue-500/20", text: "text-blue-400", icon: Lightbulb },
@@ -220,9 +220,9 @@ function InsightsPanel({ insights, actions }: { insights: DecisionInsight[]; act
           </div>
         </div>
         {actions.length === 0 ? (
-          <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-            <CheckCircle2 className="w-5 h-5 text-green-400" />
-            <p className="text-sm text-green-400 font-medium">Alles op orde — geen urgente acties</p>
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+            <p className="text-sm text-emerald-400 font-medium">Alles op orde — geen urgente acties</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -251,7 +251,7 @@ function InsightsPanel({ insights, actions }: { insights: DecisionInsight[]; act
 
 function ClientDependencySectie({ dep }: { dep: DecisionEngineData["clientDependency"] }) {
   const riskConfig = {
-    laag: { bg: "bg-green-500/15", text: "text-green-400", label: "Laag risico" },
+    laag: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Laag risico" },
     gemiddeld: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Gemiddeld risico" },
     hoog: { bg: "bg-red-500/15", text: "text-red-400", label: "Hoog risico" },
   };
@@ -359,7 +359,7 @@ function RateAnalysisSectie({ rates }: { rates: DecisionEngineData["rateAnalysis
                 <span className={cn("text-right tabular-nums font-medium self-center", r.gap < -10 ? "text-red-400" : "text-autronis-accent")}>
                   {formatBedrag(r.effectiefTarief)}/u
                 </span>
-                <span className={cn("text-right tabular-nums font-medium self-center", r.gap >= 0 ? "text-green-400" : "text-red-400")}>
+                <span className={cn("text-right tabular-nums font-medium self-center", r.gap >= 0 ? "text-emerald-400" : "text-red-400")}>
                   {r.gap >= 0 ? "+" : ""}{formatBedrag(r.gap)}
                 </span>
                 <span className={cn("text-right tabular-nums self-center", r.misgelopen > 0 ? "text-red-400 font-semibold" : "text-autronis-text-secondary")}>
@@ -399,7 +399,7 @@ function EfficiencySectie({ eff }: { eff: DecisionEngineData["efficiency"] }) {
         </div>
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Billable</p>
-          <p className={cn("text-xl font-bold tabular-nums", eff.billablePercent >= 75 ? "text-green-400" : eff.billablePercent >= 60 ? "text-yellow-400" : "text-red-400")}>
+          <p className={cn("text-xl font-bold tabular-nums", eff.billablePercent >= 75 ? "text-emerald-400" : eff.billablePercent >= 60 ? "text-yellow-400" : "text-red-400")}>
             {eff.billablePercent.toFixed(0)}%
           </p>
         </div>
@@ -449,7 +449,7 @@ function ProjectInsightsSectie({ projects }: { projects: DecisionEngineData["pro
   if (projects.length === 0) return null;
 
   const waardeConfig = {
-    hoog: { bg: "bg-green-500/15", text: "text-green-400" },
+    hoog: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
     gemiddeld: { bg: "bg-yellow-500/15", text: "text-yellow-400" },
     laag: { bg: "bg-red-500/15", text: "text-red-400" },
   };
@@ -510,7 +510,7 @@ function ProjectInsightsSectie({ projects }: { projects: DecisionEngineData["pro
                   </div>
                   <span className="text-autronis-text-secondary text-right tabular-nums self-center">{formatBedrag(p.omzet)}</span>
                   <span className="text-autronis-text-secondary text-right tabular-nums self-center">{Math.round(p.uren)}u</span>
-                  <span className={cn("text-right tabular-nums font-medium self-center", p.euroPerUur >= 95 ? "text-green-400" : p.euroPerUur >= 70 ? "text-yellow-400" : "text-red-400")}>
+                  <span className={cn("text-right tabular-nums font-medium self-center", p.euroPerUur >= 95 ? "text-emerald-400" : p.euroPerUur >= 70 ? "text-yellow-400" : "text-red-400")}>
                     {formatBedrag(p.euroPerUur)}
                   </span>
                   <span className={cn("text-right tabular-nums self-center", p.overBudgetPct !== null && p.overBudgetPct > 0 ? "text-red-400" : "text-autronis-text-secondary")}>
@@ -658,7 +658,7 @@ function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-5">
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Gem. inkomsten/mnd</p>
-          <p className="text-lg font-bold text-green-400 tabular-nums">{formatBedrag(cf.gemInkomsten)}</p>
+          <p className="text-lg font-bold text-emerald-400 tabular-nums">{formatBedrag(cf.gemInkomsten)}</p>
         </div>
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Gem. kosten/mnd</p>
@@ -666,7 +666,7 @@ function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
         </div>
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Netto/mnd</p>
-          <p className={cn("text-lg font-bold tabular-nums", isGezond ? "text-green-400" : "text-red-400")}>
+          <p className={cn("text-lg font-bold tabular-nums", isGezond ? "text-emerald-400" : "text-red-400")}>
             {cf.nettoPerMaand >= 0 ? "+" : ""}{formatBedrag(cf.nettoPerMaand)}
           </p>
         </div>
@@ -676,7 +676,7 @@ function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
         </div>
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Te laat</p>
-          <p className={cn("text-lg font-bold tabular-nums", cf.overdue > 0 ? "text-red-400" : "text-green-400")}>
+          <p className={cn("text-lg font-bold tabular-nums", cf.overdue > 0 ? "text-red-400" : "text-emerald-400")}>
             {cf.overdue > 0 ? formatBedrag(cf.overdue) : "€0"}
           </p>
           {cf.overdueCount > 0 && (
@@ -686,8 +686,8 @@ function CashflowSectie({ cf }: { cf: DecisionEngineData["cashflow"] }) {
         <div className="text-center">
           <p className="text-xs text-autronis-text-secondary mb-1">Runway</p>
           <div className="flex items-center justify-center gap-1.5">
-            <Shield className={cn("w-4 h-4", isGezond ? "text-green-400" : "text-red-400")} />
-            <p className={cn("text-lg font-bold", isGezond ? "text-green-400" : "text-red-400")}>
+            <Shield className={cn("w-4 h-4", isGezond ? "text-emerald-400" : "text-red-400")} />
+            <p className={cn("text-lg font-bold", isGezond ? "text-emerald-400" : "text-red-400")}>
               {cf.runwayMaanden === null ? "Gezond" : `${cf.runwayMaanden} mnd`}
             </p>
           </div>
@@ -709,7 +709,7 @@ function ForecastUpgradedSectie({ forecast }: { forecast: DecisionEngineData["fo
         <h2 className="text-base sm:text-lg font-semibold text-autronis-text-primary">Forecast</h2>
         <div className={cn(
           "ml-auto px-3 py-1 rounded-full text-xs font-medium",
-          forecast.opKoers ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+          forecast.opKoers ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
         )}>
           {forecast.opKoers ? "Op koers" : "Niet op koers"}
         </div>
@@ -931,12 +931,12 @@ function StickySummaryBar({
   return (
     <div className="sticky top-0 z-20 bg-autronis-bg/95 backdrop-blur-sm border-b border-autronis-border -mx-4 px-4 lg:-mx-8 lg:px-8 py-2.5 flex items-center gap-3 sm:gap-5 flex-wrap text-xs">
       <span className="text-autronis-text-secondary font-medium">Runway</span>
-      <span className={cn("font-bold tabular-nums", cf.nettoPerMaand >= 0 ? "text-green-400" : "text-red-400")}>
+      <span className={cn("font-bold tabular-nums", cf.nettoPerMaand >= 0 ? "text-emerald-400" : "text-red-400")}>
         {cf.runwayMaanden === null ? "Gezond" : `${cf.runwayMaanden} mnd`}
       </span>
       <div className="w-px h-3 bg-autronis-border hidden sm:block" />
       <span className="text-autronis-text-secondary font-medium">Billable</span>
-      <span className={cn("font-bold tabular-nums", eff.billablePercent >= 75 ? "text-green-400" : eff.billablePercent >= 60 ? "text-yellow-400" : "text-red-400")}>
+      <span className={cn("font-bold tabular-nums", eff.billablePercent >= 75 ? "text-emerald-400" : eff.billablePercent >= 60 ? "text-yellow-400" : "text-red-400")}>
         {eff.billablePercent.toFixed(0)}%
       </span>
       <div className="w-px h-3 bg-autronis-border hidden sm:block" />
@@ -944,7 +944,7 @@ function StickySummaryBar({
       <span className="text-cyan-400 font-bold tabular-nums">{formatBedrag(forecast.restWaarde)}</span>
       <div className="w-px h-3 bg-autronis-border hidden sm:block" />
       <span className="text-autronis-text-secondary font-medium">Forecast</span>
-      <span className={cn("font-bold", forecast.opKoers ? "text-green-400" : "text-red-400")}>
+      <span className={cn("font-bold", forecast.opKoers ? "text-emerald-400" : "text-red-400")}>
         {forecast.opKoers ? "Op koers" : "Niet op koers"}
       </span>
       {cf.overdue > 0 && (
@@ -1093,11 +1093,11 @@ export default function AnalyticsPage() {
               )}
             >
               <div className="flex items-center gap-2 mb-3">
-                <div className={cn("p-2.5 rounded-xl w-fit", omzetGroei >= 0 ? "bg-green-500/10" : "bg-red-500/10")}>
-                  {omzetGroei >= 0 ? <ArrowUp className="w-5 h-5 text-green-400" /> : <ArrowDown className="w-5 h-5 text-red-400" />}
+                <div className={cn("p-2.5 rounded-xl w-fit", omzetGroei >= 0 ? "bg-emerald-500/10" : "bg-red-500/10")}>
+                  {omzetGroei >= 0 ? <ArrowUp className="w-5 h-5 text-emerald-400" /> : <ArrowDown className="w-5 h-5 text-red-400" />}
                 </div>
               </div>
-              <p className={cn("text-3xl font-black tabular-nums", omzetGroei >= 0 ? "text-green-400" : "text-red-400")}>
+              <p className={cn("text-3xl font-black tabular-nums", omzetGroei >= 0 ? "text-emerald-400" : "text-red-400")}>
                 <AnimatedNumber value={omzetGroei} format={(n) => `${n >= 0 ? "+" : ""}${n.toFixed(1)}%`} />
               </p>
               <p className="text-sm text-autronis-text-secondary mt-1 uppercase tracking-wide">vs {jaar - 1}</p>

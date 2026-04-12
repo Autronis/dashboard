@@ -25,7 +25,7 @@ interface AgentTimelineProps {
 }
 
 const STATUS_ICONS: Record<string, { icon: typeof CheckCircle2; color: string; label: string }> = {
-  completed: { icon: CheckCircle2, color: "text-green-400", label: "Afgerond" },
+  completed: { icon: CheckCircle2, color: "text-emerald-400", label: "Afgerond" },
   in_progress: { icon: Loader2, color: "text-blue-400", label: "Bezig" },
   rejected: { icon: XCircle, color: "text-red-400", label: "Afgewezen" },
   approved: { icon: CheckCircle2, color: "text-amber-400", label: "Goedgekeurd" },
@@ -103,7 +103,7 @@ export function AgentTimeline({ agentId }: AgentTimelineProps) {
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-[10px] text-autronis-text-tertiary flex items-center gap-0.5">
-                      <Zap className="w-2.5 h-2.5 text-green-400" />
+                      <Zap className="w-2.5 h-2.5 text-emerald-400" />
                       {stat.tokens >= 1000 ? `${(stat.tokens / 1000).toFixed(0)}k` : stat.tokens}
                     </span>
                     <span className="text-[10px] text-amber-400 font-medium">

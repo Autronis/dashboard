@@ -99,7 +99,7 @@ const DOEL_CHIP: Record<string, { bg: string; text: string }> = {
   meeting: { bg: "bg-blue-500/15", text: "text-blue-400" },
   inkoop: { bg: "bg-amber-500/15", text: "text-amber-400" },
   netwerk: { bg: "bg-purple-500/15", text: "text-purple-400" },
-  training: { bg: "bg-green-500/15", text: "text-green-400" },
+  training: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
   boekhouder: { bg: "bg-orange-500/15", text: "text-orange-400" },
   overig: { bg: "bg-slate-500/15", text: "text-slate-400" },
 };
@@ -930,7 +930,7 @@ export default function KilometersPage() {
                               <span className="text-sm text-autronis-text-primary font-medium tabular-nums">{formatBedrag(b.bedrag)}</span>
                               {b.liters && <span className="text-xs text-autronis-text-secondary tabular-nums">{b.liters.toFixed(1)}L</span>}
                               {b.isAutomatisch && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-400 font-semibold">REVOLUT</span>
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold">REVOLUT</span>
                               )}
                               {b.notitie && <span className="text-xs text-autronis-text-tertiary truncate flex-1">{b.notitie}</span>}
                             </div>
@@ -1018,8 +1018,8 @@ export default function KilometersPage() {
                   className="border border-autronis-border rounded-2xl p-5 lg:p-6 card-glow bg-autronis-card"
                 >
                   <div className="flex items-center gap-2 mb-2 relative group">
-                    <div className="p-2 bg-green-500/10 rounded-xl">
-                      <MapPin className="w-4 h-4 text-green-400" />
+                    <div className="p-2 bg-emerald-500/10 rounded-xl">
+                      <MapPin className="w-4 h-4 text-emerald-400" />
                     </div>
                     <button className="p-0.5 text-autronis-text-secondary/40 hover:text-autronis-text-secondary transition-colors ml-auto">
                       <Info className="w-3.5 h-3.5" />
@@ -1032,7 +1032,7 @@ export default function KilometersPage() {
                       <p className="text-autronis-text-secondary/50 mt-1.5">Belastingdienst controleert tot 5 jaar terug.</p>
                     </div>
                   </div>
-                  <AnimatedNumber key={`bedrag-${monthKey}`} value={totaalBedrag} format={formatBedrag} className="text-2xl font-bold text-green-400 tabular-nums" />
+                  <AnimatedNumber key={`bedrag-${monthKey}`} value={totaalBedrag} format={formatBedrag} className="text-2xl font-bold text-emerald-400 tabular-nums" />
                   <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Aftrekbaar</p>
                 </motion.div>
 
@@ -1345,7 +1345,7 @@ export default function KilometersPage() {
                                 <span className="block text-xs text-autronis-text-secondary/70">{rit.projectNaam}</span>
                               )}
                             </td>
-                            <td className="py-3.5 px-4 text-sm font-semibold text-green-400 text-right tabular-nums">
+                            <td className="py-3.5 px-4 text-sm font-semibold text-emerald-400 text-right tabular-nums">
                               {formatBedrag(rit.kilometers * (rit.tariefPerKm ?? 0.23))}
                             </td>
                             <td className="py-3.5 px-4">
@@ -1384,7 +1384,7 @@ export default function KilometersPage() {
                             {aantalRitten} ritten · €0,23/km
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <span className="text-sm font-bold text-green-400 tabular-nums">{formatBedrag(totaalBedrag)}</span>
+                            <span className="text-sm font-bold text-emerald-400 tabular-nums">{formatBedrag(totaalBedrag)}</span>
                             <span className="block text-xs text-autronis-text-secondary/50 tabular-nums">aftrekbaar</span>
                           </td>
                           <td />

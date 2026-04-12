@@ -50,7 +50,7 @@ function ProfielKaart({ id, onderwerp, inhoud }: { id: number; onderwerp: string
           {PROFIEL_LABELS[onderwerp] ?? onderwerp}
         </h3>
         {opgeslagen && (
-          <span className="text-xs text-green-400 font-medium">Opgeslagen</span>
+          <span className="text-xs text-emerald-400 font-medium">Opgeslagen</span>
         )}
       </div>
       <textarea

@@ -44,7 +44,7 @@ function ScanTimeline({ scans }: { scans: ConcurrentScan[] }) {
               <Calendar className="h-3 w-3" />
               {formatDatum(scan.scanDatum)}
               <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium",
-                scan.status === "voltooid" && "bg-green-500/15 text-green-400",
+                scan.status === "voltooid" && "bg-emerald-500/15 text-emerald-400",
                 scan.status === "mislukt" && "bg-red-500/15 text-red-400",
                 scan.status === "bezig" && "bg-yellow-500/15 text-yellow-400")}>
                 {scan.status}
@@ -135,7 +135,7 @@ function SocialTab({ scans }: { scans: ConcurrentScan[] }) {
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium capitalize">{s.platform}</span>
             <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium",
-              s.beschikbaar ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400")}>
+              s.beschikbaar ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400")}>
               {s.beschikbaar ? "Beschikbaar" : "Niet beschikbaar"}
             </span>
           </div>

@@ -60,7 +60,7 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
   bekeken: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Bekeken" },
-  ondertekend: { bg: "bg-green-500/15", text: "text-green-400", label: "Ondertekend" },
+  ondertekend: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Ondertekend" },
   afgewezen: { bg: "bg-red-500/15", text: "text-red-400", label: "Afgewezen" },
 };
 
@@ -266,14 +266,14 @@ export default function ProposalDetailPage() {
 
         {/* Ondertekend info */}
         {proposal.status === "ondertekend" && (
-          <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 rounded-xl px-5 py-4">
-            <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-5 py-4">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-green-400">
+              <p className="text-sm font-medium text-emerald-400">
                 Ondertekend door {proposal.ondertekendDoor}
               </p>
               {proposal.ondertekendOp && (
-                <p className="text-xs text-green-400/70 mt-0.5">
+                <p className="text-xs text-emerald-400/70 mt-0.5">
                   {formatDatum(proposal.ondertekendOp)}
                 </p>
               )}

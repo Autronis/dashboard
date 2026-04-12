@@ -924,7 +924,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
           </div>
           <div className="flex items-center gap-4 text-xs">
             <span className="text-autronis-accent font-medium tabular-nums">{formatTijd(periodeRapport.totaalSeconden)}</span>
-            <span className="text-green-400 font-medium tabular-nums">{periodeRapport.productiefPercentage}% productief</span>
+            <span className="text-emerald-400 font-medium tabular-nums">{periodeRapport.productiefPercentage}% productief</span>
             <span className="text-autronis-text-secondary tabular-nums">{periodeRapport.aantalDagen} dagen</span>
             {periodeRapport.topProject && (
               <span className="text-yellow-400">Top: {periodeRapport.topProject}</span>
@@ -984,8 +984,8 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
 
               {/* Productief % with explanation */}
               <div className="flex items-center gap-2 bg-autronis-card border border-autronis-border rounded-xl px-3.5 py-2 group relative">
-                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
-                <span className="text-sm font-semibold text-green-400 tabular-nums">{stats.productiefPercentage}%</span>
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-sm font-semibold text-emerald-400 tabular-nums">{stats.productiefPercentage}%</span>
                 <span className="text-[10px] text-autronis-text-secondary uppercase">Productief</span>
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-autronis-bg border border-autronis-border rounded-xl text-[10px] text-autronis-text-secondary whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-xl">
                   {prodLabel}

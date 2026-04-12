@@ -31,7 +31,7 @@ const CHAR_LIMIT: Record<ContentPlatform, number> = {
 
 const STATUS_BADGE: Record<ContentStatus, { label: string; className: string }> = {
   concept: { label: "Concept", className: "bg-gray-500/15 text-gray-400" },
-  goedgekeurd: { label: "Goedgekeurd", className: "bg-green-500/15 text-green-400" },
+  goedgekeurd: { label: "Goedgekeurd", className: "bg-emerald-500/15 text-emerald-400" },
   bewerkt: { label: "Bewerkt", className: "bg-blue-500/15 text-blue-400" },
   afgewezen: { label: "Afgewezen", className: "bg-red-500/15 text-red-400" },
   gepubliceerd: { label: "Gepubliceerd", className: "bg-purple-500/15 text-purple-400" },
@@ -304,7 +304,7 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
                 <button
                   onClick={handleGoedkeuren}
                   disabled={isBusy || post.status === "goedgekeurd"}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-emerald-500/15 text-emerald-400 hover:bg-green-500/25 transition-colors disabled:opacity-50"
                 >
                   <ThumbsUp className="w-3.5 h-3.5" />
                   Goedkeuren
@@ -330,7 +330,7 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
                   disabled={isBusy}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors disabled:opacity-50 ml-auto"
                 >
-                  {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   {copied
                     ? `Gekopieerd voor ${post.platform === "linkedin" ? "LinkedIn" : "Instagram"}`
                     : "Kopieer"}
@@ -380,7 +380,7 @@ function PostCard({ post, selected, onToggleSelect, selectMode }: PostCardProps)
               onClick={() => { handleCopy(); }}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl bg-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? "Gekopieerd" : "Kopieer"}
             </button>
             <button

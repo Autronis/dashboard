@@ -17,7 +17,7 @@ export function ToastContainer() {
           className={cn(
             "flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg min-w-[280px] max-w-[400px] animate-slide-in",
             "border backdrop-blur-sm",
-            toast.type === "succes" && "bg-green-500/10 border-green-500/30 text-green-400",
+            toast.type === "succes" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-400",
             toast.type === "fout" && "bg-red-500/10 border-red-500/30 text-red-400",
             toast.type === "info" && "bg-blue-500/10 border-blue-500/30 text-blue-400"
           )}

@@ -142,9 +142,9 @@ export default function OndertekenPage() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 200 }}
-                  className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto"
+                  className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto"
                 >
-                  <CheckCircle2 className="w-8 h-8 text-green-400" />
+                  <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                 </motion.div>
                 <h2 className="text-lg font-bold text-white">Contract ondertekend</h2>
                 <p className="text-gray-400 text-sm">

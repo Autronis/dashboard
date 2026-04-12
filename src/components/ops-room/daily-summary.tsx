@@ -30,7 +30,7 @@ export function DailySummary({ agents, isLive = false }: DailySummaryProps) {
 
       <div className="flex items-center gap-4 text-[12px]">
         <span className="flex items-center gap-1.5 whitespace-nowrap text-autronis-text-primary">
-          <Zap className="w-3.5 h-3.5 text-green-400" />
+          <Zap className="w-3.5 h-3.5 text-emerald-400" />
           <strong>{activeAgents}</strong>/{agents.length} actief
         </span>
         <span className="flex items-center gap-1.5 whitespace-nowrap text-autronis-text-primary">

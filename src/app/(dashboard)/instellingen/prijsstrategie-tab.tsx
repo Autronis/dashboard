@@ -244,12 +244,12 @@ export function PrijsstrategieTab({ huidigUurtarief }: PrijsstrategieTabProps) {
             <div className={cn(
               "rounded-xl p-4 flex items-center gap-3",
               verschilHuidig !== null && verschilHuidig >= 0
-                ? "bg-green-500/10 border border-green-500/20"
+                ? "bg-emerald-500/10 border border-emerald-500/20"
                 : "bg-red-500/10 border border-red-500/20"
             )}>
               <TrendingUp className={cn(
                 "w-5 h-5 flex-shrink-0",
-                verschilHuidig !== null && verschilHuidig >= 0 ? "text-green-400" : "text-red-400"
+                verschilHuidig !== null && verschilHuidig >= 0 ? "text-emerald-400" : "text-red-400"
               )} />
               <div>
                 <p className="text-sm text-autronis-text-primary">
@@ -257,7 +257,7 @@ export function PrijsstrategieTab({ huidigUurtarief }: PrijsstrategieTabProps) {
                 </p>
                 <p className={cn(
                   "text-xs",
-                  verschilHuidig !== null && verschilHuidig >= 0 ? "text-green-400" : "text-red-400"
+                  verschilHuidig !== null && verschilHuidig >= 0 ? "text-emerald-400" : "text-red-400"
                 )}>
                   {verschilHuidig !== null && (
                     verschilHuidig >= 0

@@ -53,7 +53,7 @@ interface Regel {
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  betaald: { bg: "bg-green-500/15", text: "text-green-400", label: "Betaald" },
+  betaald: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Betaald" },
   te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
 };
 

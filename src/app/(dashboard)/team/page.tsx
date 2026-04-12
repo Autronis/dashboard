@@ -162,13 +162,13 @@ function getVacationForecast(verlofList: VerlofEntry[], userId: number, vandaag:
 
 const verlofStatusConfig: Record<string, { color: string; bg: string; label: string }> = {
   aangevraagd: { color: "text-yellow-400", bg: "bg-yellow-500/15", label: "Aangevraagd" },
-  goedgekeurd: { color: "text-green-400", bg: "bg-green-500/15", label: "Goedgekeurd" },
+  goedgekeurd: { color: "text-emerald-400", bg: "bg-emerald-500/15", label: "Goedgekeurd" },
   afgewezen: { color: "text-red-400", bg: "bg-red-500/15", label: "Afgewezen" },
 };
 
 const declaratieStatusConfig: Record<string, { color: string; bg: string; label: string }> = {
   ingediend: { color: "text-yellow-400", bg: "bg-yellow-500/15", label: "Ingediend" },
-  goedgekeurd: { color: "text-green-400", bg: "bg-green-500/15", label: "Goedgekeurd" },
+  goedgekeurd: { color: "text-emerald-400", bg: "bg-emerald-500/15", label: "Goedgekeurd" },
   uitbetaald: { color: "text-blue-400", bg: "bg-blue-500/15", label: "Uitbetaald" },
   afgewezen: { color: "text-red-400", bg: "bg-red-500/15", label: "Afgewezen" },
 };
@@ -179,7 +179,7 @@ const categorieConfig: Record<string, { bg: string; text: string; label: string 
   reiskosten: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Reiskosten" },
   marketing: { bg: "bg-purple-500/15", text: "text-purple-400", label: "Marketing" },
   onderwijs: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Onderwijs" },
-  telefoon: { bg: "bg-green-500/15", text: "text-green-400", label: "Telefoon" },
+  telefoon: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Telefoon" },
   verzekeringen: { bg: "bg-orange-500/15", text: "text-orange-400", label: "Verzekeringen" },
   overig: { bg: "bg-gray-500/15", text: "text-gray-400", label: "Overig" },
 };
@@ -361,7 +361,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
     if (feestdagMap.has(datum)) return "bg-orange-500/20 text-orange-400 hover:bg-orange-500/30";
     const entries = verlofPerDag.get(datum) ?? [];
     if (entries.length === 0)
-      return "bg-green-500/10 text-green-400/70 hover:bg-green-500/25 cursor-pointer";
+      return "bg-emerald-500/10 text-emerald-400/70 hover:bg-green-500/25 cursor-pointer";
     const hasZiek = entries.some((e) => e.type === "ziek");
     const hasSem = entries.some((e) => e.gebruikerId === 1);
     const hasSyb = entries.some((e) => e.gebruikerId === 2);
@@ -504,7 +504,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-autronis-text-secondary">
         {[
-          { color: "bg-green-500/20", label: "Werkdag" },
+          { color: "bg-emerald-500/20", label: "Werkdag" },
           { color: "bg-orange-500/20", label: "Feestdag" },
           { color: "bg-blue-500/20", label: "Vakantie Sem" },
           { color: "bg-purple-500/20", label: "Vakantie Syb" },
@@ -744,7 +744,7 @@ function VerlofTab({ currentUser }: { currentUser: CurrentUser | null | undefine
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button
                         onClick={() => statusMutation.mutate({ id: v.id, status: "goedgekeurd" })}
-                        className="p-2 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                        className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                         title="Goedkeuren"
                       >
                         <Check className="w-4 h-4" />
@@ -978,7 +978,7 @@ function DeclaratiesTab({ currentUser }: { currentUser: CurrentUser | null | und
             </div>
             <div className="w-px h-3 bg-autronis-border" />
             <div>
-              <span className="text-green-400 font-medium">{formatBedrag(goedgekeurdTotaal)}</span>
+              <span className="text-emerald-400 font-medium">{formatBedrag(goedgekeurdTotaal)}</span>
               <span className="text-autronis-text-secondary/60 ml-1">goedgekeurd</span>
             </div>
           </div>
@@ -1117,7 +1117,7 @@ function DeclaratiesTab({ currentUser }: { currentUser: CurrentUser | null | und
                                 onClick={() =>
                                   statusMutation.mutate({ id: d.id, status: "goedgekeurd" })
                                 }
-                                className="p-1.5 rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors"
+                                className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                                 title="Goedkeuren"
                               >
                                 <Check className="w-3.5 h-3.5" />

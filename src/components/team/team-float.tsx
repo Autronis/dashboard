@@ -25,7 +25,7 @@ const TYPE_ICON: Record<string, typeof Zap> = {
 
 const TYPE_KLEUR: Record<string, string> = {
   taak_gepakt: "text-blue-400",
-  taak_afgerond: "text-green-400",
+  taak_afgerond: "text-emerald-400",
   taak_update: "text-autronis-accent",
   status_wijziging: "text-orange-400",
 };
@@ -91,7 +91,7 @@ export function TeamFloat() {
                 <Users className="w-4 h-4 text-autronis-accent" />
                 <span className="text-sm font-semibold text-autronis-text-primary">Team Live</span>
                 {actief > 0 && (
-                  <span className="flex items-center gap-1 text-[10px] text-green-400 font-medium">
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 status-pulse" />
                     {actief}
                   </span>

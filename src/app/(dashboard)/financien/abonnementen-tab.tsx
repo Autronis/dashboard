@@ -50,7 +50,7 @@ interface AIAnalyseData {
 }
 
 const SCORE_CONFIG = {
-  noodzakelijk: { label: "Noodzakelijk", icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15", border: "border-green-500/20" },
+  noodzakelijk: { label: "Noodzakelijk", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15", border: "border-emerald-500/20" },
   nuttig: { label: "Nuttig", icon: MinusCircle, color: "text-yellow-400", bg: "bg-yellow-500/15", border: "border-yellow-500/20" },
   overbodig: { label: "Overbodig", icon: AlertCircle, color: "text-red-400", bg: "bg-red-500/15", border: "border-red-500/20" },
 } as const;
@@ -60,7 +60,7 @@ const CATEGORIE_CONFIG: Record<string, { label: string; color: string; bg: strin
   hosting: { label: "Hosting", color: "text-cyan-400", bg: "bg-cyan-500/15" },
   ai: { label: "AI", color: "text-purple-400", bg: "bg-purple-500/15" },
   marketing: { label: "Marketing", color: "text-pink-400", bg: "bg-pink-500/15" },
-  communicatie: { label: "Communicatie", color: "text-green-400", bg: "bg-green-500/15" },
+  communicatie: { label: "Communicatie", color: "text-emerald-400", bg: "bg-emerald-500/15" },
   opslag: { label: "Opslag", color: "text-yellow-400", bg: "bg-yellow-500/15" },
   design: { label: "Design", color: "text-orange-400", bg: "bg-orange-500/15" },
   overig: { label: "Overig", color: "text-gray-400", bg: "bg-gray-500/15" },

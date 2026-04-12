@@ -84,16 +84,16 @@ export function ForecastSection() {
       <div className={cn(
         "rounded-xl p-4 mb-6 flex items-center gap-4",
         data.opKoers
-          ? "bg-green-500/10 border border-green-500/20"
+          ? "bg-emerald-500/10 border border-emerald-500/20"
           : "bg-red-500/10 border border-red-500/20"
       )}>
         {data.opKoers ? (
-          <CheckCircle className="w-6 h-6 text-green-400 flex-shrink-0" />
+          <CheckCircle className="w-6 h-6 text-emerald-400 flex-shrink-0" />
         ) : (
           <AlertTriangle className="w-6 h-6 text-red-400 flex-shrink-0" />
         )}
         <div className="flex-1 min-w-0">
-          <p className={cn("text-sm font-semibold", data.opKoers ? "text-green-400" : "text-red-400")}>
+          <p className={cn("text-sm font-semibold", data.opKoers ? "text-emerald-400" : "text-red-400")}>
             {data.opKoers ? "Op koers voor jaardoel" : "Niet op koers voor jaardoel"}
           </p>
           <p className="text-xs text-autronis-text-secondary mt-0.5">
@@ -173,13 +173,13 @@ export function ForecastSection() {
                   <span className="text-[10px] text-autronis-text-secondary w-16 text-right">Best</span>
                   <div className="flex-1 h-3 bg-autronis-bg rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full rounded-full bg-green-500/50"
+                      className="h-full rounded-full bg-emerald-500/50"
                       initial={{ width: "0%" }}
                       animate={{ width: `${(m.bestCase / maxBar) * 100}%` }}
                       transition={{ duration: 0.5, delay: i * 0.1, ease: "easeOut" }}
                     />
                   </div>
-                  <span className="text-[11px] text-green-400 tabular-nums w-24 text-right">
+                  <span className="text-[11px] text-emerald-400 tabular-nums w-24 text-right">
                     {formatBedrag(m.bestCase)}
                   </span>
                 </div>
@@ -221,7 +221,7 @@ export function ForecastSection() {
         {/* Legend */}
         <div className="flex items-center gap-6 mt-4 pt-4 border-t border-autronis-border">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500/50" />
+            <div className="w-3 h-3 rounded-full bg-emerald-500/50" />
             <span className="text-[11px] text-autronis-text-secondary">Best case (zeker + 120%)</span>
           </div>
           <div className="flex items-center gap-2">

@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: VideoStatus }) {
   const map: Record<VideoStatus, { label: string; className: string }> = {
     script: { label: "Script", className: "bg-zinc-700 text-zinc-300" },
     rendering: { label: "Renderen...", className: "bg-yellow-500/20 text-yellow-400" },
-    klaar: { label: "Klaar", className: "bg-green-500/20 text-green-400" },
+    klaar: { label: "Klaar", className: "bg-emerald-500/20 text-emerald-400" },
     fout: { label: "Fout", className: "bg-red-500/20 text-red-400" },
   };
 
@@ -208,7 +208,7 @@ function VideoCard({ video }: { video: ContentVideo }) {
           <a
             href={video.videoPath}
             download
-            className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-sm font-medium hover:bg-emerald-500/20 transition-colors"
           >
             <Download className="w-4 h-4" />
             Download

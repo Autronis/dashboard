@@ -19,7 +19,7 @@ interface Factuur {
 
 const statusConfig: Record<string, { label: string; icon: typeof Clock; color: string; bg: string }> = {
   verstuurd: { label: "Open", icon: Clock, color: "text-blue-400", bg: "bg-blue-500/15" },
-  betaald: { label: "Betaald", icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15" },
+  betaald: { label: "Betaald", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15" },
   herinnering: { label: "Herinnering", icon: AlertTriangle, color: "text-amber-400", bg: "bg-amber-500/15" },
   verlopen: { label: "Verlopen", icon: AlertTriangle, color: "text-red-400", bg: "bg-red-500/15" },
 };
@@ -90,7 +90,7 @@ export default function PortalFacturen() {
                       {f.vervaldatum && <span>Vervalt: {formatDatum(f.vervaldatum)}</span>}
                     </div>
                     {f.betaaldOp && (
-                      <p className="text-xs text-green-400 mt-1">Betaald op {formatDatum(f.betaaldOp)}</p>
+                      <p className="text-xs text-emerald-400 mt-1">Betaald op {formatDatum(f.betaaldOp)}</p>
                     )}
                   </div>
                   <div className="text-right flex-shrink-0">

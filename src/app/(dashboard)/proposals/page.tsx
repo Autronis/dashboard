@@ -28,7 +28,7 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
   bekeken: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Bekeken" },
-  ondertekend: { bg: "bg-green-500/15", text: "text-green-400", label: "Ondertekend" },
+  ondertekend: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Ondertekend" },
   afgewezen: { bg: "bg-red-500/15", text: "text-red-400", label: "Afgewezen" },
 };
 
@@ -150,13 +150,13 @@ export default function ProposalsPage() {
 
           <div className="border border-autronis-border rounded-2xl p-6 lg:p-7 card-glow bg-autronis-card">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2.5 bg-green-500/10 rounded-xl">
-                <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               </div>
             </div>
             <AnimatedNumber
               value={kpis.ondertekendDezeMaand}
-              className="text-3xl font-bold text-green-400 tabular-nums"
+              className="text-3xl font-bold text-emerald-400 tabular-nums"
             />
             <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
               Ondertekend deze maand

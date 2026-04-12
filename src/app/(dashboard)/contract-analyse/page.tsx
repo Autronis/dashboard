@@ -89,7 +89,7 @@ export default function ContractAnalysePage() {
     "KERNPUNTEN": <CheckCircle className="w-4 h-4 text-blue-400" />,
     "RISICO": <ShieldAlert className="w-4 h-4 text-red-400" />,
     "VERPLICHTINGEN": <ClipboardList className="w-4 h-4 text-orange-400" />,
-    "FINANCIEEL": <Euro className="w-4 h-4 text-green-400" />,
+    "FINANCIEEL": <Euro className="w-4 h-4 text-emerald-400" />,
     "DEADLINES": <Calendar className="w-4 h-4 text-purple-400" />,
     "WAT TE CONTROLEREN": <AlertTriangle className="w-4 h-4 text-yellow-400" />,
   };

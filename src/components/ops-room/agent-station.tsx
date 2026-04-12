@@ -16,7 +16,7 @@ const roleConfig: Record<AgentRole, { icon: typeof Bot; label: string; color: st
   reviewer: { icon: Search, label: "Reviewer", color: "text-purple-400" },
   architect: { icon: Compass, label: "Architect", color: "text-amber-400" },
   assistant: { icon: Bot, label: "Research & Docs", color: "text-autronis-accent" },
-  automation: { icon: Cog, label: "Automatisering", color: "text-green-400" },
+  automation: { icon: Cog, label: "Automatisering", color: "text-emerald-400" },
 };
 
 const statusConfig: Record<AgentStatus, { label: string; dotClass: string; borderClass: string }> = {
@@ -46,7 +46,7 @@ function useLiveRuntime(startedAt: string | undefined): string {
 }
 
 function costColorClass(cost: number): string {
-  if (cost < 0.5) return "text-green-400";
+  if (cost < 0.5) return "text-emerald-400";
   if (cost < 2.0) return "text-amber-400";
   return "text-red-400";
 }

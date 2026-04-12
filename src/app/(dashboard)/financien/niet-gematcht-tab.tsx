@@ -149,7 +149,7 @@ export function NietGematchtTab() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-green-400">
+                    <span className="text-sm font-semibold text-emerald-400">
                       + {formatBedrag(tx.bedrag)}
                     </span>
                     {tx.bank && (
@@ -169,7 +169,7 @@ export function NietGematchtTab() {
                 {suggestie && !selectedFactuur[tx.id] && (
                   <button
                     onClick={() => setSelectedFactuur((prev) => ({ ...prev, [tx.id]: suggestie.id }))}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 text-xs font-medium hover:bg-green-500/20 transition-colors shrink-0"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors shrink-0"
                   >
                     <AlertCircle className="w-3 h-3" />
                     Suggestie: {suggestie.factuurnummer}

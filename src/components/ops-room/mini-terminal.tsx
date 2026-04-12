@@ -8,7 +8,7 @@ import type { TerminalLine } from "./types";
 const lineColors: Record<TerminalLine["type"], string> = {
   command: "text-blue-400",
   info: "text-autronis-text-secondary",
-  success: "text-green-400",
+  success: "text-emerald-400",
   error: "text-red-400",
 };
 

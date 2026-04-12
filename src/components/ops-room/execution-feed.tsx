@@ -8,7 +8,7 @@ import { useOrchestrator, type LogEntry } from "./orchestrator-store";
 const TYPE_STYLE: Record<LogEntry["type"], { color: string; bg: string; prefix: string }> = {
   info:          { color: "text-gray-400",   bg: "",                prefix: "·" },
   task_start:    { color: "text-blue-400",   bg: "bg-blue-500/3",  prefix: "\u25B6" },
-  task_complete: { color: "text-green-400",  bg: "bg-green-500/3", prefix: "\u2713" },
+  task_complete: { color: "text-emerald-400",  bg: "bg-green-500/3", prefix: "\u2713" },
   review:        { color: "text-purple-400", bg: "bg-purple-500/3", prefix: "\u27F3" },
   error:         { color: "text-red-400",    bg: "bg-red-500/5",   prefix: "\u2717" },
   approval:      { color: "text-amber-400",  bg: "bg-amber-500/3", prefix: "\u23F3" },
@@ -48,7 +48,7 @@ export function ExecutionFeed() {
       case "intake": case "intake_idee": return { label: "Intake", color: "text-purple-400", bg: "bg-purple-500/15" };
       case "planning": return { label: "Planning", color: "text-blue-400", bg: "bg-blue-500/15" };
       case "awaiting_approval": return { label: "Approval", color: "text-amber-400", bg: "bg-amber-500/15" };
-      case "in_progress": case "approved": return { label: "Executing", color: "text-green-400", bg: "bg-green-500/15" };
+      case "in_progress": case "approved": return { label: "Executing", color: "text-emerald-400", bg: "bg-emerald-500/15" };
       default: return null;
     }
   }, [activeCmd]);
@@ -70,7 +70,7 @@ export function ExecutionFeed() {
         <Terminal className="w-4 h-4 text-autronis-accent" />
         <span className="text-sm font-semibold text-autronis-text-primary">Executie Log</span>
         {logs.length > 0 && (
-          <span className="text-[9px] text-green-400 font-medium ml-1 flex items-center gap-1">
+          <span className="text-[9px] text-emerald-400 font-medium ml-1 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             live
           </span>

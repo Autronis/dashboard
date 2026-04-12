@@ -26,7 +26,7 @@ import { useTimer } from "@/hooks/use-timer";
 const statusConfig: Record<string, { icon: typeof Circle; color: string; bg: string; label: string }> = {
   open: { icon: Circle, color: "text-slate-400", bg: "bg-slate-500/15", label: "Open" },
   bezig: { icon: Loader2, color: "text-blue-400", bg: "bg-blue-500/15", label: "Bezig" },
-  afgerond: { icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15", label: "Afgerond" },
+  afgerond: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15", label: "Afgerond" },
 };
 
 const prioriteitConfig: Record<string, { color: string; bg: string; label: string; borderColor: string; sortOrder: number }> = {
@@ -38,7 +38,7 @@ const prioriteitConfig: Record<string, { color: string; bg: string; label: strin
 const kanbanKolommen = [
   { status: "open", label: "Open", color: "text-slate-400", bg: "bg-slate-500/10", border: "border-slate-500/30", tint: "bg-slate-500/[0.04]" },
   { status: "bezig", label: "Bezig", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", tint: "bg-blue-500/[0.05]" },
-  { status: "afgerond", label: "Afgerond", color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/30", tint: "bg-green-500/[0.04]" },
+  { status: "afgerond", label: "Afgerond", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30", tint: "bg-green-500/[0.04]" },
 ];
 
 // ─── Progress Bar ───
@@ -134,7 +134,7 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
         <AnimatePresence mode="wait" initial={false}>
           {copied ? (
             <motion.span key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
-              <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             </motion.span>
           ) : (
             <motion.span key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} transition={{ duration: 0.15 }}>
@@ -150,7 +150,7 @@ function CopyPromptButton({ prompt }: { prompt: string }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.9 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-autronis-card border border-autronis-border rounded-md text-[10px] text-green-400 whitespace-nowrap pointer-events-none z-10"
+            className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-0.5 bg-autronis-card border border-autronis-border rounded-md text-[10px] text-emerald-400 whitespace-nowrap pointer-events-none z-10"
           >
             Gekopieerd!
           </motion.div>
@@ -240,7 +240,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak, onEd
           <Play className="w-3.5 h-3.5" /> Start
         </button>
         <button onClick={() => onStatusToggle({ ...eersteTaak, status: "bezig" } as Taak)}
-          className="px-3 py-2 rounded-lg bg-green-500/15 text-green-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
+          className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-green-500/25 transition-colors flex-shrink-0">
           Klaar
         </button>
       </div>
@@ -272,7 +272,7 @@ function VandaagDoenCard({ taken, onStatusToggle, onStartTimer, onPlanTaak, onEd
                     <a href={`vscode://file${taak.projectMap || ""}`} className="p-0.5 text-autronis-text-secondary hover:text-purple-400 transition-colors" title="Terminal"><Terminal className="w-3 h-3" /></a>
                     <button onClick={() => onPlanTaak(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Plan"><CalendarPlus className="w-3 h-3" /></button>
                     <button onClick={() => onStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start"><Timer className="w-3 h-3" /></button>
-                    <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
+                    <button onClick={() => onStatusToggle({ ...taak, status: "bezig" } as Taak)} className="p-0.5 text-autronis-text-secondary hover:text-emerald-400 transition-colors" title="Klaar"><CheckCircle2 className="w-3 h-3" /></button>
                   </div>
                 </div>
               </motion.div>
@@ -523,7 +523,7 @@ function TaakDetailModal({ taak, onClose, onStatusToggle, onStartTimer, onPlanTa
                 <Play className="w-3.5 h-3.5" /> Start timer
               </button>
               <button onClick={() => { onStatusToggle({ ...taak, status: "bezig" } as Taak); onClose(); }}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-green-500/15 text-green-400 text-sm font-semibold hover:bg-green-500/25 transition-colors">
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 text-sm font-semibold hover:bg-green-500/25 transition-colors">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Markeer klaar
               </button>
               <button onClick={() => { onPlanTaak(taak); }}
@@ -1041,7 +1041,7 @@ function TakenPage() {
             { key: "alle", label: "Alle", count: kpis.totaal, dot: "bg-autronis-accent", activeBg: "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent" },
             { key: "open", label: "Open", count: kpis.open, dot: "bg-slate-400", activeBg: "bg-slate-500/15 border-slate-400/40 text-slate-300" },
             { key: "bezig", label: "Bezig", count: kpis.bezig, dot: "bg-blue-400", activeBg: "bg-blue-500/15 border-blue-400/40 text-blue-400" },
-            { key: "afgerond", label: "Afgerond", count: kpis.afgerond, dot: "bg-green-400", activeBg: "bg-green-500/15 border-green-400/40 text-green-400" },
+            { key: "afgerond", label: "Afgerond", count: kpis.afgerond, dot: "bg-green-400", activeBg: "bg-emerald-500/15 border-emerald-400/40 text-emerald-400" },
             ...(kpis.verlopen > 0 ? [{ key: "verlopen", label: "Verlopen", count: kpis.verlopen, dot: "bg-red-400", activeBg: "bg-red-500/15 border-red-400/40 text-red-400" }] : []),
           ].map((tab) => (
             <button
@@ -1176,7 +1176,7 @@ function TakenPage() {
                       {taak.status !== "afgerond" && (
                         <>
                           <button onClick={() => handleStartTimer(taak)} className="p-0.5 text-autronis-text-secondary hover:text-autronis-accent transition-colors" title="Start timer"><Timer className="w-3 h-3" /></button>
-                          <button onClick={() => handleMarkDone(taak)} className="p-0.5 text-autronis-text-secondary hover:text-green-400 transition-colors" title="Markeer klaar"><CheckCircle2 className="w-3 h-3" /></button>
+                          <button onClick={() => handleMarkDone(taak)} className="p-0.5 text-autronis-text-secondary hover:text-emerald-400 transition-colors" title="Markeer klaar"><CheckCircle2 className="w-3 h-3" /></button>
                         </>
                       )}
                     </div>
@@ -1242,8 +1242,8 @@ function TakenPage() {
                                   <button onClick={() => toggleFase(faseKey)} className="flex items-center gap-2 flex-1 min-w-0">
                                     {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />}
                                     <Layers className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
-                                    <span className={cn("text-[11px] font-medium", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.fase}</span>
-                                    {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-green-400 flex-shrink-0" />}
+                                    <span className={cn("text-[11px] font-medium", isComplete ? "text-emerald-400" : "text-autronis-text-primary")}>{fase.fase}</span>
+                                    {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />}
                                     <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
                                   </button>
                                   <button

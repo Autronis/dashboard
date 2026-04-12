@@ -52,7 +52,7 @@ interface Regel {
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  geaccepteerd: { bg: "bg-green-500/15", text: "text-green-400", label: "Geaccepteerd" },
+  geaccepteerd: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Geaccepteerd" },
   verlopen: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Verlopen" },
   afgewezen: { bg: "bg-red-500/15", text: "text-red-400", label: "Afgewezen" },
 };

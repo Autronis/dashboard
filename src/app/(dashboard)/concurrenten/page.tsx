@@ -49,7 +49,7 @@ function AnimatedCount({ value, className }: { value: number; className?: string
 function TrendBadge({ trend }: { trend: string | null }) {
   if (!trend) return null;
   const config: Record<string, { icon: typeof TrendingUp; label: string; cls: string; animate: boolean }> = {
-    groeiend: { icon: TrendingUp, label: "Groeiend", cls: "bg-green-500/15 text-green-400", animate: true },
+    groeiend: { icon: TrendingUp, label: "Groeiend", cls: "bg-emerald-500/15 text-emerald-400", animate: true },
     stabiel: { icon: Minus, label: "Stabiel", cls: "bg-yellow-500/15 text-yellow-400", animate: false },
     krimpend: { icon: TrendingDown, label: "Krimpend", cls: "bg-red-500/15 text-red-400", animate: false },
   };
@@ -68,7 +68,7 @@ function TrendBadge({ trend }: { trend: string | null }) {
 function ThreatBadge({ level }: { level: string | null }) {
   if (!level) return null;
   const config: Record<string, { icon: typeof Shield; label: string; cls: string; glow: string }> = {
-    laag: { icon: ShieldCheck, label: "Laag risico", cls: "bg-green-500/15 text-green-400", glow: "" },
+    laag: { icon: ShieldCheck, label: "Laag risico", cls: "bg-emerald-500/15 text-emerald-400", glow: "" },
     medium: { icon: Shield, label: "Medium risico", cls: "bg-yellow-500/15 text-yellow-400", glow: "shadow-[0_0_8px_rgba(234,179,8,0.35)]" },
     hoog: { icon: ShieldAlert, label: "Hoog risico", cls: "bg-red-500/15 text-red-400", glow: "shadow-[0_0_10px_rgba(239,68,68,0.45)]" },
   };
@@ -95,7 +95,7 @@ function OverlapRing({ score }: { score: number | null }) {
   const circumference = 2 * Math.PI * radius;
   const targetOffset = circumference - (score / 100) * circumference;
   const currentOffset = animated ? targetOffset : circumference;
-  const color = score >= 70 ? "text-red-400 stroke-red-400" : score >= 40 ? "text-yellow-400 stroke-yellow-400" : "text-green-400 stroke-green-400";
+  const color = score >= 70 ? "text-red-400 stroke-red-400" : score >= 40 ? "text-yellow-400 stroke-yellow-400" : "text-emerald-400 stroke-green-400";
 
   return (
     <div className="relative w-10 h-10 flex-shrink-0" title={`${score}% overlap met Autronis`}>
@@ -140,7 +140,7 @@ function ScanProgress() {
       <div className="space-y-1.5">
         {status.concurrenten.map((c) => (
           <div key={c.id} className="flex items-center gap-3 text-xs">
-            {c.status === "voltooid" && <CheckCircle2 className="h-3.5 w-3.5 text-green-400 flex-shrink-0" />}
+            {c.status === "voltooid" && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 flex-shrink-0" />}
             {c.status === "bezig" && <Loader2 className="h-3.5 w-3.5 animate-spin text-autronis-accent flex-shrink-0" />}
             {c.status === "wachtend" && <div className="h-3.5 w-3.5 rounded-full border border-autronis-border flex-shrink-0" />}
             {c.status === "mislukt" && <XCircle className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />}
@@ -370,8 +370,8 @@ function PositioningOverview({ concurrenten }: { concurrenten: Concurrent[] }) {
         <h2 className="text-base font-semibold text-autronis-text-primary">Positionering</h2>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="rounded-xl bg-green-500/5 border border-green-500/20 p-4">
-          <p className="text-xs font-semibold text-green-400 uppercase tracking-wide mb-2">Ons unieke aanbod</p>
+        <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 p-4">
+          <p className="text-xs font-semibold text-emerald-400 uppercase tracking-wide mb-2">Ons unieke aanbod</p>
           {uniqueToUs.length > 0 ? (
             <div className="space-y-1">{uniqueToUs.map((s) => <p key={s} className="text-sm text-autronis-text-primary">✓ {s}</p>)}</div>
           ) : (
@@ -704,7 +704,7 @@ function ConcurrentCard({ concurrent, onEdit, onDelete, onScan, index }: {
       {/* Strengths / Weaknesses */}
       {(sterktes.length > 0 || zwaktes.length > 0) && (
         <div className="mb-3 flex gap-3 text-[10px]">
-          {sterktes.length > 0 && <span className="text-green-400/70">+ {sterktes[0]}</span>}
+          {sterktes.length > 0 && <span className="text-emerald-400/70">+ {sterktes[0]}</span>}
           {zwaktes.length > 0 && <span className="text-red-400/70">− {zwaktes[0]}</span>}
         </div>
       )}
@@ -774,7 +774,7 @@ function VergelijkingsMatrix({ concurrenten }: { concurrenten: Concurrent[] }) {
               >
                 <td className={cn("py-2 px-2 transition-colors", hoveredRow === dienst ? "text-autronis-accent font-medium" : "text-autronis-text-primary")}>{dienst}</td>
                 <td className="text-center py-2">
-                  {autronisHeeft ? <CheckCircle2 className="w-4 h-4 text-green-400 mx-auto" /> : <span className="text-autronis-text-secondary/30">—</span>}
+                  {autronisHeeft ? <CheckCircle2 className="w-4 h-4 text-emerald-400 mx-auto" /> : <span className="text-autronis-text-secondary/30">—</span>}
                 </td>
                 {concurrenten.map((c, colIdx) => {
                   const cd: string[] = parseJson(c.diensten, []);
@@ -788,7 +788,7 @@ function VergelijkingsMatrix({ concurrenten }: { concurrenten: Concurrent[] }) {
                     >
                       {heeft
                         ? (autronisHeeft ? <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 mx-auto" /> : <CheckCircle2 className="w-3.5 h-3.5 text-autronis-text-secondary/50 mx-auto" />)
-                        : (autronisHeeft ? <span className="text-green-400 text-[10px] font-bold">✓</span> : <span className="text-autronis-text-secondary/20">—</span>)
+                        : (autronisHeeft ? <span className="text-emerald-400 text-[10px] font-bold">✓</span> : <span className="text-autronis-text-secondary/20">—</span>)
                       }
                     </td>
                   );
@@ -801,7 +801,7 @@ function VergelijkingsMatrix({ concurrenten }: { concurrenten: Concurrent[] }) {
             <td className="text-center py-2"><span className="text-autronis-accent font-bold">—</span></td>
             {concurrenten.map((c) => (
               <td key={c.id} className="text-center py-2">
-                <span className={cn("font-bold tabular-nums", (c.overlapScore ?? 0) >= 70 ? "text-red-400" : (c.overlapScore ?? 0) >= 40 ? "text-yellow-400" : "text-green-400")}>
+                <span className={cn("font-bold tabular-nums", (c.overlapScore ?? 0) >= 70 ? "text-red-400" : (c.overlapScore ?? 0) >= 40 ? "text-yellow-400" : "text-emerald-400")}>
                   {c.overlapScore ?? "—"}%
                 </span>
               </td>
@@ -815,9 +815,9 @@ function VergelijkingsMatrix({ concurrenten }: { concurrenten: Concurrent[] }) {
         </tbody>
       </table>
       <div className="mt-4 flex items-center gap-4 text-[10px] text-autronis-text-secondary">
-        <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-green-400" /> Autronis biedt, concurrent niet</span>
+        <span className="flex items-center gap-1"><CheckCircle2 className="w-3 h-3 text-emerald-400" /> Autronis biedt, concurrent niet</span>
         <span className="flex items-center gap-1"><AlertTriangle className="w-3 h-3 text-yellow-400" /> Directe concurrentie</span>
-        <span className="flex items-center gap-1 text-green-400 font-bold">✓ Uniek voordeel Autronis</span>
+        <span className="flex items-center gap-1 text-emerald-400 font-bold">✓ Uniek voordeel Autronis</span>
       </div>
     </div>
   );
@@ -958,7 +958,7 @@ export default function ConcurrentenPage() {
             {[
               { label: "Actief", value: kpis?.totaal ?? 0, kleur: "text-autronis-text-primary" },
               { label: "Wijzigingen", value: kpis?.wijzigingenDezeWeek ?? 0, kleur: "text-autronis-accent" },
-              { label: "Groeiend", value: kpis?.groeiend ?? 0, kleur: "text-green-400" },
+              { label: "Groeiend", value: kpis?.groeiend ?? 0, kleur: "text-emerald-400" },
             ].map((kpi, i) => (
               <motion.div
                 key={kpi.label}
@@ -1023,11 +1023,11 @@ export default function ConcurrentenPage() {
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-3 bg-green-500/8 border border-green-500/20 rounded-xl px-5 py-3"
+              className="flex items-center gap-3 bg-green-500/8 border border-emerald-500/20 rounded-xl px-5 py-3"
             >
-              <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-              <p className="text-sm text-green-400 font-medium">Scan voltooid — data is bijgewerkt</p>
-              <button onClick={() => setScanVoltooid(false)} className="ml-auto p-1 text-green-400/50 hover:text-green-400 transition-colors">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <p className="text-sm text-emerald-400 font-medium">Scan voltooid — data is bijgewerkt</p>
+              <button onClick={() => setScanVoltooid(false)} className="ml-auto p-1 text-emerald-400/50 hover:text-emerald-400 transition-colors">
                 <X className="w-3.5 h-3.5" />
               </button>
             </motion.div>
@@ -1114,7 +1114,7 @@ export default function ConcurrentenPage() {
                 <div className="rounded-lg border-l-2 border-yellow-400 bg-yellow-500/5 px-2.5 py-1.5 text-[11px] text-yellow-400/80">
                   Kans: zij missen AI agents — positioneer als premium alternatief
                 </div>
-                <div className="text-[10px] text-green-400/70">+ Sterke lokale aanwezigheid</div>
+                <div className="text-[10px] text-emerald-400/70">+ Sterke lokale aanwezigheid</div>
                 <div className="text-[10px] text-red-400/70">− Geen custom development</div>
               </div>
             </div>

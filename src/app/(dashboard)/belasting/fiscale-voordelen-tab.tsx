@@ -39,7 +39,7 @@ interface AnalyseData {
 
 const SUBSIDIE_INFO: Record<string, { label: string; color: string; bg: string; desc: string }> = {
   WBSO: { label: "WBSO", color: "text-blue-400", bg: "bg-blue-500/15", desc: "R&D aftrek — innovatieve software/AI development" },
-  MIA: { label: "MIA", color: "text-green-400", bg: "bg-green-500/15", desc: "Milieu-investeringsaftrek — duurzame bedrijfsmiddelen" },
+  MIA: { label: "MIA", color: "text-emerald-400", bg: "bg-emerald-500/15", desc: "Milieu-investeringsaftrek — duurzame bedrijfsmiddelen" },
   VAMIL: { label: "VAMIL", color: "text-emerald-400", bg: "bg-emerald-500/15", desc: "Willekeurige afschrijving milieu-investeringen" },
   EIA: { label: "EIA", color: "text-yellow-400", bg: "bg-yellow-500/15", desc: "Energie-investeringsaftrek — energiebesparend" },
 };
@@ -129,16 +129,16 @@ export function FiscaleVoordelenTab() {
 
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
           <div className="flex items-center gap-2 mb-2">
-            <PiggyBank className="w-4 h-4 text-green-400" />
+            <PiggyBank className="w-4 h-4 text-emerald-400" />
             <p className="text-xs text-autronis-text-secondary">KIA aftrek</p>
           </div>
-          <p className={cn("text-2xl font-bold", kiaInRange ? "text-green-400" : "text-autronis-text-primary")}>
+          <p className={cn("text-2xl font-bold", kiaInRange ? "text-emerald-400" : "text-autronis-text-primary")}>
             <AnimatedNumber value={f.totaalKIA} format={n => formatBedrag(n)} />
           </p>
           {!kiaInRange && f.totaalInvesteringen < f.kiaMinimum && (
             <p className="text-[10px] text-orange-400 mt-1">Nog {formatBedrag(f.kiaMinimum - f.totaalInvesteringen)} investeren voor KIA</p>
           )}
-          {kiaInRange && <p className="text-[10px] text-green-400 mt-1">KIA van toepassing</p>}
+          {kiaInRange && <p className="text-[10px] text-emerald-400 mt-1">KIA van toepassing</p>}
         </div>
 
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -193,9 +193,9 @@ export function FiscaleVoordelenTab() {
 
         {/* KIA Info cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className={cn("rounded-xl p-3 border", kiaInRange ? "bg-green-500/5 border-green-500/20" : "bg-autronis-bg border-autronis-border")}>
+          <div className={cn("rounded-xl p-3 border", kiaInRange ? "bg-emerald-500/5 border-emerald-500/20" : "bg-autronis-bg border-autronis-border")}>
             <p className="text-xs text-autronis-text-secondary">Status</p>
-            <p className={cn("text-sm font-bold mt-0.5", kiaInRange ? "text-green-400" : "text-orange-400")}>
+            <p className={cn("text-sm font-bold mt-0.5", kiaInRange ? "text-emerald-400" : "text-orange-400")}>
               {kiaInRange ? "Van toepassing" : f.totaalInvesteringen > f.kiaMaximum ? "Boven maximum" : "Onder minimum"}
             </p>
           </div>
@@ -241,7 +241,7 @@ export function FiscaleVoordelenTab() {
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <span className="text-[10px] text-autronis-text-tertiary">{new Date(inv.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}</span>
                           {inv.kiaAftrek > 0 && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
                               KIA: {formatBedrag(inv.kiaAftrek)}
                             </span>
                           )}
@@ -328,7 +328,7 @@ export function FiscaleVoordelenTab() {
           </div>
           <div className="bg-autronis-bg rounded-xl p-4 border border-autronis-border">
             <p className="text-xs text-autronis-text-secondary">KIA aftrek</p>
-            <p className="text-lg font-bold text-green-400 mt-1 tabular-nums">{formatBedrag(f.totaalKIA)}</p>
+            <p className="text-lg font-bold text-emerald-400 mt-1 tabular-nums">{formatBedrag(f.totaalKIA)}</p>
           </div>
           <div className="bg-autronis-bg rounded-xl p-4 border border-autronis-border">
             <p className="text-xs text-autronis-text-secondary">BTW terug te vragen</p>
@@ -339,9 +339,9 @@ export function FiscaleVoordelenTab() {
         {/* Alerts */}
         <div className="mt-4 space-y-2">
           {f.totaalInvesteringen >= f.kiaMinimum && f.totaalInvesteringen <= f.kiaMaximum && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-500/5 border border-green-500/20 rounded-lg">
-              <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
-              <p className="text-xs text-green-400">KIA van toepassing — bewaar alle facturen voor je jaarrekening</p>
+            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/5 border border-emerald-500/20 rounded-lg">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+              <p className="text-xs text-emerald-400">KIA van toepassing — bewaar alle facturen voor je jaarrekening</p>
             </div>
           )}
           {f.totaalInvesteringen < f.kiaMinimum && f.totaalInvesteringen > 0 && (

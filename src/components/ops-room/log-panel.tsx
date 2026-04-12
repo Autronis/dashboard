@@ -15,7 +15,7 @@ function timeAgo(ts: string): string {
 const typeConfig: Record<LogEntry["type"], { icon: typeof Terminal; color: string; rowBg: string; label: string }> = {
   info:          { icon: Terminal,     color: "text-autronis-text-tertiary", rowBg: "",                    label: "›" },
   task_start:    { icon: Play,         color: "text-blue-400",               rowBg: "bg-blue-500/[0.04]",  label: "▶" },
-  task_complete: { icon: CheckCircle2, color: "text-green-400",              rowBg: "bg-green-500/[0.04]", label: "✓" },
+  task_complete: { icon: CheckCircle2, color: "text-emerald-400",              rowBg: "bg-green-500/[0.04]", label: "✓" },
   review:        { icon: CheckCircle2, color: "text-purple-400",             rowBg: "bg-purple-500/[0.04]",label: "⟳" },
   error:         { icon: AlertCircle,  color: "text-red-400",                rowBg: "bg-red-500/[0.04]",   label: "✗" },
   approval:      { icon: Clock,        color: "text-amber-400",              rowBg: "bg-amber-500/[0.04]", label: "⏸" },
@@ -26,7 +26,7 @@ type LogFilter = "all" | "error" | "task_complete" | "approval";
 const FILTER_OPTIONS: { key: LogFilter; label: string; color: string }[] = [
   { key: "all",           label: "Alles",      color: "text-autronis-text-secondary" },
   { key: "error",         label: "Fouten",     color: "text-red-400" },
-  { key: "task_complete", label: "Taken",      color: "text-green-400" },
+  { key: "task_complete", label: "Taken",      color: "text-emerald-400" },
   { key: "approval",      label: "Approval",   color: "text-amber-400" },
 ];
 
@@ -56,7 +56,7 @@ export function LogPanel() {
       <div className="flex items-center gap-2 px-4 py-2.5 border-b border-autronis-border/30">
         <Terminal className="w-3.5 h-3.5 text-autronis-accent" />
         <span className="text-xs font-semibold text-autronis-text-primary">Agent Logs</span>
-        <span className="flex items-center gap-1 text-[9px] text-green-400">
+        <span className="flex items-center gap-1 text-[9px] text-emerald-400">
           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
           live
         </span>

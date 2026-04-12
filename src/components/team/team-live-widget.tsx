@@ -5,7 +5,7 @@ import { Users, CheckSquare, Zap, Clock } from "lucide-react";
 
 const TYPE_CONFIG: Record<string, { icon: typeof Zap; kleur: string; label: string }> = {
   taak_gepakt: { icon: Zap, kleur: "text-blue-400", label: "gestart" },
-  taak_afgerond: { icon: CheckSquare, kleur: "text-green-400", label: "afgerond" },
+  taak_afgerond: { icon: CheckSquare, kleur: "text-emerald-400", label: "afgerond" },
   taak_update: { icon: Clock, kleur: "text-autronis-accent", label: "update" },
   status_wijziging: { icon: Zap, kleur: "text-orange-400", label: "status" },
   bezig_met: { icon: Clock, kleur: "text-purple-400", label: "bezig" },
@@ -49,7 +49,7 @@ export function TeamLiveWidget() {
         <h3 className="text-sm font-semibold text-autronis-text-primary">Team Live</h3>
         <div className="ml-auto flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-green-500 status-pulse" />
-          <span className="text-[10px] text-green-400 font-medium">{bezigMet.length} actief</span>
+          <span className="text-[10px] text-emerald-400 font-medium">{bezigMet.length} actief</span>
         </div>
       </div>
 
@@ -68,7 +68,7 @@ export function TeamLiveWidget() {
                 <span className="text-xs font-medium text-autronis-text-primary">{t.gebruikerNaam}</span>
                 <div className="ml-auto flex items-center gap-1">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  <span className="text-[10px] text-green-400">bezig</span>
+                  <span className="text-[10px] text-emerald-400">bezig</span>
                 </div>
               </div>
               <p className="text-xs text-autronis-text-secondary ml-8 truncate">{t.taakTitel}</p>

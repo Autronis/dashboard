@@ -63,7 +63,7 @@ const CATEGORIE_OPTIES = [
 const STATUS_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   onbekend: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Onbekend" },
   gecategoriseerd: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Gecategoriseerd" },
-  gematcht: { bg: "bg-green-500/15", text: "text-green-400", label: "Gematcht" },
+  gematcht: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Gematcht" },
 };
 
 export function BankImportTab() {
@@ -360,14 +360,14 @@ export function BankImportTab() {
                     </td>
                     <td className={cn(
                       "py-3 px-4 text-sm font-semibold text-right tabular-nums whitespace-nowrap",
-                      t.type === "bij" ? "text-green-400" : "text-red-400"
+                      t.type === "bij" ? "text-emerald-400" : "text-red-400"
                     )}>
                       {t.type === "af" ? "-" : "+"}{formatBedrag(t.bedrag)}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-semibold",
-                        t.type === "bij" ? "bg-green-500/15 text-green-400" : "bg-red-500/15 text-red-400"
+                        t.type === "bij" ? "bg-emerald-500/15 text-emerald-400" : "bg-red-500/15 text-red-400"
                       )}>
                         {t.type === "bij" ? "Bij" : "Af"}
                       </span>
@@ -522,7 +522,7 @@ export function BankImportTab() {
                       </td>
                       <td className={cn(
                         "py-2.5 px-3 text-sm font-semibold text-right tabular-nums whitespace-nowrap",
-                        t.type === "bij" ? "text-green-400" : "text-red-400"
+                        t.type === "bij" ? "text-emerald-400" : "text-red-400"
                       )}>
                         {t.type === "af" ? "-" : "+"}{formatBedrag(t.bedrag)}
                       </td>
@@ -560,7 +560,7 @@ export function BankImportTab() {
                         {t.type === "af" && (
                           t.bonPad ? (
                             <a href={`/api/assets/file?path=${encodeURIComponent(t.bonPad)}`} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-[10px] text-green-400 hover:underline" title="Bon bekijken">
+                              className="inline-flex items-center gap-1 text-[10px] text-emerald-400 hover:underline" title="Bon bekijken">
                               <Paperclip className="w-3 h-3" /> ✓
                             </a>
                           ) : (

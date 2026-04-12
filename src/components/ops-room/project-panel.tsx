@@ -34,7 +34,7 @@ interface TeamLiveData {
 }
 
 const STATUS_COLORS: Record<string, { bg: string; text: string; label: string }> = {
-  actief: { bg: "bg-green-500/15", text: "text-green-400", label: "Actief" },
+  actief: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Actief" },
   in_progress: { bg: "bg-amber-500/15", text: "text-amber-400", label: "In progress" },
   concept: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Concept" },
   afgerond: { bg: "bg-gray-500/15", text: "text-gray-400", label: "Afgerond" },

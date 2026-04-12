@@ -56,7 +56,7 @@ function OccupancyRing({ active, idle, error, offline, total }: {
 }
 
 function costColorClass(cost: number): string {
-  if (cost < 1) return "text-green-400";
+  if (cost < 1) return "text-emerald-400";
   if (cost < 5) return "text-amber-400";
   return "text-red-400";
 }
@@ -87,7 +87,7 @@ export function StatusBar({ agents, isLive = false }: StatusBarProps) {
         <div className="space-y-1 min-w-[100px]">
           <p className="text-xs font-semibold text-autronis-text-primary">Bezetting</p>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-            {active > 0 && <span className="text-[10px] text-green-400 font-medium">{active} actief</span>}
+            {active > 0 && <span className="text-[10px] text-emerald-400 font-medium">{active} actief</span>}
             {idle > 0 && <span className="text-[10px] text-gray-400">{idle} idle</span>}
             {errors > 0 && <span className="text-[10px] text-red-400 font-medium">{errors} fout</span>}
             {offline > 0 && <span className="text-[10px] text-gray-600">{offline} offline</span>}

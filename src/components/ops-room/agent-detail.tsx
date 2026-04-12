@@ -47,12 +47,12 @@ const roleLabels: Record<AgentRole, string> = {
 
 const roleColors: Record<AgentRole, string> = {
   manager: "text-amber-400", builder: "text-blue-400", reviewer: "text-purple-400",
-  architect: "text-amber-400", assistant: "text-autronis-accent", automation: "text-green-400",
+  architect: "text-amber-400", assistant: "text-autronis-accent", automation: "text-emerald-400",
 };
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   idle: { label: "Stand-by", color: "text-gray-400" },
-  working: { label: "Actief", color: "text-green-400" },
+  working: { label: "Actief", color: "text-emerald-400" },
   reviewing: { label: "Reviewen", color: "text-purple-400" },
   error: { label: "Fout", color: "text-red-400" },
   offline: { label: "Offline", color: "text-gray-500" },
@@ -112,7 +112,7 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
                   <h3 className="font-bold text-autronis-text-primary text-sm">{agent.naam}</h3>
                   <span className={cn(
                     "text-[9px] font-semibold px-1.5 py-0.5 rounded-full",
-                    agent.status === "working" ? "bg-green-500/15 text-green-400" :
+                    agent.status === "working" ? "bg-emerald-500/15 text-emerald-400" :
                     agent.status === "reviewing" ? "bg-purple-500/15 text-purple-400" :
                     agent.status === "error" ? "bg-red-500/15 text-red-400" :
                     "bg-gray-500/15 text-gray-400"
@@ -140,8 +140,8 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
             return (
               <div className="p-3 rounded-lg bg-autronis-bg border border-autronis-border/50">
                 <div className="flex items-center gap-1.5 mb-1">
-                  <Activity className="w-3 h-3 text-green-400" />
-                  <span className="text-[10px] font-semibold text-green-400">Huidige taak</span>
+                  <Activity className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[10px] font-semibold text-emerald-400">Huidige taak</span>
                 </div>
                 <p className="text-xs text-autronis-text-primary font-medium">{agent.huidigeTaak.beschrijving}</p>
                 <div className="flex items-center gap-3 mt-1.5 text-[10px] text-autronis-text-tertiary">
@@ -208,7 +208,7 @@ export function AgentDetail({ agent, recentTasks, onClose }: AgentDetailProps) {
                   <div key={task.id}
                     className="flex items-center gap-2 py-1 px-1.5 rounded hover:bg-autronis-bg/50 text-[11px]"
                   >
-                    <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
+                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
                     <span className="text-autronis-text-primary truncate flex-1">{task.beschrijving}</span>
                     <span className="text-autronis-text-tertiary shrink-0 text-[9px]">{timeAgo(task.tijdstip)}</span>
                   </div>

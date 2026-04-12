@@ -211,8 +211,8 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
         </div>
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center">
-              <TrendingUp className="w-4.5 h-4.5 text-green-400" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <TrendingUp className="w-4.5 h-4.5 text-emerald-400" />
             </div>
             <p className="text-xs text-autronis-text-secondary uppercase tracking-wide">Registraties</p>
           </div>
@@ -352,7 +352,7 @@ export function TabTeam({ van, tot }: { van: string; tot: string }) {
                     </span>
                   )}
                   {g.deepWorkMin > 0 && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-green-500/10 text-xs font-medium text-green-400">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-xs font-medium text-emerald-400">
                       <Zap className="w-3 h-3" />
                       {formatMinuten(g.deepWorkMin)} deep work
                     </span>

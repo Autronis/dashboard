@@ -106,7 +106,7 @@ const typeConfig: Record<string, { icon: typeof Receipt; color: string; label: s
 const btwStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
   open: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Open" },
   ingediend: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Ingediend" },
-  betaald: { bg: "bg-green-500/15", text: "text-green-400", label: "Betaald" },
+  betaald: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Betaald" },
 };
 
 const investeringCategorieen = [
@@ -133,7 +133,7 @@ const aanslagTypes = [
 
 const aanslagStatusConfig: Record<string, { bg: string; text: string }> = {
   open: { bg: "bg-yellow-500/15", text: "text-yellow-400" },
-  betaald: { bg: "bg-green-500/15", text: "text-green-400" },
+  betaald: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
   deels_betaald: { bg: "bg-blue-500/15", text: "text-blue-400" },
 };
 
@@ -141,7 +141,7 @@ const aanslagStatusConfig: Record<string, { bg: string; text: string }> = {
 
 function getStatusIndicator(status: "ok" | "warning" | "danger") {
   const config = {
-    ok: { bg: "bg-green-500/15", text: "text-green-400", dot: "bg-green-400" },
+    ok: { bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-green-400" },
     warning: { bg: "bg-yellow-500/15", text: "text-yellow-400", dot: "bg-yellow-400" },
     danger: { bg: "bg-red-500/15", text: "text-red-400", dot: "bg-red-400" },
   };
@@ -796,7 +796,7 @@ export default function BelastingPage() {
               <span className="text-sm font-semibold text-autronis-text-primary">Belastinggezonheid</span>
               <span className={cn(
                 "text-sm font-bold tabular-nums",
-                optimalisatieOk >= 5 ? "text-green-400" : optimalisatieOk >= 3 ? "text-yellow-400" : "text-red-400"
+                optimalisatieOk >= 5 ? "text-emerald-400" : optimalisatieOk >= 3 ? "text-yellow-400" : "text-red-400"
               )}>
                 {optimalisatieOk}/6
                 {tipsData && tipsData.totaal > 0 && (
@@ -904,7 +904,7 @@ export default function BelastingPage() {
                       tab.id === "acties"
                         ? (isActive ? "bg-red-400/20 text-red-300" : "bg-red-500/15 text-red-400")
                         : tab.id === "optimalisatie" && tipsData && tipsData.toegepast === tipsData.totaal && tipsData.totaal > 0
-                        ? (isActive ? "bg-green-400/20 text-green-300" : "bg-green-500/15 text-green-400")
+                        ? (isActive ? "bg-green-400/20 text-green-300" : "bg-emerald-500/15 text-emerald-400")
                         : (isActive ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary")
                     )}>
                       {badge}
@@ -944,12 +944,12 @@ export default function BelastingPage() {
                     "p-5 rounded-xl border transition-all duration-300",
                     btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
                     btwStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                    "border-green-500/30 bg-green-500/5"
+                    "border-emerald-500/30 bg-emerald-500/5"
                   )}
                   style={glowStyle(btwStatus)}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-green-400" : btwStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-emerald-400" : btwStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge
                       status={btwStatus}
                       label={btwStatus === "ok" ? "Betaald" : btwStatus === "warning" ? "Ingediend" : "Actie nodig"}
@@ -977,12 +977,12 @@ export default function BelastingPage() {
                     "p-5 rounded-xl border transition-all duration-300",
                     reserveringStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
                     reserveringStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                    "border-green-500/30 bg-green-500/5"
+                    "border-emerald-500/30 bg-emerald-500/5"
                   )}
                   style={glowStyle(reserveringStatus)}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <PiggyBank className={cn("w-5 h-5", reserveringStatus === "ok" ? "text-green-400" : reserveringStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <PiggyBank className={cn("w-5 h-5", reserveringStatus === "ok" ? "text-emerald-400" : reserveringStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge
                       status={reserveringStatus}
                       label={reserveringStatus === "ok" ? "Op schema" : reserveringStatus === "warning" ? "Let op" : "Reserveren"}
@@ -1007,12 +1007,12 @@ export default function BelastingPage() {
                     "p-5 rounded-xl border transition-all duration-300",
                     urenStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
                     urenStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
-                    "border-green-500/30 bg-green-500/5"
+                    "border-emerald-500/30 bg-emerald-500/5"
                   )}
                   style={glowStyle(urenStatus)}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <Timer className={cn("w-5 h-5", urenStatus === "ok" ? "text-green-400" : urenStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
+                    <Timer className={cn("w-5 h-5", urenStatus === "ok" ? "text-emerald-400" : urenStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
                     <StatusBadge
                       status={urenStatus}
                       label={urenStatus === "ok" ? "Behaald" : urenStatus === "warning" ? "Risico" : "Achterstand"}
@@ -1060,7 +1060,7 @@ export default function BelastingPage() {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-3" />
+                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mx-auto mb-3" />
                   </motion.div>
                   <p className="text-autronis-text-primary font-semibold">Alle deadlines afgerond!</p>
                   <p className="text-sm text-autronis-text-secondary mt-1">Geen openstaande verplichtingen</p>
@@ -1264,7 +1264,7 @@ export default function BelastingPage() {
                             </div>
                             <div>
                               <p className="text-xs text-autronis-text-secondary">Af te dragen</p>
-                              <p className={cn("text-sm font-bold tabular-nums", netto > 0 ? "text-red-400" : "text-green-400")}>
+                              <p className={cn("text-sm font-bold tabular-nums", netto > 0 ? "text-red-400" : "text-emerald-400")}>
                                 {formatBedrag(netto)}
                               </p>
                             </div>
@@ -1288,13 +1288,13 @@ export default function BelastingPage() {
                             {(aangifte.status === "open" || aangifte.status === "ingediend") && (
                               <button
                                 onClick={() => handleBtwStatus(aangifte, "betaald")}
-                                className="px-3 py-2 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                                className="px-3 py-2 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
                               >
                                 Betaald
                               </button>
                             )}
                             {aangifte.status === "betaald" && (
-                              <div className="flex items-center gap-1.5 px-3 py-2 text-green-400 text-xs font-semibold">
+                              <div className="flex items-center gap-1.5 px-3 py-2 text-emerald-400 text-xs font-semibold">
                                 <CheckCircle2 className="w-3.5 h-3.5" /> Afgerond
                               </div>
                             )}
@@ -1360,8 +1360,8 @@ export default function BelastingPage() {
                         </div>
                       )}
                       {urenCriterium.voldoet && (
-                        <div className="p-4 bg-green-500/5 border border-green-500/20 rounded-xl">
-                          <p className="text-sm font-semibold text-green-400">Urencriterium behaald!</p>
+                        <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
+                          <p className="text-sm font-semibold text-emerald-400">Urencriterium behaald!</p>
                           <p className="text-xs text-autronis-text-secondary mt-1">
                             Je hebt recht op de zelfstandigenaftrek en MKB-winstvrijstelling.
                           </p>
@@ -1385,13 +1385,13 @@ export default function BelastingPage() {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                           <p className="text-xs text-autronis-text-secondary mb-1">Zelfstandigenaftrek</p>
-                          <p className={cn("text-lg font-bold tabular-nums", urenCriterium.zelfstandigenaftrek > 0 ? "text-green-400" : "text-autronis-text-secondary")}>
+                          <p className={cn("text-lg font-bold tabular-nums", urenCriterium.zelfstandigenaftrek > 0 ? "text-emerald-400" : "text-autronis-text-secondary")}>
                             {urenCriterium.zelfstandigenaftrek > 0 ? formatBedrag(urenCriterium.zelfstandigenaftrek) : "Niet bereikt"}
                           </p>
                         </div>
                         <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border">
                           <p className="text-xs text-autronis-text-secondary mb-1">MKB-winstvrijstelling</p>
-                          <p className={cn("text-lg font-bold", urenCriterium.mkbVrijstelling ? "text-green-400" : "text-autronis-text-secondary")}>
+                          <p className={cn("text-lg font-bold", urenCriterium.mkbVrijstelling ? "text-emerald-400" : "text-autronis-text-secondary")}>
                             {urenCriterium.mkbVrijstelling ? "13,31%" : "Niet bereikt"}
                           </p>
                         </div>
@@ -1457,10 +1457,10 @@ export default function BelastingPage() {
                           )}
                           onClick={() => handleToggleDeadline(deadline)}
                         >
-                          <div className={cn("p-2 rounded-lg relative", isAfgerond ? "bg-green-500/10" : "bg-autronis-bg/50")}>
+                          <div className={cn("p-2 rounded-lg relative", isAfgerond ? "bg-emerald-500/10" : "bg-autronis-bg/50")}>
                             {isAfgerond ? (
                               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20 }}>
-                                <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                               </motion.div>
                             ) : (
                               <>
@@ -1474,7 +1474,7 @@ export default function BelastingPage() {
                               <span className={cn("text-base font-medium", isAfgerond ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>
                                 {deadline.omschrijving}
                               </span>
-                              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", isAfgerond ? "bg-green-500/15 text-green-400" : `bg-${config.color.replace("text-", "")}/15 ${config.color}`)}>
+                              <span className={cn("text-xs px-2 py-0.5 rounded-full font-semibold", isAfgerond ? "bg-emerald-500/15 text-emerald-400" : `bg-${config.color.replace("text-", "")}/15 ${config.color}`)}>
                                 {config.label}
                               </span>
                             </div>
@@ -1482,7 +1482,7 @@ export default function BelastingPage() {
                           </div>
                           <div className="text-right flex-shrink-0">
                             {isAfgerond ? (
-                              <span className="text-sm font-medium text-green-400">Afgerond</span>
+                              <span className="text-sm font-medium text-emerald-400">Afgerond</span>
                             ) : isOverdue ? (
                               <div className="flex items-center gap-1.5">
                                 <AlertTriangle className="w-4 h-4 text-red-400" />
@@ -1542,7 +1542,7 @@ export default function BelastingPage() {
                           {aanslag.status !== "betaald" && (
                             <button
                               onClick={() => handleMarkAanslagBetaald(aanslag.id, aanslag.bedrag)}
-                              className="px-2.5 py-1 bg-green-500/15 text-green-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
+                              className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 rounded-lg text-xs font-semibold hover:bg-green-500/25 transition-colors"
                             >
                               Betaald
                             </button>
@@ -1597,7 +1597,7 @@ export default function BelastingPage() {
                         { label: "Omzet", value: wvData.brutoOmzet, color: "text-emerald-400" },
                         { label: "− Kosten", value: wvData.totaleKosten, color: "text-orange-400", subtract: true },
                         ...(wvData.afschrijvingen > 0 ? [{ label: "− Afschr.", value: wvData.afschrijvingen, color: "text-orange-300", subtract: true }] : []),
-                        ...(wvData.zelfstandigenaftrek > 0 ? [{ label: "− ZA", value: wvData.zelfstandigenaftrek, color: "text-green-400", subtract: true }] : []),
+                        ...(wvData.zelfstandigenaftrek > 0 ? [{ label: "− ZA", value: wvData.zelfstandigenaftrek, color: "text-emerald-400", subtract: true }] : []),
                         ...(wvData.mkbVrijstelling > 0 ? [{ label: "− MKB", value: wvData.mkbVrijstelling, color: "text-green-300", subtract: true }] : []),
                         { label: "Belastbaar", value: wvData.belastbaarInkomen, color: "text-blue-400" },
                         { label: "Belasting", value: wvData.geschatteBelasting, color: "text-purple-400" },
@@ -1635,27 +1635,27 @@ export default function BelastingPage() {
                       <h3 className="text-sm font-semibold text-autronis-text-secondary mb-3">Aftrekposten</h3>
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         {wvData.zelfstandigenaftrek > 0 && (
-                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between">
                             <span className="text-sm text-autronis-text-primary">Zelfstandigenaftrek</span>
-                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.zelfstandigenaftrek)}</span>
+                            <span className="text-sm font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData.zelfstandigenaftrek)}</span>
                           </div>
                         )}
                         {wvData.mkbVrijstelling > 0 && (
-                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between">
                             <span className="text-sm text-autronis-text-primary">MKB-vrijstelling</span>
-                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.mkbVrijstelling)}</span>
+                            <span className="text-sm font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData.mkbVrijstelling)}</span>
                           </div>
                         )}
                         {wvData.afschrijvingen > 0 && (
-                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between">
                             <span className="text-sm text-autronis-text-primary">Afschrijvingen</span>
-                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.afschrijvingen)}</span>
+                            <span className="text-sm font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData.afschrijvingen)}</span>
                           </div>
                         )}
                         {wvData.kmAftrek > 0 && (
-                          <div className="p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-center justify-between">
+                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between">
                             <span className="text-sm text-autronis-text-primary">Km-aftrek</span>
-                            <span className="text-sm font-semibold text-green-400 tabular-nums">{formatBedrag(wvData.kmAftrek)}</span>
+                            <span className="text-sm font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData.kmAftrek)}</span>
                           </div>
                         )}
                       </div>
@@ -1697,7 +1697,7 @@ export default function BelastingPage() {
                                 <td className="py-3 px-3 font-medium text-autronis-text-primary">Q{q.kwartaal}</td>
                                 <td className="py-3 px-3 text-right tabular-nums text-autronis-text-primary">{formatBedrag(q.omzet)}</td>
                                 <td className="py-3 px-3 text-right tabular-nums text-orange-400">{formatBedrag(q.kosten)}</td>
-                                <td className={cn("py-3 px-3 text-right tabular-nums font-semibold", q.winst >= 0 ? "text-green-400" : "text-red-400")}>
+                                <td className={cn("py-3 px-3 text-right tabular-nums font-semibold", q.winst >= 0 ? "text-emerald-400" : "text-red-400")}>
                                   {formatBedrag(q.winst)}
                                 </td>
                               </tr>
@@ -1745,7 +1745,7 @@ export default function BelastingPage() {
                     </div>
                     <div className="p-3 bg-autronis-bg/30 rounded-xl border border-autronis-border text-center">
                       <p className="text-xs text-autronis-text-secondary mb-1">KIA aftrek</p>
-                      <p className="text-lg font-bold text-green-400 tabular-nums">{formatBedrag(berekenKIA(totaalInvestering))}</p>
+                      <p className="text-lg font-bold text-emerald-400 tabular-nums">{formatBedrag(berekenKIA(totaalInvestering))}</p>
                     </div>
                   </div>
                   {/* Table */}
@@ -1832,12 +1832,12 @@ export default function BelastingPage() {
                   {/* Smart insight */}
                   <div className={cn(
                     "p-4 rounded-xl border",
-                    reserveringTekort > 0 ? "bg-red-500/5 border-red-500/20" : "bg-green-500/5 border-green-500/20"
+                    reserveringTekort > 0 ? "bg-red-500/5 border-red-500/20" : "bg-emerald-500/5 border-emerald-500/20"
                   )}>
                     <div className="flex items-start gap-3">
-                      <PiggyBank className={cn("w-5 h-5 flex-shrink-0 mt-0.5", reserveringTekort > 0 ? "text-red-400" : "text-green-400")} />
+                      <PiggyBank className={cn("w-5 h-5 flex-shrink-0 mt-0.5", reserveringTekort > 0 ? "text-red-400" : "text-emerald-400")} />
                       <div>
-                        <p className={cn("text-sm font-semibold", reserveringTekort > 0 ? "text-red-400" : "text-green-400")}>
+                        <p className={cn("text-sm font-semibold", reserveringTekort > 0 ? "text-red-400" : "text-emerald-400")}>
                           {reserveringTekort > 0
                             ? `Nog ${formatBedrag(reserveringTekort)} te reserveren`
                             : `${formatBedrag(Math.abs(reserveringTekort))} boven je geschatte belasting`}
@@ -1991,12 +1991,12 @@ export default function BelastingPage() {
                       transition={{ delay: idx * 0.06, duration: 0.25 }}
                       className={cn(
                         "flex items-start gap-3 p-4 rounded-xl border transition-colors",
-                        item.ok ? "border-green-500/20 bg-green-500/5" : "border-autronis-border/50 bg-autronis-bg/20",
+                        item.ok ? "border-emerald-500/20 bg-emerald-500/5" : "border-autronis-border/50 bg-autronis-bg/20",
                         item.highlight ? "border-yellow-500/30 bg-yellow-500/5" : ""
                       )}
                     >
-                      <div className={cn("p-1.5 rounded-lg flex-shrink-0", item.ok ? "bg-green-500/15" : item.highlight ? "bg-yellow-500/15" : "bg-autronis-bg")}>
-                        <Icon className={cn("w-4 h-4", item.ok ? "text-green-400" : item.highlight ? "text-yellow-400" : "text-autronis-text-secondary")} />
+                      <div className={cn("p-1.5 rounded-lg flex-shrink-0", item.ok ? "bg-emerald-500/15" : item.highlight ? "bg-yellow-500/15" : "bg-autronis-bg")}>
+                        <Icon className={cn("w-4 h-4", item.ok ? "text-emerald-400" : item.highlight ? "text-yellow-400" : "text-autronis-text-secondary")} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={cn("text-sm font-medium", item.ok ? "text-autronis-text-primary" : "text-autronis-text-secondary")}>{item.label}</p>
@@ -2005,7 +2005,7 @@ export default function BelastingPage() {
                       <div className="flex-shrink-0">
                         {item.ok ? (
                           <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", stiffness: 400, damping: 20, delay: idx * 0.06 + 0.1 }}>
-                            <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                           </motion.div>
                         ) : item.highlight ? (
                           <AlertTriangle className="w-5 h-5 text-yellow-400" />
@@ -2184,7 +2184,7 @@ export default function BelastingPage() {
                                 className={cn(
                                   "group flex items-start gap-3 p-3 rounded-xl border transition-all",
                                   tip.toegepast
-                                    ? "bg-green-500/5 border-green-500/20"
+                                    ? "bg-emerald-500/5 border-emerald-500/20"
                                     : "bg-autronis-bg/20 border-autronis-border/50 hover:border-autronis-border"
                                 )}
                               >
@@ -2203,7 +2203,7 @@ export default function BelastingPage() {
                                   className="flex-shrink-0 mt-0.5"
                                 >
                                   {tip.toegepast ? (
-                                    <CheckCircle2 className="w-5 h-5 text-green-400" />
+                                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
                                   ) : (
                                     <Square className="w-5 h-5 text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors" />
                                   )}
@@ -2674,7 +2674,7 @@ export default function BelastingPage() {
               {btwVoorbereidingData.bestaandeAangifte ? (
                 <span className={cn("text-xs px-2.5 py-1 rounded-full font-semibold",
                   btwVoorbereidingData.bestaandeAangifte.status === "ingediend" ? "bg-blue-500/15 text-blue-400" :
-                  btwVoorbereidingData.bestaandeAangifte.status === "betaald" ? "bg-green-500/15 text-green-400" :
+                  btwVoorbereidingData.bestaandeAangifte.status === "betaald" ? "bg-emerald-500/15 text-emerald-400" :
                   "bg-amber-500/15 text-amber-400"
                 )}>
                   {btwVoorbereidingData.bestaandeAangifte.status === "ingediend" ? "Ingediend" :
@@ -2763,12 +2763,12 @@ export default function BelastingPage() {
             {/* Saldo */}
             <div className={cn(
               "rounded-xl p-5 text-center",
-              btwVoorbereidingData.saldo > 0 ? "bg-red-500/10 border border-red-500/30" : "bg-green-500/10 border border-green-500/30"
+              btwVoorbereidingData.saldo > 0 ? "bg-red-500/10 border border-red-500/30" : "bg-emerald-500/10 border border-emerald-500/30"
             )}>
               <p className="text-xs text-autronis-text-secondary mb-1">
                 {btwVoorbereidingData.saldo > 0 ? "Te betalen aan de Belastingdienst" : "Terug te ontvangen van de Belastingdienst"}
               </p>
-              <p className={cn("text-2xl font-bold tabular-nums", btwVoorbereidingData.saldo > 0 ? "text-red-400" : "text-green-400")}>
+              <p className={cn("text-2xl font-bold tabular-nums", btwVoorbereidingData.saldo > 0 ? "text-red-400" : "text-emerald-400")}>
                 {formatBedrag(Math.abs(btwVoorbereidingData.saldo))}
               </p>
             </div>

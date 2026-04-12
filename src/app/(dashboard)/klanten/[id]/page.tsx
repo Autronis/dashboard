@@ -54,7 +54,7 @@ import { NoteModal } from "./note-modal";
 import { DocumentModal } from "./document-modal";
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  actief: { bg: "bg-green-500/15", text: "text-green-400", label: "Actief" },
+  actief: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Actief" },
   afgerond: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Afgerond" },
   "on-hold": { bg: "bg-amber-500/15", text: "text-amber-400", label: "On hold" },
   inactief: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Inactief" },
@@ -69,7 +69,7 @@ const notitieTypeConfig: Record<string, { border: string; label: string; badge: 
   afspraak: {
     border: "border-l-green-500",
     label: "Afspraak",
-    badge: "bg-green-500/15 text-green-400",
+    badge: "bg-emerald-500/15 text-emerald-400",
   },
   notitie: {
     border: "border-l-slate-500",
@@ -88,12 +88,12 @@ const docTypeConfig: Record<string, { icon: typeof FileText; color: string }> = 
 const factuurStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  betaald: { bg: "bg-green-500/15", text: "text-green-400", label: "Betaald" },
+  betaald: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Betaald" },
   te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
 };
 
 const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string; bg: string }> = {
-  factuur: { icon: Receipt, color: "text-green-400", bg: "bg-green-500/10" },
+  factuur: { icon: Receipt, color: "text-emerald-400", bg: "bg-emerald-500/10" },
   offerte: { icon: FileCheck, color: "text-blue-400", bg: "bg-blue-500/10" },
   meeting: { icon: CalendarDays, color: "text-purple-400", bg: "bg-purple-500/10" },
   notitie: { icon: MessageSquare, color: "text-amber-400", bg: "bg-amber-500/10" },
@@ -101,7 +101,7 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
 };
 
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  actief: { label: "Actieve klant", bg: "bg-green-500/10", text: "text-green-400", dot: "bg-green-400" },
+  actief: { label: "Actieve klant", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-green-400" },
   stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
   aandacht_nodig: { label: "Aandacht nodig", bg: "bg-red-500/10", text: "text-red-400", dot: "bg-red-400 animate-pulse" },
   inactief: { label: "Inactief", bg: "bg-slate-500/10", text: "text-slate-400", dot: "bg-slate-400" },
@@ -497,7 +497,7 @@ export default function KlantDetailPage() {
           <h3 className="text-sm font-semibold text-autronis-text-secondary uppercase tracking-wide mb-4">Volgende acties</h3>
           {nextActions.length === 0 ? (
             <div className="flex items-center gap-3 text-sm text-autronis-text-secondary/70">
-              <CheckCircle2 className="w-5 h-5 text-green-400" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
               Geen openstaande acties — alles op orde
             </div>
           ) : (
@@ -890,7 +890,7 @@ export default function KlantDetailPage() {
                 };
                 const filterColors: Record<TijdlijnFilter, string> = {
                   alles: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
-                  factuur: "text-green-400 border-green-400/40 bg-green-500/10",
+                  factuur: "text-emerald-400 border-emerald-400/40 bg-emerald-500/10",
                   meeting: "text-purple-400 border-purple-400/40 bg-purple-500/10",
                   notitie: "text-amber-400 border-amber-400/40 bg-amber-500/10",
                   tijdregistratie: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
@@ -973,11 +973,11 @@ export default function KlantDetailPage() {
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-green-500/10">
-                  <Euro className="w-4 h-4 text-green-400" />
+                <div className="p-2 rounded-xl bg-emerald-500/10">
+                  <Euro className="w-4 h-4 text-emerald-400" />
                 </div>
               </div>
-              <p className="text-xl font-bold text-green-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
+              <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
               <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale omzet</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -1148,7 +1148,7 @@ export default function KlantDetailPage() {
                     const statusColors: Record<string, string> = {
                       concept: "bg-slate-500/15 text-slate-400",
                       verzonden: "bg-blue-500/15 text-blue-400",
-                      geaccepteerd: "bg-green-500/15 text-green-400",
+                      geaccepteerd: "bg-emerald-500/15 text-emerald-400",
                       verlopen: "bg-red-500/15 text-red-400",
                       afgewezen: "bg-red-500/15 text-red-400",
                     };

@@ -330,7 +330,7 @@ export default function ApiGebruikPage() {
                         <td className="p-4">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
                             r.provider === "anthropic" ? "bg-orange-500/10 text-orange-400" :
-                            r.provider === "openai" ? "bg-green-500/10 text-green-400" :
+                            r.provider === "openai" ? "bg-emerald-500/10 text-emerald-400" :
                             "bg-blue-500/10 text-blue-400"
                           }`}>
                             {r.provider === "anthropic" ? "Claude" : r.provider === "openai" ? "GPT" : r.provider}

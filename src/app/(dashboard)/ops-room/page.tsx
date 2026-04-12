@@ -286,7 +286,7 @@ export default function OpsRoomPage() {
                 <Radio className="w-4 h-4 text-autronis-accent" />
                 <h1 className="text-base font-bold text-autronis-text-primary">Ops Room</h1>
                 {isLive && (
-                  <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-green-500/15 text-green-400">
+                  <span className="inline-flex items-center gap-1 px-1 py-0.5 rounded text-[8px] font-semibold bg-emerald-500/15 text-emerald-400">
                     <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
                     LIVE
                   </span>

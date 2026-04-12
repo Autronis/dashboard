@@ -29,7 +29,7 @@ import {
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  betaald: { bg: "bg-green-500/15", text: "text-green-400", label: "Betaald" },
+  betaald: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Betaald" },
   te_laat: { bg: "bg-red-500/15", text: "text-red-400", label: "Te laat" },
 };
 
@@ -384,7 +384,7 @@ export default function FacturenPage() {
                               <button onClick={() => inlineVerzondenMutation.mutate(factuur.id)} disabled={inlineVerzondenMutation.isPending} className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-lg text-xs font-semibold transition-all"><Send className="w-3.5 h-3.5" />Verstuur</button>
                             )}
                             {(isVerzonden || effectiveStatus === "te_laat") && (
-                              <button onClick={() => inlineBetaaldMutation.mutate(factuur.id)} disabled={inlineBetaaldMutation.isPending} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all", effectiveStatus === "te_laat" ? "bg-green-500/20 text-green-400 hover:bg-green-500/30" : "opacity-0 group-hover:opacity-100 bg-green-500/15 hover:bg-green-500/25 text-green-400")}><CheckCircle2 className="w-3.5 h-3.5" />Betaald</button>
+                              <button onClick={() => inlineBetaaldMutation.mutate(factuur.id)} disabled={inlineBetaaldMutation.isPending} className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all", effectiveStatus === "te_laat" ? "bg-emerald-500/20 text-emerald-400 hover:bg-green-500/30" : "opacity-0 group-hover:opacity-100 bg-emerald-500/15 hover:bg-green-500/25 text-emerald-400")}><CheckCircle2 className="w-3.5 h-3.5" />Betaald</button>
                             )}
                             <Link href={`/financien/${factuur.id}`} className="p-2 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"><Eye className="w-4 h-4" /></Link>
                             <a href={`/api/facturen/${factuur.id}/pdf`} className="p-2 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"><Download className="w-4 h-4" /></a>
@@ -405,7 +405,7 @@ export default function FacturenPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 px-5 py-3 bg-autronis-card border border-autronis-border rounded-2xl shadow-2xl">
               <span className="text-sm text-autronis-text-secondary">{selectedIds.size} geselecteerd</span>
               {allSelectedAreConcept && <button onClick={() => bulkVerzondenMutation.mutate(selectedIds)} disabled={bulkActie} className="px-3 py-1.5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 rounded-lg text-xs font-semibold transition-colors">Versturen</button>}
-              {allSelectedAreVerzonden && <button onClick={() => bulkBetaaldMutation.mutate(selectedIds)} disabled={bulkActie} className="px-3 py-1.5 bg-green-500/15 hover:bg-green-500/25 text-green-400 rounded-lg text-xs font-semibold transition-colors">Betaald</button>}
+              {allSelectedAreVerzonden && <button onClick={() => bulkBetaaldMutation.mutate(selectedIds)} disabled={bulkActie} className="px-3 py-1.5 bg-emerald-500/15 hover:bg-green-500/25 text-emerald-400 rounded-lg text-xs font-semibold transition-colors">Betaald</button>}
               {allSelectedAreConcept && <button onClick={() => setBulkDeleteDialogOpen(true)} disabled={bulkActie} className="px-3 py-1.5 bg-red-500/15 hover:bg-red-500/25 text-red-400 rounded-lg text-xs font-semibold transition-colors">Verwijderen</button>}
               <button onClick={() => setSelectedIds(new Set())} className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50 transition-colors"><X className="w-4 h-4" /></button>
             </motion.div>

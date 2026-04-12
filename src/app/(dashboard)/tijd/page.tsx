@@ -285,8 +285,8 @@ export default function TijdPage() {
                 <div className={`bg-autronis-card border ${prodBorderColor} rounded-2xl p-4 card-glow`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-green-500/15 flex items-center justify-center shrink-0">
-                        <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+                      <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                        <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
                       </div>
                       <span className="text-[10px] text-autronis-text-secondary uppercase tracking-wide font-medium">
                         Productief

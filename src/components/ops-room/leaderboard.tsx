@@ -127,7 +127,7 @@ export function Leaderboard({ agents }: LeaderboardProps) {
               {/* Stats + bar */}
               <div className="flex flex-col items-end gap-1 shrink-0 min-w-[72px]">
                 <p className="text-[11px] font-bold text-autronis-text-primary flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-green-400" />
+                  <Zap className="w-3 h-3 text-emerald-400" />
                   {agent.voltooideVandaag} taken
                 </p>
                 <div className="w-full h-1 rounded-full bg-autronis-border/30 overflow-hidden">

@@ -86,7 +86,7 @@ function DependencyGraph({ tasks }: { tasks: DbTask[] }) {
                 key={task.id}
                 className={cn(
                   "px-2 py-1.5 rounded-lg border text-[10px] w-[110px]",
-                  task.status === "completed" && "bg-green-500/10 border-green-500/25 text-green-400",
+                  task.status === "completed" && "bg-emerald-500/10 border-green-500/25 text-emerald-400",
                   task.status === "in_progress" && "bg-blue-500/10 border-blue-500/25 text-blue-400",
                   task.status === "review" && "bg-purple-500/10 border-purple-500/25 text-purple-400",
                   task.status === "blocked" && "bg-red-500/10 border-red-500/25 text-red-400",
@@ -161,7 +161,7 @@ function TaskList({ tasks, taskScores }: {
         return (
           <div key={task.id ?? i} className={cn(
             "flex items-start gap-2 p-2 rounded border",
-            task.status === "completed" && "bg-green-500/5 border-green-500/20",
+            task.status === "completed" && "bg-emerald-500/5 border-emerald-500/20",
             task.status === "in_progress" && "bg-blue-500/5 border-blue-500/20",
             task.status === "review" && "bg-purple-500/5 border-purple-500/20",
             task.status === "blocked" && "bg-red-500/5 border-red-500/20",
@@ -169,7 +169,7 @@ function TaskList({ tasks, taskScores }: {
           )}>
             <span className={cn(
               "text-[9px] mt-0.5 font-bold shrink-0",
-              task.status === "completed" ? "text-green-400" :
+              task.status === "completed" ? "text-emerald-400" :
               task.status === "in_progress" ? "text-blue-400" :
               task.status === "review" ? "text-purple-400" :
               task.status === "blocked" ? "text-red-400" :
@@ -346,7 +346,7 @@ export function ApprovalPanel() {
             </span>
           )}
           {activeCommands.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-green-500/20 text-green-400">
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400">
               {activeCommands.length} actief
             </span>
           )}
@@ -463,11 +463,11 @@ export function ApprovalPanel() {
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
             return (
-              <div key={`active-${cmd.id}`} className="p-3 rounded-lg bg-green-500/5 border border-green-500/20">
+              <div key={`active-${cmd.id}`} className="p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
                 <div className="flex items-center gap-2 mb-2">
-                  <Loader2 className="w-3 h-3 text-green-400 animate-spin" />
+                  <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />
                   <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
                     {done}/{total} taken
                   </span>
                   <span className="text-[9px] text-autronis-text-tertiary">{timeAgo(cmd.aangemaakt)}</span>
@@ -558,7 +558,7 @@ export function ApprovalPanel() {
                       }
                       handleDbApprove(cmd.id);
                     }}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-green-500/15 text-green-400 text-[11px] font-medium hover:bg-green-500/25 transition-colors">
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-green-500/25 transition-colors">
                       <Check className="w-3 h-3" />Goedkeuren
                     </button>
                     <button onClick={() => {
@@ -595,11 +595,11 @@ export function ApprovalPanel() {
             const total = tasks.length;
 
             return (
-              <div key={`done-${cmd.id}`} className="p-3 rounded-lg bg-green-500/5 border border-green-500/15 opacity-80">
+              <div key={`done-${cmd.id}`} className="p-3 rounded-lg bg-emerald-500/5 border border-green-500/15 opacity-80">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                   <p className="text-xs font-semibold text-autronis-text-primary flex-1">{cmd.opdracht}</p>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
                     {done}/{total} klaar
                   </span>
                   <span className="text-[9px] text-autronis-text-tertiary">{timeAgo(cmd.aangemaakt)}</span>

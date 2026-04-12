@@ -68,7 +68,7 @@ const STATUS_LABELS: Record<ContentStatus, string> = {
 
 const STATUS_COLORS: Record<ContentStatus, string> = {
   concept: "bg-gray-500/20 text-gray-400",
-  goedgekeurd: "bg-green-500/20 text-green-400",
+  goedgekeurd: "bg-emerald-500/20 text-emerald-400",
   bewerkt: "bg-blue-500/20 text-blue-400",
   afgewezen: "bg-red-500/20 text-red-400",
   gepubliceerd: "bg-autronis-accent/20 text-autronis-accent",

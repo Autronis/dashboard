@@ -89,7 +89,7 @@ interface DocumentItem {
 }
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  actief: { bg: "bg-green-500/15", text: "text-green-400", label: "Actief" },
+  actief: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Actief" },
   afgerond: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Afgerond" },
   "on-hold": { bg: "bg-amber-500/15", text: "text-amber-400", label: "On hold" },
 };
@@ -97,7 +97,7 @@ const statusConfig: Record<string, { bg: string; text: string; label: string }> 
 const taakStatusConfig: Record<string, { bg: string; text: string; label: string }> = {
   open: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Open" },
   bezig: { bg: "bg-amber-500/15", text: "text-amber-400", label: "Bezig" },
-  afgerond: { bg: "bg-green-500/15", text: "text-green-400", label: "Afgerond" },
+  afgerond: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Afgerond" },
 };
 
 const prioriteitConfig: Record<string, { color: string; label: string }> = {
@@ -108,7 +108,7 @@ const prioriteitConfig: Record<string, { color: string; label: string }> = {
 
 const notitieTypeConfig: Record<string, { border: string; label: string; badge: string }> = {
   belangrijk: { border: "border-l-red-500", label: "Belangrijk", badge: "bg-red-500/15 text-red-400" },
-  afspraak: { border: "border-l-green-500", label: "Afspraak", badge: "bg-green-500/15 text-green-400" },
+  afspraak: { border: "border-l-green-500", label: "Afspraak", badge: "bg-emerald-500/15 text-emerald-400" },
   notitie: { border: "border-l-slate-500", label: "Notitie", badge: "bg-slate-500/15 text-slate-400" },
 };
 

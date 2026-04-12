@@ -37,7 +37,7 @@ interface DetailModalProps {
 const typeConfig: Record<string, { icon: typeof FileText; label: string; color: string }> = {
   tekst: { icon: FileText, label: "Tekst", color: "text-blue-400" },
   url: { icon: Link2, label: "URL", color: "text-purple-400" },
-  afbeelding: { icon: ImageIcon, label: "Afbeelding", color: "text-green-400" },
+  afbeelding: { icon: ImageIcon, label: "Afbeelding", color: "text-emerald-400" },
   pdf: { icon: FileDown, label: "PDF", color: "text-red-400" },
   code: { icon: Code, label: "Code", color: "text-yellow-400" },
 };

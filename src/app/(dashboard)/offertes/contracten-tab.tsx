@@ -31,7 +31,7 @@ interface Klant {
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
   verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  ondertekend: { bg: "bg-green-500/15", text: "text-green-400", label: "Ondertekend" },
+  ondertekend: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Ondertekend" },
   verlopen: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Verlopen" },
 };
 

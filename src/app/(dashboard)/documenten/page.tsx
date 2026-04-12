@@ -296,7 +296,7 @@ export default function DocumentenPage() {
                   {i > 0 && <div className="w-4 h-px bg-autronis-border" />}
                   <div className="flex items-center gap-1.5">
                     {step.status === "done" ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-green-400 flex-shrink-0" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
                     ) : step.status === "active" ? (
                       <Loader2 className="w-3.5 h-3.5 text-autronis-accent animate-spin flex-shrink-0" />
                     ) : step.status === "error" ? (
@@ -306,7 +306,7 @@ export default function DocumentenPage() {
                     )}
                     <span className={cn(
                       "text-xs",
-                      step.status === "done" ? "text-green-400" :
+                      step.status === "done" ? "text-emerald-400" :
                       step.status === "active" ? "text-autronis-text-primary" :
                       step.status === "error" ? "text-red-400" :
                       "text-autronis-text-secondary"

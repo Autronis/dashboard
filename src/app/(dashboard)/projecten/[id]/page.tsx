@@ -35,7 +35,7 @@ import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecte
 
 const statusConfig: Record<string, { icon: typeof Circle; color: string; bg: string; label: string }> = {
   actief: { icon: Loader2, color: "text-blue-400", bg: "bg-blue-500/15", label: "Actief" },
-  afgerond: { icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15", label: "Afgerond" },
+  afgerond: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15", label: "Afgerond" },
   "on-hold": { icon: Pause, color: "text-amber-400", bg: "bg-amber-500/15", label: "On Hold" },
 };
 
@@ -106,7 +106,7 @@ function ProgressBar({ percentage }: { percentage: number }) {
 }
 
 function TaakStatusIcon({ status }: { status: string }) {
-  if (status === "afgerond") return <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />;
+  if (status === "afgerond") return <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />;
   if (status === "bezig") return <Loader2 className="w-4 h-4 text-blue-400 flex-shrink-0" />;
   return <Circle className="w-4 h-4 text-autronis-text-secondary/40 flex-shrink-0" />;
 }
@@ -123,7 +123,7 @@ function FaseSection({ fase, projectNaam, onStatusToggle, onBulkAfvinken }: { fa
   const hogePrio = fase.taken.filter((t) => t.prioriteit === "hoog" && t.status !== "afgerond").length;
 
   return (
-    <div className={cn("bg-autronis-card border rounded-2xl overflow-hidden card-glow", isComplete ? "border-green-500/20" : isNotStarted ? "border-autronis-border/50 opacity-80" : "border-autronis-border")}>
+    <div className={cn("bg-autronis-card border rounded-2xl overflow-hidden card-glow", isComplete ? "border-emerald-500/20" : isNotStarted ? "border-autronis-border/50 opacity-80" : "border-autronis-border")}>
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between p-4 text-left hover:bg-autronis-border/20 transition-colors group/fase"
@@ -134,8 +134,8 @@ function FaseSection({ fase, projectNaam, onStatusToggle, onBulkAfvinken }: { fa
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className={cn("text-sm font-semibold", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{fase.naam}</h3>
-              {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+              <h3 className={cn("text-sm font-semibold", isComplete ? "text-emerald-400" : "text-autronis-text-primary")}>{fase.naam}</h3>
+              {isComplete && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}
               {isNotStarted && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-border text-autronis-text-secondary font-medium">Niet gestart</span>}
               {hogePrio > 0 && !isComplete && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/10 text-red-400 font-medium">{hogePrio} hoog</span>}
             </div>
@@ -150,13 +150,13 @@ function FaseSection({ fase, projectNaam, onStatusToggle, onBulkAfvinken }: { fa
                 const openIds = fase.taken.filter((t) => t.status !== "afgerond").map((t) => t.id);
                 onBulkAfvinken?.(openIds);
               }}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors font-medium opacity-0 group-hover/fase:opacity-100"
+              className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors font-medium opacity-0 group-hover/fase:opacity-100"
               title="Alle open taken afvinken"
             >
               Alles afvinken
             </button>
           )}
-          <span className={cn("text-sm font-bold tabular-nums", isComplete ? "text-green-400" : "text-autronis-text-primary")}>{percentage}%</span>
+          <span className={cn("text-sm font-bold tabular-nums", isComplete ? "text-emerald-400" : "text-autronis-text-primary")}>{percentage}%</span>
           <div className="w-20"><ProgressBar percentage={percentage} /></div>
         </div>
       </button>
@@ -329,7 +329,7 @@ function getDetailHealth(project: ProjectDetail, fases: Fase[]): { status: Healt
 function StatusIntelligence({ project, fases }: { project: ProjectDetail; fases: Fase[] }) {
   const health = getDetailHealth(project, fases);
   const cfg = {
-    "on-track": { color: "text-green-400", bg: "bg-green-500/10", border: "border-green-500/20", label: "On track", icon: CheckCircle2 },
+    "on-track": { color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", label: "On track", icon: CheckCircle2 },
     "risico": { color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", label: "Risico", icon: AlertTriangle },
     "achter": { color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20", label: "Achter", icon: AlertCircle },
   }[health.status];

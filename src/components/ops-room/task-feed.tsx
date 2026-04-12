@@ -73,7 +73,7 @@ const categoryIcons = {
 };
 
 const statusIcons = {
-  afgerond: { icon: CheckCircle2, color: "text-green-400" },
+  afgerond: { icon: CheckCircle2, color: "text-emerald-400" },
   bezig: { icon: Loader2, color: "text-blue-400" },
   fout: { icon: AlertCircle, color: "text-red-400" },
 } as const;
@@ -265,7 +265,7 @@ export function TaskFeed({ entries, isDemo = true, onAgentClick }: TaskFeedProps
                         <Loader2 className="w-3.5 h-3.5 text-blue-400 animate-spin" />
                       )}
                       {firstEntry.status === "afgerond" && (
-                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                       )}
                       {firstEntry.status === "fout" && (
                         <AlertCircle className="w-3.5 h-3.5 text-red-400" />

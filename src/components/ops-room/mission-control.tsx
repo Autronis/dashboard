@@ -81,11 +81,11 @@ export function MissionControl({ agents }: MissionControlProps) {
           {/* Status icon */}
           <div className={cn(
             "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-            cmd.status === "in_progress" ? "bg-green-500/15" :
+            cmd.status === "in_progress" ? "bg-emerald-500/15" :
             cmd.status === "awaiting_approval" ? (isRed ? "bg-red-500/15" : "bg-amber-500/15") :
             "bg-blue-500/15"
           )}>
-            {cmd.status === "in_progress" ? <Play className="w-4 h-4 text-green-400" /> :
+            {cmd.status === "in_progress" ? <Play className="w-4 h-4 text-emerald-400" /> :
              cmd.status === "awaiting_approval" ? <Shield className={cn("w-4 h-4", isRed ? "text-red-400" : "text-amber-400")} /> :
              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />}
           </div>
@@ -96,7 +96,7 @@ export function MissionControl({ agents }: MissionControlProps) {
             <div className="flex items-center gap-2 mt-0.5">
               <span className={cn(
                 "text-[9px] font-semibold px-1.5 py-0.5 rounded",
-                cmd.status === "in_progress" ? "bg-green-500/15 text-green-400" :
+                cmd.status === "in_progress" ? "bg-emerald-500/15 text-emerald-400" :
                 cmd.status === "planning" ? "bg-blue-500/15 text-blue-400" :
                 cmd.status === "awaiting_approval" ? (isRed ? "bg-red-500/20 text-red-400" : "bg-amber-500/15 text-amber-400") :
                 cmd.status === "intake" || cmd.status === "intake_idee" ? "bg-purple-500/15 text-purple-400" :
@@ -157,7 +157,7 @@ export function MissionControl({ agents }: MissionControlProps) {
             {cmd.status === "awaiting_approval" && pendingApproval && (
               <button
                 onClick={() => approveApproval(pendingApproval.id)}
-                className="px-2.5 py-1 rounded-lg bg-green-500/15 text-green-400 text-[10px] font-semibold hover:bg-green-500/25 transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-400 text-[10px] font-semibold hover:bg-green-500/25 transition-colors"
               >
                 Goedkeuren
               </button>
@@ -183,7 +183,7 @@ export function MissionControl({ agents }: MissionControlProps) {
               <div key={i} className="flex items-center gap-2 text-[10px]">
                 <span className={cn(
                   "w-4 text-center font-bold",
-                  t.status === "completed" ? "text-green-400" :
+                  t.status === "completed" ? "text-emerald-400" :
                   t.status === "in_progress" ? "text-blue-400" :
                   t.status === "blocked" ? "text-red-400" :
                   "text-autronis-text-tertiary"
@@ -205,7 +205,7 @@ export function MissionControl({ agents }: MissionControlProps) {
       {(stats.working > 0 || cmd) && (
         <div className="px-4 py-2 border-t border-autronis-border/15 flex items-center gap-4 text-[10px]">
           {stats.working > 0 && (
-            <span className="flex items-center gap-1.5 text-green-400 font-medium">
+            <span className="flex items-center gap-1.5 text-emerald-400 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               {stats.working} actief
             </span>

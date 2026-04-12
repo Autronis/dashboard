@@ -2108,7 +2108,7 @@ export default function AnimatiesPage() {
                         <input value={kieStartFrame} onChange={e => setKieStartFrame(e.target.value)}
                           placeholder="URL afbeelding B"
                           className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                        {kieStartFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                        {kieStartFrame && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
                       </div>
                     </div>
                     <div>
@@ -2117,7 +2117,7 @@ export default function AnimatiesPage() {
                         <input value={kieEndFrame} onChange={e => setKieEndFrame(e.target.value)}
                           placeholder="URL afbeelding A"
                           className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-tertiary focus:outline-none focus:border-autronis-accent/50" />
-                        {kieEndFrame && <Check className="w-4 h-4 text-green-400 shrink-0" />}
+                        {kieEndFrame && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
                       </div>
                     </div>
                   </div>

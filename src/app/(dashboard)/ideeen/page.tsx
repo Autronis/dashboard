@@ -786,7 +786,7 @@ export default function IdeeenPage() {
                     <div className="flex items-center gap-2 mt-3 pt-3 border-t border-autronis-border/50">
                       <button onClick={() => setDetailIdee(idee)} className="text-xs text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">Details</button>
                       <div className="flex-1" />
-                      <button onClick={() => openStartProject(idee)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 text-green-400 hover:bg-green-500/20 rounded-lg text-xs font-medium transition-colors">
+                      <button onClick={() => openStartProject(idee)} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-lg text-xs font-medium transition-colors">
                         <Rocket className="w-3 h-3" />Start project
                       </button>
                     </div>
@@ -1424,7 +1424,7 @@ export default function IdeeenPage() {
             <div className="flex items-center gap-3 pt-4 border-t border-autronis-border flex-wrap">
               <button onClick={() => openEditForm(detailIdee)} className="inline-flex items-center gap-2 px-4 py-2.5 border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/50 rounded-xl text-sm font-medium transition-colors"><Edit className="w-4 h-4" />Bewerken</button>
               {(detailIdee.status === "idee" || detailIdee.status === "uitgewerkt") && (
-                <button onClick={handleStartProject} disabled={startProjectMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-green-500/15 text-green-400 hover:bg-green-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
+                <button onClick={handleStartProject} disabled={startProjectMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/15 text-emerald-400 hover:bg-green-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">
                   {startProjectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}Start als project
                 </button>
               )}

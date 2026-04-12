@@ -26,7 +26,7 @@ interface Project {
 const statusIcon: Record<string, { icon: typeof Circle; color: string }> = {
   open: { icon: Circle, color: "text-[#8A9BA0]" },
   bezig: { icon: Loader2, color: "text-blue-400" },
-  afgerond: { icon: CheckCircle2, color: "text-green-400" },
+  afgerond: { icon: CheckCircle2, color: "text-emerald-400" },
 };
 
 export default function PortalProjecten() {
@@ -92,7 +92,7 @@ function ProjectCard({ project }: { project: Project }) {
             <span className={cn(
               "text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase",
               project.status === "actief" ? "bg-blue-500/15 text-blue-400" :
-              project.status === "afgerond" ? "bg-green-500/15 text-green-400" :
+              project.status === "afgerond" ? "bg-emerald-500/15 text-emerald-400" :
               "bg-amber-500/15 text-amber-400"
             )}>
               {project.status}

@@ -119,7 +119,7 @@ const TYPE_CONFIG: Record<string, {
 const STATUS_CONFIG: Record<string, { label: string; kleur: string; bg: string; borderLeft: string }> = {
   concept: { label: "Concept", kleur: "text-zinc-400", bg: "bg-zinc-500/20", borderLeft: "border-l-zinc-500/50" },
   verzonden: { label: "Verstuurd", kleur: "text-blue-400", bg: "bg-blue-500/20", borderLeft: "border-l-blue-500/50" },
-  ondertekend: { label: "Ondertekend", kleur: "text-green-400", bg: "bg-green-500/20", borderLeft: "border-l-green-500/70" },
+  ondertekend: { label: "Ondertekend", kleur: "text-emerald-400", bg: "bg-emerald-500/20", borderLeft: "border-l-green-500/70" },
   verlopen: { label: "Verlopen", kleur: "text-red-400", bg: "bg-red-500/20", borderLeft: "border-l-red-500/50" },
 };
 
@@ -344,7 +344,7 @@ export default function ContractenPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { label: "Totaal", value: stats.totaal, color: "text-autronis-text-primary", bg: "bg-autronis-card" },
-              { label: "Ondertekend", value: stats.ondertekend, color: "text-green-400", bg: "bg-green-500/5" },
+              { label: "Ondertekend", value: stats.ondertekend, color: "text-emerald-400", bg: "bg-emerald-500/5" },
               { label: "In behandeling", value: stats.concept, color: "text-blue-400", bg: "bg-blue-500/5" },
               { label: "Verlopen", value: stats.verlopen, color: "text-red-400", bg: "bg-red-500/5" },
             ].map((stat, i) => (
@@ -610,7 +610,7 @@ export default function ContractenPage() {
                       className="space-y-2"
                     >
                       {GEN_STAPPEN.map((stap, i) => (
-                        <div key={i} className={cn("flex items-center gap-2.5 text-sm transition-colors", i < genStap ? "text-green-400" : i === genStap ? "text-autronis-accent" : "text-autronis-text-secondary/40")}>
+                        <div key={i} className={cn("flex items-center gap-2.5 text-sm transition-colors", i < genStap ? "text-emerald-400" : i === genStap ? "text-autronis-accent" : "text-autronis-text-secondary/40")}>
                           {i < genStap ? (
                             <Check className="w-4 h-4 flex-shrink-0" />
                           ) : i === genStap ? (

@@ -48,7 +48,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 function StatusBadge({ status }: { status: BannerStatus }) {
   const map: Record<BannerStatus, { label: string; className: string }> = {
     concept: { label: "Concept", className: "bg-zinc-700 text-zinc-300" },
-    klaar: { label: "Klaar", className: "bg-green-500/20 text-green-400" },
+    klaar: { label: "Klaar", className: "bg-emerald-500/20 text-emerald-400" },
     fout: { label: "Fout", className: "bg-red-500/20 text-red-400" },
   };
   const { label, className } = map[status] ?? map.concept;

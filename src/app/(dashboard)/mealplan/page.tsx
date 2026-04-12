@@ -75,7 +75,7 @@ const macroKleuren = {
   eiwit: { text: "text-red-400", bar: "bg-red-500" },
   kh: { text: "text-blue-400", bar: "bg-blue-500" },
   vet: { text: "text-yellow-400", bar: "bg-yellow-500" },
-  vezels: { text: "text-green-400", bar: "bg-green-500" },
+  vezels: { text: "text-emerald-400", bar: "bg-green-500" },
   suiker: { text: "text-pink-400", bar: "bg-pink-500" },
 };
 
@@ -353,7 +353,7 @@ export default function MealPlanPage() {
                     { label: "Eiwit", value: eiwit, set: setEiwit, icon: Beef, unit: "g", color: "text-red-400" },
                     { label: "Koolhydraten", value: koolhydraten, set: setKoolhydraten, icon: Wheat, unit: "g", color: "text-blue-400" },
                     { label: "Vet", value: vet, set: setVet, icon: Droplets, unit: "g", color: "text-yellow-400" },
-                    { label: "Vezels", value: vezels, set: setVezels, icon: Salad, unit: "g", color: "text-green-400" },
+                    { label: "Vezels", value: vezels, set: setVezels, icon: Salad, unit: "g", color: "text-emerald-400" },
                     { label: "Suiker", value: suiker, set: setSuiker, icon: Cookie, unit: "g", color: "text-pink-400" },
                   ].map((m) => (
                     <div key={m.label} className="space-y-1">
@@ -605,7 +605,7 @@ export default function MealPlanPage() {
                     { label: "Eiwit", value: plan.weekTotaal.eiwit, target: eiwit * 7, unit: "g", color: "text-red-400" },
                     { label: "Koolh.", value: plan.weekTotaal.kh, target: koolhydraten * 7, unit: "g", color: "text-blue-400" },
                     { label: "Vet", value: plan.weekTotaal.vet, target: vet * 7, unit: "g", color: "text-yellow-400" },
-                    { label: "Vezels", value: plan.weekTotaal.vezels, target: vezels * 7, unit: "g", color: "text-green-400" },
+                    { label: "Vezels", value: plan.weekTotaal.vezels, target: vezels * 7, unit: "g", color: "text-emerald-400" },
                     { label: "Suiker", value: plan.weekTotaal.suiker, target: suiker * 7, unit: "g", color: "text-pink-400" },
                   ].map(m => (
                     <div key={m.label} className="text-center bg-autronis-bg rounded-xl p-2.5">

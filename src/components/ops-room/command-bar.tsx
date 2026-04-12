@@ -54,7 +54,7 @@ function OccupancyRing({ active, idle, error, total }: { active: number; idle: n
 }
 
 function costColor(cost: number): string {
-  if (cost < 1) return "text-green-400";
+  if (cost < 1) return "text-emerald-400";
   if (cost < 5) return "text-amber-400";
   return "text-red-400";
 }
@@ -86,13 +86,13 @@ export function CommandBar({ agents, isLive = false }: CommandBarProps) {
   else if (totalKosten > 10 || active === 0) health = "yellow";
 
   const borderColor = {
-    green: "border-green-500/30",
+    green: "border-emerald-500/30",
     yellow: "border-amber-500/30",
     red: "border-red-500/30",
   }[health];
 
   const bgColor = {
-    green: "bg-green-500/5",
+    green: "bg-emerald-500/5",
     yellow: "bg-amber-500/5",
     red: "bg-red-500/5",
   }[health];

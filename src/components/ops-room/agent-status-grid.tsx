@@ -76,7 +76,7 @@ export function AgentStatusGrid({ agents, onSelect }: AgentStatusGridProps) {
         {/* Working agents */}
         {working.length > 0 && (
           <div>
-            <p className="text-[9px] font-semibold text-green-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <p className="text-[9px] font-semibold text-emerald-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               Actief ({working.length})
             </p>

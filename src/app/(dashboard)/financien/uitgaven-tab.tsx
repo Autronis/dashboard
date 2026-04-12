@@ -303,14 +303,14 @@ export function UitgavenTab() {
 
         <div className="border border-autronis-border rounded-2xl p-6 card-glow bg-autronis-card">
           <div className="flex items-center gap-3 mb-3">
-            <div className="p-2.5 bg-green-500/10 rounded-xl">
-              <ShieldCheck className="w-5 h-5 text-green-400" />
+            <div className="p-2.5 bg-emerald-500/10 rounded-xl">
+              <ShieldCheck className="w-5 h-5 text-emerald-400" />
             </div>
           </div>
           <AnimatedNumber
             value={totaalAftrekbaar}
             format={formatBedrag}
-            className="text-3xl font-bold text-green-400 tabular-nums"
+            className="text-3xl font-bold text-emerald-400 tabular-nums"
           />
           <p className="text-sm text-autronis-text-secondary mt-1.5 uppercase tracking-wide">
             Totaal aftrekbaar {jaar}
@@ -454,7 +454,7 @@ export function UitgavenTab() {
                       </td>
                       <td className="py-4 px-4 text-center">
                         {u.fiscaalAftrekbaar ? (
-                          <ShieldCheck className="w-4 h-4 text-green-400 mx-auto" />
+                          <ShieldCheck className="w-4 h-4 text-emerald-400 mx-auto" />
                         ) : (
                           <span className="text-autronis-text-secondary text-xs">Nee</span>
                         )}

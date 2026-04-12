@@ -9,7 +9,7 @@ import { useProfitPerProject, type ProfitProject } from "@/hooks/queries/use-pro
 import { AnimatedNumber } from "@/components/ui/animated-number";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  actief: { label: "Actief", color: "text-green-400", bg: "bg-green-500/15" },
+  actief: { label: "Actief", color: "text-emerald-400", bg: "bg-emerald-500/15" },
   afgerond: { label: "Afgerond", color: "text-blue-400", bg: "bg-blue-500/15" },
   "on-hold": { label: "On hold", color: "text-orange-400", bg: "bg-orange-500/15" },
 };
@@ -28,7 +28,7 @@ function MargeBar({ marge }: { marge: number | null }) {
           style={{ width: `${breedte}%` }}
         />
       </div>
-      <span className={cn("text-xs font-medium tabular-nums w-10 text-right", isPositief ? "text-green-400" : "text-red-400")}>
+      <span className={cn("text-xs font-medium tabular-nums w-10 text-right", isPositief ? "text-emerald-400" : "text-red-400")}>
         {marge > 0 ? "+" : ""}{marge.toFixed(0)}%
       </span>
     </div>
@@ -83,7 +83,7 @@ function ProjectRij({ project }: { project: ProfitProject }) {
         {/* Profit */}
         <div className="text-right flex-shrink-0 w-24">
           <p className="text-xs text-autronis-text-secondary">Profit</p>
-          <p className={cn("text-sm font-bold tabular-nums", isPositief ? "text-green-400" : "text-red-400")}>
+          <p className={cn("text-sm font-bold tabular-nums", isPositief ? "text-emerald-400" : "text-red-400")}>
             {project.profit > 0 ? "+" : ""}{formatBedrag(project.profit)}
           </p>
         </div>
@@ -117,7 +117,7 @@ function ProjectRij({ project }: { project: ProfitProject }) {
             </div>
             <div>
               <p className="text-xs text-autronis-text-secondary">Winstmarge</p>
-              <p className={cn("text-sm font-semibold mt-0.5", isPositief ? "text-green-400" : "text-red-400")}>
+              <p className={cn("text-sm font-semibold mt-0.5", isPositief ? "text-emerald-400" : "text-red-400")}>
                 {project.marge !== null ? `${project.marge}%` : "Geen omzet"}
               </p>
             </div>
@@ -195,11 +195,11 @@ export function ProfitProjectenTab() {
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-4 card-glow">
           <div className="flex items-center gap-2 mb-1">
             {(totalen?.profit ?? 0) >= 0
-              ? <TrendingUp className="w-3.5 h-3.5 text-green-400" />
+              ? <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
               : <TrendingDown className="w-3.5 h-3.5 text-red-400" />}
             <p className="text-xs text-autronis-text-secondary">Totale profit</p>
           </div>
-          <p className={cn("text-2xl font-bold", (totalen?.profit ?? 0) >= 0 ? "text-green-400" : "text-red-400")}>
+          <p className={cn("text-2xl font-bold", (totalen?.profit ?? 0) >= 0 ? "text-emerald-400" : "text-red-400")}>
             <AnimatedNumber
               value={totalen?.profit ?? 0}
               format={(n) => `${n >= 0 ? "+" : ""}€${Math.round(n).toLocaleString("nl-NL")}`}
@@ -211,7 +211,7 @@ export function ProfitProjectenTab() {
             <BarChart3 className="w-3.5 h-3.5 text-autronis-text-secondary" />
             <p className="text-xs text-autronis-text-secondary">Gem. marge</p>
           </div>
-          <p className={cn("text-2xl font-bold", totaleMarge !== null && totaleMarge >= 0 ? "text-green-400" : "text-red-400")}>
+          <p className={cn("text-2xl font-bold", totaleMarge !== null && totaleMarge >= 0 ? "text-emerald-400" : "text-red-400")}>
             {totaleMarge !== null
               ? <AnimatedNumber value={totaleMarge} format={(n) => `${n.toFixed(1)}%`} />
               : <span className="text-autronis-text-secondary">—</span>}

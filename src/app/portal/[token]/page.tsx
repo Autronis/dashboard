@@ -75,7 +75,7 @@ export default function PortalOverzicht() {
           icon={CheckCircle2}
           label="Taken afgerond"
           value={projecten.reduce((s, p) => s + p.takenAfgerond, 0)}
-          color="text-green-400"
+          color="text-emerald-400"
         />
         <QuickStat
           icon={FileText}

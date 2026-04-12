@@ -313,7 +313,7 @@ export default function MailPage() {
                         </button>
                         <button
                           onClick={() => { clearDraft(); addToast("Antwoord afgevinkt", "succes"); }}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 text-green-400 rounded-lg text-xs font-medium transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium transition-colors"
                         >
                           <Check className="w-3.5 h-3.5" />
                           Verstuurd

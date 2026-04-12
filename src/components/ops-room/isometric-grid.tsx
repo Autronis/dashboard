@@ -19,7 +19,7 @@ const roleConfig: Record<AgentRole, { icon: typeof Bot; color: string; bgGradien
   reviewer: { icon: Search, color: "text-purple-400", bgGradient: "from-purple-500/10 to-purple-500/5" },
   architect: { icon: Compass, color: "text-amber-400", bgGradient: "from-amber-500/10 to-amber-500/5" },
   assistant: { icon: Bot, color: "text-autronis-accent", bgGradient: "from-autronis-accent/10 to-autronis-accent/5" },
-  automation: { icon: Cog, color: "text-green-400", bgGradient: "from-green-500/10 to-green-500/5" },
+  automation: { icon: Cog, color: "text-emerald-400", bgGradient: "from-green-500/10 to-green-500/5" },
 };
 
 const statusDotColor: Record<AgentStatus, string> = {
@@ -156,7 +156,7 @@ export function IsometricGrid({ agents, selectedId, onSelect }: IsometricGridPro
               {agent.terminal.length > 0 && (
                 <div className="w-full mt-1 px-1">
                   <div className="bg-[#0d1117] rounded-md px-2 py-1.5 border border-[#1a2530]">
-                    <p className="text-[9px] font-mono text-green-400/80 truncate">
+                    <p className="text-[9px] font-mono text-emerald-400/80 truncate">
                       {agent.terminal[agent.terminal.length - 1].tekst}
                     </p>
                   </div>

@@ -20,7 +20,7 @@ import Link from "next/link";
 const CATEGORIE_KLEUREN: Record<string, { bg: string; text: string }> = {
   hardware: { bg: "bg-blue-500/15", text: "text-blue-400" },
   kantoor: { bg: "bg-orange-500/15", text: "text-orange-400" },
-  software: { bg: "bg-green-500/15", text: "text-green-400" },
+  software: { bg: "bg-emerald-500/15", text: "text-emerald-400" },
   kvk: { bg: "bg-purple-500/15", text: "text-purple-400" },
   telefoon: { bg: "bg-pink-500/15", text: "text-pink-400" },
   afbetaling: { bg: "bg-yellow-500/15", text: "text-yellow-400" },
@@ -208,7 +208,7 @@ function KpiCards({ data }: { data: MaandrapportData }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <KpiCard label="Totaal uitgaven" value={formatBedrag(data.totaalUitgaven)} sub="ING + Revolut" />
-      <KpiCard label="BTW terug" value={formatBedrag(data.totaalBtw)} sub={`Sem ${formatBedrag(data.btwSplit.sem.totaal)} + Syb ${formatBedrag(data.btwSplit.syb.totaal)}`} kleur="text-green-400" />
+      <KpiCard label="BTW terug" value={formatBedrag(data.totaalBtw)} sub={`Sem ${formatBedrag(data.btwSplit.sem.totaal)} + Syb ${formatBedrag(data.btwSplit.syb.totaal)}`} kleur="text-emerald-400" />
       {data.totaalVerrekening > 0 ? (
         <KpiCard label="Van Syb te ontvangen" value={formatBedrag(data.totaalVerrekening)} sub="Openstaande verrekeningen" kleur="text-orange-400" />
       ) : (
@@ -376,7 +376,7 @@ function BtwSplitCard({ naam, data }: { naam: string; data: MaandrapportData["bt
           ))}
           <div className="flex justify-between text-sm font-bold pt-2 border-t border-autronis-border">
             <span className="text-autronis-text-primary">Totaal {naam}</span>
-            <span className="text-green-400">{formatBedrag(data.totaal)}</span>
+            <span className="text-emerald-400">{formatBedrag(data.totaal)}</span>
           </div>
         </div>
       )}
@@ -445,7 +445,7 @@ function BorgSection({ borg }: { borg: MaandrapportData["borg"] }) {
             <span className="text-autronis-text-primary">{h.naam}</span>
             <span className="text-autronis-text-secondary text-right">{formatBedrag(h.borg)}</span>
             <span className="text-autronis-text-secondary text-right">{formatBedrag(h.huurPerMaand)}</span>
-            <span className="text-green-400 text-right">{h.status}</span>
+            <span className="text-emerald-400 text-right">{h.status}</span>
           </div>
         ))}
       </div>
@@ -467,7 +467,7 @@ function SamenvattingSection({ totaalBtw, totaalVerrekening, totaalTerug }: { to
         <div className="space-y-2">
           <div className="flex justify-between text-[13px] pb-1.5 border-b border-autronis-border/50">
             <span className="text-autronis-text-tertiary">BTW terug (Belastingdienst)</span>
-            <span className="text-green-400">{formatBedrag(totaalBtw)}</span>
+            <span className="text-emerald-400">{formatBedrag(totaalBtw)}</span>
           </div>
           {totaalVerrekening > 0 && (
             <div className="flex justify-between text-[13px] pb-1.5 border-b border-autronis-border/50">

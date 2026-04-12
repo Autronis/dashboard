@@ -60,7 +60,7 @@ function voortgangKleur(pct: number): string {
 }
 
 function voortgangTekstKleur(pct: number): string {
-  if (pct >= 75) return "text-green-400";
+  if (pct >= 75) return "text-emerald-400";
   if (pct >= 40) return "text-yellow-400";
   return "text-red-400";
 }
@@ -68,7 +68,7 @@ function voortgangTekstKleur(pct: number): string {
 function statusBadgeKleur(status: string | null): string {
   switch (status) {
     case "actief": return "bg-autronis-accent/20 text-autronis-accent";
-    case "afgerond": return "bg-green-500/20 text-green-400";
+    case "afgerond": return "bg-emerald-500/20 text-emerald-400";
     case "geannuleerd": return "bg-red-500/20 text-red-400";
     default: return "bg-autronis-border text-autronis-text-secondary";
   }
@@ -86,13 +86,13 @@ function autoKoppelingLabel(koppeling: string | null): string {
 
 function trackStatus(voortgang: number, tijdPct: number): { label: string; kleur: string; bg: string; icon: typeof CheckCircle2 } {
   const ratio = tijdPct > 0 ? voortgang / tijdPct : voortgang > 0 ? 1.5 : 0;
-  if (ratio >= 0.85) return { label: "Op schema", kleur: "text-green-400", bg: "bg-green-500/15", icon: CheckCircle2 };
+  if (ratio >= 0.85) return { label: "Op schema", kleur: "text-emerald-400", bg: "bg-emerald-500/15", icon: CheckCircle2 };
   if (ratio >= 0.55) return { label: "Risico", kleur: "text-yellow-400", bg: "bg-yellow-500/15", icon: AlertTriangle };
   return { label: "Achter", kleur: "text-red-400", bg: "bg-red-500/15", icon: AlertTriangle };
 }
 
 function confidenceLabel(c: number): { label: string; kleur: string } {
-  if (c >= 70) return { label: "Hoog", kleur: "text-green-400" };
+  if (c >= 70) return { label: "Hoog", kleur: "text-emerald-400" };
   if (c >= 40) return { label: "Gemiddeld", kleur: "text-yellow-400" };
   return { label: "Laag", kleur: "text-red-400" };
 }
@@ -115,7 +115,7 @@ const OKR_TEMPLATES: OkrTemplateWithColor[] = [
     titel: "Autronis omzet laten groeien",
     omschrijving: "Focus op omzetgroei door meer klanten en proposals",
     kleur: "#22c55e",
-    bg: "bg-green-500/10",
+    bg: "bg-emerald-500/10",
     keyResults: [
       { titel: "€10.000 omzet deze maand", doelwaarde: 10000, huidigeWaarde: 0, eenheid: "euro", autoKoppeling: "omzet" },
       { titel: "3 nieuwe klanten binnenhalen", doelwaarde: 3, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "klanten" },
@@ -519,10 +519,10 @@ export default function DoelenPage() {
         <AnimatePresence>
           {checkInSamenvattingTekst && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-              className="bg-autronis-card border border-green-500/30 rounded-2xl p-4 flex items-center justify-between gap-3"
+              className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between gap-3"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
                 <p className="text-sm text-autronis-text-primary">{checkInSamenvattingTekst}</p>
               </div>
               <button onClick={() => setCheckInSamenvattingTekst(null)} className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors flex-shrink-0"><X className="w-3.5 h-3.5" /></button>
@@ -1073,8 +1073,8 @@ export default function DoelenPage() {
                         <p className="text-xs text-autronis-text-secondary mb-1">{qDoelen.length} {qDoelen.length === 1 ? "doel" : "doelen"}</p>
                         {prevAvg !== null && qDoelen.length > 0 && (
                           <div className="flex items-center justify-center gap-1">
-                            {avg > prevAvg ? <TrendingUp className="w-3 h-3 text-green-400" /> : avg < prevAvg ? <TrendingDown className="w-3 h-3 text-red-400" /> : <Minus className="w-3 h-3 text-autronis-text-secondary" />}
-                            <span className={cn("text-[10px] font-medium tabular-nums", avg > prevAvg ? "text-green-400" : avg < prevAvg ? "text-red-400" : "text-autronis-text-secondary")}>
+                            {avg > prevAvg ? <TrendingUp className="w-3 h-3 text-emerald-400" /> : avg < prevAvg ? <TrendingDown className="w-3 h-3 text-red-400" /> : <Minus className="w-3 h-3 text-autronis-text-secondary" />}
+                            <span className={cn("text-[10px] font-medium tabular-nums", avg > prevAvg ? "text-emerald-400" : avg < prevAvg ? "text-red-400" : "text-autronis-text-secondary")}>
                               {avg > prevAvg ? "+" : ""}{Math.round(avg - prevAvg)}%
                             </span>
                           </div>

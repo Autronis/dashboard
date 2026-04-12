@@ -539,7 +539,7 @@ const categorieBadgeKleur: Record<string, string> = {
   ai_tools: "bg-purple-500/15 text-purple-400",
   api_updates: "bg-purple-500/15 text-purple-400",
   trends: "bg-orange-500/15 text-orange-400",
-  kansen: "bg-green-500/15 text-green-400",
+  kansen: "bg-emerald-500/15 text-emerald-400",
   must_reads: "bg-red-500/15 text-red-400",
   automation: "bg-cyan-500/15 text-cyan-400",
 };

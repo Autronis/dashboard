@@ -70,14 +70,14 @@ export function RunwaySection() {
     "w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors";
 
   function runwayKleur(maanden: number | null): string {
-    if (maanden === null) return "text-green-400";
-    if (maanden >= 12) return "text-green-400";
+    if (maanden === null) return "text-emerald-400";
+    if (maanden >= 12) return "text-emerald-400";
     if (maanden >= 6) return "text-yellow-400";
     return "text-red-400";
   }
 
   function runwayIcon(maanden: number | null) {
-    if (maanden === null) return <Shield className="w-6 h-6 text-green-400" />;
+    if (maanden === null) return <Shield className="w-6 h-6 text-emerald-400" />;
     if (maanden >= 6) return <TrendingUp className="w-6 h-6 text-yellow-400" />;
     return <AlertTriangle className="w-6 h-6 text-red-400" />;
   }
@@ -134,10 +134,10 @@ export function RunwaySection() {
             </div>
             <div className="bg-autronis-bg/50 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-green-400" />
+                <TrendingUp className="w-4 h-4 text-emerald-400" />
                 <span className="text-xs text-autronis-text-secondary">Gem. inkomsten/mnd</span>
               </div>
-              <p className="text-lg font-bold text-green-400 tabular-nums">
+              <p className="text-lg font-bold text-emerald-400 tabular-nums">
                 <AnimatedNumber value={scenarioData.gemiddeldeInkomstenPerMaand * (scenarioPercentage / 100)} format={formatBedrag} />
               </p>
             </div>
@@ -146,7 +146,7 @@ export function RunwaySection() {
                 <Wallet className="w-4 h-4 text-autronis-accent" />
                 <span className="text-xs text-autronis-text-secondary">Netto/mnd</span>
               </div>
-              <p className={cn("text-lg font-bold tabular-nums", scenarioData.nettoPerMaand >= 0 ? "text-green-400" : "text-red-400")}>
+              <p className={cn("text-lg font-bold tabular-nums", scenarioData.nettoPerMaand >= 0 ? "text-emerald-400" : "text-red-400")}>
                 <AnimatedNumber
                   value={scenarioData.nettoPerMaand}
                   format={(n) => `${n >= 0 ? "+" : ""}${formatBedrag(n)}`}

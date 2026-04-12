@@ -25,7 +25,7 @@ interface VideoItem {
 }
 
 const RELEVANTIE_CONFIG = {
-  hoog: { label: "Hoog", icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/15" },
+  hoog: { label: "Hoog", icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/15" },
   midden: { label: "Midden", icon: MinusCircle, color: "text-yellow-400", bg: "bg-yellow-500/15" },
   laag: { label: "Laag", icon: AlertCircle, color: "text-red-400", bg: "bg-red-500/15" },
 } as const;

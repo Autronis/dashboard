@@ -38,11 +38,11 @@ export function SwipeableTask({ children, onComplete, onDelete }: SwipeableTaskP
       <div className="absolute inset-0 flex">
         {/* Right swipe = complete */}
         <motion.div
-          className="flex-1 flex items-center justify-start pl-6 bg-green-500/20"
+          className="flex-1 flex items-center justify-start pl-6 bg-emerald-500/20"
           style={{ opacity: bgOpacityRight }}
         >
           <motion.div style={{ scale: scaleRight }}>
-            <Check className="w-6 h-6 text-green-400" />
+            <Check className="w-6 h-6 text-emerald-400" />
           </motion.div>
         </motion.div>
         {/* Left swipe = delete */}

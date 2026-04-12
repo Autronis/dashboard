@@ -715,7 +715,7 @@ export default function AgendaPage() {
             {googleConnected === true && (
               <button
                 onClick={handleGoogleDisconnect}
-                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-green-500/10 border border-green-500/30 text-green-400 rounded-xl text-xs sm:text-sm transition-colors hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs sm:text-sm transition-colors hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
               >
                 <CalendarCheck className="w-4 h-4" />
                 <span className="hidden sm:inline">Google gekoppeld</span>
@@ -1403,8 +1403,8 @@ export default function AgendaPage() {
                         if (totaal === 0) return null;
                         return (
                           <div className="flex items-center justify-center gap-0.5 mt-1">
-                            <CheckSquare className={cn("w-2.5 h-2.5", ingepland > 0 ? "text-green-400" : "text-orange-400")} />
-                            <span className={cn("text-[9px] font-medium tabular-nums", ingepland > 0 ? "text-green-400" : "text-orange-400")}>{totaal}</span>
+                            <CheckSquare className={cn("w-2.5 h-2.5", ingepland > 0 ? "text-emerald-400" : "text-orange-400")} />
+                            <span className={cn("text-[9px] font-medium tabular-nums", ingepland > 0 ? "text-emerald-400" : "text-orange-400")}>{totaal}</span>
                           </div>
                         );
                       })()}
@@ -1432,15 +1432,15 @@ export default function AgendaPage() {
                           onDragOver={(e) => {
                             if (dragTaak || dragAgendaItem) {
                               e.preventDefault();
-                              e.currentTarget.classList.add("bg-green-500/10");
+                              e.currentTarget.classList.add("bg-emerald-500/10");
                             }
                           }}
                           onDragLeave={(e) => {
-                            e.currentTarget.classList.remove("bg-green-500/10");
+                            e.currentTarget.classList.remove("bg-emerald-500/10");
                           }}
                           onDrop={async (e) => {
                             e.preventDefault();
-                            e.currentTarget.classList.remove("bg-green-500/10");
+                            e.currentTarget.classList.remove("bg-emerald-500/10");
                             if (dragTaak) {
                               openPlanModal(dragTaak, wd.datumStr, `${String(uur).padStart(2, "0")}:00`);
                               setDragTaak(null);
@@ -2020,7 +2020,7 @@ export default function AgendaPage() {
                             <span className="text-[10px] font-semibold text-autronis-text-secondary/60 uppercase tracking-wider">Wat je nu kunt doen</span>
                           </div>
                           {[
-                            { tekst: "Lead opvolgen — bel of mail een prospect", kleur: "text-green-400/70", icon: "📞" },
+                            { tekst: "Lead opvolgen — bel of mail een prospect", kleur: "text-emerald-400/70", icon: "📞" },
                             { tekst: "LinkedIn post schrijven over recent werk", kleur: "text-blue-400/70", icon: "✍️" },
                             { tekst: "Offerte opstellen voor openstaande lead", kleur: "text-amber-400/70", icon: "📄" },
                             { tekst: "Portfolio/case study bijwerken", kleur: "text-purple-400/70", icon: "🎨" },

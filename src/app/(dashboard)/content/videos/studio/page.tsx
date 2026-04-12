@@ -529,8 +529,8 @@ export default function VideoStudioPage() {
           <div className="lg:col-span-2 space-y-4">
             {/* Video result */}
             {videoUrl && (
-              <div className="bg-autronis-card border border-green-500/30 rounded-2xl p-4">
-                <p className="text-sm font-semibold text-green-400 mb-2 flex items-center gap-1.5">
+              <div className="bg-autronis-card border border-emerald-500/30 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-emerald-400 mb-2 flex items-center gap-1.5">
                   <Play className="w-4 h-4" /> Video klaar
                 </p>
                 <video src={videoUrl} controls className="w-full rounded-xl" />

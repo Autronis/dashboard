@@ -2,7 +2,7 @@
 
 import { PageTransition } from "@/components/ui/page-transition";
 import { StatusZone } from "./zones/status-zone";
-import { ActiesZone } from "./zones/acties-zone";
+import { TransactiesZone } from "./zones/transacties-zone";
 import { BtwKwartaalZone } from "./zones/btw-kwartaal-zone";
 import { ArchiefZone } from "./zones/archief-zone";
 
@@ -14,20 +14,20 @@ export default function FinancienPage() {
         <div>
           <h1 className="text-3xl font-bold text-autronis-text-primary">Financiën</h1>
           <p className="text-base text-autronis-text-secondary mt-1">
-            Dagelijks overzicht: status, acties en BTW
+            Inkomsten, uitgaven en BTW overzicht
           </p>
         </div>
 
-        {/* Zone 1: Status KPIs */}
+        {/* Zone 1: Status KPIs (5 cards met sparklines) */}
         <StatusZone />
 
-        {/* Zone 2: Acties (te doen) */}
-        <ActiesZone />
+        {/* Zone 2: Transacties (toggle + list + donut) */}
+        <TransactiesZone />
 
         {/* Zone 3: BTW kwartaal */}
         <BtwKwartaalZone />
 
-        {/* Zone 4: Archief */}
+        {/* Zone 4: Archief (collapsed) */}
         <ArchiefZone />
       </div>
     </PageTransition>

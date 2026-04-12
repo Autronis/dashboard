@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, teamActiviteit, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, or, isNull, isNotNull, ne, like } from "drizzle-orm";
 import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
 
 // PUT /api/taken/[id]
@@ -29,6 +29,54 @@ export async function PUT(
     // Als status naar "bezig" gaat en nog niet toegewezen, wijs automatisch toe
     if (body.status === "bezig" && !huidig?.toegewezenAan) {
       body.toegewezenAan = gebruiker.id;
+    }
+
+    // Bundle handmatig geplande Claude taken in bestaande Claude sessie van dezelfde dag.
+    // Dag-view groepeert Claude taken die ≤15 min uit elkaar liggen tot één sessie-blok,
+    // dus we snappen de start direct achter het einde van de bestaande sessie.
+    const wordtClaude = (body.uitvoerder ?? huidig?.uitvoerder) === "claude";
+    if (body.ingeplandStart && wordtClaude) {
+      const inkomendStart = new Date(body.ingeplandStart);
+      if (!isNaN(inkomendStart.getTime())) {
+        const datumStr = (typeof body.ingeplandStart === "string" ? body.ingeplandStart : inkomendStart.toISOString()).slice(0, 10);
+        const inkomendEind = body.ingeplandEind
+          ? new Date(body.ingeplandEind)
+          : new Date(inkomendStart.getTime() + (Number(body.geschatteDuur ?? huidig?.geschatteDuur ?? 30)) * 60000);
+        const duurMs = Math.max(5 * 60000, inkomendEind.getTime() - inkomendStart.getTime());
+
+        const eigenaarId = (body.toegewezenAan ?? huidig?.toegewezenAan ?? gebruiker.id) as number;
+
+        const bestaandeClaudeTaken = await db
+          .select({ ingeplandStart: taken.ingeplandStart, ingeplandEind: taken.ingeplandEind })
+          .from(taken)
+          .where(
+            and(
+              eq(taken.uitvoerder, "claude"),
+              isNotNull(taken.ingeplandStart),
+              like(taken.ingeplandStart, `${datumStr}%`),
+              ne(taken.id, Number(id)),
+              or(eq(taken.toegewezenAan, eigenaarId), isNull(taken.toegewezenAan))
+            )
+          );
+
+        if (bestaandeClaudeTaken.length > 0) {
+          const laatsteEind = Math.max(
+            ...bestaandeClaudeTaken.map((t) =>
+              new Date(t.ingeplandEind || t.ingeplandStart!).getTime()
+            )
+          );
+          // Plak nieuwe taak 1 min na laatste eind → valt binnen 15-min bundle gap
+          const snappedStart = new Date(laatsteEind + 60000);
+          const snappedEind = new Date(snappedStart.getTime() + duurMs);
+
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const fmt = (d: Date) =>
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+          body.ingeplandStart = fmt(snappedStart);
+          body.ingeplandEind = fmt(snappedEind);
+        }
+      }
     }
 
     const updateData: Record<string, unknown> = { bijgewerktOp: new Date().toISOString() };

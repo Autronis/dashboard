@@ -213,6 +213,11 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
         <span className="text-[10px] tabular-nums flex-shrink-0 font-medium" style={{ color: kalenderKleur + "B3" }}>
           {startTijd}
         </span>
+        {taak.uitvoerder !== "claude" && (
+          <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-autronis-accent/15 text-autronis-accent flex-shrink-0">
+            Handmatig
+          </span>
+        )}
         <p className={cn(
           "text-xs font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all truncate",
           checked && "line-through text-autronis-text-secondary/50"

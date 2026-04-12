@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, Brain, Zap, ArrowUp, ArrowDown } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSessies } from "@/hooks/queries/use-screen-time";
 import { TimerStrip } from "./timer-strip";
@@ -145,18 +146,11 @@ export default function TijdPage() {
     <PageTransition>
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-5">
 
-        {/* Header row */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary">Tijd</h1>
-            <p className="text-autronis-text-secondary mt-1">
-              Schermtijd, sessies en tijdregistraties
-            </p>
-          </div>
-          <div className="sm:shrink-0">
-            <TimerStrip />
-          </div>
-        </div>
+        <PageHeader
+          title="Tijd"
+          description="Schermtijd, sessies en tijdregistraties"
+          actions={<TimerStrip />}
+        />
 
         {/* KPI cards + coaching — only on tijdlijn tab */}
         {activeTab === "tijdlijn" && (() => {

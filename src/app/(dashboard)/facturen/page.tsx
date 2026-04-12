@@ -11,6 +11,7 @@ import { cn, formatBedrag, formatDatum } from "@/lib/utils";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { SkeletonFacturen } from "@/components/ui/skeleton";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -158,22 +159,19 @@ export default function FacturenPage() {
   return (
     <PageTransition>
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary">Facturen</h1>
-            <p className="text-base text-autronis-text-secondary mt-1">
-              Overzicht van al je facturen
-            </p>
-          </div>
-          <Link
-            href="/financien/nieuw"
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
-          >
-            <Plus className="w-4 h-4" />
-            Nieuwe factuur
-          </Link>
-        </div>
+        <PageHeader
+          title="Facturen"
+          description="Overzicht van al je facturen"
+          actions={
+            <Link
+              href="/financien/nieuw"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20"
+            >
+              <Plus className="w-4 h-4" />
+              Nieuwe factuur
+            </Link>
+          }
+        />
 
         {/* KPI balk */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">

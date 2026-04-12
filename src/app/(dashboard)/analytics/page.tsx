@@ -41,6 +41,7 @@ import {
   type DecisionForecastMaand,
 } from "@/hooks/queries/use-analytics";
 import { PageTransition } from "@/components/ui/page-transition";
+import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton, SkeletonKPI } from "@/components/ui/skeleton";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
@@ -1014,33 +1015,30 @@ export default function AnalyticsPage() {
   return (
     <PageTransition>
       <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-autronis-text-primary">Analytics</h1>
-            <p className="text-base text-autronis-text-secondary mt-1">
-              Beslissingen op basis van data
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setJaar(jaar - 1)}
-              className="px-3 py-1.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-lg transition-colors"
-            >
-              {jaar - 1}
-            </button>
-            <span className="px-4 py-1.5 text-sm font-bold text-autronis-bg bg-autronis-accent rounded-lg">
-              {jaar}
-            </span>
-            <button
-              onClick={() => setJaar(jaar + 1)}
-              disabled={jaar >= new Date().getFullYear()}
-              className="px-3 py-1.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-lg transition-colors disabled:opacity-30"
-            >
-              {jaar + 1}
-            </button>
-          </div>
-        </div>
+        <PageHeader
+          title="Analytics"
+          description="Beslissingen op basis van data"
+          actions={
+            <>
+              <button
+                onClick={() => setJaar(jaar - 1)}
+                className="px-3 py-1.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-lg transition-colors"
+              >
+                {jaar - 1}
+              </button>
+              <span className="px-4 py-1.5 text-sm font-bold text-autronis-bg bg-autronis-accent rounded-lg">
+                {jaar}
+              </span>
+              <button
+                onClick={() => setJaar(jaar + 1)}
+                disabled={jaar >= new Date().getFullYear()}
+                className="px-3 py-1.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary bg-autronis-card border border-autronis-border rounded-lg transition-colors disabled:opacity-30"
+              >
+                {jaar + 1}
+              </button>
+            </>
+          }
+        />
 
         {/* Sticky summary bar */}
         {decisionData && (

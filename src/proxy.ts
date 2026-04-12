@@ -70,6 +70,14 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     return response;
   }
 
+  // Bearer token auth: let API routes through so their own handlers can validate.
+  // The route handlers use requireAuthOrApiKey() which checks INTERNAL_API_KEY / SESSION_SECRET.
+  if (pathname.startsWith("/api/") && req.headers.get("authorization")?.startsWith("Bearer ")) {
+    const response = NextResponse.next();
+    applyPerformanceHeaders(response, pathname);
+    return response;
+  }
+
   const response = NextResponse.next();
 
   try {

@@ -45,55 +45,18 @@ export async function GET() {
       ? `${jaar + 1}-01-01`
       : `${jaar}-${String(volgendKwartaalMaand).padStart(2, "0")}-01`;
 
-    // 1. Inkomsten/uitgaven huidige maand
-    const huidigeMaandRows = await db
-      .select({
-        type: bankTransacties.type,
-        bedrag: bankTransacties.bedrag,
-      })
-      .from(bankTransacties)
-      .where(
-        and(
-          gte(bankTransacties.datum, maandStart),
-          lt(bankTransacties.datum, volgendeMaand)
-        )
-      )
-      .all();
+    // 1 + 2. Inkomsten/uitgaven huidige en vorige maand via SQL aggregatie
+    const huidig = await maandTotalen(maandStart, volgendeMaand);
+    const vorig = await maandTotalen(vorigeMaand, maandStart);
 
-    const inkomstenMaand = huidigeMaandRows
-      .filter((r) => r.type === "bij")
-      .reduce((sum, r) => sum + Math.abs(r.bedrag ?? 0), 0);
-    const uitgavenMaand = huidigeMaandRows
-      .filter((r) => r.type === "af")
-      .reduce((sum, r) => sum + Math.abs(r.bedrag ?? 0), 0);
+    const inkomstenMaand = huidig.inkomsten;
+    const uitgavenMaand = huidig.uitgaven;
 
-    // 2. Inkomsten/uitgaven vorige maand voor delta
-    const vorigeMaandRows = await db
-      .select({
-        type: bankTransacties.type,
-        bedrag: bankTransacties.bedrag,
-      })
-      .from(bankTransacties)
-      .where(
-        and(
-          gte(bankTransacties.datum, vorigeMaand),
-          lt(bankTransacties.datum, maandStart)
-        )
-      )
-      .all();
-
-    const inkomstenVorig = vorigeMaandRows
-      .filter((r) => r.type === "bij")
-      .reduce((sum, r) => sum + Math.abs(r.bedrag ?? 0), 0);
-    const uitgavenVorig = vorigeMaandRows
-      .filter((r) => r.type === "af")
-      .reduce((sum, r) => sum + Math.abs(r.bedrag ?? 0), 0);
-
-    const inkomstenDelta = inkomstenVorig > 0
-      ? Math.round(((inkomstenMaand - inkomstenVorig) / inkomstenVorig) * 100)
+    const inkomstenDelta = vorig.inkomsten > 0
+      ? Math.round(((huidig.inkomsten - vorig.inkomsten) / vorig.inkomsten) * 100)
       : null;
-    const uitgavenDelta = uitgavenVorig > 0
-      ? Math.round(((uitgavenMaand - uitgavenVorig) / uitgavenVorig) * 100)
+    const uitgavenDelta = vorig.uitgaven > 0
+      ? Math.round(((huidig.uitgaven - vorig.uitgaven) / vorig.uitgaven) * 100)
       : null;
 
     // 3. BTW terug te vragen (huidig kwartaal, alleen uitgaande btw)
@@ -123,7 +86,7 @@ export async function GET() {
       )
       .all();
     const btwTeVerwerken = Number(onbekendRows[0]?.count ?? 0);
-    const huidigKwartaalLabel = `Q${kwartaal + 1}`;
+    const huidigKwartaalLabel = `Q${kwartaal + 1} ${jaar}`;
 
     return NextResponse.json({
       inkomstenMaand,

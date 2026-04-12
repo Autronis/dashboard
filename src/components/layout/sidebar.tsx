@@ -33,22 +33,35 @@ function isLauncher(item: NavLink | LauncherLink): item is LauncherLink {
 }
 
 // ─── Navigation structure ───────────────────────────────────────
+// Max 10 top-level hubs. Daily-use pages stay flat; everything else is
+// organized into semantic launchers. Instellingen lives at the bottom.
 const navSections: (NavLink | NavSection | "divider")[] = [
-  // Dagelijks — altijd zichtbaar, meest gebruikt
+  // Dagelijks — altijd zichtbaar
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
   { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
-  { label: "Projecten", icon: FolderKanban, href: "/projecten" },
 
-  // Werk
+  // De 6 hubs
   {
-    section: "Werk",
+    section: "Hubs",
     items: [
-      { label: "Klanten", icon: Users, href: "/klanten" },
+      {
+        label: "Werk",
+        icon: FolderKanban,
+        children: [
+          { label: "Projecten", icon: FolderKanban, href: "/projecten" },
+          { label: "Tijd", icon: Clock, href: "/tijd" },
+          { label: "Focus", icon: Focus, href: "/focus" },
+          { label: "Team", icon: Users2, href: "/team" },
+          { label: "Ops Room", icon: Radio, href: "/ops-room" },
+          { label: "Meetings", icon: Mic, href: "/meetings" },
+        ],
+      },
       {
         label: "Sales",
         icon: Rocket,
         children: [
+          { label: "Klanten", icon: Users, href: "/klanten" },
           { label: "Leads", icon: Zap, href: "/leads" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
@@ -66,66 +79,52 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
           { label: "Belasting", icon: Landmark, href: "/belasting" },
           { label: "Administratie", icon: FolderArchive, href: "/administratie" },
+          { label: "Kilometers", icon: Car, href: "/kilometers" },
         ],
       },
-      { label: "Kilometers", icon: Car, href: "/kilometers" },
-      { label: "Mail Assistent", icon: Sparkles, href: "/mail" },
-    ],
-  },
-
-  // Operationeel
-  {
-    section: "Operationeel",
-    items: [
-      { label: "Ops Room", icon: Radio, href: "/ops-room" },
-      { label: "Tijd", icon: Clock, href: "/tijd" },
-      { label: "Focus", icon: Focus, href: "/focus" },
-      { label: "Team", icon: Users2, href: "/team" },
-    ],
-  },
-
-  // Kennis & Content
-  {
-    section: "Kennis & Content",
-    items: [
-      { label: "Wiki", icon: BookOpen, href: "/wiki" },
-      { label: "Second Brain", icon: Brain, href: "/second-brain" },
-      { label: "Content Engine", icon: Megaphone, href: "/content", alsoMatches: ["/content/posts", "/content/kennisbank", "/content/kalender"] },
-      { label: "Video Studio", icon: Video, href: "/content/videos/studio", alsoMatches: ["/content/videos"] },
-    ],
-  },
-
-  // Overig
-  {
-    section: "Overig",
-    items: [
-      { label: "Analytics", icon: BarChart3, href: "/analytics" },
-      { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
-      { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
-      { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
-      { label: "Meetings", icon: Mic, href: "/meetings" },
-      { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
-      { label: "Documenten", icon: FileText, href: "/documenten" },
-      { label: "Banners", icon: PenLine, href: "/content/banners" },
-      { label: "Animaties", icon: Wand2, href: "/animaties" },
-      { label: "Case Studies", icon: Compass, href: "/case-studies" },
-      { label: "Learning Radar", icon: Radar, href: "/radar" },
-      { label: "YT Knowledge", icon: Video, href: "/yt-knowledge" },
-      { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
-      { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
       {
-        label: "Doelen & Tracking",
-        icon: Crosshair,
+        label: "Content",
+        icon: Megaphone,
         children: [
+          { label: "Content Engine", icon: Megaphone, href: "/content", alsoMatches: ["/content/posts", "/content/kennisbank", "/content/kalender"] },
+          { label: "Video Studio", icon: Video, href: "/content/videos/studio", alsoMatches: ["/content/videos"] },
+          { label: "Banners", icon: PenLine, href: "/content/banners" },
+          { label: "Animaties", icon: Wand2, href: "/animaties" },
+          { label: "Case Studies", icon: Compass, href: "/case-studies" },
+        ],
+      },
+      {
+        label: "Kennis",
+        icon: BookOpen,
+        children: [
+          { label: "Wiki", icon: BookOpen, href: "/wiki" },
+          { label: "Second Brain", icon: Brain, href: "/second-brain" },
+          { label: "Learning Radar", icon: Radar, href: "/radar" },
+          { label: "YT Knowledge", icon: Video, href: "/yt-knowledge" },
+          { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
+          { label: "Documenten", icon: FileText, href: "/documenten" },
+        ],
+      },
+      {
+        label: "Tools & Tracking",
+        icon: Sparkles,
+        children: [
+          { label: "Analytics", icon: BarChart3, href: "/analytics" },
+          { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
           { label: "Doelen", icon: Crosshair, href: "/doelen" },
           { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
+          { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
           { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
+          { label: "Mail Assistent", icon: Mail, href: "/mail" },
+          { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
+          { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
+          { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
         ],
       },
     ],
   },
 
-  // Beheer
+  // Beheer (onderaan)
   {
     section: "Beheer",
     items: [

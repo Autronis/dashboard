@@ -50,13 +50,12 @@ export async function berekenActieveUren(
     .orderBy(asc(screenTimeEntries.startTijd))
     .all();
 
-  // Group by NL local date, filtering out skip apps, entries outside range,
-  // and entries NOT linked to any project (only company hours count for urencriterium)
+  // Group by NL local date, filtering out skip apps and entries outside range.
+  // Deep work = all active screen time minus distraction (no projectId filter —
+  // matches the /api/screen-time/sessies calculation on the Tijd page).
   const dagMap = new Map<string, typeof entries>();
   for (const entry of entries) {
     if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
-    // Only count entries linked to a project — all projects are Autronis work
-    if (!entry.projectId) continue;
     const dag = nlDatum(entry.startTijd);
     if (dag < vanDatum || dag > totDatum) continue;
     if (!dagMap.has(dag)) dagMap.set(dag, []);

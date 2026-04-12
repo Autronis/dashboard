@@ -1687,3 +1687,34 @@ export const openstaandeVerrekeningen = sqliteTable("openstaande_verrekeningen",
   betaaldOp: text("betaald_op"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ PERSOONLIJK (alleen Sem, id=1) ============
+
+export const persoonlijkeHabits = sqliteTable("persoonlijke_habits", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  type: text("type", { enum: ["ochtend", "hele_dag", "avond"] }).notNull(),
+  tijd: text("tijd"),
+  volgorde: integer("volgorde").default(0),
+  actief: integer("actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const persoonlijkeCheckins = sqliteTable("persoonlijke_checkins", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  habitId: integer("habit_id").references(() => persoonlijkeHabits.id).notNull(),
+  datum: text("datum").notNull(),
+  gedaan: integer("gedaan").default(0),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  uniqHabitDatum: uniqueIndex("uniq_persoonlijk_habit_datum").on(table.habitId, table.datum),
+  idxDatum: index("idx_persoonlijk_checkin_datum").on(table.datum),
+}));
+
+export const persoonlijkeTodos = sqliteTable("persoonlijke_todos", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  titel: text("titel").notNull(),
+  gedaan: integer("gedaan").default(0),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  gedaanOp: text("gedaan_op"),
+});

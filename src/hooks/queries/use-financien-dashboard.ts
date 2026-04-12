@@ -5,9 +5,14 @@ export interface FinancienDashboard {
   uitgavenMaand: number;
   inkomstenDelta: number | null;
   uitgavenDelta: number | null;
+  netto: number;
+  nettoDelta: number | null;
   btwTerugTeVragen: number;
+  btwAfTeDragen: number;
   btwTeVerwerken: number;
   huidigKwartaal: string;
+  inkomstenSparkline: number[];
+  uitgavenSparkline: number[];
 }
 
 export function useFinancienDashboard() {

@@ -1,11 +1,49 @@
 "use client";
 
 import { useFinancienDashboard } from "@/hooks/queries/use-financien-dashboard";
-import { TrendingUp, TrendingDown, Receipt, CheckCircle2, AlertCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, Scale, Receipt, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+}
+
+// Pure SVG sparkline component (no external lib)
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (!data || data.length === 0) return null;
+
+  const width = 120;
+  const height = 30;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * width;
+      const y = height - ((v - min) / range) * height;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="mt-2 opacity-60"
+    >
+      <polyline
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
 }
 
 export function StatusZone() {
@@ -13,9 +51,9 @@ export function StatusZone() {
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-28 bg-autronis-card border border-autronis-border rounded-2xl animate-pulse" />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-32 bg-autronis-card border border-autronis-border rounded-2xl animate-pulse" />
         ))}
       </div>
     );
@@ -23,11 +61,12 @@ export function StatusZone() {
 
   const inkomstenPositief = (data.inkomstenDelta ?? 0) >= 0;
   const uitgavenGestegen = (data.uitgavenDelta ?? 0) > 0;
-  const btwReady = data.btwTeVerwerken === 0;
+  const nettoPositief = data.netto >= 0;
+  const nettoUp = (data.nettoDelta ?? 0) >= 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      {/* Card 1: Inkomsten deze maand */}
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Card 1: Inkomsten */}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4 text-emerald-400" />
@@ -39,9 +78,10 @@ export function StatusZone() {
             {inkomstenPositief ? "+" : ""}{data.inkomstenDelta}% vs vorige maand
           </p>
         )}
+        <Sparkline data={data.inkomstenSparkline} color="#10b981" />
       </div>
 
-      {/* Card 2: Uitgaven deze maand */}
+      {/* Card 2: Uitgaven */}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <TrendingDown className="w-4 h-4 text-orange-400" />
@@ -53,9 +93,33 @@ export function StatusZone() {
             {uitgavenGestegen ? "+" : ""}{data.uitgavenDelta}% vs vorige maand
           </p>
         )}
+        <Sparkline data={data.uitgavenSparkline} color="#fb923c" />
       </div>
 
-      {/* Card 3: BTW terug te vragen */}
+      {/* Card 3: Netto */}
+      <div
+        className={cn(
+          "border rounded-2xl p-5 card-glow",
+          nettoPositief
+            ? "bg-emerald-500/5 border-emerald-500/20"
+            : "bg-red-500/5 border-red-500/20"
+        )}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <Scale className={cn("w-4 h-4", nettoPositief ? "text-emerald-400" : "text-red-400")} />
+          <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">Netto</span>
+        </div>
+        <p className={cn("text-3xl font-bold tabular-nums", nettoPositief ? "text-emerald-400" : "text-red-400")}>
+          {formatEuro(data.netto)}
+        </p>
+        {data.nettoDelta !== null && (
+          <p className={cn("text-xs mt-1", nettoUp ? "text-emerald-400" : "text-red-400")}>
+            {nettoUp ? "+" : ""}{data.nettoDelta}% vs vorige maand
+          </p>
+        )}
+      </div>
+
+      {/* Card 4: BTW terug te vragen */}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <Receipt className="w-4 h-4 text-autronis-accent" />
@@ -65,32 +129,14 @@ export function StatusZone() {
         <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
       </div>
 
-      {/* Card 4: BTW status */}
-      <div
-        className={cn(
-          "border rounded-2xl p-5 card-glow",
-          btwReady ? "bg-emerald-500/10 border-emerald-500/30" : "bg-orange-500/10 border-orange-500/30"
-        )}
-      >
+      {/* Card 5: BTW af te dragen */}
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
-          {btwReady ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          ) : (
-            <AlertCircle className="w-4 h-4 text-orange-400" />
-          )}
-          <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">BTW status</span>
+          <AlertCircle className="w-4 h-4 text-orange-400" />
+          <span className="text-xs text-autronis-text-secondary uppercase tracking-wide">BTW af te dragen</span>
         </div>
-        {btwReady ? (
-          <>
-            <p className="text-2xl font-bold text-emerald-400">Klaar</p>
-            <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} compleet</p>
-          </>
-        ) : (
-          <>
-            <p className="text-2xl font-bold text-orange-400 tabular-nums">{data.btwTeVerwerken}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1">items te verwerken</p>
-          </>
-        )}
+        <p className="text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwAfTeDragen)}</p>
+        <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
       </div>
     </div>
   );

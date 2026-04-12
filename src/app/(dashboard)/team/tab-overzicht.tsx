@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Clock, Timer, CheckSquare, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
+import { Clock, CheckSquare, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -13,12 +13,6 @@ interface TopProject {
   uren: number;
 }
 
-interface ActieveTimer {
-  projectNaam: string;
-  omschrijving: string | null;
-  startTijd: string;
-}
-
 interface UserOverzicht {
   id: number;
   naam: string;
@@ -27,7 +21,6 @@ interface UserOverzicht {
   autronisUren: number;
   klantUren: number;
   topProjecten: TopProject[];
-  actieveTimer: ActieveTimer | null;
   takenAfgerondDezeWeek: number;
 }
 
@@ -155,7 +148,7 @@ function ElapsedTimer({ startTijd }: { startTijd: string }) {
 
 function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
   const urenDelta = Math.round((user.urenDezeWeek - user.urenVorigeWeek) * 10) / 10;
-  const isActive = user.actieveTimer !== null;
+  const heeftUren = user.urenDezeWeek > 0;
   const avatarGradient = AVATAR_COLORS[user.id] ?? "from-slate-500 to-slate-700";
 
   return (
@@ -179,14 +172,14 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
           <span
             className={cn(
               "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#192225]",
-              isActive ? "bg-green-400 animate-pulse" : "bg-slate-500"
+              heeftUren ? "bg-green-400" : "bg-slate-500"
             )}
           />
         </div>
         <div>
           <p className="font-semibold text-autronis-text-primary leading-tight">{user.naam}</p>
-          <p className={cn("text-xs mt-0.5", isActive ? "text-green-400" : "text-autronis-text-secondary")}>
-            {isActive ? "Actief bezig" : "Geen actieve timer"}
+          <p className={cn("text-xs mt-0.5", heeftUren ? "text-green-400" : "text-autronis-text-secondary")}>
+            {heeftUren ? `${user.urenDezeWeek}u deze week` : "Nog geen uren"}
           </p>
         </div>
       </div>
@@ -260,29 +253,6 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
               );
             })}
           </ul>
-        )}
-      </div>
-
-      <div className="border-t border-[#2A3538]" />
-
-      {/* ---- ACTIEVE TIMER ---- */}
-      <div className="p-6 pb-5 space-y-2">
-        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-          <Timer className="w-3.5 h-3.5" />
-          Huidige taak
-        </p>
-        {user.actieveTimer ? (
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-autronis-text-primary">{user.actieveTimer.projectNaam}</p>
-            {user.actieveTimer.omschrijving && (
-              <p className="text-xs text-autronis-text-secondary line-clamp-2">{user.actieveTimer.omschrijving}</p>
-            )}
-            <p className="text-xs text-autronis-text-secondary">
-              Loopt al: <ElapsedTimer startTijd={user.actieveTimer.startTijd} />
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm text-autronis-text-secondary italic">Geen actieve timer</p>
         )}
       </div>
 

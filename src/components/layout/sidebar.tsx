@@ -548,6 +548,13 @@ export function Sidebar({ gebruikerId }: { gebruikerId?: number }) {
               <NavItem key={entry.href} item={entry} isCollapsed={isCollapsed} isActive={isActive(entry.href, entry.alsoMatches)} />
             );
           })}
+          {gebruikerId === 1 && (
+            <NavItem
+              item={{ label: "Persoonlijk", icon: Heart, href: "/persoonlijk" }}
+              isCollapsed={isCollapsed}
+              isActive={isActive("/persoonlijk")}
+            />
+          )}
         </nav>
 
         {/* Keyboard shortcut hint */}

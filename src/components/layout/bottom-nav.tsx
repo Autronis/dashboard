@@ -15,6 +15,7 @@ import {
   Settings,
   Users,
   FileText,
+  Heart,
   X,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,7 +37,7 @@ const moreTabs = [
   { label: "Instellingen", icon: Settings, href: "/instellingen" },
 ];
 
-export function BottomNav() {
+export function BottomNav({ gebruikerId }: { gebruikerId?: number }) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
@@ -101,6 +102,21 @@ export function BottomNav() {
                     </Link>
                   );
                 })}
+                {gebruikerId === 1 && (
+                  <Link
+                    href="/persoonlijk"
+                    onClick={() => setMoreOpen(false)}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors",
+                      isActive("/persoonlijk")
+                        ? "bg-autronis-accent/10 text-autronis-accent"
+                        : "text-autronis-text-secondary hover:bg-autronis-border"
+                    )}
+                  >
+                    <Heart className="w-5 h-5" />
+                    <span className="text-xs font-medium">Persoonlijk</span>
+                  </Link>
+                )}
               </div>
             </motion.div>
           </motion.div>

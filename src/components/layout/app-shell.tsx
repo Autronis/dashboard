@@ -80,7 +80,7 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
       {/* Animated background */}
       <WavesBackground />
 
-      <Sidebar />
+      <Sidebar gebruikerId={gebruiker.id} />
       <Header gebruiker={gebruiker} />
       <ToastContainer />
       <main
@@ -97,7 +97,7 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
       </main>
 
       {/* Mobile bottom nav */}
-      <BottomNav />
+      <BottomNav gebruikerId={gebruiker.id} />
 
       {/* Floating elements */}
       <ScrollToTop />

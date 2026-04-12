@@ -52,31 +52,47 @@ impl Storage {
     }
 
     /// Insert a new tracking record. Merges with the previous record
-    /// if it's the same app within the tracking interval.
+    /// if it's the same app AND the previous entry's end_time is recent.
+    /// This prevents stale entries from being extended across idle gaps
+    /// (e.g. when idle detection fails silently).
     pub fn record(&self, app: &str, title: &str, url: Option<&str>, duration_secs: i64) -> rusqlite::Result<()> {
+        // Max gap between previous entry's end_time and now for merging to be allowed.
+        // Default track_interval is 5s, so 30s covers normal jitter comfortably while
+        // catching stale entries caused by idle-detection failures.
+        const MAX_MERGE_GAP_SECS: i64 = 30;
+
         // Check if last unsynced entry is the same app — extend it instead of creating new
-        let last: Option<(i64, String, i64)> = self.conn.query_row(
-            "SELECT id, app, duration_secs FROM entries WHERE synced = 0 ORDER BY id DESC LIMIT 1",
+        let last: Option<(i64, String, i64, String)> = self.conn.query_row(
+            "SELECT id, app, duration_secs, end_time FROM entries WHERE synced = 0 ORDER BY id DESC LIMIT 1",
             [],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         ).ok();
 
-        if let Some((id, last_app, last_duration)) = last {
+        if let Some((id, last_app, last_duration, last_end_time)) = last {
             if last_app == app {
-                let now = Utc::now().to_rfc3339();
-                // Only update title if the new one is non-empty (AppleScript can intermittently fail)
-                if title.is_empty() {
-                    self.conn.execute(
-                        "UPDATE entries SET end_time = ?1, duration_secs = ?2 WHERE id = ?3",
-                        params![now, last_duration + duration_secs, id],
-                    )?;
-                } else {
-                    self.conn.execute(
-                        "UPDATE entries SET end_time = ?1, duration_secs = ?2, title = ?3 WHERE id = ?4",
-                        params![now, last_duration + duration_secs, title, id],
-                    )?;
+                // Only merge if the previous entry's end_time is recent.
+                let now_dt = Utc::now();
+                let gap_ok = chrono::DateTime::parse_from_rfc3339(&last_end_time)
+                    .map(|dt| (now_dt - dt.with_timezone(&Utc)).num_seconds() <= MAX_MERGE_GAP_SECS)
+                    .unwrap_or(false);
+
+                if gap_ok {
+                    let now = now_dt.to_rfc3339();
+                    // Only update title if the new one is non-empty (AppleScript can intermittently fail)
+                    if title.is_empty() {
+                        self.conn.execute(
+                            "UPDATE entries SET end_time = ?1, duration_secs = ?2 WHERE id = ?3",
+                            params![now, last_duration + duration_secs, id],
+                        )?;
+                    } else {
+                        self.conn.execute(
+                            "UPDATE entries SET end_time = ?1, duration_secs = ?2, title = ?3 WHERE id = ?4",
+                            params![now, last_duration + duration_secs, title, id],
+                        )?;
+                    }
+                    return Ok(());
                 }
-                return Ok(());
+                // Fall through: gap too large, create new entry instead of merging stale.
             }
         }
 

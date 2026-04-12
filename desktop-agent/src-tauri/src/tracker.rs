@@ -297,17 +297,25 @@ pub fn get_idle_duration() -> std::time::Duration {
     }
 }
 
-/// macOS idle duration via IOKit HIDIdleTime (nanoseconds)
+/// macOS idle duration via IOKit HIDIdleTime (nanoseconds).
+///
+/// On failure (ioreg error, parse error, HIDIdleTime not found) we return a
+/// large duration rather than zero. Returning zero would mean "user is active"
+/// which causes the tracker to record continuously during silent failures —
+/// the exact bug that let a single entry span 7+ hours of idle time.
+/// Returning 1 hour signals "very idle" so the tracking loop backs off safely.
 #[cfg(target_os = "macos")]
 pub fn get_idle_duration() -> std::time::Duration {
     use std::process::Command;
+
+    const IDLE_FALLBACK: std::time::Duration = std::time::Duration::from_secs(3600);
 
     let output = match Command::new("ioreg")
         .args(["-c", "IOHIDSystem", "-d", "4"])
         .output()
     {
         Ok(o) => o,
-        Err(_) => return std::time::Duration::from_secs(0),
+        Err(_) => return IDLE_FALLBACK,
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -321,7 +329,7 @@ pub fn get_idle_duration() -> std::time::Duration {
             }
         }
     }
-    std::time::Duration::from_secs(0)
+    IDLE_FALLBACK
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "macos")))]

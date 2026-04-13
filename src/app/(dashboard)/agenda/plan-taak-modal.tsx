@@ -206,6 +206,16 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
             </button>
           )}
 
+          {/* Claude sessie hint */}
+          {isClaudeTaak && claudeSessieEindTijd && (
+            <div className="bg-purple-500/5 border border-purple-500/15 rounded-xl px-3 py-2 flex items-center gap-2">
+              <Terminal className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
+              <p className="text-[11px] text-purple-300/80">
+                Wordt toegevoegd aan bestaande <span className="font-semibold text-purple-200">Claude sessie</span> van {defaultDatum.split("-").reverse().join("-")}. Backend snapt automatisch naar dezelfde bundle.
+              </p>
+            </div>
+          )}
+
           {/* Datum + tijd */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">

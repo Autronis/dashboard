@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -13,23 +13,29 @@ import {
   Users,
   Target,
   Zap,
+  Linkedin,
+  Trash2,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
-// Minimale lead type — matcht wat /api/leads GET teruggeeft.
-// Volledige typing komt later via @/types/supabase-leads.
 interface Lead {
   id: string;
   name: string | null;
   website: string | null;
   phone: string | null;
-  emails: string | null; // JSON string of comma-separated
+  emails: string | null;
   location: string | null;
   folder: string | null;
+  source: string | null;
   linkedin_url: string | null;
   employee_count: string | null;
   search_term: string | null;
   outreach_status: string | null;
+  email_found: boolean | null;
+  phone_found: boolean | null;
+  website_found: boolean | null;
   created_at: string;
 }
 
@@ -38,56 +44,67 @@ function parseEmails(raw: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed.filter((e: string) => e?.trim());
-  } catch {
-    // niet JSON
-  }
+  } catch {}
   return raw.split(",").map((e) => e.trim()).filter(Boolean);
 }
 
+function isLinkedin(s: string | null): boolean {
+  return s !== "google maps" && s !== "google_maps" && !!s;
+}
+function isGoogleMaps(s: string | null): boolean {
+  return s === "google maps" || s === "google_maps";
+}
+
+const SOURCE_FILTERS = [
+  { key: "alle", label: "Alle" },
+  { key: "linkedin", label: "LinkedIn", icon: Linkedin },
+  { key: "google_maps", label: "Google Maps", icon: MapPin },
+];
+
+type StatToggle = "all" | "with_email" | "with_phone" | "with_website";
+
 export default function LeadsOverzichtPage() {
+  const { addToast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<string>("alle");
+  const [folderFilter, setFolderFilter] = useState<string>("alle");
+  const [statToggle, setStatToggle] = useState<StatToggle>("all");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        setLoading(true);
-        const res = await fetch("/api/leads");
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.fout || `HTTP ${res.status}`);
-        }
-        const data = await res.json();
-        if (!cancelled) {
-          setLeads(data.leads ?? []);
-          setError(null);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Onbekende fout");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
+  const load = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/leads");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `HTTP ${res.status}`);
       }
+      const data = await res.json();
+      setLeads(data.leads ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Onbekende fout");
+    } finally {
+      setLoading(false);
     }
-    load();
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  const gefilterd = useMemo(() => {
-    if (!zoek.trim()) return leads;
-    const q = zoek.toLowerCase();
-    return leads.filter((l) =>
-      [l.name, l.website, l.location, l.search_term]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q))
-    );
-  }, [leads, zoek]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const folders = useMemo(() => {
+    const set = new Set<string>();
+    for (const l of leads) {
+      if (l.folder) set.add(l.folder);
+    }
+    return Array.from(set).sort();
+  }, [leads]);
 
   const stats = useMemo(() => {
     const total = leads.length;
@@ -96,6 +113,90 @@ export default function LeadsOverzichtPage() {
     const metWebsite = leads.filter((l) => !!l.website?.trim()).length;
     return { total, metEmail, metTel, metWebsite };
   }, [leads]);
+
+  const gefilterd = useMemo(() => {
+    let result = leads;
+
+    // Source filter
+    if (sourceFilter === "linkedin") result = result.filter((l) => isLinkedin(l.source));
+    else if (sourceFilter === "google_maps") result = result.filter((l) => isGoogleMaps(l.source));
+
+    // Folder filter
+    if (folderFilter !== "alle") result = result.filter((l) => l.folder === folderFilter);
+
+    // Stat toggle filter (klikbare KPI cards)
+    if (statToggle === "with_email") result = result.filter((l) => parseEmails(l.emails).length > 0);
+    else if (statToggle === "with_phone") result = result.filter((l) => !!l.phone?.trim());
+    else if (statToggle === "with_website") result = result.filter((l) => !!l.website?.trim());
+
+    // Search
+    if (zoek.trim()) {
+      const q = zoek.toLowerCase();
+      result = result.filter((l) =>
+        [l.name, l.website, l.location, l.search_term]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q))
+      );
+    }
+
+    return result;
+  }, [leads, sourceFilter, folderFilter, statToggle, zoek]);
+
+  function toggleSelect(id: string) {
+    setSelectedIds((curr) => {
+      const next = new Set(curr);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selectedIds.size === gefilterd.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(gefilterd.slice(0, 200).map((l) => l.id)));
+    }
+  }
+
+  function clearFilters() {
+    setSourceFilter("alle");
+    setFolderFilter("alle");
+    setStatToggle("all");
+    setZoek("");
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/leads", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setLeads((curr) => curr.filter((l) => !selectedIds.has(l.id)));
+      addToast(`${data.verwijderd ?? selectedIds.size} leads verwijderd`, "succes");
+      setSelectedIds(new Set());
+      setConfirmDelete(false);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Verwijderen mislukt", "fout");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  const activeFilters = [
+    sourceFilter !== "alle",
+    folderFilter !== "alle",
+    statToggle !== "all",
+    !!zoek.trim(),
+  ].filter(Boolean).length;
 
   return (
     <div className="space-y-6">
@@ -125,28 +226,133 @@ export default function LeadsOverzichtPage() {
         </div>
       </div>
 
-      {/* Stats kaarten */}
+      {/* Klikbare stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Totaal leads" waarde={stats.total} icon={Users} />
-        <StatCard label="Met email" waarde={stats.metEmail} icon={Mail} />
-        <StatCard label="Met telefoon" waarde={stats.metTel} icon={Phone} />
-        <StatCard label="Met website" waarde={stats.metWebsite} icon={Globe} />
-      </div>
-
-      {/* Zoekbar */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-        <input
-          type="text"
-          value={zoek}
-          onChange={(e) => setZoek(e.target.value)}
-          placeholder="Zoek op naam, website, locatie..."
-          className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+        <ClickableStat
+          label="Totaal leads"
+          waarde={stats.total}
+          icon={Users}
+          active={statToggle === "all"}
+          onClick={() => setStatToggle("all")}
+        />
+        <ClickableStat
+          label="Met email"
+          waarde={stats.metEmail}
+          icon={Mail}
+          active={statToggle === "with_email"}
+          onClick={() => setStatToggle(statToggle === "with_email" ? "all" : "with_email")}
+        />
+        <ClickableStat
+          label="Met telefoon"
+          waarde={stats.metTel}
+          icon={Phone}
+          active={statToggle === "with_phone"}
+          onClick={() => setStatToggle(statToggle === "with_phone" ? "all" : "with_phone")}
+        />
+        <ClickableStat
+          label="Met website"
+          waarde={stats.metWebsite}
+          icon={Globe}
+          active={statToggle === "with_website"}
+          onClick={() => setStatToggle(statToggle === "with_website" ? "all" : "with_website")}
         />
       </div>
 
+      {/* Filters: source + folder */}
+      <div className="flex flex-wrap items-center gap-2">
+        {SOURCE_FILTERS.map((f) => {
+          const active = sourceFilter === f.key;
+          const Icon = f.icon;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setSourceFilter(f.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                active
+                  ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
+                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+              )}
+            >
+              {Icon && <Icon className="w-3 h-3" />}
+              {f.label}
+            </button>
+          );
+        })}
+        {folders.length > 0 && (
+          <select
+            value={folderFilter}
+            onChange={(e) => setFolderFilter(e.target.value)}
+            className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+          >
+            <option value="alle">Alle folders ({folders.length})</option>
+            {folders.map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        )}
+        {activeFilters > 0 && (
+          <button
+            onClick={clearFilters}
+            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Wis filters ({activeFilters})
+          </button>
+        )}
+      </div>
+
+      {/* Zoek + bulk delete */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
+          <input
+            type="text"
+            value={zoek}
+            onChange={(e) => setZoek(e.target.value)}
+            placeholder="Zoek op naam, website, locatie..."
+            className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+          />
+        </div>
+        {selectedIds.size > 0 && (
+          <>
+            <span className="text-xs text-autronis-text-secondary">
+              {selectedIds.size} geselecteerd
+            </span>
+            {confirmDelete ? (
+              <>
+                <button
+                  onClick={bulkDelete}
+                  disabled={isDeleting}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  Bevestig delete
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-2 rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-text-primary"
+                >
+                  Annuleer
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 className="w-3 h-3" />
+                Verwijder ({selectedIds.size})
+              </button>
+            )}
+          </>
+        )}
+      </div>
+
       {/* Body */}
-      {loading && (
+      {loading && leads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
           Leads laden...
@@ -167,7 +373,7 @@ export default function LeadsOverzichtPage() {
 
       {!loading && !error && gefilterd.length === 0 && (
         <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-8 text-center text-autronis-text-secondary text-sm">
-          {leads.length === 0 ? "Nog geen leads" : "Geen resultaten voor deze zoekopdracht"}
+          {leads.length === 0 ? "Nog geen leads" : "Geen resultaten voor deze filters"}
         </div>
       )}
 
@@ -176,31 +382,59 @@ export default function LeadsOverzichtPage() {
           <table className="w-full text-sm">
             <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Locatie</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Folder</th>
-                <th className="text-left px-4 py-2.5 font-medium">Contact</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden lg:table-cell">Status</th>
+                <th className="w-10 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.size === gefilterd.slice(0, 200).length && gefilterd.length > 0}
+                    onChange={toggleAll}
+                    className="rounded border-autronis-border accent-autronis-accent"
+                  />
+                </th>
+                <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
+                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Locatie</th>
+                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Folder</th>
+                <th className="text-left px-3 py-2.5 font-medium">Contact</th>
+                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
               {gefilterd.slice(0, 200).map((lead) => {
                 const emails = parseEmails(lead.emails);
+                const selected = selectedIds.has(lead.id);
                 return (
                   <tr
                     key={lead.id}
-                    className="hover:bg-autronis-accent/[0.03] transition-colors"
+                    onClick={() => toggleSelect(lead.id)}
+                    className={cn(
+                      "cursor-pointer transition-colors",
+                      selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
+                    )}
                   >
+                    <td className="px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSelect(lead.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded border-autronis-border accent-autronis-accent"
+                      />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-autronis-text-primary truncate">
                           {lead.name || "(geen naam)"}
                         </span>
+                        {isGoogleMaps(lead.source) ? (
+                          <MapPin className="w-3 h-3 text-autronis-accent flex-shrink-0" />
+                        ) : (
+                          <Linkedin className="w-3 h-3 text-purple-300 flex-shrink-0" />
+                        )}
                         {lead.website && (
                           <a
-                            href={lead.website}
+                            href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
                             target="_blank"
                             rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
                             className="text-autronis-text-secondary hover:text-autronis-accent flex-shrink-0"
                             title={lead.website}
                           >
@@ -218,15 +452,19 @@ export default function LeadsOverzichtPage() {
                       {lead.location && (
                         <span className="inline-flex items-center gap-1 text-xs">
                           <MapPin className="w-3 h-3" />
-                          {lead.location}
+                          {(lead.location || "").split(",")[0]}
                         </span>
                       )}
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
                       {lead.folder && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
+                        <Link
+                          href={`/leads/folders/${encodeURIComponent(lead.folder)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
+                        >
                           {lead.folder}
-                        </span>
+                        </Link>
                       )}
                     </td>
                     <td className="px-4 py-3">
@@ -248,12 +486,9 @@ export default function LeadsOverzichtPage() {
                         <span
                           className={cn(
                             "text-xs px-2 py-0.5 rounded-full",
-                            lead.outreach_status === "pending" &&
-                              "bg-gray-500/10 text-gray-400",
-                            lead.outreach_status === "sent" &&
-                              "bg-emerald-500/10 text-emerald-400",
-                            lead.outreach_status === "failed" &&
-                              "bg-red-500/10 text-red-400"
+                            lead.outreach_status === "pending" && "bg-gray-500/10 text-gray-400",
+                            lead.outreach_status === "sent" && "bg-emerald-500/10 text-emerald-400",
+                            lead.outreach_status === "failed" && "bg-red-500/10 text-red-400"
                           )}
                         >
                           {lead.outreach_status}
@@ -276,24 +511,41 @@ export default function LeadsOverzichtPage() {
   );
 }
 
-function StatCard({
+function ClickableStat({
   label,
   waarde,
   icon: Icon,
+  active,
+  onClick,
 }: {
   label: string;
   waarde: number;
   icon: typeof Users;
+  active: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className="rounded-xl border border-autronis-border bg-autronis-card p-4">
-      <div className="flex items-center gap-2 text-autronis-text-secondary text-xs mb-1.5">
+    <button
+      onClick={onClick}
+      className={cn(
+        "rounded-xl border p-4 text-left transition-colors",
+        active
+          ? "border-autronis-accent/60 bg-autronis-accent/5"
+          : "border-autronis-border bg-autronis-card hover:border-autronis-accent/30"
+      )}
+    >
+      <div
+        className={cn(
+          "flex items-center gap-2 text-xs mb-1.5",
+          active ? "text-autronis-accent" : "text-autronis-text-secondary"
+        )}
+      >
         <Icon className="w-3.5 h-3.5" />
         {label}
       </div>
       <div className="text-2xl font-bold text-autronis-text-primary tabular-nums">
         {waarde.toLocaleString("nl-NL")}
       </div>
-    </div>
+    </button>
   );
 }

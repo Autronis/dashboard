@@ -887,7 +887,7 @@ export default function DashboardPage() {
             <KPICard label="Omzet deze maand" value={kpis.omzetDezeMaand} format={(n) => n === 0 ? "\u2014" : formatBedrag(n)} icon={<Euro className="w-5 h-5" />} color="emerald" index={0} className={kpis.omzetDezeMaand === 0 ? "opacity-50" : ""} trend={kpis.omzetVorigeMaand > 0 ? { value: omzetTrend } : undefined} />
           </Link>
           <Link href="/tijdregistratie" className="block">
-            <KPICard label="Uren deze week" value={kpis.urenDezeWeek.totaal} format={(n) => n === 0 ? "\u2014" : formatUren(Math.round(n))} icon={<Clock className="w-5 h-5" />} color="blue" index={1} className={kpis.urenDezeWeek.totaal === 0 ? "opacity-50" : ""} trend={kpis.urenVorigeWeek > 0 ? { value: urenTrend } : undefined} />
+            <KPICard label="Uren deze week" value={kpis.urenDezeWeek.eigen} format={(n) => n === 0 ? "\u2014" : formatUren(Math.round(n))} icon={<Clock className="w-5 h-5" />} color="blue" index={1} className={kpis.urenDezeWeek.eigen === 0 ? "opacity-50" : ""} trend={kpis.urenVorigeWeek > 0 ? { value: urenTrend } : undefined} />
           </Link>
           <Link href="/projecten" className="block">
             <KPICard label="Actieve projecten" value={kpis.actieveProjecten} format={(n) => n === 0 ? "\u2014" : String(n)} icon={<FolderKanban className="w-5 h-5" />} color="purple" index={2} className={kpis.actieveProjecten === 0 ? "opacity-50" : ""} />

@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, klanten, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, like, desc, asc } from "drizzle-orm";
+import { eq, and, or, inArray, sql, like, desc, asc } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
 
 // GET /api/taken — alle taken met filters, gegroepeerd per project/fase
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const prioriteit = searchParams.get("prioriteit");
@@ -17,7 +17,20 @@ export async function GET(req: NextRequest) {
     const projectIdFilter = searchParams.get("projectId");
     const faseFilter = searchParams.get("fase");
 
-    const conditions = [sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`];
+    // Filter taken op project-eigenaarschap. Sem ziet projecten zonder
+    // eigenaar (legacy NULL) plus sem/team/vrij. Syb ziet syb/team/vrij.
+    // Taken zonder gekoppeld project blijven ook zichtbaar.
+    const visibleCodes: ("sem" | "syb" | "team" | "vrij")[] =
+      gebruiker.id === 2 ? ["syb", "team", "vrij"] : ["sem", "team", "vrij"];
+
+    const conditions = [
+      sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`,
+      or(
+        sql`${taken.projectId} IS NULL`,
+        inArray(projecten.eigenaar, visibleCodes),
+        gebruiker.id === 1 ? sql`${projecten.eigenaar} IS NULL` : sql`1=0`
+      )!,
+    ];
     if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));
     if (prioriteit && prioriteit !== "alle") conditions.push(eq(taken.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
     if (toegewezenAan === "geen") conditions.push(sql`${taken.toegewezenAan} IS NULL`);

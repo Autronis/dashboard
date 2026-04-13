@@ -367,20 +367,25 @@ export default function IdeeenPage() {
     .filter((i) => filterMinScore === 0 || calcPriorityScore(i) >= filterMinScore);
 
   const alleIdeeen = [...gefilterd].sort((a, b) => {
+    let diff = 0;
     switch (sortBy) {
-      case "score": return calcPriorityScore(b) - calcPriorityScore(a);
-      case "impact": return (b.impact ?? 0) - (a.impact ?? 0);
-      case "effort": return (a.effort ?? 10) - (b.effort ?? 10);
-      case "revenue": return (b.revenuePotential ?? 0) - (a.revenuePotential ?? 0);
-      case "naam": return a.naam.localeCompare(b.naam);
+      case "score":     diff = calcPriorityScore(b) - calcPriorityScore(a); break;
+      case "impact":    diff = (b.impact ?? 0) - (a.impact ?? 0); break;
+      case "effort":    diff = (a.effort ?? 10) - (b.effort ?? 10); break;
+      case "revenue":   diff = (b.revenuePotential ?? 0) - (a.revenuePotential ?? 0); break;
+      case "naam":      diff = a.naam.localeCompare(b.naam); break;
       case "status": {
         const order: Record<string, number> = { gebouwd: 0, actief: 1, uitgewerkt: 2, idee: 3 };
-        return (order[a.status] ?? 9) - (order[b.status] ?? 9);
+        diff = (order[a.status] ?? 9) - (order[b.status] ?? 9);
+        break;
       }
-      case "categorie": return (a.categorie ?? "").localeCompare(b.categorie ?? "");
-      case "datum": return (b.aangemaaktOp ?? "").localeCompare(a.aangemaaktOp ?? "");
-      default: return 0;
+      case "categorie": diff = (a.categorie ?? "").localeCompare(b.categorie ?? ""); break;
+      case "datum":     diff = (b.aangemaaktOp ?? "").localeCompare(a.aangemaaktOp ?? ""); break;
+      default: diff = 0;
     }
+    // Stable tiebreaker: nieuwste eerst zodat scoreloze ideeen niet
+    // op (oude) nummer-volgorde blijven hangen.
+    return diff !== 0 ? diff : compareByDate(a, b);
   });
 
   const aiFiltered = filterDoelgroep ? aiSuggesties.filter((i) => i.doelgroep === filterDoelgroep) : aiSuggesties;
@@ -392,14 +397,24 @@ export default function IdeeenPage() {
   const aiPersoonlijk = aiSuggesties.filter((i) => i.doelgroep === "persoonlijk").length;
 
   // === DECISION DATA ===
-  // Top 3 to build next (highest score, status=idee or uitgewerkt)
-  const topToBuild = useMemo(() =>
-    backlogIdeeen
+  // Top 3 to build next.
+  // - Only ideas with substance (score, description, or uitwerking)
+  // - Prefer 'uitgewerkt' over 'idee' (small bonus)
+  // - Sort by priority score desc, with date as stable tiebreaker
+  const topToBuild = useMemo(() => {
+    const statusBonus = (s: string) => (s === "uitgewerkt" ? 0.5 : 0);
+    return backlogIdeeen
       .filter((i) => i.status === "idee" || i.status === "uitgewerkt")
-      .sort((a, b) => calcPriorityScore(b) - calcPriorityScore(a))
-      .slice(0, 3),
-    [backlogIdeeen]
-  );
+      .filter(hasSubstance)
+      .sort((a, b) => {
+        const diff =
+          (calcPriorityScore(b) + statusBonus(b.status)) -
+          (calcPriorityScore(a) + statusBonus(a.status));
+        if (diff !== 0) return diff;
+        return compareByDate(a, b);
+      })
+      .slice(0, 3);
+  }, [backlogIdeeen]);
 
   // Ideas to discard (low score + old)
   const toDiscard = useMemo(() =>

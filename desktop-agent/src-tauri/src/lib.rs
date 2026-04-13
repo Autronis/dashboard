@@ -512,6 +512,13 @@ pub fn run() {
                             Ok(msg) => eprintln!("[project-sync] {}", msg),
                             Err(e) => eprintln!("[project-sync] Fout: {}", e),
                         }
+
+                        // Reverse sync: ensure local folders exist for all
+                        // active dashboard projects (create missing folders).
+                        match project_sync::ensure_folders_from_dashboard(&config).await {
+                            Ok(msg) => eprintln!("[folder-sync] {}", msg),
+                            Err(e) => eprintln!("[folder-sync] Fout: {}", e),
+                        }
                     }
                 }
             });

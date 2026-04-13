@@ -345,3 +345,131 @@ pub async fn sync_projects(config: &Config) -> Result<String, String> {
 
     Ok(format!("{} projecten gesynct", project_count))
 }
+
+// ─── Reverse sync: ensure local folders exist for all dashboard projects ───
+
+#[derive(Debug, serde::Deserialize)]
+struct DashboardProject {
+    #[allow(dead_code)]
+    id: i64,
+    naam: String,
+    status: Option<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct DashboardProjectsResponse {
+    projecten: Vec<DashboardProject>,
+}
+
+/// Normalize a project name for filesystem comparison:
+/// lowercase, replace spaces/slashes with dashes, strip non-alphanumeric
+fn normalize_for_fs(name: &str) -> String {
+    name.to_lowercase()
+        .chars()
+        .map(|c| match c {
+            ' ' | '/' | '\\' | '_' => '-',
+            c if c.is_alphanumeric() || c == '-' => c,
+            _ => '-',
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
+/// Check if a folder already exists that matches a dashboard project name
+fn folder_exists_for_project(dir: &Path, project_name: &str) -> bool {
+    let target = normalize_for_fs(project_name);
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_string();
+            if name.starts_with('.') {
+                continue; // skip hidden folders like .archived-X
+            }
+            let normalized = normalize_for_fs(&name);
+            if normalized == target {
+                return true;
+            }
+            // Also accept substring match (both ways) for robustness
+            if normalized.contains(&target) || target.contains(&normalized) {
+                if normalized.len() >= 5 && target.len() >= 5 {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Fetches all active projects from the dashboard and creates local folders
+/// for any that don't exist yet. Non-destructive — never deletes or renames.
+pub async fn ensure_folders_from_dashboard(config: &Config) -> Result<String, String> {
+    let projects_dir = projects_dir();
+    if !projects_dir.exists() {
+        fs::create_dir_all(&projects_dir)
+            .map_err(|e| format!("Kon projects dir niet aanmaken: {}", e))?;
+    }
+
+    let client = reqwest::Client::new();
+    let url = format!("{}/api/projecten", config.api_url);
+
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", config.api_token))
+        .timeout(std::time::Duration::from_secs(30))
+        .send()
+        .await
+        .map_err(|e| format!("Kon projecten niet ophalen: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("Projecten fetch mislukt: {}", response.status()));
+    }
+
+    let data: DashboardProjectsResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Kon JSON niet parsen: {}", e))?;
+
+    let mut created = 0;
+    let mut skipped = 0;
+
+    for project in &data.projecten {
+        // Only act on active projects
+        if project.status.as_deref() == Some("afgerond") {
+            continue;
+        }
+
+        if folder_exists_for_project(&projects_dir, &project.naam) {
+            skipped += 1;
+            continue;
+        }
+
+        // Create new folder with normalized name
+        let folder_name = normalize_for_fs(&project.naam);
+        let folder_path = projects_dir.join(&folder_name);
+
+        if let Err(e) = fs::create_dir_all(&folder_path) {
+            eprintln!("[folder-sync] Kon '{}' niet aanmaken: {}", folder_name, e);
+            continue;
+        }
+
+        // Write a minimal PROJECT_BRIEF.md
+        let brief_path = folder_path.join("PROJECT_BRIEF.md");
+        let brief_content = format!(
+            "# {}\n\n## Doel\n_Beschrijf het doel van dit project._\n\n## Status\nAutomatisch aangemaakt door de desktop agent na detectie in het dashboard.\n\n## Volgende stappen\n- [ ] Projectbeschrijving invullen\n- [ ] Initiële taken toevoegen\n",
+            project.naam
+        );
+        let _ = fs::write(&brief_path, brief_content);
+
+        created += 1;
+    }
+
+    Ok(format!(
+        "Folder sync: {} aangemaakt, {} al aanwezig",
+        created, skipped
+    ))
+}

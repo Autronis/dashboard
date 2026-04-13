@@ -247,6 +247,25 @@ export const pushSubscriptions = sqliteTable("push_subscriptions", {
   aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
 });
 
+// ============ REMOTE COMMITS ============
+// Ingekomen via GitHub webhook; gebruikt voor "pull voor je begint" banner
+// bij team-projecten. Dismiss state staat client-side in localStorage.
+export const remoteCommits = sqliteTable("remote_commits", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  projectId: integer("project_id").references(() => projecten.id),
+  repoUrl: text("repo_url").notNull(),
+  sha: text("sha").notNull(),
+  auteurNaam: text("auteur_naam"),
+  auteurEmail: text("auteur_email"),
+  bericht: text("bericht"),
+  branch: text("branch"),
+  pushedOp: text("pushed_op"),
+  aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxProject: index("idx_remote_commits_project").on(table.projectId),
+  idxSha: index("idx_remote_commits_sha").on(table.sha),
+}));
+
 // ============ LEAD ACTIVITEITEN ============
 export const leadActiviteiten = sqliteTable("lead_activiteiten", {
   id: integer("id").primaryKey({ autoIncrement: true }),

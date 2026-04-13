@@ -6,7 +6,7 @@ import {
   leads,
   projecten,
   taken,
-  tijdregistraties,
+  screenTimeEntries,
   bankTransacties,
   abonnementen,
   revolutVerbinding,
@@ -173,13 +173,17 @@ export async function GET() {
       )
 ;
 
+    // Active projects with screen-time activity in the last week
     const projectenMetUrenRaw = await db
       .select({
-        projectId: tijdregistraties.projectId,
+        projectId: screenTimeEntries.projectId,
       })
-      .from(tijdregistraties)
-      .where(gte(tijdregistraties.startTijd, eenWeekGeleden.toISOString()))
-      .groupBy(tijdregistraties.projectId);
+      .from(screenTimeEntries)
+      .where(and(
+        gte(screenTimeEntries.startTijd, eenWeekGeleden.toISOString()),
+        ne(screenTimeEntries.categorie, "inactief"),
+      ))
+      .groupBy(screenTimeEntries.projectId);
 
     const projectenMetUren = projectenMetUrenRaw.map((r) => r.projectId);
 

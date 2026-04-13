@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { gebruikers, feestdagen, verlof, tijdregistraties } from "@/lib/db/schema";
+import { gebruikers, feestdagen, verlof } from "@/lib/db/schema";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 
@@ -103,23 +104,9 @@ export async function GET(req: NextRequest) {
         }
         const verlofUren = verlofDagen * 8;
 
-        // Get tijdregistraties for this week
-        const tijdRows = await db
-          .select({ duurMinuten: tijdregistraties.duurMinuten })
-          .from(tijdregistraties)
-          .where(
-            and(
-              eq(tijdregistraties.gebruikerId, user.id),
-              gte(tijdregistraties.startTijd, maandag),
-              lte(tijdregistraties.startTijd, zondag + "T23:59:59")
-            )
-          );
-
-        const geplandMinuten = tijdRows.reduce(
-          (sum, r) => sum + (r.duurMinuten || 0),
-          0
-        );
-        const geplandUren = Math.round((geplandMinuten / 60) * 10) / 10;
+        // Productive screen-time uren this week (canonical hour calc)
+        const screenTimeUren = await berekenActieveUren(user.id, maandag, zondag);
+        const geplandUren = Math.round(screenTimeUren * 10) / 10;
 
         const basisUren = 40;
         const beschikbaarUren = Math.max(0, basisUren - feestdagUren - verlofUren);

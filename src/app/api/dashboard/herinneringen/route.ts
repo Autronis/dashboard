@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { leads, leadActiviteiten, projecten, klanten, tijdregistraties } from "@/lib/db/schema";
+import { leads, leadActiviteiten, projecten, klanten, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, desc, max } from "drizzle-orm";
+import { eq, and, ne, sql, desc, max } from "drizzle-orm";
 
 interface Herinnering {
   id: string;
@@ -93,12 +93,16 @@ export async function GET() {
       );
 
     for (const project of actieveProjecten) {
+      // Last screen-time activity on this project
       const [laatsteTijd] = await db
         .select({
-          startTijd: max(tijdregistraties.startTijd),
+          startTijd: max(screenTimeEntries.startTijd),
         })
-        .from(tijdregistraties)
-        .where(eq(tijdregistraties.projectId, project.id));
+        .from(screenTimeEntries)
+        .where(and(
+          eq(screenTimeEntries.projectId, project.id),
+          ne(screenTimeEntries.categorie, "inactief"),
+        ));
 
       const laatsteRegistratie = laatsteTijd?.startTijd
         ? new Date(laatsteTijd.startTijd)

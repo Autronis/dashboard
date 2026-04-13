@@ -925,17 +925,6 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Doelen — wat is er nodig */}
-        <motion.div variants={sectionVariants}>
-          <DoelenWidget />
-        </motion.div>
-
-        {/* Team vergelijking + Efficiency naast elkaar */}
-        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <TeamVergelijkingWidget />
-          <EfficiencyWidget />
-        </motion.div>
-
         {/* Taken widget */}
         {mijnTaken.length > 0 && (
           <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -1041,7 +1030,18 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {/* Main 2-column layout */}
+        {/* Daily briefing — direct na taken zodat je je dag start kan zien */}
+        <motion.div variants={sectionVariants}>
+          <DailyBriefing />
+        </motion.div>
+
+        {/* Doelen + Team vergelijking + Efficiency — compact 3-grid */}
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <DoelenWidget />
+          <TeamVergelijkingWidget />
+          <EfficiencyWidget />
+        </motion.div>
+
         {/* Gewoontes — compact */}
         <motion.div variants={sectionVariants}>
           <HabitWidget compact />
@@ -1050,9 +1050,6 @@ export default function DashboardPage() {
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">
           {/* Left column */}
           <div className="space-y-5 min-w-0 overflow-hidden">
-            {/* Dagbriefing */}
-            <DailyBriefing />
-
             {/* Idee van de dag + Learning Radar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <IdeeVanDeDag />

@@ -83,8 +83,7 @@ export function DoelenWidget() {
           label: "Omzet",
           icon: Euro,
           pct: Math.min(omzetGoal.percentage, 100),
-          huidig: `${formatBedrag(omzetGoal.huidig)} / ${formatBedrag(omzetGoal.target)} per maand`,
-          target: "",
+          huidig: `${formatBedrag(omzetGoal.huidig)} / ${formatBedrag(omzetGoal.target)}`,
           actie: omzetGoal.actie,
         }
       : null,
@@ -92,20 +91,18 @@ export function DoelenWidget() {
       label: "Uren-criterium",
       icon: Clock,
       pct: Math.min(urenPct, 100),
-      huidig: `${urenBehaald.toFixed(0)}u / ${urenDoel}u per jaar`,
-      target: "",
+      huidig: `${urenBehaald.toFixed(0)}u / ${urenDoel}u`,
       actie:
         uren?.voldoet
           ? "Doel behaald ✓"
-          : `Nog ${urenResterend.toFixed(0)}u nodig — ${urenPerWerkdag.toFixed(1)}u/werkdag`,
+          : `Nog ${urenResterend.toFixed(0)}u — ${urenPerWerkdag.toFixed(1)}u/werkdag`,
     },
     jaarGoal
       ? {
           label: "Jaardoel",
           icon: Target,
           pct: Math.min(jaarGoal.percentage, 100),
-          huidig: `${formatBedrag(jaarGoal.huidig)} / ${formatBedrag(jaarGoal.target)} per jaar`,
-          target: "",
+          huidig: `${formatBedrag(jaarGoal.huidig)} / ${formatBedrag(jaarGoal.target)}`,
           actie: jaarGoal.actie,
         }
       : null,
@@ -119,19 +116,29 @@ export function DoelenWidget() {
         <span className="text-[11px] text-autronis-text-secondary ml-auto">wat is er nodig</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="space-y-3">
         {doelen.map((d) => {
           const Icon = d.icon;
-          const kleur = doelKleur(d.pct);
+          const kleuren = doelKleurClass(d.pct);
           return (
-            <div key={d.label} className="flex flex-col items-center text-center">
-              <ProgressRing percentage={d.pct} size={68} strokeWidth={6} color={kleur} />
-              <div className="flex items-center gap-1.5 mt-2.5">
-                <Icon className="w-3 h-3 text-autronis-text-secondary" />
-                <p className="text-xs font-medium text-autronis-text-primary">{d.label}</p>
+            <div key={d.label} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Icon className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+                <span className="text-xs font-medium text-autronis-text-primary flex-1 truncate">{d.label}</span>
+                <span className={cn("text-xs font-bold tabular-nums", kleuren.pctText)}>{Math.round(d.pct)}%</span>
               </div>
-              <p className="text-[11px] text-autronis-text-secondary mt-0.5 tabular-nums leading-snug">{d.huidig}</p>
-              <p className="text-[11px] text-autronis-accent mt-1 font-medium leading-snug">{d.actie}</p>
+              <div className="h-1.5 w-full bg-autronis-bg rounded-full overflow-hidden">
+                <motion.div
+                  className={cn("h-full rounded-full", kleuren.bar)}
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${d.pct}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                />
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[10px]">
+                <span className="text-autronis-text-secondary tabular-nums truncate">{d.huidig}</span>
+                <span className="text-autronis-accent font-medium truncate text-right">{d.actie}</span>
+              </div>
             </div>
           );
         })}

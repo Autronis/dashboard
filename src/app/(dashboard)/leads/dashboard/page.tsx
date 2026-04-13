@@ -15,6 +15,10 @@ import {
   MapPin,
   FolderOpen,
   TrendingUp,
+  Activity,
+  MessageSquare,
+  XCircle,
+  Sparkle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,12 +39,45 @@ interface Lead {
 interface EmailRecord {
   id: string;
   email_status: string | null;
+  lead_name: string | null;
+  recipient_email: string | null;
+  created_at: string;
+  updated_at: string;
+  reply_received_at: string | null;
+}
+
+type ActivityKind = "generated" | "sent" | "replied" | "failed";
+
+interface ActivityEvent {
+  id: string;
+  kind: ActivityKind;
+  label: string;
+  timestamp: string;
 }
 
 function hasEmail(l: Lead): boolean {
   const e = l.emails;
   return !!(e && e.trim() && e.trim() !== "[]");
 }
+
+function tijdGeleden(iso: string): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (diffMin < 1) return "zojuist";
+  if (diffMin < 60) return `${diffMin}m geleden`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}u geleden`;
+  const diffDay = Math.floor(diffHour / 24);
+  return `${diffDay}d geleden`;
+}
+
+const ACTIVITY_ICONS = {
+  generated: { icon: Sparkle, color: "text-amber-400" },
+  sent: { icon: Send, color: "text-emerald-400" },
+  replied: { icon: MessageSquare, color: "text-blue-400" },
+  failed: { icon: XCircle, color: "text-red-400" },
+} as const;
 
 export default function LeadsDashboardPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -136,6 +173,51 @@ export default function LeadsDashboardPage() {
     };
   }, [leads, emails]);
 
+  // Recent Activity feed — laatste 10 events uit emails table
+  const recentActivity = useMemo<ActivityEvent[]>(() => {
+    const events: ActivityEvent[] = [];
+    for (const e of emails) {
+      const naam = e.lead_name || e.recipient_email || "(onbekend)";
+      // Reply ontvangen
+      if (e.reply_received_at && e.email_status === "replied") {
+        events.push({
+          id: `${e.id}:reply`,
+          kind: "replied",
+          label: `Reply ontvangen — ${naam}`,
+          timestamp: e.reply_received_at,
+        });
+      }
+      // Sent of failed → updated_at als signaal
+      if (e.email_status === "sent") {
+        events.push({
+          id: `${e.id}:sent`,
+          kind: "sent",
+          label: `Email verstuurd — ${naam}`,
+          timestamp: e.updated_at,
+        });
+      } else if (e.email_status === "failed" || e.email_status === "error") {
+        events.push({
+          id: `${e.id}:failed`,
+          kind: "failed",
+          label: `Email gefaald — ${naam}`,
+          timestamp: e.updated_at,
+        });
+      }
+      // Generated → created_at
+      if (e.email_status === "generated" || e.email_status === "approved") {
+        events.push({
+          id: `${e.id}:gen`,
+          kind: "generated",
+          label: `Email gegenereerd — ${naam}`,
+          timestamp: e.created_at,
+        });
+      }
+    }
+    return events
+      .sort((a, b) => (b.timestamp || "").localeCompare(a.timestamp || ""))
+      .slice(0, 10);
+  }, [emails]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
@@ -214,6 +296,36 @@ export default function LeadsDashboardPage() {
           <SmallStat label="Reply rate" value={`${stats.replyRate}%`} accent />
         </div>
       </div>
+
+      {/* Recent Activity feed */}
+      {recentActivity.length > 0 && (
+        <div className="rounded-xl border border-autronis-border bg-autronis-card p-5">
+          <h2 className="text-sm font-semibold text-autronis-text-primary mb-3 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-autronis-accent" />
+            Recent Activity
+          </h2>
+          <div className="space-y-1.5">
+            {recentActivity.map((event) => {
+              const cfg = ACTIVITY_ICONS[event.kind];
+              const Icon = cfg.icon;
+              return (
+                <div
+                  key={event.id}
+                  className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-autronis-accent/[0.04] transition-colors"
+                >
+                  <Icon className={cn("w-3.5 h-3.5 flex-shrink-0", cfg.color)} />
+                  <span className="text-xs text-autronis-text-primary truncate flex-1">
+                    {event.label}
+                  </span>
+                  <span className="text-[10px] text-autronis-text-secondary/60 tabular-nums flex-shrink-0">
+                    {tijdGeleden(event.timestamp)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Top folders */}
       {stats.topFolders.length > 0 && (

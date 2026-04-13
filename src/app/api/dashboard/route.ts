@@ -4,12 +4,12 @@ import {
   gebruikers,
   projecten,
   klanten,
-  tijdregistraties,
   taken,
+  screenTimeEntries,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql, isNull, ne, desc, or } from "drizzle-orm";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { eq, and, sql, isNull, ne, desc, or } from "drizzle-orm";
+import { berekenActieveUren, berekenOmzet, berekenUrenPerDag } from "@/lib/screen-time-uren";
 
 function getWeekRange(): { van: string; tot: string } {
   const now = new Date();
@@ -26,11 +26,8 @@ function getWeekRange(): { van: string; tot: string } {
   return { van: monday.toISOString(), tot: sunday.toISOString() };
 }
 
-function getMonthRange(): { van: string; tot: string } {
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-  return { van: firstDay.toISOString(), tot: lastDay.toISOString() };
+function ymd(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" }).format(d);
 }
 
 // GET /api/dashboard
@@ -46,31 +43,15 @@ export async function GET() {
       .limit(1);
 
     const week = getWeekRange();
-    const maand = getMonthRange();
 
     // === KPIs ===
 
-    // Omzet deze maand: sum(duurMinuten) per klant × klant.uurtarief
-    const omzetData = await db
-      .select({
-        duurMinuten: tijdregistraties.duurMinuten,
-        uurtarief: klanten.uurtarief,
-      })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(
-        and(
-          gte(tijdregistraties.startTijd, maand.van),
-          lte(tijdregistraties.startTijd, maand.tot),
-          sql`${tijdregistraties.eindTijd} IS NOT NULL`,
-          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-        )
-      );
-
-    const omzetDezeMaand = omzetData.reduce((sum, r) => {
-      return sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0);
-    }, 0);
+    // Omzet deze maand: productieve screen-time × klant.uurtarief
+    const nu = new Date();
+    const maandVanDatum = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-01`;
+    const maandLastDay = new Date(nu.getFullYear(), nu.getMonth() + 1, 0).getDate();
+    const maandTotDatum = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-${String(maandLastDay).padStart(2, "0")}`;
+    const omzetDezeMaand = await berekenOmzet(maandVanDatum, maandTotDatum);
 
     // Uren deze week — NL-timezone week boundaries (ma 00:00 — zo 23:59 NL)
     const NL_TZ = "Europe/Amsterdam";
@@ -128,19 +109,8 @@ export async function GET() {
     const vorigeMaand = new Date();
     vorigeMaand.setMonth(vorigeMaand.getMonth() - 1);
     const vmFirstDay = new Date(vorigeMaand.getFullYear(), vorigeMaand.getMonth(), 1);
-    const vmLastDay = new Date(vorigeMaand.getFullYear(), vorigeMaand.getMonth() + 1, 0, 23, 59, 59, 999);
-    const omzetVmData = await db
-      .select({ duurMinuten: tijdregistraties.duurMinuten, uurtarief: klanten.uurtarief })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(and(
-        gte(tijdregistraties.startTijd, vmFirstDay.toISOString()),
-        lte(tijdregistraties.startTijd, vmLastDay.toISOString()),
-        sql`${tijdregistraties.eindTijd} IS NOT NULL`,
-        or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
-      ));
-    const omzetVorigeMaand = omzetVmData.reduce((sum, r) => sum + ((r.duurMinuten || 0) / 60) * (r.uurtarief || 0), 0);
+    const vmLastDay = new Date(vorigeMaand.getFullYear(), vorigeMaand.getMonth() + 1, 0);
+    const omzetVorigeMaand = await berekenOmzet(ymd(vmFirstDay), ymd(vmLastDay));
 
     // Uren vorige week (voor trend) — ook NL-timezone screen time
     const prevMondayNl = new Date(mondayNl);

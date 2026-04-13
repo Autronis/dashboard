@@ -164,13 +164,18 @@ export async function POST(req: NextRequest) {
         const finalStatus = ex?.status === "afgerond" ? "afgerond" : payloadStatus;
 
         if (ex) {
-          // Update existing task (preserve afgerond status)
-          await db.update(taken).set({
+          // Update existing task (preserve afgerond status, enrich empty fields)
+          const updates: Record<string, unknown> = {
             status: finalStatus,
             fase: t.fase || null,
             volgorde: t.volgorde ?? 0,
             bijgewerktOp: sql`(datetime('now'))`,
-          }).where(eq(taken.id, ex.id));
+          };
+          if (t.omschrijving) updates.omschrijving = t.omschrijving;
+          if (t.geschatteDuur) updates.geschatteDuur = t.geschatteDuur;
+          if (t.prompt) updates.prompt = t.prompt;
+          if (t.prioriteit) updates.prioriteit = t.prioriteit;
+          await db.update(taken).set(updates).where(eq(taken.id, ex.id));
         } else {
           // Insert new task
           await db.insert(taken).values({
@@ -179,9 +184,12 @@ export async function POST(req: NextRequest) {
             aangemaaktDoor: userId,
             titel: t.titel,
             status: finalStatus,
-            prioriteit: "normaal",
+            prioriteit: t.prioriteit ?? "normaal",
             fase: t.fase || null,
             volgorde: t.volgorde ?? 0,
+            omschrijving: t.omschrijving ?? null,
+            geschatteDuur: t.geschatteDuur ?? null,
+            prompt: t.prompt ?? null,
             uitvoerder,
           });
         }
@@ -260,7 +268,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Add new tasks
+    // Add new tasks — supports both plain strings and objects with extra fields
     if (nieuwe_taken && nieuwe_taken.length > 0) {
       const maxVolgorde = await db
         .select({ max: sql<number>`MAX(${taken.volgorde})` })
@@ -269,9 +277,19 @@ export async function POST(req: NextRequest) {
         .get();
       let volgorde = (maxVolgorde?.max ?? 0) + 1;
 
-      for (const titel of nieuwe_taken) {
-        const trimmed = titel.trim();
+      for (const entry of nieuwe_taken) {
+        // Normalize: accept both plain strings and objects
+        const isObject = typeof entry === "object" && entry !== null;
+        const titelRaw = isObject ? entry.titel : entry;
+        const trimmed = titelRaw?.trim() ?? "";
         if (!trimmed) continue;
+
+        const fase = isObject ? entry.fase ?? null : null;
+        const prioriteit = (isObject && entry.prioriteit) ? entry.prioriteit : "normaal";
+        const omschrijving = isObject ? entry.omschrijving ?? null : null;
+        const geschatteDuur = isObject ? entry.geschatteDuur ?? null : null;
+        const prompt = isObject ? entry.prompt ?? null : null;
+        const deadline = isObject ? entry.deadline ?? null : null;
 
         // Check if task already exists (case-insensitive, also check substring match)
         const bestaat = await db
@@ -294,12 +312,40 @@ export async function POST(req: NextRequest) {
             aangemaaktDoor: userId,
             titel: trimmed,
             status: "open",
-            prioriteit: "normaal",
-            uitvoerder: "claude",
+            prioriteit,
+            fase,
+            omschrijving,
+            geschatteDuur,
+            prompt,
+            deadline,
+            uitvoerder: prompt ? "claude" : "claude",
             volgorde,
           }).run();
           added++;
           volgorde++;
+        } else if (isObject && (omschrijving || geschatteDuur || prompt)) {
+          // Task exists — enrich it with new data if we have any (only fill empty fields)
+          const existing = await db
+            .select({
+              id: taken.id,
+              omschrijving: taken.omschrijving,
+              geschatteDuur: taken.geschatteDuur,
+              prompt: taken.prompt,
+            })
+            .from(taken)
+            .where(eq(taken.id, bestaat.id))
+            .get();
+
+          if (existing) {
+            const updates: Record<string, unknown> = {};
+            if (!existing.omschrijving && omschrijving) updates.omschrijving = omschrijving;
+            if (!existing.geschatteDuur && geschatteDuur) updates.geschatteDuur = geschatteDuur;
+            if (!existing.prompt && prompt) updates.prompt = prompt;
+            if (Object.keys(updates).length > 0) {
+              updates.bijgewerktOp = sql`(datetime('now'))`;
+              await db.update(taken).set(updates).where(eq(taken.id, bestaat.id)).run();
+            }
+          }
         } else {
           errors.push(`Taak bestaat al: "${trimmed}"`);
         }

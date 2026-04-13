@@ -92,17 +92,41 @@ Als dit geen taken retourneert, vraag Sem welke taken open staan of check het da
 3. **Nieuwe taak ontdekt** → DIRECT syncen als nieuwe_taken **met fase**
 4. **Sessie-einde** → check of alles gesynct is
 
-### Nieuwe taken toevoegen met fase (VERPLICHT):
-`nieuwe_taken` accepteert zowel strings als objecten. Gebruik ALTIJD objecten met fase zodat taken in het dashboard correct verschijnen:
+### Nieuwe taken toevoegen (VERPLICHT — altijd met context)
+`nieuwe_taken` accepteert zowel strings als objecten. **Gebruik ALTIJD objecten** en vul zoveel mogelijk velden in zodat Sem de taak direct snapt zonder context erbij te zoeken:
+
 ```json
 {
   "nieuwe_taken": [
-    {"titel": "Taak titel", "fase": "Fase 2: Financieel & Compliance"},
-    {"titel": "Andere taak", "fase": "Fase 5: Uitbreidingen", "prioriteit": "hoog"}
+    {
+      "titel": "INTERNAL_API_KEY instellen in .env.local en Vercel",
+      "fase": "Fase 2: Financieel & Compliance",
+      "prioriteit": "hoog",
+      "omschrijving": "Stappen:\n1. Open .env.local → voeg toe: INTERNAL_API_KEY=...\n2. Ga naar Vercel → Settings → Environment Variables\n3. Voeg dezelfde key toe voor production\n4. Deploy opnieuw",
+      "geschatteDuur": 15,
+      "deadline": "2026-04-15"
+    }
   ]
 }
 ```
-Als je geen fase weet, wordt automatisch de meest recente actieve fase gebruikt. Maar geef altijd een fase mee als je die weet.
+
+**Velden** (alleen `titel` is verplicht, rest optioneel maar aanbevolen):
+
+| Veld | Type | Wat |
+|---|---|---|
+| `titel` | string | Korte, concrete actie-titel |
+| `fase` | string | Fase binnen het project (bijv. "Fase 2: Financieel"). Als niet gegeven → meest recente actieve fase |
+| `prioriteit` | `"laag" \| "normaal" \| "hoog"` | Default `"normaal"` |
+| `omschrijving` | string (markdown) | **Stappen, context, acceptatiecriteria**. Multi-line met `\n`. Sem leest dit in het Taak Detail paneel. |
+| `geschatteDuur` | int | Minuten. Gebruik 15/30/60/120. |
+| `prompt` | string | **Alleen voor Claude-taken**: de exacte prompt die gebruikt moet worden om de taak uit te voeren |
+| `deadline` | `"YYYY-MM-DD"` | Hard deadline |
+
+**Regels:**
+- **Omschrijving is bijna altijd waardevol**. Als je weet wat de stappen zijn, schrijf ze op. Geen enkele cognitieve overhead voor Sem als hij de taak later oppakt.
+- **geschatteDuur bij nieuwe taken** — een ruwe schatting is beter dan niks
+- **Voor Claude-taken**: vul `prompt` in met de letterlijke tekst die Sem kan kopiëren in een nieuwe Claude Code sessie
+- **Enrichment werkt ook bij bestaande taken**: als je sync-taken aanroept met een `omschrijving`/`geschatteDuur`/`prompt` veld voor een taak die al bestaat maar die velden leeg heeft, worden ze aangevuld (lege velden worden gevuld, bestaande content wordt niet overschreven)
 
 ## Team Sync (VERPLICHT)
 Dit project wordt gedeeld door Sem (id=1) en Syb (id=2). Gebruik de team sync API bij ELKE sessie.

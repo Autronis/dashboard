@@ -8,7 +8,7 @@ import {
   screenTimeEntries,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, isNull, ne, desc, or } from "drizzle-orm";
+import { eq, and, gte, lte, sql, isNull, ne, desc, or } from "drizzle-orm";
 import { berekenActieveUren, berekenOmzet, berekenUrenPerDag } from "@/lib/screen-time-uren";
 
 function getWeekRange(): { van: string; tot: string } {
@@ -188,50 +188,39 @@ export async function GET() {
     // === Teamgenoot data ===
     let teamgenootData = null;
     if (teamgenoot) {
-      // Active timer
-      const [actieveTimer] = await db
+      // Recente screen-time entry (laatste 5 min) → "tracking nu"
+      const vijfMinGeleden = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      const [recenteEntry] = await db
         .select({
-          id: tijdregistraties.id,
-          omschrijving: tijdregistraties.omschrijving,
-          startTijd: tijdregistraties.startTijd,
+          startTijd: screenTimeEntries.startTijd,
           projectNaam: projecten.naam,
         })
-        .from(tijdregistraties)
-        .leftJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .from(screenTimeEntries)
+        .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
         .where(
           and(
-            eq(tijdregistraties.gebruikerId, teamgenoot.id),
-            isNull(tijdregistraties.eindTijd)
+            eq(screenTimeEntries.gebruikerId, teamgenoot.id),
+            sql`${screenTimeEntries.eindTijd} >= ${vijfMinGeleden}`,
+            ne(screenTimeEntries.categorie, "inactief")
           )
         )
+        .orderBy(desc(screenTimeEntries.eindTijd))
         .limit(1);
+      const actieveTimer = recenteEntry
+        ? { id: 0, omschrijving: null, startTijd: recenteEntry.startTijd, projectNaam: recenteEntry.projectNaam }
+        : null;
 
-      // Uren per dag deze week
-      const urenPerDagRaw = await db
-        .select({
-          dag: sql<string>`date(${tijdregistraties.startTijd})`,
-          totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)`,
-        })
-        .from(tijdregistraties)
-        .where(
-          and(
-            eq(tijdregistraties.gebruikerId, teamgenoot.id),
-            gte(tijdregistraties.startTijd, week.van),
-            lte(tijdregistraties.startTijd, week.tot),
-            sql`${tijdregistraties.eindTijd} IS NOT NULL`
-          )
-        )
-        .groupBy(sql`date(${tijdregistraties.startTijd})`);
-
-      // Map to weekdays (ma-vr)
+      // Uren per dag deze week (ma-vr) — uit screen-time
       const weekStart = new Date(week.van);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 4); // vr
+      const urenPerDagMap = await berekenUrenPerDag(teamgenoot.id, ymd(weekStart), ymd(weekEnd));
       const urenPerDag: number[] = [];
       for (let i = 0; i < 5; i++) {
         const dag = new Date(weekStart);
         dag.setDate(weekStart.getDate() + i);
-        const dagStr = dag.toISOString().slice(0, 10);
-        const found = urenPerDagRaw.find((r) => r.dag === dagStr);
-        urenPerDag.push(found?.totaal || 0);
+        const u = urenPerDagMap.get(ymd(dag)) ?? 0;
+        urenPerDag.push(Math.round(u * 60)); // minuten voor consistency met bestaande UI
       }
 
       // Taken
@@ -256,7 +245,7 @@ export async function GET() {
         id: teamgenoot.id,
         naam: teamgenoot.naam,
         email: teamgenoot.email,
-        actieveTimer: actieveTimer || null,
+        actieveTimer,
         urenPerDag,
         urenTotaal: teamgenootUren,
         taken: teamgenootTaken,

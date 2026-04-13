@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, klanten, taken, tijdregistraties, gebruikers } from "@/lib/db/schema";
+import { projecten, klanten, taken, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, or, desc, gte, inArray } from "drizzle-orm";
+import { berekenUrenPerProject } from "@/lib/screen-time-uren";
 import { createProjectRepo } from "@/lib/github";
 
 type EigenaarCode = "sem" | "syb" | "team" | "vrij";
@@ -113,16 +114,13 @@ export async function GET(req: NextRequest) {
       laatsteActiviteiten.map((a) => [a.projectId, a.laatsteTaakUpdate])
     );
 
-    // Get total hours from tijdregistraties per project
-    const urenStats = await db
-      .select({
-        projectId: tijdregistraties.projectId,
-        totaalMinuten: sql<number>`sum(${tijdregistraties.duurMinuten})`,
-      })
-      .from(tijdregistraties)
-      .groupBy(tijdregistraties.projectId);
-
-    const urenMap = new Map(urenStats.map((u) => [u.projectId, u.totaalMinuten || 0]));
+    // Total hours per project from screen-time entries (productive activity).
+    // Range: alles wat ooit getrackt is — projectenlijst toont totale activiteit.
+    const urenPerProject = await berekenUrenPerProject("2020-01-01", "2099-12-31");
+    // Convert hours → minutes for compatibility with existing UI fields
+    const urenMap = new Map<number, number>(
+      [...urenPerProject.entries()].map(([id, uren]) => [id, Math.round(uren * 60)])
+    );
 
     // Get concatenated task titles per project (for search)
     const taakTitelsData = await db

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, klanten, taken, tijdregistraties, notificaties } from "@/lib/db/schema";
+import { projecten, klanten, taken, tijdregistraties, screenTimeEntries, notificaties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, ne } from "drizzle-orm";
 
 const VALID_EIGENAAR = new Set(["sem", "syb", "team", "vrij"]);
 
@@ -105,14 +105,20 @@ export async function GET(
       afgerond: faseTaken.filter((t) => t.status === "afgerond").length,
     }));
 
-    // Get total time tracked
+    // Get total time tracked from screen-time entries (productive activity)
+    const PRODUCTIEF = ["development", "design", "administratie", "finance", "communicatie"];
     const urenStats = await db
       .select({
-        totaalMinuten: sql<number>`COALESCE(SUM(${tijdregistraties.duurMinuten}), 0)`,
+        totaalSeconden: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`,
       })
-      .from(tijdregistraties)
-      .where(eq(tijdregistraties.projectId, projectId))
+      .from(screenTimeEntries)
+      .where(and(
+        eq(screenTimeEntries.projectId, projectId),
+        ne(screenTimeEntries.categorie, "inactief"),
+        sql`${screenTimeEntries.categorie} IN (${sql.join(PRODUCTIEF.map(c => sql`${c}`), sql`, `)})`,
+      ))
       .get();
+    const totaalMinutenProject = Math.round((urenStats?.totaalSeconden ?? 0) / 60);
 
     // Task stats
     const totaalTaken = alleTaken.length;
@@ -125,7 +131,7 @@ export async function GET(
         totaalTaken,
         afgerondTaken,
         voortgang,
-        totaalMinuten: urenStats?.totaalMinuten ?? 0,
+        totaalMinuten: totaalMinutenProject,
       },
       fases,
     });

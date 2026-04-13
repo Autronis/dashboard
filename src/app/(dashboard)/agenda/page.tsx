@@ -249,6 +249,45 @@ export default function AgendaPage() {
     });
   }
 
+  // Plan een hele fase in één keer. Alle taken krijgen consecutief 15 min slots
+  // vanaf het gevraagde startmoment. Claude taken worden door de backend
+  // automatisch gebundeld tot één sessie; handmatige taken worden consecutief
+  // zichtbaar als losse blokken direct achter elkaar.
+  function handlePlanFase(taken: AgendaTaak[], datum: string, startTijd: string) {
+    if (taken.length === 0) return;
+    const [h, m] = startTijd.split(":").map(Number);
+    const cursor = new Date(`${datum}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+    let okCount = 0;
+    let errCount = 0;
+    const total = taken.length;
+    taken.forEach((t, i) => {
+      const duur = t.geschatteDuur || 15;
+      const start = new Date(cursor.getTime() + i * duur * 60000);
+      const eind = new Date(start.getTime() + duur * 60000);
+      planTaak.mutate(
+        { id: t.id, ingeplandStart: fmt(start), ingeplandEind: fmt(eind), geschatteDuur: duur },
+        {
+          onSuccess: () => {
+            okCount += 1;
+            if (okCount + errCount === total) {
+              addToast(`Fase ingepland (${okCount}/${total})`, errCount === 0 ? "succes" : "fout");
+            }
+          },
+          onError: () => {
+            errCount += 1;
+            if (okCount + errCount === total) {
+              addToast(`Fase ingepland (${okCount}/${total})`, "fout");
+            }
+          },
+        }
+      );
+    });
+  }
+
   async function handleTaakToggle(id: number, huidigeStatus?: string) {
     const nieuweStatus = huidigeStatus === "afgerond" ? "open" : "afgerond";
     try {
@@ -2087,7 +2126,136 @@ export default function AgendaPage() {
                               <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">{groep.taken.length}</span>
                             </button>
 
-                            {/* Taken in groep */}
+                            {/* Fases binnen dit project */}
+                            <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.18 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="space-y-2 mt-1.5 pl-1">
+                                  {groep.fases.map((fase) => {
+                                    const faseKey = `${groep.projectNaam}::${fase.faseNaam}`;
+                                    const fpk = getProjectKleur(groep.projectNaam);
+                                    const faseExpanded = expandedProjecten.has(faseKey);
+                                    const allClaude = fase.taken.every((t) => t.uitvoerder === "claude");
+                                    return (
+                                      <div key={faseKey} className="rounded-lg border border-autronis-border/30 overflow-hidden" style={{ backgroundColor: fpk.bg, borderLeftWidth: "2px", borderLeftColor: fpk.border }}>
+                                        {/* Fase header met plan-knop */}
+                                        <div className="flex items-center gap-1.5 px-2 py-1.5">
+                                          <button
+                                            onClick={() => setExpandedProjecten((prev) => {
+                                              const next = new Set(prev);
+                                              if (next.has(faseKey)) next.delete(faseKey);
+                                              else next.add(faseKey);
+                                              return next;
+                                            })}
+                                            className="flex items-center gap-1 flex-1 min-w-0 text-left"
+                                          >
+                                            <ChevronRight className={cn("w-3 h-3 flex-shrink-0 transition-transform", faseExpanded && "rotate-90")} style={{ color: fpk.text }} />
+                                            <span className="text-[11px] font-bold truncate" style={{ color: fpk.text }}>
+                                              {fase.faseNaam}
+                                            </span>
+                                            <span className="text-[9px] tabular-nums ml-1 flex-shrink-0" style={{ color: fpk.text + "80" }}>
+                                              {fase.taken.length}×
+                                            </span>
+                                            {allClaude && (
+                                              <span className="text-[8px] font-semibold uppercase px-1 py-0.5 rounded bg-purple-500/25 text-purple-300 flex-shrink-0">
+                                                Claude
+                                              </span>
+                                            )}
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const vandaag = new Date();
+                                              const datum = `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, "0")}-${String(vandaag.getDate()).padStart(2, "0")}`;
+                                              handlePlanFase(fase.taken, datum, allClaude ? "08:00" : "09:00");
+                                            }}
+                                            title={`Plan hele fase (${fase.taken.length} taken)`}
+                                            className="text-[9px] font-semibold px-2 py-1 rounded flex-shrink-0 transition-colors"
+                                            style={{ backgroundColor: fpk.border + "30", color: fpk.text }}
+                                          >
+                                            Plan fase
+                                          </button>
+                                        </div>
+
+                                        {/* Taken in fase (collapsible) */}
+                                        <AnimatePresence>
+                                        {faseExpanded && (
+                                          <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.15 }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="space-y-0.5 px-2 pb-2 pt-0.5">
+                                              {fase.taken.map((taak) => (
+                                                <div
+                                                  key={taak.id}
+                                                  draggable
+                                                  onDragStart={(e) => {
+                                                    setDragTaak(taak);
+                                                    e.dataTransfer.setData("text/plain", String(taak.id));
+                                                    e.dataTransfer.effectAllowed = "move";
+                                                  }}
+                                                  onDragEnd={() => setDragTaak(null)}
+                                                  onClick={() => openPlanModal(taak)}
+                                                  className="flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] hover:bg-white/5 cursor-grab active:cursor-grabbing group"
+                                                  style={{ color: fpk.text }}
+                                                >
+                                                  <button
+                                                    className="w-3 h-3 rounded-full border border-autronis-text-secondary/40 hover:border-emerald-400 flex-shrink-0"
+                                                    onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
+                                                    title="Afvinken"
+                                                  />
+                                                  <span className="truncate flex-1">{taak.titel}</span>
+                                                  {taak.prioriteit === "hoog" && (
+                                                    <span className="text-[8px] text-red-400 flex-shrink-0">!</span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </motion.div>
+                                        )}
+                                        </AnimatePresence>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </motion.div>
+                            )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Oude losse rendering uitgeschakeld — nu fase-first */}
+                    {false && (
+                    <div className="space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto pr-0.5">
+                      {takenPerProject.map((groep) => {
+                        const isExpanded = expandedProjecten.has(groep.projectNaam) || takenPerProject.length === 1;
+                        return (
+                          <div key={groep.projectNaam}>
+                            <button
+                              onClick={() => setExpandedProjecten((prev) => {
+                                const next = new Set(prev);
+                                if (next.has(groep.projectNaam)) next.delete(groep.projectNaam);
+                                else next.add(groep.projectNaam);
+                                return next;
+                              })}
+                              className="w-full flex items-center gap-2 px-1 py-1 rounded-lg hover:bg-autronis-bg/30 transition-colors group"
+                            >
+                              <ChevronRight className={cn("w-3 h-3 text-autronis-text-secondary/60 transition-transform flex-shrink-0", isExpanded && "rotate-90")} />
+                              <span className="text-[11px] font-semibold text-autronis-text-secondary truncate flex-1 text-left">{groep.projectNaam}</span>
+                              <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">{groep.taken.length}</span>
+                            </button>
+
                             <AnimatePresence>
                             {isExpanded && (
                               <motion.div

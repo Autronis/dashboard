@@ -723,6 +723,10 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             const diffMin = (startMs - nuMs) / 60000;
             const isImminent = diffMin >= 0 && diffMin < 5;
 
+            const eventKey = `${item.id}`;
+            const checked = eventDone.has(eventKey);
+            const tagLabel = isExtern ? "Meeting" : "Event";
+
             return (
               <motion.div
                 key={item.id}
@@ -743,25 +747,45 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   });
                 }}
                 onMouseLeave={hideTooltip}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 border-l-[3px] cursor-pointer overflow-hidden transition-[filter] hover:brightness-115 z-[2]"
+                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-pointer overflow-hidden transition-all hover:brightness-115 z-[2] flex flex-col justify-center"
                 style={{
                   top: `${top}px`,
                   height: `${height}px`,
-                  background: `linear-gradient(135deg, ${colors.bg} 40%, rgba(14,23,25,0.1) 100%)`,
-                  borderLeftColor: colors.border,
+                  background: checked
+                    ? `linear-gradient(135deg, rgba(16,185,129,0.12) 40%, rgba(14,23,25,0.05) 100%)`
+                    : `linear-gradient(135deg, ${colors.bg} 40%, rgba(14,23,25,0.1) 100%)`,
+                  borderLeftColor: checked ? "#10b981" : colors.border,
                   boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
+                  opacity: checked ? 0.55 : 1,
                 }}
               >
-                <p className="text-xs sm:text-sm font-semibold text-autronis-text-primary leading-snug">{item.titel}</p>
+                <div className="flex items-center gap-1.5">
+                  <TaakCheckCircle
+                    checked={checked}
+                    onClick={(e) => { e.stopPropagation(); toggleEventDone(eventKey); }}
+                    small
+                  />
+                  <span className="text-[10px] tabular-nums flex-shrink-0 font-medium" style={{ color: colors.text }}>
+                    {startTijd}
+                  </span>
+                  <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0" style={{ backgroundColor: `${colors.border}25`, color: colors.text }}>
+                    {tagLabel}
+                  </span>
+                  <p className={cn(
+                    "text-xs font-semibold text-autronis-text-primary leading-snug min-w-0 flex-1 transition-all truncate",
+                    checked && "line-through text-autronis-text-secondary/50"
+                  )}>
+                    {item.titel}
+                  </p>
+                  {isImminent && meetUrl && (
+                    <span className="text-[9px] text-autronis-accent bg-autronis-accent/15 px-1.5 py-0.5 rounded-full animate-pulse font-medium flex-shrink-0">Nu</span>
+                  )}
+                </div>
                 {height >= 36 && (
-                  <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5">
-                    <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" style={{ color: colors.text }} />
-                    <span className="text-[10px] sm:text-xs tabular-nums" style={{ color: colors.text }}>
-                      {startTijd}{eindTijd ? ` – ${eindTijd}` : ""}
+                  <div className="flex items-center gap-1 sm:gap-1.5 mt-0.5 ml-6">
+                    <span className="text-[10px] tabular-nums" style={{ color: colors.text + "80" }}>
+                      {startTijd}{eindTijd ? `–${eindTijd}` : ""}
                     </span>
-                    {isImminent && meetUrl && (
-                      <span className="ml-auto text-[9px] text-autronis-accent bg-autronis-accent/15 px-1.5 py-0.5 rounded-full animate-pulse font-medium">Nu</span>
-                    )}
                   </div>
                 )}
               </motion.div>

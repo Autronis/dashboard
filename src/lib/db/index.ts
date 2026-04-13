@@ -85,6 +85,10 @@ if (isTurso) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
 
+  // Track when an agenda item reminder was last sent (dedup for /api/notifications/pending)
+  client.execute("ALTER TABLE agenda_items ADD COLUMN herinnering_verstuurd_op TEXT")
+    .catch(() => { /* column may already exist */ });
+
   // Eigenaarschap op projecten: sem / syb / team / vrij. Klantprojecten
   // krijgen 'team' als default backfill, alle andere blijven op 'sem'.
   client.execute("ALTER TABLE projecten ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
@@ -437,6 +441,11 @@ if (isTurso) {
   const klantCols = sqliteDb.prepare("PRAGMA table_info(klanten)").all() as { name: string }[];
   if (!klantCols.some((c: { name: string }) => c.name === "klant_type")) {
     sqliteDb.exec("ALTER TABLE klanten ADD COLUMN klant_type TEXT DEFAULT 'klant'");
+  }
+
+  const agendaCols = sqliteDb.prepare("PRAGMA table_info(agenda_items)").all() as { name: string }[];
+  if (!agendaCols.some((c: { name: string }) => c.name === "herinnering_verstuurd_op")) {
+    sqliteDb.exec("ALTER TABLE agenda_items ADD COLUMN herinnering_verstuurd_op TEXT");
   }
 
   // Revolut integration tables

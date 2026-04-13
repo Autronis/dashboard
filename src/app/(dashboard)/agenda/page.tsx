@@ -2534,6 +2534,7 @@ export default function AgendaPage() {
           prefillDatum={planPrefillDatum}
           prefillTijd={planPrefillTijd}
           kalenders={kalenders.map((k) => ({ id: k.id, naam: k.naam, kleur: k.kleur || "#17B8A5" }))}
+          ingeplandeTaken={ingeplandeTaken}
         />
       )}
       {/* Kalender Settings Modal */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Clock, Calendar, CheckSquare, Sparkles, Loader2, ExternalLink } from "lucide-react";
+import { X, Clock, Calendar, CheckSquare, Sparkles, Loader2, ExternalLink, Terminal, Hand } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AgendaTaak } from "@/hooks/queries/use-agenda";
 import Link from "next/link";
@@ -40,16 +40,35 @@ interface PlanTaakModalProps {
   prefillDatum?: string;
   prefillTijd?: string;
   kalenders?: KalenderOptie[];
+  ingeplandeTaken?: AgendaTaak[];
 }
 
-export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, prefillDatum, prefillTijd, kalenders = [] }: PlanTaakModalProps) {
+export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, prefillDatum, prefillTijd, kalenders = [], ingeplandeTaken = [] }: PlanTaakModalProps) {
   const vandaag = new Date();
   const defaultDatum = prefillDatum || `${vandaag.getFullYear()}-${String(vandaag.getMonth() + 1).padStart(2, "0")}-${String(vandaag.getDate()).padStart(2, "0")}`;
-  const defaultTijd = prefillTijd || "09:00";
+  const isClaudeTaak = taak.uitvoerder === "claude";
+
+  // Voor Claude taken: zoek bestaande Claude sessie op deze datum en snap ernaar,
+  // zodat alle Claude taken van een dag in één sessie-blok vallen.
+  const claudeSessieEindTijd = (() => {
+    if (!isClaudeTaak) return null;
+    const zelfdeDag = ingeplandeTaken.filter(
+      (t) => t.id !== taak.id && t.uitvoerder === "claude" && t.ingeplandStart?.startsWith(defaultDatum)
+    );
+    if (zelfdeDag.length === 0) return null;
+    const laatsteEind = Math.max(
+      ...zelfdeDag.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())
+    );
+    const eind = new Date(laatsteEind + 60000);
+    return `${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
+  })();
+
+  // Default tijd: claude sessie end (als die bestaat), anders 08:00 voor claude taken (sessie blok), anders prefill of 09:00
+  const defaultTijd = prefillTijd || claudeSessieEindTijd || (isClaudeTaak ? "08:00" : "09:00");
 
   const [datum, setDatum] = useState(defaultDatum);
   const [tijd, setTijd] = useState(defaultTijd);
-  const [duur, setDuur] = useState(taak.geschatteDuur || 30);
+  const [duur, setDuur] = useState(taak.geschatteDuur || (isClaudeTaak ? 15 : 30));
   const [kalenderId, setKalenderId] = useState<number | undefined>(kalenders[0]?.id);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState<AiResult | null>(null);
@@ -107,6 +126,17 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
                 <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", prioBg, prioColor)}>
                   {taak.prioriteit}
                 </span>
+                {isClaudeTaak ? (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 inline-flex items-center gap-1">
+                    <Terminal className="w-2.5 h-2.5" />
+                    Claude
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent inline-flex items-center gap-1">
+                    <Hand className="w-2.5 h-2.5" />
+                    Handmatig
+                  </span>
+                )}
                 {taak.projectNaam && (
                   <span className="text-xs text-autronis-text-secondary">{taak.projectNaam}</span>
                 )}

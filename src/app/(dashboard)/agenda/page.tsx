@@ -30,7 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken, usePlanTaak, useUnplanTaak } from "@/hooks/queries/use-agenda";
+import { useAgenda, useExterneEvents, useExterneKalenders, useAddKalender, useDeleteKalender, useDeadlineEvents, useAgendaTaken, usePlanTaak, useUnplanTaak, useUitplannenAlle } from "@/hooks/queries/use-agenda";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { AgendaItem, ExternEvent, ExterneKalender, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
 import { DagView } from "./dag-view";
@@ -210,6 +210,7 @@ export default function AgendaPage() {
   const { data: agendaTaken = [] } = useAgendaTaken();
   const planTaak = usePlanTaak();
   const unplanTaak = useUnplanTaak();
+  const uitplannenAlle = useUitplannenAlle();
   const [planModalTaak, setPlanModalTaak] = useState<AgendaTaak | null>(null);
   const [planPrefillDatum, setPlanPrefillDatum] = useState<string | undefined>();
   const [planPrefillTijd, setPlanPrefillTijd] = useState<string | undefined>();
@@ -809,6 +810,24 @@ export default function AgendaPage() {
             >
               <Link2 className="w-4 h-4" />
               <span className="hidden sm:inline">Kalenders</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (uitplannenAlle.isPending) return;
+                if (!confirm("Weet je zeker dat je alle ingeplande taken wil uitplannen? Afgeronde taken blijven met rust.")) return;
+                try {
+                  const res = await uitplannenAlle.mutateAsync();
+                  addToast(`${res.uitgepland} taken uitgepland`, "succes");
+                } catch (e) {
+                  addToast(e instanceof Error ? e.message : "Uitplannen mislukt", "fout");
+                }
+              }}
+              disabled={uitplannenAlle.isPending}
+              title="Uitplannen alle taken"
+              className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-autronis-bg border border-autronis-border hover:border-red-500/40 hover:text-red-400 text-autronis-text-secondary rounded-xl text-xs sm:text-sm transition-colors disabled:opacity-50"
+            >
+              {uitplannenAlle.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              <span className="hidden sm:inline">Leeg agenda</span>
             </button>
             <button
               onClick={() => openNieuwModal()}

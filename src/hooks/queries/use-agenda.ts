@@ -261,3 +261,21 @@ export function useUnplanTaak() {
     },
   });
 }
+
+export function useUitplannenAlle() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/agenda/uitplannen-alle", { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.fout || "Uitplannen mislukt");
+      }
+      return res.json() as Promise<{ uitgepland: number }>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["agenda"] });
+    },
+  });
+}

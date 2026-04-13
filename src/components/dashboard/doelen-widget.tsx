@@ -1,9 +1,10 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Euro, Clock, Target } from "lucide-react";
-import { ProgressRing } from "@/components/ui/progress-ring";
 import { useDecisionEngine } from "@/hooks/queries/use-analytics";
 import { useBelasting } from "@/hooks/queries/use-belasting";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const formatBedrag = (n: number) =>
@@ -13,10 +14,10 @@ const formatBedrag = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
-function doelKleur(pct: number): string {
-  if (pct >= 75) return "#22c55e";
-  if (pct >= 50) return "#f59e0b";
-  return "#ef4444";
+function doelKleurClass(pct: number): { bar: string; pctText: string } {
+  if (pct >= 75) return { bar: "bg-emerald-500", pctText: "text-emerald-400" };
+  if (pct >= 50) return { bar: "bg-amber-500", pctText: "text-amber-400" };
+  return { bar: "bg-red-500", pctText: "text-red-400" };
 }
 
 interface Doel {
@@ -24,7 +25,6 @@ interface Doel {
   icon: typeof Clock;
   pct: number;
   huidig: string;
-  target: string;
   actie: string;
 }
 
@@ -51,13 +51,9 @@ export function DoelenWidget() {
           <Target className="w-4 h-4 text-autronis-accent" />
           <h2 className="text-sm font-semibold text-autronis-text-primary">Doelen</h2>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-3">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="flex flex-col items-center gap-2">
-              <Skeleton className="w-[68px] h-[68px] rounded-full" />
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-2 w-24" />
-            </div>
+            <Skeleton key={i} className="h-12 w-full" />
           ))}
         </div>
       </div>

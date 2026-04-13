@@ -2,15 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projecten, klanten, taken, tijdregistraties, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
-import { eq, sql, and, desc, gte } from "drizzle-orm";
+import { eq, sql, and, or, desc, gte, inArray } from "drizzle-orm";
 import { createProjectRepo } from "@/lib/github";
+
+/** Eigenaar codes per gebruiker id. Sem=1, Syb=2.
+ *  Beide users zien altijd 'team' en 'vrij' projecten. */
+function visibleEigenaarCodes(userId: number): string[] {
+  if (userId === 2) return ["syb", "team", "vrij"];
+  // Default (Sem of onbekend → Sem's view)
+  return ["sem", "team", "vrij"];
+}
 
 // GET /api/projecten — All active projects with client name + task stats + activity
 export async function GET(req: NextRequest) {
   try {
-    await requireAuthOrApiKey(req);
+    const gebruiker = await requireAuthOrApiKey(req);
+    const currentUserId = gebruiker.id;
 
     const statusFilter = req.nextUrl.searchParams.get("status");
+
+    const visibleCodes = visibleEigenaarCodes(currentUserId);
 
     const lijst = await db
       .select({
@@ -24,12 +35,23 @@ export async function GET(req: NextRequest) {
         deadline: projecten.deadline,
         geschatteUren: projecten.geschatteUren,
         werkelijkeUren: projecten.werkelijkeUren,
+        eigenaar: projecten.eigenaar,
         bijgewerktOp: projecten.bijgewerktOp,
         aangemaaktOp: projecten.aangemaaktOp,
       })
       .from(projecten)
       .leftJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(eq(projecten.isActief, 1));
+      .where(
+        and(
+          eq(projecten.isActief, 1),
+          or(
+            inArray(projecten.eigenaar, visibleCodes),
+            // Backward compat: projecten zonder eigenaar (NULL) zijn pre-migratie
+            // en horen historisch bij Sem.
+            currentUserId === 1 ? sql`${projecten.eigenaar} IS NULL` : sql`1=0`
+          )
+        )
+      );
 
     // Filter by status if provided
     const filtered = statusFilter

@@ -229,7 +229,7 @@ export const leads = sqliteTable("leads", {
 export const notificaties = sqliteTable("notificaties", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   gebruikerId: integer("gebruiker_id").notNull().references(() => gebruikers.id),
-  type: text("type", { enum: ["factuur_te_laat", "deadline_nadert", "factuur_betaald", "taak_toegewezen", "belasting_deadline", "verlof_aangevraagd", "verlof_goedgekeurd", "client_bericht", "proposal_ondertekend", "offerte_geaccepteerd"] }).notNull(),
+  type: text("type", { enum: ["factuur_te_laat", "deadline_nadert", "factuur_betaald", "taak_toegewezen", "belasting_deadline", "verlof_aangevraagd", "verlof_goedgekeurd", "client_bericht", "proposal_ondertekend", "offerte_geaccepteerd", "project_toegewezen"] }).notNull(),
   titel: text("titel").notNull(),
   omschrijving: text("omschrijving"),
   link: text("link"),

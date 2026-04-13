@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, klanten, taken, tijdregistraties } from "@/lib/db/schema";
+import { projecten, klanten, taken, tijdregistraties, notificaties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
+
+const VALID_EIGENAAR = new Set(["sem", "syb", "team", "vrij"]);
 
 interface Fase {
   naam: string;

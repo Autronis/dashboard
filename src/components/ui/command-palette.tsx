@@ -52,6 +52,7 @@ import {
   Eye,
   Plus,
   Heart,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -368,7 +369,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh]"
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[max(env(safe-area-inset-top),1rem)] sm:pt-[20vh]"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -383,7 +384,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
           {/* Modal */}
           <motion.div
             className={cn(
-              "relative w-full max-w-xl mx-4",
+              "relative w-full max-w-xl mx-3 sm:mx-4",
               "bg-autronis-card border border-autronis-border",
               "rounded-2xl shadow-2xl overflow-hidden"
             )}
@@ -416,10 +417,19 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-autronis-border text-autronis-text-secondary text-xs font-mono">
                   ESC
                 </kbd>
+                {/* Mobile sluit-knop — vervangt de hidden ESC kbd op kleine schermen */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Sluit zoekvenster"
+                  className="sm:hidden flex items-center justify-center w-9 h-9 -mr-2 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary active:bg-autronis-border/50 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
-              {/* Results */}
-              <Command.List className="max-h-80 overflow-y-auto p-2">
+              {/* Results — schaalt mee met viewport op mobile, vast op desktop */}
+              <Command.List className="max-h-[60vh] sm:max-h-80 overflow-y-auto p-2">
                 {/* Geen resultaten */}
                 {hasSearch && !loading && !hasResults && filteredPages.length === 0 && (
                   <div className="py-8 text-center text-autronis-text-secondary text-sm">

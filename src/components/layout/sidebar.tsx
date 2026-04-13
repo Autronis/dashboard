@@ -13,8 +13,8 @@ import {
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
-  PlusCircle, Compass, Sparkles, UtensilsCrossed, HeartPulse, FolderArchive,
-  Heart,
+  PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
+  Heart, TrendingUp,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -53,19 +53,18 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Tijd", icon: Clock, href: "/tijd" },
           { label: "Team", icon: Users2, href: "/team" },
           { label: "Ops Room", icon: Radio, href: "/ops-room" },
+          { label: "Client Status", icon: Activity, href: "/client-status" },
           { label: "Meetings", icon: Mic, href: "/meetings" },
         ],
       },
       {
         label: "Sales",
-        icon: Rocket,
+        icon: TrendingUp,
         children: [
           { label: "Klanten", icon: Users, href: "/klanten" },
           { label: "Leads", icon: Zap, href: "/leads" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
-          { label: "Client Status", icon: Activity, href: "/client-status" },
-          { label: "Gezondheid", icon: HeartPulse, href: "/klant-gezondheid" },
         ],
       },
       {

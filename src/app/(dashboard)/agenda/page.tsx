@@ -251,11 +251,11 @@ export default function AgendaPage() {
     });
   }
 
-  // Plan een hele fase in één keer. Alle taken krijgen consecutief 15 min slots
-  // vanaf het gevraagde startmoment. Claude taken worden door de backend
-  // automatisch gebundeld tot één sessie; handmatige taken worden consecutief
-  // zichtbaar als losse blokken direct achter elkaar.
-  function handlePlanFase(taken: AgendaTaak[], datum: string, startTijd: string) {
+  // Plan een hele fase in één keer. Alle taken krijgen consecutief slots
+  // vanaf het gevraagde startmoment, met variabele duur per taak (geen vaste 15 min).
+  // SEQUENTIEEL — wacht op elke mutation zodat de backend overlap-detectie verse
+  // DB-state ziet en taken niet bovenop elkaar landen.
+  async function handlePlanFase(taken: AgendaTaak[], datum: string, startTijd: string) {
     if (taken.length === 0) return;
 
     // Kijk of er al taken ingepland zijn op deze datum — zo ja, begin daarachter
@@ -270,8 +270,7 @@ export default function AgendaPage() {
           new Date(t.ingeplandEind || t.ingeplandStart!).getTime()
         )
       );
-      const eind = new Date(laatsteEind + 5 * 60000); // 5 min buffer
-      // Rond af op dichtstbijzijnde 5 minuten
+      const eind = new Date(laatsteEind + 5 * 60000);
       const min = eind.getMinutes();
       const rounded = Math.ceil(min / 5) * 5;
       if (rounded === 60) {
@@ -284,36 +283,36 @@ export default function AgendaPage() {
     }
 
     const [h, m] = effectieveStartTijd.split(":").map(Number);
-    const cursor = new Date(`${datum}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) =>
       `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 
+    // Cursor schuift mee per taak op basis van werkelijke duur (niet vaste i * duur)
+    let cursorMs = new Date(`${datum}T${pad(h)}:${pad(m)}:00`).getTime();
     let okCount = 0;
     let errCount = 0;
-    const total = taken.length;
-    taken.forEach((t, i) => {
+
+    for (const t of taken) {
       const duur = t.geschatteDuur || 15;
-      const start = new Date(cursor.getTime() + i * duur * 60000);
-      const eind = new Date(start.getTime() + duur * 60000);
-      planTaak.mutate(
-        { id: t.id, ingeplandStart: fmt(start), ingeplandEind: fmt(eind), geschatteDuur: duur },
-        {
-          onSuccess: () => {
-            okCount += 1;
-            if (okCount + errCount === total) {
-              addToast(`Fase ingepland (${okCount}/${total})`, errCount === 0 ? "succes" : "fout");
-            }
-          },
-          onError: () => {
-            errCount += 1;
-            if (okCount + errCount === total) {
-              addToast(`Fase ingepland (${okCount}/${total})`, "fout");
-            }
-          },
-        }
-      );
-    });
+      const start = new Date(cursorMs);
+      const eind = new Date(cursorMs + duur * 60000);
+      try {
+        await planTaak.mutateAsync({
+          id: t.id,
+          ingeplandStart: fmt(start),
+          ingeplandEind: fmt(eind),
+          geschatteDuur: duur,
+        });
+        okCount++;
+      } catch {
+        errCount++;
+      }
+      // Schuif cursor met 1 min buffer zodat de backend overlap-detectie geen
+      // collision detecteert en de taken écht consecutief landen
+      cursorMs = eind.getTime() + 60000;
+    }
+
+    addToast(`Fase ingepland (${okCount}/${taken.length})`, errCount === 0 ? "succes" : "fout");
   }
 
   async function handleTaakToggle(id: number, huidigeStatus?: string) {

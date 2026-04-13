@@ -31,27 +31,25 @@ export async function PUT(
       body.toegewezenAan = gebruiker.id;
     }
 
-    // Bundle handmatig geplande Claude taken in bestaande Claude sessie van dezelfde dag.
-    // Dag-view groepeert Claude taken die ≤15 min uit elkaar liggen tot één sessie-blok,
-    // dus we snappen de start direct achter het einde van de bestaande sessie.
-    const wordtClaude = (body.uitvoerder ?? huidig?.uitvoerder) === "claude";
-    if (body.ingeplandStart && wordtClaude) {
+    // Anti-overlap: als de incoming start botst met een andere taak van dezelfde
+    // eigenaar op dezelfde dag (Claude OF handmatig), schuif op naar het eind van
+    // het laatste overlappende blok + 1 min. Als er géén botsing is, respecteer
+    // de gekozen tijd exact (front-end/modal bepaalt de intentie).
+    if (body.ingeplandStart) {
       const inkomendStart = new Date(body.ingeplandStart);
       if (!isNaN(inkomendStart.getTime())) {
-        const datumStr = (typeof body.ingeplandStart === "string" ? body.ingeplandStart : inkomendStart.toISOString()).slice(0, 10);
         const inkomendEind = body.ingeplandEind
           ? new Date(body.ingeplandEind)
           : new Date(inkomendStart.getTime() + (Number(body.geschatteDuur ?? huidig?.geschatteDuur ?? 30)) * 60000);
         const duurMs = Math.max(5 * 60000, inkomendEind.getTime() - inkomendStart.getTime());
-
+        const datumStr = (typeof body.ingeplandStart === "string" ? body.ingeplandStart : inkomendStart.toISOString()).slice(0, 10);
         const eigenaarId = (body.toegewezenAan ?? huidig?.toegewezenAan ?? gebruiker.id) as number;
 
-        const bestaandeClaudeTaken = await db
+        const bestaandeTaken = await db
           .select({ ingeplandStart: taken.ingeplandStart, ingeplandEind: taken.ingeplandEind })
           .from(taken)
           .where(
             and(
-              eq(taken.uitvoerder, "claude"),
               isNotNull(taken.ingeplandStart),
               like(taken.ingeplandStart, `${datumStr}%`),
               ne(taken.id, Number(id)),
@@ -59,22 +57,30 @@ export async function PUT(
             )
           );
 
-        if (bestaandeClaudeTaken.length > 0) {
-          const laatsteEind = Math.max(
-            ...bestaandeClaudeTaken.map((t) =>
-              new Date(t.ingeplandEind || t.ingeplandStart!).getTime()
-            )
-          );
-          // Plak nieuwe taak 1 min na laatste eind → valt binnen 15-min bundle gap
-          const snappedStart = new Date(laatsteEind + 60000);
-          const snappedEind = new Date(snappedStart.getTime() + duurMs);
+        // Check op overlap: incoming [start, eind) overlapt bestaande [s, e)
+        let cursorStart = inkomendStart.getTime();
+        let cursorEind = cursorStart + duurMs;
+        let moved = false;
+        // Max 20 iteraties om oneindige lussen te voorkomen
+        for (let iter = 0; iter < 20; iter++) {
+          const botsing = bestaandeTaken.find((t) => {
+            const s = new Date(t.ingeplandStart!).getTime();
+            const e = new Date(t.ingeplandEind || t.ingeplandStart!).getTime();
+            return cursorStart < e && cursorEind > s;
+          });
+          if (!botsing) break;
+          const botsingEind = new Date(botsing.ingeplandEind || botsing.ingeplandStart!).getTime();
+          cursorStart = botsingEind + 60000; // 1 min buffer na het botsende blok
+          cursorEind = cursorStart + duurMs;
+          moved = true;
+        }
 
+        if (moved) {
           const pad = (n: number) => String(n).padStart(2, "0");
           const fmt = (d: Date) =>
             `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
-          body.ingeplandStart = fmt(snappedStart);
-          body.ingeplandEind = fmt(snappedEind);
+          body.ingeplandStart = fmt(new Date(cursorStart));
+          body.ingeplandEind = fmt(new Date(cursorEind));
         }
       }
     }

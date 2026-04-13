@@ -25,7 +25,6 @@ import {
   UserCheck,
   Rocket,
   Activity,
-  HeartPulse,
   Receipt,
   Landmark,
   FolderArchive,
@@ -100,8 +99,7 @@ const pages: PageLink[] = [
   { label: "Leads", icon: Zap, href: "/leads", keywords: "sales prospects" },
   { label: "Follow-up", icon: UserCheck, href: "/followup", keywords: "opvolgen" },
   { label: "Sales Engine", icon: Rocket, href: "/sales-engine", keywords: "scan" },
-  { label: "Client Status", icon: Activity, href: "/client-status" },
-  { label: "Klant gezondheid", icon: HeartPulse, href: "/klant-gezondheid" },
+  { label: "Client Status", icon: Activity, href: "/client-status", keywords: "automations webhooks cron monitoring" },
 
   // Financiën
   { label: "Financiën", icon: Euro, href: "/financien", keywords: "geld money" },

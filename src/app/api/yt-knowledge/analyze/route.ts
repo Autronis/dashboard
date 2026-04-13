@@ -4,6 +4,7 @@ import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { YoutubeTranscript } from "youtube-transcript";
+import { sql, and, eq, like } from "drizzle-orm";
 
 // Increase timeout for long Claude API calls
 export const maxDuration = 60;
@@ -165,7 +166,9 @@ export async function POST(request: NextRequest) {
       args: [dbVideoId],
     });
 
-    // Auto-create idea for top-tier videos (score >= 9)
+    // Auto-create idea for top-tier videos (score >= 9).
+    // Tagged with bron='yt-knowledge' + bronTekst JSON for dedup,
+    // and aiScore so the suggestion sorts/badges correctly in /ideeen.
     if (data.relevance_score >= 9) {
       try {
         const defaultUser = await db.select().from(gebruikers).limit(1).get();
@@ -173,35 +176,73 @@ export async function POST(request: NextRequest) {
 
         const videoTitle = (video.title as string) || youtubeId;
         const videoUrl = `https://youtube.com/watch?v=${youtubeId}`;
+        const channelName = (video.channel_name as string) || "";
 
-        // Build rich description with link to analysis
-        const stepsText = data.steps
-          .map((s: { order: number; title: string; description: string; code_snippet?: string }) =>
-            `${s.order}. **${s.title}**\n   ${s.description}${s.code_snippet ? `\n   \`${s.code_snippet}\`` : ""}`
-          ).join("\n");
-        const tipsText = data.tips
-          .map((t: { tip: string; context: string }) => `- ${t.tip} — _${t.context}_`).join("\n");
-        const featuresText = data.features
-          .map((f: { name: string; description: string }) => `- **${f.name}**: ${f.description}`).join("\n");
+        // Dedup: skip if we already imported this video.
+        const existing = await db
+          .select({ id: ideeen.id })
+          .from(ideeen)
+          .where(
+            and(
+              eq(ideeen.bron, "yt-knowledge"),
+              like(ideeen.bronTekst, `%"youtubeId":"${youtubeId}"%`)
+            )
+          )
+          .get();
 
-        const omschrijving = `${data.summary}\n\n**Relevantie:** ${data.relevance_score}/10 — ${data.relevance_reason}\n\n[Bekijk video](${videoUrl})`;
+        if (!existing) {
+          // Build rich description with link to analysis
+          const stepsText = data.steps
+            .map((s: { order: number; title: string; description: string; code_snippet?: string }) =>
+              `${s.order}. **${s.title}**\n   ${s.description}${s.code_snippet ? `\n   \`${s.code_snippet}\`` : ""}`
+            ).join("\n");
+          const tipsText = data.tips
+            .map((t: { tip: string; context: string }) => `- ${t.tip} — _${t.context}_`).join("\n");
+          const featuresText = data.features
+            .map((f: { name: string; description: string }) => `- **${f.name}**: ${f.description}`).join("\n");
 
-        const linksText = (data.links || [])
-          .map((l: { url: string; label: string; type: string }) => `- [${l.label}](${l.url}) _(${l.type})_`).join("\n");
+          const omschrijving = `${data.summary}\n\n**Relevantie:** ${data.relevance_score}/10 — ${data.relevance_reason}\n\n[Bekijk video](${videoUrl})`;
 
-        const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}${linksText ? `\n\n## Links\n${linksText}` : ""}\n\n---\n_Bron: [${videoTitle}](${videoUrl}) — YT Knowledge Pipeline analyse_`;
+          const linksText = (data.links || [])
+            .map((l: { url: string; label: string; type: string }) => `- [${l.label}](${l.url}) _(${l.type})_`).join("\n");
 
-        const ideaTitle = data.idea_title || videoTitle;
-        await db.insert(ideeen).values({
-          naam: ideaTitle,
-          categorie: "dev_tools",
-          status: "idee",
-          prioriteit: "hoog",
-          omschrijving,
-          uitwerking,
-          isAiSuggestie: 1,
-          aangemaaktDoor: userId,
-        });
+          const uitwerking = `## Features\n${featuresText}\n\n## Stappenplan\n${stepsText}\n\n## Tips\n${tipsText}${linksText ? `\n\n## Links\n${linksText}` : ""}\n\n---\n_Bron: [${videoTitle}](${videoUrl})${channelName ? ` — ${channelName}` : ""} — YT Knowledge Pipeline_`;
+
+          const ideaTitle = data.idea_title || videoTitle;
+
+          // Pick next nummer so it shows up in the list naturally
+          const maxNummer = await db
+            .select({ max: sql<number>`MAX(nummer)` })
+            .from(ideeen)
+            .get();
+          const nextNummer = (maxNummer?.max ?? 0) + 1;
+
+          const bronTekst = JSON.stringify({
+            youtubeId,
+            videoTitle,
+            videoUrl,
+            channelName,
+            analysisId,
+            relevanceScore: data.relevance_score,
+          });
+
+          await db.insert(ideeen).values({
+            nummer: nextNummer,
+            naam: ideaTitle,
+            categorie: "content_media",
+            status: "idee",
+            prioriteit: "normaal",
+            doelgroep: "persoonlijk",
+            omschrijving,
+            uitwerking,
+            aiScore: data.relevance_score,
+            isAiSuggestie: 1,
+            gepromoveerd: 0,
+            bron: "yt-knowledge",
+            bronTekst,
+            aangemaaktDoor: userId,
+          });
+        }
       } catch {
         // Non-critical: don't block if idea creation fails
       }

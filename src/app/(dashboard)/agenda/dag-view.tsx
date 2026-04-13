@@ -1092,14 +1092,10 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             });
           })()}
 
-          {/* Lane-toewijzing: groepeer overlappende handmatige taken in kolommen.
-              Claude sessie blokken doen niet mee (die hebben hun eigen halfRight). */}
-          {(() => null)()}
-          {/* Ingeplande taken als draggable blokken (alleen niet-sessie taken) */}
+          {/* Ingeplande taken als draggable blokken — met lane-toewijzing voor
+              overlappende handmatige taken zodat ze naast elkaar landen ipv
+              bovenop elkaar. Claude sessie blokken doen niet mee (eigen halfRight). */}
           {(() => {
-            // Bouw lane-map alleen voor handmatige taken die niet in een Claude
-            // sessie-blok zitten. Sweep-line algoritme: sorteer op start, plak elke
-            // taak in de eerste vrije lane, anders open een nieuwe.
             const handmatigeTaken = dagTaken.filter((t) => t.ingeplandStart && t.uitvoerder !== "claude");
             const sorted = [...handmatigeTaken].sort(
               (a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime()
@@ -1108,28 +1104,14 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               if (t.ingeplandEind) return new Date(t.ingeplandEind).getTime();
               return new Date(t.ingeplandStart!).getTime() + (t.geschatteDuur || 60) * 60000;
             };
-            // Groepeer aaneengesloten overlap-clusters
             type Lane = { id: number; lane: number; cluster: number };
             const laneInfo = new Map<number, Lane>();
+            // Cluster overlappende taken (incl. transitief), dan binnen elk cluster
+            // lanes toewijzen via sweep: elke taak in de eerste lane wiens vorige
+            // taak al klaar is, anders een nieuwe lane.
             let cluster = 0;
             let clusterEinde = 0;
-            let cursorIdx = 0;
-            const clusterStart: number[] = []; // index in sorted waar cluster begint
-            for (const t of sorted) {
-              const s = new Date(t.ingeplandStart!).getTime();
-              if (s >= clusterEinde) {
-                cluster++;
-                clusterStart.push(cursorIdx);
-              }
-              clusterEinde = Math.max(clusterEinde, eindVan(t));
-              cursorIdx++;
-            }
-            // Voor elk cluster: lane assignment binnen het cluster
-            const clusterTotalLanes = new Map<number, number>();
-            const reConstructed: number[] = []; // cluster id per sorted item
-            // Re-walk om cluster ids exact toe te wijzen
-            cluster = 0;
-            clusterEinde = 0;
+            const reConstructed: number[] = [];
             for (let i = 0; i < sorted.length; i++) {
               const t = sorted[i];
               const s = new Date(t.ingeplandStart!).getTime();
@@ -1137,6 +1119,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               clusterEinde = Math.max(clusterEinde, eindVan(t));
               reConstructed.push(cluster);
             }
+            const clusterTotalLanes = new Map<number, number>();
             // Per cluster lanes toewijzen
             const lanesPerCluster = new Map<number, number[]>(); // clusterId → end times per lane
             for (let i = 0; i < sorted.length; i++) {
@@ -1213,6 +1196,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               }
             }
 
+            const lane = laneInfo.get(taak.id);
+            const totalLanes = lane ? clusterTotalLanes.get(lane.cluster) ?? 1 : 1;
+
             return (
               <DraggableTaakBlock
                 key={`taak-dag-${taak.id}`}
@@ -1226,9 +1212,12 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 onToggle={onTaakToggle}
                 onClick={() => onTaakDetail?.(taak.id)}
                 halfRight={overlapt}
+                laneIndex={lane?.lane}
+                laneCount={totalLanes}
               />
             );
-          })}
+          });
+          })()}
 
           {/* Nu-indicator met smooth position transitie */}
           {isVandaag && nuTop >= 0 && nuTop <= uren.length * UUR_HOOGTE && (

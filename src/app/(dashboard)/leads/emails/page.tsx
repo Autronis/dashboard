@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import OutreachSection from "@/components/leads/outreach-section";
 
 interface EmailRecord {
   id: string;
@@ -397,6 +398,41 @@ export default function LeadsEmailsPage() {
       );
       setSelectedIds(new Set());
       setTimeout(load, 5000);
+
+      // Stuck email recovery: na 10s checken of er nog steeds emails in 'sending'
+      // staan voor deze ids. Als ja, terugzetten naar 'approved' (n8n hook is
+      // vermoedelijk niet gevuurd of de webhook is stuk).
+      setTimeout(async () => {
+        try {
+          const refresh = await fetch("/api/leads/emails");
+          if (!refresh.ok) return;
+          const refreshed = await refresh.json();
+          const refreshedEmails = (refreshed.emails ?? []) as EmailRecord[];
+          const stuckIds = ids.filter((id) => {
+            const found = refreshedEmails.find((e) => e.id === id);
+            return found?.email_status === "sending";
+          });
+          if (stuckIds.length === 0) return;
+
+          // Reset stuck emails terug naar approved
+          await fetch("/api/leads/emails", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: stuckIds, email_status: "approved" }),
+          });
+          setEmails((curr) =>
+            curr.map((e) =>
+              stuckIds.includes(e.id) ? { ...e, email_status: "approved" } : e
+            )
+          );
+          addToast(
+            `${stuckIds.length} email(s) bleven hangen op 'sending' — teruggezet naar approved`,
+            "fout"
+          );
+        } catch {
+          // niet kritisch — gebruiker kan zelf reload doen
+        }
+      }, 10000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Verzenden mislukt", "fout");
     } finally {
@@ -890,6 +926,9 @@ export default function LeadsEmailsPage() {
           )}
         </div>
       )}
+
+      {/* Outreach pipeline status onderaan */}
+      <OutreachSection />
     </div>
   );
 }

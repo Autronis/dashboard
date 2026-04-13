@@ -59,36 +59,31 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/leads/outreach
-// Body: { daily_limit?: number, status?: string, ...andere fields }
+// Body: { id: string, dag_limiet?: number }
 export async function PATCH(req: NextRequest) {
   try {
     await authenticate(req);
 
     const body = (await req.json()) as {
       id?: string;
-      daily_limit?: number;
-      status?: string;
-      [key: string]: unknown;
+      dag_limiet?: number;
     };
 
     if (!body.id) {
       return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
     }
 
-    const updates: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-    };
-    if (body.daily_limit !== undefined) updates.daily_limit = body.daily_limit;
-    if (body.status !== undefined) updates.status = body.status;
+    const updates: { dag_limiet?: number } = {};
+    if (body.dag_limiet !== undefined) updates.dag_limiet = body.dag_limiet;
 
-    if (Object.keys(updates).length === 1) {
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json({ fout: "geen velden om te updaten" }, { status: 400 });
     }
 
     const supabase = getSupabaseLeads();
     const { error } = await supabase
       .from("outreach_settings")
-      .update(updates as never)
+      .update(updates)
       .eq("id", body.id);
 
     if (error) {

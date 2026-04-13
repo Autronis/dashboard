@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal, ClipboardCopy } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal, ClipboardCopy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
@@ -832,20 +832,24 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             }
             sessies.push(current);
 
-            return sessies.map((group, gi) => {
+            return sessies.map((group) => {
               if (group.length < 2) return null; // Enkele Claude taken als normaal blok
+              const sessieKey = group[0].id; // stabiele key op basis van eerste taak
+              const expanded = expandedSessies.has(sessieKey);
+
               const startDate = new Date(Math.min(...group.map((t) => new Date(t.ingeplandStart!).getTime())));
               const eindDate = new Date(Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())));
               const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
               const eindMinuten = eindDate.getHours() * 60 + eindDate.getMinutes();
               const duurMin = Math.max(30, eindMinuten - startMinuten);
               const blockTop = ((startMinuten - startUur * 60) / 60) * UUR_HOOGTE;
-              const blockHeight = Math.max(60, (duurMin / 60) * UUR_HOOGTE);
+              const fullHeight = Math.max(60, (duurMin / 60) * UUR_HOOGTE);
+              const collapsedHeight = 30; // alleen header
               const startLabel = startDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
               const eindLabel = eindDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
               const afgerond = group.filter((t) => t.status === "afgerond").length;
 
-              // Check of een handmatige taak in deze tijdspanne overlapt → dan half-width
+              // Check of een handmatige taak in deze tijdspanne overlapt → half-width bij expanded
               const sessieStartMs = startDate.getTime();
               const sessieEindMs = eindDate.getTime();
               const heeftManualOverlap = dagTaken.some((t) => {
@@ -857,48 +861,51 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 return ts < sessieEindMs && te > sessieStartMs;
               });
 
-              // Groepeer per project (fase niveau zou nog netter zijn, gebruikt project als proxy)
-              const perProject = new Map<string, typeof group>();
+              // Groepeer primair per FASE (zoals Sem wil: "fase 1, 2, 3").
+              // Binnen multi-project sessies: project > fase hierarchie.
+              const projecten = new Set(group.map((t) => t.projectNaam || "Overig"));
+              const meerdereProjecten = projecten.size > 1;
+
+              // Bouw map: project → fase → taken
+              const perProject = new Map<string, Map<string, typeof group>>();
               for (const t of group) {
                 const proj = t.projectNaam || "Overig";
-                if (!perProject.has(proj)) perProject.set(proj, []);
-                perProject.get(proj)!.push(t);
+                const fase = t.fase || "Geen fase";
+                if (!perProject.has(proj)) perProject.set(proj, new Map());
+                const faseMap = perProject.get(proj)!;
+                if (!faseMap.has(fase)) faseMap.set(fase, []);
+                faseMap.get(fase)!.push(t);
               }
 
-              // Genereer slimme beschrijving
-              const beschrijving = Array.from(perProject.entries())
-                .map(([proj, taken]) => {
-                  const titels = taken.slice(0, 3).map((t) => t.titel.toLowerCase()).join(", ");
-                  return `${proj}: ${titels}${taken.length > 3 ? ` +${taken.length - 3}` : ""}`;
-                })
-                .join(" → ");
+              // Alle unieke fases over de hele sessie (voor single-project shortcut)
+              const alleFases = new Map<string, typeof group>();
+              for (const t of group) {
+                const fase = t.fase || "Geen fase";
+                if (!alleFases.has(fase)) alleFases.set(fase, []);
+                alleFases.get(fase)!.push(t);
+              }
 
-              // Gestructureerde prompt voor Claude chat — groepeer per project/fase
+              // Korte header beschrijving: fase namen
+              const beschrijving = Array.from(alleFases.keys()).slice(0, 3).join(" · ")
+                + (alleFases.size > 3 ? ` +${alleFases.size - 3}` : "");
+
+              // Gestructureerde prompt voor Claude chat
               const handleKopieerPrompt = (e: React.MouseEvent) => {
                 e.stopPropagation();
                 const lines: string[] = [];
                 lines.push(`# Claude sessie · ${startLabel}–${eindLabel}`);
                 lines.push("");
-                lines.push(`${group.length} taken verdeeld over ${perProject.size} project(en). Werk ze per project af, commit na elk project, sync dashboard status.`);
+                lines.push(`${group.length} taken · ${alleFases.size} fase(s) · ${projecten.size} project(en). Werk ze per fase af, commit per fase, sync dashboard status.`);
                 lines.push("");
-                for (const [proj, projectTaken] of perProject.entries()) {
-                  lines.push(`## ${proj}`);
-                  // Groepeer per fase binnen dit project
-                  const perFase = new Map<string, typeof projectTaken>();
-                  for (const t of projectTaken) {
-                    const fase = t.fase || "(geen fase)";
-                    if (!perFase.has(fase)) perFase.set(fase, []);
-                    perFase.get(fase)!.push(t);
-                  }
-                  for (const [fase, faseTaken] of perFase.entries()) {
-                    if (perFase.size > 1 || fase !== "(geen fase)") {
-                      lines.push(`### ${fase}`);
-                    }
+                for (const [proj, faseMap] of perProject.entries()) {
+                  if (meerdereProjecten) lines.push(`## ${proj}`);
+                  for (const [fase, faseTaken] of faseMap.entries()) {
+                    lines.push(`### ${fase}`);
                     for (const t of faseTaken) {
                       lines.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
                     }
+                    lines.push("");
                   }
-                  lines.push("");
                 }
                 lines.push("Na afronding: markeer taken als afgerond in het Autronis dashboard via /api/taken/[id].");
                 navigator.clipboard.writeText(lines.join("\n"));
@@ -906,29 +913,34 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
               return (
                 <div
-                  key={`claude-sessie-${gi}`}
+                  key={`claude-sessie-${sessieKey}`}
                   className={cn(
-                    "absolute rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]",
-                    heeftManualOverlap ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
+                    "absolute rounded-xl border-l-[3px] border-purple-500 overflow-hidden transition-all",
+                    expanded ? "z-[20] shadow-2xl" : "z-[3]",
+                    heeftManualOverlap && expanded ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
                   )}
                   style={{
                     top: `${blockTop}px`,
-                    height: `${blockHeight}px`,
-                    background: "linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(168,85,247,0.05) 100%)",
+                    height: `${expanded ? fullHeight : collapsedHeight}px`,
+                    background: "linear-gradient(135deg, rgba(168,85,247,0.18) 0%, rgba(168,85,247,0.06) 100%)",
                     borderColor: "#a855f7",
-                    boxShadow: "0 2px 12px rgba(168,85,247,0.15)",
+                    boxShadow: expanded ? "0 12px 40px rgba(168,85,247,0.35)" : "0 2px 12px rgba(168,85,247,0.15)",
                   }}
                 >
-                  {/* Header */}
-                  <div className="flex items-center gap-2 px-3 py-1.5 border-b border-purple-500/20">
+                  {/* Header — altijd zichtbaar, klikbaar om te togglen */}
+                  <div
+                    onClick={() => toggleSessie(sessieKey)}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 border-b border-purple-500/20 hover:bg-purple-500/5 transition-colors cursor-pointer select-none"
+                  >
                     <Terminal className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" />
-                    <span className="text-xs font-semibold text-purple-300">
-                      Claude sessie · {startLabel}–{eindLabel}
+                    <span className="text-xs font-semibold text-purple-300 flex-shrink-0">
+                      Claude · {startLabel}–{eindLabel}
                     </span>
-                    <span className="text-[10px] text-purple-400/50 italic truncate flex-1 hidden sm:inline">
-                      jij bent vrij
+                    <span className="text-[10px] text-purple-400/60 truncate flex-1 min-w-0">
+                      {beschrijving}
                     </span>
                     <button
+                      type="button"
                       onClick={handleKopieerPrompt}
                       title="Kopieer prompt voor Claude chat"
                       className="text-[10px] font-medium text-purple-300 hover:text-purple-100 bg-purple-500/20 hover:bg-purple-500/35 px-1.5 py-0.5 rounded flex-shrink-0 inline-flex items-center gap-1 transition-colors"
@@ -936,50 +948,58 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       <ClipboardCopy className="w-2.5 h-2.5" />
                       Kopieer
                     </button>
-                    <span className="text-[10px] text-purple-400/70 tabular-nums">{afgerond}/{group.length}</span>
+                    <span className="text-[10px] text-purple-400/70 tabular-nums flex-shrink-0">{afgerond}/{group.length}</span>
+                    {expanded ? (
+                      <ChevronUp className="w-3 h-3 text-purple-400/70 flex-shrink-0" />
+                    ) : (
+                      <ChevronDown className="w-3 h-3 text-purple-400/70 flex-shrink-0" />
+                    )}
                   </div>
 
-                  {/* Beschrijving */}
-                  <div className="px-3 py-1 border-b border-purple-500/10">
-                    <p className="text-[10px] text-purple-300/60 truncate">{beschrijving}</p>
-                  </div>
-
-                  {/* Takenlijst per project */}
-                  <div className="px-2 py-1 overflow-y-auto" style={{ maxHeight: `${blockHeight - 56}px` }}>
-                    {Array.from(perProject.entries()).map(([proj, projectTaken]) => (
-                      <div key={proj}>
-                        {perProject.size > 1 && (
-                          <div className="flex items-center gap-1.5 mt-1 mb-0.5 px-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-purple-400/50" />
-                            <span className="text-[10px] font-semibold text-purple-400/70">{proj}</span>
-                          </div>
-                        )}
-                        {projectTaken.map((taak) => {
-                          const done = taak.status === "afgerond";
-                          return (
-                            <div key={taak.id} className="flex items-center gap-2 py-0.5 px-1">
-                              <button
-                                onClick={() => onTaakToggle?.(taak.id, taak.status)}
-                                className={cn(
-                                  "w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center flex-shrink-0 transition-all",
-                                  done ? "bg-purple-500 border-purple-500" : "border-purple-400/40 hover:border-purple-400"
-                                )}
-                              >
-                                {done && <Check className="w-2 h-2 text-white" />}
-                              </button>
-                              <span className={cn(
-                                "text-[11px] truncate flex-1",
-                                done ? "line-through text-purple-400/30" : "text-purple-200"
-                              )}>
-                                {taak.titel}
-                              </span>
+                  {/* Fase/taken lijst — alleen als expanded */}
+                  {expanded && (
+                    <div className="px-2 py-1.5 overflow-y-auto" style={{ maxHeight: `${fullHeight - 36}px` }}>
+                      {Array.from(perProject.entries()).map(([proj, faseMap]) => (
+                        <div key={proj} className="mb-1.5">
+                          {meerdereProjecten && (
+                            <div className="flex items-center gap-1.5 mb-1 px-1 border-b border-purple-500/10 pb-0.5">
+                              <div className="w-1.5 h-1.5 rounded-full bg-purple-400/60" />
+                              <span className="text-[10px] font-bold uppercase tracking-wide text-purple-300/80">{proj}</span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-
-                  </div>
+                          )}
+                          {Array.from(faseMap.entries()).map(([fase, faseTaken]) => (
+                            <div key={fase} className="mb-1">
+                              <div className="text-[10px] font-semibold text-purple-200/90 px-1 py-0.5 bg-purple-500/10 rounded-sm mb-0.5">
+                                {fase}
+                              </div>
+                              {faseTaken.map((taak) => {
+                                const done = taak.status === "afgerond";
+                                return (
+                                  <div key={taak.id} className="flex items-center gap-2 py-0.5 px-2">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onTaakToggle?.(taak.id, taak.status); }}
+                                      className={cn(
+                                        "w-3.5 h-3.5 rounded-full border-[1.5px] flex items-center justify-center flex-shrink-0 transition-all",
+                                        done ? "bg-purple-500 border-purple-500" : "border-purple-400/40 hover:border-purple-400"
+                                      )}
+                                    >
+                                      {done && <Check className="w-2 h-2 text-white" />}
+                                    </button>
+                                    <span className={cn(
+                                      "text-[11px] truncate flex-1",
+                                      done ? "line-through text-purple-400/30" : "text-purple-100"
+                                    )}>
+                                      {taak.titel}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             });

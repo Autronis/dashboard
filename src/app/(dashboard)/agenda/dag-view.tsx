@@ -849,10 +849,11 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const eindLabel = eindDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
               const afgerond = group.filter((t) => t.status === "afgerond").length;
 
-              // Check of een handmatige taak in deze tijdspanne overlapt → half-width bij expanded
+              // Check of iets (handmatige taak of extern event) in deze tijdspanne overlapt.
+              // Zo ja → rendert als half-width links zodat de tekst ernaast zichtbaar blijft.
               const sessieStartMs = startDate.getTime();
               const sessieEindMs = eindDate.getTime();
-              const heeftManualOverlap = dagTaken.some((t) => {
+              const heeftTaakOverlap = dagTaken.some((t) => {
                 if (t.uitvoerder === "claude" || !t.ingeplandStart) return false;
                 const ts = new Date(t.ingeplandStart).getTime();
                 const te = t.ingeplandEind
@@ -860,6 +861,15 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   : ts + (t.geschatteDuur || 30) * 60000;
                 return ts < sessieEindMs && te > sessieStartMs;
               });
+              const heeftEventOverlap = timed.some((ev) => {
+                const evStartStr = "startDatum" in ev ? ev.startDatum : "";
+                if (!evStartStr || evStartStr.length <= 10) return false;
+                const evStart = new Date(evStartStr).getTime();
+                const evEindStr = "eindDatum" in ev ? (ev as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
+                const evEind = evEindStr ? new Date(evEindStr).getTime() : evStart + 60 * 60000;
+                return evStart < sessieEindMs && evEind > sessieStartMs;
+              });
+              const heeftOverlap = heeftTaakOverlap || heeftEventOverlap;
 
               // Groepeer primair per FASE (zoals Sem wil: "fase 1, 2, 3").
               // Binnen multi-project sessies: project > fase hierarchie.
@@ -917,14 +927,20 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   className={cn(
                     "absolute rounded-xl border-l-[3px] border-purple-500 overflow-hidden transition-all",
                     expanded ? "z-[20] shadow-2xl" : "z-[3]",
-                    heeftManualOverlap && expanded ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
+                    // Half-width links als er iets naast zit (zowel collapsed als expanded),
+                    // anders volle breedte.
+                    heeftOverlap ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
                   )}
                   style={{
                     top: `${blockTop}px`,
                     height: `${expanded ? fullHeight : collapsedHeight}px`,
-                    background: "linear-gradient(135deg, rgba(168,85,247,0.18) 0%, rgba(168,85,247,0.06) 100%)",
+                    // Expanded = opaak donker paars zodat onderliggende events NIET doorschijnen.
+                    // Collapsed = subtiele gradient (header is enige zichtbare deel).
+                    background: expanded
+                      ? "linear-gradient(135deg, #1a0a2e 0%, #241038 100%)"
+                      : "linear-gradient(135deg, rgba(168,85,247,0.22) 0%, rgba(168,85,247,0.08) 100%)",
                     borderColor: "#a855f7",
-                    boxShadow: expanded ? "0 12px 40px rgba(168,85,247,0.35)" : "0 2px 12px rgba(168,85,247,0.15)",
+                    boxShadow: expanded ? "0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(168,85,247,0.3)" : "0 2px 12px rgba(168,85,247,0.15)",
                   }}
                 >
                   {/* Header — altijd zichtbaar, klikbaar om te togglen */}

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { proposals, proposalRegels, klanten, bedrijfsinstellingen } from "@/lib/db/schema";
+import { proposals, proposalRegels, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { ProposalPDF } from "@/lib/proposal-pdf";
+import { parseSlides } from "@/lib/proposal-schema";
 import React from "react";
 
 // GET /api/proposals/[id]/pdf
@@ -42,22 +43,8 @@ export async function GET(
       .from(proposalRegels)
       .where(eq(proposalRegels.proposalId, Number(id)));
 
-    const [bedrijf] = await db.select().from(bedrijfsinstellingen).limit(1);
+    const slides = parseSlides(proposal.secties);
 
-    const bedrijfData = bedrijf || {
-      bedrijfsnaam: "Autronis",
-      adres: null,
-      kvkNummer: null,
-      btwNummer: null,
-      email: null,
-      telefoon: null,
-      iban: null,
-    };
-
-    const secties: Array<{ id: string; titel: string; inhoud: string; actief: boolean }> =
-      JSON.parse(proposal.secties || "[]");
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pdfBuffer = await renderToBuffer(
       React.createElement(ProposalPDF, {
         proposal: {
@@ -69,9 +56,8 @@ export async function GET(
           geldigTot: proposal.geldigTot,
           totaalBedrag: proposal.totaalBedrag || 0,
         },
-        secties: secties.filter((s) => s.actief),
+        secties: slides,
         regels,
-        bedrijf: bedrijfData,
       }) as never
     );
 

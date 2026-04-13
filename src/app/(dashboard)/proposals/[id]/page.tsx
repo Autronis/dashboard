@@ -1,405 +1,363 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
+  ArrowLeft,
+  Save,
   Download,
-  Mail,
-  Pencil,
-  Trash2,
   Link2,
   CheckCircle2,
   ExternalLink,
-  Copy,
 } from "lucide-react";
-import { cn, formatBedrag, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
-import { Breadcrumb } from "@/components/ui/breadcrumb";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DeckEditor } from "@/components/proposal-deck/DeckEditor";
+import { Slide } from "@/components/proposal-deck/types";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
-interface Sectie {
-  id: string;
-  titel: string;
-  inhoud: string;
-  actief: boolean;
-}
-
-interface ProposalDetail {
-  id: number;
-  klantId: number;
-  klantNaam: string;
-  klantEmail: string | null;
-  klantContactpersoon: string | null;
-  klantAdres: string | null;
-  titel: string;
-  status: string;
-  secties: string;
-  totaalBedrag: number | null;
-  geldigTot: string | null;
-  token: string | null;
-  ondertekendOp: string | null;
-  ondertekendDoor: string | null;
-  ondertekening: string | null;
-  aangemaaktDoor: number | null;
-  aangemaaktOp: string | null;
-  bijgewerktOp: string | null;
-}
-
-interface Regel {
+type Regel = {
   id: number;
   omschrijving: string;
-  aantal: number | null;
-  eenheidsprijs: number | null;
-  totaal: number | null;
-}
-
-const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
-  concept: { bg: "bg-slate-500/15", text: "text-slate-400", label: "Concept" },
-  verzonden: { bg: "bg-blue-500/15", text: "text-blue-400", label: "Verzonden" },
-  bekeken: { bg: "bg-yellow-500/15", text: "text-yellow-400", label: "Bekeken" },
-  ondertekend: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Ondertekend" },
-  afgewezen: { bg: "bg-red-500/15", text: "text-red-400", label: "Afgewezen" },
+  aantal: number;
+  eenheidsprijs: number;
+  totaal?: number | null;
 };
 
-function ProposalDetailSkeleton() {
-  return (
-    <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-8">
-      <Skeleton className="h-4 w-48" />
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="space-y-3">
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-36 rounded-xl" />
-          <Skeleton className="h-10 w-44 rounded-xl" />
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-8 shadow-lg space-y-8">
-        <Skeleton className="h-7 w-48 !bg-gray-200" />
-        <Skeleton className="h-4 w-full !bg-gray-100" />
-        <Skeleton className="h-4 w-3/4 !bg-gray-100" />
-      </div>
-    </div>
-  );
-}
+let localRegelId = -1;
+const newRegel = (): Regel => ({
+  id: localRegelId--,
+  omschrijving: "",
+  aantal: 1,
+  eenheidsprijs: 0,
+});
 
-export default function ProposalDetailPage() {
-  const params = useParams();
+export default function ProposalEditPage() {
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const { addToast } = useToast();
-  const id = Number(params.id);
 
-  const [proposal, setProposal] = useState<ProposalDetail | null>(null);
-  const [regels, setRegels] = useState<Regel[]>([]);
   const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [verstuurLaden, setVerstuurLaden] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-
-  const fetchData = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/proposals/${id}`);
-      if (res.status === 404) {
-        setNotFound(true);
-        return;
-      }
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      setProposal(json.proposal);
-      setRegels(json.regels);
-    } catch {
-      addToast("Kon proposal niet laden", "fout");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, addToast]);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<string>("concept");
+  const [token, setToken] = useState<string | null>(null);
+  const [klantNaam, setKlantNaam] = useState("");
+  const [titel, setTitel] = useState("");
+  const [geldigTot, setGeldigTot] = useState("");
+  const [slides, setSlides] = useState<Slide[]>([]);
+  const [regels, setRegels] = useState<Regel[]>([]);
+  const [accepteerOpen, setAccepteerOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/proposals/${params.id}`);
+        if (!res.ok) {
+          addToast("Proposal niet gevonden", "fout");
+          router.push("/proposals");
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setStatus(data.proposal.status);
+        setToken(data.proposal.token);
+        setKlantNaam(data.proposal.klantNaam);
+        setTitel(data.proposal.titel);
+        setGeldigTot(data.proposal.geldigTot ?? "");
+        setSlides(data.proposal.secties as Slide[]);
+        setRegels(data.regels as Regel[]);
+      } catch {
+        if (!cancelled) addToast("Kon proposal niet laden", "fout");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id, router, addToast]);
 
-  const handleVerstuur = async () => {
-    setVerstuurLaden(true);
+  // beforeunload dirty guard
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
+  const save = async () => {
+    setSaving(true);
     try {
-      const res = await fetch(`/api/proposals/${id}/verstuur`, { method: "POST" });
+      const res = await fetch(`/api/proposals/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titel: titel.trim(),
+          secties: slides,
+          geldigTot: geldigTot || null,
+          regels: regels.map((r) => ({
+            omschrijving: r.omschrijving,
+            aantal: r.aantal,
+            eenheidsprijs: r.eenheidsprijs,
+          })),
+        }),
+      });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.fout || "Onbekende fout");
-      addToast("Proposal verstuurd per e-mail", "succes");
-      fetchData();
-    } catch (error) {
-      addToast(error instanceof Error ? error.message : "Kon niet versturen", "fout");
+      if (!res.ok) throw new Error(data.fout || "Opslaan mislukt");
+      addToast("Opgeslagen", "succes");
+      setDirty(false);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Opslaan mislukt", "fout");
     } finally {
-      setVerstuurLaden(false);
+      setSaving(false);
     }
   };
 
-  const handleDelete = async () => {
-    try {
-      const res = await fetch(`/api/proposals/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      addToast("Proposal verwijderd");
-      router.push("/proposals");
-    } catch {
-      addToast("Kon proposal niet verwijderen", "fout");
+  const accepteer = async (naam: string) => {
+    const res = await fetch(`/api/proposals/${params.id}/accepteren`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ naam }),
+    });
+    if (res.ok) {
+      addToast("Gemarkeerd als geaccepteerd", "succes");
+      setStatus("ondertekend");
+      setAccepteerOpen(false);
+    } else {
+      addToast("Actie mislukt", "fout");
     }
   };
 
-  const handleCopyLink = () => {
-    if (!proposal?.token) return;
-    const url = `${window.location.origin}/proposal/${proposal.token}`;
-    navigator.clipboard.writeText(url);
+  const copyLink = () => {
+    if (!token) return;
+    navigator.clipboard.writeText(`${window.location.origin}/proposal/${token}`);
     addToast("Link gekopieerd", "succes");
   };
 
-  if (loading) return <ProposalDetailSkeleton />;
-
-  if (notFound || !proposal) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-autronis-text-secondary text-lg">Proposal niet gevonden</p>
-        <Link href="/proposals" className="text-autronis-accent hover:underline text-base">
-          Terug naar proposals
-        </Link>
-      </div>
+      <div className="max-w-4xl mx-auto p-8 text-autronis-text-secondary">Laden...</div>
     );
   }
 
-  const sc = statusConfig[proposal.status] || statusConfig.concept;
-  const secties: Sectie[] = JSON.parse(proposal.secties || "[]");
-  const actieveSecties = secties.filter((s) => s.actief);
+  const isConcept = status === "concept";
+  const totaal = regels.reduce(
+    (sum, r) => sum + (Number(r.aantal) || 0) * (Number(r.eenheidsprijs) || 0),
+    0,
+  );
 
   return (
     <PageTransition>
       <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-8">
-        {/* Breadcrumb */}
-        <Breadcrumb
-          items={[
-            { label: "Proposals", href: "/proposals" },
-            { label: proposal.titel },
-          ]}
-        />
+        <Link
+          href="/proposals"
+          className="inline-flex items-center gap-2 text-sm text-autronis-text-secondary hover:text-autronis-accent"
+        >
+          <ArrowLeft className="w-4 h-4" /> Terug naar proposals
+        </Link>
 
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-4">
-              <h1 className="text-3xl font-bold text-autronis-text-primary">
-                {proposal.titel}
-              </h1>
-              <span className={cn("text-xs px-3 py-1.5 rounded-full font-semibold", sc.bg, sc.text)}>
-                {sc.label}
-              </span>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="text-sm text-autronis-text-secondary">{klantNaam}</div>
+            <h1 className="text-3xl font-bold text-autronis-text-primary">
+              {titel || "(geen titel)"}
+            </h1>
+            <div className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">
+              Status: {status}
             </div>
-            <p className="text-base text-autronis-text-secondary">
-              {proposal.klantNaam}
-              {proposal.aangemaaktOp && (
-                <> &middot; {formatDatum(proposal.aangemaaktOp)}</>
-              )}
-            </p>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={handleCopyLink}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-primary rounded-xl text-sm font-semibold transition-colors"
+              onClick={copyLink}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-autronis-border text-sm text-autronis-text-primary hover:bg-autronis-card"
             >
-              <Link2 className="w-4 h-4" />
-              Kopieer link
+              <Link2 className="w-4 h-4" /> Kopieer link
             </button>
-            <a
-              href={`/api/proposals/${id}/pdf`}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-primary rounded-xl text-sm font-semibold transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              PDF
-            </a>
-            {(proposal.status === "concept" || proposal.status === "verzonden") && (
-              <button
-                onClick={handleVerstuur}
-                disabled={verstuurLaden}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
+            {token && (
+              <a
+                href={`/proposal/${token}?preview=1`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-autronis-border text-sm text-autronis-text-primary hover:bg-autronis-card"
               >
-                <Mail className="w-4 h-4" />
-                {verstuurLaden ? "Versturen..." : "Verstuur"}
+                <ExternalLink className="w-4 h-4" /> Preview
+              </a>
+            )}
+            <a
+              href={`/api/proposals/${params.id}/pdf`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-autronis-border text-sm text-autronis-text-primary hover:bg-autronis-card"
+            >
+              <Download className="w-4 h-4" /> PDF
+            </a>
+            {(status === "verzonden" || status === "bekeken") && (
+              <button
+                onClick={() => setAccepteerOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/25"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Markeer als geaccepteerd
               </button>
             )}
-            {proposal.status === "concept" && (
-              <>
-                <Link
-                  href={`/proposals/${id}/bewerken`}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-primary rounded-xl text-sm font-semibold transition-colors"
-                >
-                  <Pencil className="w-4 h-4" />
-                  Bewerken
-                </Link>
-                <button
-                  onClick={() => setDeleteDialogOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-secondary hover:text-red-400 rounded-xl text-sm font-semibold transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
-            )}
           </div>
         </div>
 
-        {/* Public link */}
-        {proposal.token && (
-          <div className="flex items-center gap-3 bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3">
-            <ExternalLink className="w-4 h-4 text-autronis-text-secondary flex-shrink-0" />
-            <code className="text-sm text-autronis-text-secondary flex-1 truncate">
-              {typeof window !== "undefined"
-                ? `${window.location.origin}/proposal/${proposal.token}`
-                : `/proposal/${proposal.token}`}
-            </code>
+        {/* Metadata (editable only in concept) */}
+        {isConcept ? (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
+                Titel
+              </label>
+              <input
+                type="text"
+                value={titel}
+                onChange={(e) => {
+                  setTitel(e.target.value);
+                  setDirty(true);
+                }}
+                className="w-full px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
+                Geldig tot
+              </label>
+              <input
+                type="date"
+                value={geldigTot}
+                onChange={(e) => {
+                  setGeldigTot(e.target.value);
+                  setDirty(true);
+                }}
+                className="px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl border border-yellow-500/20 bg-yellow-500/5 text-sm text-yellow-400">
+            Deze proposal is niet meer in concept. Alleen status-acties zijn beschikbaar.
+          </div>
+        )}
+
+        {/* Slides */}
+        {isConcept && (
+          <div>
+            <h2 className="text-xl font-bold text-autronis-text-primary mb-4">Slides</h2>
+            <DeckEditor
+              slides={slides}
+              onChange={(s) => {
+                setSlides(s);
+                setDirty(true);
+              }}
+            />
+          </div>
+        )}
+
+        {/* Prijsregels */}
+        {isConcept && (
+          <div>
+            <h2 className="text-xl font-bold text-autronis-text-primary mb-4">Prijsregels</h2>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-3">
+              {regels.map((r, idx) => (
+                <div
+                  key={r.id}
+                  className="grid grid-cols-[1fr_80px_120px_120px_auto] gap-2 items-center"
+                >
+                  <input
+                    type="text"
+                    placeholder="Omschrijving"
+                    value={r.omschrijving}
+                    onChange={(e) => {
+                      const next = [...regels];
+                      next[idx] = { ...r, omschrijving: e.target.value };
+                      setRegels(next);
+                      setDirty(true);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+                  />
+                  <input
+                    type="number"
+                    value={r.aantal}
+                    onChange={(e) => {
+                      const next = [...regels];
+                      next[idx] = { ...r, aantal: Number(e.target.value) };
+                      setRegels(next);
+                      setDirty(true);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary tabular-nums"
+                  />
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={r.eenheidsprijs}
+                    onChange={(e) => {
+                      const next = [...regels];
+                      next[idx] = { ...r, eenheidsprijs: Number(e.target.value) };
+                      setRegels(next);
+                      setDirty(true);
+                    }}
+                    className="px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary tabular-nums"
+                  />
+                  <div className="text-right tabular-nums font-semibold text-autronis-text-primary">
+                    € {((Number(r.aantal) || 0) * (Number(r.eenheidsprijs) || 0)).toFixed(2)}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegels(regels.filter((x) => x.id !== r.id));
+                      setDirty(true);
+                    }}
+                    className="px-2 text-autronis-text-secondary hover:text-red-400"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setRegels([...regels, newRegel()]);
+                  setDirty(true);
+                }}
+                className="text-sm text-autronis-accent hover:underline"
+              >
+                + regel toevoegen
+              </button>
+              <div className="pt-4 border-t border-autronis-border text-right">
+                <span className="text-xs uppercase text-autronis-text-secondary mr-3">Totaal</span>
+                <span className="text-2xl font-bold text-autronis-accent tabular-nums">
+                  € {totaal.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isConcept && (
+          <div className="flex items-center gap-3 justify-end sticky bottom-4 bg-autronis-bg/80 backdrop-blur p-3 rounded-2xl border border-autronis-border">
             <button
-              onClick={handleCopyLink}
-              className="p-1.5 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors flex-shrink-0"
+              type="button"
+              disabled={saving || !dirty}
+              onClick={save}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg font-semibold disabled:opacity-50"
             >
-              <Copy className="w-4 h-4" />
+              <Save className="w-4 h-4" /> {saving ? "Opslaan..." : "Opslaan"}
             </button>
           </div>
         )}
 
-        {/* Ondertekend info */}
-        {proposal.status === "ondertekend" && (
-          <div className="flex items-center gap-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-5 py-4">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-medium text-emerald-400">
-                Ondertekend door {proposal.ondertekendDoor}
-              </p>
-              {proposal.ondertekendOp && (
-                <p className="text-xs text-emerald-400/70 mt-0.5">
-                  {formatDatum(proposal.ondertekendOp)}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Preview */}
-        <div className="bg-white rounded-2xl p-8 lg:p-10 shadow-lg space-y-10">
-          {/* Cover */}
-          <div className="text-center py-8 border-b border-gray-100">
-            <p className="text-sm text-[#128C7E] font-semibold uppercase tracking-widest mb-3">
-              Voorstel
-            </p>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">{proposal.titel}</h2>
-            <p className="text-lg text-gray-500">
-              Voor {proposal.klantContactpersoon || proposal.klantNaam}
-            </p>
-          </div>
-
-          {/* Sections */}
-          {actieveSecties.map((sectie) => (
-            <div key={sectie.id} className="pb-8 border-b border-gray-100 last:border-0">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">{sectie.titel}</h3>
-              <p className="text-gray-600 leading-relaxed whitespace-pre-wrap">
-                {sectie.inhoud}
-              </p>
-            </div>
-          ))}
-
-          {/* Pricing */}
-          {regels.length > 0 && (
-            <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Investering</h3>
-              <table className="w-full mb-6">
-                <thead>
-                  <tr className="border-b-2 border-gray-200">
-                    <th className="text-left py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      Omschrijving
-                    </th>
-                    <th className="text-center py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-20">
-                      Aantal
-                    </th>
-                    <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">
-                      Prijs
-                    </th>
-                    <th className="text-right py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-28">
-                      Totaal
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {regels.map((regel) => (
-                    <tr key={regel.id} className="border-b border-gray-100">
-                      <td className="py-3 text-sm text-gray-800">{regel.omschrijving}</td>
-                      <td className="py-3 text-sm text-gray-800 text-center tabular-nums">
-                        {regel.aantal || 1}
-                      </td>
-                      <td className="py-3 text-sm text-gray-800 text-right tabular-nums">
-                        {formatBedrag(regel.eenheidsprijs || 0)}
-                      </td>
-                      <td className="py-3 text-sm text-gray-800 text-right tabular-nums">
-                        {formatBedrag(regel.totaal || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex justify-end">
-                <div className="border-t-2 border-gray-200 pt-3">
-                  <div className="flex items-center gap-8">
-                    <span className="text-lg font-bold text-gray-800">Totaal</span>
-                    <span className="text-lg font-bold text-[#128C7E] tabular-nums">
-                      {formatBedrag(proposal.totaalBedrag || 0)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              {proposal.geldigTot && (
-                <p className="text-sm text-gray-400 mt-4 italic">
-                  Geldig tot {formatDatum(proposal.geldigTot)}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Signature display */}
-          {proposal.ondertekening && (
-            <div className="border-t border-gray-200 pt-6">
-              <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">
-                Ondertekening
-              </p>
-              {(() => {
-                const sig: { type: string; data: string; naam: string } = JSON.parse(
-                  proposal.ondertekening
-                );
-                return (
-                  <div>
-                    {sig.type === "tekening" ? (
-                      <img
-                        src={sig.data}
-                        alt="Handtekening"
-                        className="h-20 border border-gray-200 rounded-lg p-2"
-                      />
-                    ) : (
-                      <p className="text-2xl text-gray-800" style={{ fontFamily: "cursive" }}>
-                        {sig.naam}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 mt-2">{sig.naam}</p>
-                  </div>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-
-        {/* Delete dialog */}
         <ConfirmDialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          onBevestig={handleDelete}
-          titel="Proposal verwijderen?"
-          bericht={`Weet je zeker dat je "${proposal.titel}" wilt verwijderen?`}
-          bevestigTekst="Verwijderen"
-          variant="danger"
+          open={accepteerOpen}
+          onClose={() => setAccepteerOpen(false)}
+          onBevestig={() => accepteer("Handmatig geaccepteerd via dashboard")}
+          titel="Markeer als geaccepteerd?"
+          bericht="Dit zet de status op 'ondertekend'. Gebruik deze actie nadat de klant via call of mail akkoord heeft gegeven."
+          bevestigTekst="Markeer geaccepteerd"
+          variant="warning"
         />
       </div>
     </PageTransition>

@@ -85,6 +85,16 @@ if (isTurso) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
 
+  // Eigenaarschap op projecten: sem / syb / team / vrij. Klantprojecten
+  // krijgen 'team' als default backfill, alle andere blijven op 'sem'.
+  client.execute("ALTER TABLE projecten ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
+    .then(() => {
+      client.execute(
+        `UPDATE projecten SET eigenaar = 'team' WHERE klant_id IS NOT NULL AND klant_id IN (SELECT id FROM klanten WHERE LOWER(bedrijfsnaam) NOT LIKE '%autronis%')`
+      ).catch(() => {});
+    })
+    .catch(() => { /* column may already exist */ });
+
   // Add missing columns to bank_transacties on Turso
   for (const col of [
     "ALTER TABLE bank_transacties ADD COLUMN ai_beschrijving TEXT",

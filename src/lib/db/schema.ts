@@ -54,6 +54,12 @@ export const projecten = sqliteTable("projecten", {
   deadline: text("deadline"),
   geschatteUren: real("geschatte_uren"),
   werkelijkeUren: real("werkelijke_uren").default(0),
+  // Eigenaarschap / zichtbaarheid:
+  // - sem  = alleen Sem ziet & werkt aan dit project
+  // - syb  = alleen Syb ziet & werkt aan dit project
+  // - team = beiden zien het en werken er aan
+  // - vrij = open backlog, iedereen mag het oppakken (zichtbaar voor allen)
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "team", "vrij"] }).default("sem"),
   isActief: integer("is_actief").default(1),
   notionPageId: text("notion_page_id"),
   notionUrl: text("notion_url"),

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -198,28 +198,14 @@ function LauncherItem({
   isActive: boolean;
   pathname: string;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const { open, toggle } = useLauncherState(item.label);
   const Icon = item.icon;
   const { setOpen: setSidebarOpen } = useSidebar();
 
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
-
-  // Close on route change
-  useEffect(() => { setOpen(false); }, [pathname]);
-
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
         className={cn(
           "w-full flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-150 group relative",
           isActive
@@ -270,7 +256,7 @@ function LauncherItem({
                   <Link
                     key={child.href}
                     href={child.href}
-                    onClick={() => { setOpen(false); setSidebarOpen(false); }}
+                    onClick={() => { setSidebarOpen(false); }}
                     className={cn(
                       "flex items-center gap-2.5 px-3.5 py-2 text-[13px] transition-colors",
                       childActive
@@ -293,6 +279,38 @@ function LauncherItem({
 
 // ─── Section state ──────────────────────────────────────────────
 const SIDEBAR_SECTIONS_KEY = "autronis-sidebar-sections";
+const SIDEBAR_LAUNCHERS_KEY = "autronis-sidebar-launchers";
+
+function useLauncherState(key: string) {
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
+      if (stored) {
+        const map = JSON.parse(stored) as Record<string, boolean>;
+        if (key in map) setOpen(map[key]);
+      }
+    } catch { /* ignore */ }
+    setLoaded(true);
+  }, [key]);
+
+  const toggle = useCallback(() => {
+    setOpen((prev) => {
+      const next = !prev;
+      try {
+        const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
+        const map = stored ? JSON.parse(stored) as Record<string, boolean> : {};
+        map[key] = next;
+        localStorage.setItem(SIDEBAR_LAUNCHERS_KEY, JSON.stringify(map));
+      } catch { /* ignore */ }
+      return next;
+    });
+  }, [key]);
+
+  return { open: loaded ? open : false, toggle };
+}
 
 function useSectionState(section: string, defaultOpen: boolean) {
   const [expanded, setExpanded] = useState(defaultOpen);

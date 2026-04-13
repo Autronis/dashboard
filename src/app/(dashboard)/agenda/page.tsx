@@ -278,7 +278,7 @@ export default function AgendaPage() {
   // Niet ingeplande taken (voor sidebar)
   const nietIngeplandeTaken = useMemo(() => agendaTaken.filter((t) => !t.ingeplandStart), [agendaTaken]);
 
-  // Groepeer niet-ingeplande taken per project
+  // Groepeer niet-ingeplande taken per project → fase. Fase is de primaire werkeenheid.
   const takenPerProject = useMemo(() => {
     const filtered = nietIngeplandeTaken
       .filter((t) => {
@@ -296,11 +296,27 @@ export default function AgendaPage() {
         return 0;
       });
 
-    const groups: Record<string, { projectNaam: string; taken: AgendaTaak[] }> = {};
+    const groups: Record<string, {
+      projectNaam: string;
+      taken: AgendaTaak[];
+      fases: { faseNaam: string; taken: AgendaTaak[] }[];
+    }> = {};
     for (const taak of filtered) {
-      const key = taak.projectNaam || "Zonder project";
-      if (!groups[key]) groups[key] = { projectNaam: key, taken: [] };
-      groups[key].taken.push(taak);
+      const projectKey = taak.projectNaam || "Zonder project";
+      if (!groups[projectKey]) groups[projectKey] = { projectNaam: projectKey, taken: [], fases: [] };
+      groups[projectKey].taken.push(taak);
+    }
+    // Per project: split naar fases
+    for (const groep of Object.values(groups)) {
+      const faseMap: Record<string, AgendaTaak[]> = {};
+      for (const t of groep.taken) {
+        const faseKey = t.fase || "Geen fase";
+        if (!faseMap[faseKey]) faseMap[faseKey] = [];
+        faseMap[faseKey].push(t);
+      }
+      groep.fases = Object.entries(faseMap)
+        .map(([faseNaam, taken]) => ({ faseNaam, taken }))
+        .sort((a, b) => a.faseNaam.localeCompare(b.faseNaam, "nl", { numeric: true }));
     }
     return Object.values(groups).sort((a, b) => b.taken.length - a.taken.length);
   }, [nietIngeplandeTaken, plannenFilter]);

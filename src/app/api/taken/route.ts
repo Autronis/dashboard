@@ -180,6 +180,18 @@ export async function POST(req: NextRequest) {
         .catch(() => {});
     }
 
+    // Auto-update project status: new open task → project back to "actief"
+    if (nieuw.projectId && (nieuw.status === "open" || nieuw.status === "bezig")) {
+      await db
+        .update(projecten)
+        .set({
+          status: "actief",
+          bijgewerktOp: sql`(datetime('now'))`,
+        })
+        .where(eq(projecten.id, nieuw.projectId))
+        .run();
+    }
+
     return NextResponse.json({ taak: nieuw }, { status: 201 });
   } catch (error) {
     return NextResponse.json(

@@ -108,6 +108,33 @@ export async function POST(req: NextRequest) {
         .returning();
       project = nieuwProject;
 
+      // Multi-chat safety: re-check for concurrent dupes. If another chat created
+      // the same project between our SELECT and INSERT, prefer the OLDEST one and
+      // soft-delete our just-created duplicate so we don't fragment tasks.
+      const dupes = await db
+        .select()
+        .from(projecten)
+        .where(eq(projecten.isActief, 1))
+        .all();
+      const matches = dupes
+        .filter((p) => {
+          const pNorm = normalize(p.naam);
+          const pCompact = pNorm.replace(/\s/g, "");
+          return pNorm === normalized || pCompact === compact;
+        })
+        .sort((a, b) => a.id - b.id);
+      if (matches.length > 1) {
+        const oldest = matches[0];
+        if (oldest.id !== nieuwProject.id) {
+          await db
+            .update(projecten)
+            .set({ isActief: 0 })
+            .where(eq(projecten.id, nieuwProject.id))
+            .run();
+          project = oldest;
+        }
+      }
+
       // Auto-create a Plan / Roadmap document for new projects
       try {
         const user = defaultUser?.naam ?? "Claude";

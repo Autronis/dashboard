@@ -62,14 +62,17 @@ const s = StyleSheet.create({
   h3: { fontSize: 11, fontWeight: 600, color: "#374151", marginTop: 14, marginBottom: 6 },
   paragraph: { fontSize: 9.5, lineHeight: 1.7, color: "#374151", marginBottom: 6 },
   bold: { fontWeight: 700 },
-  italic: { fontStyle: "italic" },
+  // Italic is uitgeschakeld omdat we geen Inter-Italic.ttf hebben — react-pdf
+  // crasht met "Could not resolve font" als fontStyle italic gebruikt wordt.
+  // Voeg public/fonts/Inter-Italic.ttf + register entry toe als italics terug moeten.
+  italic: {},
   link: { color: TEAL },
   inlineCode: { fontFamily: "Courier", fontSize: 8.5, backgroundColor: "#F0FAF8", color: "#0F766E", paddingHorizontal: 3, paddingVertical: 1, borderRadius: 2 },
   listItem: { fontSize: 9.5, lineHeight: 1.7, color: "#374151", marginBottom: 3, paddingLeft: 14 },
   codeBlock: { backgroundColor: "#F3F4F6", borderWidth: 1, borderColor: "#E5E7EB", borderRadius: 6, padding: 12, marginVertical: 8 },
   codeText: { fontFamily: "Courier", fontSize: 8, color: "#1F2937", lineHeight: 1.6 },
   blockquote: { borderLeftWidth: 3, borderLeftColor: TEAL, paddingLeft: 12, marginVertical: 8 },
-  blockquoteText: { fontSize: 9.5, fontStyle: "italic", color: "#6B7280", lineHeight: 1.7 },
+  blockquoteText: { fontSize: 9.5, color: "#6B7280", lineHeight: 1.7 },
   hr: { borderBottomWidth: 1, borderBottomColor: "#E5E7EB", marginVertical: 16 },
   // ===== ARCHITECTURE DIAGRAM =====
   archDiagram: { marginVertical: 12, alignItems: "center" },

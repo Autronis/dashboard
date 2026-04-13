@@ -62,6 +62,9 @@ import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ide
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
 import { KilometerWidget } from "./components/KilometerWidget";
+import { DoelenWidget } from "@/components/dashboard/doelen-widget";
+import { TeamVergelijkingWidget } from "@/components/dashboard/team-vergelijking-widget";
+import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
 
 // ============ HELPERS ============
 

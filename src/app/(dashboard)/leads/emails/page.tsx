@@ -539,11 +539,19 @@ export default function LeadsEmailsPage() {
                   expanded && "border-autronis-accent/40"
                 )}
               >
-                {/* Header rij — altijd zichtbaar */}
-                <button
-                  onClick={() => setExpandedId(expanded ? null : email.id)}
-                  className="w-full flex items-start gap-3 p-3 text-left hover:bg-autronis-accent/[0.03] transition-colors"
-                >
+                {/* Header rij — checkbox + clickable area */}
+                <div className="w-full flex items-start gap-3 p-3 hover:bg-autronis-accent/[0.03] transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(email.id)}
+                    onChange={() => toggleSelect(email.id)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="mt-1 rounded border-autronis-border accent-autronis-accent cursor-pointer"
+                  />
+                  <button
+                    onClick={() => setExpandedId(expanded ? null : email.id)}
+                    className="flex items-start gap-3 flex-1 min-w-0 text-left"
+                  >
                   <div className="mt-0.5 text-autronis-text-secondary">
                     {expanded ? (
                       <ChevronDown className="w-4 h-4" />
@@ -579,12 +587,46 @@ export default function LeadsEmailsPage() {
                       </p>
                     )}
                   </div>
-                </button>
+                  </button>
+                </div>
 
                 {/* Expanded content */}
                 {expanded && (
                   <div className="border-t border-autronis-border bg-autronis-bg/40 p-4 space-y-3">
-                    {email.generated_email ? (
+                    {editingId === email.id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editSubject}
+                          onChange={(e) => setEditSubject(e.target.value)}
+                          placeholder="Onderwerp"
+                          className="w-full bg-autronis-card border border-autronis-accent/40 rounded-lg px-3 py-2 text-xs font-medium text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                        />
+                        <textarea
+                          value={editBody}
+                          onChange={(e) => setEditBody(e.target.value)}
+                          rows={12}
+                          placeholder="Email tekst"
+                          className="w-full bg-autronis-card border border-autronis-accent/40 rounded-lg px-3 py-2 text-xs text-autronis-text-primary leading-relaxed focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 font-mono resize-none"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => saveEdit(email.id)}
+                            disabled={busy}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+                          >
+                            {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            Opslaan
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="px-3 py-1.5 rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-text-primary"
+                          >
+                            Annuleren
+                          </button>
+                        </div>
+                      </div>
+                    ) : email.generated_email ? (
                       <pre className="whitespace-pre-wrap text-xs text-autronis-text-primary font-sans leading-relaxed bg-autronis-card border border-autronis-border rounded-lg p-3 max-h-96 overflow-y-auto">
                         {email.generated_email}
                       </pre>
@@ -613,21 +655,30 @@ export default function LeadsEmailsPage() {
 
                     {/* Acties */}
                     <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {email.generated_email && (
-                        <button
-                          onClick={() => handleCopy(email.id, email.generated_email!)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-                        >
-                          {copiedId === email.id ? (
-                            <Check className="w-3 h-3 text-autronis-accent" />
-                          ) : (
-                            <Copy className="w-3 h-3" />
-                          )}
-                          Kopieer
-                        </button>
+                      {email.generated_email && editingId !== email.id && (
+                        <>
+                          <button
+                            onClick={() => handleCopy(email.id, email.generated_email!)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+                          >
+                            {copiedId === email.id ? (
+                              <Check className="w-3 h-3 text-autronis-accent" />
+                            ) : (
+                              <Copy className="w-3 h-3" />
+                            )}
+                            Kopieer
+                          </button>
+                          <button
+                            onClick={() => startEdit(email)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            Bewerken
+                          </button>
+                        </>
                       )}
 
-                      {email.email_status === "generated" && (
+                      {email.email_status === "generated" && editingId !== email.id && (
                         <>
                           <button
                             onClick={() => handleStatusChange(email.id, "approved")}
@@ -648,21 +699,38 @@ export default function LeadsEmailsPage() {
                         </>
                       )}
 
-                      {email.email_status === "approved" && (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-emerald-400/80">
-                          <Send className="w-3 h-3" />
-                          Klaar voor verzending — n8n pickt deze op
-                        </span>
+                      {email.email_status === "approved" && editingId !== email.id && (
+                        <button
+                          onClick={() => bulkSend([email.id])}
+                          disabled={!!bulkBusy}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+                        >
+                          {bulkBusy === "send" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                          Verzend nu
+                        </button>
                       )}
 
-                      <button
-                        onClick={() => handleDelete(email.id)}
-                        disabled={busy}
-                        className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                        Verwijder
-                      </button>
+                      {(email.email_status === "failed" || email.email_status === "error") && editingId !== email.id && (
+                        <button
+                          onClick={() => handleStatusChange(email.id, "generating")}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                        >
+                          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                          Opnieuw genereren
+                        </button>
+                      )}
+
+                      {editingId !== email.id && (
+                        <button
+                          onClick={() => handleDelete(email.id)}
+                          disabled={busy}
+                          className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Verwijder
+                        </button>
+                      )}
                     </div>
 
                     {/* Meta */}

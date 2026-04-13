@@ -119,12 +119,44 @@ function prioriteitLabel(key: string): string {
 }
 
 function calcPriorityScore(idee: Idee): number {
+  // Tier 1 — manual scoring: impact + revenue + (inverted) effort.
+  // Only counts if user actually filled in scores.
   const impact = idee.impact ?? 0;
   const effort = idee.effort ?? 0;
   const revenue = idee.revenuePotential ?? 0;
-  if (impact === 0 && effort === 0 && revenue === 0) return idee.aiScore ?? 0;
-  const effortInverted = 11 - Math.max(1, Math.min(10, effort));
-  return Math.round((impact + revenue + effortInverted) / 3 * 10) / 10;
+  if (impact > 0 || effort > 0 || revenue > 0) {
+    const effortInverted = 11 - Math.max(1, Math.min(10, effort || 5));
+    return Math.round(((impact || 5) + (revenue || 5) + effortInverted) / 3 * 10) / 10;
+  }
+
+  // Tier 2 — AI sub-scores: average of haalbaarheid, marktpotentie, fit.
+  const subs = [idee.aiHaalbaarheid, idee.aiMarktpotentie, idee.aiFitAutronis].filter(
+    (n): n is number => typeof n === "number" && n > 0
+  );
+  if (subs.length > 0) {
+    return Math.round((subs.reduce((s, n) => s + n, 0) / subs.length) * 10) / 10;
+  }
+
+  // Tier 3 — single AI score (e.g. YT relevance score).
+  if (typeof idee.aiScore === "number" && idee.aiScore > 0) return idee.aiScore;
+
+  // Tier 4 — nothing scored. Return 0 (sorted to bottom).
+  return 0;
+}
+
+/** Stable tiebreaker: newer ideas first when scores are equal. */
+function compareByDate(a: Idee, b: Idee): number {
+  return (b.aangemaaktOp ?? "").localeCompare(a.aangemaaktOp ?? "");
+}
+
+/** True if the idea has any signal worth ranking on (score, description, scoring). */
+function hasSubstance(idee: Idee): boolean {
+  if (calcPriorityScore(idee) > 0) return true;
+  const desc = (idee.omschrijving ?? "").trim();
+  if (desc.length >= 20) return true;
+  const uit = (idee.uitwerking ?? "").trim();
+  if (uit.length >= 20) return true;
+  return false;
 }
 
 function scoreKleur(score: number | null): string {

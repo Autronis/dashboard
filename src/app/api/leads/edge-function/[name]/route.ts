@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, requireApiKey } from "@/lib/auth";
+import { mintLeadsUserJwt } from "@/lib/supabase-leads";
 
 // POST /api/leads/edge-function/[name]
 // Proxy naar Supabase Edge Functions van het lead-dashboard-v2 project.

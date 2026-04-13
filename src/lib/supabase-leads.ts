@@ -46,3 +46,49 @@ export function isLeadsSupabaseConfigured(): boolean {
 // en inserts. Vervang later door een mapping vanuit iron-session als we
 // een multi-user lead systeem willen.
 export const SYB_USER_ID = "9497e39a-734f-4ce4-81db-230d590064ea";
+
+// HS256 JWT signer voor Supabase Edge Functions. De edge functions in het
+// lead-dashboard-v2 project valideren de Authorization header via
+// `auth.getClaims(token)` — dat verwacht een USER JWT (gesigneerd met de
+// project JWT secret), niet de service role key. Omdat ons dashboard geen
+// Supabase Auth user heeft (we gebruiken iron-session), minten we hier zelf
+// een korte-levende user JWT voor SYB_USER_ID.
+//
+// Vereist env var SUPABASE_LEADS_JWT_SECRET. Vind 'm in Supabase dashboard:
+//   Settings → API → JWT Settings → JWT Secret
+//
+// Als de env var ontbreekt valt mintLeadsUserJwt() terug op null — de
+// proxy gebruikt dan de service role key (wat voor de meeste edge functions
+// een 401 'Invalid token' oplevert, met een duidelijke hint in de response).
+import { createHmac } from "crypto";
+
+function base64UrlEncode(input: Buffer | string): string {
+  const buf = typeof input === "string" ? Buffer.from(input) : input;
+  return buf
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+export function mintLeadsUserJwt(userId: string = SYB_USER_ID, ttlSeconds = 3600): string | null {
+  const secret = process.env.SUPABASE_LEADS_JWT_SECRET;
+  if (!secret) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "HS256", typ: "JWT" };
+  const payload = {
+    sub: userId,
+    role: "authenticated",
+    aud: "authenticated",
+    iat: now,
+    exp: now + ttlSeconds,
+  };
+
+  const headerB64 = base64UrlEncode(JSON.stringify(header));
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const signature = createHmac("sha256", secret).update(signingInput).digest();
+  const signatureB64 = base64UrlEncode(signature);
+  return `${signingInput}.${signatureB64}`;
+}

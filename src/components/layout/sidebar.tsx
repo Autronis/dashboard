@@ -135,7 +135,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         label: "Tools & Tracking",
         icon: Sparkles,
         children: [
-          { label: "Analytics", icon: BarChart3, href: "/analytics" },
           { label: "Weekreview", icon: CalendarDays, href: "/weekreview" },
           { label: "Doelen", icon: Crosshair, href: "/doelen" },
           { label: "Gewoontes", icon: Flame, href: "/gewoontes" },

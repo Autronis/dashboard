@@ -371,9 +371,9 @@ export async function GET() {
     const restDagen = dagenInMaand - dag;
     const werkdagenRest = Math.round(restDagen * 5 / 7);
 
-    // Uren deze maand uit screen time (berekenActieveUren)
+    // Uren deze maand uit screen time (per logged-in user)
     const lastDayOfMonth = new Date(jaar, maand + 1, 0).getDate();
-    const urenDezeMaand = await berekenActieveUren(1, `${huidigeMaandStr}-01`, `${huidigeMaandStr}-${lastDayOfMonth}`);
+    const urenDezeMaand = await berekenActieveUren(gebruiker.id, `${huidigeMaandStr}-01`, `${huidigeMaandStr}-${lastDayOfMonth}`);
 
     const OMZET_DOEL = 10000;
     const UREN_DOEL = 160;
@@ -461,7 +461,7 @@ export async function GET() {
     }
 
     // 3. Low billable percentage
-    if (billablePercent < 70 && totalMinuten > 0) {
+    if (billablePercent < 70 && totaleUrenUser > 0) {
       const potentieelExtra = round2((nonBillableUren * 0.3) * revenuePerHour);
       insights.push({
         tekst: `Slechts ${billablePercent.toFixed(0)}% billable — ${Math.round(nonBillableUren)}u intern dit jaar`,
@@ -587,7 +587,7 @@ export async function GET() {
         billablePercent,
         nonBillableUren: round2(nonBillableUren),
         lostRevenue,
-        totaleUren: round2(totaleUren),
+        totaleUren: round2(totaleUrenUser),
         totaleOmzet: round2(totaleOmzet),
       },
       projectInsights,

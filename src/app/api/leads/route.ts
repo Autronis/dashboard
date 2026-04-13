@@ -95,3 +95,74 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+
+// PATCH /api/leads
+// Body: { id: string, emails?, website?, phone?, folder?, enrichment_status?, email_found?, website_found? }
+// Individueel lead bewerken (gebruikt door handmatig opvolgen pagina om emails/websites handmatig toe te voegen).
+export async function PATCH(req: NextRequest) {
+  try {
+    await authenticate(req);
+
+    const body = (await req.json()) as {
+      id?: string;
+      emails?: string;
+      website?: string;
+      phone?: string;
+      folder?: string | null;
+      enrichment_status?: string;
+      email_found?: boolean;
+      website_found?: boolean;
+      phone_found?: boolean;
+    };
+    if (!body.id) {
+      return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
+    }
+
+    const updates: {
+      updated_at: string;
+      emails?: string;
+      website?: string;
+      phone?: string;
+      folder?: string | null;
+      enrichment_status?: string;
+      email_found?: boolean;
+      website_found?: boolean;
+      phone_found?: boolean;
+    } = {
+      updated_at: new Date().toISOString(),
+    };
+    if (body.emails !== undefined) updates.emails = body.emails;
+    if (body.website !== undefined) updates.website = body.website;
+    if (body.phone !== undefined) updates.phone = body.phone;
+    if (body.folder !== undefined) updates.folder = body.folder;
+    if (body.enrichment_status !== undefined) updates.enrichment_status = body.enrichment_status;
+    if (body.email_found !== undefined) updates.email_found = body.email_found;
+    if (body.website_found !== undefined) updates.website_found = body.website_found;
+    if (body.phone_found !== undefined) updates.phone_found = body.phone_found;
+
+    if (Object.keys(updates).length === 1) {
+      return NextResponse.json({ fout: "geen velden om te updaten" }, { status: 400 });
+    }
+
+    const supabase = getSupabaseLeads();
+    const { error } = await supabase
+      .from("leads")
+      .update(updates)
+      .eq("id", body.id);
+
+    if (error) {
+      return NextResponse.json(
+        { fout: `Supabase error: ${error.message}` },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Onbekende fout";
+    return NextResponse.json(
+      { fout: message },
+      { status: message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}

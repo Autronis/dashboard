@@ -2112,6 +2112,15 @@ export default function AgendaPage() {
                                           <div className="flex-1 min-w-0">
                                             <p className="text-xs font-medium truncate" style={{ color: gpk.text }}>{taak.titel}</p>
                                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                                              {taak.uitvoerder === "claude" ? (
+                                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300">
+                                                  Claude
+                                                </span>
+                                              ) : (
+                                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent">
+                                                  Handmatig
+                                                </span>
+                                              )}
                                               {taak.status === "bezig" && (
                                                 <span className="text-[9px] bg-black/15 px-1.5 py-0.5 rounded-full" style={{ color: gpk.text }}>Bezig</span>
                                               )}

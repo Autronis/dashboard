@@ -29,7 +29,6 @@ export type ActionId =
   | "offerte-nieuw"
   | "notitie-nieuw"
   | "mail-nieuw"
-  | "timer-toggle"
   | "tijd-handmatig"
   | "locatie-toggle"
   | "tijd-week"
@@ -86,7 +85,6 @@ export const ACTIONS: Record<ActionId, ActionDef> = {
   "offerte-nieuw": { id: "offerte-nieuw", label: "Nieuwe offerte", icon: FileText, handler: (ctx) => ctx.router.push("/offertes/nieuw") },
   "notitie-nieuw": { id: "notitie-nieuw", label: "Notitie", icon: StickyNote, handler: (ctx) => ctx.addToast("Selecteer een klant voor een notitie", "info") },
   "mail-nieuw": { id: "mail-nieuw", label: "Mail", icon: Mail, handler: (ctx) => ctx.router.push("/mail") },
-  "timer-toggle": { id: "timer-toggle", label: "Timer start/stop", icon: Play, handler: (ctx) => ctx.router.push("/tijd?toggle=true") },
   "tijd-handmatig": { id: "tijd-handmatig", label: "Handmatige registratie", icon: FileText, handler: (ctx) => ctx.router.push("/tijd?handmatig=true") },
   "locatie-toggle": { id: "locatie-toggle", label: "Thuis/kantoor", icon: Home, handler: (ctx) => ctx.addToast("Selecteer een sessie om locatie te wijzigen", "info") },
   "tijd-week": { id: "tijd-week", label: "Week overzicht", icon: BarChart3, handler: (ctx) => ctx.router.push("/tijd?view=week") },
@@ -113,7 +111,7 @@ export const SHORTCUTS_BY_ROUTE: Record<string, ActionId[]> = {
   "/taken": ["taak-nieuw", "timer-op-taak", "plan-agenda", "taak-klaar", "search"],
   "/financien": ["factuur-nieuw", "uitgave-nieuw", "bank-import", "btw-aangifte", "revolut-sync"],
   "/klanten": ["klant-nieuw", "lead-nieuw", "offerte-nieuw", "notitie-nieuw", "mail-nieuw"],
-  "/tijd": ["timer-toggle", "tijd-handmatig", "locatie-toggle", "tijd-week", "search"],
+  "/tijd": ["tijd-handmatig", "locatie-toggle", "tijd-week", "search"],
   "/projecten": ["project-nieuw", "taak-nieuw", "timer-op-taak", "project-voortgang", "teamlid-toevoegen"],
   "/agenda": ["agenda-nieuw", "plan-agenda", "agenda-vandaag", "google-sync", "meeting-plannen"],
   "/wiki": ["wiki-nieuw", "wiki-zoek", "wiki-import", "second-brain-save", "dashboard"],

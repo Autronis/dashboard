@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, UserPlus, X } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { DeckEditor } from "@/components/proposal-deck/DeckEditor";
@@ -29,6 +30,7 @@ const newRegel = (): Regel => ({
 export default function NieuweProposalPage() {
   const router = useRouter();
   const { addToast } = useToast();
+  const queryClient = useQueryClient();
   const { data: klantenData } = useKlanten();
   const klanten = klantenData?.klanten ?? [];
 
@@ -38,6 +40,45 @@ export default function NieuweProposalPage() {
   const [slides, setSlides] = useState<Slide[]>(defaultSlides());
   const [regels, setRegels] = useState<Regel[]>([newRegel()]);
   const [saving, setSaving] = useState(false);
+
+  // Inline nieuwe klant modal
+  const [newKlantOpen, setNewKlantOpen] = useState(false);
+  const [newKlantNaam, setNewKlantNaam] = useState("");
+  const [newKlantContact, setNewKlantContact] = useState("");
+  const [newKlantEmail, setNewKlantEmail] = useState("");
+  const [creatingKlant, setCreatingKlant] = useState(false);
+
+  const createKlant = async () => {
+    if (!newKlantNaam.trim()) {
+      addToast("Bedrijfsnaam is verplicht", "fout");
+      return;
+    }
+    setCreatingKlant(true);
+    try {
+      const res = await fetch("/api/klanten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bedrijfsnaam: newKlantNaam.trim(),
+          contactpersoon: newKlantContact.trim() || undefined,
+          email: newKlantEmail.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Aanmaken mislukt");
+      addToast(`${data.klant.bedrijfsnaam} toegevoegd`, "succes");
+      await queryClient.invalidateQueries({ queryKey: ["klanten"] });
+      setKlantId(data.klant.id);
+      setNewKlantOpen(false);
+      setNewKlantNaam("");
+      setNewKlantContact("");
+      setNewKlantEmail("");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
+    } finally {
+      setCreatingKlant(false);
+    }
+  };
 
   const totaal = regels.reduce((sum, r) => sum + r.aantal * r.eenheidsprijs, 0);
 
@@ -101,18 +142,28 @@ export default function NieuweProposalPage() {
             <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
               Klant *
             </label>
-            <select
-              value={klantId ?? ""}
-              onChange={(e) => setKlantId(e.target.value ? Number(e.target.value) : null)}
-              className="w-full px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
-            >
-              <option value="">Selecteer klant...</option>
-              {klanten.map((k) => (
-                <option key={k.id} value={k.id}>
-                  {k.bedrijfsnaam}
-                </option>
-              ))}
-            </select>
+            <div className="flex gap-2">
+              <select
+                value={klantId ?? ""}
+                onChange={(e) => setKlantId(e.target.value ? Number(e.target.value) : null)}
+                className="flex-1 px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+              >
+                <option value="">Selecteer klant...</option>
+                {klanten.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.bedrijfsnaam}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setNewKlantOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary hover:bg-autronis-card hover:border-autronis-accent hover:text-autronis-accent transition whitespace-nowrap"
+              >
+                <UserPlus className="w-4 h-4" />
+                Nieuwe klant
+              </button>
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
@@ -233,6 +284,89 @@ export default function NieuweProposalPage() {
           </button>
         </div>
       </div>
+
+      {/* Inline nieuwe klant modal */}
+      {newKlantOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => !creatingKlant && setNewKlantOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-autronis-card border border-autronis-border rounded-2xl p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="text-xl font-bold text-autronis-text-primary">Nieuwe klant</h2>
+              <button
+                type="button"
+                onClick={() => !creatingKlant && setNewKlantOpen(false)}
+                className="p-1 text-autronis-text-secondary hover:text-autronis-text-primary"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-autronis-text-secondary">
+              Snel een prospect of klant toevoegen. Je kan later meer details invullen op de klantenpagina.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
+                Bedrijfsnaam *
+              </label>
+              <input
+                type="text"
+                value={newKlantNaam}
+                onChange={(e) => setNewKlantNaam(e.target.value)}
+                autoFocus
+                className="w-full px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+                placeholder="Bv. Bosch Bouw"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
+                Contactpersoon
+              </label>
+              <input
+                type="text"
+                value={newKlantContact}
+                onChange={(e) => setNewKlantContact(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+                placeholder="Optioneel"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-1.5">
+                E-mail
+              </label>
+              <input
+                type="email"
+                value={newKlantEmail}
+                onChange={(e) => setNewKlantEmail(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-autronis-border bg-autronis-bg text-autronis-text-primary"
+                placeholder="Optioneel"
+              />
+            </div>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                type="button"
+                disabled={creatingKlant}
+                onClick={() => setNewKlantOpen(false)}
+                className="px-4 py-2 rounded-xl border border-autronis-border text-autronis-text-primary hover:bg-autronis-bg"
+              >
+                Annuleren
+              </button>
+              <button
+                type="button"
+                disabled={creatingKlant || !newKlantNaam.trim()}
+                onClick={createKlant}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-autronis-accent text-autronis-bg font-semibold disabled:opacity-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                {creatingKlant ? "Toevoegen..." : "Toevoegen"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageTransition>
   );
 }

@@ -20,7 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
-interface Lead {
+interface LinkedinLeadRow {
   id: string;
   name: string | null;
   website: string | null;
@@ -28,14 +28,50 @@ interface Lead {
   emails: string | null;
   location: string | null;
   folder: string | null;
-  source: string | null;
   linkedin_url: string | null;
   employee_count: string | null;
   search_term: string | null;
   outreach_status: string | null;
-  email_found: boolean | null;
-  phone_found: boolean | null;
-  website_found: boolean | null;
+  created_at: string;
+}
+
+interface GoogleMapsLeadRow {
+  id: string;
+  name: string | null;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  location: string | null;
+  address: string | null;
+  folder: string | null;
+  google_maps_url: string | null;
+  rating: number | null;
+  reviews_count: number | null;
+  category: string | null;
+  employee_count: string | null;
+  search_term: string | null;
+  created_at: string;
+}
+
+interface UnifiedLead {
+  id: string;
+  source: "linkedin" | "google_maps";
+  name: string | null;
+  website: string | null;
+  phone: string | null;
+  email: string | null;
+  emails: string[];
+  location: string | null;
+  folder: string | null;
+  linkedin_url?: string | null;
+  google_maps_url?: string | null;
+  rating?: number | null;
+  reviews_count?: number | null;
+  category?: string | null;
+  address?: string | null;
+  employee_count?: string | null;
+  search_term?: string | null;
+  outreach_status?: string | null;
   created_at: string;
 }
 
@@ -48,11 +84,46 @@ function parseEmails(raw: string | null | undefined): string[] {
   return raw.split(",").map((e) => e.trim()).filter(Boolean);
 }
 
-function isLinkedin(s: string | null): boolean {
-  return s !== "google maps" && s !== "google_maps" && !!s;
+function unifyLinkedinLead(lead: LinkedinLeadRow): UnifiedLead {
+  const emails = parseEmails(lead.emails);
+  return {
+    id: lead.id,
+    source: "linkedin",
+    name: lead.name,
+    website: lead.website,
+    phone: lead.phone,
+    email: emails[0] || null,
+    emails,
+    location: lead.location,
+    folder: lead.folder,
+    linkedin_url: lead.linkedin_url,
+    employee_count: lead.employee_count,
+    search_term: lead.search_term,
+    outreach_status: lead.outreach_status,
+    created_at: lead.created_at,
+  };
 }
-function isGoogleMaps(s: string | null): boolean {
-  return s === "google maps" || s === "google_maps";
+
+function unifyGmapsLead(lead: GoogleMapsLeadRow): UnifiedLead {
+  return {
+    id: lead.id,
+    source: "google_maps",
+    name: lead.name,
+    website: lead.website,
+    phone: lead.phone,
+    email: lead.email,
+    emails: lead.email?.trim() ? [lead.email] : [],
+    location: lead.location || lead.address,
+    folder: lead.folder,
+    google_maps_url: lead.google_maps_url,
+    rating: lead.rating,
+    reviews_count: lead.reviews_count,
+    category: lead.category,
+    address: lead.address,
+    employee_count: lead.employee_count,
+    search_term: lead.search_term,
+    created_at: lead.created_at,
+  };
 }
 
 const SOURCE_FILTERS = [
@@ -65,7 +136,7 @@ type StatToggle = "all" | "with_email" | "with_phone" | "with_website";
 
 export default function LeadsOverzichtPage() {
   const { addToast } = useToast();
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [leads, setLeads] = useState<UnifiedLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
@@ -79,13 +150,35 @@ export default function LeadsOverzichtPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/leads");
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.fout || `HTTP ${res.status}`);
+      const [linkedinRes, gmapsRes] = await Promise.all([
+        fetch("/api/leads"),
+        fetch("/api/leads/google-maps"),
+      ]);
+
+      if (!linkedinRes.ok) {
+        const body = await linkedinRes.json().catch(() => ({}));
+        throw new Error(body.fout || `LinkedIn leads HTTP ${linkedinRes.status}`);
       }
-      const data = await res.json();
-      setLeads(data.leads ?? []);
+      if (!gmapsRes.ok) {
+        const body = await gmapsRes.json().catch(() => ({}));
+        throw new Error(body.fout || `Google Maps leads HTTP ${gmapsRes.status}`);
+      }
+
+      const linkedinData = await linkedinRes.json();
+      const gmapsData = await gmapsRes.json();
+
+      const linkedinLeads: UnifiedLead[] = (linkedinData.leads ?? []).map(
+        (l: LinkedinLeadRow) => unifyLinkedinLead(l)
+      );
+      const gmapsLeads: UnifiedLead[] = (gmapsData.leads ?? []).map(
+        (l: GoogleMapsLeadRow) => unifyGmapsLead(l)
+      );
+
+      // Merge en sorteer op created_at desc
+      const merged = [...linkedinLeads, ...gmapsLeads].sort((a, b) =>
+        (b.created_at || "").localeCompare(a.created_at || "")
+      );
+      setLeads(merged);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
@@ -108,7 +201,7 @@ export default function LeadsOverzichtPage() {
 
   const stats = useMemo(() => {
     const total = leads.length;
-    const metEmail = leads.filter((l) => parseEmails(l.emails).length > 0).length;
+    const metEmail = leads.filter((l) => l.emails.length > 0).length;
     const metTel = leads.filter((l) => !!l.phone?.trim()).length;
     const metWebsite = leads.filter((l) => !!l.website?.trim()).length;
     return { total, metEmail, metTel, metWebsite };
@@ -118,14 +211,14 @@ export default function LeadsOverzichtPage() {
     let result = leads;
 
     // Source filter
-    if (sourceFilter === "linkedin") result = result.filter((l) => isLinkedin(l.source));
-    else if (sourceFilter === "google_maps") result = result.filter((l) => isGoogleMaps(l.source));
+    if (sourceFilter === "linkedin") result = result.filter((l) => l.source === "linkedin");
+    else if (sourceFilter === "google_maps") result = result.filter((l) => l.source === "google_maps");
 
     // Folder filter
     if (folderFilter !== "alle") result = result.filter((l) => l.folder === folderFilter);
 
     // Stat toggle filter (klikbare KPI cards)
-    if (statToggle === "with_email") result = result.filter((l) => parseEmails(l.emails).length > 0);
+    if (statToggle === "with_email") result = result.filter((l) => l.emails.length > 0);
     else if (statToggle === "with_phone") result = result.filter((l) => !!l.phone?.trim());
     else if (statToggle === "with_website") result = result.filter((l) => !!l.website?.trim());
 
@@ -170,18 +263,46 @@ export default function LeadsOverzichtPage() {
     if (selectedIds.size === 0) return;
     setIsDeleting(true);
     try {
-      const res = await fetch("/api/leads", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selectedIds) }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.fout || `HTTP ${res.status}`);
+      // Splits ids op source — beide tabellen hebben aparte DELETE endpoints
+      const linkedinIds: string[] = [];
+      const gmapsIds: string[] = [];
+      for (const id of selectedIds) {
+        const lead = leads.find((l) => l.id === id);
+        if (!lead) continue;
+        if (lead.source === "google_maps") gmapsIds.push(id);
+        else linkedinIds.push(id);
       }
-      const data = await res.json();
+
+      const requests: Promise<Response>[] = [];
+      if (linkedinIds.length > 0) {
+        requests.push(
+          fetch("/api/leads", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: linkedinIds }),
+          })
+        );
+      }
+      if (gmapsIds.length > 0) {
+        requests.push(
+          fetch("/api/leads/google-maps", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: gmapsIds }),
+          })
+        );
+      }
+
+      const responses = await Promise.all(requests);
+      for (const res of responses) {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.fout || `HTTP ${res.status}`);
+        }
+      }
+
       setLeads((curr) => curr.filter((l) => !selectedIds.has(l.id)));
-      addToast(`${data.verwijderd ?? selectedIds.size} leads verwijderd`, "succes");
+      addToast(`${selectedIds.size} leads verwijderd`, "succes");
       setSelectedIds(new Set());
       setConfirmDelete(false);
     } catch (e) {
@@ -399,11 +520,11 @@ export default function LeadsOverzichtPage() {
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
               {gefilterd.slice(0, 200).map((lead) => {
-                const emails = parseEmails(lead.emails);
+                const emails = lead.emails;
                 const selected = selectedIds.has(lead.id);
                 return (
                   <tr
-                    key={lead.id}
+                    key={`${lead.source}:${lead.id}`}
                     onClick={() => toggleSelect(lead.id)}
                     className={cn(
                       "cursor-pointer transition-colors",
@@ -424,10 +545,16 @@ export default function LeadsOverzichtPage() {
                         <span className="font-medium text-autronis-text-primary truncate">
                           {lead.name || "(geen naam)"}
                         </span>
-                        {isGoogleMaps(lead.source) ? (
-                          <MapPin className="w-3 h-3 text-autronis-accent flex-shrink-0" />
+                        {lead.source === "google_maps" ? (
+                          <MapPin
+                            className="w-3 h-3 text-autronis-accent flex-shrink-0"
+                            aria-label="Google Maps"
+                          />
                         ) : (
-                          <Linkedin className="w-3 h-3 text-purple-300 flex-shrink-0" />
+                          <Linkedin
+                            className="w-3 h-3 text-purple-300 flex-shrink-0"
+                            aria-label="LinkedIn"
+                          />
                         )}
                         {lead.website && (
                           <a

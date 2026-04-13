@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, taken, tijdregistraties, notities, documenten, klanten } from "@/lib/db/schema";
+import { projecten, taken, screenTimeEntries, notities, documenten, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, ne } from "drizzle-orm";
 
 // GET /api/klanten/[id]/projecten/[projectId] — Project detail
 export async function GET(
@@ -35,12 +35,30 @@ export async function GET(
       .where(eq(taken.projectId, Number(projectId)))
       .orderBy(desc(taken.aangemaaktOp));
 
-    // Tijdregistraties
-    const tijdLijst = await db
-      .select()
-      .from(tijdregistraties)
-      .where(eq(tijdregistraties.projectId, Number(projectId)))
-      .orderBy(desc(tijdregistraties.startTijd));
+    // Screen-time activity (productive entries) voor dit project
+    const PRODUCTIEF_SQL = sql`${screenTimeEntries.categorie} IN ('development','design','administratie','finance','communicatie')`;
+    const tijdLijstRaw = await db
+      .select({
+        id: screenTimeEntries.id,
+        gebruikerId: screenTimeEntries.gebruikerId,
+        startTijd: screenTimeEntries.startTijd,
+        eindTijd: screenTimeEntries.eindTijd,
+        duurSeconden: screenTimeEntries.duurSeconden,
+        categorie: screenTimeEntries.categorie,
+        omschrijving: screenTimeEntries.vensterTitel,
+      })
+      .from(screenTimeEntries)
+      .where(and(
+        eq(screenTimeEntries.projectId, Number(projectId)),
+        ne(screenTimeEntries.categorie, "inactief"),
+        PRODUCTIEF_SQL,
+      ))
+      .orderBy(desc(screenTimeEntries.startTijd))
+      .limit(100);
+    const tijdLijst = tijdLijstRaw.map((t) => ({
+      ...t,
+      duurMinuten: Math.round(t.duurSeconden / 60),
+    }));
 
     // Notities
     const notitiesLijst = await db
@@ -56,11 +74,16 @@ export async function GET(
       .where(eq(documenten.projectId, Number(projectId)))
       .orderBy(desc(documenten.aangemaaktOp));
 
-    // KPIs
-    const [totaalUren] = await db
-      .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
-      .from(tijdregistraties)
-      .where(eq(tijdregistraties.projectId, Number(projectId)));
+    // KPIs — totaal uren via screen-time
+    const [totaalUrenRow] = await db
+      .select({ totaalSec: sql<number>`coalesce(sum(${screenTimeEntries.duurSeconden}), 0)` })
+      .from(screenTimeEntries)
+      .where(and(
+        eq(screenTimeEntries.projectId, Number(projectId)),
+        ne(screenTimeEntries.categorie, "inactief"),
+        PRODUCTIEF_SQL,
+      ));
+    const totaalUren = { totaal: Math.round((totaalUrenRow?.totaalSec ?? 0) / 60) };
 
     const takenTotaal = takenLijst.length;
     const takenAfgerond = takenLijst.filter((t) => t.status === "afgerond").length;

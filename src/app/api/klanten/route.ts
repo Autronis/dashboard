@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties, facturen, offertes, notities as notitiesTabel, meetings, taken } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, facturen, offertes, notities as notitiesTabel, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, sql, and, ne } from "drizzle-orm";
+import { berekenUrenPerKlant } from "@/lib/screen-time-uren";
 
 // GET /api/klanten — All clients with enriched KPIs, health indicators
 export async function GET(req: NextRequest) {
@@ -54,16 +55,11 @@ export async function GET(req: NextRequest) {
       .groupBy(projecten.klantId);
     const projectMap = new Map(projectStats.map((p) => [p.klantId, p]));
 
-    // Batch: total hours per klant
-    const urenStats = await db
-      .select({
-        klantId: projecten.klantId,
-        totaalMinuten: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)`,
-      })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .groupBy(projecten.klantId);
-    const urenMap = new Map(urenStats.map((u) => [u.klantId, u.totaalMinuten]));
+    // Batch: total hours per klant from screen-time
+    const urenPerKlant = await berekenUrenPerKlant("2020-01-01", "2099-12-31");
+    const urenMap = new Map<number, number>(
+      [...urenPerKlant.entries()].map(([id, uren]) => [id, Math.round(uren * 60)])
+    );
 
     // Batch: factuur stats per klant (total revenue, outstanding, last invoice)
     const factuurStats = await db
@@ -108,13 +104,15 @@ export async function GET(req: NextRequest) {
       .groupBy(notitiesTabel.klantId);
     const notitieMap = new Map(laatsteNotities.map((n) => [n.klantId, n.laatsteNotitie]));
 
+    // Last screen-time activity per klant (via project link)
     const laatsteTijd = await db
       .select({
         klantId: projecten.klantId,
-        laatsteRegistratie: sql<string>`max(${tijdregistraties.startTijd})`,
+        laatsteRegistratie: sql<string>`max(${screenTimeEntries.startTijd})`,
       })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+      .from(screenTimeEntries)
+      .innerJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
+      .where(ne(screenTimeEntries.categorie, "inactief"))
       .groupBy(projecten.klantId);
     const tijdMap = new Map(laatsteTijd.map((t) => [t.klantId, t.laatsteRegistratie]));
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, tijdregistraties, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, or, sql, desc, ne, isNull } from "drizzle-orm";
 
 // GET /api/klanten/[id] — Client detail with projects, notes, documents, timeline, financial overview
 export async function GET(
@@ -22,7 +22,8 @@ export async function GET(
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }
 
-    // Projects with actual hours (single query instead of N+1)
+    // Projects with actual hours from screen-time (productive activity only)
+    const PRODUCTIEF_SQL = sql`${screenTimeEntries.categorie} IN ('development','design','administratie','finance','communicatie')`;
     const projectenMetUren = await db
       .select({
         id: projecten.id,
@@ -34,10 +35,16 @@ export async function GET(
         geschatteUren: projecten.geschatteUren,
         werkelijkeUren: projecten.werkelijkeUren,
         isActief: projecten.isActief,
-        werkelijkeMinuten: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)`,
+        werkelijkeMinuten: sql<number>`coalesce(round(sum(${screenTimeEntries.duurSeconden})/60.0), 0)`,
       })
       .from(projecten)
-      .leftJoin(tijdregistraties, eq(tijdregistraties.projectId, projecten.id))
+      .leftJoin(
+        screenTimeEntries,
+        and(
+          eq(screenTimeEntries.projectId, projecten.id),
+          PRODUCTIEF_SQL,
+        )
+      )
       .where(and(eq(projecten.klantId, Number(id)), eq(projecten.isActief, 1)))
       .groupBy(projecten.id)
       .orderBy(projecten.naam);
@@ -56,21 +63,33 @@ export async function GET(
       .where(eq(documenten.klantId, Number(id)))
       .orderBy(desc(documenten.aangemaaktOp));
 
-    // Recent time entries (last 10)
-    const recenteTijd = await db
+    // Recent screen-time activity (last 10 productive entries) for this klant
+    const recenteTijdRaw = await db
       .select({
-        id: tijdregistraties.id,
-        omschrijving: tijdregistraties.omschrijving,
-        startTijd: tijdregistraties.startTijd,
-        duurMinuten: tijdregistraties.duurMinuten,
-        categorie: tijdregistraties.categorie,
+        id: screenTimeEntries.id,
+        omschrijving: screenTimeEntries.vensterTitel,
+        startTijd: screenTimeEntries.startTijd,
+        duurSeconden: screenTimeEntries.duurSeconden,
+        categorie: screenTimeEntries.categorie,
         projectNaam: projecten.naam,
       })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .where(eq(projecten.klantId, Number(id)))
-      .orderBy(desc(tijdregistraties.startTijd))
+      .from(screenTimeEntries)
+      .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
+      .where(and(
+        or(eq(screenTimeEntries.klantId, Number(id)), eq(projecten.klantId, Number(id))),
+        ne(screenTimeEntries.categorie, "inactief"),
+        sql`${screenTimeEntries.categorie} IN ('development','design','administratie','finance','communicatie')`,
+      ))
+      .orderBy(desc(screenTimeEntries.startTijd))
       .limit(10);
+    const recenteTijd = recenteTijdRaw.map((r) => ({
+      id: r.id,
+      omschrijving: r.omschrijving,
+      startTijd: r.startTijd,
+      duurMinuten: Math.round(r.duurSeconden / 60),
+      categorie: r.categorie,
+      projectNaam: r.projectNaam,
+    }));
 
     // Facturen for this klant
     const facturenLijst = await db
@@ -179,12 +198,10 @@ export async function GET(
       return db2.localeCompare(da);
     });
 
-    // KPIs
-    const [totaalUren] = await db
-      .select({ totaal: sql<number>`coalesce(sum(${tijdregistraties.duurMinuten}), 0)` })
-      .from(tijdregistraties)
-      .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-      .where(eq(projecten.klantId, Number(id)));
+    // KPIs — totaal uren via screen-time
+    const totaalUrenSec = projectenMetUren.reduce((s, p) => s + (p.werkelijkeMinuten || 0), 0);
+    const totaalUren = { totaal: totaalUrenSec };
+    void isNull; // imported voor consistency, niet gebruikt
 
     // Financial overview
     const totaleOmzet = facturenLijst

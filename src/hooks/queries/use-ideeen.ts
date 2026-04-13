@@ -186,6 +186,25 @@ export function useGenereerIdeeen() {
   });
 }
 
+export function useSyncYtIdeeen() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const res = await fetch("/api/ideeen/sync-yt", { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.fout || "YT sync mislukt");
+      }
+      return res.json() as Promise<{ aangemaakt: number; overgeslagen: number }>;
+    },
+    onSuccess: (data) => {
+      if (data.aangemaakt > 0) {
+        queryClient.invalidateQueries({ queryKey: ["ideeen"] });
+      }
+    },
+  });
+}
+
 export function usePromoveerIdee() {
   const queryClient = useQueryClient();
   return useMutation({

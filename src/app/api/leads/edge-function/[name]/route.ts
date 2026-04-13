@@ -59,6 +59,23 @@ export async function POST(
       );
     }
 
+    // De edge functions in lead-dashboard-v2 valideren de Authorization header
+    // als USER JWT (auth.getClaims). Service role key faalt → 'Invalid token'.
+    // Dus minten we hier server-side een user JWT voor SYB_USER_ID.
+    const userJwt = mintLeadsUserJwt();
+    if (!userJwt) {
+      return NextResponse.json(
+        {
+          fout:
+            "SUPABASE_LEADS_JWT_SECRET ontbreekt in env vars. Vind 'm in Supabase " +
+            "dashboard → Settings → API → JWT Settings → JWT Secret en voeg toe " +
+            "aan .env.local én Vercel. Zonder deze key krijg je 'Invalid token' " +
+            "van de edge functions omdat ze een user JWT verwachten, geen service role.",
+        },
+        { status: 500 }
+      );
+    }
+
     // Lees de incoming body (mag leeg zijn — sommige functions hebben geen body)
     let body: unknown = null;
     const contentType = req.headers.get("content-type") || "";
@@ -69,7 +86,7 @@ export async function POST(
     const upstreamRes = await fetch(`${supabaseUrl}/functions/v1/${name}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${supabaseKey}`,
+        Authorization: `Bearer ${userJwt}`,
         "Content-Type": "application/json",
         apikey: supabaseKey,
       },

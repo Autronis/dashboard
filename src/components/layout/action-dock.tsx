@@ -71,11 +71,11 @@ export function ActionDock() {
                   initial={{ opacity: 0, scale: 0.85 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.85 }}
-                  whileHover={{ scale: 1.05 }}
+                  whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => handleRun(action)}
                   className={cn(
-                    "group relative w-11 h-11 flex items-center justify-center rounded-xl",
+                    "flex items-center gap-2 h-11 px-3 rounded-xl",
                     "text-autronis-text-secondary hover:bg-autronis-accent/10 hover:text-autronis-accent",
                     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-autronis-accent",
                     "transition-colors"
@@ -83,21 +83,20 @@ export function ActionDock() {
                   aria-label={action.label}
                   title={action.shortcut ? `${action.label} (${action.shortcut})` : action.label}
                 >
-                  <action.icon className="w-5 h-5" />
-                  <span className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-autronis-bg border border-autronis-border px-2 py-1 text-xs text-autronis-text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    {action.label}
-                  </span>
+                  <action.icon className="w-5 h-5 shrink-0" />
+                  <span className="text-sm font-medium whitespace-nowrap">{action.label}</span>
                 </motion.button>
               ))}
             </AnimatePresence>
             <div className="w-px self-stretch bg-autronis-border mx-1" />
             <button
               onClick={() => setOverflowOpen(true)}
-              className="w-11 h-11 flex items-center justify-center rounded-xl text-autronis-text-secondary hover:bg-autronis-accent/10 hover:text-autronis-accent transition-colors"
+              className="flex items-center gap-2 h-11 px-3 rounded-xl text-autronis-text-secondary hover:bg-autronis-accent/10 hover:text-autronis-accent transition-colors"
               aria-label="Meer acties"
               title="Meer acties"
             >
-              <MoreHorizontal className="w-5 h-5" />
+              <MoreHorizontal className="w-5 h-5 shrink-0" />
+              <span className="text-sm font-medium whitespace-nowrap">Meer</span>
             </button>
           </div>
         </LayoutGroup>

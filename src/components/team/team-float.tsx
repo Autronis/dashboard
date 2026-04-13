@@ -40,8 +40,11 @@ export function TeamFloat() {
   const anderen = bezigMet.filter((t) => t.gebruikerId !== huidigeGebruiker.id);
   const actief = bezigMet.length;
 
+  // Op md (waar ActionDock centered op bottom-6 staat) plaatsen we TeamFloat
+  // boven de dock zodat ze niet horizontaal botsen. Op lg+ staat de dock
+  // ver genoeg weg en kunnen we terug naar bottom-6.
   return (
-    <div className="hidden md:block fixed bottom-6 left-4 lg:left-[17rem] z-40">
+    <div className="hidden md:block fixed bottom-24 lg:bottom-6 left-4 lg:left-[17rem] z-40">
       {/* Collapsed: compact indicator */}
       {!open && (
         <motion.button

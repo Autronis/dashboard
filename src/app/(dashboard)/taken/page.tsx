@@ -18,6 +18,7 @@ import { SkeletonTaken } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckBurst, Confetti } from "@/components/ui/confetti-dynamic";
 import { useTaken } from "@/hooks/queries/use-taken";
+import { useCurrentUser } from "@/hooks/queries/use-team";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTimer } from "@/hooks/use-timer";
@@ -578,7 +579,20 @@ function TakenPage() {
   const [faseFilter, setFaseFilter] = useState("alle");
   const [prioriteitFilter, setPrioriteitFilter] = useState("alle");
   const [uitvoerderFilter, setUitvoerderFilter] = useState("alle");
-  const [toegewezenAanFilter, setToegewezenAanFilter] = useState("alle");
+  // Default: eigen taken. Initialiseert op "alle" tot useCurrentUser klaar is,
+  // dan eenmalig naar de eigen id (tenzij de gebruiker zelf al een keuze maakte).
+  const { data: currentUser } = useCurrentUser();
+  const [toegewezenAanFilter, setToegewezenAanFilter] = useState<string>("alle");
+  const [filterTouched, setFilterTouched] = useState(false);
+  useEffect(() => {
+    if (!filterTouched && currentUser?.id) {
+      setToegewezenAanFilter(String(currentUser.id));
+    }
+  }, [currentUser?.id, filterTouched]);
+  const setToegewezenAanFilterUser = (v: string) => {
+    setFilterTouched(true);
+    setToegewezenAanFilter(v);
+  };
   const [zoek, setZoek] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
@@ -979,7 +993,8 @@ function TakenPage() {
     faseFilter !== "alle",
     prioriteitFilter !== "alle",
     uitvoerderFilter !== "alle",
-    toegewezenAanFilter !== "alle",
+    // "Mij" (eigen id) is de default — telt niet als actief filter
+    toegewezenAanFilter !== "alle" && toegewezenAanFilter !== String(currentUser?.id ?? ""),
     zoek.length > 0,
     hideCompleted,
   ].filter(Boolean).length;
@@ -1063,12 +1078,32 @@ function TakenPage() {
 
         {/* FILTER BAR — compact */}
         <div className="flex flex-wrap items-center gap-2">
-          <select value={toegewezenAanFilter} onChange={(e) => setToegewezenAanFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
-            <option value="alle">Heel team</option>
-            <option value="1">Sem</option>
-            <option value="2">Syb</option>
-            <option value="geen">Niet toegewezen</option>
-          </select>
+          {/* Quick toggle: Mij / Sem / Syb / Heel team / Niet toegewezen */}
+          <div className="inline-flex items-center bg-autronis-card border border-autronis-border rounded-xl p-0.5 text-xs">
+            {(() => {
+              const eigenId = currentUser?.id ? String(currentUser.id) : null;
+              const opties: Array<{ value: string; label: string }> = [];
+              if (eigenId) opties.push({ value: eigenId, label: "Mij" });
+              if (eigenId !== "1") opties.push({ value: "1", label: "Sem" });
+              if (eigenId !== "2") opties.push({ value: "2", label: "Syb" });
+              opties.push({ value: "alle", label: "Team" });
+              opties.push({ value: "geen", label: "Vrij" });
+              return opties.map((o) => (
+                <button
+                  key={o.value}
+                  onClick={() => setToegewezenAanFilterUser(o.value)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-lg font-medium transition-colors",
+                    toegewezenAanFilter === o.value
+                      ? "bg-autronis-accent/15 text-autronis-accent"
+                      : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                  )}
+                >
+                  {o.label}
+                </button>
+              ));
+            })()}
+          </div>
           <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
             <option value="alle">Alle projecten</option>
             {uniekeProjecten.map((p) => <option key={p.id} value={p.id}>{p.naam}</option>)}
@@ -1104,7 +1139,7 @@ function TakenPage() {
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-8 pr-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
             </div>
             {activeFilterCount > 0 && (
-              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setToegewezenAanFilter("alle"); setZoek(""); setHideCompleted(false); }}
+              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setToegewezenAanFilterUser(currentUser?.id ? String(currentUser.id) : "alle"); setZoek(""); setHideCompleted(false); }}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap">
                 <X className="w-3.5 h-3.5" /> Wis filters
               </button>

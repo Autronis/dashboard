@@ -36,6 +36,7 @@ import type { AgendaItem, ExternEvent, ExterneKalender, DeadlineEvent, AgendaTaa
 import { DagView } from "./dag-view";
 import { JaarView } from "./jaar-view";
 import { PlanTaakModal } from "./plan-taak-modal";
+import { TaakDetailPanel } from "@/components/taken/taak-detail-panel";
 import Link from "next/link";
 
 const typeConfig: Record<string, { icon: typeof Calendar; color: string; bg: string; borderColor: string; label: string }> = {
@@ -141,6 +142,7 @@ export default function AgendaPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
+  const [taakDetailId, setTaakDetailId] = useState<number | null>(null);
   const [kalenderSettingsOpen, setKalenderSettingsOpen] = useState(false);
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -1100,6 +1102,7 @@ export default function AgendaPage() {
               onItemClick={(item) => openItemDetail(item)}
               onSlotClick={(d) => openNieuwModal(d)}
               ingeplandeTaken={ingeplandeTaken}
+              onTaakDetail={(id) => setTaakDetailId(id)}
               onPlanTaak={(taak, datum, tijd) => {
                 if (datum && tijd) {
                   // Direct inplannen bij drag & drop (geen modal)
@@ -2637,6 +2640,12 @@ export default function AgendaPage() {
           onClose={() => setKalenderSettingsOpen(false)}
         />
       )}
+
+      {/* Taak Detail Panel — slide-in vanaf rechts bij klik op taak blok */}
+      <TaakDetailPanel
+        taakId={taakDetailId}
+        onClose={() => setTaakDetailId(null)}
+      />
     </div>
     </PageTransition>
   );

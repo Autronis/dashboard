@@ -272,6 +272,7 @@ interface DagViewProps {
   onSlotClick?: (datum: string) => void;
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
+  onTaakDetail?: (taakId: number) => void;
   onUnplanTaak?: (id: number) => void;
   onTaakToggle?: (id: number, status?: string) => void;
   onHeleDagNaarSlot?: (item: AgendaItem, datum: string, tijd: string) => void;
@@ -302,7 +303,7 @@ function useEventDoneState() {
   return { done, toggle };
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onTaakDetail, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { done: eventDone, toggle: toggleEventDone } = useEventDoneState();
@@ -1083,7 +1084,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 kalenderKleur={kleur}
                 onUnplan={onUnplanTaak}
                 onToggle={onTaakToggle}
-                onClick={() => onPlanTaak?.(taak, datumStr, `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`)}
+                onClick={() => onTaakDetail?.(taak.id)}
                 halfRight={overlapt}
               />
             );

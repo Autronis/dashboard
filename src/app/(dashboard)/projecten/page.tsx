@@ -29,6 +29,7 @@ import {
   Minus,
   Copy,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -324,7 +325,7 @@ function formatRelatief(datum: string | null): string {
   return formatDatum(datum);
 }
 
-function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void; zoek: string }) {
+function ProjectCard({ project, onStartTimer, onOpenVSCode, onDelete, zoek }: { project: Project; onStartTimer: (p: Project) => void; onOpenVSCode: (p: Project) => void; onDelete: (p: Project) => void; zoek: string }) {
   const ProjectIcon = getProjectIcon(project);
   const iconColor = getIconColor(project.status ?? "actief");
   const velocity = getVelocity(project.sparkline);
@@ -430,6 +431,13 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode, zoek }: { project: P
         >
           <ExternalLink className="w-3.5 h-3.5" />
         </Link>
+        <button
+          onClick={(e) => { e.preventDefault(); onDelete(project); }}
+          title="Verwijder project"
+          className="p-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-red-400 hover:border-red-400/40 transition-colors"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
       </div>
     </Link>
   );
@@ -542,6 +550,26 @@ export default function ProjectenPage() {
     await navigator.clipboard.writeText(prompt);
     addToast(`Prompt gekopieerd — plak in Claude Code`, "succes");
   }, [addToast]);
+
+  const handleDelete = useCallback(async (project: Project) => {
+    const bevestiging = confirm(
+      `Weet je zeker dat je "${project.naam}" wil verwijderen?\n\n` +
+      `Dit deactiveert het project (soft delete).\n` +
+      `Taken en tijdregistraties blijven behouden.`
+    );
+    if (!bevestiging) return;
+    try {
+      const res = await fetch(`/api/projecten/${project.id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.fout ?? "Onbekende fout");
+      }
+      addToast(`Project "${project.naam}" verwijderd`, "succes");
+      refetch();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Kon project niet verwijderen", "fout");
+    }
+  }, [addToast, refetch]);
 
   const handleStartTimer = useCallback(async (project: Project) => {
     if (timer.isRunning) {
@@ -770,7 +798,7 @@ export default function ProjectenPage() {
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4), layout: { duration: 0.22 } }}
                 >
-                  <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} zoek={zoek} />
+                  <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} onDelete={handleDelete} zoek={zoek} />
                 </motion.div>
               ))}
             </AnimatePresence>

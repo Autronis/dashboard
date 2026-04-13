@@ -5,11 +5,20 @@ import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActionShortcuts, type BoundAction } from "@/hooks/use-action-shortcuts";
+import { useSidebar } from "@/hooks/use-sidebar";
 import { ActionDockOverflow } from "./action-dock-overflow";
+
+// Sidebar widths used to offset the desktop dock so it visually centers
+// within the main content area instead of the viewport.
+const SIDEBAR_WIDTH_EXPANDED = 256;
+const SIDEBAR_WIDTH_COLLAPSED = 72;
 
 export function ActionDock() {
   const { visible, all } = useActionShortcuts();
+  const { isCollapsed } = useSidebar();
   const [overflowOpen, setOverflowOpen] = useState(false);
+
+  const sidebarWidth = isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED;
 
   const handleRun = (action: BoundAction) => {
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -59,8 +68,13 @@ export function ActionDock() {
         </LayoutGroup>
       </div>
 
-      {/* Desktop floating pill */}
-      <div className="hidden md:block fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
+      {/* Desktop floating pill — offset by half the sidebar width so it
+          visually centers within the main content area, not the viewport. */}
+      <motion.div
+        className="hidden md:block fixed bottom-6 z-30 -translate-x-1/2"
+        animate={{ left: `calc(50% + ${sidebarWidth / 2}px)` }}
+        transition={{ type: "spring", damping: 28, stiffness: 260 }}
+      >
         <LayoutGroup id="action-dock-desktop">
           <div className="flex items-center gap-1 rounded-2xl border border-autronis-border bg-autronis-card/90 backdrop-blur-xl px-2 py-2 shadow-2xl shadow-autronis-accent/10">
             <AnimatePresence mode="popLayout">
@@ -100,7 +114,7 @@ export function ActionDock() {
             </button>
           </div>
         </LayoutGroup>
-      </div>
+      </motion.div>
 
       <ActionDockOverflow
         open={overflowOpen}

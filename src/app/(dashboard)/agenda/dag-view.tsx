@@ -919,53 +919,56 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   }
                 }
 
-                const lines: string[] = [];
-                lines.push(`# Claude sessie · ${startLabel}–${eindLabel}`);
-                lines.push("");
-                lines.push(`${group.length} taken · ${alleFases.size} fase(s) · ${projecten.size} project(en).`);
-                lines.push("");
-
-                // Context header met werkdirectory
-                if (projectPaden.size === 1) {
-                  const [[proj, pad]] = projectPaden.entries();
-                  lines.push(`**Project**: ${proj}`);
-                  lines.push(`**Werkdirectory**: \`${pad}\``);
-                  lines.push("");
-                  lines.push(`\`\`\`bash`);
-                  lines.push(`cd ${pad}`);
-                  lines.push(`\`\`\``);
-                  lines.push("");
-                  lines.push(`Start met \`/prime\` om de project context te laden, dan werk de taken hieronder per fase af. Commit per fase, dashboard sync gaat automatisch.`);
-                } else if (projectPaden.size > 1) {
-                  lines.push(`**Projecten**:`);
-                  for (const [proj, pad] of projectPaden.entries()) {
-                    lines.push(`- ${proj} — \`${pad}\``);
+                // Genereer één prompt-blok per project. Bij meerdere projecten
+                // worden ze onder elkaar geplakt met een duidelijke divider zodat
+                // Sem ze los kan kopiëren naar aparte Claude Code chats (elke chat
+                // heeft eigen werkdirectory).
+                const buildPromptVoorProject = (proj: string, faseMap: Map<string, typeof group>) => {
+                  const pad = projectPaden.get(proj) ?? "";
+                  const taakTotaal = Array.from(faseMap.values()).reduce((a, b) => a + b.length, 0);
+                  const out: string[] = [];
+                  out.push(`# ${proj} · Claude sessie ${startLabel}–${eindLabel}`);
+                  out.push("");
+                  out.push(`${taakTotaal} taken · ${faseMap.size} fase(s)`);
+                  out.push("");
+                  if (pad) {
+                    out.push(`\`\`\`bash`);
+                    out.push(`cd ${pad}`);
+                    out.push(`\`\`\``);
+                    out.push("");
+                    out.push(`Start met \`/prime\` om project context te laden. Werk per fase af, commit per fase — dashboard sync gaat automatisch via de hook.`);
+                    out.push("");
                   }
-                  lines.push("");
-                  lines.push(`Begin met het eerste project, doe \`/prime\`, werk de taken af, commit, dan switch met \`cd\` naar het volgende project.`);
-                } else {
-                  lines.push(`Werk de taken per fase af, commit per fase, sync dashboard status.`);
-                }
-                lines.push("");
-
-                // Taken per project → per fase
-                for (const [proj, faseMap] of perProject.entries()) {
-                  if (meerdereProjecten) lines.push(`## ${proj}`);
                   for (const [fase, faseTaken] of faseMap.entries()) {
-                    lines.push(`### ${fase}`);
+                    out.push(`## ${fase}`);
                     for (const t of faseTaken) {
-                      lines.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
+                      out.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
                       if (t.omschrijving) {
-                        // Indent omschrijving onder de taak
                         const omschr = t.omschrijving.split("\n").map((l) => `      ${l}`).join("\n");
-                        lines.push(omschr);
+                        out.push(omschr);
                       }
                     }
-                    lines.push("");
+                    out.push("");
                   }
+                  return out.join("\n");
+                };
+
+                const blokken: string[] = [];
+                for (const [proj, faseMap] of perProject.entries()) {
+                  blokken.push(buildPromptVoorProject(proj, faseMap));
                 }
-                lines.push("Na afronding: taken afvinken gebeurt automatisch via de auto-sync hook wanneer je committee per fase.");
-                navigator.clipboard.writeText(lines.join("\n"));
+
+                let finaal: string;
+                if (blokken.length <= 1) {
+                  finaal = blokken[0] ?? "";
+                } else {
+                  // Multi-project: header + blokken met divider zodat Sem ze los kan plakken
+                  const header = `# Claude sessie · ${startLabel}–${eindLabel} · ${blokken.length} projecten\n\nElk blok hieronder is een aparte chat. Open per project een nieuwe Claude Code sessie, plak het bijbehorende blok, en werk het af.\n\n`;
+                  const divider = "\n\n---\n\n";
+                  finaal = header + blokken.join(divider);
+                }
+
+                navigator.clipboard.writeText(finaal);
               };
 
               return (

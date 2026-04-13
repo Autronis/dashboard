@@ -1,14 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseLeads } from "@/lib/supabase-leads";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireApiKey } from "@/lib/auth";
+
+async function authenticate(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    await requireApiKey(req);
+  } else {
+    await requireAuth();
+  }
+}
 
 // GET /api/leads
 // Alle externe leads uit de lead-dashboard-v2 Supabase (hurzsuwaccglzoblqkxd).
 // Internal/CRM leads leven nu onder /api/klant-leads (verplaatst om de
 // namespace vrij te maken voor de leadgen integratie).
-export async function GET() {
+// Auth: session cookie OR Bearer API key (voor scripts en de desktop agent).
+export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await authenticate(req);
 
     const supabase = getSupabaseLeads();
     const { data, error } = await supabase
@@ -37,7 +47,7 @@ export async function GET() {
 // Body: { ids: string[] }
 export async function DELETE(req: NextRequest) {
   try {
-    await requireAuth();
+    await authenticate(req);
 
     const body = (await req.json()) as { ids?: string[] };
     const ids = body.ids ?? [];

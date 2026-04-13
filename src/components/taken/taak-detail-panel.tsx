@@ -178,23 +178,23 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
   return (
     <AnimatePresence>
       {taakId !== null && (
-        <>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-40"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           />
 
-          {/* Panel */}
-          <motion.aside
-            initial={{ x: "100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 bottom-0 w-full sm:w-[480px] bg-autronis-card border-l border-autronis-border z-50 overflow-y-auto"
+          {/* Centered modal */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 8 }}
+            transition={{ type: "spring", damping: 26, stiffness: 300 }}
+            className="relative w-full max-w-3xl max-h-[90vh] bg-autronis-card border border-autronis-border rounded-2xl shadow-2xl overflow-y-auto"
           >
             {isLoading && (
               <div className="p-6">
@@ -213,18 +213,21 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
             )}
 
             {taak && (
-              <div className="p-6 space-y-6">
-                {/* Header */}
+              <div className="p-6 lg:p-8 space-y-6">
+                {/* Header — met wrap-enabled titel */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-1">Taak</p>
-                    <h2 className="text-xl font-bold text-autronis-text-primary leading-tight">{taak.titel}</h2>
+                    <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-1.5">Taak</p>
+                    <h2 className="text-2xl lg:text-3xl font-bold text-autronis-text-primary leading-tight break-words">
+                      {taak.titel}
+                    </h2>
                   </div>
                   <button
                     onClick={onClose}
-                    className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg transition-colors shrink-0"
+                    className="p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg transition-colors shrink-0"
+                    aria-label="Sluiten"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
 
@@ -427,8 +430,8 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                 </div>
               </div>
             )}
-          </motion.aside>
-        </>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -24,9 +24,27 @@ export async function POST(req: NextRequest) {
     const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken } = body as {
       projectNaam: string;
       voltooide_taken?: string[];
-      nieuwe_taken?: string[];
+      // nieuwe_taken accepteert zowel strings als objecten met uitgebreide velden
+      nieuwe_taken?: Array<string | {
+        titel: string;
+        fase?: string;
+        prioriteit?: "laag" | "normaal" | "hoog";
+        omschrijving?: string; // Stappen / context / acceptatiecriteria
+        geschatteDuur?: number; // Minuten
+        prompt?: string;        // Voor claude-uitvoerder taken
+        deadline?: string;      // YYYY-MM-DD
+      }>;
       replace_all?: boolean;
-      alle_taken?: Array<{ titel: string; status: string; fase?: string; volgorde?: number }>;
+      alle_taken?: Array<{
+        titel: string;
+        status: string;
+        fase?: string;
+        volgorde?: number;
+        prioriteit?: "laag" | "normaal" | "hoog";
+        omschrijving?: string;
+        geschatteDuur?: number;
+        prompt?: string;
+      }>;
     };
 
     if (!projectNaam) {

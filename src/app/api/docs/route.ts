@@ -74,9 +74,9 @@ export async function GET(): Promise<NextResponse> {
   <div class="endpoint"><span class="method put">PUT</span><code>/api/taken/:id</code> — Taak bijwerken</div>
 
   <h2>Leads</h2>
-  <div class="endpoint"><span class="method get">GET</span><code>/api/leads</code> — Pipeline overzicht</div>
-  <div class="endpoint"><span class="method post">POST</span><code>/api/leads</code> — Nieuwe lead</div>
-  <div class="endpoint"><span class="method put">PUT</span><code>/api/leads/:id</code> — Lead bijwerken</div>
+  <div class="endpoint"><span class="method get">GET</span><code>/api/klant-leads</code> — Pipeline overzicht</div>
+  <div class="endpoint"><span class="method post">POST</span><code>/api/klant-leads</code> — Nieuwe lead</div>
+  <div class="endpoint"><span class="method put">PUT</span><code>/api/klant-leads/:id</code> — Lead bijwerken</div>
 
   <h2>Webhooks</h2>
   <p>Ondersteunde events: <code>factuur.aangemaakt</code>, <code>factuur.betaald</code>, <code>lead.gewonnen</code>, <code>project.afgerond</code>, <code>proposal.ondertekend</code>, <code>offerte.geaccepteerd</code></p>

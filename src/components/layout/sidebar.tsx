@@ -14,7 +14,7 @@ import {
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
-  Heart, TrendingUp,
+  Heart, TrendingUp, Globe, Phone, FolderOpen, Target,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -62,7 +62,30 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: TrendingUp,
         children: [
           { label: "Klanten", icon: Users, href: "/klanten" },
-          { label: "Leads", icon: Zap, href: "/leads" },
+          // Lead-generation pipeline (lead-dashboard-v2 integratie).
+          // Alle onderliggende routes zitten onder /leads/* en praten met de
+          // externe Supabase via /api/leads/* server routes.
+          {
+            label: "Leads",
+            icon: Target,
+            href: "/leads",
+            alsoMatches: [
+              "/leads/contacts",
+              "/leads/emails",
+              "/leads/enrichment",
+              "/leads/folders",
+              "/leads/website-leads",
+              "/leads/handmatig",
+              "/leads/automations",
+              "/leads/dashboard",
+              "/leads/instellingen",
+            ],
+          },
+          { label: "Lead Emails", icon: Mail, href: "/leads/emails" },
+          { label: "Enrichment", icon: Sparkles, href: "/leads/enrichment" },
+          { label: "Folders", icon: FolderOpen, href: "/leads/folders" },
+          { label: "Website Leads", icon: Globe, href: "/leads/website-leads" },
+          { label: "Handmatig bellen", icon: Phone, href: "/leads/handmatig" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
         ],

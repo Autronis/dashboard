@@ -46,13 +46,13 @@ interface Activiteit {
 async function fetchLeads(zoek: string): Promise<LeadsData> {
   const params = new URLSearchParams();
   if (zoek) params.set("zoek", zoek);
-  const res = await fetch(`/api/leads?${params}`);
+  const res = await fetch(`/api/klant-leads?${params}`);
   if (!res.ok) throw new Error("Kon leads niet laden");
   return res.json();
 }
 
 async function fetchActiviteiten(leadId: number): Promise<Activiteit[]> {
-  const res = await fetch(`/api/leads/${leadId}/activiteiten`);
+  const res = await fetch(`/api/klant-leads/${leadId}/activiteiten`);
   if (!res.ok) throw new Error("Kon activiteiten niet laden");
   const json = await res.json();
   return json.activiteiten;

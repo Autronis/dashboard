@@ -65,6 +65,7 @@ import { KilometerWidget } from "./components/KilometerWidget";
 import { DoelenWidget } from "@/components/dashboard/doelen-widget";
 import { TeamVergelijkingWidget } from "@/components/dashboard/team-vergelijking-widget";
 import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
+import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 
 // ============ HELPERS ============
 
@@ -924,6 +925,11 @@ export default function DashboardPage() {
             })}
           </motion.div>
         )}
+
+        {/* Remote commits banner — alert voor ongepullde commits van team-projecten */}
+        <motion.div variants={sectionVariants}>
+          <RemoteCommitsBanner />
+        </motion.div>
 
         {/* Taken widget */}
         {mijnTaken.length > 0 && (

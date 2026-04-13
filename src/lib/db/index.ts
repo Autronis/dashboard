@@ -95,6 +95,22 @@ if (isTurso) {
     })
     .catch(() => { /* column may already exist */ });
 
+  // remote_commits tabel voor GitHub webhook → banner flow
+  client.execute(`CREATE TABLE IF NOT EXISTS remote_commits (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER REFERENCES projecten(id),
+    repo_url TEXT NOT NULL,
+    sha TEXT NOT NULL,
+    auteur_naam TEXT,
+    auteur_email TEXT,
+    bericht TEXT,
+    branch TEXT,
+    pushed_op TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_remote_commits_project ON remote_commits(project_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_remote_commits_sha ON remote_commits(sha)").catch(() => {});
+
   // Add missing columns to bank_transacties on Turso
   for (const col of [
     "ALTER TABLE bank_transacties ADD COLUMN ai_beschrijving TEXT",

@@ -31,6 +31,7 @@ import { openProjectInVSCode } from "@/lib/desktop-agent";
 import { useProjectDetail } from "@/hooks/queries/use-projecten";
 import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecten";
 import { EigenaarPicker } from "@/components/projecten/eigenaar-picker";
+import { ProjectRemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 
 // ============ Sub-components ============
 
@@ -603,6 +604,9 @@ export default function ProjectDetailPage() {
           <ArrowLeft className="w-4 h-4" />
           Terug naar projecten
         </Link>
+
+        {/* Remote commits banner — warning als er unpulled commits zijn */}
+        <ProjectRemoteCommitsBanner projectId={project.id} />
 
         {/* Project Header */}
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-7 card-glow">

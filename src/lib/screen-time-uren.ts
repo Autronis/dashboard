@@ -16,24 +16,27 @@ function nlDatum(isoStr: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: NL_TZ }).format(new Date(isoStr));
 }
 
+const SLOT_MS = 30 * 60 * 1000; // 30 min slots — must match /api/screen-time/sessies
+
 /**
  * CANONICAL hour calculation — single source of truth for "uren" anywhere
- * in the dashboard. Sums raw productive screen-time seconds (no slot merging,
- * no session-span overcounting). Filters: productive categories only, NL-tz date.
+ * in the dashboard. Replicates /tijd page's "deep work" algorithm exactly:
+ * 1. Fetch all NON-IDLE entries for the period.
+ * 2. Group into 30-min slots.
+ * 3. For each slot determine dominant category.
+ * 4. For non-afleiding slots, sum (slot last entry eindTijd − slot first entry startTijd).
  *
- * vanDatum/totDatum are NL local dates (YYYY-MM-DD).
- * Returns hours (not minutes or seconds).
+ * vanDatum/totDatum are NL local dates (YYYY-MM-DD). Returns hours.
  *
  * Used by: dashboard, team page, /tijd page, decision-engine, doelen, capaciteit, etc.
- * If you need a different number, you're probably wrong — debug here, don't fork.
+ * If your number differs from /tijd, you're calling something else — debug here.
  */
 export async function berekenActieveUren(
   gebruikerId: number,
   vanDatum: string,
   totDatum: string
 ): Promise<number> {
-  // Expand UTC range by ±1 day to capture entries near midnight that belong
-  // to the right NL local date but fall on a different UTC date.
+  // Expand UTC range by ±1 day for NL-tz date-boundary safety.
   const vanExpanded = new Date(vanDatum);
   vanExpanded.setDate(vanExpanded.getDate() - 1);
   const totExpanded = new Date(totDatum);
@@ -41,11 +44,12 @@ export async function berekenActieveUren(
   const vanUtc = vanExpanded.toISOString().slice(0, 10);
   const totUtc = totExpanded.toISOString().slice(0, 10);
 
-  const entries = await db
+  const allEntries = await db
     .select({
       app: screenTimeEntries.app,
       categorie: screenTimeEntries.categorie,
       startTijd: screenTimeEntries.startTijd,
+      eindTijd: screenTimeEntries.eindTijd,
       duurSeconden: screenTimeEntries.duurSeconden,
     })
     .from(screenTimeEntries)
@@ -56,13 +60,62 @@ export async function berekenActieveUren(
     ))
     .all();
 
+  // Filter system apps + idle (matches sessies/route.ts line 235-236)
+  const active = allEntries
+    .filter((e) => !SKIP_APPS.has(e.app) && e.categorie !== "inactief")
+    .filter((e) => {
+      const dag = nlDatum(e.startTijd);
+      return dag >= vanDatum && dag <= totDatum;
+    })
+    .sort((a, b) => a.startTijd.localeCompare(b.startTijd));
+
+  if (active.length === 0) return 0;
+
+  // Group into per-day slots so the algorithm matches sessies/route.ts (which is per-day).
+  const dagMap = new Map<string, typeof active>();
+  for (const e of active) {
+    const dag = nlDatum(e.startTijd);
+    if (!dagMap.has(dag)) dagMap.set(dag, []);
+    dagMap.get(dag)!.push(e);
+  }
+
+  // Finance and meeting get a 2x weight — matches sessies/route.ts line 350
+  const CAT_WEIGHT: Record<string, number> = { finance: 2, meeting: 2 };
+
   let totaalSeconden = 0;
-  for (const entry of entries) {
-    if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
-    if (!entry.categorie || !PRODUCTIEF_CATS.has(entry.categorie)) continue;
-    const dag = nlDatum(entry.startTijd);
-    if (dag < vanDatum || dag > totDatum) continue;
-    totaalSeconden += entry.duurSeconden;
+  for (const dagEntries of dagMap.values()) {
+    if (dagEntries.length === 0) continue;
+    const firstTime = new Date(dagEntries[0].startTijd).getTime();
+    const lastTime = new Date(dagEntries[dagEntries.length - 1].eindTijd).getTime();
+    const slotStart = Math.floor(firstTime / SLOT_MS) * SLOT_MS;
+
+    let t = slotStart;
+    while (t < lastTime) {
+      const tEnd = t + SLOT_MS;
+      const slotEntries = dagEntries.filter((e) => {
+        const eTime = new Date(e.startTijd).getTime();
+        return eTime >= t && eTime < tEnd;
+      });
+      t = tEnd;
+      if (slotEntries.length === 0) continue;
+
+      // Determine dominant category (with weight, matching sessies/route.ts)
+      const catSec: Record<string, number> = {};
+      for (const e of slotEntries) {
+        const c = e.categorie ?? "overig";
+        catSec[c] = (catSec[c] || 0) + e.duurSeconden;
+      }
+      const dominantCat = Object.entries(catSec)
+        .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
+        .sort(([, a], [, b]) => b - a)[0][0];
+
+      // Skip afleiding slots from the deep-work total (matches /tijd line 497)
+      if (dominantCat === "afleiding") continue;
+
+      const sessieStart = new Date(slotEntries[0].startTijd).getTime();
+      const sessieEnd = new Date(slotEntries[slotEntries.length - 1].eindTijd).getTime();
+      totaalSeconden += Math.max(0, (sessieEnd - sessieStart) / 1000);
+    }
   }
 
   return Math.round((totaalSeconden / 3600) * 100) / 100;

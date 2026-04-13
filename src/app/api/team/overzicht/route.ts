@@ -81,11 +81,15 @@ export async function GET(_req: NextRequest) {
 
     const result: UserOverzicht[] = await Promise.all(
       users.map(async (user) => {
-        // ---- Deep work deze week ----
-        // Deep work = alle screen_time entries MINUS afleiding.
-        // Moet matchen met de live deep work tracker in /tijd (die filtert óók
-        // alleen afleiding weg). Eerder werd inactief ook uitgesloten, maar
-        // dat gaf een lager getal dan de live widget — nu 1 bron van waarheid.
+        // ---- Deep work deze week & vorige week (canonical helper) ----
+        // berekenActieveUren matcht /tijd page exact (slot-merged, niet-afleiding,
+        // niet-inactief). Single source of truth.
+        const urenDezeWeek = await berekenActieveUren(user.id, maandag, zondag);
+        const urenVorigeWeek = await berekenActieveUren(user.id, vorigeWeek.maandag, vorigeWeek.zondag);
+
+        // ---- Autronis vs klant splitsing (raw seconds, alle non-afleiding entries) ----
+        // Note: deze percentages tonen WAARHEEN de tijd ging (raw), niet exact
+        // hetzelfde getal als urenDezeWeek (slot-merged). Schaaling later toegepast.
         const tijdDezeWeek = await db
           .select({
             duurSeconden: screenTimeEntries.duurSeconden,
@@ -95,35 +99,14 @@ export async function GET(_req: NextRequest) {
           .where(
             and(
               eq(screenTimeEntries.gebruikerId, user.id),
-              notInArray(screenTimeEntries.categorie, ["afleiding"]),
+              notInArray(screenTimeEntries.categorie, ["afleiding", "inactief"]),
               gte(screenTimeEntries.startTijd, maandag),
               lte(screenTimeEntries.startTijd, zondag + "T23:59:59")
             )
           );
 
-        // ---- Deep work vorige week ----
-        const tijdVorigeWeek = await db
-          .select({ duurSeconden: screenTimeEntries.duurSeconden })
-          .from(screenTimeEntries)
-          .where(
-            and(
-              eq(screenTimeEntries.gebruikerId, user.id),
-              notInArray(screenTimeEntries.categorie, ["afleiding"]),
-              gte(screenTimeEntries.startTijd, vorigeWeek.maandag),
-              lte(screenTimeEntries.startTijd, vorigeWeek.zondag + "T23:59:59")
-            )
-          );
-
-        // ---- Berekeningen (screen_time gebruikt seconden) ----
-        const secondenDezeWeek = tijdDezeWeek.reduce((sum, r) => sum + (r.duurSeconden ?? 0), 0);
-        const secondenVorigeWeek = tijdVorigeWeek.reduce((sum, r) => sum + (r.duurSeconden ?? 0), 0);
-        const urenDezeWeek = Math.round((secondenDezeWeek / 3600) * 10) / 10;
-        const urenVorigeWeek = Math.round((secondenVorigeWeek / 3600) * 10) / 10;
-
-        // ---- Autronis vs klant splitsing ----
         let autronisSeconden = 0;
         let klantSeconden = 0;
-
         const projectSecondenMap = new Map<number, number>();
 
         for (const entry of tijdDezeWeek) {
@@ -141,16 +124,19 @@ export async function GET(_req: NextRequest) {
           projectSecondenMap.set(entry.projectId, (projectSecondenMap.get(entry.projectId) ?? 0) + seconden);
         }
 
-        const autronisUren = Math.round((autronisSeconden / 3600) * 10) / 10;
-        const klantUren = Math.round((klantSeconden / 3600) * 10) / 10;
+        // Schaal raw splitsing zodat de som == urenDezeWeek (canonical number)
+        const totaalRaw = autronisSeconden + klantSeconden;
+        const schaalFactor = totaalRaw > 0 ? (urenDezeWeek * 3600) / totaalRaw : 0;
+        const autronisUren = Math.round((autronisSeconden * schaalFactor / 3600) * 10) / 10;
+        const klantUren = Math.round((klantSeconden * schaalFactor / 3600) * 10) / 10;
 
-        // ---- Top 3 projecten ----
+        // ---- Top 3 projecten (geschaald naar canonical urenDezeWeek) ----
         const topProjecten: TopProject[] = [...projectSecondenMap.entries()]
           .sort((a, b) => b[1] - a[1])
           .slice(0, 3)
           .map(([pid, seconden]) => ({
             naam: projectMap.get(pid)?.naam ?? "Onbekend project",
-            uren: Math.round((seconden / 3600) * 10) / 10,
+            uren: Math.round((seconden * schaalFactor / 3600) * 10) / 10,
           }));
 
         // ---- Taken afgerond deze week ----

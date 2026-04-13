@@ -5,12 +5,14 @@ import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, or, desc, gte, inArray } from "drizzle-orm";
 import { createProjectRepo } from "@/lib/github";
 
+type EigenaarCode = "sem" | "syb" | "team" | "vrij";
+
 /** Eigenaar codes per gebruiker id. Sem=1, Syb=2.
  *  Beide users zien altijd 'team' en 'vrij' projecten. */
-function visibleEigenaarCodes(userId: number): string[] {
-  if (userId === 2) return ["syb", "team", "vrij"];
+function visibleEigenaarCodes(userId: number): readonly EigenaarCode[] {
+  if (userId === 2) return ["syb", "team", "vrij"] as const;
   // Default (Sem of onbekend → Sem's view)
-  return ["sem", "team", "vrij"];
+  return ["sem", "team", "vrij"] as const;
 }
 
 // GET /api/projecten — All active projects with client name + task stats + activity

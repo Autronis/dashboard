@@ -51,6 +51,7 @@ export async function GET(
         deadline: projecten.deadline,
         geschatteUren: projecten.geschatteUren,
         werkelijkeUren: projecten.werkelijkeUren,
+        eigenaar: projecten.eigenaar,
         aangemaaktOp: projecten.aangemaaktOp,
         bijgewerktOp: projecten.bijgewerktOp,
       })
@@ -142,7 +143,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { id } = await params;
     const projectId = parseInt(id, 10);
     if (isNaN(projectId)) {
@@ -158,10 +159,21 @@ export async function PUT(
     if ("klantId" in body) updates.klantId = body.klantId;
     if ("deadline" in body) updates.deadline = body.deadline;
     if ("voortgangPercentage" in body) updates.voortgangPercentage = body.voortgangPercentage;
+    if ("eigenaar" in body && typeof body.eigenaar === "string" && VALID_EIGENAAR.has(body.eigenaar)) {
+      updates.eigenaar = body.eigenaar;
+    }
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ fout: "Geen velden om bij te werken" }, { status: 400 });
     }
+
+    // Haal de huidige eigenaar op vóór de update zodat we kunnen detecteren
+    // of er gewisseld is en zo nodig de andere persoon kunnen notificeren.
+    const huidig = await db
+      .select({ naam: projecten.naam, eigenaar: projecten.eigenaar })
+      .from(projecten)
+      .where(eq(projecten.id, projectId))
+      .get();
 
     updates.bijgewerktOp = new Date().toISOString();
 
@@ -170,6 +182,41 @@ export async function PUT(
       .set(updates)
       .where(eq(projecten.id, projectId))
       .returning();
+
+    // Notificatie bij eigenaarschap-wisseling. Sem=1, Syb=2.
+    // We sturen alleen naar de andere user (niet naar jezelf), en alleen
+    // als de wijziging zin heeft (overgang naar/van team of solo).
+    if (huidig && updates.eigenaar && updates.eigenaar !== huidig.eigenaar) {
+      const oud = huidig.eigenaar as string | null;
+      const nieuw = updates.eigenaar as string;
+      const naam = bijgewerkt.naam ?? huidig.naam;
+      const ikId = gebruiker.id;
+      const otherId = ikId === 1 ? 2 : 1;
+      const ikNaam = ikId === 1 ? "Sem" : "Syb";
+      const otherCode = otherId === 1 ? "sem" : "syb";
+
+      // Kreeg de andere persoon nieuwe toegang? (was niet zichtbaar voor 'm)
+      const wasVisible = oud === "team" || oud === "vrij" || oud === otherCode;
+      const isVisible = nieuw === "team" || nieuw === "vrij" || nieuw === otherCode;
+
+      if (!wasVisible && isVisible) {
+        await db.insert(notificaties).values({
+          gebruikerId: otherId,
+          type: "project_toegewezen",
+          titel: `${ikNaam} heeft je toegevoegd aan ${naam}`,
+          omschrijving: `Project zichtbaarheid is gewijzigd naar ${nieuw === "team" ? "team" : nieuw === "vrij" ? "vrij (open)" : nieuw}.`,
+          link: `/projecten/${projectId}`,
+        }).catch(() => {});
+      } else if (wasVisible && !isVisible) {
+        await db.insert(notificaties).values({
+          gebruikerId: otherId,
+          type: "project_toegewezen",
+          titel: `${ikNaam} heeft ${naam} weer solo gemaakt`,
+          omschrijving: `Project is niet meer zichtbaar in jouw overzicht.`,
+          link: null,
+        }).catch(() => {});
+      }
+    }
 
     return NextResponse.json({ project: bijgewerkt });
   } catch (error) {

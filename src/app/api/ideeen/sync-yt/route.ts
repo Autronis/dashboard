@@ -17,7 +17,8 @@ export async function POST() {
   try {
     const gebruiker = await requireAuth();
     if (!tursoClient) {
-      return NextResponse.json({ fout: "Geen Turso connectie" }, { status: 500 });
+      // Local dev without Turso: YT pipeline tables don't exist. No-op.
+      return NextResponse.json({ aangemaakt: 0, overgeslagen: 0 });
     }
 
     // Pull all top-tier analyses joined with their video metadata.

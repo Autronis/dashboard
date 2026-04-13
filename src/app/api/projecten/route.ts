@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projecten, klanten, taken, tijdregistraties, gebruikers } from "@/lib/db/schema";
-import { requireAuth, requireApiKey } from "@/lib/auth";
+import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, desc, gte } from "drizzle-orm";
 
 // GET /api/projecten — All active projects with client name + task stats + activity
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAuthOrApiKey(req);
 
     const statusFilter = req.nextUrl.searchParams.get("status");
 

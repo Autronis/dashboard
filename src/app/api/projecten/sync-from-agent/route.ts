@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projecten, taken, klanten } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 
 const AUTRONIS_KLANT_ID = 4;
 
@@ -56,7 +56,7 @@ function classifyUitvoerder(titel: string): "claude" | "handmatig" {
 // Body: { projects: AgentProject[] }
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const body = await req.json();
     const { projects } = body as { projects: AgentProject[] };
 

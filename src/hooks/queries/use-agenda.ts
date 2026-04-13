@@ -198,6 +198,8 @@ export interface AgendaTaak {
   kalenderKleur: string | null;
   uitvoerder: string | null;
   projectMap: string | null;
+  fase: string | null;
+  omschrijving: string | null;
 }
 
 async function fetchAgendaTaken(): Promise<AgendaTaak[]> {

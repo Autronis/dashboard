@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal, ClipboardCopy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
@@ -278,9 +278,34 @@ interface DagViewProps {
   onDeadlineNaarSlot?: (deadline: DeadlineEvent, datum: string, tijd: string) => void;
 }
 
+// Lokaal "bijgewoond" state voor externe events (Google Calendar kan niet afgevinkt worden, dus lokaal per browser).
+const EVENT_DONE_KEY = "autronis-event-done";
+function useEventDoneState() {
+  const [done, setDone] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = localStorage.getItem(EVENT_DONE_KEY);
+      return new Set<string>(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  });
+  const toggle = useCallback((eventId: string) => {
+    setDone((prev) => {
+      const next = new Set(prev);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
+      try { localStorage.setItem(EVENT_DONE_KEY, JSON.stringify(Array.from(next))); } catch {}
+      return next;
+    });
+  }, []);
+  return { done, toggle };
+}
+
 export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const { done: eventDone, toggle: toggleEventDone } = useEventDoneState();
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -783,7 +808,19 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const eindLabel = eindDate.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
               const afgerond = group.filter((t) => t.status === "afgerond").length;
 
-              // Groepeer per project
+              // Check of een handmatige taak in deze tijdspanne overlapt → dan half-width
+              const sessieStartMs = startDate.getTime();
+              const sessieEindMs = eindDate.getTime();
+              const heeftManualOverlap = dagTaken.some((t) => {
+                if (t.uitvoerder === "claude" || !t.ingeplandStart) return false;
+                const ts = new Date(t.ingeplandStart).getTime();
+                const te = t.ingeplandEind
+                  ? new Date(t.ingeplandEind).getTime()
+                  : ts + (t.geschatteDuur || 30) * 60000;
+                return ts < sessieEindMs && te > sessieStartMs;
+              });
+
+              // Groepeer per project (fase niveau zou nog netter zijn, gebruikt project als proxy)
               const perProject = new Map<string, typeof group>();
               for (const t of group) {
                 const proj = t.projectNaam || "Overig";
@@ -799,10 +836,44 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 })
                 .join(" → ");
 
+              // Gestructureerde prompt voor Claude chat — groepeer per project/fase
+              const handleKopieerPrompt = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const lines: string[] = [];
+                lines.push(`# Claude sessie · ${startLabel}–${eindLabel}`);
+                lines.push("");
+                lines.push(`${group.length} taken verdeeld over ${perProject.size} project(en). Werk ze per project af, commit na elk project, sync dashboard status.`);
+                lines.push("");
+                for (const [proj, projectTaken] of perProject.entries()) {
+                  lines.push(`## ${proj}`);
+                  // Groepeer per fase binnen dit project
+                  const perFase = new Map<string, typeof projectTaken>();
+                  for (const t of projectTaken) {
+                    const fase = t.fase || "(geen fase)";
+                    if (!perFase.has(fase)) perFase.set(fase, []);
+                    perFase.get(fase)!.push(t);
+                  }
+                  for (const [fase, faseTaken] of perFase.entries()) {
+                    if (perFase.size > 1 || fase !== "(geen fase)") {
+                      lines.push(`### ${fase}`);
+                    }
+                    for (const t of faseTaken) {
+                      lines.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
+                    }
+                  }
+                  lines.push("");
+                }
+                lines.push("Na afronding: markeer taken als afgerond in het Autronis dashboard via /api/taken/[id].");
+                navigator.clipboard.writeText(lines.join("\n"));
+              };
+
               return (
                 <div
                   key={`claude-sessie-${gi}`}
-                  className="absolute left-12 sm:left-16 right-[50.5%] rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]"
+                  className={cn(
+                    "absolute rounded-xl border-l-[3px] border-purple-500 overflow-hidden z-[3]",
+                    heeftManualOverlap ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
+                  )}
                   style={{
                     top: `${blockTop}px`,
                     height: `${blockHeight}px`,
@@ -820,6 +891,14 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                     <span className="text-[10px] text-purple-400/50 italic truncate flex-1 hidden sm:inline">
                       jij bent vrij
                     </span>
+                    <button
+                      onClick={handleKopieerPrompt}
+                      title="Kopieer prompt voor Claude chat"
+                      className="text-[10px] font-medium text-purple-300 hover:text-purple-100 bg-purple-500/20 hover:bg-purple-500/35 px-1.5 py-0.5 rounded flex-shrink-0 inline-flex items-center gap-1 transition-colors"
+                    >
+                      <ClipboardCopy className="w-2.5 h-2.5" />
+                      Kopieer
+                    </button>
                     <span className="text-[10px] text-purple-400/70 tabular-nums">{afgerond}/{group.length}</span>
                   </div>
 

@@ -21,6 +21,8 @@ export async function GET() {
         ingeplandEind: taken.ingeplandEind,
         toegewezenAanId: taken.toegewezenAan,
         uitvoerder: taken.uitvoerder,
+        fase: taken.fase,
+        omschrijving: taken.omschrijving,
         projectMap: taken.projectMap,
         projectNaam: projecten.naam,
         kalenderId: taken.kalenderId,

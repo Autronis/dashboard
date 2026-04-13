@@ -288,6 +288,7 @@ export const agendaItems = sqliteTable("agenda_items", {
   eindDatum: text("eind_datum"),
   heleDag: integer("hele_dag").default(0),
   herinneringMinuten: integer("herinnering_minuten"),
+  herinneringVerstuurdOp: text("herinnering_verstuurd_op"),
   googleEventId: text("google_event_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

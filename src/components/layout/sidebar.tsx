@@ -202,7 +202,7 @@ function LauncherItem({
   isActive: boolean;
   pathname: string;
 }) {
-  const { open, toggle } = useLauncherState(item.label);
+  const { open, toggle } = useLauncherState(item.label, isActive);
   const Icon = item.icon;
   const { setOpen: setSidebarOpen } = useSidebar();
 
@@ -285,35 +285,52 @@ function LauncherItem({
 const SIDEBAR_SECTIONS_KEY = "autronis-sidebar-sections";
 const SIDEBAR_LAUNCHERS_KEY = "autronis-sidebar-launchers";
 
-function useLauncherState(key: string) {
-  const [open, setOpen] = useState(false);
+function useLauncherState(key: string, isActive: boolean) {
+  const [open, setOpenState] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Persist helper
+  const persist = useCallback((next: boolean) => {
+    try {
+      const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
+      const map = stored ? JSON.parse(stored) as Record<string, boolean> : {};
+      map[key] = next;
+      localStorage.setItem(SIDEBAR_LAUNCHERS_KEY, JSON.stringify(map));
+    } catch { /* ignore */ }
+  }, [key]);
+
+  // Initial load: read previously persisted open-state. isActive overrides
+  // (als de huidige route in deze hub valt, openen we 'm sowieso meteen).
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
       if (stored) {
         const map = JSON.parse(stored) as Record<string, boolean>;
-        if (key in map) setOpen(map[key]);
+        if (key in map) setOpenState(map[key]);
       }
     } catch { /* ignore */ }
     setLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+
+  // Auto open/close op basis van active state. Wanneer je naar een route
+  // binnen deze hub navigeert → opent. Wanneer je weg navigeert → sluit.
+  // Dit overrult de localStorage waarde zodat hubs niet "blijven plakken".
+  useEffect(() => {
+    if (!loaded) return;
+    setOpenState(isActive);
+    persist(isActive);
+  }, [isActive, loaded, persist]);
 
   const toggle = useCallback(() => {
-    setOpen((prev) => {
+    setOpenState((prev) => {
       const next = !prev;
-      try {
-        const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
-        const map = stored ? JSON.parse(stored) as Record<string, boolean> : {};
-        map[key] = next;
-        localStorage.setItem(SIDEBAR_LAUNCHERS_KEY, JSON.stringify(map));
-      } catch { /* ignore */ }
+      persist(next);
       return next;
     });
-  }, [key]);
+  }, [persist]);
 
-  return { open: loaded ? open : false, toggle };
+  return { open: loaded ? open : isActive, toggle };
 }
 
 function useSectionState(section: string, defaultOpen: boolean) {

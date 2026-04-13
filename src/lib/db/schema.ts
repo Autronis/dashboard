@@ -1634,23 +1634,6 @@ export const followUpLog = sqliteTable("follow_up_log", {
   idxDatum: index("idx_ful_datum").on(table.aangemaaktOp),
 }));
 
-// ============ MODULE: CLIENT HEALTH SCORES ============
-export const clientHealthScores = sqliteTable("client_health_scores", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  klantId: integer("klant_id").notNull().references(() => klanten.id),
-  totaalScore: integer("totaal_score").notNull(), // 0-100
-  communicatieScore: integer("communicatie_score").notNull(), // 0-100
-  betalingScore: integer("betaling_score").notNull(), // 0-100
-  projectScore: integer("project_score").notNull(), // 0-100
-  tevredenheidScore: integer("tevredenheid_score").notNull(), // 0-100
-  activiteitScore: integer("activiteit_score").notNull(), // 0-100
-  details: text("details").default("{}"), // JSON with breakdown
-  berekendOp: text("berekend_op").default(sql`(datetime('now'))`),
-}, (table) => ({
-  idxKlant: index("idx_chs_klant").on(table.klantId),
-  idxDatum: index("idx_chs_datum").on(table.berekendOp),
-}));
-
 // ============ VERDEEL REGELS ============
 export const verdeelRegels = sqliteTable("verdeel_regels", {
   id: integer("id").primaryKey({ autoIncrement: true }),

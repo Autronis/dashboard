@@ -4,6 +4,7 @@ import { proposals, proposalRegels, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, desc } from "drizzle-orm";
 import crypto from "crypto";
+import { slidesSchema } from "@/lib/proposal-schema";
 
 // GET /api/proposals?status=concept
 export async function GET(req: NextRequest) {
@@ -94,6 +95,15 @@ export async function POST(req: NextRequest) {
     }
     if (!titel?.trim()) {
       return NextResponse.json({ fout: "Titel is verplicht." }, { status: 400 });
+    }
+
+    // Validate slides shape
+    const slidesResult = slidesSchema.safeParse(secties ?? []);
+    if (!slidesResult.success) {
+      return NextResponse.json(
+        { fout: "Ongeldige slide structuur: " + slidesResult.error.issues[0]?.message },
+        { status: 400 }
+      );
     }
 
     // Calculate total

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseLeads } from "@/lib/supabase-leads";
+import { getSupabaseLeads, SYB_USER_ID } from "@/lib/supabase-leads";
 import { requireAuth, requireApiKey } from "@/lib/auth";
 
 async function authenticate(req: NextRequest) {
@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await supabase
         .from("leads")
         .select("*")
+        .eq("user_id", SYB_USER_ID)
         .order("created_at", { ascending: false })
         .range(from, to);
 

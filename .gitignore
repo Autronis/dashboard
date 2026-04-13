@@ -59,3 +59,4 @@ public/uploads/km-standen/*
 .env.production
 cookies.txt
 .env*.local
+.worktrees/

@@ -49,7 +49,7 @@ export function Header({ gebruiker }: HeaderProps) {
 
   const profielFotos: Record<string, string> = {
     "sem@autronis.com": "/foto-sem.jpg",
-    "compagnon@autronis.com": "/foto-syb.jpg",
+    "syb@autronis.com": "/foto-syb.jpg",
   };
   const profielFoto = profielFotos[gebruiker.email];
 

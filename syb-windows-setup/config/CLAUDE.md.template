@@ -1,0 +1,46 @@
+# Autronis — Gedeelde Context
+
+## Wie
+- **Bedrijf**: Autronis — Sem Gijsberts & Syb
+- **Systeem**: ATLAS (Autronis Task, Logic & Automation System)
+- **Dashboard**: dashboard.autronis.nl (Next.js, Turso, Vercel)
+- **GitHub**: `https://github.com/autronis/` — altijd hierheen pushen
+
+## Mapstructuur
+`~/Autronis/Projects/` bevat ALLEEN projectmappen. Geen losse bestanden. Specs/docs horen IN de projectmap.
+
+## Parallelle Chats — Worktree First
+Als een chat code gaat aanraken en er draaien parallel andere Claude chats in hetzelfde project, begin dan met `/worktree <sectie>` als allereerste commando (bv. `/worktree team`, `/worktree tijd`, `/worktree financien`). Dat isoleert het werk op een eigen `feat/<sectie>` branch in een aparte directory onder `.worktrees/`, zodat twee chats elkaar niet clobberen. Main worktree blijft gereserveerd voor één chat tegelijk. Alleen lezen/analyseren zonder edits? Geen worktree nodig.
+
+## Dashboard Task Sync
+De auto-sync hook (`~/.claude/hooks/auto-sync-taken.py`) synct taken automatisch na git commits en TodoWrite. Config: `~/.config/autronis/claude-sync.json`.
+
+**Handmatig syncen** (alleen als de hook het niet dekt):
+```bash
+CONFIG=$(cat ~/.config/autronis/claude-sync.json)
+URL=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['dashboard_url'])")
+KEY=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['api_key'])")
+curl -X POST "$URL/api/projecten/sync-taken" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"projectNaam":"<NAAM>","voltooide_taken":["Taak"],"nieuwe_taken":[{"titel":"Taak","fase":"Fase X: Naam"}]}'
+```
+
+**Regels:** Altijd fase + beschrijving meegeven. Dashboard is single source of truth. Sync DIRECT bij afronden, niet pas aan het einde.
+
+## Context Management
+- **25%**: waarschuw Sem
+- **40%+**: schrijf HANDOFF.md (wat gedaan, wat open, beslissingen, branch, volgende stappen) en stel voor te switchen
+- Volgende sessie leest HANDOFF.md op en verwijdert het daarna
+
+## SpeakToText Dictionary
+`~/Library/Application Support/SpeakToText/dictionary.json` — voeg unieke termen toe (bedrijfsnamen, personen, tech terms) als je ze tegenkomt.
+
+**Auto-leren van correcties:** Als Sem in een bericht aangeeft dat SpeakToText iets verkeerd heeft getranscribeerd — expliciet ("stt schreef X, moet Y zijn", "speak to text maakt hier Y van maar het is X") óf impliciet (een typische spraak-naar-tekst fout die hij zelf corrigeert in zijn prompt, bv. "ik bedoelde glitched niet geklitst") — voeg dan DIRECT een entry toe aan `dictionary.json` zonder eerst te vragen. Format: `{"id": "<uuid>", "spoken": "<verkeerde transcriptie lowercase>", "written": "<correcte versie>"}`. Check eerst of de `spoken` al bestaat (dan updaten, niet dupliceren). Vermeld kort in je antwoord dat je 'm hebt toegevoegd.
+
+## Strategische Discipline
+1. **Lever eerst, bouw daarna** — klantwerk gaat voor
+2. **Één bottleneck per keer** — focus op impact
+3. **Simpelste oplossing eerst** — markdown > script > feature
+4. **Features moeten gebruikt worden** — 2 weken niet aangeraakt = evalueer
+
+Bij nieuwe features: wordt het dagelijks gebruikt? Levert het geld op of bespaart >30 min/week? Kan het simpeler?

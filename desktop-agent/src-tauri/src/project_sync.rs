@@ -354,6 +354,8 @@ struct DashboardProject {
     id: i64,
     naam: String,
     status: Option<String>,
+    #[serde(rename = "githubUrl")]
+    github_url: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -452,18 +454,52 @@ pub async fn ensure_folders_from_dashboard(config: &Config) -> Result<String, St
         let folder_name = normalize_for_fs(&project.naam);
         let folder_path = projects_dir.join(&folder_name);
 
-        if let Err(e) = fs::create_dir_all(&folder_path) {
-            eprintln!("[folder-sync] Kon '{}' niet aanmaken: {}", folder_name, e);
-            continue;
-        }
+        // Als het dashboard een github_url heeft → git clone, anders mkdir + brief.
+        // Clone faalt gracieus terug naar mkdir+brief zodat een ontbrekende
+        // git installatie of auth issue de sync niet blokkeert.
+        let cloned = if let Some(url) = &project.github_url {
+            match std::process::Command::new("git")
+                .arg("clone")
+                .arg(url)
+                .arg(&folder_path)
+                .output()
+            {
+                Ok(out) if out.status.success() => {
+                    eprintln!("[folder-sync] Cloned {} → {}", url, folder_name);
+                    true
+                }
+                Ok(out) => {
+                    let stderr = String::from_utf8_lossy(&out.stderr);
+                    eprintln!(
+                        "[folder-sync] git clone {} faalde: {}",
+                        url,
+                        stderr.trim()
+                    );
+                    false
+                }
+                Err(e) => {
+                    eprintln!("[folder-sync] kan git niet vinden: {}", e);
+                    false
+                }
+            }
+        } else {
+            false
+        };
 
-        // Write a minimal PROJECT_BRIEF.md
-        let brief_path = folder_path.join("PROJECT_BRIEF.md");
-        let brief_content = format!(
-            "# {}\n\n## Doel\n_Beschrijf het doel van dit project._\n\n## Status\nAutomatisch aangemaakt door de desktop agent na detectie in het dashboard.\n\n## Volgende stappen\n- [ ] Projectbeschrijving invullen\n- [ ] Initiële taken toevoegen\n",
-            project.naam
-        );
-        let _ = fs::write(&brief_path, brief_content);
+        if !cloned {
+            if let Err(e) = fs::create_dir_all(&folder_path) {
+                eprintln!("[folder-sync] Kon '{}' niet aanmaken: {}", folder_name, e);
+                continue;
+            }
+
+            // Write a minimal PROJECT_BRIEF.md
+            let brief_path = folder_path.join("PROJECT_BRIEF.md");
+            let brief_content = format!(
+                "# {}\n\n## Doel\n_Beschrijf het doel van dit project._\n\n## Status\nAutomatisch aangemaakt door de desktop agent na detectie in het dashboard.\n\n## Volgende stappen\n- [ ] Projectbeschrijving invullen\n- [ ] Initiële taken toevoegen\n",
+                project.naam
+            );
+            let _ = fs::write(&brief_path, brief_content);
+        }
 
         created += 1;
     }

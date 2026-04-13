@@ -41,9 +41,10 @@ export async function POST(req: NextRequest) {
     const claudeTaken = openTaken.filter((t) => t.uitvoerder === "claude");
     const handmatigeTaken = openTaken.filter((t) => t.uitvoerder !== "claude");
 
-    // Bereken Claude sessie duur: 15 min per taak, min 15, max 120
+    // Bereken Claude sessie duur: Claude rost door taken heen (ramp + 2 min/taak),
+    // max 30 min voor het hele blok. Eén Claude chat doet meerdere taken in één beurt.
     const claudeSessieDuur = claudeTaken.length > 0
-      ? Math.min(120, Math.max(15, claudeTaken.length * 15))
+      ? Math.min(30, 8 + claudeTaken.length * 2)
       : 0;
 
     // Bestaande ingeplande taken op deze dag (vermijd conflicten)
@@ -74,9 +75,9 @@ export async function POST(req: NextRequest) {
 
     // Claude sessie info voor de AI planner
     const claudeBlokInfo = claudeSessieDuur > 0
-      ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig (ID:-1). Dit is een AI-sessie die ${claudeTaken.length} taken AUTOMATISCH uitvoert — Sem hoeft hier NIKS voor te doen. Plan dit blok als EERSTE van de dag (start 08:00).
+      ? `\nBELANGRIJK: Er is een "Claude sessie" blok van ${claudeSessieDuur} minuten nodig (ID:-1). Dit is ÉÉN Claude chat-sessie die ${claudeTaken.length} taken AUTOMATISCH uitvoert — Claude werkt meerdere taken per beurt af, niet 15 min per taak. Plan dit blok als EERSTE van de dag (start 08:00) en NOOIT langer dan 30 min.
 
-CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens de Claude sessie. Je MOET niet-development taken (administratie, meetings, communicatie, telefoon, planning) TIJDENS de Claude sessie plannen. Dat is het hele punt — Claude werkt, Sem doet ondertussen admin/sales/meetings. Plan deze taken dus OVERLAPPEND met het Claude sessie blok (tussen 08:00 en het einde van de sessie). Alleen development taken die Sem ZELF achter de computer moet doen plan je NA de Claude sessie.`
+CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens de Claude sessie. Plan niet-development taken (administratie, meetings, communicatie, telefoon, planning) GEWOON NAAST/OVERLAPPEND met het Claude sessie blok. Claude werkt, Sem doet ondertussen admin/sales/meetings. Alleen development taken die Sem ZELF achter de computer moet doen plan je NA de Claude sessie.`
       : "";
 
     const client = Anthropic(undefined, "/api/agenda/ai-plan");
@@ -90,6 +91,7 @@ Regels:
 - Prioriteit "HOOG" taken eerst, zo vroeg mogelijk
 - Taken met een deadline vandaag of morgen hebben voorrang
 - Schat de duur in als die niet is opgegeven. Sem werkt met AI en is extreem snel: development: 15-30min, meeting: 30min, administratie: 15min, complexe feature: 30-45min. De meeste taken duren 15 min. NOOIT langer dan 45 min per taak.
+- Claude sessie (ID:-1): ALTIJD duur gebruiken die hierboven is opgegeven (max 30 min). Niet de som van individuele taken gebruiken — één Claude chat verwerkt meerdere taken tegelijk.
 - Laat 5-10 min pauze tussen taken
 - Maximaal 8 uur werk, niet alles hoeft gepland als er te veel is
 - Groepeer vergelijkbare taken (bijv. administratie achter elkaar)

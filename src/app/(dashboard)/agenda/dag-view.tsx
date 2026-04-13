@@ -163,7 +163,7 @@ function TaakCheckCircle({ checked, onClick, small }: { checked: boolean; onClic
   );
 }
 
-function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onToggle, onClick, halfRight }: {
+function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKleur, onUnplan, onToggle, onClick, halfRight, laneIndex, laneCount }: {
   taak: AgendaTaak;
   top: number;
   height: number;
@@ -174,12 +174,27 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
   onToggle?: (id: number, status?: string) => void;
   onClick?: () => void;
   halfRight?: boolean;
+  laneIndex?: number;
+  laneCount?: number;
 }) {
   const checked = taak.status === "afgerond";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `taak-${taak.id}`,
     data: { taak },
   });
+
+  // Lane-based positioning voor overlappende handmatige taken: deel de
+  // beschikbare breedte op in kolommen zodat botsende taken naast elkaar
+  // staan ipv bovenop elkaar. Gebruik calc() met de bestaande left/right
+  // constraints (left-12 sm:left-16, right-1.5 sm:right-3).
+  const useLanes = !halfRight && laneCount && laneCount > 1 && typeof laneIndex === "number";
+  const laneStyle: React.CSSProperties = useLanes
+    ? {
+        // 4rem (left-16) start + 0.75rem (right-3) end + 2px gaps between lanes
+        left: `calc(4rem + (100% - 4rem - 0.75rem - ${(laneCount! - 1) * 4}px) * ${laneIndex! / laneCount!} + ${laneIndex! * 4}px)`,
+        width: `calc((100% - 4rem - 0.75rem - ${(laneCount! - 1) * 4}px) / ${laneCount!})`,
+      }
+    : {};
 
   const style: React.CSSProperties = {
     top: `${top}px`,
@@ -190,6 +205,7 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
     borderLeftColor: checked ? "#10b981" : kalenderKleur,
     boxShadow: `0 2px 10px ${kalenderKleur}25, inset 0 1px 0 ${kalenderKleur}25`,
     opacity: isDragging ? 0.4 : checked ? 0.5 : 1,
+    ...laneStyle,
     ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 50 } : {}),
   };
 
@@ -203,7 +219,12 @@ function DraggableTaakBlock({ taak, top, height, startTijd, eindTijd, kalenderKl
       ref={setNodeRef}
       className={cn(
         "absolute rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-grab overflow-hidden transition-all hover:brightness-115 z-[4] group flex flex-col justify-center",
-        halfRight ? "left-[51%] right-1.5 sm:right-3" : "left-12 sm:left-16 right-1.5 sm:right-3"
+        // Lane-based: laat left/width over aan inline style. Anders default classes.
+        useLanes
+          ? ""
+          : halfRight
+            ? "left-[51%] right-1.5 sm:right-3"
+            : "left-12 sm:left-16 right-1.5 sm:right-3"
       )}
       style={style}
       onClick={onClick}
@@ -1071,8 +1092,78 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             });
           })()}
 
+          {/* Lane-toewijzing: groepeer overlappende handmatige taken in kolommen.
+              Claude sessie blokken doen niet mee (die hebben hun eigen halfRight). */}
+          {(() => null)()}
           {/* Ingeplande taken als draggable blokken (alleen niet-sessie taken) */}
-          {dagTaken.map((taak) => {
+          {(() => {
+            // Bouw lane-map alleen voor handmatige taken die niet in een Claude
+            // sessie-blok zitten. Sweep-line algoritme: sorteer op start, plak elke
+            // taak in de eerste vrije lane, anders open een nieuwe.
+            const handmatigeTaken = dagTaken.filter((t) => t.ingeplandStart && t.uitvoerder !== "claude");
+            const sorted = [...handmatigeTaken].sort(
+              (a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime()
+            );
+            const eindVan = (t: typeof sorted[number]) => {
+              if (t.ingeplandEind) return new Date(t.ingeplandEind).getTime();
+              return new Date(t.ingeplandStart!).getTime() + (t.geschatteDuur || 60) * 60000;
+            };
+            // Groepeer aaneengesloten overlap-clusters
+            type Lane = { id: number; lane: number; cluster: number };
+            const laneInfo = new Map<number, Lane>();
+            let cluster = 0;
+            let clusterEinde = 0;
+            let cursorIdx = 0;
+            const clusterStart: number[] = []; // index in sorted waar cluster begint
+            for (const t of sorted) {
+              const s = new Date(t.ingeplandStart!).getTime();
+              if (s >= clusterEinde) {
+                cluster++;
+                clusterStart.push(cursorIdx);
+              }
+              clusterEinde = Math.max(clusterEinde, eindVan(t));
+              cursorIdx++;
+            }
+            // Voor elk cluster: lane assignment binnen het cluster
+            const clusterTotalLanes = new Map<number, number>();
+            const reConstructed: number[] = []; // cluster id per sorted item
+            // Re-walk om cluster ids exact toe te wijzen
+            cluster = 0;
+            clusterEinde = 0;
+            for (let i = 0; i < sorted.length; i++) {
+              const t = sorted[i];
+              const s = new Date(t.ingeplandStart!).getTime();
+              if (s >= clusterEinde) cluster++;
+              clusterEinde = Math.max(clusterEinde, eindVan(t));
+              reConstructed.push(cluster);
+            }
+            // Per cluster lanes toewijzen
+            const lanesPerCluster = new Map<number, number[]>(); // clusterId → end times per lane
+            for (let i = 0; i < sorted.length; i++) {
+              const t = sorted[i];
+              const c = reConstructed[i];
+              if (!lanesPerCluster.has(c)) lanesPerCluster.set(c, []);
+              const lanes = lanesPerCluster.get(c)!;
+              const s = new Date(t.ingeplandStart!).getTime();
+              let assigned = -1;
+              for (let l = 0; l < lanes.length; l++) {
+                if (lanes[l] <= s) {
+                  assigned = l;
+                  break;
+                }
+              }
+              if (assigned === -1) {
+                assigned = lanes.length;
+                lanes.push(0);
+              }
+              lanes[assigned] = eindVan(t);
+              laneInfo.set(t.id, { id: t.id, lane: assigned, cluster: c });
+            }
+            for (const [c, lanes] of lanesPerCluster.entries()) {
+              clusterTotalLanes.set(c, lanes.length);
+            }
+
+            return dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
 
             // Skip Claude taken die onderdeel zijn van een sessie-blok (2+ overlappend/aansluitend)

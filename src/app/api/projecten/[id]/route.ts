@@ -133,3 +133,101 @@ export async function GET(
     );
   }
 }
+
+// PUT /api/projecten/[id] — Update project (status, isActief, naam, etc.)
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const { id } = await params;
+    const projectId = parseInt(id, 10);
+    if (isNaN(projectId)) {
+      return NextResponse.json({ fout: "Ongeldig project ID" }, { status: 400 });
+    }
+
+    const body = await req.json();
+    const updates: Record<string, unknown> = {};
+    if ("naam" in body && typeof body.naam === "string") updates.naam = body.naam.trim();
+    if ("omschrijving" in body) updates.omschrijving = body.omschrijving;
+    if ("status" in body) updates.status = body.status;
+    if ("isActief" in body) updates.isActief = body.isActief ? 1 : 0;
+    if ("klantId" in body) updates.klantId = body.klantId;
+    if ("deadline" in body) updates.deadline = body.deadline;
+    if ("voortgangPercentage" in body) updates.voortgangPercentage = body.voortgangPercentage;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ fout: "Geen velden om bij te werken" }, { status: 400 });
+    }
+
+    updates.bijgewerktOp = new Date().toISOString();
+
+    const [bijgewerkt] = await db
+      .update(projecten)
+      .set(updates)
+      .where(eq(projecten.id, projectId))
+      .returning();
+
+    return NextResponse.json({ project: bijgewerkt });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}
+
+// DELETE /api/projecten/[id] — Soft delete (isActief=0) or hard delete with ?hard=true
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await requireAuth();
+    const { id } = await params;
+    const projectId = parseInt(id, 10);
+    if (isNaN(projectId)) {
+      return NextResponse.json({ fout: "Ongeldig project ID" }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const hard = searchParams.get("hard") === "true";
+
+    // Get project info for the response (local folder cleanup hint)
+    const project = await db
+      .select({ id: projecten.id, naam: projecten.naam })
+      .from(projecten)
+      .where(eq(projecten.id, projectId))
+      .get();
+
+    if (!project) {
+      return NextResponse.json({ fout: "Project niet gevonden" }, { status: 404 });
+    }
+
+    if (hard) {
+      // Hard delete: remove tasks and time entries first, then project
+      await db.delete(taken).where(eq(taken.projectId, projectId)).run();
+      await db.delete(tijdregistraties).where(eq(tijdregistraties.projectId, projectId)).run();
+      await db.delete(projecten).where(eq(projecten.id, projectId)).run();
+    } else {
+      // Soft delete: just flip isActief
+      await db
+        .update(projecten)
+        .set({ isActief: 0, status: "afgerond", bijgewerktOp: new Date().toISOString() })
+        .where(eq(projecten.id, projectId))
+        .run();
+    }
+
+    return NextResponse.json({
+      succes: true,
+      hardDelete: hard,
+      project: { id: project.id, naam: project.naam },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}

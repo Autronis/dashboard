@@ -39,21 +39,41 @@ export async function POST(req: NextRequest) {
     const defaultUser = await db.select().from(gebruikers).limit(1).get();
     const userId = defaultUser?.id ?? 1;
 
-    // Find project (case-insensitive, ignoring dashes/underscores vs spaces)
-    const normalized = projectNaam.trim().toLowerCase().replace(/[-_]/g, " ");
-    let project = await db
+    // Strict normalization: lowercase, strip all non-alphanumeric, collapse whitespace
+    function normalize(s: string): string {
+      return s
+        .trim()
+        .toLowerCase()
+        .replace(/[-_./\\]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+    const normalized = normalize(projectNaam);
+    const compact = normalized.replace(/\s/g, "");
+
+    // Fetch ALL active projects and match in JS (more reliable than SQL REPLACE across dialects)
+    const alleProjecten = await db
       .select()
       .from(projecten)
-      .where(sql`LOWER(REPLACE(REPLACE(${projecten.naam}, '-', ' '), '_', ' ')) = ${normalized}`)
-      .get();
+      .where(eq(projecten.isActief, 1))
+      .all();
 
-    if (!project) {
-      // Also try exact case-insensitive match as fallback
-      project = await db
-        .select()
-        .from(projecten)
-        .where(sql`LOWER(${projecten.naam}) = LOWER(${projectNaam})`)
-        .get();
+    let project = alleProjecten.find((p) => {
+      const pNorm = normalize(p.naam);
+      const pCompact = pNorm.replace(/\s/g, "");
+      return pNorm === normalized || pCompact === compact;
+    });
+
+    // Fallback: fuzzy substring match (when one name is contained in the other)
+    if (!project && compact.length >= 5) {
+      const matches = alleProjecten.filter((p) => {
+        const pCompact = normalize(p.naam).replace(/\s/g, "");
+        return pCompact.includes(compact) || compact.includes(pCompact);
+      });
+      // Only auto-pick if there is exactly ONE fuzzy match (avoid ambiguity)
+      if (matches.length === 1) {
+        project = matches[0];
+      }
     }
 
     if (!project) {

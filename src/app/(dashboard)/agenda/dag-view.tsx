@@ -724,8 +724,57 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             );
           })}
 
-          {/* Events met stagger + gradient + glow */}
-          {timed.map((item, idx) => {
+          {/* Events met stagger + gradient + glow + lane-toewijzing voor overlap */}
+          {(() => {
+            // Bouw lane info zodat overlappende events naast elkaar landen.
+            const eventStart = (item: typeof timed[number]) => {
+              const s = "startDatum" in item ? item.startDatum : "";
+              return s.length > 10 ? new Date(s).getTime() : 0;
+            };
+            const eventEind = (item: typeof timed[number]) => {
+              const s = "startDatum" in item ? item.startDatum : "";
+              if (s.length <= 10) return 0;
+              const e = "eindDatum" in item ? (item as AgendaItem & { eindDatum?: string | null }).eindDatum : null;
+              return e ? new Date(e).getTime() : new Date(s).getTime() + 60 * 60000;
+            };
+            const sortedEv = [...timed]
+              .filter((it) => eventStart(it) > 0)
+              .sort((a, b) => eventStart(a) - eventStart(b));
+            type EvLane = { lane: number; cluster: number };
+            const evLaneInfo = new Map<string | number, EvLane>();
+            let cluster = 0;
+            let clusterEnd = 0;
+            const clusterIds: number[] = [];
+            for (const it of sortedEv) {
+              const s = eventStart(it);
+              if (s >= clusterEnd) cluster++;
+              clusterEnd = Math.max(clusterEnd, eventEind(it));
+              clusterIds.push(cluster);
+            }
+            const lanesPerCluster = new Map<number, number[]>();
+            for (let i = 0; i < sortedEv.length; i++) {
+              const it = sortedEv[i];
+              const c = clusterIds[i];
+              if (!lanesPerCluster.has(c)) lanesPerCluster.set(c, []);
+              const lanes = lanesPerCluster.get(c)!;
+              const s = eventStart(it);
+              let assigned = -1;
+              for (let l = 0; l < lanes.length; l++) {
+                if (lanes[l] <= s) { assigned = l; break; }
+              }
+              if (assigned === -1) {
+                assigned = lanes.length;
+                lanes.push(0);
+              }
+              lanes[assigned] = eventEind(it);
+              evLaneInfo.set(it.id, { lane: assigned, cluster: c });
+            }
+            const evClusterTotal = new Map<number, number>();
+            for (const [c, lanes] of lanesPerCluster.entries()) {
+              evClusterTotal.set(c, lanes.length);
+            }
+
+            return timed.map((item, idx) => {
             const startStr = "startDatum" in item ? item.startDatum : "";
             if (startStr.length <= 10) return null;
 
@@ -782,17 +831,34 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   });
                 }}
                 onMouseLeave={hideTooltip}
-                className="absolute left-12 sm:left-16 right-1.5 sm:right-3 rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-pointer overflow-hidden transition-all hover:brightness-115 z-[2] flex flex-col justify-center"
-                style={{
-                  top: `${top}px`,
-                  height: `${height}px`,
-                  background: checked
-                    ? `linear-gradient(135deg, rgba(16,185,129,0.12) 40%, rgba(14,23,25,0.05) 100%)`
-                    : `linear-gradient(135deg, ${colors.bg} 40%, rgba(14,23,25,0.1) 100%)`,
-                  borderLeftColor: checked ? "#10b981" : colors.border,
-                  boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
-                  opacity: checked ? 0.55 : 1,
-                }}
+                className={cn(
+                  "absolute rounded-lg sm:rounded-xl pl-2 sm:pl-3 pr-2 sm:pr-3 border-l-[3px] cursor-pointer overflow-hidden transition-all hover:brightness-115 z-[2] flex flex-col justify-center",
+                  // Bij meerdere lanes: gebruik inline left/width, anders default
+                  (() => {
+                    const li = evLaneInfo.get(item.id);
+                    const tot = li ? evClusterTotal.get(li.cluster) ?? 1 : 1;
+                    return tot > 1 ? "" : "left-12 sm:left-16 right-1.5 sm:right-3";
+                  })()
+                )}
+                style={(() => {
+                  const li = evLaneInfo.get(item.id);
+                  const tot = li ? evClusterTotal.get(li.cluster) ?? 1 : 1;
+                  const base: React.CSSProperties = {
+                    top: `${top}px`,
+                    height: `${height}px`,
+                    background: checked
+                      ? `linear-gradient(135deg, rgba(16,185,129,0.12) 40%, rgba(14,23,25,0.05) 100%)`
+                      : `linear-gradient(135deg, ${colors.bg} 40%, rgba(14,23,25,0.1) 100%)`,
+                    borderLeftColor: checked ? "#10b981" : colors.border,
+                    boxShadow: `0 2px 10px ${colors.border}20, inset 0 1px 0 ${colors.border}15`,
+                    opacity: checked ? 0.55 : 1,
+                  };
+                  if (tot > 1 && li) {
+                    base.left = `calc(4rem + (100% - 4rem - 0.75rem - ${(tot - 1) * 4}px) * ${li.lane / tot} + ${li.lane * 4}px)`;
+                    base.width = `calc((100% - 4rem - 0.75rem - ${(tot - 1) * 4}px) / ${tot})`;
+                  }
+                  return base;
+                })()}
               >
                 <div className="flex items-center gap-1.5">
                   <TaakCheckCircle
@@ -825,7 +891,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 )}
               </motion.div>
             );
-          })}
+          });
+          })()}
 
           {/* Claude sessie blok — één blok met checklist */}
           {(() => {

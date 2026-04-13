@@ -63,19 +63,19 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
     return `${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
   })();
 
-  // Voor handmatige taken: snap default tijd naar direct na de laatste reeds ingeplande taak van die dag.
-  // Op die manier stapelen nieuwe taken logisch op, ipv altijd op 09:00 te starten.
+  // Snap default tijd naar direct na de laatste reeds ingeplande taak van die dag.
+  // Kijkt naar ALLE ingeplande taken (Claude + handmatig) — niet alleen soortgelijke.
+  // Anders komt een handmatige taak op 09:00 terwijl er al een Claude blok staat.
   const naLaatsteTaakTijd = (() => {
-    if (isClaudeTaak) return null;
     const zelfdeDag = ingeplandeTaken.filter(
-      (t) => t.id !== taak.id && t.ingeplandStart?.startsWith(defaultDatum) && t.uitvoerder !== "claude"
+      (t) => t.id !== taak.id && t.ingeplandStart?.startsWith(defaultDatum)
     );
     if (zelfdeDag.length === 0) return null;
     const laatsteEind = Math.max(
       ...zelfdeDag.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())
     );
     const eind = new Date(laatsteEind + 5 * 60000); // 5 min buffer
-    // Round to nearest 5 minutes for nettere tijden
+    // Rond af op dichtstbijzijnde 5 minuten voor nettere tijden
     const min = eind.getMinutes();
     const rounded = Math.ceil(min / 5) * 5;
     if (rounded === 60) {
@@ -89,15 +89,14 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
 
   // Default tijd prioriteit:
   // 1. expliciete prefill (slot click) → respecteer
-  // 2. Claude taak + bestaande sessie → snap naar sessie eind
-  // 3. Claude taak zonder sessie → 08:00 (standaard start Claude blok)
-  // 4. Handmatige taak + bestaande taken → na laatste taak + 5 min
+  // 2. Claude taak + bestaande Claude sessie → snap naar sessie eind (bundle)
+  // 3. Na laatste ingeplande taak van die dag (Claude of handmatig) + 5 min
+  // 4. Claude taak zonder iets op die dag → 08:00
   // 5. Leeg → 09:00
   const defaultTijd = prefillTijd
     || claudeSessieEindTijd
-    || (isClaudeTaak ? "08:00" : null)
     || naLaatsteTaakTijd
-    || "09:00";
+    || (isClaudeTaak ? "08:00" : "09:00");
 
   const [datum, setDatum] = useState(defaultDatum);
   const [tijd, setTijd] = useState(defaultTijd);
@@ -249,23 +248,48 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
             </div>
           )}
 
-          {/* Datum + tijd */}
+          {/* Datum */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-autronis-text-secondary">Datum</label>
+            <input
+              type="date"
+              value={datum}
+              onChange={(e) => setDatum(e.target.value)}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+            />
+          </div>
+
+          {/* Starttijd + Eindtijd */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-medium text-autronis-text-secondary">Datum</label>
-              <input
-                type="date"
-                value={datum}
-                onChange={(e) => setDatum(e.target.value)}
-                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
-              />
-            </div>
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-autronis-text-secondary">Starttijd</label>
               <input
                 type="time"
                 value={tijd}
                 onChange={(e) => setTijd(e.target.value)}
+                className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-autronis-text-secondary">Eindtijd</label>
+              <input
+                type="time"
+                value={(() => {
+                  const [h, m] = tijd.split(":").map(Number);
+                  const totaal = h * 60 + m + duur;
+                  const eh = Math.floor(totaal / 60) % 24;
+                  const em = totaal % 60;
+                  return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+                })()}
+                onChange={(e) => {
+                  const [eh, em] = e.target.value.split(":").map(Number);
+                  const [sh, sm] = tijd.split(":").map(Number);
+                  let nieuweDuur = (eh * 60 + em) - (sh * 60 + sm);
+                  if (nieuweDuur <= 0) nieuweDuur += 24 * 60; // over middernacht
+                  if (nieuweDuur > 0 && nieuweDuur <= 8 * 60) {
+                    setDuur(nieuweDuur);
+                  }
+                }}
                 className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-3 py-2.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 focus:border-autronis-accent transition-colors"
               />
             </div>

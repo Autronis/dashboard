@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
+export type ProjectEigenaar = "sem" | "syb" | "team" | "vrij";
+
 export interface Project {
   id: number;
   naam: string;
@@ -12,6 +14,7 @@ export interface Project {
   deadline: string | null;
   geschatteUren: number | null;
   werkelijkeUren: number | null;
+  eigenaar: ProjectEigenaar | null;
   bijgewerktOp: string | null;
   aangemaaktOp: string | null;
   takenTotaal: number;
@@ -111,6 +114,7 @@ export interface ProjectDetail {
   deadline: string | null;
   geschatteUren: number | null;
   werkelijkeUren: number | null;
+  eigenaar: ProjectEigenaar | null;
   aangemaaktOp: string | null;
   bijgewerktOp: string | null;
   totaalTaken: number;

@@ -298,12 +298,15 @@ export default function LeadsFoldersPage() {
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <Link
+                        href={`/leads/folders/${encodeURIComponent(folder.name)}`}
+                        className="flex items-center gap-2 min-w-0 flex-1 hover:text-autronis-accent transition-colors"
+                      >
                         <FolderOpen className="w-4 h-4 text-autronis-accent flex-shrink-0" />
                         <h3 className="text-sm font-semibold text-autronis-text-primary truncate">
                           {folder.name}
                         </h3>
-                      </div>
+                      </Link>
                       <div className="flex items-center gap-0.5">
                         <button
                           onClick={() => {

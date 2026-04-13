@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { proposals, proposalRegels, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { parseSlides, slidesSchema } from "@/lib/proposal-schema";
 
 // GET /api/proposals/[id]
 export async function GET(
@@ -47,7 +48,14 @@ export async function GET(
       .from(proposalRegels)
       .where(eq(proposalRegels.proposalId, Number(id)));
 
-    return NextResponse.json({ proposal, regels });
+    const slides = parseSlides(proposal.secties);
+    return NextResponse.json({
+      proposal: {
+        ...proposal,
+        secties: slides, // now always the new shape
+      },
+      regels,
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },
@@ -82,6 +90,17 @@ export async function PUT(
     }
 
     const { klantId, titel, secties, geldigTot, regels } = body;
+
+    // Validate slides
+    if (secties !== undefined) {
+      const slidesResult = slidesSchema.safeParse(secties);
+      if (!slidesResult.success) {
+        return NextResponse.json(
+          { fout: "Ongeldige slide structuur: " + slidesResult.error.issues[0]?.message },
+          { status: 400 }
+        );
+      }
+    }
 
     // Calculate total
     let totaalBedrag = 0;

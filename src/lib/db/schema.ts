@@ -58,6 +58,11 @@ export const projecten = sqliteTable("projecten", {
   notionPageId: text("notion_page_id"),
   notionUrl: text("notion_url"),
   projectDir: text("project_dir"),
+  // GitHub repo URL — gevuld door auto-create flow zodra een project wordt
+  // aangemaakt en GITHUB_TOKEN env var is gezet. Desktop agents klonen deze
+  // repo in plaats van een lege map te maken, zodat Sem en Syb dezelfde
+  // werkboom hebben zodra ze hun agent runnen.
+  githubUrl: text("github_url"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),

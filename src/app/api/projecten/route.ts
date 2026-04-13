@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { projecten, klanten, taken, tijdregistraties, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, desc, gte } from "drizzle-orm";
+import { createProjectRepo } from "@/lib/github";
 
 // GET /api/projecten — All active projects with client name + task stats + activity
 export async function GET(req: NextRequest) {
@@ -249,7 +250,26 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ project, bestaand: false }, { status: 201 });
+    // Auto-create GitHub repo onder Autronis org. No-op als GITHUB_TOKEN
+    // ontbreekt — dashboard moet niet crashen op GH falen. De URL wordt
+    // bewaard zodat desktop agents van zowel Sem als Syb hem kunnen klonen
+    // bij hun volgende project_sync run.
+    let projectMetUrl = project;
+    try {
+      const repo = await createProjectRepo(project.naam, project.omschrijving);
+      if (repo) {
+        const [updated] = await db
+          .update(projecten)
+          .set({ githubUrl: repo.url, bijgewerktOp: sql`(datetime('now'))` })
+          .where(eq(projecten.id, project.id))
+          .returning();
+        if (updated) projectMetUrl = updated;
+      }
+    } catch (e) {
+      console.error("[projecten/POST] github auto-create error:", e);
+    }
+
+    return NextResponse.json({ project: projectMetUrl, bestaand: false }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

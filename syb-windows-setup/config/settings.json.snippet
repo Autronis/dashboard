@@ -1,0 +1,17 @@
+{
+  "_comment": "Plak deze 'hooks' sectie in je %USERPROFILE%\\.claude\\settings.json. Als die file al een 'hooks' object heeft, voeg de PostToolUse array toe — niet vervangen. Als hij leeg is, gebruik gewoon dit hele object.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash|TodoWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "%USERPROFILE%\\.claude\\hooks\\auto-sync-taken.cmd",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

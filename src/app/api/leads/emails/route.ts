@@ -91,10 +91,31 @@ export async function PATCH(req: NextRequest) {
 
     const body = (await req.json()) as {
       id?: string;
+      ids?: string[];
       email_status?: string;
       generated_email?: string;
       generated_subject?: string;
+      recipient_email?: string;
     };
+    // Bulk update via { ids: [...], email_status: '...' } — voor "alles goedkeuren/afwijzen"
+    if (body.ids && Array.isArray(body.ids) && body.ids.length > 0 && body.email_status) {
+      const supabase = getSupabaseLeads();
+      const { error } = await supabase
+        .from("emails")
+        .update({
+          email_status: body.email_status,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", body.ids);
+      if (error) {
+        return NextResponse.json(
+          { fout: `Supabase error: ${error.message}` },
+          { status: 500 }
+        );
+      }
+      return NextResponse.json({ ok: true, bulkUpdated: body.ids.length });
+    }
+
     if (!body.id) {
       return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
     }
@@ -104,12 +125,14 @@ export async function PATCH(req: NextRequest) {
       email_status?: string;
       generated_email?: string;
       generated_subject?: string;
+      recipient_email?: string;
     } = {
       updated_at: new Date().toISOString(),
     };
     if (body.email_status !== undefined) updates.email_status = body.email_status;
     if (body.generated_email !== undefined) updates.generated_email = body.generated_email;
     if (body.generated_subject !== undefined) updates.generated_subject = body.generated_subject;
+    if (body.recipient_email !== undefined) updates.recipient_email = body.recipient_email;
 
     if (Object.keys(updates).length === 1) {
       return NextResponse.json(

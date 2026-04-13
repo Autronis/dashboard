@@ -121,6 +121,14 @@ export default function LeadsEmailsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sortDesc, setSortDesc] = useState(true); // true = newest first
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState<string | null>(null);
+
+  // Inline edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editBody, setEditBody] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -153,8 +161,16 @@ export default function LeadsEmailsPage() {
     return counts;
   }, [emails]);
 
+  const sorted = useMemo(() => {
+    return [...emails].sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return sortDesc ? tb - ta : ta - tb;
+    });
+  }, [emails, sortDesc]);
+
   const gefilterd = useMemo(() => {
-    let result = emails;
+    let result = sorted;
     if (statusFilter !== "alle") {
       result = result.filter((e) => e.email_status === statusFilter);
     }
@@ -167,7 +183,7 @@ export default function LeadsEmailsPage() {
       );
     }
     return result;
-  }, [emails, statusFilter, zoek]);
+  }, [sorted, statusFilter, zoek]);
 
   async function handleStatusChange(id: string, newStatus: string) {
     setBusyId(id);
@@ -222,6 +238,126 @@ export default function LeadsEmailsPage() {
     setTimeout(() => setCopiedId(null), 1500);
   }
 
+  function toggleSelect(id: string) {
+    setSelectedIds((curr) => {
+      const next = new Set(curr);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function startEdit(email: EmailRecord) {
+    setEditingId(email.id);
+    setEditSubject(email.generated_subject || "");
+    setEditBody(email.generated_email || "");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setEditSubject("");
+    setEditBody("");
+  }
+
+  async function saveEdit(id: string) {
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/leads/emails", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id,
+          generated_subject: editSubject,
+          generated_email: editBody,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `HTTP ${res.status}`);
+      }
+      setEmails((curr) =>
+        curr.map((e) =>
+          e.id === id
+            ? { ...e, generated_subject: editSubject, generated_email: editBody }
+            : e
+        )
+      );
+      addToast("Email opgeslagen", "succes");
+      cancelEdit();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Opslaan mislukt", "fout");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function bulkStatus(ids: string[], newStatus: string, label: string) {
+    if (ids.length === 0) {
+      addToast("Geen emails geselecteerd", "fout");
+      return;
+    }
+    setBulkBusy(label);
+    try {
+      const res = await fetch("/api/leads/emails", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids, email_status: newStatus }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `HTTP ${res.status}`);
+      }
+      setEmails((curr) =>
+        curr.map((e) => (ids.includes(e.id) ? { ...e, email_status: newStatus } : e))
+      );
+      addToast(`${ids.length} emails → ${label}`, "succes");
+      setSelectedIds(new Set());
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Bulk update mislukt", "fout");
+    } finally {
+      setBulkBusy(null);
+    }
+  }
+
+  async function bulkSend(ids: string[]) {
+    if (ids.length === 0) {
+      addToast("Geen emails geselecteerd", "fout");
+      return;
+    }
+    setBulkBusy("send");
+    try {
+      const res = await fetch("/api/leads/emails/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.fout || `HTTP ${res.status}`);
+      }
+      addToast(`${data.verstuurd} emails verstuurd via n8n`, "succes");
+      setEmails((curr) =>
+        curr.map((e) => (ids.includes(e.id) ? { ...e, email_status: "sending" } : e))
+      );
+      setSelectedIds(new Set());
+      setTimeout(load, 5000);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Verzenden mislukt", "fout");
+    } finally {
+      setBulkBusy(null);
+    }
+  }
+
+  // Helpers voor "approve all generated" / "reject all generated"
+  const allGeneratedIds = useMemo(
+    () => gefilterd.filter((e) => e.email_status === "generated").map((e) => e.id),
+    [gefilterd]
+  );
+  const allApprovedIds = useMemo(
+    () => gefilterd.filter((e) => e.email_status === "approved").map((e) => e.id),
+    [gefilterd]
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -267,16 +403,105 @@ export default function LeadsEmailsPage() {
         })}
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-        <input
-          type="text"
-          value={zoek}
-          onChange={(e) => setZoek(e.target.value)}
-          placeholder="Zoek op naam, email, onderwerp..."
-          className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-        />
+      {/* Search + sort + bulk acties */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
+          <input
+            type="text"
+            value={zoek}
+            onChange={(e) => setZoek(e.target.value)}
+            placeholder="Zoek op naam, email, onderwerp..."
+            className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+          />
+        </div>
+        <button
+          onClick={() => setSortDesc((v) => !v)}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          title={sortDesc ? "Nieuwste eerst" : "Oudste eerst"}
+        >
+          {sortDesc ? <ArrowDownAZ className="w-3.5 h-3.5" /> : <ArrowUpAZ className="w-3.5 h-3.5" />}
+          {sortDesc ? "Nieuwste" : "Oudste"}
+        </button>
+      </div>
+
+      {/* Bulk action bar — toon altijd, knoppen disabled als selectie leeg */}
+      <div className="rounded-xl border border-autronis-border bg-autronis-card p-3 flex flex-wrap items-center gap-2">
+        <span className="text-xs text-autronis-text-secondary mr-2">
+          {selectedIds.size > 0 ? `${selectedIds.size} geselecteerd` : "Bulk acties:"}
+        </span>
+        {selectedIds.size > 0 ? (
+          <>
+            <button
+              onClick={() => bulkStatus(Array.from(selectedIds), "approved", "approve-sel")}
+              disabled={!!bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/25 transition-colors disabled:opacity-40"
+            >
+              {bulkBusy === "approve-sel" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+              Goedkeuren
+            </button>
+            <button
+              onClick={() => bulkStatus(Array.from(selectedIds), "failed", "reject-sel")}
+              disabled={!!bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-40"
+            >
+              {bulkBusy === "reject-sel" ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+              Afwijzen
+            </button>
+            <button
+              onClick={() => bulkSend(Array.from(selectedIds))}
+              disabled={!!bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-40"
+            >
+              {bulkBusy === "send" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+              Verzend ({selectedIds.size})
+            </button>
+            <button
+              onClick={() => setSelectedIds(new Set())}
+              className="text-xs text-autronis-text-secondary/60 hover:text-autronis-text-primary px-2"
+            >
+              Wis selectie
+            </button>
+          </>
+        ) : (
+          <>
+            {allGeneratedIds.length > 0 && (
+              <>
+                <button
+                  onClick={() => bulkStatus(allGeneratedIds, "approved", "approve-all-gen")}
+                  disabled={!!bulkBusy}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition-colors disabled:opacity-40"
+                >
+                  {bulkBusy === "approve-all-gen" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+                  Goedkeur alle te-reviewen ({allGeneratedIds.length})
+                </button>
+                <button
+                  onClick={() => bulkStatus(allGeneratedIds, "failed", "reject-all-gen")}
+                  disabled={!!bulkBusy}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                >
+                  {bulkBusy === "reject-all-gen" ? <Loader2 className="w-3 h-3 animate-spin" /> : <XCircle className="w-3 h-3" />}
+                  Wijs alle af ({allGeneratedIds.length})
+                </button>
+              </>
+            )}
+            {allApprovedIds.length > 0 && (
+              <button
+                onClick={() => bulkSend(allApprovedIds)}
+                disabled={!!bulkBusy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors disabled:opacity-40"
+              >
+                {bulkBusy === "send" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                Verzend alle goedgekeurde ({allApprovedIds.length})
+              </button>
+            )}
+            {allGeneratedIds.length === 0 && allApprovedIds.length === 0 && (
+              <span className="text-xs text-autronis-text-secondary/60">
+                Selecteer emails of filter op een status om bulk acties te tonen
+              </span>
+            )}
+          </>
+        )}
       </div>
 
       {/* Body */}

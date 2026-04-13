@@ -282,54 +282,52 @@ function LauncherItem({
 
 // ─── Section state ──────────────────────────────────────────────
 const SIDEBAR_SECTIONS_KEY = "autronis-sidebar-sections";
-const SIDEBAR_LAUNCHERS_KEY = "autronis-sidebar-launchers";
 
-function useLauncherState(key: string, isActive: boolean) {
-  const [open, setOpenState] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+// ─── Launcher (hub) accordion state ─────────────────────────────
+// Slechts één launcher mag tegelijk open zijn. Bij navigatie naar een
+// pagina binnen een hub opent die hub automatisch (en sluit de andere).
+// Bij handmatig klikken op een andere hub idem: pure accordion.
+const LauncherContext = createContext<{
+  openLauncher: string | null;
+  setOpenLauncher: (key: string | null) => void;
+}>({ openLauncher: null, setOpenLauncher: () => {} });
 
-  // Persist helper
-  const persist = useCallback((next: boolean) => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
-      const map = stored ? JSON.parse(stored) as Record<string, boolean> : {};
-      map[key] = next;
-      localStorage.setItem(SIDEBAR_LAUNCHERS_KEY, JSON.stringify(map));
-    } catch { /* ignore */ }
-  }, [key]);
+function LauncherProvider({ pathname, children }: { pathname: string; children: React.ReactNode }) {
+  const [openLauncher, setOpenLauncher] = useState<string | null>(null);
 
-  // Initial load: read previously persisted open-state. isActive overrides
-  // (als de huidige route in deze hub valt, openen we 'm sowieso meteen).
+  // Bij pathname wijziging: bepaal welke hub de current page bevat en
+  // open die. Als er geen actieve hub is, sluiten we alles.
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(SIDEBAR_LAUNCHERS_KEY);
-      if (stored) {
-        const map = JSON.parse(stored) as Record<string, boolean>;
-        if (key in map) setOpenState(map[key]);
+    let active: string | null = null;
+    for (const entry of navSections) {
+      if (entry === "divider") continue;
+      if ("section" in entry) {
+        for (const item of entry.items) {
+          if (isLauncher(item) && item.children.some((c) => isNavLinkActive(c, pathname))) {
+            active = item.label;
+            break;
+          }
+        }
       }
-    } catch { /* ignore */ }
-    setLoaded(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+      if (active) break;
+    }
+    setOpenLauncher(active);
+  }, [pathname]);
 
-  // Auto open/close op basis van active state. Wanneer je naar een route
-  // binnen deze hub navigeert → opent. Wanneer je weg navigeert → sluit.
-  // Dit overrult de localStorage waarde zodat hubs niet "blijven plakken".
-  useEffect(() => {
-    if (!loaded) return;
-    setOpenState(isActive);
-    persist(isActive);
-  }, [isActive, loaded, persist]);
+  return (
+    <LauncherContext.Provider value={{ openLauncher, setOpenLauncher }}>
+      {children}
+    </LauncherContext.Provider>
+  );
+}
 
+function useLauncherState(key: string) {
+  const { openLauncher, setOpenLauncher } = useContext(LauncherContext);
+  const open = openLauncher === key;
   const toggle = useCallback(() => {
-    setOpenState((prev) => {
-      const next = !prev;
-      persist(next);
-      return next;
-    });
-  }, [persist]);
-
-  return { open: loaded ? open : isActive, toggle };
+    setOpenLauncher(open ? null : key);
+  }, [open, key, setOpenLauncher]);
+  return { open, toggle };
 }
 
 function useSectionState(section: string, defaultOpen: boolean) {

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { RedactText } from "@/components/leads/redact-text";
 
 interface LinkedinLeadRow {
   id: string;
@@ -543,7 +544,7 @@ export default function LeadsOverzichtPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-autronis-text-primary truncate">
-                          {lead.name || "(geen naam)"}
+                          <RedactText>{lead.name || "(geen naam)"}</RedactText>
                         </span>
                         {lead.source === "google_maps" ? (
                           <MapPin

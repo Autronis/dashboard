@@ -8,12 +8,14 @@ import {
   Zap,
   Mail,
   TestTube,
-  CheckCircle,
   AlertCircle,
   Globe,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useLeadsDemo } from "@/lib/leads-demo";
 
 interface WebhookConfig {
   id: string;
@@ -45,6 +47,7 @@ const WEBHOOKS: WebhookConfig[] = [
 
 export default function LeadsInstellingenPage() {
   const { addToast } = useToast();
+  const { demoMode, setDemoMode } = useLeadsDemo();
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [edited, setEdited] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -138,6 +141,49 @@ export default function LeadsInstellingenPage() {
         <p className="text-sm text-autronis-text-secondary mt-1">
           Configureer webhook URLs en email generator instellingen.
         </p>
+      </div>
+
+      {/* Demo mode toggle */}
+      <div className="rounded-xl border border-autronis-border bg-autronis-card p-5">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-autronis-accent/10 flex-shrink-0">
+            {demoMode ? (
+              <EyeOff className="w-4 h-4 text-autronis-accent" />
+            ) : (
+              <Eye className="w-4 h-4 text-autronis-accent" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-semibold text-autronis-text-primary">
+              Demo mode
+            </h3>
+            <p className="text-xs text-autronis-text-secondary mt-0.5">
+              Verbergt namen, emails en websites op de leads pagina&apos;s — handig
+              voor screenshots. Wordt lokaal in je browser opgeslagen.
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setDemoMode(!demoMode);
+              addToast(
+                demoMode ? "Demo mode uit" : "Demo mode aan — gevoelige velden zijn nu geredact",
+                "succes"
+              );
+            }}
+            className={cn(
+              "relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0",
+              demoMode ? "bg-autronis-accent" : "bg-autronis-border"
+            )}
+            aria-label="Demo mode toggle"
+          >
+            <span
+              className={cn(
+                "inline-block h-4 w-4 transform rounded-full bg-autronis-bg transition-transform",
+                demoMode ? "translate-x-6" : "translate-x-1"
+              )}
+            />
+          </button>
+        </div>
       </div>
 
       {loading && (

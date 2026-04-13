@@ -38,6 +38,7 @@ interface EmailRecord {
   generated_email: string | null;
   email_status: string | null;
   painpoint_used: string | null;
+  company_summary: string | null;
   reply_subject: string | null;
   reply_body: string | null;
   reply_received_at: string | null;
@@ -129,6 +130,13 @@ export default function LeadsEmailsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSubject, setEditSubject] = useState("");
   const [editBody, setEditBody] = useState("");
+
+  // Inline edit recipient_email
+  const [editingRecipientId, setEditingRecipientId] = useState<string | null>(null);
+  const [editRecipient, setEditRecipient] = useState("");
+
+  // Bedrijfsanalyse collapsible (per email id)
+  const [showSummaryIds, setShowSummaryIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -289,6 +297,54 @@ export default function LeadsEmailsPage() {
     } finally {
       setBusyId(null);
     }
+  }
+
+  function startEditRecipient(email: EmailRecord) {
+    setEditingRecipientId(email.id);
+    setEditRecipient(email.recipient_email || "");
+  }
+
+  function cancelEditRecipient() {
+    setEditingRecipientId(null);
+    setEditRecipient("");
+  }
+
+  async function saveRecipient(id: string) {
+    const trimmed = editRecipient.trim();
+    if (!trimmed) {
+      addToast("Email mag niet leeg zijn", "fout");
+      return;
+    }
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/leads/emails", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, recipient_email: trimmed }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `HTTP ${res.status}`);
+      }
+      setEmails((curr) =>
+        curr.map((e) => (e.id === id ? { ...e, recipient_email: trimmed } : e))
+      );
+      addToast("Email adres bijgewerkt", "succes");
+      cancelEditRecipient();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Opslaan mislukt", "fout");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  function toggleSummary(id: string) {
+    setShowSummaryIds((curr) => {
+      const next = new Set(curr);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function bulkStatus(ids: string[], newStatus: string, label: string) {
@@ -566,6 +622,15 @@ export default function LeadsEmailsPage() {
                       </span>
                       <SourceBadge source={email.source} />
                       <StatusBadge status={email.email_status} />
+                      {email.painpoint_used && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300"
+                          title={`Painpoint: ${email.painpoint_used}`}
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          {email.painpoint_used}
+                        </span>
+                      )}
                       {Array.isArray(email.missing_info) && email.missing_info.length > 0 && (
                         <span
                           className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400"
@@ -581,18 +646,94 @@ export default function LeadsEmailsPage() {
                         {email.generated_subject}
                       </p>
                     )}
-                    {email.recipient_email && (
-                      <p className="text-[10px] text-autronis-text-secondary/60 mt-0.5">
-                        → {email.recipient_email}
-                      </p>
-                    )}
                   </div>
                   </button>
+                </div>
+
+                {/* Recipient email row — clickable inline edit, ALTIJD zichtbaar (ook ingeklapt) */}
+                <div className="px-3 pb-2 pl-10 -mt-1">
+                  {editingRecipientId === email.id ? (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] text-autronis-text-secondary/60">→</span>
+                      <input
+                        type="email"
+                        value={editRecipient}
+                        onChange={(e) => setEditRecipient(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") saveRecipient(email.id);
+                          if (e.key === "Escape") cancelEditRecipient();
+                        }}
+                        autoFocus
+                        placeholder="email@bedrijf.nl"
+                        className="flex-1 max-w-xs bg-autronis-bg border border-autronis-accent/40 rounded px-2 py-0.5 text-[10px] text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+                      />
+                      <button
+                        onClick={() => saveRecipient(email.id)}
+                        disabled={busyId === email.id}
+                        className="p-0.5 text-autronis-accent hover:bg-autronis-accent/10 rounded disabled:opacity-50"
+                        title="Opslaan (Enter)"
+                      >
+                        {busyId === email.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Check className="w-3 h-3" />
+                        )}
+                      </button>
+                      <button
+                        onClick={cancelEditRecipient}
+                        className="p-0.5 text-autronis-text-secondary hover:bg-autronis-card rounded"
+                        title="Annuleer (Esc)"
+                      >
+                        <XCircle className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startEditRecipient(email);
+                      }}
+                      className="inline-flex items-center gap-1 text-[10px] text-autronis-text-secondary/60 hover:text-autronis-accent transition-colors group/recipient"
+                      title="Klik om te wijzigen"
+                    >
+                      <span>→ {email.recipient_email || <em className="text-amber-400">geen email</em>}</span>
+                      <Pencil className="w-2.5 h-2.5 opacity-0 group-hover/recipient:opacity-100 transition-opacity" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Expanded content */}
                 {expanded && (
                   <div className="border-t border-autronis-border bg-autronis-bg/40 p-4 space-y-3">
+                    {/* Bedrijfsanalyse collapsible */}
+                    {email.company_summary && (
+                      <div className="rounded-lg border border-autronis-border bg-autronis-card overflow-hidden">
+                        <button
+                          onClick={() => toggleSummary(email.id)}
+                          className="w-full flex items-center gap-2 px-3 py-2 hover:bg-autronis-accent/[0.04] transition-colors"
+                        >
+                          {showSummaryIds.has(email.id) ? (
+                            <ChevronDown className="w-3 h-3 text-autronis-text-secondary" />
+                          ) : (
+                            <ChevronRight className="w-3 h-3 text-autronis-text-secondary" />
+                          )}
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-autronis-text-secondary">
+                            Bedrijfsanalyse
+                          </span>
+                          <span className="text-[10px] text-autronis-text-secondary/50 ml-auto">
+                            {showSummaryIds.has(email.id) ? "verbergen" : "tonen"}
+                          </span>
+                        </button>
+                        {showSummaryIds.has(email.id) && (
+                          <div className="px-3 pb-3 pt-1 border-t border-autronis-border/50">
+                            <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
+                              {email.company_summary}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {editingId === email.id ? (
                       <div className="space-y-2">
                         <input
@@ -736,7 +877,6 @@ export default function LeadsEmailsPage() {
                     {/* Meta */}
                     <div className="flex items-center gap-3 text-[10px] text-autronis-text-secondary/50 pt-1">
                       <span>Aangemaakt: {new Date(email.created_at).toLocaleString("nl-NL")}</span>
-                      {email.painpoint_used && <span>· Painpoint: {email.painpoint_used}</span>}
                     </div>
                   </div>
                 )}

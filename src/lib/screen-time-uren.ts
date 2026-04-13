@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { screenTimeEntries, klanten, projecten } from "@/lib/db/schema";
-import { eq, and, sql, asc, isNotNull } from "drizzle-orm";
+import { eq, and, sql, asc } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
 const PRODUCTIEF_CATS = new Set(["development", "design", "administratie", "finance", "communicatie"]);
@@ -116,14 +116,12 @@ interface ProductiefEntry {
   klantId: number | null;
   startTijd: string;
   duurSeconden: number;
-  uurtarief?: number | null;
-  klantNaam?: string | null;
 }
 
 async function fetchProductieveEntries(
   vanDatum: string,
   totDatum: string,
-  opts: { gebruikerId?: number; withKlantInfo?: boolean } = {}
+  opts: { gebruikerId?: number } = {}
 ): Promise<ProductiefEntry[]> {
   // Expand UTC range by ±1 day to capture entries near midnight that belong
   // to the right NL local date but fall on a different UTC date.
@@ -140,46 +138,6 @@ async function fetchProductieveEntries(
   ];
   if (opts.gebruikerId !== undefined) {
     conditions.push(eq(screenTimeEntries.gebruikerId, opts.gebruikerId));
-  }
-
-  if (opts.withKlantInfo) {
-    const rows = await db
-      .select({
-        projectId: screenTimeEntries.projectId,
-        klantId: screenTimeEntries.klantId,
-        app: screenTimeEntries.app,
-        categorie: screenTimeEntries.categorie,
-        startTijd: screenTimeEntries.startTijd,
-        duurSeconden: screenTimeEntries.duurSeconden,
-        klantNaamDirect: klanten.bedrijfsnaam,
-        uurtariefDirect: klanten.uurtarief,
-        klantNaamViaProject: sql<string | null>`${klanten.bedrijfsnaam}`.as("klantNaamViaProject"),
-        uurtariefViaProject: sql<number | null>`${klanten.uurtarief}`.as("uurtariefViaProject"),
-      })
-      .from(screenTimeEntries)
-      .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
-      .leftJoin(
-        klanten,
-        sql`${klanten.id} = COALESCE(${screenTimeEntries.klantId}, ${projecten.klantId})`
-      )
-      .where(and(...conditions))
-      .all();
-
-    return rows
-      .filter((r) => {
-        if (SKIP_APPS.has(r.app) || r.categorie === "inactief") return false;
-        if (!r.categorie || !PRODUCTIEF_CATS.has(r.categorie)) return false;
-        const dag = nlDatum(r.startTijd);
-        return dag >= vanDatum && dag <= totDatum;
-      })
-      .map((r) => ({
-        projectId: r.projectId,
-        klantId: r.klantId ?? null,
-        startTijd: r.startTijd,
-        duurSeconden: r.duurSeconden,
-        uurtarief: r.uurtariefDirect ?? null,
-        klantNaam: r.klantNaamDirect ?? null,
-      }));
   }
 
   const rows = await db
@@ -224,14 +182,12 @@ export async function berekenUrenPerProject(
   return map;
 }
 
-/** Productive hours per client across all users in date range. */
+/** Productive hours per client across all users in date range.
+ *  Resolves klantId either directly from the entry or via project link. */
 export async function berekenUrenPerKlant(
   vanDatum: string,
   totDatum: string
 ): Promise<Map<number, number>> {
-  // Need klant info to resolve klantId via project when entry has no direct klantId
-  const entries = await fetchProductieveEntries(vanDatum, totDatum, { withKlantInfo: true });
-  // Re-query to also get klantId via project join
   const expanded = new Date(vanDatum); expanded.setDate(expanded.getDate() - 1);
   const expandedTot = new Date(totDatum); expandedTot.setDate(expandedTot.getDate() + 1);
   const vanUtc = expanded.toISOString().slice(0, 10);
@@ -262,8 +218,6 @@ export async function berekenUrenPerKlant(
     if (dag < vanDatum || dag > totDatum) continue;
     map.set(r.klantIdResolved, (map.get(r.klantIdResolved) ?? 0) + r.duurSeconden / 3600);
   }
-  // entries var unused after refactor — keep as void for ESLint
-  void entries;
   return map;
 }
 
@@ -282,7 +236,7 @@ export async function berekenOmzet(
   const conditions = [
     sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanUtc}`,
     sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totUtc}`,
-    isNotNull(klanten.id),
+    sql`${klanten.id} IS NOT NULL`,
   ];
   if (opts.gebruikerId !== undefined) {
     conditions.push(eq(screenTimeEntries.gebruikerId, opts.gebruikerId));
@@ -341,13 +295,6 @@ export async function berekenBillable(
   vanDatum: string,
   totDatum: string
 ): Promise<{ billableUren: number; nonBillableUren: number; totaleUren: number }> {
-  const entries = await fetchProductieveEntries(vanDatum, totDatum, { gebruikerId });
-  let billableSec = 0;
-  let nonBillableSec = 0;
-  for (const e of entries) {
-    void e; // entries already filtered to productive
-  }
-  // Need to re-query with categorie info to split
   const expanded = new Date(vanDatum); expanded.setDate(expanded.getDate() - 1);
   const expandedTot = new Date(totDatum); expandedTot.setDate(expandedTot.getDate() + 1);
   const vanUtc = expanded.toISOString().slice(0, 10);
@@ -368,6 +315,8 @@ export async function berekenBillable(
     ))
     .all();
 
+  let billableSec = 0;
+  let nonBillableSec = 0;
   for (const r of rows) {
     if (SKIP_APPS.has(r.app) || r.categorie === "inactief") continue;
     if (!r.categorie || !PRODUCTIEF_CATS.has(r.categorie)) continue;

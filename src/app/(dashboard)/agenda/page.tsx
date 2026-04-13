@@ -257,7 +257,33 @@ export default function AgendaPage() {
   // zichtbaar als losse blokken direct achter elkaar.
   function handlePlanFase(taken: AgendaTaak[], datum: string, startTijd: string) {
     if (taken.length === 0) return;
-    const [h, m] = startTijd.split(":").map(Number);
+
+    // Kijk of er al taken ingepland zijn op deze datum — zo ja, begin daarachter
+    // met 5 min buffer. Anders gebruik de opgegeven startTijd als start.
+    const bestaandOpDatum = ingeplandeTaken.filter(
+      (t) => t.ingeplandStart?.startsWith(datum)
+    );
+    let effectieveStartTijd = startTijd;
+    if (bestaandOpDatum.length > 0) {
+      const laatsteEind = Math.max(
+        ...bestaandOpDatum.map((t) =>
+          new Date(t.ingeplandEind || t.ingeplandStart!).getTime()
+        )
+      );
+      const eind = new Date(laatsteEind + 5 * 60000); // 5 min buffer
+      // Rond af op dichtstbijzijnde 5 minuten
+      const min = eind.getMinutes();
+      const rounded = Math.ceil(min / 5) * 5;
+      if (rounded === 60) {
+        eind.setHours(eind.getHours() + 1);
+        eind.setMinutes(0);
+      } else {
+        eind.setMinutes(rounded);
+      }
+      effectieveStartTijd = `${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
+    }
+
+    const [h, m] = effectieveStartTijd.split(":").map(Number);
     const cursor = new Date(`${datum}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) =>

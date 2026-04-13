@@ -5,7 +5,9 @@ import { requireAuth, requireApiKey } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 
 // Known docs files — add new ones here or pass via request body
-const KNOWN_DOCS = ["autronis-werkwijze.html", "autronis-skills.html"];
+// Note: autronis-skills.html is geconsolideerd in ATLAS — Hoe Werkt Alles (wiki id 29),
+// bestand is verwijderd om duplicaten te voorkomen.
+const KNOWN_DOCS = ["autronis-werkwijze.html"];
 
 function getBaseUrl(req: NextRequest): string {
   const host = req.headers.get("host") || "localhost:3000";

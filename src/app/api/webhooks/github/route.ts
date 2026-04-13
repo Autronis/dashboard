@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { db } from "@/lib/db";
 import { projecten, remoteCommits, notificaties } from "@/lib/db/schema";
 import { eq, or, like } from "drizzle-orm";
+import { sendPushToUser } from "@/lib/push";
 
 /**
  * POST /api/webhooks/github
@@ -93,24 +94,38 @@ export async function POST(req: NextRequest) {
       }).catch(() => {});
     }
 
-    // Notificatie: alleen voor team-projecten, naar de user die niet de auteur was.
+    // Notificatie + push: alleen voor team-projecten, naar de user die niet de auteur was.
     if (project && project.eigenaar === "team") {
       const authorEmail = (commits[0]?.author?.email ?? payload.pusher?.email ?? "").toLowerCase();
       // Sem=1, Syb=2. Crude email match — kan later beter.
       const isSem = authorEmail.includes("semmiegijs") || authorEmail.includes("sem");
       const notifyUserId = isSem ? 2 : 1;
       const fromNaam = isSem ? "Sem" : "Syb";
+      const titel = `${fromNaam} heeft ${commits.length} commit(s) gepusht naar ${project.naam}`;
+      const preview = commits
+        .slice(0, 3)
+        .map((c) => `• ${c.message.split("\n")[0]}`)
+        .join("\n");
+      const link = `/projecten/${project.id}`;
 
+      // In-app notificatie (verschijnt in de notificatie-bell)
       await db.insert(notificaties).values({
         gebruikerId: notifyUserId,
         type: "project_toegewezen",
-        titel: `${fromNaam} heeft ${commits.length} commit(s) gepusht naar ${project.naam}`,
-        omschrijving: commits
-          .slice(0, 3)
-          .map((c) => `• ${c.message.split("\n")[0]}`)
-          .join("\n"),
-        link: `/projecten/${project.id}`,
+        titel,
+        omschrijving: preview,
+        link,
       }).catch(() => {});
+
+      // Web push notificatie (komt door op telefoon/desktop browser)
+      sendPushToUser(notifyUserId, {
+        titel,
+        bericht: preview,
+        url: link,
+        tag: `github-push-${project.id}`,
+      }).catch(() => {
+        // Push faalt zachtjes — in-app notificatie blijft zichtbaar.
+      });
     }
 
     return NextResponse.json({

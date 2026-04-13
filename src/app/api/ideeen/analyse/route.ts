@@ -9,11 +9,17 @@ export async function POST(req: NextRequest) {
   try {
     await requireAuth();
 
-    // Get all ideas
+    // Get all ideas, excluding:
+    // - inzichten (notities, niet de backlog)
+    // - AI-suggesties die nog niet zijn gepromoveerd (die zitten nog niet
+    //   in de backlog — Sem moet ze eerst zelf doorvoeren of weggooien)
     const alleIdeeen = await db
       .select({ id: ideeen.id, nummer: ideeen.nummer, naam: ideeen.naam, categorie: ideeen.categorie, status: ideeen.status, omschrijving: ideeen.omschrijving })
       .from(ideeen)
-      .where(sql`${ideeen.categorie} != 'inzicht'`)
+      .where(
+        sql`${ideeen.categorie} != 'inzicht'
+            AND (${ideeen.isAiSuggestie} = 0 OR ${ideeen.gepromoveerd} = 1)`
+      )
       .all();
 
     // Get all active/completed projects

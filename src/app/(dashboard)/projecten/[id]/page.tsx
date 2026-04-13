@@ -30,6 +30,7 @@ import { useTimer } from "@/hooks/use-timer";
 import { openProjectInVSCode } from "@/lib/desktop-agent";
 import { useProjectDetail } from "@/hooks/queries/use-projecten";
 import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecten";
+import { EigenaarPicker } from "@/components/projecten/eigenaar-picker";
 
 // ============ Sub-components ============
 
@@ -610,6 +611,7 @@ export default function ProjectDetailPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">{project.naam}</h1>
                 <StatusBadge status={project.status ?? "actief"} />
+                <EigenaarPicker projectId={project.id} current={project.eigenaar ?? null} />
               </div>
               {project.klantNaam && (
                 <p className="text-sm text-autronis-text-secondary">

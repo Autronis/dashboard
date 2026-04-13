@@ -99,7 +99,12 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
     }
 
-    const updates: Record<string, unknown> = {
+    const updates: {
+      updated_at: string;
+      email_status?: string;
+      generated_email?: string;
+      generated_subject?: string;
+    } = {
       updated_at: new Date().toISOString(),
     };
     if (body.email_status !== undefined) updates.email_status = body.email_status;

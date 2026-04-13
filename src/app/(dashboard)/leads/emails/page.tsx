@@ -19,6 +19,10 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  Pencil,
+  RotateCcw,
+  ArrowDownAZ,
+  ArrowUpAZ,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";

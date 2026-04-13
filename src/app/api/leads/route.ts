@@ -21,19 +21,36 @@ export async function GET(req: NextRequest) {
     await authenticate(req);
 
     const supabase = getSupabaseLeads();
-    const { data, error } = await supabase
-      .from("leads")
-      .select("*")
-      .order("created_at", { ascending: false });
 
-    if (error) {
-      return NextResponse.json(
-        { fout: `Supabase error: ${error.message}` },
-        { status: 500 }
-      );
+    // Supabase heeft een default row limit van 1000. We hebben 1700+ leads,
+    // dus we paginate handmatig in batches van 1000 totdat de batch leeg is.
+    const PAGE_SIZE = 1000;
+    const allRows: unknown[] = [];
+    let page = 0;
+    while (true) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, error } = await supabase
+        .from("leads")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, to);
+
+      if (error) {
+        return NextResponse.json(
+          { fout: `Supabase error: ${error.message}` },
+          { status: 500 }
+        );
+      }
+
+      if (!data || data.length === 0) break;
+      allRows.push(...data);
+      if (data.length < PAGE_SIZE) break; // laatste pagina
+      page++;
+      if (page > 50) break; // safety: max 50k leads
     }
 
-    return NextResponse.json({ leads: data ?? [] });
+    return NextResponse.json({ leads: allRows, totaal: allRows.length });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     return NextResponse.json(

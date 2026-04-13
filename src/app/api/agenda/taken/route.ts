@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, externeKalenders } from "@/lib/db/schema";
-import { eq, or, and, isNotNull, isNull, sql } from "drizzle-orm";
+import { eq, or, and, isNull, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
@@ -38,10 +38,11 @@ export async function GET() {
             eq(taken.toegewezenAan, gebruiker.id),
             isNull(taken.toegewezenAan)
           ),
+          // Afgerond taken horen niet in de agenda — die clutteren de dag-view.
+          // Voor historische weergave is er de taken pagina.
           or(
             eq(taken.status, "open"),
-            eq(taken.status, "bezig"),
-            and(eq(taken.status, "afgerond"), isNotNull(taken.ingeplandStart))
+            eq(taken.status, "bezig")
           )
         )
       )

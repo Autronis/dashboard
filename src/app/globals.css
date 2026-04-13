@@ -407,3 +407,39 @@ body {
 .ytk-markdown a:hover { opacity: 0.8; }
 .ytk-markdown code { background: var(--bg); color: var(--accent); padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.8em; }
 .ytk-markdown hr { border-color: var(--border); margin: 0.75rem 0; }
+
+/* Proposal deck fonts */
+@font-face {
+  font-family: "SpaceGrotesk";
+  src: url("/fonts/SpaceGrotesk-Bold.woff") format("woff");
+  font-weight: 700;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/Inter-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-display: swap;
+}
+
+.font-deck-heading {
+  font-family: "SpaceGrotesk", "Inter", system-ui, sans-serif;
+}
+.font-deck-body {
+  font-family: "Inter", system-ui, sans-serif;
+}

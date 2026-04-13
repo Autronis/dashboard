@@ -86,10 +86,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Titel is verplicht." }, { status: 400 });
     }
 
+    const cleanTitel = titel.trim();
+
+    // Upsert-by-title: als er al een artikel met deze titel bestaat,
+    // werk het bij in plaats van een duplicaat aan te maken.
+    const bestaand = await db
+      .select({ id: wikiArtikelen.id })
+      .from(wikiArtikelen)
+      .where(sql`LOWER(TRIM(${wikiArtikelen.titel})) = LOWER(${cleanTitel})`)
+      .get();
+
+    if (bestaand) {
+      const [artikel] = await db
+        .update(wikiArtikelen)
+        .set({
+          inhoud: inhoud || "",
+          categorie: (categorie || "processen") as typeof wikiArtikelen.categorie.enumValues[number],
+          tags: JSON.stringify(tags || []),
+          bijgewerktOp: new Date().toISOString(),
+        })
+        .where(eq(wikiArtikelen.id, bestaand.id))
+        .returning();
+      return NextResponse.json({ artikel, bijgewerkt: true }, { status: 200 });
+    }
+
     const [artikel] = await db
       .insert(wikiArtikelen)
       .values({
-        titel: titel.trim(),
+        titel: cleanTitel,
         inhoud: inhoud || "",
         categorie: categorie || "processen",
         tags: JSON.stringify(tags || []),

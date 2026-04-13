@@ -134,6 +134,26 @@ function scoreKleur(score: number | null): string {
   return "bg-red-500/15 text-red-400";
 }
 
+interface YtMeta {
+  youtubeId: string;
+  videoTitle: string;
+  videoUrl: string;
+  channelName: string;
+  analysisId?: string;
+  relevanceScore?: number;
+}
+
+function safeParseYtMeta(text: string | null): YtMeta | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as YtMeta;
+    if (parsed && typeof parsed.youtubeId === "string") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ============ MAIN PAGE ============
 
 export default function IdeeenPage() {

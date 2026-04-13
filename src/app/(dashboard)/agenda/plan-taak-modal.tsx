@@ -63,8 +63,41 @@ export function PlanTaakModal({ taak, onClose, onPlan, onUnplan, isPending, pref
     return `${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
   })();
 
-  // Default tijd: claude sessie end (als die bestaat), anders 08:00 voor claude taken (sessie blok), anders prefill of 09:00
-  const defaultTijd = prefillTijd || claudeSessieEindTijd || (isClaudeTaak ? "08:00" : "09:00");
+  // Voor handmatige taken: snap default tijd naar direct na de laatste reeds ingeplande taak van die dag.
+  // Op die manier stapelen nieuwe taken logisch op, ipv altijd op 09:00 te starten.
+  const naLaatsteTaakTijd = (() => {
+    if (isClaudeTaak) return null;
+    const zelfdeDag = ingeplandeTaken.filter(
+      (t) => t.id !== taak.id && t.ingeplandStart?.startsWith(defaultDatum) && t.uitvoerder !== "claude"
+    );
+    if (zelfdeDag.length === 0) return null;
+    const laatsteEind = Math.max(
+      ...zelfdeDag.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())
+    );
+    const eind = new Date(laatsteEind + 5 * 60000); // 5 min buffer
+    // Round to nearest 5 minutes for nettere tijden
+    const min = eind.getMinutes();
+    const rounded = Math.ceil(min / 5) * 5;
+    if (rounded === 60) {
+      eind.setHours(eind.getHours() + 1);
+      eind.setMinutes(0);
+    } else {
+      eind.setMinutes(rounded);
+    }
+    return `${String(eind.getHours()).padStart(2, "0")}:${String(eind.getMinutes()).padStart(2, "0")}`;
+  })();
+
+  // Default tijd prioriteit:
+  // 1. expliciete prefill (slot click) → respecteer
+  // 2. Claude taak + bestaande sessie → snap naar sessie eind
+  // 3. Claude taak zonder sessie → 08:00 (standaard start Claude blok)
+  // 4. Handmatige taak + bestaande taken → na laatste taak + 5 min
+  // 5. Leeg → 09:00
+  const defaultTijd = prefillTijd
+    || claudeSessieEindTijd
+    || (isClaudeTaak ? "08:00" : null)
+    || naLaatsteTaakTijd
+    || "09:00";
 
   const [datum, setDatum] = useState(defaultDatum);
   const [tijd, setTijd] = useState(defaultTijd);

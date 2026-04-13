@@ -307,6 +307,19 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { done: eventDone, toggle: toggleEventDone } = useEventDoneState();
 
+  // Claude sessies zijn standaard ingeklapt — alleen header zichtbaar zodat ze niet
+  // overlappen met events in dezelfde tijdspanne. Klik op header = uitklappen, dan
+  // verschijnt de fase/taken lijst bovenop andere events (z-index elevated).
+  const [expandedSessies, setExpandedSessies] = useState<Set<number>>(new Set());
+  const toggleSessie = useCallback((key: number) => {
+    setExpandedSessies((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;

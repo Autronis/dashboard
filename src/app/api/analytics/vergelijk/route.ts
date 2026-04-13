@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { tijdregistraties, projecten, klanten, gebruikers, taken, screenTimeEntries } from "@/lib/db/schema";
+import { gebruikers, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { berekenActieveUren, berekenOmzet } from "@/lib/screen-time-uren";
 
 interface GebruikerVergelijk {
   id: number;
@@ -37,28 +37,8 @@ export async function GET() {
       const maandTotDatum = `${nu.getFullYear()}-${String(nu.getMonth() + 1).padStart(2, "0")}-${lastDay}`;
       const urenDezeMaand = await berekenActieveUren(gebruiker.id, maandVanDatum, maandTotDatum);
 
-      // Omzet uit tijdregistraties
-      const omzetEntries = await db
-        .select({
-          duurMinuten: tijdregistraties.duurMinuten,
-          uurtarief: klanten.uurtarief,
-        })
-        .from(tijdregistraties)
-        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
-        .innerJoin(klanten, eq(projecten.klantId, klanten.id))
-        .where(
-          and(
-            eq(tijdregistraties.gebruikerId, gebruiker.id),
-            gte(tijdregistraties.startTijd, maandStart),
-            lte(tijdregistraties.startTijd, maandEind),
-            sql`${tijdregistraties.eindTijd} IS NOT NULL`
-          )
-        );
-
-      let omzetDezeMaand = 0;
-      for (const e of omzetEntries) {
-        omzetDezeMaand += ((e.duurMinuten || 0) / 60) * (e.uurtarief || 0);
-      }
+      // Omzet uit screen-time × klant.uurtarief (productieve activiteit)
+      const omzetDezeMaand = await berekenOmzet(maandVanDatum, maandTotDatum, { gebruikerId: gebruiker.id });
 
       // Tasks completed this month
       const takenResult = await db

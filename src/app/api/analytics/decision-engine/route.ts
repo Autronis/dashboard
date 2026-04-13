@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
-  tijdregistraties,
   projecten,
   klanten,
   facturen,
   uitgaven,
   offertes,
   leads,
-  gebruikers,
   screenTimeEntries,
 } from "@/lib/db/schema";
-import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { berekenActieveUren, berekenBillable } from "@/lib/screen-time-uren";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, ne, or, isNull } from "drizzle-orm";
 
@@ -30,7 +28,7 @@ function maandLabel(maandStr: string): string {
 // GET /api/analytics/decision-engine
 export async function GET() {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
 
     const now = new Date();
     const jaar = now.getFullYear();
@@ -39,6 +37,9 @@ export async function GET() {
     const jaarEind = `${jaar}-12-31`;
     const dag90geleden = new Date(jaar, maand, now.getDate() - 90).toISOString().slice(0, 10);
     const vandaag = now.toISOString().slice(0, 10);
+
+    // Productive screen-time categories — used in WHERE clauses below
+    const PRODUCTIEF_SQL = sql`${screenTimeEntries.categorie} IN ('development','design','administratie','finance','communicatie')`;
 
     // ============ FETCH ALL DATA IN PARALLEL ============
     const maand3geleden = new Date(jaar, maand - 3, 1).toISOString().slice(0, 10);
@@ -56,11 +57,11 @@ export async function GET() {
       inkomstenL3,
       kostenL3,
     ] = await Promise.all([
-      // Time entries last 90 days with project + client
+      // Screen-time entries last 90 days with project + client
       db.select({
-        duurMinuten: tijdregistraties.duurMinuten,
-        startTijd: tijdregistraties.startTijd,
-        categorie: tijdregistraties.categorie,
+        duurMinuten: sql<number>`${screenTimeEntries.duurSeconden} / 60.0`.as("duurMinuten"),
+        startTijd: screenTimeEntries.startTijd,
+        categorie: screenTimeEntries.categorie,
         uurtarief: klanten.uurtarief,
         klantNaam: klanten.bedrijfsnaam,
         klantId: klanten.id,
@@ -71,34 +72,36 @@ export async function GET() {
         werkelijkeUren: projecten.werkelijkeUren,
         deadline: projecten.deadline,
       })
-        .from(tijdregistraties)
-        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .from(screenTimeEntries)
+        .innerJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
         .innerJoin(klanten, eq(projecten.klantId, klanten.id))
         .where(and(
-          gte(tijdregistraties.startTijd, dag90geleden),
-          lte(tijdregistraties.startTijd, vandaag + "T23:59:59"),
-          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
+          gte(screenTimeEntries.startTijd, dag90geleden),
+          lte(screenTimeEntries.startTijd, vandaag + "T23:59:59"),
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo)),
+          PRODUCTIEF_SQL,
         ))
         .all(),
 
       // All year entries for YTD calculations
       db.select({
-        duurMinuten: tijdregistraties.duurMinuten,
-        startTijd: tijdregistraties.startTijd,
-        categorie: tijdregistraties.categorie,
+        duurMinuten: sql<number>`${screenTimeEntries.duurSeconden} / 60.0`.as("duurMinuten"),
+        startTijd: screenTimeEntries.startTijd,
+        categorie: screenTimeEntries.categorie,
         uurtarief: klanten.uurtarief,
         klantNaam: klanten.bedrijfsnaam,
         klantId: klanten.id,
         projectNaam: projecten.naam,
         projectId: projecten.id,
       })
-        .from(tijdregistraties)
-        .innerJoin(projecten, eq(tijdregistraties.projectId, projecten.id))
+        .from(screenTimeEntries)
+        .innerJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
         .innerJoin(klanten, eq(projecten.klantId, klanten.id))
         .where(and(
-          gte(tijdregistraties.startTijd, jaarStart),
-          lte(tijdregistraties.startTijd, jaarEind + "T23:59:59"),
-          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo))
+          gte(screenTimeEntries.startTijd, jaarStart),
+          lte(screenTimeEntries.startTijd, jaarEind + "T23:59:59"),
+          or(eq(klanten.isDemo, 0), isNull(klanten.isDemo)),
+          PRODUCTIEF_SQL,
         ))
         .all(),
 
@@ -221,21 +224,13 @@ export async function GET() {
       };
     }).filter((r) => r.uren > 0);
 
-    // --- Efficiency metrics ---
-    let billableMinuten = 0;
-    let nonBillableMinuten = 0;
-    for (const e of entriesJaar) {
-      const min = e.duurMinuten || 0;
-      if (e.categorie === "administratie" || e.categorie === "overig") {
-        nonBillableMinuten += min;
-      } else {
-        billableMinuten += min;
-      }
-    }
-    const totalMinuten = billableMinuten + nonBillableMinuten;
-    const billablePercent = totalMinuten > 0 ? round2((billableMinuten / totalMinuten) * 100) : 0;
+    // --- Efficiency metrics (per logged-in user, full year) ---
+    const billableSplit = await berekenBillable(gebruiker.id, jaarStart, jaarEind);
+    const billableUren = billableSplit.billableUren;
+    const nonBillableUren = billableSplit.nonBillableUren;
+    const totaleUrenUser = billableSplit.totaleUren;
+    const billablePercent = totaleUrenUser > 0 ? round2((billableUren / totaleUrenUser) * 100) : 0;
     const revenuePerHour = totaleUren > 0 ? round2(totaleOmzet / totaleUren) : 0;
-    const nonBillableUren = nonBillableMinuten / 60;
     const lostRevenue = round2(nonBillableUren * revenuePerHour);
 
     // --- Project insights ---

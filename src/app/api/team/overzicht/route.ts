@@ -77,8 +77,10 @@ export async function GET(_req: NextRequest) {
     const result: UserOverzicht[] = await Promise.all(
       users.map(async (user) => {
         // ---- Deep work deze week ----
-        // Deep work = alle screen_time entries MINUS afleiding + inactief.
-        // Volgens Sem: "alle uren van screen registratie, maar dan minus afleiding".
+        // Deep work = alle screen_time entries MINUS afleiding.
+        // Moet matchen met de live deep work tracker in /tijd (die filtert óók
+        // alleen afleiding weg). Eerder werd inactief ook uitgesloten, maar
+        // dat gaf een lager getal dan de live widget — nu 1 bron van waarheid.
         const tijdDezeWeek = await db
           .select({
             duurSeconden: screenTimeEntries.duurSeconden,
@@ -88,7 +90,7 @@ export async function GET(_req: NextRequest) {
           .where(
             and(
               eq(screenTimeEntries.gebruikerId, user.id),
-              notInArray(screenTimeEntries.categorie, ["afleiding", "inactief"]),
+              notInArray(screenTimeEntries.categorie, ["afleiding"]),
               gte(screenTimeEntries.startTijd, maandag),
               lte(screenTimeEntries.startTijd, zondag + "T23:59:59")
             )
@@ -101,7 +103,7 @@ export async function GET(_req: NextRequest) {
           .where(
             and(
               eq(screenTimeEntries.gebruikerId, user.id),
-              notInArray(screenTimeEntries.categorie, ["afleiding", "inactief"]),
+              notInArray(screenTimeEntries.categorie, ["afleiding"]),
               gte(screenTimeEntries.startTijd, vorigeWeek.maandag),
               lte(screenTimeEntries.startTijd, vorigeWeek.zondag + "T23:59:59")
             )

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { Clock, CheckSquare, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,11 @@ function getInitials(naam: string): string {
 const AVATAR_COLORS: Record<number, string> = {
   1: "from-teal-500 to-teal-700",
   2: "from-blue-500 to-blue-700",
+};
+
+const AVATAR_PHOTOS: Record<number, string> = {
+  1: "/foto-sem.jpg",
+  2: "/foto-syb.jpg",
 };
 
 // ============ SKELETON ============
@@ -123,6 +129,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
   const urenDelta = Math.round((user.urenDezeWeek - user.urenVorigeWeek) * 10) / 10;
   const heeftUren = user.urenDezeWeek > 0;
   const avatarGradient = AVATAR_COLORS[user.id] ?? "from-slate-500 to-slate-700";
+  const avatarPhoto = AVATAR_PHOTOS[user.id];
 
   return (
     <motion.div
@@ -134,14 +141,24 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
       {/* ---- HEADER ---- */}
       <div className="p-6 pb-5 flex items-center gap-4">
         <div className="relative flex-shrink-0">
-          <div
-            className={cn(
-              "w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm",
-              avatarGradient
-            )}
-          >
-            {getInitials(user.naam)}
-          </div>
+          {avatarPhoto ? (
+            <Image
+              src={avatarPhoto}
+              alt={user.naam}
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className={cn(
+                "w-12 h-12 rounded-full bg-gradient-to-br flex items-center justify-center text-white font-bold text-sm",
+                avatarGradient
+              )}
+            >
+              {getInitials(user.naam)}
+            </div>
+          )}
           <span
             className={cn(
               "absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-[#192225]",

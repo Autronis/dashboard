@@ -900,25 +900,71 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const beschrijving = Array.from(alleFases.keys()).slice(0, 3).join(" · ")
                 + (alleFases.size > 3 ? ` +${alleFases.size - 3}` : "");
 
-              // Gestructureerde prompt voor Claude chat
+              // Gestructureerde prompt voor Claude chat — inclusief projectmap cd
               const handleKopieerPrompt = (e: React.MouseEvent) => {
                 e.stopPropagation();
+
+                // Collect unique project paths from group
+                const projectPaden = new Map<string, string>(); // projectNaam → pad
+                for (const t of group) {
+                  if (t.projectNaam && t.projectMap) {
+                    projectPaden.set(t.projectNaam, t.projectMap);
+                  } else if (t.projectNaam) {
+                    // Fallback: kebab-case van project naam
+                    const slug = t.projectNaam
+                      .toLowerCase()
+                      .replace(/[^a-z0-9]+/g, "-")
+                      .replace(/^-+|-+$/g, "");
+                    projectPaden.set(t.projectNaam, `~/Autronis/Projects/${slug}`);
+                  }
+                }
+
                 const lines: string[] = [];
                 lines.push(`# Claude sessie · ${startLabel}–${eindLabel}`);
                 lines.push("");
-                lines.push(`${group.length} taken · ${alleFases.size} fase(s) · ${projecten.size} project(en). Werk ze per fase af, commit per fase, sync dashboard status.`);
+                lines.push(`${group.length} taken · ${alleFases.size} fase(s) · ${projecten.size} project(en).`);
                 lines.push("");
+
+                // Context header met werkdirectory
+                if (projectPaden.size === 1) {
+                  const [[proj, pad]] = projectPaden.entries();
+                  lines.push(`**Project**: ${proj}`);
+                  lines.push(`**Werkdirectory**: \`${pad}\``);
+                  lines.push("");
+                  lines.push(`\`\`\`bash`);
+                  lines.push(`cd ${pad}`);
+                  lines.push(`\`\`\``);
+                  lines.push("");
+                  lines.push(`Start met \`/prime\` om de project context te laden, dan werk de taken hieronder per fase af. Commit per fase, dashboard sync gaat automatisch.`);
+                } else if (projectPaden.size > 1) {
+                  lines.push(`**Projecten**:`);
+                  for (const [proj, pad] of projectPaden.entries()) {
+                    lines.push(`- ${proj} — \`${pad}\``);
+                  }
+                  lines.push("");
+                  lines.push(`Begin met het eerste project, doe \`/prime\`, werk de taken af, commit, dan switch met \`cd\` naar het volgende project.`);
+                } else {
+                  lines.push(`Werk de taken per fase af, commit per fase, sync dashboard status.`);
+                }
+                lines.push("");
+
+                // Taken per project → per fase
                 for (const [proj, faseMap] of perProject.entries()) {
                   if (meerdereProjecten) lines.push(`## ${proj}`);
                   for (const [fase, faseTaken] of faseMap.entries()) {
                     lines.push(`### ${fase}`);
                     for (const t of faseTaken) {
                       lines.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
+                      if (t.omschrijving) {
+                        // Indent omschrijving onder de taak
+                        const omschr = t.omschrijving.split("\n").map((l) => `      ${l}`).join("\n");
+                        lines.push(omschr);
+                      }
                     }
                     lines.push("");
                   }
                 }
-                lines.push("Na afronding: markeer taken als afgerond in het Autronis dashboard via /api/taken/[id].");
+                lines.push("Na afronding: taken afvinken gebeurt automatisch via de auto-sync hook wanneer je committee per fase.");
                 navigator.clipboard.writeText(lines.join("\n"));
               };
 

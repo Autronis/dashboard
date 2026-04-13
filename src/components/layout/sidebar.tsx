@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -201,7 +201,7 @@ function LauncherItem({
   isActive: boolean;
   pathname: string;
 }) {
-  const { open, toggle } = useLauncherState(item.label, isActive);
+  const { open, toggle } = useLauncherState(item.label);
   const Icon = item.icon;
   const { setOpen: setSidebarOpen } = useSidebar();
 
@@ -504,7 +504,16 @@ function CollapsibleSection({
 }
 
 // ─── Sidebar ────────────────────────────────────────────────────
-export function Sidebar({ gebruikerId }: { gebruikerId?: number }) {
+export function Sidebar(props: { gebruikerId?: number }) {
+  const pathname = usePathname();
+  return (
+    <LauncherProvider pathname={pathname}>
+      <SidebarInner {...props} />
+    </LauncherProvider>
+  );
+}
+
+function SidebarInner({ gebruikerId }: { gebruikerId?: number }) {
   const { isOpen, isCollapsed, setOpen, setCollapsed } = useSidebar();
   const pathname = usePathname();
 

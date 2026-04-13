@@ -3,17 +3,22 @@ import { db } from "@/lib/db";
 import { gebruikers, projecten, klanten, taken, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, notInArray } from "drizzle-orm";
+import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 // ============ HELPERS ============
 
 function getMondayAndSunday(date: Date): { maandag: string; zondag: string } {
-  const d = new Date(date);
-  const day = d.getDay() || 7; // 1=Ma, 7=Zo
-  d.setDate(d.getDate() - day + 1);
-  const maandag = d.toISOString().slice(0, 10);
-  d.setDate(d.getDate() + 6);
-  const zondag = d.toISOString().slice(0, 10);
-  return { maandag, zondag };
+  // NL-tz aware week boundaries (matches dashboard)
+  const nlFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
+  const vandaagNl = nlFmt.format(date);
+  const noonNl = new Date(vandaagNl + "T12:00:00Z");
+  const dowNl = noonNl.getUTCDay(); // 0=Sun, 1=Mon
+  const diffToMonday = dowNl === 0 ? -6 : 1 - dowNl;
+  const mondayNl = new Date(noonNl);
+  mondayNl.setUTCDate(noonNl.getUTCDate() + diffToMonday);
+  const sundayNl = new Date(mondayNl);
+  sundayNl.setUTCDate(mondayNl.getUTCDate() + 6);
+  return { maandag: nlFmt.format(mondayNl), zondag: nlFmt.format(sundayNl) };
 }
 
 function getPreviousWeek(date: Date): { maandag: string; zondag: string } {

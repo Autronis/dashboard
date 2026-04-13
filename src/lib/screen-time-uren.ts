@@ -1,12 +1,14 @@
 import { db } from "@/lib/db";
 import { screenTimeEntries, klanten, projecten } from "@/lib/db/schema";
-import { eq, and, sql, asc } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
+// Productieve categorieën (counted as work). meeting + overig + afleiding + inactief
+// vallen er buiten — meeting is geen "uren werken" in de zin van uren-criterium,
+// overig is niet-gecategoriseerd dus telt niet, afleiding/inactief evident niet.
 const PRODUCTIEF_CATS = new Set(["development", "design", "administratie", "finance", "communicatie"]);
 // Billable = klant-werk. administratie en finance zijn intern (non-billable).
 const BILLABLE_CATS = new Set(["development", "design", "communicatie"]);
-const SLOT_MS = 30 * 60 * 1000; // 30 min
 const NL_TZ = "Europe/Amsterdam";
 
 /** Convert UTC ISO string to NL local date string (YYYY-MM-DD) */
@@ -15,10 +17,15 @@ function nlDatum(isoStr: string): string {
 }
 
 /**
- * Calculate active screen time hours for a date range using the same
- * 30-min slot merging logic as the Tijd page's sessies API.
+ * CANONICAL hour calculation — single source of truth for "uren" anywhere
+ * in the dashboard. Sums raw productive screen-time seconds (no slot merging,
+ * no session-span overcounting). Filters: productive categories only, NL-tz date.
+ *
  * vanDatum/totDatum are NL local dates (YYYY-MM-DD).
  * Returns hours (not minutes or seconds).
+ *
+ * Used by: dashboard, team page, /tijd page, decision-engine, doelen, capaciteit, etc.
+ * If you need a different number, you're probably wrong — debug here, don't fork.
  */
 export async function berekenActieveUren(
   gebruikerId: number,
@@ -39,10 +46,7 @@ export async function berekenActieveUren(
       app: screenTimeEntries.app,
       categorie: screenTimeEntries.categorie,
       startTijd: screenTimeEntries.startTijd,
-      eindTijd: screenTimeEntries.eindTijd,
       duurSeconden: screenTimeEntries.duurSeconden,
-      projectId: screenTimeEntries.projectId,
-      klantId: screenTimeEntries.klantId,
     })
     .from(screenTimeEntries)
     .where(and(
@@ -50,51 +54,17 @@ export async function berekenActieveUren(
       sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanUtc}`,
       sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totUtc}`,
     ))
-    .orderBy(asc(screenTimeEntries.startTijd))
     .all();
 
-  // Group by NL local date. Only count productive categories (Autronis deep work).
-  // Non-productive activity (entertainment, social, afleiding, etc.) is excluded —
-  // if it's clearly not Autronis work, it doesn't count.
-  const dagMap = new Map<string, typeof entries>();
+  let totaalSeconden = 0;
   for (const entry of entries) {
     if (SKIP_APPS.has(entry.app) || entry.categorie === "inactief") continue;
     if (!entry.categorie || !PRODUCTIEF_CATS.has(entry.categorie)) continue;
     const dag = nlDatum(entry.startTijd);
     if (dag < vanDatum || dag > totDatum) continue;
-    if (!dagMap.has(dag)) dagMap.set(dag, []);
-    dagMap.get(dag)!.push(entry);
+    totaalSeconden += entry.duurSeconden;
   }
 
-  let totaalSeconden = 0;
-
-  for (const dagEntries of dagMap.values()) {
-    if (dagEntries.length === 0) continue;
-
-    // Group into 30-min slots
-    const firstTime = new Date(dagEntries[0].startTijd).getTime();
-    const lastTime = new Date(dagEntries[dagEntries.length - 1].eindTijd).getTime();
-    const slotStart = Math.floor(firstTime / SLOT_MS) * SLOT_MS;
-
-    let t = slotStart;
-    while (t < lastTime) {
-      const tEnd = t + SLOT_MS;
-      const slotEntries = dagEntries.filter(e => {
-        const eTime = new Date(e.startTijd).getTime();
-        return eTime >= t && eTime < tEnd;
-      });
-
-      if (slotEntries.length > 0) {
-        const sessieStart = new Date(slotEntries[0].startTijd).getTime();
-        const sessieEnd = new Date(slotEntries[slotEntries.length - 1].eindTijd).getTime();
-        totaalSeconden += Math.max(0, (sessieEnd - sessieStart) / 1000);
-      }
-
-      t = tEnd;
-    }
-  }
-
-  // Deep work = productive Autronis activity only (non-productive already filtered out)
   return Math.round((totaalSeconden / 3600) * 100) / 100;
 }
 

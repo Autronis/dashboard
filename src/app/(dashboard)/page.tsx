@@ -922,6 +922,17 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
+        {/* Doelen — wat is er nodig */}
+        <motion.div variants={sectionVariants}>
+          <DoelenWidget />
+        </motion.div>
+
+        {/* Team vergelijking + Efficiency naast elkaar */}
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <TeamVergelijkingWidget />
+          <EfficiencyWidget />
+        </motion.div>
+
         {/* Taken widget */}
         {mijnTaken.length > 0 && (
           <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">

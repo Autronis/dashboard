@@ -46,17 +46,17 @@ export function DoelenWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Target className="w-5 h-5 text-autronis-accent" />
-          <h2 className="text-base font-semibold text-autronis-text-primary">Doelen</h2>
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+        <div className="flex items-center gap-2.5 mb-4">
+          <Target className="w-4 h-4 text-autronis-accent" />
+          <h2 className="text-sm font-semibold text-autronis-text-primary">Doelen</h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-3 gap-4">
           {[0, 1, 2].map((i) => (
-            <div key={i} className="flex flex-col items-center gap-3">
-              <Skeleton className="w-[90px] h-[90px] rounded-full" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-3 w-32" />
+            <div key={i} className="flex flex-col items-center gap-2">
+              <Skeleton className="w-[68px] h-[68px] rounded-full" />
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-2 w-24" />
             </div>
           ))}
         </div>
@@ -116,26 +116,26 @@ export function DoelenWidget() {
   ].filter((d): d is Doel => d !== null);
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Target className="w-5 h-5 text-autronis-accent" />
-        <h2 className="text-base font-semibold text-autronis-text-primary">Doelen</h2>
-        <span className="text-xs text-autronis-text-secondary ml-auto">wat is er nodig</span>
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <Target className="w-4 h-4 text-autronis-accent" />
+        <h2 className="text-sm font-semibold text-autronis-text-primary">Doelen</h2>
+        <span className="text-[11px] text-autronis-text-secondary ml-auto">wat is er nodig</span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-3 gap-4">
         {doelen.map((d) => {
           const Icon = d.icon;
           const kleur = doelKleur(d.pct);
           return (
             <div key={d.label} className="flex flex-col items-center text-center">
-              <ProgressRing percentage={d.pct} size={90} strokeWidth={7} color={kleur} />
-              <div className="flex items-center gap-1.5 mt-3">
-                <Icon className="w-3.5 h-3.5 text-autronis-text-secondary" />
-                <p className="text-sm font-medium text-autronis-text-primary">{d.label}</p>
+              <ProgressRing percentage={d.pct} size={68} strokeWidth={6} color={kleur} />
+              <div className="flex items-center gap-1.5 mt-2.5">
+                <Icon className="w-3 h-3 text-autronis-text-secondary" />
+                <p className="text-xs font-medium text-autronis-text-primary">{d.label}</p>
               </div>
-              <p className="text-xs text-autronis-text-secondary mt-1 tabular-nums">{d.huidig}</p>
-              <p className="text-xs text-autronis-accent mt-1.5 font-medium leading-tight">{d.actie}</p>
+              <p className="text-[11px] text-autronis-text-secondary mt-0.5 tabular-nums leading-snug">{d.huidig}</p>
+              <p className="text-[11px] text-autronis-accent mt-1 font-medium leading-snug">{d.actie}</p>
             </div>
           );
         })}

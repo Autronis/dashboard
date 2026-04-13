@@ -22,14 +22,14 @@ export function TeamVergelijkingWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Users className="w-5 h-5 text-purple-400" />
-          <h2 className="text-base font-semibold text-autronis-text-primary">Team vergelijking</h2>
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+        <div className="flex items-center gap-2.5 mb-4">
+          <Users className="w-4 h-4 text-purple-400" />
+          <h2 className="text-sm font-semibold text-autronis-text-primary">Team vergelijking</h2>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {[0, 1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-8 w-full" />
+            <Skeleton key={i} className="h-7 w-full" />
           ))}
         </div>
       </div>
@@ -48,18 +48,18 @@ export function TeamVergelijkingWidget() {
   const [a, b] = gebruikers.slice(0, 2);
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Users className="w-5 h-5 text-purple-400" />
-        <h2 className="text-base font-semibold text-autronis-text-primary">Team vergelijking</h2>
-        <span className="text-xs text-autronis-text-secondary ml-auto">deze maand</span>
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <Users className="w-4 h-4 text-purple-400" />
+        <h2 className="text-sm font-semibold text-autronis-text-primary">Team vergelijking</h2>
+        <span className="text-[11px] text-autronis-text-secondary ml-auto">deze maand</span>
       </div>
 
-      <div className="space-y-4">
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center pb-3 border-b border-autronis-border">
-          <span className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{a.naam.split(" ")[0]}</span>
-          <span className="text-xs text-autronis-text-secondary self-center">vs</span>
-          <span className="text-xs sm:text-sm font-semibold text-autronis-text-primary truncate">{b.naam.split(" ")[0]}</span>
+      <div className="space-y-3">
+        <div className="grid grid-cols-3 gap-2 text-center pb-2 border-b border-autronis-border">
+          <span className="text-xs font-semibold text-autronis-text-primary truncate">{a.naam.split(" ")[0]}</span>
+          <span className="text-[10px] text-autronis-text-secondary self-center">vs</span>
+          <span className="text-xs font-semibold text-autronis-text-primary truncate">{b.naam.split(" ")[0]}</span>
         </div>
 
         {metrics.map((m) => {
@@ -68,22 +68,22 @@ export function TeamVergelijkingWidget() {
           const maxVal = Math.max(valA, valB, 1);
           const Icon = m.icon;
           return (
-            <div key={m.key} className="space-y-1.5">
-              <div className="flex items-center justify-center gap-2 text-xs text-autronis-text-secondary">
-                <Icon className="w-3.5 h-3.5" />
+            <div key={m.key} className="space-y-1">
+              <div className="flex items-center justify-center gap-1.5 text-[11px] text-autronis-text-secondary">
+                <Icon className="w-3 h-3" />
                 <span>{m.label}</span>
               </div>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex-1 flex items-center gap-1.5 sm:gap-2 justify-end">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center gap-1.5 justify-end min-w-0">
                   <span
                     className={cn(
-                      "text-xs font-medium tabular-nums text-right shrink-0",
+                      "text-[11px] font-medium tabular-nums text-right shrink-0",
                       valA >= valB ? "text-autronis-accent" : "text-autronis-text-secondary"
                     )}
                   >
                     {m.format(valA)}
                   </span>
-                  <div className="flex-1 max-w-24 h-2 sm:h-2.5 bg-autronis-bg rounded-full overflow-hidden flex justify-end shrink-0">
+                  <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden flex justify-end">
                     <motion.div
                       className={cn("h-full rounded-full", valA >= valB ? "bg-autronis-accent" : "bg-autronis-accent/30")}
                       initial={{ width: "0%" }}
@@ -92,9 +92,9 @@ export function TeamVergelijkingWidget() {
                     />
                   </div>
                 </div>
-                <div className="w-px h-4 bg-autronis-border shrink-0" />
-                <div className="flex-1 flex items-center gap-1.5 sm:gap-2">
-                  <div className="flex-1 max-w-24 h-2 sm:h-2.5 bg-autronis-bg rounded-full overflow-hidden shrink-0">
+                <div className="w-px h-3 bg-autronis-border shrink-0" />
+                <div className="flex-1 flex items-center gap-1.5 min-w-0">
+                  <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
                     <motion.div
                       className={cn("h-full rounded-full", valB >= valA ? "bg-purple-400" : "bg-purple-400/30")}
                       initial={{ width: "0%" }}
@@ -104,7 +104,7 @@ export function TeamVergelijkingWidget() {
                   </div>
                   <span
                     className={cn(
-                      "text-xs font-medium tabular-nums shrink-0",
+                      "text-[11px] font-medium tabular-nums shrink-0",
                       valB >= valA ? "text-purple-400" : "text-autronis-text-secondary"
                     )}
                   >

@@ -22,17 +22,17 @@ export function EfficiencyWidget() {
 
   if (isLoading) {
     return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Gauge className="w-5 h-5 text-autronis-accent" />
-          <h2 className="text-base font-semibold text-autronis-text-primary">Efficiency</h2>
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+        <div className="flex items-center gap-2.5 mb-4">
+          <Gauge className="w-4 h-4 text-autronis-accent" />
+          <h2 className="text-sm font-semibold text-autronis-text-primary">Efficiency</h2>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-10 w-full" />
           ))}
         </div>
-        <Skeleton className="h-3 w-full mt-5" />
+        <Skeleton className="h-2 w-full mt-4" />
       </div>
     );
   }
@@ -43,23 +43,23 @@ export function EfficiencyWidget() {
   const billableUren = Math.round(eff.totaleUren - eff.nonBillableUren);
 
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Gauge className="w-5 h-5 text-autronis-accent" />
-        <h2 className="text-base font-semibold text-autronis-text-primary">Efficiency</h2>
-        <span className="text-xs text-autronis-text-secondary ml-auto">deze maand</span>
+    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+      <div className="flex items-center gap-2.5 mb-4">
+        <Gauge className="w-4 h-4 text-autronis-accent" />
+        <h2 className="text-sm font-semibold text-autronis-text-primary">Efficiency</h2>
+        <span className="text-[11px] text-autronis-text-secondary ml-auto">deze maand</span>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-3">
         <div className="text-center">
-          <p className="text-xs text-autronis-text-secondary mb-1">Omzet per uur</p>
-          <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatBedrag(eff.revenuePerHour)}/u</p>
+          <p className="text-[10px] text-autronis-text-secondary mb-0.5 uppercase tracking-wide">Omzet/uur</p>
+          <p className="text-base font-bold text-autronis-accent tabular-nums">{formatBedrag(eff.revenuePerHour)}</p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-autronis-text-secondary mb-1">Billable</p>
+          <p className="text-[10px] text-autronis-text-secondary mb-0.5 uppercase tracking-wide">Billable</p>
           <p
             className={cn(
-              "text-xl font-bold tabular-nums",
+              "text-base font-bold tabular-nums",
               eff.billablePercent >= 75
                 ? "text-emerald-400"
                 : eff.billablePercent >= 60
@@ -71,19 +71,19 @@ export function EfficiencyWidget() {
           </p>
         </div>
         <div className="text-center">
-          <p className="text-xs text-autronis-text-secondary mb-1">Non-billable</p>
-          <p className="text-xl font-bold text-orange-400 tabular-nums">{Math.round(eff.nonBillableUren)}u</p>
+          <p className="text-[10px] text-autronis-text-secondary mb-0.5 uppercase tracking-wide">Non-billable</p>
+          <p className="text-base font-bold text-orange-400 tabular-nums">{Math.round(eff.nonBillableUren)}u</p>
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-autronis-border">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-autronis-text-secondary">Billable ratio</span>
-          <span className="text-xs font-semibold text-autronis-text-primary tabular-nums">
+      <div className="mt-4 pt-3 border-t border-autronis-border">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-[11px] text-autronis-text-secondary">Billable ratio</span>
+          <span className="text-[11px] font-semibold text-autronis-text-primary tabular-nums">
             {billableUren}u / {Math.round(eff.totaleUren)}u
           </span>
         </div>
-        <div className="w-full h-3 bg-autronis-bg rounded-full overflow-hidden flex">
+        <div className="w-full h-2 bg-autronis-bg rounded-full overflow-hidden flex">
           <motion.div
             className="h-full bg-autronis-accent rounded-l-full"
             initial={{ width: "0%" }}

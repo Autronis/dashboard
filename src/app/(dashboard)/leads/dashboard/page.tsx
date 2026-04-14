@@ -82,9 +82,9 @@ export default function LeadsDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [leadsRes, emailsRes] = await Promise.all([
         fetch("/api/leads"),
         fetch("/api/leads/emails"),
@@ -98,9 +98,9 @@ export default function LeadsDashboardPage() {
       setEmails(emailsData.emails ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -108,8 +108,9 @@ export default function LeadsDashboardPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: refetch elke 15s
-  usePoll(load, 15000);
+  // Realtime-ish: silent refetch elke 15s — geen loading flicker
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 15000);
 
   const stats = useMemo(() => {
     const total = leads.length;

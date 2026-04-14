@@ -169,9 +169,9 @@ export default function LeadsContactsPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [leadsRes, emailsRes] = await Promise.all([
         fetch("/api/leads"),
         fetch("/api/leads/emails"),
@@ -188,9 +188,9 @@ export default function LeadsContactsPage() {
       }
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -198,8 +198,9 @@ export default function LeadsContactsPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: refetch elke 12s zolang tab actief is
-  usePoll(load, 12000);
+  // Realtime-ish: silent refetch elke 12s — geen loading flicker
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 12000);
 
   const folders = useMemo(() => {
     const set = new Set<string>();

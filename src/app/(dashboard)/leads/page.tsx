@@ -149,9 +149,9 @@ export default function LeadsOverzichtPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const [linkedinRes, gmapsRes] = await Promise.all([
         fetch("/api/leads"),
         fetch("/api/leads/google-maps"),
@@ -183,9 +183,9 @@ export default function LeadsOverzichtPage() {
       setLeads(merged);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -193,8 +193,9 @@ export default function LeadsOverzichtPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: refetch elke 12s zolang tab actief is
-  usePoll(load, 12000);
+  // Realtime-ish: silent refetch elke 12s zolang tab actief is — geen loading flicker
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 12000);
 
   const folders = useMemo(() => {
     const set = new Set<string>();

@@ -1,14 +1,17 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { AutronisBrand } from "@/lib/autronis-brand";
 
-const ACCENT = "#6366f1";
-const ACCENT_LIGHT = "#e0e7ff";
-const TEXT_PRIMARY = "#1e293b";
-const TEXT_SECONDARY = "#64748b";
-const TEXT_LIGHT = "#94a3b8";
-const BG_DARK = "#0f172a";
-const BG_LIGHT = "#f8fafc";
-const BORDER = "#e2e8f0";
-const EMERALD = "#34d399";
+// Shared Autronis brand colors — match scope-generator skill template.html
+// so every klant-facing document has the same visual identity.
+const ACCENT = AutronisBrand.accent;
+const ACCENT_LIGHT = AutronisBrand.accentLight;
+const TEXT_PRIMARY = AutronisBrand.textPrimary;
+const TEXT_SECONDARY = AutronisBrand.textSecondary;
+const TEXT_LIGHT = AutronisBrand.textTertiary;
+const BG_DARK = AutronisBrand.bgDark;
+const BG_LIGHT = AutronisBrand.cardHover;
+const BORDER = AutronisBrand.border;
+const EMERALD = AutronisBrand.success;
 
 const s = StyleSheet.create({
   // Shared slide layout

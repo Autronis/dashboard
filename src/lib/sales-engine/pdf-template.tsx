@@ -1,11 +1,14 @@
 import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import { AutronisBrand, impactKleur as brandImpactKleur } from "@/lib/autronis-brand";
 
-const ACCENT = "#6366f1";
-const ACCENT_LIGHT = "#e0e7ff";
-const TEXT_PRIMARY = "#1e293b";
-const TEXT_SECONDARY = "#64748b";
-const BORDER = "#e2e8f0";
-const BG_LIGHT = "#f8fafc";
+// Shared Autronis brand colors — match scope-generator skill template.html
+// so every klant-facing document has the same visual identity.
+const ACCENT = AutronisBrand.accent;
+const ACCENT_LIGHT = AutronisBrand.accentBgStrong;
+const TEXT_PRIMARY = AutronisBrand.textPrimary;
+const TEXT_SECONDARY = AutronisBrand.textSecondary;
+const BORDER = AutronisBrand.border;
+const BG_LIGHT = AutronisBrand.cardHover;
 
 const styles = StyleSheet.create({
   page: {
@@ -155,7 +158,7 @@ const styles = StyleSheet.create({
   },
   ctaSubtext: {
     fontSize: 10,
-    color: "#e0e7ff",
+    color: AutronisBrand.accentLight,
   },
   footer: {
     position: "absolute" as const,
@@ -194,11 +197,8 @@ export interface MiniVoorstelData {
   bookingUrl?: string;
 }
 
-function impactKleur(impact: string): string {
-  if (impact === "hoog") return "#10b981";
-  if (impact === "midden") return "#f59e0b";
-  return TEXT_SECONDARY;
-}
+// Use the shared brand helper so Sales Engine + scope-generator match.
+const impactKleur = brandImpactKleur;
 
 export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
   const datum = new Date().toLocaleDateString("nl-NL", {

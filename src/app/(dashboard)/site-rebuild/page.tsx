@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Sparkles, Loader2, Download, Link as LinkIcon, Image as ImageIcon, X, Copy, ExternalLink, Check } from "lucide-react";
+import { Sparkles, Loader2, Download, Link as LinkIcon, Image as ImageIcon, X, Copy, ExternalLink, Check, FileText } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,8 +26,10 @@ export default function SiteRebuildPage() {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [promptLoading, setPromptLoading] = useState(false);
+  const [scrapeLoading, setScrapeLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [promptOutput, setPromptOutput] = useState<string | null>(null);
+  const [promptOutputKind, setPromptOutputKind] = useState<"prompt" | "raw">("prompt");
   const [promptCopied, setPromptCopied] = useState(false);
 
   const onLogoPick = (file: File) => {

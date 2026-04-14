@@ -1,9 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { FISCAAL_STYLES, TYPE_STYLES, type FiscaalType } from "./fiscaal-colors";
 
 function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 2 }).format(n);
@@ -25,6 +29,35 @@ interface Props {
 }
 
 export function TransactieDetail({ transactie, onClose }: Props) {
+  const queryClient = useQueryClient();
+  const { addToast } = useToast();
+  const [saving, setSaving] = useState<FiscaalType | "clear" | null>(null);
+
+  async function setFiscaalType(id: number, fiscaalType: FiscaalType | null) {
+    setSaving(fiscaalType ?? "clear");
+    try {
+      const res = await fetch(`/api/financien/transacties/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fiscaalType }),
+      });
+      if (!res.ok) {
+        const { fout } = (await res.json().catch(() => ({ fout: "Fout" }))) as { fout?: string };
+        throw new Error(fout ?? "Kon transactie niet bijwerken");
+      }
+      await queryClient.invalidateQueries({ queryKey: ["financien-transacties"] });
+      await queryClient.invalidateQueries({ queryKey: ["financien-categorieen"] });
+      addToast(
+        fiscaalType ? `Gemarkeerd als ${FISCAAL_STYLES[fiscaalType].label.toLowerCase()}` : "Fiscaal type gewist",
+        "succes"
+      );
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Fout bij opslaan", "fout");
+    } finally {
+      setSaving(null);
+    }
+  }
+
   return (
     <AnimatePresence>
       {transactie && (
@@ -115,8 +148,16 @@ export function TransactieDetail({ transactie, onClose }: Props) {
                 </div>
               )}
 
-              {/* Status + tags */}
+              {/* Status + type tags */}
               <div className="flex flex-wrap gap-2">
+                <span
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg border text-xs font-medium",
+                    TYPE_STYLES[transactie.type].pill
+                  )}
+                >
+                  {TYPE_STYLES[transactie.type].label}
+                </span>
                 {(() => {
                   const s = statusKleur(transactie.status);
                   const Icon = s.icon;
@@ -132,10 +173,39 @@ export function TransactieDetail({ transactie, onClose }: Props) {
                     Abonnement
                   </span>
                 )}
-                {transactie.fiscaalType && (
-                  <span className="px-2.5 py-1 rounded-lg bg-autronis-bg border border-autronis-border text-autronis-text-secondary text-xs font-medium capitalize">
-                    {transactie.fiscaalType}
-                  </span>
+              </div>
+
+              {/* Fiscaal type picker */}
+              <div>
+                <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-2">
+                  Fiscaal type
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.keys(FISCAAL_STYLES) as FiscaalType[]).map((ft) => {
+                    const style = FISCAAL_STYLES[ft];
+                    const isActive = transactie.fiscaalType === ft;
+                    return (
+                      <button
+                        key={ft}
+                        disabled={saving !== null}
+                        onClick={() => setFiscaalType(transactie.id, isActive ? null : ft)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg border text-xs font-medium transition",
+                          isActive
+                            ? style.pill
+                            : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary",
+                          saving !== null && "opacity-60 cursor-not-allowed"
+                        )}
+                      >
+                        {style.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {transactie.fiscaalType === "investering" && (
+                  <p className="text-[11px] text-sky-400/80 mt-2">
+                    Wordt meegenomen als investering — fiscaal via KIA / afschrijving.
+                  </p>
                 )}
               </div>
             </div>

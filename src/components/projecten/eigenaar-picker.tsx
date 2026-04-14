@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { User, Users, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ProjectEigenaar } from "@/hooks/queries/use-projecten";
@@ -28,12 +29,17 @@ interface EigenaarPickerProps {
 
 /** Compacte 4-chip selector voor project eigenaarschap. */
 export function EigenaarPicker({ projectId, current, onChange }: EigenaarPickerProps) {
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState<ProjectEigenaar | null>(null);
-  const value = current ?? "sem";
+  // Optimistisch: zodra je klikt, gaat de chip meteen visueel naar de nieuwe
+  // waarde. Bij fout valt 'ie terug op `current`.
+  const [optimistic, setOptimistic] = useState<ProjectEigenaar | null>(null);
+  const value = optimistic ?? current ?? "sem";
 
   const setEigenaar = async (code: ProjectEigenaar) => {
     if (code === value || pending) return;
     setPending(code);
+    setOptimistic(code);
     try {
       const res = await fetch(`/api/projecten/${projectId}`, {
         method: "PUT",
@@ -41,9 +47,17 @@ export function EigenaarPicker({ projectId, current, onChange }: EigenaarPickerP
         body: JSON.stringify({ eigenaar: code }),
       });
       if (!res.ok) throw new Error("Wijziging mislukt");
+      // Invalideer alle relevante queries zodat de nieuwe waarde overal
+      // terugkomt (project detail, projectenlijst, taken).
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["project", String(projectId)] }),
+        queryClient.invalidateQueries({ queryKey: ["projecten"] }),
+        queryClient.invalidateQueries({ queryKey: ["taken"] }),
+      ]);
       onChange?.(code);
     } catch (e) {
       console.error(e);
+      setOptimistic(null); // rollback
     } finally {
       setPending(null);
     }
@@ -53,7 +67,7 @@ export function EigenaarPicker({ projectId, current, onChange }: EigenaarPickerP
     <div className="inline-flex items-center gap-1 bg-autronis-bg/50 border border-autronis-border rounded-xl p-1">
       {OPTIONS.map((opt) => {
         const Icon = opt.icon;
-        const active = (pending ?? value) === opt.code;
+        const active = value === opt.code;
         return (
           <button
             key={opt.code}

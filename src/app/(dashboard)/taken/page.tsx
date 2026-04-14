@@ -1384,17 +1384,17 @@ function TakenPage() {
                                     <>
                                       <button
                                         onClick={() => { setRenamingFase({ projectId: project.projectId, oude: fase.fase }); setRenameValue(fase.fase); }}
-                                        className="flex-shrink-0 p-0.5 rounded text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors"
+                                        className="flex-shrink-0 p-1 rounded text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors"
                                         title="Hernoem categorie"
                                       >
-                                        <Pencil className="w-3 h-3" />
+                                        <Pencil className="w-3.5 h-3.5" />
                                       </button>
                                       <button
                                         onClick={() => { setQuickAddFase({ projectId: project.projectId, fase: fase.fase }); setQuickAddTitel(""); }}
-                                        className="flex-shrink-0 p-0.5 rounded text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors"
+                                        className="flex-shrink-0 p-1 rounded text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors"
                                         title="Snel taak toevoegen (of druk N)"
                                       >
-                                        <Plus className="w-3 h-3" />
+                                        <Plus className="w-3.5 h-3.5" />
                                       </button>
                                     </>
                                   )}
@@ -1463,18 +1463,18 @@ function TakenPage() {
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            {/* Bulk select checkbox — altijd zichtbaar, subtle */}
+                                            {/* Bulk select checkbox — altijd zichtbaar */}
                                             <button
                                               onClick={(e) => { e.stopPropagation(); toggleTaakSelected(taak.id); }}
                                               className={cn(
-                                                "flex-shrink-0 w-3.5 h-3.5 rounded border transition-all flex items-center justify-center",
+                                                "flex-shrink-0 w-4 h-4 rounded border-2 transition-all flex items-center justify-center",
                                                 selectedTaakIds.has(taak.id)
                                                   ? "bg-autronis-accent border-autronis-accent"
-                                                  : "border-autronis-border hover:border-autronis-accent/50"
+                                                  : "border-autronis-text-secondary/60 hover:border-autronis-accent bg-autronis-bg/30"
                                               )}
                                               title="Selecteer voor bulk actie"
                                             >
-                                              {selectedTaakIds.has(taak.id) && <Check className="w-2.5 h-2.5 text-autronis-bg" />}
+                                              {selectedTaakIds.has(taak.id) && <Check className="w-3 h-3 text-autronis-bg" />}
                                             </button>
                                             <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); handleStatusToggle(taak); }} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
                                               <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />

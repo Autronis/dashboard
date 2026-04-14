@@ -44,22 +44,32 @@ Analyseer meeting-transcripten en genereer gestructureerde output in JSON.`,
         },
         {
           role: "user",
-          content: `Analyseer dit meeting-transcript en genereer:
+          content: `Analyseer dit meeting-transcript en genereer gestructureerde output.
 
-1. samenvatting: 3-5 bullet points van de belangrijkste punten
-2. actiepunten: concrete taken met wie verantwoordelijk is
-3. besluiten: wat is er besloten
-4. openVragen: wat moet nog uitgezocht/beantwoord worden
-5. sentiment: korte beschrijving van de stemming/toon van het gesprek
-6. duurMinuten: schat de duur in minuten op basis van de hoeveelheid content (null als niet te schatten)
-7. tags: relevante tags (bijv. ["sales", "technisch", "intern", "klantgesprek"])
+Formatting regels voor de samenvatting:
+- Gebruik 3 tot 5 regels
+- Elke regel is een complete Nederlandse zin met correcte interpunctie (hoofdletter, punt aan het eind)
+- Elke regel begint met "- " (streepje + spatie)
+- Scheid regels met echte newline-karakters (\\n), NIET met komma's of semikolons
+- Geen opsommingen binnen één regel met komma's
+
+Voorbeeld van een correcte samenvatting string:
+"- Sem en Syb hebben afgesproken de prijs van €500 naar €1000 te verhogen.\\n- Er wordt een nieuwe meeting gepland met Siep.\\n- Een bonusoptie voor agressievere dienstverlening is besproken."
+
+Voor de andere velden:
+- actiepunten: concrete taken met wie verantwoordelijk is
+- besluiten: wat is er besloten (array van zinnen)
+- openVragen: wat moet nog uitgezocht worden (array van zinnen)
+- sentiment: korte beschrijving van stemming/toon
+- duurMinuten: schat op basis van content (null als niet te schatten)
+- tags: relevante tags (bv. ["sales", "technisch", "intern"])
 
 Transcript:
 ${transcript}
 
-Antwoord als JSON:
+Antwoord als JSON (geen extra tekst eromheen):
 {
-  "samenvatting": "bullet points als string",
+  "samenvatting": "- Zin 1.\\n- Zin 2.\\n- Zin 3.",
   "actiepunten": [{"tekst": "...", "verantwoordelijke": "Sem"|"Syb"|"Klant"|"Onbekend"}],
   "besluiten": ["..."],
   "openVragen": ["..."],

@@ -590,11 +590,22 @@ export default function LeadsContactsPage() {
       )}
 
       {!loading && !error && filtered.length > 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card overflow-hidden">
+        <div className="rounded-2xl border border-autronis-border bg-autronis-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-autronis-border flex items-center justify-between">
+            <h2 className="text-base font-semibold text-autronis-text-primary">Contacten</h2>
+            <div className="flex items-center gap-3 text-xs text-autronis-text-secondary tabular-nums">
+              {selectedIds.size > 0 && (
+                <span className="text-autronis-accent font-medium">
+                  {selectedIds.size} geselecteerd
+                </span>
+              )}
+              <span>{filtered.length} resultaten</span>
+            </div>
+          </div>
           <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
+            <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
               <tr>
-                <th className="w-10 px-3 py-2.5">
+                <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -602,11 +613,12 @@ export default function LeadsContactsPage() {
                     className="rounded border-autronis-border accent-autronis-accent"
                   />
                 </th>
-                <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Email</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Locatie</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Folder</th>
-                <th className="text-left px-3 py-2.5 font-medium">Status</th>
+                <th className="text-left px-4 py-3 font-semibold">Bron</th>
+                <th className="text-left px-4 py-3 font-semibold">Naam</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Email</th>
+                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Locatie</th>
+                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Folder</th>
+                <th className="text-left px-4 py-3 font-semibold">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
@@ -624,7 +636,7 @@ export default function LeadsContactsPage() {
                       selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
                     )}
                   >
-                    <td className="px-3 py-2.5">
+                    <td className="px-4 py-4">
                       <input
                         type="checkbox"
                         checked={selected}
@@ -633,24 +645,27 @@ export default function LeadsContactsPage() {
                         className="rounded border-autronis-border accent-autronis-accent"
                       />
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-4 py-4">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full",
+                          isGoogleMaps(lead.source)
+                            ? "bg-autronis-accent/15 text-autronis-accent"
+                            : "bg-purple-500/15 text-purple-300"
+                        )}
+                      >
+                        {isGoogleMaps(lead.source) ? (
+                          <MapPin className="w-3 h-3" />
+                        ) : (
+                          <Linkedin className="w-3 h-3" />
+                        )}
+                        {isGoogleMaps(lead.source) ? "Locatie" : "Bedrijf"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-autronis-text-primary truncate max-w-xs">
+                        <span className="font-semibold text-sm text-autronis-text-primary truncate max-w-xs">
                           {lead.name || "(geen naam)"}
-                        </span>
-                        <span
-                          className={cn(
-                            "inline-flex items-center gap-0.5 text-[10px] px-1 py-0.5 rounded font-medium flex-shrink-0",
-                            isGoogleMaps(lead.source)
-                              ? "bg-autronis-accent/10 text-autronis-accent"
-                              : "bg-purple-500/10 text-purple-300"
-                          )}
-                        >
-                          {isGoogleMaps(lead.source) ? (
-                            <MapPin className="w-2.5 h-2.5" />
-                          ) : (
-                            <Linkedin className="w-2.5 h-2.5" />
-                          )}
                         </span>
                         {lead.website && (
                           <a
@@ -658,46 +673,55 @@ export default function LeadsContactsPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-autronis-text-secondary hover:text-autronis-accent flex-shrink-0"
+                            className="text-autronis-text-secondary/60 hover:text-autronis-accent flex-shrink-0"
+                            title={lead.website}
                           >
                             <ExternalLink className="w-3 h-3" />
                           </a>
                         )}
                       </div>
                     </td>
-                    <td className="px-3 py-2.5 hidden md:table-cell">
+                    <td className="px-4 py-4 hidden md:table-cell">
                       {emails.length > 0 ? (
                         <a
                           href={`mailto:${emails[0]}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-autronis-text-primary hover:text-autronis-accent truncate inline-block max-w-xs"
+                          className="inline-flex items-center gap-1.5 text-xs text-autronis-text-primary hover:text-autronis-accent truncate max-w-xs"
                         >
+                          <Mail className="w-3 h-3 text-blue-400 flex-shrink-0" />
                           {emails[0]}
                           {emails.length > 1 && (
-                            <span className="text-autronis-text-secondary/50 ml-1">+{emails.length - 1}</span>
+                            <span className="text-autronis-text-secondary/50">+{emails.length - 1}</span>
                           )}
                         </a>
                       ) : (
                         <span className="text-xs text-autronis-text-secondary/30">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5 hidden lg:table-cell text-xs text-autronis-text-secondary">
-                      {(lead.location || "").split(",")[0] || "—"}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      {lead.location ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-autronis-text-secondary">
+                          <MapPin className="w-3 h-3 text-autronis-text-secondary/50" />
+                          {(lead.location || "").split(",")[0]}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-autronis-text-secondary/30">—</span>
+                      )}
                     </td>
-                    <td className="px-3 py-2.5 hidden lg:table-cell">
+                    <td className="px-4 py-4 hidden lg:table-cell">
                       {lead.folder ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
                           {lead.folder}
                         </span>
                       ) : (
                         <span className="text-xs text-autronis-text-secondary/30">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-4 py-4">
                       {badge && (
                         <span
                           className={cn(
-                            "inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold",
+                            "inline-flex items-center text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider",
                             badge.bg,
                             badge.text
                           )}
@@ -712,7 +736,7 @@ export default function LeadsContactsPage() {
             </tbody>
           </table>
           {filtered.length > 200 && (
-            <div className="px-4 py-2 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
+            <div className="px-6 py-3 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
               {filtered.length} contacten totaal — eerste 200 getoond
             </div>
           )}

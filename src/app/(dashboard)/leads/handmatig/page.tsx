@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { usePoll } from "@/lib/use-poll";
 
 interface Lead {
   id: string;
@@ -71,6 +72,9 @@ export default function LeadsHandmatigPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 15s
+  usePoll(load, 15000);
 
   // Filter: alleen leads waar enrichment faalde EN die geen email hebben
   const failedLeads = useMemo(() => {

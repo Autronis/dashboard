@@ -27,6 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import OutreachSection from "@/components/leads/outreach-section";
+import { usePoll } from "@/lib/use-poll";
 
 interface EmailRecord {
   id: string;
@@ -160,6 +161,9 @@ export default function LeadsEmailsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 10s — emails veranderen vaak (sent/replied)
+  usePoll(load, 10000);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};

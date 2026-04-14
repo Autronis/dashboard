@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePoll } from "@/lib/use-poll";
 
 interface Lead {
   id: string;
@@ -106,6 +107,9 @@ export default function LeadsDashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 15s
+  usePoll(load, 15000);
 
   const stats = useMemo(() => {
     const total = leads.length;

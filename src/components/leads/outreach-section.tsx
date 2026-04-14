@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { usePoll } from "@/lib/use-poll";
 
 interface OutreachSettings {
   id: string;
@@ -93,6 +94,9 @@ export default function OutreachSection() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 15s
+  usePoll(load, 15000);
 
   async function saveLimit() {
     if (!data?.settings) return;

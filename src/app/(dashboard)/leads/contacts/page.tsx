@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { usePoll } from "@/lib/use-poll";
 
 interface Lead {
   id: string;
@@ -196,6 +197,9 @@ export default function LeadsContactsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 12s zolang tab actief is
+  usePoll(load, 12000);
 
   const folders = useMemo(() => {
     const set = new Set<string>();

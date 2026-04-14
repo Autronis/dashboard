@@ -502,6 +502,8 @@ export default function ProjectenPage() {
   const [weergave, setWeergave] = useState<"grid" | "lijst">("grid");
   const [showNieuwProject, setShowNieuwProject] = useState(false);
   const [nieuwProjectNaam, setNieuwProjectNaam] = useState("");
+  const [nieuwProjectOmschrijving, setNieuwProjectOmschrijving] = useState("");
+  const [nieuwProjectEigenaar, setNieuwProjectEigenaar] = useState<"sem" | "syb" | "team" | "vrij" | "">("");
   const [nieuwProjectBezig, setNieuwProjectBezig] = useState(false);
   const { addToast } = useToast();
   const timer = useTimer();
@@ -527,13 +529,24 @@ export default function ProjectenPage() {
   }, [addToast, refetch]);
 
   const handleNieuwProject = useCallback(async () => {
-    if (!nieuwProjectNaam.trim()) return;
+    if (!nieuwProjectNaam.trim()) {
+      addToast("Projectnaam is verplicht", "fout");
+      return;
+    }
+    if (!nieuwProjectEigenaar) {
+      addToast("Kies een eigenaar voor het project", "fout");
+      return;
+    }
     setNieuwProjectBezig(true);
     try {
       const res = await fetch("/api/projecten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ naam: nieuwProjectNaam.trim() }),
+        body: JSON.stringify({
+          naam: nieuwProjectNaam.trim(),
+          omschrijving: nieuwProjectOmschrijving.trim() || undefined,
+          eigenaar: nieuwProjectEigenaar,
+        }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.fout || "Aanmaken mislukt");
@@ -545,12 +558,14 @@ export default function ProjectenPage() {
       }
       setShowNieuwProject(false);
       setNieuwProjectNaam("");
+      setNieuwProjectOmschrijving("");
+      setNieuwProjectEigenaar("");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
     } finally {
       setNieuwProjectBezig(false);
     }
-  }, [nieuwProjectNaam, addToast, refetch]);
+  }, [nieuwProjectNaam, nieuwProjectOmschrijving, nieuwProjectEigenaar, addToast, refetch]);
 
   const handleOpenVSCode = useCallback(async (project: Project) => {
     const prompt = `Werk aan ${project.naam}, pak de openstaande taken op en begin met de hoogste prioriteit`;

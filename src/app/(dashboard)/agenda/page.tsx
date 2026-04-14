@@ -24,7 +24,9 @@ import {
   CheckSquare,
   ListTodo,
   Zap,
+  Sparkles,
 } from "lucide-react";
+import { SlimmeTakenModal } from "@/components/taken/slimme-taken-modal";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -252,6 +254,7 @@ export default function AgendaPage() {
   const [plannenFilter, setPlannenFilter] = useState<"alle" | "hoog" | "bezig">("alle");
   const [expandedProjecten, setExpandedProjecten] = useState<Set<string>>(new Set());
   const [aiPlanLoading, setAiPlanLoading] = useState(false);
+  const [slimmeTakenOpen, setSlimmeTakenOpen] = useState(false);
 
   function handlePlanTaak(id: number, start: string, eind: string, duur: number, kalenderId?: number) {
     planTaak.mutate(
@@ -2734,6 +2737,15 @@ export default function AgendaPage() {
       <TaakDetailPanel
         taakId={taakDetailId}
         onClose={() => setTaakDetailId(null)}
+      />
+      <SlimmeTakenModal
+        open={slimmeTakenOpen}
+        onClose={() => setSlimmeTakenOpen(false)}
+        ingeplandVoor={`${selectedDag.getFullYear()}-${String(selectedDag.getMonth() + 1).padStart(2, "0")}-${String(selectedDag.getDate()).padStart(2, "0")}`}
+        onCreated={() => {
+          queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+          queryClient.invalidateQueries({ queryKey: ["taken"] });
+        }}
       />
     </div>
     </PageTransition>

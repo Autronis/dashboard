@@ -9,6 +9,7 @@ import {
   ChevronDown, ChevronRight, Search, FolderOpen, Layers, Plus, X,
   Pencil, Bot, User, Copy, Terminal, GripVertical, Timer, Sparkles,
   Zap, RefreshCw, LayoutGrid, List, BarChart3, Play, CalendarPlus,
+  Tag, Check,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -892,6 +893,18 @@ function TakenPage() {
     setModalOpen(true);
   }, [uniekeProjecten]);
 
+  // Quick "Nieuwe categorie" — opent het nieuwe-taak modal met fase prefilled
+  // en zonder project, zodat de eerste taak in een nieuwe losse-categorie
+  // direct aangemaakt kan worden.
+  const openNieuweCategorie = useCallback(() => {
+    const naam = window.prompt("Naam van nieuwe categorie (bv. 'Belasting', 'VOF setup'):");
+    if (!naam || !naam.trim()) return;
+    setNieuwTitel(""); setNieuwProject(""); setNieuwFase(naam.trim());
+    setNieuwPrioriteit("normaal"); setNieuwDeadline(""); setNieuwOmschrijving("");
+    setNieuwUitvoerder("handmatig"); setNieuwPrompt(""); setNieuwProjectMap("");
+    setModalOpen(true);
+  }, []);
+
   // Keyboard shortcut: N opens new task modal
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -1017,6 +1030,14 @@ function TakenPage() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
                 <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
                 Sync
+              </button>
+              <button
+                onClick={openNieuweCategorie}
+                title="Maak een nieuwe categorie / fase voor losse taken"
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                Nieuwe categorie
               </button>
               <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors" title="Nieuwe taak (N)">
                 <Plus className="w-4 h-4" /> Nieuw

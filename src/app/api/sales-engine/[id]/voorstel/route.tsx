@@ -6,6 +6,12 @@ import { eq } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { MiniVoorstelPDF, type MiniVoorstelData } from "@/lib/sales-engine/pdf-template";
 
+// Never cache this route — the template can change and we want every
+// download to reflect the latest version.
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const STANDAARD_UURTARIEF = 75;
 
 function parseUrenPerWeek(text: string | null): number {
@@ -96,7 +102,8 @@ export async function GET(
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${filename}"`,
-        "Cache-Control": "private, max-age=60",
+        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
       },
     });
   } catch (error) {

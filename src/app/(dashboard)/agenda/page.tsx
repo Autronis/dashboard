@@ -196,6 +196,16 @@ export default function AgendaPage() {
     return () => window.removeEventListener("autronis:agenda-refetch", handler);
   }, [queryClient]);
 
+  // Toast events van dag-view sessie knoppen (Start/Afrond)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ bericht: string; type: "succes" | "fout" }>).detail;
+      if (detail?.bericht) addToast(detail.bericht, detail.type ?? "succes");
+    };
+    window.addEventListener("autronis:toast", handler);
+    return () => window.removeEventListener("autronis:toast", handler);
+  }, [addToast]);
+
   const handleGoogleConnect = async () => {
     setGoogleLoading(true);
     try {

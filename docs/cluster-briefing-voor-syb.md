@@ -1,6 +1,11 @@
-# Cluster-systeem briefing voor Syb
+# Complete briefing voor Syb — clusters + sync + intake flow
 
-Hey Syb — Sem stuurt je dit zodat jouw Claude op je Windows laptop op dezelfde manier met taken omgaat als mijn Claude op de Mac. Lees dit één keer door en zet de regels daarna in je eigen `CLAUDE.md` op je laptop.
+Hey Syb — Sem stuurt je dit zodat jouw Claude op je Windows laptop op dezelfde manier met taken omgaat als mijn Claude op de Mac. Dit doc is de **hoofdbriefing**. De diepe details staan in twee losse docs die ernaast liggen:
+
+- 📡 [`synchronisatie-flow.md`](./synchronisatie-flow.md) — hoe beide laptops, Claude Code sessies en het dashboard met elkaar praten via Turso + auto-sync hooks. Install checklist, troubleshooting, secret sharing.
+- 📋 [`project-intake-flow.md`](./project-intake-flow.md) — de complete 6-fase flow voor het opzetten van een nieuw klantproject (intent detectie → eigenaar → project aanmaken → invalshoeken → scope → klant).
+
+Lees deze hoofdbriefing over clusters één keer door, zet de regels in je `CLAUDE.md`, en spring daarna naar de twee andere docs voor de setup.
 
 ## Waarom dit bestaat
 
@@ -130,11 +135,32 @@ Voorbeeld sync-taken call:
 Alleen weglaten als de taak echt niet in één categorie past.
 ```
 
-## Afronden
+## Afronden — wat jij concreet moet doen
 
-Dit is alles. Het enige wat jij concreet moet doen:
-1. Bovenstaande `## Clusters` sectie in jouw CLAUDE.md plakken (Windows laptop)
+### Voor clusters (dit doc)
+
+1. Bovenstaande `## Clusters` sectie in jouw CLAUDE.md plakken (Windows laptop — `%USERPROFILE%\Autronis\CLAUDE.md` of de plek waar jouw Claude 'm leest)
 2. Claude Code opnieuw starten zodat hij de nieuwe regel leest
 3. Vanaf nu: als je Claude vraagt om een nieuw project op te zetten of taken aan te maken, zet hij automatisch clusters. Geen extra werk voor jou.
 
-Vragen? Vraag het Sem, hij heeft dit systeem samen met mijn Claude gebouwd op 2026-04-14.
+### Voor de sync-setup (zie [`synchronisatie-flow.md`](./synchronisatie-flow.md))
+
+1. Pull de laatste dashboard repo (`git pull` in `C:\Users\syb20\Projects\autronis-dashboard` of waar 't ook staat)
+2. Check dat je `.env.local` compleet is (lijst staat in de sync doc) — trek ontbrekende keys uit 1Password
+3. Start de dev server een keer: `npm run dev` — als dat werkt ben je gesynct met Sem's Mac (jullie praten met dezelfde Turso)
+4. Volg de "Op Syb's Windows laptop — verse install checklist" in de sync doc voor de Claude Code hook op Windows (zit in `syb-windows-setup/` in de dashboard repo)
+
+### Voor de project intake flow (zie [`project-intake-flow.md`](./project-intake-flow.md))
+
+Fase 1 is al live. Jij hoeft er nu niks voor te doen — als Sem of jij een trigger-zin typt in Claude Code ("voor klant X willen we Y bouwen"), herkent Claude dat automatisch en start de flow.
+
+Wat je WEL moet weten:
+- **Eigenaar is verplicht** bij elk nieuw project. Claude vraagt 'm — antwoord altijd met `sem`, `syb`, `team`, of `vrij`. Geen andere waarden.
+- **Klant aanmaken gebeurt PAS na akkoord**. Niet direct. Wacht tot de klant "ja" zegt.
+- **Scope genereren gebeurt alleen als je expliciet OK zegt** in stap 4 van de flow.
+
+Fase 2-6 staan nog open. Sem coördineert wanneer die gebouwd worden.
+
+## Vragen?
+
+Vraag Sem of zijn Claude. Dit systeem is gebouwd op 2026-04-14. Als er iets niet werkt, check eerst de twee gerelateerde docs — daar staan de troubleshooting secties in.

@@ -1008,9 +1008,16 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const handleStartSessie = async (e: React.MouseEvent) => {
                 e.stopPropagation();
                 const openTaken = group.filter((t) => t.status === "open");
-                if (openTaken.length === 0) return;
+                if (openTaken.length === 0) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Geen open taken in deze sessie", type: "fout" },
+                    })
+                  );
+                  return;
+                }
                 try {
-                  await Promise.all(
+                  const resultaten = await Promise.all(
                     openTaken.map((t) =>
                       fetch(`/api/taken/${t.id}`, {
                         method: "PUT",
@@ -1019,10 +1026,25 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       })
                     )
                   );
-                  // Trigger refetch via parent
+                  const gefaald = resultaten.filter((r) => !r.ok).length;
+                  const gelukt = openTaken.length - gefaald;
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: gefaald > 0
+                          ? `${gelukt}/${openTaken.length} taken gestart (${gefaald} gefaald)`
+                          : `${gelukt} taken gestart in cluster sessie`,
+                        type: gefaald > 0 ? "fout" : "succes",
+                      },
+                    })
+                  );
                   window.dispatchEvent(new CustomEvent("autronis:agenda-refetch"));
                 } catch {
-                  // Silent fail — user kan 't opnieuw proberen
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Kon sessie niet starten", type: "fout" },
+                    })
+                  );
                 }
               };
 
@@ -1030,9 +1052,16 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               const handleAfrondSessie = async (e: React.MouseEvent) => {
                 e.stopPropagation();
                 const nietAfgerond = group.filter((t) => t.status !== "afgerond");
-                if (nietAfgerond.length === 0) return;
+                if (nietAfgerond.length === 0) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Sessie is al afgerond", type: "fout" },
+                    })
+                  );
+                  return;
+                }
                 try {
-                  await fetch("/api/taken/bulk", {
+                  const res = await fetch("/api/taken/bulk", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -1040,9 +1069,28 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       updates: { status: "afgerond" },
                     }),
                   });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.fout || "Bulk update mislukt");
+                  }
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: `${nietAfgerond.length} taken afgerond`,
+                        type: "succes",
+                      },
+                    })
+                  );
                   window.dispatchEvent(new CustomEvent("autronis:agenda-refetch"));
-                } catch {
-                  // silent fail
+                } catch (err) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: err instanceof Error ? err.message : "Afrond mislukt",
+                        type: "fout",
+                      },
+                    })
+                  );
                 }
               };
 

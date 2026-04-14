@@ -38,7 +38,7 @@
     },
     {
       "path": "/api/administratie/gmail-sync",
-      "schedule": "0 9 * * *"
+      "schedule": "0 * * * *"
     },
     {
       "path": "/api/revolut/sync",

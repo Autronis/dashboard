@@ -81,11 +81,14 @@ export async function GET(request: NextRequest) {
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    // Search for emails with PDF attachments from last day
+    // Search for emails with PDF attachments from last 48h.
+    // Cron runs hourly so 48h gives an overlap window: stragglers that arrive
+    // right after one run still get picked up by the next. The dedupe on
+    // email_id makes re-scanning safe and idempotent.
     const listResult = await gmail.users.messages.list({
       userId: "me",
-      q: "has:attachment filename:pdf newer_than:1d",
-      maxResults: 20,
+      q: "has:attachment filename:pdf newer_than:2d",
+      maxResults: 50,
     });
 
     const messages = listResult.data.messages ?? [];

@@ -1742,3 +1742,29 @@ export const persoonlijkeTodos = sqliteTable("persoonlijke_todos", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   gedaanOp: text("gedaan_op"),
 });
+
+// ============ SLIMME TAKEN TEMPLATES ============
+// Vooraf gedefinieerde Claude-uitvoerbare taken die Sem/Syb met één klik
+// aan hun dag kunnen toevoegen. Eerst hardcoded in src/lib/slimme-taken.ts,
+// nu DB-backed zodat ze custom templates kunnen toevoegen zonder code edit.
+// Bij eerste load worden de 7 defaults uit de lib geseed als systeem
+// templates (is_systeem=1).
+export const slimmeTakenTemplates = sqliteTable("slimme_taken_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull().unique(),
+  naam: text("naam").notNull(),
+  beschrijving: text("beschrijving"),
+  cluster: text("cluster", {
+    enum: ["backend-infra", "frontend", "klantcontact", "content", "admin", "research"],
+  }).notNull(),
+  geschatteDuur: integer("geschatte_duur").default(15),
+  prompt: text("prompt").notNull(),
+  velden: text("velden"), // JSON array
+  isSysteem: integer("is_systeem").default(0),
+  isActief: integer("is_actief").default(1),
+  recurringDayOfWeek: integer("recurring_day_of_week"), // 0=zo, 1=ma, ... 6=za
+  recurringLaatsteRun: text("recurring_laatste_run"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});

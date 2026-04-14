@@ -116,6 +116,31 @@ if (isTurso) {
   client.execute("CREATE INDEX IF NOT EXISTS idx_taken_cluster ON taken(project_id, cluster)")
     .catch(() => {});
 
+  // Slimme taken templates — DB-backed library van vooraf gedefinieerde
+  // Claude-uitvoerbare acties. Wordt bij eerste load geseed uit de defaults
+  // in src/lib/slimme-taken.ts (systeem templates, is_systeem=1).
+  client.execute(`CREATE TABLE IF NOT EXISTS slimme_taken_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    naam TEXT NOT NULL,
+    beschrijving TEXT,
+    cluster TEXT NOT NULL,
+    geschatte_duur INTEGER DEFAULT 15,
+    prompt TEXT NOT NULL,
+    velden TEXT,
+    is_systeem INTEGER DEFAULT 0,
+    is_actief INTEGER DEFAULT 1,
+    recurring_day_of_week INTEGER,
+    recurring_laatste_run TEXT,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_slimme_taken_actief ON slimme_taken_templates(is_actief)")
+    .catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_slimme_taken_recurring ON slimme_taken_templates(recurring_day_of_week)")
+    .catch(() => {});
+
   // Project intake flow (fase 2): scope storage kolommen op projecten
   client.execute("ALTER TABLE projecten ADD COLUMN scope_data TEXT")
     .catch(() => { /* column may already exist */ });

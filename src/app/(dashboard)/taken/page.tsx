@@ -19,6 +19,7 @@ import { SkeletonTaken } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckBurst, Confetti } from "@/components/ui/confetti-dynamic";
 import { useTaken, type TakenScope } from "@/hooks/queries/use-taken";
+import { MiniTaakEigenaarPicker } from "@/components/taken/mini-taak-eigenaar-picker";
 import { useCurrentUser } from "@/hooks/queries/use-team";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -1481,6 +1482,8 @@ function TakenPage() {
                                             <div className="flex-1 min-w-0">
                                               <p onClick={() => setSelectedTaak(taak)} className={cn("text-xs font-medium truncate cursor-pointer hover:text-autronis-accent transition-colors", taak.status === "afgerond" ? "text-autronis-text-secondary line-through" : "text-autronis-text-primary")}>{taak.titel}</p>
                                             </div>
+                                            {/* Inline eigenaar picker — direct wijzigen vanaf de lijst */}
+                                            <MiniTaakEigenaarPicker taakId={taak.id} current={taak.eigenaar ?? (taak.projectEigenaar as "sem" | "syb" | "team" | "vrij" | null) ?? null} />
                                             {taak.toegewezenAanNaam && (
                                               <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-bg border border-autronis-border font-medium text-autronis-text-secondary flex-shrink-0 flex items-center gap-1">
                                                 <User className="w-2.5 h-2.5" />

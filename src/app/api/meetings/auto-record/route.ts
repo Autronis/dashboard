@@ -44,15 +44,16 @@ export async function POST(request: NextRequest) {
     }
 
     const now = new Date();
-    const fiveMinAhead = new Date(now.getTime() + 5 * 60 * 1000);
-    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    // Lookahead 60 minuten zodat meetings die in het komende uur starten al ingepland worden.
+    // Recall ondersteunt join_at, dus we kunnen ruim vooraf de bot schedulen.
+    const lookaheadAhead = new Date(now.getTime() + 60 * 60 * 1000);
     const dispatched: string[] = [];
 
-    // 1. Check DB meetings with meeting_url that need a bot
+    // 1. Check DB meetings with meeting_url that need a bot (en nog niet gedispatched)
     const dbUpcoming = await db.all(sql`
       SELECT id, titel, datum, meeting_url FROM meetings
-      WHERE datum >= ${fiveMinAgo.toISOString()}
-        AND datum <= ${fiveMinAhead.toISOString()}
+      WHERE datum >= ${now.toISOString()}
+        AND datum <= ${lookaheadAhead.toISOString()}
         AND meeting_url IS NOT NULL
         AND recall_bot_id IS NULL
         AND (status IS NULL OR status != 'mislukt')
@@ -60,11 +61,13 @@ export async function POST(request: NextRequest) {
 
     for (const meeting of dbUpcoming) {
       try {
-        const bot = await createRecallBot(meeting.meeting_url, meeting.titel);
+        const joinAt = meeting.datum ? new Date(meeting.datum) : undefined;
+        const bot = await createRecallBot(meeting.meeting_url, meeting.titel, joinAt);
         await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id}, status = 'verwerken' WHERE id = ${meeting.id}`);
         dispatched.push(`DB: ${meeting.titel}`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[auto-record] DB meeting ${meeting.id} dispatch failed:`, msg);
         await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${meeting.id}`);
         dispatched.push(`DB: ${meeting.titel} (FOUT: ${msg})`);
       }
@@ -104,8 +107,8 @@ export async function POST(request: NextRequest) {
           const start = parseICSDate(dtstart);
           if (!start || isNaN(start.getTime())) continue;
 
-          // Only events starting in the next 5 minutes
-          if (start < fiveMinAgo || start > fiveMinAhead) continue;
+          // Only events starting in the next 60 minutes (zelfde lookahead als DB pad)
+          if (start < now || start > lookaheadAhead) continue;
 
           // Extract meeting URL from location or description
           const meetUrl = extractMeetUrl(location) || extractMeetUrl(description);
@@ -126,11 +129,12 @@ export async function POST(request: NextRequest) {
           const meetingId = Number(result.lastInsertRowid);
 
           try {
-            const bot = await createRecallBot(meetUrl, summary || "Meeting");
+            const bot = await createRecallBot(meetUrl, summary || "Meeting", start);
             await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id} WHERE id = ${meetingId}`);
             dispatched.push(`Kalender: ${summary}`);
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[auto-record] Kalender meeting "${summary}" dispatch failed:`, msg);
             await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${meetingId}`);
             dispatched.push(`Kalender: ${summary} (FOUT: ${msg})`);
           }

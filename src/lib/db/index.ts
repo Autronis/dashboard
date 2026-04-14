@@ -141,6 +141,11 @@ if (isTurso) {
   client.execute("CREATE INDEX IF NOT EXISTS idx_slimme_taken_recurring ON slimme_taken_templates(recurring_day_of_week)")
     .catch(() => {});
 
+  // Globale toggle: Google Calendar sync on/off. Default uit (0) zodat Sem's
+  // agenda niet vol loopt met elke taak/deadline die hij aanmaakt.
+  client.execute("ALTER TABLE bedrijfsinstellingen ADD COLUMN google_cal_sync_enabled INTEGER DEFAULT 0")
+    .catch(() => { /* column may already exist */ });
+
   // Project intake flow (fase 2): scope storage kolommen op projecten
   client.execute("ALTER TABLE projecten ADD COLUMN scope_data TEXT")
     .catch(() => { /* column may already exist */ });
@@ -732,6 +737,12 @@ if (isTurso) {
   )`);
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_slimme_taken_actief ON slimme_taken_templates(is_actief)");
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_slimme_taken_recurring ON slimme_taken_templates(recurring_day_of_week)");
+
+  // Globale toggle: Google Calendar sync on/off
+  const bedrijfCols = sqliteDb.prepare("PRAGMA table_info(bedrijfsinstellingen)").all() as { name: string }[];
+  if (!bedrijfCols.some((c: { name: string }) => c.name === "google_cal_sync_enabled")) {
+    sqliteDb.exec("ALTER TABLE bedrijfsinstellingen ADD COLUMN google_cal_sync_enabled INTEGER DEFAULT 0");
+  }
 
   // Project intakes wizard state
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS project_intakes (

@@ -76,6 +76,25 @@ export async function getAuthenticatedClient(gebruikerId: number) {
   return client;
 }
 
+/**
+ * Check de globale Google Cal sync toggle in bedrijfsinstellingen.
+ * Default UIT — taken worden alleen naar Google Cal gepushed als Sem de
+ * switch expliciet aanzet in /instellingen. Voorkomt dat elke nieuwe
+ * taak met deadline de agenda vol gooit.
+ */
+async function isGoogleCalSyncEnabled(): Promise<boolean> {
+  try {
+    const { db } = await import("@/lib/db");
+    const { bedrijfsinstellingen } = await import("@/lib/db/schema");
+    const [row] = await db.select({
+      enabled: bedrijfsinstellingen.googleCalSyncEnabled,
+    }).from(bedrijfsinstellingen).limit(1);
+    return row?.enabled === 1;
+  } catch {
+    return false; // bij twijfel: niet syncen
+  }
+}
+
 export async function pushEventToGoogle(
   gebruikerId: number,
   event: {
@@ -86,6 +105,9 @@ export async function pushEventToGoogle(
     allDay?: boolean;
   }
 ) {
+  // Globale toggle check — if uit, skip push volledig
+  if (!(await isGoogleCalSyncEnabled())) return null;
+
   const client = await getAuthenticatedClient(gebruikerId);
   if (!client) return null;
 
@@ -170,6 +192,9 @@ export async function updateGoogleEvent(
     allDay?: boolean;
   }
 ) {
+  // Globale toggle check — if uit, skip update (bestaand event blijft zoals het is)
+  if (!(await isGoogleCalSyncEnabled())) return null;
+
   const client = await getAuthenticatedClient(gebruikerId);
   if (!client) return null;
 

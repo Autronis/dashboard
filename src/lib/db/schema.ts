@@ -460,6 +460,8 @@ export const bedrijfsinstellingen = sqliteTable("bedrijfsinstellingen", {
   standaardBtw: real("standaard_btw").default(21),
   betalingstermijnDagen: integer("betalingstermijn_dagen").default(30),
   herinneringNaDagen: integer("herinnering_na_dagen").default(7),
+  // Globale toggles voor integraties die taken/events aanmaken in externe systemen
+  googleCalSyncEnabled: integer("google_cal_sync_enabled").default(0), // 0=uit, 1=aan — push taken naar Google Cal alleen als aan
 });
 
 // ============ MODULE 1: BELASTING & COMPLIANCE ============

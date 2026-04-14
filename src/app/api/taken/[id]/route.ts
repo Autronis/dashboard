@@ -148,64 +148,57 @@ export async function PUT(
     // Cluster propagation: wijs automatisch gerelateerde taken toe aan deze
     // gebruiker wanneer hij een taak actief maakt. "Actief maken" = status
     // naar 'bezig' zetten OF de taak in de agenda plannen (ingeplandStart).
-    // De groeperings-sleutel is `cluster` indien gezet (expliciete override),
-    // anders `fase` als natuurlijke fallback. Zo werkt het direct op bestaande
-    // taken zonder dat iemand eerst handmatig clusters moet zetten.
+    //
+    // De groeperings-sleutel is ALLEEN een expliciete `cluster` value. Fase
+    // werkt NIET als fallback — één fase kan meerdere clusters bevatten
+    // (bv. fase 1 heeft zowel backend als frontend taken die niet bij
+    // dezelfde persoon horen). Bij nieuwe projecten die door Claude worden
+    // aangemaakt moeten taken DIRECT een expliciete cluster krijgen (zie
+    // CLAUDE.md regel "Cluster bij nieuwe taken").
     //
     // Taken die al aan een ander zijn toegewezen blijven onaangeraakt
     // (soft lock — de frontend toont een warning dialog voordat de ander
     // ze alsnog probeert te pakken).
-    const groepCluster = bijgewerkt.cluster ?? null;
-    const groepFase = !groepCluster ? bijgewerkt.fase ?? null : null;
+    const clusterNaam = bijgewerkt.cluster ?? null;
     const isNuBezig = body.status === "bezig" && huidig?.status !== "bezig";
     const isNuIngepland = body.ingeplandStart !== undefined && body.ingeplandStart && !huidig?.ingeplandStart;
     const isNuActief = isNuBezig || isNuIngepland;
     let propagatie: {
       aantal: number;
-      groupType: "cluster" | "fase";
       groupLabel: string;
     } | null = null;
 
-    if (isNuActief && bijgewerkt.projectId && (groepCluster || groepFase)) {
-      const baseWhere = and(
-        eq(taken.projectId, bijgewerkt.projectId),
-        groepCluster
-          ? eq(taken.cluster, groepCluster)
-          : and(
-              eq(taken.fase, groepFase!),
-              isNull(taken.cluster)
-            )!,
-        eq(taken.status, "open"),
-        isNull(taken.toegewezenAan),
-        ne(taken.id, Number(id))
-      );
-
+    if (isNuActief && bijgewerkt.projectId && clusterNaam) {
       const aanbevolen = await db
         .update(taken)
         .set({
           toegewezenAan: gebruiker.id,
           bijgewerktOp: new Date().toISOString(),
         })
-        .where(baseWhere)
+        .where(
+          and(
+            eq(taken.projectId, bijgewerkt.projectId),
+            eq(taken.cluster, clusterNaam),
+            eq(taken.status, "open"),
+            isNull(taken.toegewezenAan),
+            ne(taken.id, Number(id))
+          )
+        )
         .returning({ id: taken.id });
 
       if (aanbevolen.length > 0) {
-        const groupLabel = groepCluster ?? groepFase ?? "";
-        const groupType: "cluster" | "fase" = groepCluster ? "cluster" : "fase";
         propagatie = {
           aantal: aanbevolen.length,
-          groupType,
-          groupLabel,
+          groupLabel: clusterNaam,
         };
         db.insert(teamActiviteit).values({
           gebruikerId: gebruiker.id,
           type: "taak_update",
           taakId: Number(id),
           projectId: bijgewerkt.projectId,
-          bericht: `heeft ${groupType} "${groupLabel}" geclaimd (${aanbevolen.length} aanbevolen vervolgtaken)`,
+          bericht: `heeft cluster "${clusterNaam}" geclaimd (${aanbevolen.length} aanbevolen vervolgtaken)`,
           metadata: JSON.stringify({
-            groupType,
-            groupLabel,
+            cluster: clusterNaam,
             aanbevolenTaakIds: aanbevolen.map((t) => t.id),
           }),
         }).execute().catch(() => {});

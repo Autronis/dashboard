@@ -1,5 +1,7 @@
-const RECALL_API_KEY = process.env.RECALL_API_KEY;
-const RECALL_REGION = process.env.RECALL_API_REGION || "eu-central-1";
+// Strip whitespace/newlines defensively — Vercel env var copy-paste often leaves trailing \n,
+// which makes the Authorization header invalid and surfaces as a generic "fetch failed" error.
+const RECALL_API_KEY = process.env.RECALL_API_KEY?.trim();
+const RECALL_REGION = (process.env.RECALL_API_REGION || "eu-central-1").trim();
 const RECALL_BASE = `https://${RECALL_REGION}.recall.ai/api/v1`;
 
 function headers() {
@@ -7,6 +9,25 @@ function headers() {
     Authorization: `Token ${RECALL_API_KEY}`,
     "Content-Type": "application/json",
   };
+}
+
+// Stringifies an unknown error including its `cause` chain. Native fetch failures hide
+// the actual reason inside `error.cause` (often a TypeError or DNS error); we expose it
+// so the caller can show a useful message to the user instead of "fetch failed".
+function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const parts: string[] = [err.message];
+  let cause: unknown = (err as Error & { cause?: unknown }).cause;
+  while (cause) {
+    if (cause instanceof Error) {
+      parts.push(`caused by: ${cause.message}`);
+      cause = (cause as Error & { cause?: unknown }).cause;
+    } else {
+      parts.push(`caused by: ${String(cause)}`);
+      break;
+    }
+  }
+  return parts.join(" — ");
 }
 
 export interface RecallBot {
@@ -62,11 +83,19 @@ export async function createRecallBot(
     body.status_changes_webhook_url = webhookUrl;
   }
 
-  const res = await fetch(`${RECALL_BASE}/bot/`, {
-    method: "POST",
-    headers: headers(),
-    body: JSON.stringify(body),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${RECALL_BASE}/bot/`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    // Native fetch buries the actual reason in `cause`. Surface it.
+    throw new Error(
+      `Recall bot fetch transport failure (${RECALL_BASE}/bot/): ${describeError(err)}`
+    );
+  }
 
   if (!res.ok) {
     const err = await res.text();

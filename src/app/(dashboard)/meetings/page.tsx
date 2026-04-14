@@ -997,7 +997,12 @@ export default function MeetingsPage() {
 
           {m.status === "mislukt" && (
             <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-6">
-              <p className="text-red-400 font-medium mb-3">Verwerking mislukt</p>
+              <p className="text-red-400 font-medium mb-2">Verwerking mislukt</p>
+              {m.recallFout && (
+                <pre className="text-xs text-red-300/90 whitespace-pre-wrap font-mono mb-3 max-h-48 overflow-auto">
+                  {m.recallFout}
+                </pre>
+              )}
               <button
                 onClick={() => handleVerwerk(m.id as number)}
                 disabled={verwerkMutation.isPending}

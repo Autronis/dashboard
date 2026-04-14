@@ -89,6 +89,10 @@ if (isTurso) {
   client.execute("ALTER TABLE agenda_items ADD COLUMN herinnering_verstuurd_op TEXT")
     .catch(() => { /* column may already exist */ });
 
+  // Persist Recall bot dispatch errors per meeting so the UI can show them
+  client.execute("ALTER TABLE meetings ADD COLUMN recall_fout TEXT")
+    .catch(() => { /* column may already exist */ });
+
   // Eigenaarschap op projecten: sem / syb / team / vrij. Klantprojecten
   // krijgen 'team' als default backfill, alle andere blijven op 'sem'.
   client.execute("ALTER TABLE projecten ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
@@ -450,6 +454,11 @@ if (isTurso) {
   const agendaCols = sqliteDb.prepare("PRAGMA table_info(agenda_items)").all() as { name: string }[];
   if (!agendaCols.some((c: { name: string }) => c.name === "herinnering_verstuurd_op")) {
     sqliteDb.exec("ALTER TABLE agenda_items ADD COLUMN herinnering_verstuurd_op TEXT");
+  }
+
+  const meetingCols = sqliteDb.prepare("PRAGMA table_info(meetings)").all() as { name: string }[];
+  if (!meetingCols.some((c: { name: string }) => c.name === "recall_fout")) {
+    sqliteDb.exec("ALTER TABLE meetings ADD COLUMN recall_fout TEXT");
   }
 
   // Revolut integration tables

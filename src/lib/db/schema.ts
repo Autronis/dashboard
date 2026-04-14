@@ -1029,6 +1029,7 @@ export const meetings = sqliteTable("meetings", {
   tags: text("tags").default("[]"),
   status: text("status", { enum: ["verwerken", "klaar", "mislukt"] }).default("verwerken"),
   recallBotId: text("recall_bot_id"),
+  recallFout: text("recall_fout"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });

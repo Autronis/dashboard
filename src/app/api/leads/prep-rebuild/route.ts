@@ -31,21 +31,51 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = getSupabaseLeads();
-    const { data, error } = await supabase
-      .from("google_maps_leads")
-      .select("id, name, website, location, address, category")
-      .eq("user_id", SYB_USER_ID)
-      .in("id", leadIds);
 
-    if (error) {
+    // Probeer beide tabellen — LinkedIn (`leads`) is waar Syb's data nu in zit,
+    // Google Maps (`google_maps_leads`) is voor de toekomst. Ids zijn uniek per
+    // tabel dus we kunnen ze los vragen en mergen.
+    const [linkedinRes, gmapsRes] = await Promise.all([
+      supabase
+        .from("leads")
+        .select("id, name, website, location, search_term")
+        .eq("user_id", SYB_USER_ID)
+        .in("id", leadIds),
+      supabase
+        .from("google_maps_leads")
+        .select("id, name, website, location, address, category")
+        .eq("user_id", SYB_USER_ID)
+        .in("id", leadIds),
+    ]);
+
+    if (linkedinRes.error) {
       return NextResponse.json(
-        { fout: `Supabase error: ${error.message}` },
+        { fout: `Supabase error (leads): ${linkedinRes.error.message}` },
+        { status: 500 }
+      );
+    }
+    if (gmapsRes.error) {
+      return NextResponse.json(
+        { fout: `Supabase error (google_maps_leads): ${gmapsRes.error.message}` },
         { status: 500 }
       );
     }
 
     const byId = new Map<string, PrepLeadInput>();
-    for (const row of data ?? []) {
+    for (const row of linkedinRes.data ?? []) {
+      // LinkedIn leads hebben geen `category` of `address`, maar wel
+      // `search_term` (de query waarmee Syb ze vond, bv. "bouwbedrijven utrecht")
+      // — dat is genoeg signaal voor de sector-fit classifier.
+      byId.set(row.id, {
+        id: row.id,
+        name: row.name,
+        website: row.website,
+        location: row.location,
+        address: null,
+        category: row.search_term,
+      });
+    }
+    for (const row of gmapsRes.data ?? []) {
       byId.set(row.id, {
         id: row.id,
         name: row.name,

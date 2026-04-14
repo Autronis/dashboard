@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
+import { createRequire } from "module";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { projecten } from "@/lib/db/schema";
@@ -91,18 +92,18 @@ export async function POST(
       },
     };
 
-    // Dynamic require to avoid Turbopack/Next.js trying to bundle the CJS
-    // submodule at build time. The submodule file path is computed at
-    // runtime so webpack/turbopack don't trace it.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // Use createRequire to bypass Next.js's bundler — it tries to statically
+    // trace CommonJS requires and chokes on the scope-generator submodule's
+    // dynamic puppeteer loader. createRequire gives us a plain Node require
+    // at runtime, untouched by webpack/turbopack.
+    const nodeRequire = createRequire(process.cwd() + "/package.json");
     const submodulePath = path.join(
       process.cwd(),
       "vendor",
       "scope-generator",
       "generate-pdf.js"
     );
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { generatePdfBuffer } = require(submodulePath) as {
+    const { generatePdfBuffer } = nodeRequire(submodulePath) as {
       generatePdfBuffer: (data: unknown) => Promise<Buffer>;
     };
 

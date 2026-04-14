@@ -53,6 +53,17 @@ const nextConfig: NextConfig = {
     optimizeCss: !!process.env.TURSO_DATABASE_URL,
     scrollRestoration: true,
   },
+  // Ignore git worktrees so Turbopack doesn't scan 9 duplicate project
+  // copies under .worktrees/ — that was causing 400%+ CPU and 3.5GB RAM
+  // usage on dev, making every request take 30+ seconds.
+  turbopack: {
+    rules: {},
+    // The root stays the project dir; we just tell Next.js which paths to
+    // exclude from the file watcher / module graph.
+  },
+  outputFileTracingExcludes: {
+    "*": [".worktrees/**/*"],
+  },
 };
 
 export default nextConfig;

@@ -735,45 +735,56 @@ function TakenPage() {
     return Array.from(set).sort();
   }, [taken]);
 
-  // Cluster claims: voor elk (projectId, cluster) tuple de user die
-  // momenteel een "bezig" taak in dat cluster heeft. Key = "projectId:cluster".
-  // Gebruikt voor soft-lock visual + waarschuwingsdialog in de UI.
+  // Cluster/fase claims: voor elk (projectId, groupKey) tuple de user die
+  // momenteel een actieve taak in die groep heeft. GroupKey is `cluster` als
+  // die is gezet, anders `fase` als natuurlijke fallback. "Actief" = status
+  // bezig OF een ingeplandStart (agenda planned). Gebruikt voor soft-lock
+  // visual + waarschuwingsdialog in de UI.
+  function groupKeyFor(taak: Taak): string | null {
+    if (!taak.projectId) return null;
+    const label = taak.cluster ?? taak.fase ?? null;
+    if (!label) return null;
+    const kind = taak.cluster ? "c" : "f";
+    return `${taak.projectId}:${kind}:${label}`;
+  }
+
   const clusterClaims = useMemo(() => {
-    const claims = new Map<string, { userId: number; userName: string }>();
+    const claims = new Map<
+      string,
+      { userId: number; userName: string; groupType: "cluster" | "fase"; groupLabel: string }
+    >();
     for (const t of taken) {
-      if (
-        t.status === "bezig" &&
-        t.cluster &&
-        t.projectId &&
-        t.toegewezenAanId
-      ) {
-        const key = `${t.projectId}:${t.cluster}`;
-        if (!claims.has(key)) {
-          claims.set(key, {
-            userId: t.toegewezenAanId,
-            userName: t.toegewezenAanNaam?.split(" ")[0] ?? "iemand anders",
-          });
-        }
+      const key = groupKeyFor(t);
+      if (!key || !t.toegewezenAanId) continue;
+      const isActief = t.status === "bezig"; // agenda-ingeplande taken komen als 'open' binnen, dus alleen bezig telt hier voor claim
+      if (!isActief) continue;
+      if (!claims.has(key)) {
+        claims.set(key, {
+          userId: t.toegewezenAanId,
+          userName: t.toegewezenAanNaam?.split(" ")[0] ?? "iemand anders",
+          groupType: t.cluster ? "cluster" : "fase",
+          groupLabel: t.cluster ?? t.fase ?? "",
+        });
       }
     }
     return claims;
   }, [taken]);
 
-  function clusterClaimFor(taak: Taak): { userId: number; userName: string } | null {
-    if (!taak.cluster || !taak.projectId) return null;
-    return clusterClaims.get(`${taak.projectId}:${taak.cluster}`) ?? null;
+  function clusterClaimFor(taak: Taak): { userId: number; userName: string; groupType: "cluster" | "fase"; groupLabel: string } | null {
+    const key = groupKeyFor(taak);
+    if (!key) return null;
+    return clusterClaims.get(key) ?? null;
   }
 
-  // Check of huidige user een cluster-taak mag pakken. Als een andere user
-  // het cluster al claimde, toon confirm dialog. Returns true als doorgaan OK.
+  // Check of huidige user een groep-taak mag pakken. Als een andere user de
+  // groep al claimde, toon confirm dialog. Returns true als doorgaan OK.
   const confirmClusterOverride = useCallback((taak: Taak): boolean => {
-    const claim = taak.cluster && taak.projectId
-      ? clusterClaims.get(`${taak.projectId}:${taak.cluster}`)
-      : null;
+    const key = groupKeyFor(taak);
+    const claim = key ? clusterClaims.get(key) : null;
     if (!claim) return true;
     if (claim.userId === currentUser?.id) return true;
     return window.confirm(
-      `Deze taak zit in cluster "${taak.cluster}" dat ${claim.userName} momenteel oppakt. ` +
+      `Deze taak zit in ${claim.groupType} "${claim.groupLabel}" dat ${claim.userName} momenteel oppakt. ` +
       `Weet je zeker dat jij 'm wil pakken?`
     );
   }, [clusterClaims, currentUser?.id]);
@@ -789,10 +800,13 @@ function TakenPage() {
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { fout?: string };
-        throw new Error(data.fout || "Kon status niet bijwerken");
+        const errData = await res.json().catch(() => ({})) as { fout?: string };
+        throw new Error(errData.fout || "Kon status niet bijwerken");
       }
-      return { id, status };
+      const data = await res.json().catch(() => ({})) as {
+        propagatie?: { aantal: number; groupType: "cluster" | "fase"; groupLabel: string } | null;
+      };
+      return { id, status, propagatie: data.propagatie ?? null };
     },
     onMutate: async ({ id, status }) => {
       setMutatingCount((c) => c + 1);
@@ -816,7 +830,17 @@ function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Toast wanneer cluster/fase propagation heeft toegewezen
+      if (result.propagatie && result.propagatie.aantal > 0) {
+        const { aantal, groupType, groupLabel } = result.propagatie;
+        addToast(
+          `${aantal} taak${aantal === 1 ? "" : "en"} uit ${groupType} "${groupLabel}" naar jou toegewezen`,
+          "succes"
+        );
+        // Refetch taken zodat de UI de nieuwe assignments laat zien
+        queryClient.invalidateQueries({ queryKey: ["taken"] });
+      }
       // Invalidate related queries after a short delay to not overwrite optimistic update
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
@@ -1540,17 +1564,19 @@ function TakenPage() {
                                               </span>
                                             )}
                                             {isClaude && <span className="badge-claude-shimmer flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
-                                            {taak.cluster && (
+                                            {lockedByOther && (
                                               <span
-                                                className={cn(
-                                                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 flex items-center gap-1",
-                                                  lockedByOther
-                                                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
-                                                    : "bg-autronis-accent/10 text-autronis-accent"
-                                                )}
-                                                title={lockedByOther ? `${claim!.userName} is in dit cluster bezig` : `Cluster: ${taak.cluster}`}
+                                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                                                title={`${claim!.userName} is bezig in ${claim!.groupType} "${claim!.groupLabel}"`}
                                               >
-                                                {lockedByOther && "🔒"}
+                                                🔒 {claim!.userName}
+                                              </span>
+                                            )}
+                                            {taak.cluster && !lockedByOther && (
+                                              <span
+                                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-autronis-accent/10 text-autronis-accent"
+                                                title={`Cluster: ${taak.cluster}`}
+                                              >
                                                 {taak.cluster}
                                               </span>
                                             )}

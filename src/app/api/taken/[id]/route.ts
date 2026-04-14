@@ -145,40 +145,67 @@ export async function PUT(
       }).execute().catch(() => {});
     }
 
-    // Cluster propagation: als deze taak naar 'bezig' gaat én in een cluster
-    // zit, wijs alle andere open taken in datzelfde (projectId, cluster) tuple
-    // automatisch toe aan deze gebruiker. Taken die al zijn toegewezen aan
-    // een ander blijven onaangeraakt (soft lock — de frontend toont een
-    // warning dialog voordat de ander ze alsnog probeert te pakken).
-    const clusterNaam = bijgewerkt.cluster;
+    // Cluster propagation: wijs automatisch gerelateerde taken toe aan deze
+    // gebruiker wanneer hij een taak actief maakt. "Actief maken" = status
+    // naar 'bezig' zetten OF de taak in de agenda plannen (ingeplandStart).
+    // De groeperings-sleutel is `cluster` indien gezet (expliciete override),
+    // anders `fase` als natuurlijke fallback. Zo werkt het direct op bestaande
+    // taken zonder dat iemand eerst handmatig clusters moet zetten.
+    //
+    // Taken die al aan een ander zijn toegewezen blijven onaangeraakt
+    // (soft lock — de frontend toont een warning dialog voordat de ander
+    // ze alsnog probeert te pakken).
+    const groepCluster = bijgewerkt.cluster ?? null;
+    const groepFase = !groepCluster ? bijgewerkt.fase ?? null : null;
     const isNuBezig = body.status === "bezig" && huidig?.status !== "bezig";
-    if (isNuBezig && clusterNaam && bijgewerkt.projectId) {
+    const isNuIngepland = body.ingeplandStart !== undefined && body.ingeplandStart && !huidig?.ingeplandStart;
+    const isNuActief = isNuBezig || isNuIngepland;
+    let propagatie: {
+      aantal: number;
+      groupType: "cluster" | "fase";
+      groupLabel: string;
+    } | null = null;
+
+    if (isNuActief && bijgewerkt.projectId && (groepCluster || groepFase)) {
+      const baseWhere = and(
+        eq(taken.projectId, bijgewerkt.projectId),
+        groepCluster
+          ? eq(taken.cluster, groepCluster)
+          : and(
+              eq(taken.fase, groepFase!),
+              isNull(taken.cluster)
+            )!,
+        eq(taken.status, "open"),
+        isNull(taken.toegewezenAan),
+        ne(taken.id, Number(id))
+      );
+
       const aanbevolen = await db
         .update(taken)
         .set({
           toegewezenAan: gebruiker.id,
           bijgewerktOp: new Date().toISOString(),
         })
-        .where(
-          and(
-            eq(taken.projectId, bijgewerkt.projectId),
-            eq(taken.cluster, clusterNaam),
-            eq(taken.status, "open"),
-            isNull(taken.toegewezenAan),
-            ne(taken.id, Number(id))
-          )
-        )
+        .where(baseWhere)
         .returning({ id: taken.id });
 
       if (aanbevolen.length > 0) {
+        const groupLabel = groepCluster ?? groepFase ?? "";
+        const groupType: "cluster" | "fase" = groepCluster ? "cluster" : "fase";
+        propagatie = {
+          aantal: aanbevolen.length,
+          groupType,
+          groupLabel,
+        };
         db.insert(teamActiviteit).values({
           gebruikerId: gebruiker.id,
           type: "taak_update",
           taakId: Number(id),
           projectId: bijgewerkt.projectId,
-          bericht: `heeft cluster "${clusterNaam}" geclaimd (${aanbevolen.length} aanbevolen vervolgtaken)`,
+          bericht: `heeft ${groupType} "${groupLabel}" geclaimd (${aanbevolen.length} aanbevolen vervolgtaken)`,
           metadata: JSON.stringify({
-            cluster: clusterNaam,
+            groupType,
+            groupLabel,
             aanbevolenTaakIds: aanbevolen.map((t) => t.id),
           }),
         }).execute().catch(() => {});
@@ -273,7 +300,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({ taak: bijgewerkt });
+    return NextResponse.json({ taak: bijgewerkt, propagatie });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

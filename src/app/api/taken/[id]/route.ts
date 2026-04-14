@@ -4,7 +4,7 @@ import { taken, teamActiviteit, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql, and, or, isNull, isNotNull, ne, like } from "drizzle-orm";
 import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
-import { inferClusterOwner } from "@/lib/cluster";
+import { inferClusterOwner, classifyTaakCluster } from "@/lib/cluster";
 
 // PUT /api/taken/[id]
 export async function PUT(
@@ -30,6 +30,35 @@ export async function PUT(
     // Als status naar "bezig" gaat en nog niet toegewezen, wijs automatisch toe
     if (body.status === "bezig" && !huidig?.toegewezenAan) {
       body.toegewezenAan = gebruiker.id;
+    }
+
+    // Lazy cluster classificatie: als deze PUT een "actief maken" actie is
+    // (status → bezig OF ingeplandStart wordt voor het eerst gezet), en de
+    // taak heeft nog geen cluster, laat dan Claude de taak classificeren.
+    // Zo hoeft Sem nooit zelf een cluster te typen — het systeem kijkt
+    // slim naar titel/omschrijving/fase en bepaalt in welke cluster de
+    // taak hoort. Side-effect: DB wordt geüpdatet met de nieuwe cluster.
+    const triggertActief =
+      (body.status === "bezig" && huidig?.status !== "bezig") ||
+      (body.ingeplandStart !== undefined && body.ingeplandStart && !huidig?.ingeplandStart);
+    const heeftGeenCluster = !huidig?.cluster && !body.cluster;
+    if (triggertActief && heeftGeenCluster && huidig?.projectId) {
+      const geclassificeerd = await classifyTaakCluster(Number(id));
+      if (geclassificeerd) {
+        // Schrijf de cluster terug in huidig zodat de rest van de PUT
+        // (cluster-propagation, historische owner check) 'm kan gebruiken
+        huidig.cluster = geclassificeerd;
+        // Historische owner: als er al iemand in dit (project, cluster)
+        // werkt, erft deze taak diens toewijzing. Alleen als de taak nog
+        // niet expliciet aan de huidige user is toegewezen via eerdere
+        // body fields.
+        if (body.toegewezenAan === undefined) {
+          const historisch = await inferClusterOwner(huidig.projectId, geclassificeerd);
+          if (historisch && historisch !== gebruiker.id) {
+            body.toegewezenAan = historisch;
+          }
+        }
+      }
     }
 
 

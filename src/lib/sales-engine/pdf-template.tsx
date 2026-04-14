@@ -1,6 +1,7 @@
 import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { AutronisBrand, impactKleur as brandImpactKleur } from "@/lib/autronis-brand";
 import { getLogoDataUrl } from "@/lib/autronis-logo";
+import type { PakketResult, Tier, TierPakket } from "@/lib/sales-engine/pakket-calculator";
 
 // ═══════════════════════════════════════════════════════════════════
 // Sales Engine — Voorstel PDF
@@ -392,6 +393,98 @@ const s = StyleSheet.create({
 
   // Anti-orphan helpers
   keepTogether: { marginBottom: 12 },
+
+  // ── Drie pakketten grid ────────────────────────
+  pakkettenGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  pakketCard: {
+    flex: 1,
+    backgroundColor: B.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: B.border,
+    padding: 14,
+  },
+  pakketCardHighlighted: {
+    borderWidth: 2,
+    borderColor: B.accent,
+    backgroundColor: B.accentBg,
+  },
+  pakketBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  pakketNaam: {
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: B.textPrimary,
+  },
+  pakketNaamHighlighted: {
+    color: B.accent,
+  },
+  pakketSelectedTag: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: B.textOnAccent,
+    backgroundColor: B.accent,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  pakketSubtitle: {
+    fontSize: 8,
+    color: B.textTertiary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    marginBottom: 10,
+  },
+  pakketPrijs: {
+    fontSize: 22,
+    fontFamily: "Helvetica-Bold",
+    color: B.textPrimary,
+    marginBottom: 2,
+  },
+  pakketPrijsHighlighted: {
+    color: B.accent,
+  },
+  pakketPrijsLabel: {
+    fontSize: 8,
+    color: B.textTertiary,
+    marginBottom: 12,
+  },
+  pakketMeta: {
+    borderTopWidth: 1,
+    borderTopColor: B.borderLight,
+    paddingTop: 10,
+    marginTop: 6,
+  },
+  pakketMetaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  pakketMetaLabel: {
+    fontSize: 8,
+    color: B.textTertiary,
+  },
+  pakketMetaValue: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: B.textPrimary,
+  },
+  pakketScope: {
+    fontSize: 8.5,
+    color: B.textSecondary,
+    lineHeight: 1.5,
+    marginTop: 8,
+  },
 });
 
 // ────────────────────────────────────────────────────────────────────
@@ -412,10 +505,10 @@ export interface MiniVoorstelData {
     geschatteBesparing: string | null;
     prioriteit: number;
   }>;
-  jaarlijkseBesparing: number;
-  geschatteInvestering: number;
-  terugverdientijdMaanden: number;
-  totaalUrenPerWeek: number;
+  // Three-tier pakket calculation from berekenPakketten() — replaces the
+  // old single-number jaarlijkseBesparing / investering fields.
+  pakketten: PakketResult;
+  gekozenTier: Tier;
   bookingUrl?: string;
 }
 
@@ -447,6 +540,9 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
 
   const kansen = [...data.kansen].sort((a, b) => a.prioriteit - b.prioriteit);
   const detailKansen = kansen.filter((k) => k.impact === "hoog").slice(0, 3);
+  const { pakketten, gekozenTier } = data;
+  const gekozen = pakketten[gekozenTier];
+  const tierOrder: Tier[] = ["basis", "pro", "enterprise"];
 
   return (
     <Document>
@@ -534,13 +630,13 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
           </View>
           <View style={[s.kpiTile, s.kpiTileSuccess]}>
             <Text style={[s.kpiValue, s.kpiValueSuccess]}>
-              {formatEuro(data.jaarlijkseBesparing)}
+              {formatEuro(gekozen.jaarlijkseBesparing)}
             </Text>
             <Text style={s.kpiLabel}>Besparing{"\n"}per jaar</Text>
           </View>
           <View style={[s.kpiTile, s.kpiTileWarning]}>
             <Text style={[s.kpiValue, s.kpiValueWarning]}>
-              {data.totaalUrenPerWeek}u
+              {gekozen.urenPerWeek}u
             </Text>
             <Text style={s.kpiLabel}>Tijdwinst{"\n"}per week</Text>
           </View>
@@ -551,12 +647,12 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
             </Text>
           </View>
           <View style={s.kpiTile}>
-            <Text style={s.kpiValue}>~{data.terugverdientijdMaanden} mnd</Text>
+            <Text style={s.kpiValue}>~{gekozen.terugverdientijdMaanden} mnd</Text>
             <Text style={s.kpiLabel}>Terugverdientijd</Text>
           </View>
           <View style={s.kpiTile}>
-            <Text style={s.kpiValue}>{data.aanbevolenPakket}</Text>
-            <Text style={s.kpiLabel}>Aanbevolen{"\n"}pakket</Text>
+            <Text style={s.kpiValue}>{gekozen.naam}</Text>
+            <Text style={s.kpiLabel}>Gekozen{"\n"}pakket</Text>
           </View>
         </View>
 

@@ -84,6 +84,35 @@ export default function SiteRebuildPage() {
     }
   };
 
+  const rawScrape = async () => {
+    if (mode !== "url") {
+      addToast("Raw scrape werkt alleen met een URL", "fout");
+      return;
+    }
+    if (!url.trim()) {
+      addToast("Plak een URL", "fout");
+      return;
+    }
+    setScrapeLoading(true);
+    setPromptOutput(null);
+    try {
+      const res = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Scrape mislukt");
+      setPromptOutput(data.markdown);
+      setPromptOutputKind("raw");
+      addToast("Scrape klaar", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Scrape mislukt", "fout");
+    } finally {
+      setScrapeLoading(false);
+    }
+  };
+
   const buildClaudePrompt = async () => {
     if (!brandName.trim()) {
       addToast("Brand naam is verplicht", "fout");
@@ -113,6 +142,7 @@ export default function SiteRebuildPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Prompt bouwen mislukt");
       setPromptOutput(data.prompt);
+      setPromptOutputKind("prompt");
       addToast("Prompt klaar — kopieer of open claude.ai", "succes");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Mislukt", "fout");
@@ -322,12 +352,12 @@ export default function SiteRebuildPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
               <button
                 type="button"
                 onClick={generate}
-                disabled={loading || promptLoading}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-autronis-accent text-autronis-bg font-semibold disabled:opacity-50 hover:bg-autronis-accent-hover transition"
+                disabled={loading || promptLoading || scrapeLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-autronis-accent text-autronis-bg text-sm font-semibold disabled:opacity-50 hover:bg-autronis-accent-hover transition"
               >
                 {loading ? (
                   <>
@@ -344,8 +374,8 @@ export default function SiteRebuildPage() {
               <button
                 type="button"
                 onClick={buildClaudePrompt}
-                disabled={loading || promptLoading}
-                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary font-semibold hover:border-autronis-accent/40 disabled:opacity-50 transition"
+                disabled={loading || promptLoading || scrapeLoading}
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary text-sm font-semibold hover:border-autronis-accent/40 disabled:opacity-50 transition"
               >
                 {promptLoading ? (
                   <>
@@ -355,22 +385,45 @@ export default function SiteRebuildPage() {
                 ) : (
                   <>
                     <Copy className="w-4 h-4" />
-                    Bouw Claude prompt
+                    Claude prompt
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={rawScrape}
+                disabled={loading || promptLoading || scrapeLoading || mode !== "url"}
+                title={mode !== "url" ? "Alleen met URL mode" : "Raw markdown van de URL"}
+                className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary text-sm font-semibold hover:border-autronis-accent/40 disabled:opacity-50 transition"
+              >
+                {scrapeLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Bezig...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    Alleen scrape
                   </>
                 )}
               </button>
             </div>
             <p className="text-[11px] text-autronis-text-secondary leading-relaxed">
               <strong className="text-autronis-text-primary">Direct</strong>: API-call → live preview + download ZIP (~30s).<br />
-              <strong className="text-autronis-text-primary">Claude prompt</strong>: plak in claude.ai voor extended thinking, artifact preview en iteratie.
-              {mode === "logo" && " (Logo zelf plak je daar handmatig mee, dit endpoint stuurt geen afbeelding door.)"}
+              <strong className="text-autronis-text-primary">Claude prompt</strong>: plak in claude.ai voor extended thinking + artifact iteratie.
+              {mode === "logo" && " (Logo plak je daar handmatig mee.)"}<br />
+              <strong className="text-autronis-text-primary">Alleen scrape</strong>: raw markdown om generiek ergens anders te gebruiken.
             </p>
 
             {promptOutput && (
               <div className="pt-4 border-t border-autronis-border space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary">
-                    Claude prompt
+                    {promptOutputKind === "prompt" ? "Claude prompt" : "Raw scrape"}
+                    <span className="ml-2 text-autronis-text-secondary/60 tabular-nums normal-case font-normal">
+                      {promptOutput.length.toLocaleString("nl-NL")} tekens
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
@@ -390,15 +443,17 @@ export default function SiteRebuildPage() {
                         </>
                       )}
                     </button>
-                    <a
-                      href="https://claude.ai/new"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      Open claude.ai
-                    </a>
+                    {promptOutputKind === "prompt" && (
+                      <a
+                        href="https://claude.ai/new"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        Open claude.ai
+                      </a>
+                    )}
                   </div>
                 </div>
                 <div className="rounded-xl border border-autronis-border bg-autronis-bg p-3 max-h-64 overflow-auto">

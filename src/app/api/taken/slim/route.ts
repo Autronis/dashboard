@@ -45,8 +45,12 @@ export async function GET() {
 }
 
 // POST /api/taken/slim — maak één of meerdere slimme taken aan uit templates
-// Body (single):  { templateId: string, velden?: Record<string, string>, deadline?: string }
-// Body (bulk):    { bulk: Array<{ templateId: string, velden?: Record<string, string> }>, deadline?: string }
+// Body (single):  { templateId: string, velden?: Record<string, string>, deadline?: string, ingeplandVoor?: string }
+// Body (bulk):    { bulk: Array<{ templateId: string, velden?: Record<string, string> }>, deadline?: string, ingeplandVoor?: string }
+//
+// ingeplandVoor: ISO datum (YYYY-MM-DD) — als gezet wordt de taak direct
+// gepland voor 09:00 op die datum met ingeplandStart/ingeplandEind op
+// basis van geschatteDuur. Gebruikt vanuit de /agenda "Slimme taak" knop.
 export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
@@ -54,6 +58,7 @@ export async function POST(req: NextRequest) {
       templateId?: string;
       velden?: Record<string, string>;
       deadline?: string | null;
+      ingeplandVoor?: string | null;
       bulk?: Array<{ templateId: string; velden?: Record<string, string> }>;
     };
 
@@ -104,6 +109,25 @@ export async function POST(req: NextRequest) {
       const titel = fillNaamTemplate(template.naam, req.velden);
       const prompt = fillPromptTemplate(template.prompt, req.velden);
 
+      // Als ingeplandVoor is gezet: bereken start/eind op basis van duur.
+      // Default tijd: 09:00 op de gegeven datum. Sem kan het later
+      // verslepen in de agenda dag-view.
+      let ingeplandStart: string | null = null;
+      let ingeplandEind: string | null = null;
+      if (body.ingeplandVoor) {
+        const duurMin = template.geschatteDuur ?? 15;
+        const startISO = `${body.ingeplandVoor}T09:00:00`;
+        const startMs = new Date(startISO).getTime();
+        if (!isNaN(startMs)) {
+          const eindMs = startMs + duurMin * 60000;
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const fmt = (d: Date) =>
+            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          ingeplandStart = startISO;
+          ingeplandEind = fmt(new Date(eindMs));
+        }
+      }
+
       const [nieuw] = await db
         .insert(taken)
         .values({
@@ -121,6 +145,8 @@ export async function POST(req: NextRequest) {
           prompt,
           geschatteDuur: template.geschatteDuur,
           deadline: body.deadline || null,
+          ingeplandStart,
+          ingeplandEind,
         })
         .returning();
 

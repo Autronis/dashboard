@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   FileText, Receipt, Upload, Download, Check, Clock,
-  AlertTriangle, TrendingDown, TrendingUp, Calculator, Link2, Link2Off,
+  AlertTriangle, TrendingDown, TrendingUp, Calculator, Link2, Link2Off, Sparkles,
 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
@@ -103,6 +103,7 @@ export default function AdministratiePage() {
   const [koppeling, setKoppeling] = useState<KoppelingFilter>("alle");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [rematching, setRematching] = useState(false);
 
   // ─── Fetch data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -150,6 +151,32 @@ export default function AdministratiePage() {
       addToast(err instanceof Error ? err.message : "Upload mislukt", "fout");
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [addToast, fetchData]);
+
+  // ─── Rematch ────────────────────────────────────────────────
+  const handleRematch = useCallback(async () => {
+    setRematching(true);
+    try {
+      const res = await fetch("/api/administratie/rematch", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.fout ?? "Rematch mislukt");
+      const { gematcht, gecheckt, nogOnbekoppeld } = json as {
+        gematcht: number;
+        gecheckt: number;
+        nogOnbekoppeld: number;
+      };
+      addToast(
+        gematcht > 0
+          ? `${gematcht} van ${gecheckt} facturen gematcht (${nogOnbekoppeld} nog open)`
+          : `Geen nieuwe matches gevonden (${gecheckt} gecheckt)`,
+        gematcht > 0 ? "succes" : "fout"
+      );
+      fetchData();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Rematch mislukt", "fout");
+    } finally {
+      setRematching(false);
     }
   }, [addToast, fetchData]);
 
@@ -230,27 +257,38 @@ export default function AdministratiePage() {
           </div>
         </div>
 
-        {/* Onbekoppeld banner (klikbaar) */}
+        {/* Onbekoppeld banner */}
         {onbekoppeldAantal > 0 && (
-          <button
-            onClick={() => setKoppeling(koppeling === "onbekoppeld" ? "alle" : "onbekoppeld")}
+          <div
             className={cn(
-              "w-full flex items-center gap-3 p-4 rounded-2xl border transition-colors text-left",
+              "w-full flex items-center gap-3 p-4 rounded-2xl border transition-colors",
               koppeling === "onbekoppeld"
                 ? "bg-amber-500/15 border-amber-500/40"
-                : "bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40"
+                : "bg-amber-500/10 border-amber-500/20"
             )}
           >
             <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-            <div className="flex-1">
-              <p className="text-amber-300 text-sm font-medium">
+            <button
+              onClick={() => setKoppeling(koppeling === "onbekoppeld" ? "alle" : "onbekoppeld")}
+              className="flex-1 text-left group"
+            >
+              <p className="text-amber-300 text-sm font-medium group-hover:text-amber-200 transition-colors">
                 {onbekoppeldAantal} {onbekoppeldAantal === 1 ? "factuur wacht" : "facturen wachten"} op koppeling aan een bank-transactie
               </p>
               <p className="text-amber-300/60 text-xs mt-0.5">
                 {koppeling === "onbekoppeld" ? "Klik om filter uit te zetten" : "Klik om alleen onbekoppelde te tonen"}
               </p>
-            </div>
-          </button>
+            </button>
+            <button
+              onClick={handleRematch}
+              disabled={rematching}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-semibold hover:bg-amber-500/30 transition-colors disabled:opacity-50 shrink-0"
+              title="Probeer alle onbekoppelde facturen opnieuw te matchen aan bank-transacties"
+            >
+              <Sparkles className={cn("w-3.5 h-3.5", rematching && "animate-spin")} />
+              {rematching ? "Matchen..." : "Match opnieuw"}
+            </button>
+          </div>
         )}
 
         {/* KPI Cards */}

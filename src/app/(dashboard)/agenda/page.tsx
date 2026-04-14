@@ -1101,6 +1101,17 @@ export default function AgendaPage() {
           {aiPlanLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
           AI Plan
         </motion.button>
+
+        {/* Slimme taak knop — opent modal, plant direct op geselecteerde dag */}
+        <motion.button
+          onClick={() => setSlimmeTakenOpen(true)}
+          whileTap={{ scale: 0.88 }}
+          title="Voeg een slimme Claude-uitvoerbare taak toe aan deze dag"
+          className="px-2.5 py-1.5 rounded-lg border border-autronis-accent/30 bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20 text-xs font-medium transition-colors flex items-center gap-1.5"
+        >
+          <Sparkles className="w-3 h-3" />
+          Slimme taak
+        </motion.button>
       </div>
      </div>
 

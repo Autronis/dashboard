@@ -38,10 +38,13 @@ const CLUSTER_KLEUR: Record<string, { bg: string; text: string; border: string }
 
 const DAG_LABELS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 
-export function SlimmeTakenModal({ open, onClose, onCreated }: {
+export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
+  /** ISO datum (YYYY-MM-DD). Als gezet wordt de taak direct gepland op
+   *  09:00 van die dag. Gebruikt vanuit /agenda "Slimme taak" knop. */
+  ingeplandVoor?: string;
 }) {
   const { addToast } = useToast();
   const [templates, setTemplates] = useState<SlimmeTaakTemplate[]>([]);
@@ -126,11 +129,16 @@ export function SlimmeTakenModal({ open, onClose, onCreated }: {
       const res = await fetch("/api/taken/slim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId: selected.slug, velden: veldWaarden }),
+        body: JSON.stringify({
+          templateId: selected.slug,
+          velden: veldWaarden,
+          ingeplandVoor: ingeplandVoor ?? undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Aanmaken mislukt");
-      addToast(`Slimme taak "${data.taak.titel}" aangemaakt`, "succes");
+      const suffix = ingeplandVoor ? " en gepland in de agenda" : "";
+      addToast(`Slimme taak "${data.taak.titel}" aangemaakt${suffix}`, "succes");
       onCreated?.();
       onClose();
     } catch (err) {
@@ -169,12 +177,14 @@ export function SlimmeTakenModal({ open, onClose, onCreated }: {
             templateId: slug,
             velden: bulkVelden[slug] ?? {},
           })),
+          ingeplandVoor: ingeplandVoor ?? undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Bulk aanmaken mislukt");
       const n = data.aangemaakt?.length ?? 0;
-      addToast(`${n} slimme taken aangemaakt`, "succes");
+      const suffix = ingeplandVoor ? " en gepland in de agenda" : "";
+      addToast(`${n} slimme taken aangemaakt${suffix}`, "succes");
       if (data.fouten && data.fouten.length > 0) {
         addToast(`${data.fouten.length} fouten: ${data.fouten[0]}`, "fout");
       }
@@ -331,6 +341,18 @@ export function SlimmeTakenModal({ open, onClose, onCreated }: {
 
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-6">
+                {ingeplandVoor && mode !== "beheer" && mode !== "edit" && (
+                  <div className="mb-4 rounded-lg border border-autronis-accent/30 bg-autronis-accent/[0.06] px-3 py-2 flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-autronis-accent flex-shrink-0" />
+                    <span className="text-xs text-autronis-text-secondary">
+                      Wordt direct ingepland op{" "}
+                      <span className="text-autronis-accent font-semibold">
+                        {new Date(ingeplandVoor).toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
+                      </span>{" "}
+                      om 09:00
+                    </span>
+                  </div>
+                )}
                 {loading && (
                   <div className="flex items-center justify-center py-12 text-autronis-text-secondary text-sm">
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />

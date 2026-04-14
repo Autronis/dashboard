@@ -845,26 +845,72 @@ export default function ProjectenPage() {
                 className="bg-autronis-card border border-autronis-border rounded-2xl p-6 w-full max-w-md shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Nieuw project</h2>
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-1">Nieuw project</h2>
+                <p className="text-xs text-autronis-text-secondary mb-4">Klant later koppelen via project detail.</p>
+
+                <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Naam *</label>
                 <input
                   type="text"
-                  placeholder="Projectnaam..."
+                  placeholder="Bijv. Klantnaam Automation"
                   value={nieuwProjectNaam}
                   onChange={(e) => setNieuwProjectNaam(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleNieuwProject()}
+                  onKeyDown={(e) => e.key === "Enter" && nieuwProjectEigenaar && handleNieuwProject()}
                   autoFocus
                   className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent mb-4"
                 />
+
+                <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Omschrijving</label>
+                <textarea
+                  placeholder="Korte beschrijving van wat het project inhoudt..."
+                  value={nieuwProjectOmschrijving}
+                  onChange={(e) => setNieuwProjectOmschrijving(e.target.value)}
+                  rows={3}
+                  className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary placeholder-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent mb-4 resize-none"
+                />
+
+                <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Eigenaar *</label>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  {([
+                    { code: "sem", label: "Sem", desc: "Alleen ik" },
+                    { code: "syb", label: "Syb", desc: "Alleen Syb" },
+                    { code: "team", label: "Team", desc: "Beiden samen" },
+                    { code: "vrij", label: "Vrij", desc: "Niet toegewezen" },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.code}
+                      type="button"
+                      onClick={() => setNieuwProjectEigenaar(opt.code)}
+                      className={cn(
+                        "flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border text-left transition-all",
+                        nieuwProjectEigenaar === opt.code
+                          ? "border-autronis-accent bg-autronis-accent/10 text-autronis-text-primary"
+                          : "border-autronis-border bg-autronis-bg text-autronis-text-secondary hover:border-autronis-accent/50 hover:text-autronis-text-primary"
+                      )}
+                    >
+                      <span className="text-sm font-semibold">{opt.label}</span>
+                      <span className="text-[10px] opacity-70">{opt.desc}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-autronis-text-secondary/70 mb-4">
+                  Eigenaar bepaalt wie het project ziet in zijn dashboard. <strong>Team</strong> en <strong>Vrij</strong> zijn voor beide zichtbaar.
+                </p>
+
                 <div className="flex items-center justify-end gap-2">
                   <button
-                    onClick={() => { setShowNieuwProject(false); setNieuwProjectNaam(""); }}
+                    onClick={() => {
+                      setShowNieuwProject(false);
+                      setNieuwProjectNaam("");
+                      setNieuwProjectOmschrijving("");
+                      setNieuwProjectEigenaar("");
+                    }}
                     className="px-4 py-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
                   >
                     Annuleren
                   </button>
                   <button
                     onClick={handleNieuwProject}
-                    disabled={nieuwProjectBezig || !nieuwProjectNaam.trim()}
+                    disabled={nieuwProjectBezig || !nieuwProjectNaam.trim() || !nieuwProjectEigenaar}
                     className="flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-white text-sm font-medium rounded-xl transition-colors disabled:opacity-50"
                   >
                     {nieuwProjectBezig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

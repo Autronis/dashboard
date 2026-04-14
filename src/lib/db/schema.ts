@@ -84,10 +84,16 @@ export const projecten = sqliteTable("projecten", {
 // ============ PROJECT INTAKES ============
 // Wizard state voor de project-intake flow (6 fases). Persistent zodat de
 // intake vanuit dashboard én Claude chat kan worden verdergezet.
+//
+// Brug Sales Engine ↔ delivery: als een intake start vanuit een Sales Engine
+// scan (scanId gezet), wordt het klantConcept voorgevuld met samenvatting +
+// grootste knelpunt + aanbevolen pakket uit de scan. Zodra een scan een intake
+// heeft, is hij "geconverteerd" — de prospect werd klant.
 export const projectIntakes = sqliteTable("project_intakes", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   projectId: integer("project_id").references(() => projecten.id),
-  // Huidige stap: concept | eigenaar | aangemaakt | invalshoeken | scope | klant | klaar
+  scanId: integer("scan_id"), // optional link to salesEngineScans
+  // Huidige stap: concept | invalshoeken | project | scope | klant | klaar
   stap: text("stap").default("concept"),
   // Originele klant/concept beschrijving (vrije tekst van Sem of Syb)
   klantConcept: text("klant_concept"),
@@ -97,13 +103,14 @@ export const projectIntakes = sqliteTable("project_intakes", {
   gekozenInvalshoek: text("gekozen_invalshoek"),
   // Status van de scope-generatie: niet_gestart | bezig | klaar | overgeslagen
   scopeStatus: text("scope_status").default("niet_gestart"),
-  // Bron van de intake: chat | dashboard
+  // Bron van de intake: chat | dashboard | sales-engine
   bron: text("bron").default("dashboard"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxProjectId: index("idx_project_intakes_project_id").on(table.projectId),
+  idxScanId: index("idx_project_intakes_scan_id").on(table.scanId),
 }));
 
 // ============ TIJDREGISTRATIES ============

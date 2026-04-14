@@ -405,6 +405,43 @@ export default function InstellingenPage() {
               />
             </div>
           </div>
+
+          {/* Google Calendar sync toggle — default uit zodat je agenda niet vol loopt */}
+          <div className="mt-6 pt-6 border-t border-autronis-border">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <label className="text-sm font-medium text-autronis-text-primary flex items-center gap-1.5">
+                  <FolderSync className="w-3.5 h-3.5" />
+                  Google Calendar sync
+                </label>
+                <p className="text-xs text-autronis-text-secondary mt-1 max-w-md">
+                  Push taken met een deadline of geplande tijd automatisch naar je Google Calendar. Standaard uit — zet aan als je taken in je Google agenda wil zien verschijnen.
+                </p>
+              </div>
+              <button
+                onClick={() =>
+                  setBedrijf({
+                    ...currentBedrijf,
+                    googleCalSyncEnabled: currentBedrijf.googleCalSyncEnabled === 1 ? 0 : 1,
+                  })
+                }
+                className={
+                  "relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 " +
+                  (currentBedrijf.googleCalSyncEnabled === 1
+                    ? "bg-autronis-accent"
+                    : "bg-autronis-border")
+                }
+                aria-label="Google Calendar sync toggle"
+              >
+                <span
+                  className={
+                    "inline-block h-4 w-4 transform rounded-full bg-autronis-bg transition-transform " +
+                    (currentBedrijf.googleCalSyncEnabled === 1 ? "translate-x-6" : "translate-x-1")
+                  }
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 flex justify-end">

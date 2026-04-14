@@ -55,6 +55,7 @@ export async function PUT(req: NextRequest) {
       standaardBtw: body.standaardBtw ?? 21,
       betalingstermijnDagen: body.betalingstermijnDagen ?? 30,
       herinneringNaDagen: body.herinneringNaDagen ?? 7,
+      googleCalSyncEnabled: body.googleCalSyncEnabled ? 1 : 0,
     };
 
     // Check if row exists

@@ -13,6 +13,7 @@ interface Bedrijf {
   standaardBtw: number;
   betalingstermijnDagen: number;
   herinneringNaDagen: number;
+  googleCalSyncEnabled?: number | null;
 }
 
 interface Profiel {

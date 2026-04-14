@@ -4,6 +4,7 @@ import { taken, projecten, klanten, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, or, inArray, sql, like, desc, asc } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
+import { inferClusterOwner } from "@/lib/cluster";
 
 // GET /api/taken — alle taken met filters, gegroepeerd per project/fase
 export async function GET(req: NextRequest) {
@@ -195,16 +196,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Titel is verplicht." }, { status: 400 });
     }
 
+    const cleanCluster = typeof cluster === "string" && cluster.trim() ? cluster.trim() : null;
+
+    // Historische cluster-ownership: als iemand eerder in dit (project, cluster)
+    // tuple werk heeft gedaan, erft de nieuwe taak diens toegewezenAan. Zo
+    // "blijft" een cluster binnen een project bij degene die de context heeft.
+    let initieleToegewezen: number = gebruiker.id;
+    if (cleanCluster && projectId) {
+      const historischEigenaar = await inferClusterOwner(projectId, cleanCluster);
+      if (historischEigenaar) initieleToegewezen = historischEigenaar;
+    }
+
     const [nieuw] = await db
       .insert(taken)
       .values({
         projectId: projectId || null,
         aangemaaktDoor: gebruiker.id,
-        toegewezenAan: gebruiker.id,
+        toegewezenAan: initieleToegewezen,
         titel: titel.trim(),
         omschrijving: omschrijving?.trim() || null,
         fase: fase || null,
-        cluster: typeof cluster === "string" && cluster.trim() ? cluster.trim() : null,
+        cluster: cleanCluster,
         volgorde: volgorde ?? 0,
         status: status || "open",
         deadline: deadline || null,

@@ -4,6 +4,7 @@ import { taken, teamActiviteit, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql, and, or, isNull, isNotNull, ne, like } from "drizzle-orm";
 import { pushEventToGoogle, deleteGoogleEvent, updateGoogleEvent } from "@/lib/google-calendar";
+import { inferClusterOwner } from "@/lib/cluster";
 
 // PUT /api/taken/[id]
 export async function PUT(
@@ -94,7 +95,23 @@ export async function PUT(
     if (body.deadline !== undefined) updateData.deadline = body.deadline || null;
     if (body.prioriteit !== undefined) updateData.prioriteit = body.prioriteit;
     if (body.fase !== undefined) updateData.fase = body.fase || null;
-    if (body.cluster !== undefined) updateData.cluster = body.cluster?.trim() || null;
+    if (body.cluster !== undefined) {
+      const nieuweCluster = body.cluster?.trim() || null;
+      updateData.cluster = nieuweCluster;
+
+      // Historische cluster-ownership toepassen als het cluster VERANDERT
+      // (en alleen als de taak nog vrij is — we overschrijven geen expliciete
+      // claim van de user zelf). Dit zorgt dat als Sem een taak labelt met
+      // cluster=backend-infra terwijl Syb historisch eigenaar is van dat
+      // (project, cluster) tuple, de taak direct aan Syb komt.
+      const clusterVeranderd = nieuweCluster !== huidig?.cluster;
+      const nogVrij = body.toegewezenAan === undefined && !huidig?.toegewezenAan;
+      const doelProjectId = (body.projectId !== undefined ? body.projectId : huidig?.projectId) as number | null | undefined;
+      if (clusterVeranderd && nieuweCluster && nogVrij && doelProjectId) {
+        const historischEigenaar = await inferClusterOwner(doelProjectId, nieuweCluster);
+        if (historischEigenaar) updateData.toegewezenAan = historischEigenaar;
+      }
+    }
     if (body.eigenaar !== undefined && ["sem", "syb", "team", "vrij"].includes(body.eigenaar)) {
       updateData.eigenaar = body.eigenaar;
     }

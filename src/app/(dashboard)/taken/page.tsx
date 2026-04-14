@@ -987,6 +987,43 @@ function TakenPage() {
     finally { setSyncing(false); }
   };
 
+  // Auto-cluster: stuur alle open taken zonder cluster naar Claude en laat
+  // ze groeperen in standaard Autronis clusters. Werkt als een eenmalige
+  // backfill — daarna hebben nieuwe taken al een cluster omdat Claude die
+  // direct bij aanmaak meegeeft (zie CLAUDE.md regel).
+  const [autoClustering, setAutoClustering] = useState(false);
+  const handleAutoCluster = useCallback(async () => {
+    const ok = window.confirm(
+      "Auto-cluster: ik stuur alle open taken ZONDER cluster naar Claude en " +
+      "laat ze groeperen in de standaard Autronis clusters (backend-infra, " +
+      "frontend, klantcontact, content, admin, research). Dit kost wat API " +
+      "tokens. Doorgaan?"
+    );
+    if (!ok) return;
+    setAutoClustering(true);
+    try {
+      const res = await fetch("/api/taken/auto-cluster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onlyMissing: true }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Auto-cluster mislukt");
+      const summary = Object.entries(data.perCluster ?? {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(", ");
+      addToast(
+        `${data.bijgewerkt} van ${data.totaal} taken gelabeld${summary ? ` — ${summary}` : ""}`,
+        "succes"
+      );
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Auto-cluster mislukt", "fout");
+    } finally {
+      setAutoClustering(false);
+    }
+  }, [addToast, queryClient]);
+
   const openNieuwModal = useCallback(() => {
     setNieuwTitel(""); setNieuwProject(uniekeProjecten[0]?.id ?? ""); setNieuwFase("");
     setNieuwPrioriteit("normaal"); setNieuwDeadline(""); setNieuwOmschrijving("");
@@ -1193,6 +1230,19 @@ function TakenPage() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
                 <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
                 Sync
+              </button>
+              <button
+                onClick={handleAutoCluster}
+                disabled={autoClustering}
+                title="Laat Claude alle open taken zonder cluster automatisch groeperen"
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-purple-500/40 text-autronis-text-secondary hover:text-purple-300 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {autoClustering ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                Auto-cluster
               </button>
               <button
                 onClick={openNieuweCategorie}

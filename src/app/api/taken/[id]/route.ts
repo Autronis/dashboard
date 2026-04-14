@@ -31,6 +31,7 @@ export async function PUT(
       body.toegewezenAan = gebruiker.id;
     }
 
+
     // Anti-overlap: als de incoming start botst met een andere taak van dezelfde
     // eigenaar op dezelfde dag (Claude OF handmatig), schuif op naar het eind van
     // het laatste overlappende blok + 1 min. Als er géén botsing is, respecteer

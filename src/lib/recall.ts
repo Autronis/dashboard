@@ -17,8 +17,14 @@ export interface RecallBot {
   transcript: Array<{ speaker: string; words: Array<{ text: string; start_time: number; end_time: number }> }> | null;
 }
 
-// Create a bot that joins a meeting
-export async function createRecallBot(meetingUrl: string, meetingTitle: string): Promise<{ id: string }> {
+// Create a bot that joins a meeting.
+// If `joinAt` is in the future, schedule the bot to join at that exact time.
+// Otherwise the bot joins immediately.
+export async function createRecallBot(
+  meetingUrl: string,
+  meetingTitle: string,
+  joinAt?: Date
+): Promise<{ id: string }> {
   const webhookUrl = process.env.NEXT_PUBLIC_URL
     ? `${process.env.NEXT_PUBLIC_URL}/api/meetings/recall-webhook`
     : null;
@@ -40,6 +46,16 @@ export async function createRecallBot(meetingUrl: string, meetingTitle: string):
       meeting_title: meetingTitle,
     },
   };
+
+  // Schedule bot to join at a future time (Recall.ai supports up to ~7 days ahead).
+  // We only set this if the meeting is more than 60 seconds in the future, otherwise
+  // we let the bot join immediately to avoid clock-skew edge cases.
+  if (joinAt) {
+    const nowPlus60 = Date.now() + 60_000;
+    if (joinAt.getTime() > nowPlus60) {
+      body.join_at = joinAt.toISOString();
+    }
+  }
 
   // Add webhook for status changes
   if (webhookUrl) {

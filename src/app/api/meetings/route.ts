@@ -410,20 +410,29 @@ export async function POST(req: NextRequest) {
 
     // Auto-dispatch Recall bot if meeting URL is provided
     let recallBot = null;
+    let recallFout: string | null = null;
     if (meetingUrl?.trim()) {
-      try {
-        const { createRecallBot, isRecallConfigured } = await import("@/lib/recall");
-        if (isRecallConfigured()) {
-          const bot = await createRecallBot(meetingUrl.trim(), titel);
+      const { createRecallBot, isRecallConfigured } = await import("@/lib/recall");
+      if (!isRecallConfigured()) {
+        recallFout = "Recall niet geconfigureerd (RECALL_API_KEY ontbreekt op de server).";
+        await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${Number(result.lastInsertRowid)}`);
+      } else {
+        try {
+          // Geef datum mee zodat Recall de bot inplant op de meeting start in plaats van direct te joinen.
+          // Voor toekomstige meetings voorkomt dit dat de bot vroegtijdig timeout in de lobby.
+          const joinAt = datum ? new Date(datum) : undefined;
+          const bot = await createRecallBot(meetingUrl.trim(), titel, joinAt);
           await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id}, status = 'verwerken' WHERE id = ${Number(result.lastInsertRowid)}`);
           recallBot = bot;
+        } catch (err) {
+          recallFout = err instanceof Error ? err.message : String(err);
+          console.error("[meetings] Recall bot dispatch failed:", recallFout);
+          await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${Number(result.lastInsertRowid)}`);
         }
-      } catch {
-        // Recall dispatch failed — meeting is still saved
       }
     }
 
-    return NextResponse.json({ meeting, recallBot }, { status: 201 });
+    return NextResponse.json({ meeting, recallBot, recallFout }, { status: 201 });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : "Onbekende fout";
     if (message === "Niet geauthenticeerd") {

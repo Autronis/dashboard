@@ -43,6 +43,7 @@ interface Taak {
   geschatteDuur: number | null;
   aangemaaktOp: string | null;
   bijgewerktOp: string | null;
+  eigenaar: "sem" | "syb" | "team" | "vrij" | null;
 }
 
 interface Props {
@@ -249,6 +250,47 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                         {taak.fase}
                       </span>
                     )}
+                  </div>
+                )}
+
+                {/* Eigenaar picker — alleen voor losse taken (zonder project).
+                    Voor taken MET project erft 'm van project.eigenaar. */}
+                {!taak.projectId && (
+                  <div>
+                    <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-2">Eigenaar</p>
+                    <div className="inline-flex items-center gap-1 bg-autronis-bg/50 border border-autronis-border rounded-xl p-1">
+                      {(["sem", "syb", "team", "vrij"] as const).map((code) => {
+                        const labels: Record<string, string> = { sem: "Sem", syb: "Syb", team: "Team", vrij: "Vrij" };
+                        const colors: Record<string, string> = {
+                          sem: "bg-teal-500/15 text-teal-300 ring-teal-400",
+                          syb: "bg-blue-500/15 text-blue-300 ring-blue-400",
+                          team: "bg-purple-500/15 text-purple-300 ring-purple-400",
+                          vrij: "bg-amber-500/15 text-amber-300 ring-amber-400",
+                        };
+                        const active = (taak.eigenaar ?? "sem") === code;
+                        return (
+                          <button
+                            key={code}
+                            onClick={async () => {
+                              if (active) return;
+                              await fetch(`/api/taken/${taak.id}`, {
+                                method: "PUT",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ eigenaar: code }),
+                              });
+                              queryClient.invalidateQueries({ queryKey: ["taak-detail", taakId] });
+                              queryClient.invalidateQueries({ queryKey: ["taken"] });
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-xs font-medium transition-all",
+                              active ? `${colors[code]} ring-1` : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                            )}
+                          >
+                            {labels[code]}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 

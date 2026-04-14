@@ -1689,9 +1689,21 @@ function UploadModal({ onClose, uploadMutation, verwerkMutation, addToast }: Upl
       return;
     }
 
+    // datum komt uit <input type="datetime-local"> als "YYYY-MM-DDTHH:MM" zonder tijdzone.
+    // In de browser parset `new Date()` dat als lokale tijd; we zetten 'm expliciet om naar
+    // een volledige UTC ISO string zodat de server (die in UTC draait) 'm correct interpreteert.
+    // Zonder deze conversie ontstaat een 2-uur offset in zomertijd (14:52 NL werd 14:52 UTC = 16:52 NL).
+    let datumIso = datum;
+    if (datum) {
+      const parsed = new Date(datum);
+      if (!isNaN(parsed.getTime())) {
+        datumIso = parsed.toISOString();
+      }
+    }
+
     const formData = new FormData();
     formData.append("titel", titel);
-    formData.append("datum", datum);
+    formData.append("datum", datumIso);
     if (klantId) formData.append("klantId", String(klantId));
     if (projectId) formData.append("projectId", String(projectId));
     if (meetingUrl.trim()) formData.append("meetingUrl", meetingUrl.trim());

@@ -93,6 +93,9 @@ export async function PUT(
     if (body.deadline !== undefined) updateData.deadline = body.deadline || null;
     if (body.prioriteit !== undefined) updateData.prioriteit = body.prioriteit;
     if (body.fase !== undefined) updateData.fase = body.fase || null;
+    if (body.eigenaar !== undefined && ["sem", "syb", "team", "vrij"].includes(body.eigenaar)) {
+      updateData.eigenaar = body.eigenaar;
+    }
     if (body.volgorde !== undefined) updateData.volgorde = body.volgorde;
     if (body.uitvoerder !== undefined) updateData.uitvoerder = body.uitvoerder;
     if (body.prompt !== undefined) updateData.prompt = body.prompt?.trim() || null;

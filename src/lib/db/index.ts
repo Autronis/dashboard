@@ -99,6 +99,10 @@ if (isTurso) {
     })
     .catch(() => { /* column may already exist */ });
 
+  // Eigenaar op losse taken (zonder project)
+  client.execute("ALTER TABLE taken ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
+    .catch(() => { /* column may already exist */ });
+
   // remote_commits tabel voor GitHub webhook → banner flow
   client.execute(`CREATE TABLE IF NOT EXISTS remote_commits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

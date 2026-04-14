@@ -45,13 +45,27 @@ export async function GET(req: NextRequest) {
     const conditions = [
       sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`,
       or(
-        sql`${taken.projectId} IS NULL`,
-        inArray(projecten.eigenaar, effectiveCodes),
-        // Backward compat voor legacy projecten zonder eigenaar (alleen Sem,
-        // alleen wanneer je in 'alle' of 'mij' modus zit).
-        gebruiker.id === 1 && (scope === null || scope === "alle" || scope === "mij")
-          ? sql`${projecten.eigenaar} IS NULL`
-          : sql`1=0`
+        // Taak HEEFT een project: filter op project-eigenaar
+        and(
+          sql`${taken.projectId} IS NOT NULL`,
+          or(
+            inArray(projecten.eigenaar, effectiveCodes),
+            // Backward compat voor projecten zonder eigenaar (NULL = legacy Sem)
+            gebruiker.id === 1 && (scope === null || scope === "alle" || scope === "mij")
+              ? sql`${projecten.eigenaar} IS NULL`
+              : sql`1=0`
+          )
+        )!,
+        // Taak heeft GEEN project: filter op taken.eigenaar zelf
+        and(
+          sql`${taken.projectId} IS NULL`,
+          or(
+            inArray(taken.eigenaar, effectiveCodes),
+            gebruiker.id === 1 && (scope === null || scope === "alle" || scope === "mij")
+              ? sql`${taken.eigenaar} IS NULL`
+              : sql`1=0`
+          )
+        )!
       )!,
     ];
     if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));
@@ -78,9 +92,11 @@ export async function GET(req: NextRequest) {
         aangemaaktOp: taken.aangemaaktOp,
         projectId: taken.projectId,
         projectNaam: projecten.naam,
+        projectEigenaar: projecten.eigenaar,
         klantNaam: klanten.bedrijfsnaam,
         toegewezenAanId: taken.toegewezenAan,
         toegewezenAanNaam: gebruikers.naam,
+        eigenaar: taken.eigenaar,
       })
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))

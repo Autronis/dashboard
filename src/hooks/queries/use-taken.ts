@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+export type TaakEigenaar = "sem" | "syb" | "team" | "vrij";
+
 export interface Taak {
   id: number;
   titel: string;
@@ -15,9 +17,11 @@ export interface Taak {
   aangemaaktOp: string | null;
   projectId: number | null;
   projectNaam: string | null;
+  projectEigenaar: TaakEigenaar | null;
   klantNaam: string | null;
   toegewezenAanId: number | null;
   toegewezenAanNaam: string | null;
+  eigenaar: TaakEigenaar | null;
 }
 
 export interface TakenKPIs {

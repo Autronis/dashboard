@@ -324,6 +324,9 @@ export const taken = sqliteTable("taken", {
   projectId: integer("project_id").references(() => projecten.id),
   toegewezenAan: integer("toegewezen_aan").references(() => gebruikers.id),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  // Eigenaarschap voor losse taken (zonder project). Voor taken MET project
+  // wordt de eigenaar afgeleid van projecten.eigenaar. Default sem.
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "team", "vrij"] }).default("sem"),
   titel: text("titel").notNull(),
   omschrijving: text("omschrijving"),
   fase: text("fase"),

@@ -1,17 +1,23 @@
 /**
- * Slimme taken — vooraf gedefinieerde Claude-uitvoerbare acties die Sem of
- * Syb met één klik aan hun dag kunnen toevoegen. Het zijn geen project
- * taken — ze staan los van een specifiek klantproject. Gebruik ze voor
- * terugkerende Autronis operationele acties.
+ * Slimme taken — vooraf gedefinieerde Claude-uitvoerbare acties die Sem/Syb
+ * met één klik aan hun dag kunnen toevoegen. Het zijn geen project taken —
+ * ze staan los van een specifiek klantproject. Gebruik ze voor terugkerende
+ * Autronis operationele analyse/review acties die echte dashboard data als
+ * input pakken.
  *
- * Elke slimme taak heeft:
- * - naam: korte titel die in het taak-overzicht verschijnt
+ * Elke template heeft:
+ * - id: slug, uniek
+ * - naam: korte titel (met {placeholders})
  * - beschrijving: één regel context
- * - cluster: welke cluster — bepaalt wie 'm historisch pakt
- * - geschatteDuur: minuten (Claude rost door in 1 sessie)
- * - prompt: de letterlijke opdracht voor Claude Code, met {placeholders}
- *   die de UI invult bij het aanmaken
- * - velden: optionele input velden die de UI vraagt (bv. "branche", "url")
+ * - cluster: welke cluster — bepaalt historische ownership
+ * - geschatteDuur: minuten
+ * - prompt: letterlijke opdracht voor Claude Code met {placeholder} subs
+ * - velden: optionele input velden
+ *
+ * DESIGN PRINCIPE: slimme taken pakken BESTAANDE dashboard data (/api/ideeen,
+ * /api/yt-knowledge, /api/leads, /api/projecten, /api/financien) en doen
+ * ANALYSE + BESLISSING + PRIORITEIT. NIET "schrijf 3 LinkedIn posts" — daar
+ * heeft het dashboard al generators voor.
  */
 
 export interface SlimmeTaakTemplate {
@@ -29,11 +35,26 @@ export interface SlimmeTaakTemplate {
   }>;
 }
 
+/**
+ * Oude system template slugs die niet meer passen bij de filosofie
+ * "analyse + beslis ipv produceer". Worden bij elke ensure-call
+ * gedeactiveerd (is_actief=0) in de DB. Blijven bestaan als
+ * historisch record.
+ */
+export const DEPRECATED_SYSTEM_SLUGS = [
+  "linkedin-posts-week",    // dashboard heeft al een generator
+  "factuur-check-week",     // vervangen door financiele-snapshot-acties (breder)
+  "concurrentie-analyse",   // vervangen door concurrentie-week-scan (beter promt)
+  "email-followup-leads",   // vervangen door lead-followup-prioriteiten (analyse-first)
+  "ideeen-ranker",          // vervangen door review-top-ideeen (diepere review)
+];
+
 export const SLIMME_TAKEN: SlimmeTaakTemplate[] = [
+  // ─── BEHOUDEN UIT v1 ───
   {
     id: "10-bedrijven-zoeken",
     naam: "10 bedrijven zoeken in {branche}",
-    beschrijving: "Scrape 10 bedrijven in een specifieke branche via Google Maps of LinkedIn",
+    beschrijving: "Scrape 10 bedrijven in een specifieke branche via Google Maps",
     cluster: "research",
     geschatteDuur: 15,
     velden: [
@@ -47,131 +68,199 @@ Stappen:
    { "searchQuery": "{branche}", "locations": ["{locatie}"], "maxItems": 10 }
 2. Wacht op resultaten (check /leads/automations pagina na 30 sec)
 3. Rapporteer: naam, website, telefoon, email, locatie per bedrijf
-4. Schrijf een short markdown samenvatting met de top 3 meest relevante voor Autronis dienstverlening.`,
+4. Rank op fit met Autronis dienstverlening (automatisering, AI, integraties)
+5. Return top 3 meest interessante voor outreach + waarom`,
   },
   {
     id: "website-scrape",
     naam: "Scrape website {url}",
-    beschrijving: "Gebruik Firecrawl om een website te scrapen en samenvatten",
+    beschrijving: "Gebruik Firecrawl om een website te scrapen en te analyseren",
     cluster: "research",
     geschatteDuur: 10,
     velden: [
       { key: "url", label: "Website URL", placeholder: "https://...", type: "url" },
     ],
-    prompt: `Scrape {url} met de scrape tool op /site-rebuild of via Firecrawl direct.
+    prompt: `Scrape {url} via de bestaande scrape tool of Firecrawl.
 
 Rapporteer:
-- Wat doen ze (in 2 zinnen)
+- Wat doet het bedrijf (in 2 zinnen)
 - Doelgroep / branche
 - Dienstverlening / producten
 - Contact info (email, telefoon, adres)
-- Tech stack (als zichtbaar: Next.js, WordPress, Shopify, etc)
+- Tech stack (Next.js, WordPress, Shopify, etc)
 - Eerste indruk kwaliteit (pro / middelmatig / rommelig)
-- 3 potentiele automatisering kansen voor Autronis
+- 3 potentiele automatisering kansen voor Autronis (met ROI schatting)
 
-Output als markdown rapport.`,
+Output als markdown rapport naar /tmp/scrape-{slug}-{datum}.md`,
   },
+
+  // ─── NIEUWE ANALYSE / REVIEW TAKEN ───
+
   {
-    id: "linkedin-posts-week",
-    naam: "3 LinkedIn posts schrijven",
-    beschrijving: "Maak 3 LinkedIn posts voor Autronis op basis van recente activiteit",
-    cluster: "content",
-    geschatteDuur: 30,
-    prompt: `Maak 3 LinkedIn posts voor Autronis deze week.
-
-Bronnen:
-- Recente afgeronde projecten uit dashboard (/api/dashboard/recente-activiteit)
-- Ideeen met hoge aiScore uit /ideeen
-- YouTube research uit /api/yt-knowledge met relevance_score ≥ 8
-
-Per post:
-- Haak: 1 regel die stopt met scrollen
-- Body: 3-5 regels verhaal/observatie
-- CTA: zacht, nooit "call me"
-- Hashtags: max 3, relevant
-
-Autronis tone: persoonlijk, direct, geen marketing-taal, Nederlandse tech scene. Output in /content/linkedin-posts-{yyyy-mm-dd}.md`,
-  },
-  {
-    id: "factuur-check-week",
-    naam: "Factuur check deze week",
-    beschrijving: "Check of alle facturen voor afgeronde projecten zijn verstuurd",
-    cluster: "admin",
-    geschatteDuur: 10,
-    prompt: `Check de factuur status voor deze week.
-
-Stappen:
-1. Haal projecten op die deze week status='afgerond' kregen
-2. Check /api/facturen — is er voor elk een factuur aangemaakt en verstuurd?
-3. Check /api/facturen voor openstaande (niet betaalde) facturen ouder dan 14 dagen
-4. Rapporteer:
-   - Missende facturen (project afgerond, geen factuur)
-   - Niet verstuurde facturen (factuur bestaat, niet verzonden)
-   - Openstaande facturen ouder dan 14 dagen (stuur herinnering)
-5. Stuur herinneringen voor openstaand 14+ dagen via /api/followup/webhook
-
-Output als korte actie-lijst.`,
-  },
-  {
-    id: "concurrentie-analyse",
-    naam: "Concurrentie update {concurrent}",
-    beschrijving: "Check wat een concurrent deze week heeft gedaan (website, LinkedIn, nieuws)",
+    id: "review-yt-knowledge",
+    naam: "Review 10 YouTube knowledge items",
+    beschrijving: "Analyseer recente YT research en beslis wat nuttig is voor Autronis",
     cluster: "research",
     geschatteDuur: 20,
-    velden: [
-      { key: "concurrent", label: "Concurrent naam", placeholder: "bv. Nova, Hypercontext" },
-    ],
-    prompt: `Maak een concurrentie update voor "{concurrent}".
+    prompt: `Review de 10 meest recente YouTube knowledge analyses in het dashboard.
 
 Stappen:
-1. Scrape hun website via Firecrawl — check wat er veranderd is vs vorige week
-2. Zoek hun LinkedIn bedrijfspagina, pak de laatste 5 posts
-3. Google "{concurrent}" nieuws laatste 7 dagen
-4. Rapporteer:
-   - Nieuwe content op website (blog, case studies, producten)
-   - LinkedIn activiteit (reach, engagement, posttypes)
-   - Nieuws/persberichten
-   - Prijsveranderingen als zichtbaar
-   - 2-3 bedreigingen voor Autronis
-   - 1-2 lessen wat we kunnen overnemen
+1. GET /api/yt-knowledge?limit=10&sort=recent
+2. Voor elk item — lees summary, features, steps, tips, relevance_score
+3. Categoriseer per item in één van:
+   A. BOUWEN — concrete feature of tool die we moeten bouwen in het dashboard
+   B. TOEPASSEN — werkwijze/tip die we direct kunnen toepassen in onze workflow
+   C. DELEN — waardevol om als content (blog / LinkedIn / video) uit te werken
+   D. ARCHIVEREN — al bekend of niet relevant voor Autronis
+4. Voor de top 3 BOUWEN/TOEPASSEN items: maak concrete actie-items aan in /ideeen met link naar de YT bron
+5. Rapporteer in chat: top 3 bouwen, top 3 toepassen, top 3 delen, de rest archiveren
 
-Output als korte markdown in /content/concurrentie/{concurrent}-{yyyy-mm-dd}.md`,
+Doel: geen YT knowledge blijft stof happen. Elke waardevolle inzicht wordt óf een taak óf content.`,
   },
   {
-    id: "email-followup-leads",
-    naam: "Email follow-up naar stille leads",
-    beschrijving: "Check leads zonder respons in de laatste 7 dagen en stuur vriendelijke reminder",
-    cluster: "klantcontact",
-    geschatteDuur: 15,
-    prompt: `Check stille leads in /leads/emails en stuur follow-ups.
+    id: "review-top-ideeen",
+    naam: "Review top 10 ideeën uit backlog",
+    beschrijving: "Diepe analyse + prioritering van de beste ideeen uit de backlog",
+    cluster: "research",
+    geschatteDuur: 25,
+    prompt: `Review de top 10 ideeen uit het dashboard en maak een build-order.
 
 Stappen:
-1. Filter op email_status='sent' waar reply_received_at IS NULL
-2. Filter op updated_at > 7 dagen geleden
-3. Max 10 per keer (niet meer, anders lijkt 't spam)
-4. Genereer een zachte follow-up mail: "Ik wil alleen even polsen of je interesse hebt..."
-5. Zet email_status='generating' en laat de bestaande /api/leads/emails/send flow het versturen
-6. Rapporteer aantal verstuurde follow-ups + verwachte replies
+1. GET /api/ideeen?sort=aiScore&limit=10
+2. Voor elk idee, diepe analyse:
+   - Bouwbaarheid (uren schatting, 1-40h)
+   - ROI (wat levert het op: omzet / tijdsbesparing / strategic fit)
+   - Afhankelijkheden (welke andere systemen/ideeen hangen eraan)
+   - Risico (wat kan mis gaan, kosten van failure)
+   - Energy level (saaie plicht, leuk nieuw, of iets ertussen)
+3. Categoriseer:
+   - BOUWEN DEZE MAAND (top 3 — hoog ROI, laag effort)
+   - VOLGEND KWARTAAL (3 items — meer effort of afhankelijk)
+   - PARKEREN (4 items — lage prio of te vroeg)
+4. Per BOUWEN item: maak direct een project entry aan via /api/projecten (vraag eigenaar eerst)
 
-Tone: niet pushy, erken dat ze waarschijnlijk druk zijn, bied korte video call aan.`,
+Rapporteer in chat met je full reasoning per idee.`,
   },
   {
-    id: "ideeen-ranker",
-    naam: "Ideeen ranker update",
-    beschrijving: "Update AI scores op alle ideeen + zet top 3 in de 'Wat moet ik bouwen' widget",
+    id: "projecten-gezondheid-scan",
+    naam: "Projecten gezondheid scan",
+    beschrijving: "Check alle actieve projecten, flag problemen, rank aandacht",
     cluster: "admin",
     geschatteDuur: 15,
-    prompt: `Update de AI scoring op alle ideeen in /ideeen.
+    prompt: `Scan alle actieve projecten en rank welke nu aandacht nodig hebben.
 
 Stappen:
-1. Haal alle ideeen op via /api/ideeen
-2. Voor elk idee zonder aiScore: call de AI analyse endpoint
-3. Voor elk idee met aiScore ouder dan 14 dagen: her-score
-4. Zorg dat de top 3 "hot ideeen" up-to-date is
-5. Rapporteer:
-   - Top 3 hot ideeen met reason waarom
-   - Ideeen die hoger zijn gescored vs vorige week
-   - Ideeen die lager zijn gescored (afhaken)`,
+1. GET /api/projecten?status=actief
+2. Voor elk project check:
+   - Voortgangspercentage vs deadline nabijheid (mismatch = probleem)
+   - Uren besteed vs geschatte uren (overspent > 120% = flag)
+   - Laatste activiteit (geen commits/taken in 14+ dagen = stil)
+   - Openstaande hoge-prioriteit taken (> 5 = overbelast)
+   - Klant communicatie (laatste mail/meeting met klant)
+3. Geef elk project een health score 1-10 + kleur (groen/geel/rood)
+4. Rank top 3 rood-markeerde projecten
+5. Per rood project: concrete actie (bv. "bel klant", "deadline verschuiven", "scope snijden")
+6. Rapporteer + maak follow-up taken aan in het betreffende project
+
+Dit is een wekelijkse sanity check, geen diepe audit.`,
+  },
+  {
+    id: "lead-followup-prioriteiten",
+    naam: "Lead follow-up prioriteiten",
+    beschrijving: "Analyseer stille leads, rank op warmte, top 5 voor persoonlijk contact",
+    cluster: "klantcontact",
+    geschatteDuur: 15,
+    prompt: `Analyseer de lead pipeline en return top 5 leads voor persoonlijk contact deze week.
+
+Stappen:
+1. GET /api/leads/emails?status=sent&reply_received_at=null
+2. Voor elke stille lead scoren op warmte:
+   - Bedrijfsgrootte / fit met Autronis profiel (research, AI, automations)
+   - Tijd sinds laatste contact (niet te kort = te pushy, niet te lang = verloren)
+   - Email status: bounced/read/nothing (read = interesse)
+   - Origineel lead source (Google Maps zoekopdracht fit)
+3. Rank op (warmte × potentiele deal waarde)
+4. Top 5: voor elk geef:
+   - Reden waarom deze nu prioriteit is
+   - Suggestie voor het persoonlijk bericht (formeel, casual, referentie naar hun website, etc)
+   - Beste kanaal (email, LinkedIn, bel)
+5. Rapporteer in chat als actiebare lijst — Sem maakt zelf persoonlijk contact
+
+GEEN automatische emails versturen. Alleen analyse + aanbevelingen.`,
+  },
+  {
+    id: "concurrentie-week-scan",
+    naam: "Concurrentie week scan",
+    beschrijving: "Check recente activity van onze 5 concurrenten, threat assessment",
+    cluster: "research",
+    geschatteDuur: 20,
+    prompt: `Maak een wekelijkse concurrentie update.
+
+Concurrenten: definieer zelf op basis van eerder onderzoek of vraag Sem om lijst.
+
+Per concurrent:
+1. Scrape hun website via Firecrawl — diff met vorige week (nieuwe pagina's, prijs wijziging, case studies)
+2. LinkedIn bedrijfspagina — laatste 5 posts, reach indicatie
+3. Google nieuws zoekopdracht laatste 7 dagen
+4. Rapporteer:
+   - Wat is nieuw deze week
+   - Threat level voor Autronis (laag / midden / hoog) met reden
+   - 1 concrete les wat we kunnen overnemen
+   - 1 concrete differentiator die we sterker moeten communiceren
+5. Eind: 3-min actiepunten voor Sem
+
+Output als markdown rapport + maak top 3 acties als taak in het dashboard.`,
+  },
+  {
+    id: "financiele-snapshot-acties",
+    naam: "Financiële snapshot + actiepunten",
+    beschrijving: "Analyse van facturen, BTW, runway — concrete acties voor deze week",
+    cluster: "admin",
+    geschatteDuur: 15,
+    prompt: `Maak een wekelijkse financiële snapshot met actiepunten.
+
+Stappen:
+1. Haal data op:
+   - /api/facturen?status=openstaand → facturen ouder dan 14 dagen
+   - /api/facturen?status=verzonden&deze_maand=1 → omzet deze maand
+   - /api/administratie/uitgaven?deze_maand=1 → uitgaven deze maand
+   - /api/belasting/btw-saldo → BTW apart gezet
+   - /api/financien/runway → maanden cash left
+
+2. Analyseer:
+   - Welke facturen hebben herinnering nodig (openstaand > 14 dagen)
+   - Welke uitgaven nog niet zijn geboekt op project (billability loss)
+   - Is BTW afdracht goed apart gezet voor volgende kwartaal
+   - Runway: komt die gevaarlijk in de buurt van < 3 maanden
+
+3. Output: 3 concrete acties voor deze week (bv. "Factuur 2026-042 Klant X herinneren", "Mollie payout van 15/4 nog boeken als inkomst", "BTW Q1 aangifte staat open tot 30/4")
+
+Rapporteer in chat + maak taken aan in het dashboard voor elk actiepunt.`,
+  },
+  {
+    id: "klantretentie-check",
+    naam: "Klantretentie check — stille klanten",
+    beschrijving: "Welke klanten zijn stil, waarom, top 5 check-ins deze week",
+    cluster: "klantcontact",
+    geschatteDuur: 15,
+    prompt: `Identificeer klanten die meer dan 30 dagen stil zijn en rank top 5 voor check-in.
+
+Stappen:
+1. GET /api/klanten — alle actieve klanten
+2. Voor elke klant check:
+   - Datum laatste factuur (/api/facturen)
+   - Datum laatste email (in/uit via /api/administratie/gmail-sync)
+   - Datum laatste agenda item (/api/agenda)
+   - Status openstaande offertes (/api/offertes)
+3. Filter: klanten waar geen activiteit in 30+ dagen
+4. Voor elk:
+   - Waarom stil? (project klaar, budget op, niet tevreden, vergeten)
+   - Potentie voor vervolg? (Yes/Maybe/No)
+   - Concrete check-in actie ("mail met vraag of nieuwe behoeften", "bel voor status huidige project", "bied follow-up scope aan", "afschrijven als inactief")
+5. Top 5 prioriteit op (potentie × historical value)
+6. Rapporteer + maak klantcontact taken aan per priority lead
+
+Geen automatische outreach — alleen analyse + aanbevelingen.`,
   },
 ];
 
@@ -188,38 +277,100 @@ export function fillNaamTemplate(naam: string, veldWaarden: Record<string, strin
 }
 
 /**
- * Seed de systeem templates in de DB. Idempotent — gebruikt ON CONFLICT
- * DO NOTHING via de slug unique constraint. Returnt hoeveel nieuwe
- * templates zijn toegevoegd.
+ * Zorg dat de system templates in de DB gelijk lopen met de lib:
+ * - Deactiveer deprecated slugs (soft delete, is_actief=0)
+ * - Upsert alle huidige SLIMME_TAKEN: insert als niet bestaat, update als
+ *   bestaand is_systeem template (user customs blijven onaangeraakt)
+ * Idempotent. Veilig om bij elke GET te draaien.
  */
-export async function seedSystemTemplates(): Promise<number> {
+export async function ensureSystemTemplates(): Promise<{
+  toegevoegd: number;
+  bijgewerkt: number;
+  gedeactiveerd: number;
+}> {
   const { db } = await import("@/lib/db");
   const { slimmeTakenTemplates } = await import("@/lib/db/schema");
-  const { eq } = await import("drizzle-orm");
+  const { eq, and, inArray } = await import("drizzle-orm");
 
   let toegevoegd = 0;
+  let bijgewerkt = 0;
+  let gedeactiveerd = 0;
+
+  // 1. Deactiveer deprecated system templates
+  if (DEPRECATED_SYSTEM_SLUGS.length > 0) {
+    const result = await db
+      .update(slimmeTakenTemplates)
+      .set({ isActief: 0, bijgewerktOp: new Date().toISOString() })
+      .where(
+        and(
+          inArray(slimmeTakenTemplates.slug, DEPRECATED_SYSTEM_SLUGS),
+          eq(slimmeTakenTemplates.isSysteem, 1),
+          eq(slimmeTakenTemplates.isActief, 1)
+        )
+      )
+      .returning({ id: slimmeTakenTemplates.id });
+    gedeactiveerd = result.length;
+  }
+
+  // 2. Upsert huidige SLIMME_TAKEN
   for (const template of SLIMME_TAKEN) {
-    // Check of template met deze slug al bestaat
-    const bestaand = await db
-      .select({ id: slimmeTakenTemplates.id })
+    const [bestaand] = await db
+      .select()
       .from(slimmeTakenTemplates)
       .where(eq(slimmeTakenTemplates.slug, template.id))
       .limit(1);
 
-    if (bestaand.length > 0) continue;
+    const velden = template.velden ? JSON.stringify(template.velden) : null;
 
-    await db.insert(slimmeTakenTemplates).values({
-      slug: template.id,
-      naam: template.naam,
-      beschrijving: template.beschrijving,
-      cluster: template.cluster,
-      geschatteDuur: template.geschatteDuur,
-      prompt: template.prompt,
-      velden: template.velden ? JSON.stringify(template.velden) : null,
-      isSysteem: 1,
-      isActief: 1,
-    });
-    toegevoegd++;
+    if (!bestaand) {
+      // Insert nieuw
+      await db.insert(slimmeTakenTemplates).values({
+        slug: template.id,
+        naam: template.naam,
+        beschrijving: template.beschrijving,
+        cluster: template.cluster,
+        geschatteDuur: template.geschatteDuur,
+        prompt: template.prompt,
+        velden,
+        isSysteem: 1,
+        isActief: 1,
+      });
+      toegevoegd++;
+    } else if (bestaand.isSysteem === 1) {
+      // Update bestaand system template (user customs overslaan)
+      const needsUpdate =
+        bestaand.naam !== template.naam ||
+        bestaand.beschrijving !== template.beschrijving ||
+        bestaand.cluster !== template.cluster ||
+        bestaand.geschatteDuur !== template.geschatteDuur ||
+        bestaand.prompt !== template.prompt ||
+        bestaand.velden !== velden ||
+        bestaand.isActief !== 1;
+
+      if (needsUpdate) {
+        await db
+          .update(slimmeTakenTemplates)
+          .set({
+            naam: template.naam,
+            beschrijving: template.beschrijving,
+            cluster: template.cluster,
+            geschatteDuur: template.geschatteDuur,
+            prompt: template.prompt,
+            velden,
+            isActief: 1,
+            bijgewerktOp: new Date().toISOString(),
+          })
+          .where(eq(slimmeTakenTemplates.id, bestaand.id));
+        bijgewerkt++;
+      }
+    }
+    // Als bestaand && is_systeem === 0: user heeft 'm gekloond, laat staan
   }
-  return toegevoegd;
+
+  return { toegevoegd, bijgewerkt, gedeactiveerd };
 }
+
+/**
+ * Backwards compat alias — de oude seed functie heette zo.
+ */
+export const seedSystemTemplates = ensureSystemTemplates;

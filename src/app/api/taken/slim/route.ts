@@ -3,20 +3,16 @@ import { db } from "@/lib/db";
 import { taken, slimmeTakenTemplates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, inArray } from "drizzle-orm";
-import { fillPromptTemplate, fillNaamTemplate, seedSystemTemplates } from "@/lib/slimme-taken";
+import { fillPromptTemplate, fillNaamTemplate, ensureSystemTemplates } from "@/lib/slimme-taken";
 
 // GET /api/taken/slim — lijst van beschikbare slimme taken templates (uit DB)
 export async function GET() {
   try {
     await requireAuth();
 
-    const bestaand = await db
-      .select({ id: slimmeTakenTemplates.id })
-      .from(slimmeTakenTemplates)
-      .limit(1);
-    if (bestaand.length === 0) {
-      await seedSystemTemplates();
-    }
+    // Sync DB met de lib: deprecate oude slugs + upsert system templates.
+    // Idempotent, runt bij elke GET zodat een code-update direct zichtbaar is.
+    await ensureSystemTemplates();
 
     const rows = await db
       .select()

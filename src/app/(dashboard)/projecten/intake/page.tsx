@@ -621,66 +621,213 @@ function IntakeWizardContent() {
   );
 }
 
-function ScopeUploadButton({
+function ScopeStep({
+  intakeId,
   projectId,
-  disabled,
-  onUploaded,
+  busy: wizardBusy,
+  onSkip,
+  onGenerated,
 }: {
+  intakeId: number;
   projectId: number | null;
-  disabled: boolean;
-  onUploaded: () => void | Promise<void>;
+  busy: boolean;
+  onSkip: () => void | Promise<void>;
+  onGenerated: (scopePdfUrl: string) => void | Promise<void>;
 }) {
   const { addToast } = useToast();
-  const [busy, setBusy] = useState(false);
+  const [scopeJsonText, setScopeJsonText] = useState("");
+  const [showPrices, setShowPrices] = useState(false); // default off — prospect vibe
+  const [showArchitectureDiagram, setShowArchitectureDiagram] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [generatedPdfUrl, setGeneratedPdfUrl] = useState<string | null>(null);
 
-  const handleFile = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file || !projectId) return;
-      if (!file.type.includes("pdf")) {
-        addToast("Bestand moet een PDF zijn", "fout");
-        return;
+  const busy = wizardBusy || generating;
+
+  const generatePdf = useCallback(async () => {
+    if (!projectId) {
+      addToast("Project moet eerst aangemaakt zijn", "fout");
+      return;
+    }
+    if (scopeJsonText.trim().length < 20) {
+      addToast("Plak eerst de scope JSON uit Claude Code", "fout");
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(scopeJsonText);
+    } catch (err) {
+      addToast(
+        `Ongeldige JSON: ${err instanceof Error ? err.message : String(err)}`,
+        "fout"
+      );
+      return;
+    }
+
+    setGenerating(true);
+    setGeneratedPdfUrl(null);
+    try {
+      const res = await fetch(`/api/projecten/${projectId}/scope`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scopeData: parsed,
+          showPrices,
+          showArchitectureDiagram,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.fout || data.details || "Generatie mislukt");
       }
-      setBusy(true);
-      try {
-        const form = new FormData();
-        form.append("file", file);
-        const res = await fetch(`/api/projecten/${projectId}/scope/upload`, {
-          method: "POST",
-          body: form,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.fout || "Upload mislukt");
-        }
-        const data = await res.json();
-        addToast(`PDF geüpload: ${data.url}`, "succes");
-        await onUploaded();
-      } catch (err) {
-        addToast(err instanceof Error ? err.message : "Upload fout", "fout");
-      } finally {
-        setBusy(false);
-      }
-    },
-    [projectId, addToast, onUploaded]
-  );
+      const data = await res.json();
+      setGeneratedPdfUrl(data.url);
+      addToast("Scope PDF gegenereerd", "succes");
+      await onGenerated(data.url);
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Fout bij genereren", "fout");
+    } finally {
+      setGenerating(false);
+    }
+  }, [
+    projectId,
+    scopeJsonText,
+    showPrices,
+    showArchitectureDiagram,
+    addToast,
+    onGenerated,
+  ]);
 
   return (
-    <label
-      className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 font-medium transition-colors cursor-pointer ${
-        disabled ? "opacity-50 cursor-not-allowed" : ""
-      }`}
-    >
-      {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-      PDF uploaden
-      <input
-        type="file"
-        accept="application/pdf"
-        className="hidden"
-        disabled={disabled || busy}
-        onChange={handleFile}
+    <div>
+      <h2 className="text-xl font-semibold mb-2">Scope plan</h2>
+      <p className="text-sm text-[var(--text-tertiary)] mb-6">
+        Het interview gebeurt in Claude Code via Syb&apos;s <code className="font-mono">/scope</code> skill.
+        Plak hier de resulterende JSON, zet de toggles goed, en genereer de PDF.
+      </p>
+
+      <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 mb-5">
+        <div className="flex items-start gap-3">
+          <FileText className="w-5 h-5 text-autronis-accent mt-1" />
+          <div className="flex-1">
+            <h3 className="font-semibold mb-2">Stap 1 · Interview in Claude Code</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">
+              Open een Claude Code sessie en typ:
+            </p>
+            <code className="block bg-[var(--card)] px-3 py-2 rounded-lg text-sm font-mono">
+              /scope
+            </code>
+            <p className="text-sm text-[var(--text-secondary)] mt-3">
+              Claude doorloopt 6 fases (klant → processen → advies → pricing → format → bevestiging).
+              Aan het eind krijg je een JSON — kopieer die volledig en plak &apos;m hieronder.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <label className="block text-sm font-medium mb-2">
+        Stap 2 · Plak de scope JSON
+      </label>
+      <textarea
+        value={scopeJsonText}
+        onChange={(e) => setScopeJsonText(e.target.value)}
+        placeholder={`{\n  "meta": { "version": "1.0", ... },\n  "client": { "company_name": "..." },\n  "current_situation": { ... },\n  "proposed_plan": { ... },\n  ...\n}`}
+        rows={10}
+        className="w-full px-4 py-3 rounded-xl bg-[var(--background)] border border-[var(--border)] focus:border-autronis-accent focus:outline-none resize-y font-mono text-xs"
+        disabled={busy}
       />
-    </label>
+
+      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <label
+          className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+            showPrices
+              ? "border-autronis-accent bg-autronis-accent/10"
+              : "border-[var(--border)] hover:border-autronis-accent/50"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={showPrices}
+            onChange={(e) => setShowPrices(e.target.checked)}
+            className="w-4 h-4 accent-[color:var(--accent)]"
+            disabled={busy}
+          />
+          <div className="flex-1">
+            <div className="text-sm font-semibold">Prijzen tonen</div>
+            <div className="text-xs text-[var(--text-tertiary)]">
+              Uit = bedragen vervangen door &quot;Op aanvraag&quot;. Aan voor klant-offertes na akkoord.
+            </div>
+          </div>
+        </label>
+
+        <label
+          className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${
+            showArchitectureDiagram
+              ? "border-autronis-accent bg-autronis-accent/10"
+              : "border-[var(--border)] hover:border-autronis-accent/50"
+          }`}
+        >
+          <input
+            type="checkbox"
+            checked={showArchitectureDiagram}
+            onChange={(e) => setShowArchitectureDiagram(e.target.checked)}
+            className="w-4 h-4 accent-[color:var(--accent)]"
+            disabled={busy}
+          />
+          <div className="flex-1">
+            <div className="text-sm font-semibold">Architectuur diagram</div>
+            <div className="text-xs text-[var(--text-tertiary)]">
+              Uit = geen technisch diagram (voor niet-technische klanten). Aan voor CTO&apos;s/devs.
+            </div>
+          </div>
+        </label>
+      </div>
+
+      <div className="flex flex-wrap gap-3 mt-6">
+        <button
+          onClick={onSkip}
+          disabled={busy}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border)] hover:border-autronis-accent/50 disabled:opacity-50 font-medium transition-colors"
+        >
+          <SkipForward className="w-4 h-4" />
+          Overslaan
+        </button>
+        <button
+          onClick={generatePdf}
+          disabled={busy || !projectId || scopeJsonText.trim().length < 20}
+          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-autronis-accent hover:bg-autronis-accent/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
+        >
+          {generating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <FileText className="w-4 h-4" />
+          )}
+          Genereer scope PDF
+        </button>
+      </div>
+
+      {generatedPdfUrl && (
+        <div className="mt-6 p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30">
+          <div className="flex items-center gap-2 text-emerald-400 font-semibold mb-2">
+            <CheckCircle2 className="w-5 h-5" />
+            PDF gegenereerd en opgeslagen op project {projectId}
+          </div>
+          <a
+            href={generatedPdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-autronis-accent hover:underline text-sm break-all inline-flex items-center gap-2"
+          >
+            <ExternalLink className="w-4 h-4" />
+            {generatedPdfUrl}
+          </a>
+        </div>
+      )}
+
+      <p className="text-xs text-[var(--text-tertiary)] mt-6">
+        Tip: voor een prospect-voorstel zet prijzen uit. Na klant-akkoord genereer je &apos;m opnieuw
+        met prijzen aan.
+      </p>
+    </div>
   );
 }
 

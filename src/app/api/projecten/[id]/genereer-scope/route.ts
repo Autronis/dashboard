@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { spawn } from "child_process";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
@@ -7,6 +6,10 @@ import { db } from "@/lib/db";
 import { projecten } from "@/lib/db/schema";
 import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+
+// Force Node.js runtime (not Edge) — we spawn a child process.
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 // POST /api/projecten/[id]/genereer-scope
 // Body: the scope JSON produced by the scope-generator skill (6-fase wizard
@@ -66,7 +69,10 @@ export async function POST(
     const jsonPath = path.join(tmpDir, "scope.json");
     await fs.writeFile(jsonPath, JSON.stringify(scopeData, null, 2), "utf-8");
 
-    // Spawn the skill — it will generate the PDF and upload to /scope/upload
+    // Spawn the skill — it will generate the PDF and upload to /scope/upload.
+    // child_process is loaded dynamically to keep Turbopack from attempting
+    // to bundle/resolve it at build time.
+    const { spawn } = await import("child_process");
     const output = await new Promise<{ stdout: string; stderr: string; code: number }>(
       (resolve, reject) => {
         const child = spawn("node", [skillPath, jsonPath, String(projectId)], {

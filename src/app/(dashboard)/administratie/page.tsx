@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   FileText, Receipt, Upload, Download, Check, Clock,
-  AlertTriangle, TrendingDown, TrendingUp, Calculator,
+  AlertTriangle, TrendingDown, TrendingUp, Calculator, Link2, Link2Off,
 } from "lucide-react";
+import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Document {
@@ -34,7 +36,7 @@ interface ApiResponse {
 }
 
 // ─── Constants ──────────────────────────────────────────────────
-const monthNames: Record<string, string> = {
+const MONTH_NAMES: Record<string, string> = {
   "01": "Januari", "02": "Februari", "03": "Maart", "04": "April",
   "05": "Mei", "06": "Juni", "07": "Juli", "08": "Augustus",
   "09": "September", "10": "Oktober", "11": "November", "12": "December",
@@ -44,6 +46,8 @@ const currentYear = new Date().getFullYear();
 const years = [currentYear, currentYear - 1, currentYear - 2];
 
 type FilterType = "alle" | "inkomend" | "uitgaand" | "bonnetjes";
+type KoppelingFilter = "alle" | "gematcht" | "onbekoppeld";
+
 const typeFilters: { label: string; value: FilterType }[] = [
   { label: "Alle", value: "alle" },
   { label: "Inkomend", value: "inkomend" },
@@ -52,7 +56,7 @@ const typeFilters: { label: string; value: FilterType }[] = [
 ];
 
 const quarters = [
-  { label: "Alles", value: 0 },
+  { label: "Heel jaar", value: 0 },
   { label: "Q1", value: 1 },
   { label: "Q2", value: 2 },
   { label: "Q3", value: 3 },
@@ -67,19 +71,25 @@ function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-function groupByMonth(docs: Document[]): Record<string, Document[]> {
+function formatDatumKort(iso: string): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+}
+
+function groupByMonth(docs: Document[]): Array<{ month: string; items: Document[]; totaal: number }> {
   const groups: Record<string, Document[]> = {};
   for (const doc of docs) {
-    const month = doc.datum.slice(5, 7);
+    const month = doc.datum.slice(0, 7); // "YYYY-MM" — sortable + unique across years
     if (!groups[month]) groups[month] = [];
     groups[month].push(doc);
   }
-  // Sort months descending
-  const sorted: Record<string, Document[]> = {};
-  for (const key of Object.keys(groups).sort((a, b) => b.localeCompare(a))) {
-    sorted[key] = groups[key];
-  }
-  return sorted;
+  return Object.keys(groups)
+    .sort((a, b) => b.localeCompare(a))
+    .map((month) => ({
+      month,
+      items: groups[month],
+      totaal: groups[month].reduce((s, d) => s + d.bedrag, 0),
+    }));
 }
 
 // ─── Page ───────────────────────────────────────────────────────
@@ -90,6 +100,7 @@ export default function AdministratiePage() {
   const [jaar, setJaar] = useState(currentYear);
   const [kwartaal, setKwartaal] = useState(0);
   const [type, setType] = useState<FilterType>("alle");
+  const [koppeling, setKoppeling] = useState<KoppelingFilter>("alle");
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -166,221 +177,292 @@ export default function AdministratiePage() {
   }, [addToast]);
 
   // ─── Derived ────────────────────────────────────────────────
-  const grouped = data ? groupByMonth(data.documenten) : {};
-  const onbekoppeld = data?.onbekoppeld ?? 0;
+  const onbekoppeldAantal = data?.onbekoppeld ?? 0;
   const totalen = data?.totalen ?? { inkomend: 0, uitgaand: 0, btw: 0 };
+
+  const filteredDocs = useMemo(() => {
+    if (!data) return [];
+    if (koppeling === "gematcht") {
+      return data.documenten.filter((d) => d.status === "gematcht" || d.status === "betaald" || d.type === "bonnetje");
+    }
+    if (koppeling === "onbekoppeld") {
+      return data.documenten.filter((d) => d.status === "onbekoppeld");
+    }
+    return data.documenten;
+  }, [data, koppeling]);
+
+  const grouped = useMemo(() => groupByMonth(filteredDocs), [filteredDocs]);
 
   // ─── Render ─────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#0E1719] text-white p-6 md:p-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Administratie</h1>
-          <p className="text-white/50 text-sm mt-1">
-            Alle facturen, bonnetjes en documenten op een plek
-          </p>
+    <PageTransition>
+      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-autronis-text-primary">Administratie</h1>
+            <p className="text-base text-autronis-text-secondary mt-1">
+              Alle facturen, bonnetjes en documenten op één plek — automatisch gematcht aan bank-transacties
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={handleUpload}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-autronis-accent text-autronis-bg text-sm font-semibold hover:bg-autronis-accent-hover transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              Upload
+            </button>
+            <button
+              onClick={handleExport}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-autronis-card border border-autronis-border text-autronis-text-secondary text-sm font-medium hover:text-autronis-text-primary hover:border-autronis-accent/30 transition-colors"
+            >
+              <Download className="w-4 h-4" />
+              Export
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".pdf"
-            className="hidden"
-            onChange={handleUpload}
-          />
+
+        {/* Onbekoppeld banner (klikbaar) */}
+        {onbekoppeldAantal > 0 && (
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#17B8A5] text-white text-sm font-medium hover:bg-[#4DC9B4] transition-colors"
+            onClick={() => setKoppeling(koppeling === "onbekoppeld" ? "alle" : "onbekoppeld")}
+            className={cn(
+              "w-full flex items-center gap-3 p-4 rounded-2xl border transition-colors text-left",
+              koppeling === "onbekoppeld"
+                ? "bg-amber-500/15 border-amber-500/40"
+                : "bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40"
+            )}
           >
-            <Upload className="w-4 h-4" />
-            Upload
-          </button>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#192225] border border-[#2A3538] text-white/60 text-sm font-medium hover:text-white transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export
-          </button>
-        </div>
-      </div>
-
-      {/* Notification banner */}
-      {onbekoppeld > 0 && (
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20">
-          <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
-          <span className="text-amber-300 text-sm">
-            {onbekoppeld} {onbekoppeld === 1 ? "factuur wacht" : "facturen wachten"} op koppeling
-          </span>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Years */}
-        <div className="flex gap-1.5">
-          {years.map((y) => (
-            <button
-              key={y}
-              onClick={() => setJaar(y)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                jaar === y
-                  ? "bg-[#17B8A5] text-white"
-                  : "bg-[#192225] text-white/60 hover:text-white"
-              }`}
-            >
-              {y}
-            </button>
-          ))}
-        </div>
-
-        {/* Type */}
-        <div className="flex gap-1.5">
-          {typeFilters.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setType(f.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                type === f.value
-                  ? "bg-[#17B8A5] text-white"
-                  : "bg-[#192225] text-white/60 hover:text-white"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Quarter */}
-        <div className="flex gap-1.5">
-          {quarters.map((q) => (
-            <button
-              key={q.value}
-              onClick={() => setKwartaal(q.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                kwartaal === q.value
-                  ? "bg-[#17B8A5] text-white"
-                  : "bg-[#192225] text-white/60 hover:text-white"
-              }`}
-            >
-              {q.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-[#192225] border border-[#2A3538] rounded-2xl p-5">
-          <div className="flex items-center gap-2 text-white/40 text-xs font-medium mb-2">
-            <TrendingDown className="w-3.5 h-3.5" />
-            Inkomend (kosten)
-          </div>
-          <p className="text-xl font-bold font-mono text-red-400">
-            {formatCurrency(totalen.inkomend)}
-          </p>
-        </div>
-        <div className="bg-[#192225] border border-[#2A3538] rounded-2xl p-5">
-          <div className="flex items-center gap-2 text-white/40 text-xs font-medium mb-2">
-            <TrendingUp className="w-3.5 h-3.5" />
-            Uitgaand (omzet)
-          </div>
-          <p className="text-xl font-bold font-mono text-emerald-400">
-            {formatCurrency(totalen.uitgaand)}
-          </p>
-        </div>
-        <div className="bg-[#192225] border border-[#2A3538] rounded-2xl p-5">
-          <div className="flex items-center gap-2 text-white/40 text-xs font-medium mb-2">
-            <Calculator className="w-3.5 h-3.5" />
-            BTW te verrekenen
-          </div>
-          <p className="text-xl font-bold font-mono text-white">
-            {formatCurrency(totalen.btw)}
-          </p>
-        </div>
-      </div>
-
-      {/* Documents grouped by month */}
-      {loading ? (
-        <div className="text-center text-white/40 py-16 text-sm">Laden...</div>
-      ) : Object.keys(grouped).length === 0 ? (
-        <div className="text-center text-white/40 py-16 text-sm">
-          Geen documenten gevonden
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {Object.entries(grouped).map(([month, docs]) => (
-            <div
-              key={month}
-              className="bg-[#192225] border border-[#2A3538] rounded-2xl overflow-hidden"
-            >
-              {/* Month header */}
-              <div className="px-5 py-3 border-b border-[#2A3538]">
-                <h3 className="text-sm font-semibold text-white/50">
-                  {monthNames[month] ?? month}
-                </h3>
-              </div>
-
-              {/* Document rows */}
-              <div className="divide-y divide-[#2A3538]">
-                {docs.map((doc) => (
-                  <button
-                    key={`${doc.type}-${doc.id}`}
-                    onClick={() => openDocument(doc.storageUrl)}
-                    className="w-full flex items-center gap-4 px-5 py-3 hover:bg-white/[0.03] transition-colors text-left"
-                  >
-                    {/* Icon */}
-                    <div className="flex-shrink-0">
-                      {doc.type === "bonnetje" ? (
-                        <Receipt className="w-4 h-4 text-white/40" />
-                      ) : (
-                        <FileText className="w-4 h-4 text-white/40" />
-                      )}
-                    </div>
-
-                    {/* Leverancier + factuurnummer */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">
-                        {doc.leverancier}
-                      </p>
-                      {doc.factuurnummer && (
-                        <p className="text-xs text-white/40 truncate">
-                          {doc.factuurnummer}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Amount */}
-                    <span
-                      className={`text-sm font-mono font-medium tabular-nums ${
-                        doc.type === "uitgaand" ? "text-emerald-400" : "text-red-400"
-                      }`}
-                    >
-                      {doc.type === "uitgaand" ? "+" : "-"}
-                      {formatCurrency(doc.bedrag)}
-                    </span>
-
-                    {/* Date */}
-                    <span className="text-xs text-white/40 w-20 text-right flex-shrink-0">
-                      {doc.datum}
-                    </span>
-
-                    {/* Status */}
-                    <div className="flex-shrink-0">
-                      {doc.status === "gematcht" || doc.status === "betaald" ? (
-                        <Check className="w-4 h-4 text-emerald-400" />
-                      ) : (
-                        <Clock className="w-4 h-4 text-amber-400" />
-                      )}
-                    </div>
-                  </button>
-                ))}
-              </div>
+            <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+            <div className="flex-1">
+              <p className="text-amber-300 text-sm font-medium">
+                {onbekoppeldAantal} {onbekoppeldAantal === 1 ? "factuur wacht" : "facturen wachten"} op koppeling aan een bank-transactie
+              </p>
+              <p className="text-amber-300/60 text-xs mt-0.5">
+                {koppeling === "onbekoppeld" ? "Klik om filter uit te zetten" : "Klik om alleen onbekoppelde te tonen"}
+              </p>
             </div>
-          ))}
+          </button>
+        )}
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
+              <TrendingDown className="w-3.5 h-3.5" />
+              Inkomend (kosten)
+            </div>
+            <p className="text-2xl font-bold tabular-nums text-rose-400">
+              {formatCurrency(totalen.inkomend)}
+            </p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
+              <TrendingUp className="w-3.5 h-3.5" />
+              Uitgaand (omzet)
+            </div>
+            <p className="text-2xl font-bold tabular-nums text-emerald-400">
+              {formatCurrency(totalen.uitgaand)}
+            </p>
+          </div>
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+            <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
+              <Calculator className="w-3.5 h-3.5" />
+              BTW te verrekenen
+            </div>
+            <p className="text-2xl font-bold tabular-nums text-autronis-text-primary">
+              {formatCurrency(totalen.btw)}
+            </p>
+          </div>
         </div>
-      )}
-    </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Year pills */}
+          <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+            {years.map((y) => (
+              <button
+                key={y}
+                onClick={() => setJaar(y)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition",
+                  jaar === y
+                    ? "bg-autronis-accent text-autronis-bg"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+
+          {/* Quarter pills */}
+          <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+            {quarters.map((q) => (
+              <button
+                key={q.value}
+                onClick={() => setKwartaal(q.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition",
+                  kwartaal === q.value
+                    ? "bg-autronis-bg text-autronis-text-primary"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Type pills */}
+          <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1">
+            {typeFilters.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setType(f.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition",
+                  type === f.value
+                    ? "bg-autronis-bg text-autronis-text-primary"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Koppeling quick filter */}
+          <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1 ml-auto">
+            {(["alle", "gematcht", "onbekoppeld"] as KoppelingFilter[]).map((k) => (
+              <button
+                key={k}
+                onClick={() => setKoppeling(k)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition capitalize",
+                  koppeling === k
+                    ? "bg-autronis-bg text-autronis-text-primary"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {k === "gematcht" && <Link2 className="w-3 h-3" />}
+                {k === "onbekoppeld" && <Link2Off className="w-3 h-3" />}
+                {k}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Documents grouped by month */}
+        {loading ? (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center text-autronis-text-secondary text-sm">
+            Laden...
+          </div>
+        ) : grouped.length === 0 ? (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center text-autronis-text-secondary text-sm">
+            Geen documenten gevonden met de huidige filters
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {grouped.map(({ month, items, totaal }) => (
+              <div
+                key={month}
+                className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden"
+              >
+                {/* Month header */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-autronis-border/60 bg-autronis-bg/30">
+                  <h3 className="text-[11px] uppercase tracking-wider font-semibold text-autronis-text-secondary">
+                    {MONTH_NAMES[month.slice(5, 7)] ?? month} {month.slice(0, 4)}
+                  </h3>
+                  <span className="text-[11px] text-autronis-text-secondary tabular-nums">
+                    {formatCurrency(totaal)} · {items.length}
+                  </span>
+                </div>
+
+                {/* Document rows */}
+                <div className="divide-y divide-autronis-border/30">
+                  {items.map((doc) => {
+                    const isOnbekoppeld = doc.status === "onbekoppeld";
+                    return (
+                      <button
+                        key={`${doc.type}-${doc.id}`}
+                        onClick={() => openDocument(doc.storageUrl)}
+                        className="w-full flex items-center gap-4 pl-4 pr-5 py-3.5 hover:bg-autronis-bg/40 transition-colors text-left relative"
+                      >
+                        {/* Colored left accent bar — per type */}
+                        <span
+                          className={cn(
+                            "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-sm",
+                            doc.type === "uitgaand"
+                              ? "bg-emerald-500"
+                              : doc.type === "bonnetje"
+                                ? "bg-sky-500"
+                                : "bg-rose-500"
+                          )}
+                        />
+
+                        {/* Icon */}
+                        <div className="flex-shrink-0 text-autronis-text-secondary">
+                          {doc.type === "bonnetje" ? (
+                            <Receipt className="w-4 h-4" />
+                          ) : (
+                            <FileText className="w-4 h-4" />
+                          )}
+                        </div>
+
+                        {/* Leverancier + factuurnummer */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-autronis-text-primary truncate">
+                            {doc.leverancier}
+                          </p>
+                          {doc.factuurnummer && (
+                            <p className="text-xs text-autronis-text-secondary truncate">
+                              {doc.factuurnummer}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Amount */}
+                        <span
+                          className={cn(
+                            "text-sm font-semibold tabular-nums shrink-0",
+                            doc.type === "uitgaand" ? "text-emerald-400" : "text-rose-300"
+                          )}
+                        >
+                          {doc.type === "uitgaand" ? "+" : "−"}
+                          {formatCurrency(doc.bedrag)}
+                        </span>
+
+                        {/* Date */}
+                        <span className="text-xs text-autronis-text-secondary w-14 text-right shrink-0 tabular-nums">
+                          {formatDatumKort(doc.datum)}
+                        </span>
+
+                        {/* Status */}
+                        <div className="flex-shrink-0" title={doc.status}>
+                          {isOnbekoppeld ? (
+                            <Clock className="w-4 h-4 text-amber-400" />
+                          ) : (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </PageTransition>
   );
 }

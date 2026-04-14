@@ -1,0 +1,3 @@
+[submodule "vendor/scope-generator"]
+	path = vendor/scope-generator
+	url = https://github.com/Autronis/scope-generator-v2.git

@@ -1165,6 +1165,47 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 navigator.clipboard.writeText(finaal);
               };
 
+              // Verwijder hele sessie uit de agenda: zet ingeplandStart +
+              // ingeplandEind op null voor alle taken in het blok. Taken zelf
+              // blijven bestaan (status == open of afgerond), ze zijn alleen
+              // niet meer ingepland voor deze dag.
+              const handleUnplanSessie = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const ok = window.confirm(
+                  `Claude sessie van ${startLabel}–${eindLabel} met ${group.length} taken uit de agenda halen? De taken zelf blijven staan.`
+                );
+                if (!ok) return;
+                try {
+                  const resultaten = await Promise.all(
+                    group.map((t) =>
+                      fetch(`/api/taken/${t.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ ingeplandStart: null, ingeplandEind: null }),
+                      })
+                    )
+                  );
+                  const gefaald = resultaten.filter((r) => !r.ok).length;
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: gefaald > 0
+                          ? `${group.length - gefaald}/${group.length} taken ontpland (${gefaald} gefaald)`
+                          : `${group.length} taken uit agenda gehaald`,
+                        type: gefaald > 0 ? "fout" : "succes",
+                      },
+                    })
+                  );
+                  window.dispatchEvent(new CustomEvent("autronis:agenda-refetch"));
+                } catch {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Kon sessie niet verwijderen", type: "fout" },
+                    })
+                  );
+                }
+              };
+
               return (
                 <div
                   key={`claude-sessie-${sessieKey}`}
@@ -1230,6 +1271,14 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                         Afrond
                       </button>
                     )}
+                    <button
+                      type="button"
+                      onClick={handleUnplanSessie}
+                      title="Verwijder deze sessie uit de agenda (taken blijven bestaan)"
+                      className="text-[10px] font-medium text-red-300 hover:text-red-100 bg-red-500/20 hover:bg-red-500/35 px-1.5 py-0.5 rounded flex-shrink-0 inline-flex items-center gap-1 transition-colors"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
                     <span className="text-[10px] text-purple-400/70 tabular-nums flex-shrink-0">{afgerond}/{group.length}</span>
                     {expanded ? (
                       <ChevronUp className="w-3 h-3 text-purple-400/70 flex-shrink-0" />

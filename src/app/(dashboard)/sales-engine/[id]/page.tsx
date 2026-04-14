@@ -487,40 +487,77 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
 
         {/* Action Buttons */}
         {scan.status === "completed" && (
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/projecten/intake?scanId=${scanId}`}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 font-medium hover:bg-emerald-500/30 transition-colors"
-              title="Deze prospect werd klant — start een project-intake met scan data voorgevuld"
-            >
-              <Zap className="w-4 h-4" />
-              Start project intake
-            </Link>
-            <a
-              href={`/api/sales-engine/${scanId}/voorstel`}
-              download
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)]/20 text-[var(--accent)] font-medium hover:bg-[var(--accent)]/30 transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              Download voorstel (PDF)
-            </a>
-            <a
-              href={`/api/sales-engine/${scanId}/presentatie`}
-              download
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 font-medium hover:bg-purple-500/30 transition-colors"
-            >
-              <Rocket className="w-4 h-4" />
-              Download presentatie (PDF)
-            </a>
-            {lead && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-3">
               <Link
-                href={`/leads`}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--text-primary)] font-medium hover:border-[var(--accent)]/30 transition-colors"
+                href={`/projecten/intake?scanId=${scanId}`}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 font-medium hover:bg-emerald-500/30 transition-colors"
+                title="Deze prospect werd klant — start een project-intake met scan data voorgevuld"
               >
-                <UserPlus className="w-4 h-4" />
-                Bekijk lead
+                <Zap className="w-4 h-4" />
+                Start project intake
               </Link>
-            )}
+              <a
+                href={`/api/sales-engine/${scanId}/presentatie`}
+                download
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 text-purple-400 font-medium hover:bg-purple-500/30 transition-colors"
+              >
+                <Rocket className="w-4 h-4" />
+                Download presentatie (PDF)
+              </a>
+              {lead && (
+                <Link
+                  href={`/leads`}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--text-primary)] font-medium hover:border-[var(--accent)]/30 transition-colors"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Bekijk lead
+                </Link>
+              )}
+            </div>
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="w-4 h-4 text-[var(--accent)]" />
+                <span className="text-sm font-medium text-[var(--text-primary)]">
+                  Download voorstel (PDF)
+                </span>
+                <span className="text-xs text-[var(--text-tertiary)]">
+                  — kies een pakket-tier
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href={`/api/sales-engine/${scanId}/voorstel?tier=basis`}
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[var(--text-primary)] text-sm font-medium transition-colors"
+                  title="Pilot · 1-2 quick wins · €1.500-€3.000"
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-400" />
+                  Basis
+                  <span className="text-xs text-[var(--text-tertiary)]">€1,5k–€3k</span>
+                </a>
+                <a
+                  href={`/api/sales-engine/${scanId}/voorstel?tier=pro`}
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--accent)]/15 border border-[var(--accent)]/40 text-[var(--accent)] text-sm font-medium hover:bg-[var(--accent)]/25 transition-colors"
+                  title="Standaard · kernprocessen · €3.000-€8.000 — meest gekozen"
+                >
+                  <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                  Pro
+                  <span className="text-xs opacity-80">€3k–€8k · aanbevolen</span>
+                </a>
+                <a
+                  href={`/api/sales-engine/${scanId}/voorstel?tier=enterprise`}
+                  download
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--card)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[var(--text-primary)] text-sm font-medium transition-colors"
+                  title="Volledig · end-to-end rollout · €8.000-€25.000"
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-400" />
+                  Enterprise
+                  <span className="text-xs text-[var(--text-tertiary)]">€8k–€25k</span>
+                </a>
+              </div>
+            </div>
           </div>
         )}
 

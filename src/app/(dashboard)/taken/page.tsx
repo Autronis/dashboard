@@ -20,6 +20,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { CheckBurst, Confetti } from "@/components/ui/confetti-dynamic";
 import { useTaken, type TakenScope } from "@/hooks/queries/use-taken";
 import { MiniTaakEigenaarPicker } from "@/components/taken/mini-taak-eigenaar-picker";
+import { SlimmeTakenModal } from "@/components/taken/slimme-taken-modal";
 import { useCurrentUser } from "@/hooks/queries/use-team";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -601,6 +602,7 @@ function TakenPage() {
   const [syncing, setSyncing] = useState(false);
   const [showSyncConfetti, setShowSyncConfetti] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [slimmeTakenOpen, setSlimmeTakenOpen] = useState(false);
   const [nieuwTitel, setNieuwTitel] = useState("");
   const [nieuwProject, setNieuwProject] = useState("");
   const [nieuwFase, setNieuwFase] = useState("");
@@ -1256,6 +1258,14 @@ function TakenPage() {
                 <Tag className="w-3.5 h-3.5" />
                 Nieuwe categorie
               </button>
+              <button
+                onClick={() => setSlimmeTakenOpen(true)}
+                title="Kies een vooraf gedefinieerde Claude-uitvoerbare taak (bv. 10 bedrijven zoeken, website scrapen)"
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                Slimme taak
+              </button>
               <button onClick={openNieuwModal} className="inline-flex items-center gap-1.5 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-lg text-sm font-semibold transition-colors" title="Nieuwe taak (N)">
                 <Plus className="w-4 h-4" /> Nieuw
                 <kbd className="ml-0.5 px-1 py-0.5 text-[9px] bg-autronis-bg/20 rounded font-mono">N</kbd>
@@ -1847,6 +1857,11 @@ function TakenPage() {
         )}
         </AnimatePresence>
       </div>
+      <SlimmeTakenModal
+        open={slimmeTakenOpen}
+        onClose={() => setSlimmeTakenOpen(false)}
+        onCreated={() => queryClient.invalidateQueries({ queryKey: ["taken"] })}
+      />
     </PageTransition>
   );
 }

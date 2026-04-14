@@ -546,63 +546,25 @@ function IntakeWizardContent() {
             )}
 
             {currentStep === "scope" && (
-              <div>
-                <h2 className="text-xl font-semibold mb-2">Scope plan (optioneel)</h2>
-                <p className="text-sm text-[var(--text-tertiary)] mb-6">
-                  Genereer een professioneel scope-document met de scope-generator skill in Claude Code,
-                  upload dan de PDF — of sla deze stap over en doe het later.
-                </p>
-
-                <div className="bg-[var(--background)] border border-[var(--border)] rounded-xl p-5 mb-4">
-                  <div className="flex items-start gap-3">
-                    <FileText className="w-5 h-5 text-autronis-accent mt-1" />
-                    <div className="flex-1">
-                      <h3 className="font-semibold mb-2">Scope genereren via Claude Code</h3>
-                      <p className="text-sm text-[var(--text-secondary)] mb-3">
-                        Open een Claude Code sessie en run:
-                      </p>
-                      <code className="block bg-[var(--card)] px-3 py-2 rounded-lg text-sm font-mono">
-                        /scope
-                      </code>
-                      <p className="text-sm text-[var(--text-secondary)] mt-3">
-                        De skill doorloopt 6 interview-fases en genereert een JSON + PDF.
-                        De PDF wordt automatisch geüpload naar dit project (project-id:{" "}
-                        <code className="font-mono">{intake.projectId}</code>) als je hem draait met:
-                      </p>
-                      <code className="block bg-[var(--card)] px-3 py-2 rounded-lg text-sm font-mono mt-2">
-                        node ~/.claude/skills/scope/generate-pdf.js &lt;json-path&gt; {intake.projectId}
-                      </code>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    onClick={skipScope}
-                    disabled={busy}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--border)] hover:border-autronis-accent/50 disabled:opacity-50 font-medium transition-colors"
-                  >
-                    <SkipForward className="w-4 h-4" />
-                    Overslaan
-                  </button>
-                  <ScopeUploadButton
-                    projectId={intake.projectId}
-                    disabled={busy || !intake.projectId}
-                    onUploaded={async () => {
-                      // Bump step to "klant" after upload
-                      const res = await fetch(`/api/projecten/intake/${intake.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ scopeStatus: "klaar", stap: "klant" }),
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        setIntake(data.intake);
-                      }
-                    }}
-                  />
-                </div>
-              </div>
+              <ScopeStep
+                intakeId={intake.id}
+                projectId={intake.projectId}
+                busy={busy}
+                onSkip={skipScope}
+                onGenerated={async (scopePdfUrl) => {
+                  const res = await fetch(`/api/projecten/intake/${intake.id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ scopeStatus: "klaar", stap: "klant" }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setIntake(data.intake);
+                  }
+                  // Optimistic toast already handled inside ScopeStep
+                  void scopePdfUrl;
+                }}
+              />
             )}
 
             {currentStep === "klant" && (

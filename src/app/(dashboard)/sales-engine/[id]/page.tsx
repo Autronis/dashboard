@@ -488,6 +488,14 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
         {/* Action Buttons */}
         {scan.status === "completed" && (
           <div className="flex flex-wrap gap-3">
+            <Link
+              href={`/projecten/intake?scanId=${scanId}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 font-medium hover:bg-emerald-500/30 transition-colors"
+              title="Deze prospect werd klant — start een project-intake met scan data voorgevuld"
+            >
+              <Zap className="w-4 h-4" />
+              Start project intake
+            </Link>
             <a
               href={`/api/sales-engine/${scanId}/voorstel`}
               download

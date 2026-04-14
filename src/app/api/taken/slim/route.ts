@@ -4,6 +4,7 @@ import { taken, slimmeTakenTemplates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, inArray } from "drizzle-orm";
 import { fillPromptTemplate, fillNaamTemplate, ensureSystemTemplates } from "@/lib/slimme-taken";
+import { findVrijSlot, getBlockingIntervalsVoorDag, formatSlotToIso } from "@/lib/agenda-slot-finder";
 
 // GET /api/taken/slim — lijst van beschikbare slimme taken templates (uit DB)
 export async function GET() {
@@ -82,8 +83,16 @@ export async function POST(req: NextRequest) {
       .where(inArray(slimmeTakenTemplates.slug, slugs));
     const templateBySlug = new Map(templates.map((t) => [t.slug, t]));
 
-    const aangemaakt: Array<{ id: number; titel: string; cluster: string }> = [];
+    const aangemaakt: Array<{ id: number; titel: string; cluster: string; start?: string; eind?: string }> = [];
     const fouten: string[] = [];
+
+    // Als ingeplandVoor is gezet, laad eenmalig de bestaande blocking
+    // intervals zodat we anti-overlap kunnen doen. Bij bulk creates voegen
+    // we elk nieuw slot toe aan de blockers zodat ze niet op elkaar
+    // landen.
+    const blockers = body.ingeplandVoor
+      ? await getBlockingIntervalsVoorDag(body.ingeplandVoor)
+      : [];
 
     for (const req of requests) {
       const template = templateBySlug.get(req.templateId);
@@ -109,23 +118,29 @@ export async function POST(req: NextRequest) {
       const titel = fillNaamTemplate(template.naam, req.velden);
       const prompt = fillPromptTemplate(template.prompt, req.velden);
 
-      // Als ingeplandVoor is gezet: bereken start/eind op basis van duur.
-      // Default tijd: 09:00 op de gegeven datum. Sem kan het later
-      // verslepen in de agenda dag-view.
+      // Als ingeplandVoor is gezet: zoek een vrij slot via de shared
+      // anti-overlap helper. Start vanaf 08:00, schuift door bij elke
+      // botsing met bestaande ingeplande items of items die we in deze
+      // call al hebben gepland.
       let ingeplandStart: string | null = null;
       let ingeplandEind: string | null = null;
       if (body.ingeplandVoor) {
         const duurMin = template.geschatteDuur ?? 15;
-        const startISO = `${body.ingeplandVoor}T09:00:00`;
-        const startMs = new Date(startISO).getTime();
-        if (!isNaN(startMs)) {
-          const eindMs = startMs + duurMin * 60000;
-          const pad = (n: number) => String(n).padStart(2, "0");
-          const fmt = (d: Date) =>
-            `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-          ingeplandStart = startISO;
-          ingeplandEind = fmt(new Date(eindMs));
+        const slot = findVrijSlot(body.ingeplandVoor, "08:00", duurMin, blockers);
+        if (slot) {
+          ingeplandStart = formatSlotToIso(slot.start);
+          ingeplandEind = formatSlotToIso(slot.eind);
+          // Voeg dit slot toe als blocker zodat volgende bulk items er
+          // niet op landen
+          blockers.push({
+            start: slot.start,
+            eind: slot.eind,
+            label: titel,
+          });
         }
+        // Als er geen vrij slot is (dag vol) laten we ingeplandStart/Eind
+        // op null staan — de taak wordt aangemaakt zonder tijd en kan
+        // later handmatig worden ingepland.
       }
 
       const [nieuw] = await db
@@ -150,7 +165,13 @@ export async function POST(req: NextRequest) {
         })
         .returning();
 
-      aangemaakt.push({ id: nieuw.id, titel: nieuw.titel, cluster: nieuw.cluster ?? "" });
+      aangemaakt.push({
+        id: nieuw.id,
+        titel: nieuw.titel,
+        cluster: nieuw.cluster ?? "",
+        start: nieuw.ingeplandStart ?? undefined,
+        eind: nieuw.ingeplandEind ?? undefined,
+      });
     }
 
     // Back-compat: single template → returnt { taak }

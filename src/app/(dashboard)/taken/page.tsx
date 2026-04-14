@@ -612,6 +612,20 @@ function TakenPage() {
   const [hideCompleted, setHideCompleted] = useState(true);
   const [quickAddFase, setQuickAddFase] = useState<{ projectId: number; fase: string } | null>(null);
   const [quickAddTitel, setQuickAddTitel] = useState("");
+  // Inline rename van fase header (categorie hernoemen)
+  const [renamingFase, setRenamingFase] = useState<{ projectId: number; oude: string } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  // Bulk select + bulk eigenaar wijzigen
+  const [selectedTaakIds, setSelectedTaakIds] = useState<Set<number>>(new Set());
+  const toggleTaakSelected = useCallback((id: number) => {
+    setSelectedTaakIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelectedTaakIds(new Set()), []);
   const [flashedFases, setFlashedFases] = useState<Set<string>>(new Set());
   const completedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const projectSectionsRef = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -936,6 +950,60 @@ function TakenPage() {
     quickAddMutation.mutate({ projectId, titel, fase: fase === "Backlog" ? null : fase, prioriteit: "normaal", uitvoerder: "handmatig" });
     setQuickAddTitel("");
     setQuickAddFase(null);
+  };
+
+  // ─── Bulk operations ───
+  const bulkRenameFaseMutation = useMutation({
+    mutationFn: async (params: { ids: number[]; nieuweNaam: string }) => {
+      const res = await fetch("/api/taken/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: params.ids, updates: { fase: params.nieuweNaam } }),
+      });
+      if (!res.ok) throw new Error("Hernoemen mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+      addToast("Categorie hernoemd", "succes");
+    },
+    onError: (e) => addToast(e instanceof Error ? e.message : "Fout bij hernoemen", "fout"),
+  });
+
+  const bulkEigenaarMutation = useMutation({
+    mutationFn: async (params: { ids: number[]; eigenaar: "sem" | "syb" | "team" | "vrij" }) => {
+      const res = await fetch("/api/taken/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: params.ids, updates: { eigenaar: params.eigenaar } }),
+      });
+      if (!res.ok) throw new Error("Wijziging mislukt");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+      clearSelection();
+      addToast("Eigenaar bijgewerkt", "succes");
+    },
+    onError: (e) => addToast(e instanceof Error ? e.message : "Fout bij bulk wijziging", "fout"),
+  });
+
+  const handleRenameFase = (projectId: number, oudeFase: string, nieuweFase: string) => {
+    const trimmed = nieuweFase.trim();
+    if (!trimmed || trimmed === oudeFase) {
+      setRenamingFase(null);
+      return;
+    }
+    // Verzamel alle taak-ids in deze fase voor dit project
+    const ids = taken
+      .filter((t) => (t.fase ?? "Backlog") === oudeFase && (t.projectId ?? null) === (projectId < 0 ? null : projectId))
+      .map((t) => t.id);
+    if (ids.length === 0) {
+      setRenamingFase(null);
+      return;
+    }
+    bulkRenameFaseMutation.mutate({ ids, nieuweNaam: trimmed });
+    setRenamingFase(null);
   };
 
   const handleStatusToggleWithFaseCheck = useCallback((taak: Taak, newStatus: string, taken: Taak[]) => {
@@ -1286,20 +1354,49 @@ function TakenPage() {
                                 transition={{ duration: 0.8 }}
                               >
                                 <div className="w-full flex items-center gap-1 px-3 py-1.5 pl-9 hover:bg-autronis-bg/20 transition-colors group/fase">
-                                  <button onClick={() => toggleFase(faseKey)} className="flex items-center gap-2 flex-1 min-w-0">
-                                    {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />}
-                                    <Layers className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
-                                    <span className={cn("text-[11px] font-medium", isComplete ? "text-emerald-400" : "text-autronis-text-primary")}>{fase.fase}</span>
-                                    {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />}
-                                    <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
-                                  </button>
-                                  <button
-                                    onClick={() => { setQuickAddFase({ projectId: project.projectId, fase: fase.fase }); setQuickAddTitel(""); }}
-                                    className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
-                                    title="Snel taak toevoegen (of druk N)"
-                                  >
-                                    <Plus className="w-3 h-3" />
-                                  </button>
+                                  {renamingFase?.projectId === project.projectId && renamingFase.oude === fase.fase ? (
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                      <Layers className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+                                      <input
+                                        type="text"
+                                        value={renameValue}
+                                        onChange={(e) => setRenameValue(e.target.value)}
+                                        onBlur={() => handleRenameFase(project.projectId, fase.fase, renameValue)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") handleRenameFase(project.projectId, fase.fase, renameValue);
+                                          if (e.key === "Escape") setRenamingFase(null);
+                                        }}
+                                        autoFocus
+                                        className="flex-1 bg-autronis-bg border border-autronis-accent/50 rounded-md px-2 py-0.5 text-[11px] text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <button onClick={() => toggleFase(faseKey)} className="flex items-center gap-2 flex-1 min-w-0">
+                                      {isFC ? <ChevronRight className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" /> : <ChevronDown className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />}
+                                      <Layers className="w-3 h-3 text-autronis-text-secondary flex-shrink-0" />
+                                      <span className={cn("text-[11px] font-medium", isComplete ? "text-emerald-400" : "text-autronis-text-primary")}>{fase.fase}</span>
+                                      {isComplete && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400 flex-shrink-0" />}
+                                      <div className="flex-1 max-w-24"><ProgressBar afgerond={fase.afgerond} totaal={fase.totaal} size="sm" /></div>
+                                    </button>
+                                  )}
+                                  {renamingFase?.projectId !== project.projectId && (
+                                    <>
+                                      <button
+                                        onClick={() => { setRenamingFase({ projectId: project.projectId, oude: fase.fase }); setRenameValue(fase.fase); }}
+                                        className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
+                                        title="Hernoem categorie"
+                                      >
+                                        <Pencil className="w-3 h-3" />
+                                      </button>
+                                      <button
+                                        onClick={() => { setQuickAddFase({ projectId: project.projectId, fase: fase.fase }); setQuickAddTitel(""); }}
+                                        className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
+                                        title="Snel taak toevoegen (of druk N)"
+                                      >
+                                        <Plus className="w-3 h-3" />
+                                      </button>
+                                    </>
+                                  )}
                                 </div>
                                 <AnimatePresence>
                                   {isQuickAdding && (

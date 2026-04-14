@@ -407,7 +407,7 @@ export default function InstellingenPage() {
           </div>
 
           {/* Google Calendar sync toggle — default uit zodat je agenda niet vol loopt */}
-          <div className="mt-6 pt-6 border-t border-autronis-border">
+          <div className="mt-6 pt-6 border-t border-autronis-border space-y-4">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <label className="text-sm font-medium text-autronis-text-primary flex items-center gap-1.5">
@@ -440,6 +440,38 @@ export default function InstellingenPage() {
                   }
                 />
               </button>
+            </div>
+
+            {/* Cleanup knop: verwijder bestaande Google Cal events die het dashboard ooit heeft gepushed */}
+            <div className="rounded-xl border border-autronis-border/50 bg-autronis-bg/30 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-autronis-text-primary">Bestaande events opruimen</p>
+                  <p className="text-[11px] text-autronis-text-secondary mt-0.5 max-w-md">
+                    Eenmalige schoonmaak: verwijder alle bestaande Google Calendar events die het dashboard ooit heeft aangemaakt. Draait via jouw Google koppeling, alleen events die aan taken/agenda items gelinkt zijn worden geraakt.
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!confirm("Alle bestaande Google Cal events die door dit dashboard zijn aangemaakt verwijderen? Dit kan een paar seconden duren.")) return;
+                    try {
+                      const res = await fetch("/api/admin/google-cal-cleanup", { method: "POST" });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.fout || "Opruim mislukt");
+                      addToast(
+                        `${data.verwijderd} events verwijderd${data.alWeg > 0 ? `, ${data.alWeg} waren al weg` : ""}${data.fouten > 0 ? `, ${data.fouten} fouten` : ""}`,
+                        data.fouten > 0 ? "fout" : "succes"
+                      );
+                    } catch (err) {
+                      addToast(err instanceof Error ? err.message : "Opruim mislukt", "fout");
+                    }
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors flex-shrink-0"
+                >
+                  <XCircle className="w-3 h-3" />
+                  Ruim op
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -690,6 +690,13 @@ export default function ProjectenPage() {
           description={`${kpis.actief} actief · ${kpis.takenOpen} open taken · ${Math.round(kpis.totaleUren / 60)}u totaal`}
           actions={
             <>
+              <Link
+                href="/projecten/intake"
+                className="flex items-center gap-2 px-4 py-2.5 bg-autronis-accent/15 border border-autronis-accent/30 hover:bg-autronis-accent/25 text-autronis-accent text-sm font-medium rounded-xl transition-colors"
+              >
+                <Zap className="w-4 h-4" />
+                Start intake
+              </Link>
               <button
                 onClick={() => setShowNieuwProject(true)}
                 className="flex items-center gap-2 px-4 py-2.5 bg-autronis-card border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-primary text-sm font-medium rounded-xl transition-colors"

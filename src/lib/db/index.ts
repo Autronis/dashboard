@@ -126,6 +126,7 @@ if (isTurso) {
   client.execute(`CREATE TABLE IF NOT EXISTS project_intakes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER REFERENCES projecten(id),
+    scan_id INTEGER,
     stap TEXT DEFAULT 'concept',
     klant_concept TEXT,
     creatieve_ideeen TEXT,
@@ -136,7 +137,9 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now')),
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
+  client.execute("ALTER TABLE project_intakes ADD COLUMN scan_id INTEGER").catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_project_intakes_project_id ON project_intakes(project_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_project_intakes_scan_id ON project_intakes(scan_id)").catch(() => {});
 
   // remote_commits tabel voor GitHub webhook → banner flow
   client.execute(`CREATE TABLE IF NOT EXISTS remote_commits (
@@ -686,6 +689,7 @@ if (isTurso) {
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS project_intakes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER REFERENCES projecten(id),
+    scan_id INTEGER,
     stap TEXT DEFAULT 'concept',
     klant_concept TEXT,
     creatieve_ideeen TEXT,
@@ -696,7 +700,12 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now')),
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);
+  const intakeCols = sqliteDb.prepare("PRAGMA table_info(project_intakes)").all() as { name: string }[];
+  if (!intakeCols.some((c: { name: string }) => c.name === "scan_id")) {
+    sqliteDb.exec("ALTER TABLE project_intakes ADD COLUMN scan_id INTEGER");
+  }
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_project_intakes_project_id ON project_intakes(project_id)");
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_project_intakes_scan_id ON project_intakes(scan_id)");
 
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS follow_up_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

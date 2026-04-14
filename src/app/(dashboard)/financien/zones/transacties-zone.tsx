@@ -2,21 +2,53 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter } from "lucide-react";
+import { Search, Filter, Repeat, TrendingUp, Sparkles } from "lucide-react";
 import { useFinancienTransacties, useFinancienCategorieen, type FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { DonutChart } from "./donut-chart";
 import { TransactieDetail } from "./transactie-detail";
+import { FISCAAL_STYLES, TYPE_STYLES, categoriePill } from "./fiscaal-colors";
 import { cn } from "@/lib/utils";
 
 type Type = "bij" | "af";
 type Periode = "maand" | "kwartaal" | "jaar" | "alles";
+type QuickFilter = "alle" | "abonnementen" | "investeringen" | "eenmalig";
 
 function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
 }
 
-function formatDatumKort(iso: string): string {
-  return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+function formatDatumGroep(iso: string): string {
+  const datum = new Date(iso);
+  const vandaag = new Date();
+  vandaag.setHours(0, 0, 0, 0);
+  const gisteren = new Date(vandaag);
+  gisteren.setDate(gisteren.getDate() - 1);
+  const datumMidnight = new Date(iso);
+  datumMidnight.setHours(0, 0, 0, 0);
+
+  if (datumMidnight.getTime() === vandaag.getTime()) return "Vandaag";
+  if (datumMidnight.getTime() === gisteren.getTime()) return "Gisteren";
+  return datum.toLocaleDateString("nl-NL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
+function groupByDatum(transacties: FinancienTransactie[]): Array<{ datum: string; items: FinancienTransactie[]; totaal: number }> {
+  const map = new Map<string, FinancienTransactie[]>();
+  for (const t of transacties) {
+    const existing = map.get(t.datum);
+    if (existing) existing.push(t);
+    else map.set(t.datum, [t]);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .map(([datum, items]) => ({
+      datum,
+      items,
+      totaal: items.reduce((s, t) => s + Math.abs(t.bedrag), 0),
+    }));
 }
 
 const PERIODE_LABELS: Record<Periode, string> = {
@@ -30,6 +62,7 @@ export function TransactiesZone() {
   const [type, setType] = useState<Type>("af");
   const [periode, setPeriode] = useState<Periode>("maand");
   const [categorieFilter, setCategorieFilter] = useState<string | null>(null);
+  const [quickFilter, setQuickFilter] = useState<QuickFilter>("alle");
   const [hoveredCategorie, setHoveredCategorie] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [selectedTrans, setSelectedTrans] = useState<FinancienTransactie | null>(null);
@@ -42,11 +75,34 @@ export function TransactiesZone() {
   });
   const { data: catData } = useFinancienCategorieen(type, periode);
 
-  const transacties = transData?.transacties ?? [];
+  const alleTransacties = transData?.transacties ?? [];
+
+  const transacties = useMemo(() => {
+    switch (quickFilter) {
+      case "abonnementen":
+        return alleTransacties.filter((t) => t.isAbonnement === 1);
+      case "investeringen":
+        return alleTransacties.filter((t) => t.fiscaalType === "investering");
+      case "eenmalig":
+        return alleTransacties.filter((t) => t.isAbonnement !== 1);
+      default:
+        return alleTransacties;
+    }
+  }, [alleTransacties, quickFilter]);
+
   const totaal = useMemo(
     () => transacties.reduce((s, t) => s + Math.abs(t.bedrag), 0),
     [transacties]
   );
+
+  const grouped = useMemo(() => groupByDatum(transacties), [transacties]);
+
+  const quickCounts = useMemo(() => ({
+    alle: alleTransacties.length,
+    abonnementen: alleTransacties.filter((t) => t.isAbonnement === 1).length,
+    investeringen: alleTransacties.filter((t) => t.fiscaalType === "investering").length,
+    eenmalig: alleTransacties.filter((t) => t.isAbonnement !== 1).length,
+  }), [alleTransacties]);
 
   return (
     <div className="space-y-4">
@@ -129,6 +185,36 @@ export function TransactiesZone() {
         </div>
       </div>
 
+      {/* Quick filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        {([
+          { key: "alle", label: "Alles", icon: Sparkles },
+          { key: "abonnementen", label: "Abonnementen", icon: Repeat },
+          { key: "investeringen", label: "Investeringen", icon: TrendingUp },
+          { key: "eenmalig", label: "Eenmalig", icon: Filter },
+        ] as Array<{ key: QuickFilter; label: string; icon: typeof Sparkles }>).map((qf) => {
+          const Icon = qf.icon;
+          const isActive = quickFilter === qf.key;
+          const count = quickCounts[qf.key];
+          return (
+            <button
+              key={qf.key}
+              onClick={() => setQuickFilter(qf.key)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition border",
+                isActive
+                  ? "bg-autronis-accent/15 text-autronis-accent border-autronis-accent/30"
+                  : "bg-autronis-card text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary hover:border-autronis-accent/20"
+              )}
+            >
+              <Icon className="w-3 h-3" />
+              {qf.label}
+              <span className="tabular-nums opacity-60">· {count}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Main: list + chart */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* List (2 cols) */}
@@ -138,36 +224,83 @@ export function TransactiesZone() {
           ) : transacties.length === 0 ? (
             <div className="p-12 text-center text-autronis-text-secondary text-sm">Geen transacties in deze periode</div>
           ) : (
-            <div className="divide-y divide-autronis-border/30">
-              {transacties.map((t) => {
-                const isHighlighted = hoveredCategorie && t.categorie === hoveredCategorie;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setSelectedTrans(t)}
-                    className={cn(
-                      "w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-autronis-bg/40 transition-colors",
-                      isHighlighted && "bg-autronis-accent/5"
-                    )}
-                  >
-                    <span className="text-xs text-autronis-text-secondary tabular-nums w-14 shrink-0">{formatDatumKort(t.datum)}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-autronis-text-primary truncate">{t.merchantNaam ?? t.omschrijving}</p>
-                      {t.categorie && (
-                        <p className="text-[10px] text-autronis-text-secondary capitalize mt-0.5">{t.categorie}</p>
-                      )}
-                    </div>
-                    <span
-                      className={cn(
-                        "text-sm font-semibold tabular-nums shrink-0",
-                        t.type === "bij" ? "text-emerald-400" : "text-autronis-text-primary"
-                      )}
-                    >
-                      {t.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(t.bedrag))}
+            <div>
+              {grouped.map((groep) => (
+                <div key={groep.datum}>
+                  <div className="flex items-center justify-between px-5 pt-4 pb-2 sticky top-0 bg-autronis-card/95 backdrop-blur-sm z-10">
+                    <span className="text-[11px] uppercase tracking-wider font-semibold text-autronis-text-secondary">
+                      {formatDatumGroep(groep.datum)}
                     </span>
-                  </button>
-                );
-              })}
+                    <span className="text-[11px] text-autronis-text-secondary tabular-nums">
+                      {formatEuro(groep.totaal)} · {groep.items.length}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-autronis-border/20">
+                    {groep.items.map((t) => {
+                      const isHighlighted = hoveredCategorie && t.categorie === hoveredCategorie;
+                      const typeStyle = TYPE_STYLES[t.type];
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setSelectedTrans(t)}
+                          className={cn(
+                            "w-full flex items-center gap-3 pl-4 pr-5 py-3.5 text-left hover:bg-autronis-bg/40 transition-colors relative",
+                            isHighlighted && "bg-autronis-accent/5"
+                          )}
+                        >
+                          {/* Colored accent bar on the left */}
+                          <span
+                            className={cn(
+                              "absolute left-0 top-2 bottom-2 w-[3px] rounded-r-sm",
+                              typeStyle.accent
+                            )}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm text-autronis-text-primary truncate font-medium">
+                                {t.merchantNaam ?? t.omschrijving}
+                              </p>
+                              {t.isAbonnement === 1 && (
+                                <Repeat className="w-3 h-3 text-purple-400 shrink-0" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              {t.categorie && (
+                                <span
+                                  className={cn(
+                                    "px-1.5 py-0.5 rounded text-[10px] font-medium border capitalize",
+                                    categoriePill(t.categorie)
+                                  )}
+                                >
+                                  {t.categorie}
+                                </span>
+                              )}
+                              {t.fiscaalType && t.fiscaalType !== "kosten" && (
+                                <span
+                                  className={cn(
+                                    "px-1.5 py-0.5 rounded text-[10px] font-medium border",
+                                    FISCAAL_STYLES[t.fiscaalType].pill
+                                  )}
+                                >
+                                  {FISCAAL_STYLES[t.fiscaalType].label}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span
+                            className={cn(
+                              "text-sm font-semibold tabular-nums shrink-0",
+                              t.type === "bij" ? "text-emerald-400" : "text-rose-300"
+                            )}
+                          >
+                            {t.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(t.bedrag))}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

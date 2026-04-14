@@ -3,7 +3,6 @@ import { tursoClient, db } from "@/lib/db";
 import { ideeen, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
-import { YoutubeTranscript } from "youtube-transcript";
 import { sql, and, eq, like } from "drizzle-orm";
 
 // Increase timeout for long Claude API calls
@@ -48,20 +47,137 @@ Regels:
 
 BELANGRIJK: Wees UITGEBREID. Dit is een kennisbank — meer detail is altijd beter. Sla niets over.`;
 
-async function fetchTranscript(videoId: string): Promise<string | null> {
+// Inline transcript fetcher — replaces the 'youtube-transcript' package which has
+// a broken "type: module" + "main: common.js" mismatch in v1.3.0 (Node can't resolve
+// named exports, every call throws before making an HTTP request).
+// This uses the same two-step approach: try Innertube API first, fall back to parsing
+// the watch page HTML for ytInitialPlayerResponse captionTracks.
+type CaptionTrack = { baseUrl: string; languageCode: string };
+
+const YT_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/85.0.4183.83 Safari/537.36,gzip(gfe)";
+const INNERTUBE_URL =
+  "https://www.youtube.com/youtubei/v1/player?prettyPrint=false";
+const INNERTUBE_CLIENT_VERSION = "20.10.38";
+const INNERTUBE_ANDROID_UA = `com.google.android.youtube/${INNERTUBE_CLIENT_VERSION} (Linux; U; Android 14)`;
+
+async function getCaptionTracksViaInnertube(videoId: string): Promise<CaptionTrack[] | null> {
   try {
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId, { lang: "en" });
-    if (!transcript.length) return null;
-    return transcript.map((t) => t.text).join(" ").trim();
+    const res = await fetch(INNERTUBE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": INNERTUBE_ANDROID_UA,
+      },
+      body: JSON.stringify({
+        context: { client: { clientName: "ANDROID", clientVersion: INNERTUBE_CLIENT_VERSION } },
+        videoId,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      captions?: {
+        playerCaptionsTracklistRenderer?: { captionTracks?: CaptionTrack[] };
+      };
+    };
+    const tracks = data?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    return Array.isArray(tracks) && tracks.length ? tracks : null;
   } catch {
-    // Try without language preference
-    try {
-      const transcript = await YoutubeTranscript.fetchTranscript(videoId);
-      if (!transcript.length) return null;
-      return transcript.map((t) => t.text).join(" ").trim();
-    } catch {
-      return null;
+    return null;
+  }
+}
+
+async function getCaptionTracksViaWatchPage(videoId: string): Promise<CaptionTrack[] | null> {
+  try {
+    const res = await fetch(`https://www.youtube.com/watch?v=${videoId}`, {
+      headers: { "User-Agent": YT_UA },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    const marker = "var ytInitialPlayerResponse = ";
+    const start = html.indexOf(marker);
+    if (start === -1) return null;
+    const jsonStart = start + marker.length;
+    let depth = 0;
+    let end = -1;
+    for (let i = jsonStart; i < html.length; i++) {
+      if (html[i] === "{") depth++;
+      else if (html[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
     }
+    if (end === -1) return null;
+    const parsed = JSON.parse(html.slice(jsonStart, end)) as {
+      captions?: {
+        playerCaptionsTracklistRenderer?: { captionTracks?: CaptionTrack[] };
+      };
+    };
+    const tracks = parsed?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+    return Array.isArray(tracks) && tracks.length ? tracks : null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeHtmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCodePoint(parseInt(dec, 10)));
+}
+
+async function fetchCaptionTrack(baseUrl: string): Promise<string | null> {
+  const res = await fetch(baseUrl, { headers: { "User-Agent": YT_UA } });
+  if (!res.ok) return null;
+  const xml = await res.text();
+  // Modern YouTube timedtext XML uses <p t="..." d="..."><s>word</s>...</p>
+  // Legacy format uses <text start="..." dur="...">line</text>
+  const pRegex = /<p\s+t="\d+"\s+d="\d+"[^>]*>([\s\S]*?)<\/p>/g;
+  const pieces: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = pRegex.exec(xml)) !== null) {
+    const inner = match[1];
+    let line = "";
+    const sRegex = /<s[^>]*>([^<]*)<\/s>/g;
+    let sMatch: RegExpExecArray | null;
+    while ((sMatch = sRegex.exec(inner)) !== null) line += sMatch[1];
+    if (!line) line = inner.replace(/<[^>]+>/g, "");
+    const text = decodeHtmlEntities(line).trim();
+    if (text) pieces.push(text);
+  }
+  if (pieces.length === 0) {
+    const textRegex = /<text[^>]*>([^<]*)<\/text>/g;
+    while ((match = textRegex.exec(xml)) !== null) {
+      const text = decodeHtmlEntities(match[1]).trim();
+      if (text) pieces.push(text);
+    }
+  }
+  return pieces.length ? pieces.join(" ") : null;
+}
+
+async function fetchTranscript(videoId: string): Promise<string | null> {
+  let tracks =
+    (await getCaptionTracksViaInnertube(videoId)) ??
+    (await getCaptionTracksViaWatchPage(videoId));
+  if (!tracks || !tracks.length) return null;
+
+  // Prefer English, then first available
+  const preferred = tracks.find((t) => t.languageCode === "en") || tracks[0];
+  if (!preferred?.baseUrl) return null;
+
+  try {
+    return await fetchCaptionTrack(preferred.baseUrl);
+  } catch {
+    return null;
   }
 }
 

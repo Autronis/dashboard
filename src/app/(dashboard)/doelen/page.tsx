@@ -113,13 +113,13 @@ interface OkrTemplateWithColor extends OkrTemplate {
 const OKR_TEMPLATES: OkrTemplateWithColor[] = [
   {
     titel: "Autronis omzet laten groeien",
-    omschrijving: "Focus op omzetgroei door meer klanten en proposals",
+    omschrijving: "Focus op omzetgroei door meer klanten en offertes",
     kleur: "#22c55e",
     bg: "bg-emerald-500/10",
     keyResults: [
       { titel: "€10.000 omzet deze maand", doelwaarde: 10000, huidigeWaarde: 0, eenheid: "euro", autoKoppeling: "omzet" },
       { titel: "3 nieuwe klanten binnenhalen", doelwaarde: 3, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "klanten" },
-      { titel: "5 proposals versturen", doelwaarde: 5, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "geen" },
+      { titel: "5 offertes versturen", doelwaarde: 5, huidigeWaarde: 0, eenheid: "stuks", autoKoppeling: "geen" },
     ],
   },
   {

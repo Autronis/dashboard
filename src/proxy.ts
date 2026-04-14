@@ -11,6 +11,7 @@ const PUBLIC_PATHS = [
   "/api/proposal/",
   "/api/tevredenheid/",
   "/api/mollie/webhook",
+  "/api/meetings/recall-webhook",
   "/api/screen-time/sync",
   "/api/agenda/sync",
   "/api/agenda/deadlines",

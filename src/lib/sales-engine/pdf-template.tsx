@@ -1,105 +1,193 @@
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
 import { AutronisBrand, impactKleur as brandImpactKleur } from "@/lib/autronis-brand";
+import { getLogoDataUrl } from "@/lib/autronis-logo";
 
-// Shared Autronis brand colors — match scope-generator skill template.html
-// so every klant-facing document has the same visual identity.
-const ACCENT = AutronisBrand.accent;
-const ACCENT_LIGHT = AutronisBrand.accentBgStrong;
-const TEXT_PRIMARY = AutronisBrand.textPrimary;
-const TEXT_SECONDARY = AutronisBrand.textSecondary;
-const BORDER = AutronisBrand.border;
-const BG_LIGHT = AutronisBrand.cardHover;
+// Sales Engine — Mini-voorstel PDF
+// Visually aligned with the scope-generator skill template (template.html):
+//   - Autronis logo on cover + footer of every page
+//   - Teal accent line (top) instead of border-bottom under headers
+//   - Sectie-nummering (Sectie 01, 02, ...) like the full scope plan
+//   - KPI tile grid with accent / success variants
+//   - Light background, consistent typography hierarchy
+//
+// This is intentionally shorter than the full scope plan (2 pages vs 13)
+// because it's a single-page teaser. The brand/look is identical.
+const B = AutronisBrand;
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
+  // ── Page shell ─────────────────────────────────
   page: {
-    padding: 40,
+    paddingTop: 36,
+    paddingBottom: 60,
+    paddingHorizontal: 48,
     fontSize: 10,
     fontFamily: "Helvetica",
-    color: TEXT_PRIMARY,
+    color: B.textPrimary,
+    backgroundColor: B.bg,
   },
+
+  // ── Top accent bar ─────────────────────────────
+  accentBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 6,
+    backgroundColor: B.accent,
+  },
+
+  // ── Header (logo left, metadata right) ─────────
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 24,
-    paddingBottom: 16,
-    borderBottomWidth: 2,
-    borderBottomColor: ACCENT,
+    marginBottom: 32,
   },
-  headerLeft: {},
-  companyName: {
-    fontSize: 22,
-    fontFamily: "Helvetica-Bold",
-    color: ACCENT,
-    marginBottom: 4,
+  headerLeft: {
+    flexDirection: "column",
   },
-  subtitle: {
-    fontSize: 11,
-    color: TEXT_SECONDARY,
+  logo: {
+    width: 72,
+    height: 20,
+    objectFit: "contain",
   },
   headerRight: {
     alignItems: "flex-end",
   },
-  autronis: {
-    fontSize: 14,
-    fontFamily: "Helvetica-Bold",
-    color: TEXT_PRIMARY,
+  reference: {
+    fontSize: 8,
+    color: B.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
   },
   datum: {
     fontSize: 9,
-    color: TEXT_SECONDARY,
+    color: B.textSecondary,
     marginTop: 2,
   },
-  section: {
-    marginBottom: 16,
+
+  // ── Cover-style title block ────────────────────
+  titleBlock: {
+    marginBottom: 28,
   },
-  sectionTitle: {
-    fontSize: 13,
+  kicker: {
+    fontSize: 9,
+    color: B.accent,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
     fontFamily: "Helvetica-Bold",
-    color: ACCENT,
-    marginBottom: 8,
-    paddingBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  paragraph: {
-    fontSize: 10,
-    lineHeight: 1.6,
-    color: TEXT_SECONDARY,
     marginBottom: 8,
   },
-  scoreBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: ACCENT_LIGHT,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  scoreNumber: {
+  companyName: {
     fontSize: 28,
     fontFamily: "Helvetica-Bold",
-    color: ACCENT,
-    marginRight: 12,
+    color: B.textPrimary,
+    letterSpacing: -0.5,
+    lineHeight: 1.1,
+    marginBottom: 6,
   },
-  scoreLabel: {
+  subtitle: {
+    fontSize: 12,
+    color: B.textSecondary,
+  },
+
+  // ── Section header (Sectie XX — title) ─────────
+  sectionHeader: {
+    marginTop: 20,
+    marginBottom: 14,
+  },
+  sectionNumber: {
+    fontSize: 8,
+    color: B.accent,
+    fontFamily: "Helvetica-Bold",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    color: B.textPrimary,
+    letterSpacing: -0.2,
+  },
+
+  // ── Content card ───────────────────────────────
+  card: {
+    backgroundColor: B.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: B.border,
+    padding: 16,
+    marginBottom: 14,
+  },
+  cardAccent: {
+    borderLeftWidth: 4,
+    borderLeftColor: B.accent,
+  },
+  cardText: {
     fontSize: 10,
-    color: TEXT_SECONDARY,
+    color: B.textSecondary,
+    lineHeight: 1.6,
   },
+
+  // ── KPI grid ───────────────────────────────────
+  kpiGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 14,
+  },
+  kpiTile: {
+    flex: 1,
+    backgroundColor: B.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: B.border,
+    padding: 14,
+    alignItems: "center",
+  },
+  kpiTileAccent: {
+    borderLeftWidth: 4,
+    borderLeftColor: B.accent,
+  },
+  kpiTileSuccess: {
+    borderLeftWidth: 4,
+    borderLeftColor: B.success,
+  },
+  kpiValue: {
+    fontSize: 20,
+    fontFamily: "Helvetica-Bold",
+    color: B.textPrimary,
+    marginBottom: 4,
+  },
+  kpiValueAccent: {
+    color: B.accent,
+  },
+  kpiValueSuccess: {
+    color: B.success,
+  },
+  kpiLabel: {
+    fontSize: 8,
+    color: B.textTertiary,
+    textAlign: "center",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+
+  // ── Kansen list ────────────────────────────────
   kansRow: {
     flexDirection: "row",
-    padding: 8,
-    marginBottom: 4,
-    borderRadius: 4,
-  },
-  kansRowEven: {
-    backgroundColor: BG_LIGHT,
+    padding: 10,
+    marginBottom: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: B.border,
+    backgroundColor: B.card,
   },
   kansPriority: {
-    width: 24,
-    fontSize: 10,
+    width: 22,
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
-    color: ACCENT,
+    color: B.accent,
   },
   kansContent: {
     flex: 1,
@@ -107,71 +195,68 @@ const styles = StyleSheet.create({
   kansTitel: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    marginBottom: 2,
+    color: B.textPrimary,
+    marginBottom: 3,
   },
   kansBeschrijving: {
-    fontSize: 9,
-    color: TEXT_SECONDARY,
-    lineHeight: 1.4,
+    fontSize: 8.5,
+    color: B.textSecondary,
+    lineHeight: 1.45,
   },
   kansImpact: {
     width: 60,
-    textAlign: "right" as const,
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-  },
-  roiGrid: {
-    flexDirection: "row",
-    gap: 12,
-    marginBottom: 16,
-  },
-  roiCard: {
-    flex: 1,
-    backgroundColor: BG_LIGHT,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center" as const,
-  },
-  roiValue: {
-    fontSize: 18,
-    fontFamily: "Helvetica-Bold",
-    color: ACCENT,
-    marginBottom: 2,
-  },
-  roiLabel: {
+    textAlign: "right",
     fontSize: 8,
-    color: TEXT_SECONDARY,
-    textAlign: "center" as const,
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
   },
+
+  // ── CTA ────────────────────────────────────────
   cta: {
-    marginTop: 20,
-    padding: 16,
-    backgroundColor: ACCENT,
-    borderRadius: 8,
-    alignItems: "center" as const,
+    marginTop: 18,
+    padding: 18,
+    backgroundColor: B.accent,
+    borderRadius: 10,
+    alignItems: "center",
   },
   ctaText: {
     fontSize: 13,
     fontFamily: "Helvetica-Bold",
-    color: "#ffffff",
+    color: B.textOnAccent,
     marginBottom: 4,
   },
   ctaSubtext: {
     fontSize: 10,
-    color: AutronisBrand.accentLight,
+    color: B.accentLight,
   },
+
+  // ── Footer ─────────────────────────────────────
   footer: {
-    position: "absolute" as const,
-    bottom: 30,
-    left: 40,
-    right: 40,
+    position: "absolute",
+    bottom: 20,
+    left: 48,
+    right: 48,
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    fontSize: 8,
-    color: TEXT_SECONDARY,
     borderTopWidth: 1,
-    borderTopColor: BORDER,
-    paddingTop: 8,
+    borderTopColor: B.border,
+    paddingTop: 10,
+  },
+  footerLogo: {
+    width: 52,
+    height: 14,
+    objectFit: "contain",
+    opacity: 0.6,
+  },
+  footerCenter: {
+    fontSize: 7.5,
+    color: B.textTertiary,
+  },
+  footerRight: {
+    fontSize: 7.5,
+    color: B.textTertiary,
   },
 });
 
@@ -197,109 +282,123 @@ export interface MiniVoorstelData {
   bookingUrl?: string;
 }
 
-// Use the shared brand helper so Sales Engine + scope-generator match.
-const impactKleur = brandImpactKleur;
+function impactLabel(impact: string): string {
+  if (impact === "hoog") return "Hoge impact";
+  if (impact === "midden") return "Medium";
+  return "Laag";
+}
 
 export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
+  const logoUrl = getLogoDataUrl();
   const datum = new Date().toLocaleDateString("nl-NL", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+  const now = new Date();
+  const refNumber = `AUT-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
 
-  const topKansen = data.kansen
-    .sort((a, b) => a.prioriteit - b.prioriteit)
-    .slice(0, 5);
+  const topKansen = data.kansen.sort((a, b) => a.prioriteit - b.prioriteit).slice(0, 5);
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.companyName}>{data.bedrijfsnaam}</Text>
-            <Text style={styles.subtitle}>Automatiseringsanalyse & Mini-voorstel</Text>
+      <Page size="A4" style={s.page}>
+        {/* Teal accent bar across the top */}
+        <View style={s.accentBar} fixed />
+
+        {/* Header: logo + reference */}
+        <View style={s.header}>
+          <View style={s.headerLeft}>
+            <Image src={logoUrl} style={s.logo} />
           </View>
-          <View style={styles.headerRight}>
-            <Text style={styles.autronis}>Autronis</Text>
-            <Text style={styles.datum}>{datum}</Text>
+          <View style={s.headerRight}>
+            <Text style={s.reference}>Ref: {refNumber}</Text>
+            <Text style={s.datum}>{datum}</Text>
           </View>
         </View>
 
-        {/* Intro */}
-        <View style={styles.section}>
-          <Text style={styles.paragraph}>
-            Beste {data.contactpersoon},
-          </Text>
-          <Text style={styles.paragraph}>
-            {data.samenvatting}
-          </Text>
+        {/* Cover-style title block */}
+        <View style={s.titleBlock}>
+          <Text style={s.kicker}>Mini-voorstel · Automatisering</Text>
+          <Text style={s.companyName}>{data.bedrijfsnaam}</Text>
+          <Text style={s.subtitle}>Automatiseringsanalyse &amp; voorstel voor {data.contactpersoon}</Text>
         </View>
 
-        {/* Score + ROI overzicht */}
-        <View style={styles.roiGrid}>
-          <View style={styles.roiCard}>
-            <Text style={styles.roiValue}>{data.readinessScore}/10</Text>
-            <Text style={styles.roiLabel}>Automation Readiness</Text>
+        {/* Sectie 01 — Samenvatting */}
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionNumber}>Sectie 01</Text>
+          <Text style={s.sectionTitle}>Samenvatting</Text>
+        </View>
+        <View style={[s.card, s.cardAccent]}>
+          <Text style={s.cardText}>Beste {data.contactpersoon},</Text>
+          <Text style={[s.cardText, { marginTop: 6 }]}>{data.samenvatting}</Text>
+        </View>
+
+        {/* KPI grid — mirrors scope-generator Executive Summary */}
+        <View style={s.kpiGrid}>
+          <View style={[s.kpiTile, s.kpiTileAccent]}>
+            <Text style={[s.kpiValue, s.kpiValueAccent]}>{data.readinessScore}/10</Text>
+            <Text style={s.kpiLabel}>Automation Readiness</Text>
           </View>
-          <View style={styles.roiCard}>
-            <Text style={styles.roiValue}>
-              {`€${data.jaarlijkseBesparing.toLocaleString("nl-NL")}`}
+          <View style={[s.kpiTile, s.kpiTileSuccess]}>
+            <Text style={[s.kpiValue, s.kpiValueSuccess]}>
+              €{data.jaarlijkseBesparing.toLocaleString("nl-NL")}
             </Text>
-            <Text style={styles.roiLabel}>Jaarlijkse besparing</Text>
+            <Text style={s.kpiLabel}>Besparing / jaar</Text>
           </View>
-          <View style={styles.roiCard}>
-            <Text style={styles.roiValue}>{data.totaalUrenPerWeek}u/week</Text>
-            <Text style={styles.roiLabel}>Tijdsbesparing</Text>
+          <View style={s.kpiTile}>
+            <Text style={s.kpiValue}>{data.totaalUrenPerWeek}u/week</Text>
+            <Text style={s.kpiLabel}>Tijdwinst</Text>
           </View>
-          <View style={styles.roiCard}>
-            <Text style={styles.roiValue}>
-              ~{data.terugverdientijdMaanden} mnd
-            </Text>
-            <Text style={styles.roiLabel}>Terugverdientijd</Text>
+          <View style={s.kpiTile}>
+            <Text style={s.kpiValue}>~{data.terugverdientijdMaanden} mnd</Text>
+            <Text style={s.kpiLabel}>Terugverdientijd</Text>
           </View>
         </View>
 
-        {/* Top Kansen */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Top {topKansen.length} Automatiseringskansen</Text>
-          {topKansen.map((kans, i) => (
-            <View key={i} style={[styles.kansRow, i % 2 === 0 ? styles.kansRowEven : {}]}>
-              <Text style={styles.kansPriority}>#{kans.prioriteit}</Text>
-              <View style={styles.kansContent}>
-                <Text style={styles.kansTitel}>{kans.titel}</Text>
-                <Text style={styles.kansBeschrijving}>{kans.beschrijving}</Text>
-              </View>
-              <Text style={[styles.kansImpact, { color: impactKleur(kans.impact) }]}>
-                {kans.impact === "hoog" ? "Hoge impact" : kans.impact === "midden" ? "Medium" : "Laag"}
-              </Text>
+        {/* Sectie 02 — Kansen */}
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionNumber}>Sectie 02</Text>
+          <Text style={s.sectionTitle}>Top {topKansen.length} automatiseringskansen</Text>
+        </View>
+        {topKansen.map((kans, i) => (
+          <View key={i} style={s.kansRow}>
+            <Text style={s.kansPriority}>#{kans.prioriteit}</Text>
+            <View style={s.kansContent}>
+              <Text style={s.kansTitel}>{kans.titel}</Text>
+              <Text style={s.kansBeschrijving}>{kans.beschrijving}</Text>
             </View>
-          ))}
-        </View>
+            <Text style={[s.kansImpact, { color: brandImpactKleur(kans.impact) }]}>
+              {impactLabel(kans.impact)}
+            </Text>
+          </View>
+        ))}
 
-        {/* Investering */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Investering & Pakket</Text>
-          <Text style={styles.paragraph}>
-            Op basis van onze analyse raden wij het {data.aanbevolenPakket}-pakket aan
-            met een geschatte investering van €{data.geschatteInvestering.toLocaleString("nl-NL")}.
-            Met een jaarlijkse besparing van €{data.jaarlijkseBesparing.toLocaleString("nl-NL")}
-            verdient u deze investering terug in ongeveer {data.terugverdientijdMaanden} maanden.
+        {/* Sectie 03 — Investering */}
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionNumber}>Sectie 03</Text>
+          <Text style={s.sectionTitle}>Investering &amp; pakket</Text>
+        </View>
+        <View style={s.card}>
+          <Text style={s.cardText}>
+            Op basis van onze analyse raden wij het <Text style={{ fontFamily: "Helvetica-Bold", color: B.textPrimary }}>{data.aanbevolenPakket}</Text>-pakket aan
+            met een geschatte investering van <Text style={{ fontFamily: "Helvetica-Bold", color: B.textPrimary }}>€{data.geschatteInvestering.toLocaleString("nl-NL")}</Text>.
+            Met een jaarlijkse besparing van €{data.jaarlijkseBesparing.toLocaleString("nl-NL")} verdient
+            u deze investering terug in ongeveer {data.terugverdientijdMaanden} maanden.
           </Text>
         </View>
 
         {/* CTA */}
-        <View style={styles.cta}>
-          <Text style={styles.ctaText}>Interesse? Plan een gratis gesprek</Text>
-          <Text style={styles.ctaSubtext}>
-            {data.bookingUrl ?? "https://cal.com/autronis"}
-          </Text>
+        <View style={s.cta}>
+          <Text style={s.ctaText}>Interesse? Plan een gratis gesprek</Text>
+          <Text style={s.ctaSubtext}>{data.bookingUrl ?? "https://cal.com/autronis"}</Text>
         </View>
 
-        {/* Footer */}
-        <View style={styles.footer} fixed>
-          <Text>Autronis — Automatisering die werkt</Text>
-          <Text>{data.websiteUrl}</Text>
+        {/* Footer with small logo */}
+        <View style={s.footer} fixed>
+          <Image src={logoUrl} style={s.footerLogo} />
+          <Text style={s.footerCenter}>Autronis — Automatisering die werkt</Text>
+          <Text style={s.footerRight}>{data.websiteUrl}</Text>
         </View>
       </Page>
     </Document>

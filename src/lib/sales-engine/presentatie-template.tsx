@@ -1,5 +1,6 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import { AutronisBrand } from "@/lib/autronis-brand";
+import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import { AutronisBrand, impactKleur as brandImpactKleur } from "@/lib/autronis-brand";
+import { getLogoDataUrl } from "@/lib/autronis-logo";
 
 // Shared Autronis brand colors — match scope-generator skill template.html
 // so every klant-facing document has the same visual identity.
@@ -14,14 +15,62 @@ const BORDER = AutronisBrand.border;
 const EMERALD = AutronisBrand.success;
 
 const s = StyleSheet.create({
-  // Shared slide layout
-  slide: { width: "100%", height: "100%", padding: 50 },
+  // Shared slide layout — light bg with teal accent bar at top
+  slide: { width: "100%", height: "100%", padding: 50, backgroundColor: AutronisBrand.bg },
+  accentBar: {
+    position: "absolute" as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 5,
+    backgroundColor: ACCENT,
+  },
   slideNumber: { position: "absolute" as const, bottom: 20, right: 30, fontSize: 9, color: TEXT_LIGHT },
-  footer: { position: "absolute" as const, bottom: 20, left: 50, fontSize: 8, color: TEXT_LIGHT },
 
-  // Title slide
-  titleSlide: { backgroundColor: BG_DARK, justifyContent: "center" as const, alignItems: "center" as const },
-  titleCompany: { fontSize: 36, fontFamily: "Helvetica-Bold", color: "#ffffff", marginBottom: 8 },
+  // Footer (shared) — subtle logo + tagline on each content slide
+  footerBar: {
+    position: "absolute" as const,
+    bottom: 18,
+    left: 50,
+    right: 50,
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    justifyContent: "space-between" as const,
+    borderTopWidth: 1,
+    borderTopColor: BORDER,
+    paddingTop: 8,
+  },
+  footerLogo: {
+    width: 56,
+    height: 16,
+    objectFit: "contain" as const,
+    opacity: 0.6,
+  },
+  footerText: { fontSize: 7.5, color: TEXT_LIGHT },
+
+  // Slide header — small logo + section kicker on content slides
+  slideHeader: {
+    flexDirection: "row" as const,
+    justifyContent: "space-between" as const,
+    alignItems: "center" as const,
+    marginBottom: 24,
+  },
+  slideHeaderLogo: {
+    width: 68,
+    height: 18,
+    objectFit: "contain" as const,
+  },
+  slideHeaderRight: {
+    fontSize: 8,
+    color: TEXT_LIGHT,
+    letterSpacing: 0.8,
+    textTransform: "uppercase" as const,
+  },
+
+  // Title slide (dark)
+  titleSlide: { backgroundColor: BG_DARK, justifyContent: "center" as const, alignItems: "center" as const, padding: 60 },
+  titleLogo: { width: 120, height: 32, objectFit: "contain" as const, marginBottom: 40 },
+  titleCompany: { fontSize: 36, fontFamily: "Helvetica-Bold", color: "#ffffff", marginBottom: 8, letterSpacing: -0.5 },
   titleSub: { fontSize: 16, color: ACCENT_LIGHT, marginBottom: 30 },
   titleAutronis: { fontSize: 12, color: TEXT_LIGHT },
   titleDate: { fontSize: 10, color: TEXT_LIGHT, marginTop: 4 },
@@ -87,24 +136,42 @@ export interface PresentatieData {
   bedrijfsProfiel?: { branche: string; watZeDoen: string; doelgroep: string } | null;
 }
 
-function impactKleur(impact: string): string {
-  if (impact === "hoog") return EMERALD;
-  if (impact === "midden") return "#f59e0b";
-  return TEXT_LIGHT;
-}
+// Reuse the shared brand helper so Sales Engine + scope-generator match.
+const impactKleur = brandImpactKleur;
+// Silence no-unused-var on EMERALD — still exported via AutronisBrand import
+// and may be handy for future additions.
+void EMERALD;
 
 export function PresentatiePDF({ data }: { data: PresentatieData }) {
+  const logoUrl = getLogoDataUrl();
   const datum = new Date().toLocaleDateString("nl-NL", { year: "numeric", month: "long", day: "numeric" });
   const topKansen = data.kansen.sort((a, b) => a.prioriteit - b.prioriteit).slice(0, 7);
   let slideNr = 0;
 
   const SlideNr = () => { slideNr++; return <Text style={s.slideNumber}>{slideNr}</Text>; };
-  const Footer = () => <Text style={s.footer}>Autronis — Automatisering die werkt</Text>;
+
+  // Footer bar with logo + tagline — used on every non-dark content slide.
+  const FooterBar = ({ section }: { section?: string }) => (
+    <View style={s.footerBar} fixed>
+      <Image src={logoUrl} style={s.footerLogo} />
+      <Text style={s.footerText}>{section ?? "Autronis — Automatisering die werkt"}</Text>
+      <Text style={s.footerText}>{data.websiteUrl}</Text>
+    </View>
+  );
+
+  // Small header shown on every content slide (logo left, kicker right).
+  const SlideHeader = ({ kicker }: { kicker: string }) => (
+    <View style={s.slideHeader}>
+      <Image src={logoUrl} style={s.slideHeaderLogo} />
+      <Text style={s.slideHeaderRight}>{kicker}</Text>
+    </View>
+  );
 
   return (
     <Document>
-      {/* Slide 1: Titelpagina */}
+      {/* Slide 1: Titelpagina — dark with large centered logo */}
       <Page size="A4" orientation="landscape" style={[s.slide, s.titleSlide]}>
+        <Image src={logoUrl} style={s.titleLogo} />
         <Text style={s.titleCompany}>{data.bedrijfsnaam}</Text>
         <Text style={s.titleSub}>Automatiseringsanalyse & Voorstel</Text>
         <Text style={s.titleAutronis}>Autronis</Text>

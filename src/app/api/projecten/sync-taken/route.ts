@@ -6,6 +6,7 @@ import { requireAuth, requireApiKey } from "@/lib/auth";
 import { createNotionDocument } from "@/lib/notion";
 import { categorizeDocument } from "@/lib/ai/documenten";
 import type { PlanPayload } from "@/types/documenten";
+import { inferClusterOwner } from "@/lib/cluster";
 
 // POST /api/projecten/sync-taken
 // Body: { projectNaam: string, voltooide_taken: string[], nieuwe_taken: string[] }
@@ -31,6 +32,7 @@ export async function POST(req: NextRequest) {
       nieuwe_taken?: Array<string | {
         titel: string;
         fase?: string;
+        cluster?: string;       // Groepering van samenhangende taken (bv. backend-infra)
         prioriteit?: "laag" | "normaal" | "hoog";
         omschrijving?: string; // Stappen / context / acceptatiecriteria
         geschatteDuur?: number; // Minuten
@@ -42,6 +44,7 @@ export async function POST(req: NextRequest) {
         titel: string;
         status: string;
         fase?: string;
+        cluster?: string;
         volgorde?: number;
         prioriteit?: "laag" | "normaal" | "hoog";
         omschrijving?: string;
@@ -224,17 +227,25 @@ export async function POST(req: NextRequest) {
           if (t.geschatteDuur) updates.geschatteDuur = t.geschatteDuur;
           if (t.prompt) updates.prompt = t.prompt;
           if (t.prioriteit) updates.prioriteit = t.prioriteit;
+          if (t.cluster !== undefined) updates.cluster = t.cluster?.trim() || null;
           await db.update(taken).set(updates).where(eq(taken.id, ex.id));
         } else {
-          // Insert new task
+          // Insert new task — historische cluster owner toepassen indien gezet
+          const cleanClusterT = t.cluster?.trim() || null;
+          let toegewezenT = userId;
+          if (cleanClusterT) {
+            const historisch = await inferClusterOwner(project.id, cleanClusterT);
+            if (historisch) toegewezenT = historisch;
+          }
           await db.insert(taken).values({
             projectId: project.id,
-            toegewezenAan: userId,
+            toegewezenAan: toegewezenT,
             aangemaaktDoor: userId,
             titel: t.titel,
             status: finalStatus,
             prioriteit: t.prioriteit ?? "normaal",
             fase: t.fase || null,
+            cluster: cleanClusterT,
             volgorde: t.volgorde ?? 0,
             omschrijving: t.omschrijving ?? null,
             geschatteDuur: t.geschatteDuur ?? null,
@@ -334,6 +345,9 @@ export async function POST(req: NextRequest) {
         if (!trimmed) continue;
 
         const fase = isObject ? entry.fase ?? null : null;
+        const cluster = isObject && typeof entry.cluster === "string" && entry.cluster.trim()
+          ? entry.cluster.trim()
+          : null;
         const prioriteit = (isObject && entry.prioriteit) ? entry.prioriteit : "normaal";
         const omschrijving = isObject ? entry.omschrijving ?? null : null;
         const geschatteDuur = isObject ? entry.geschatteDuur ?? null : null;
@@ -355,14 +369,22 @@ export async function POST(req: NextRequest) {
           .get();
 
         if (!bestaat) {
+          // Historische cluster-ownership: als iemand al werk heeft gedaan
+          // in (project, cluster) tuple, erft deze nieuwe taak diens owner.
+          let toegewezen = userId;
+          if (cluster) {
+            const historisch = await inferClusterOwner(project.id, cluster);
+            if (historisch) toegewezen = historisch;
+          }
           await db.insert(taken).values({
             projectId: project.id,
-            toegewezenAan: userId,
+            toegewezenAan: toegewezen,
             aangemaaktDoor: userId,
             titel: trimmed,
             status: "open",
             prioriteit,
             fase,
+            cluster,
             omschrijving,
             geschatteDuur,
             prompt,

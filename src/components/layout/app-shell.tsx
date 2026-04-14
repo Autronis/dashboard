@@ -33,6 +33,14 @@ const TeamFloat = dynamic(
   { ssr: false }
 );
 
+const AutoClusterJobWatcher = dynamic(
+  () =>
+    import("@/components/taken/auto-cluster-job-watcher").then((m) => ({
+      default: m.AutoClusterJobWatcher,
+    })),
+  { ssr: false }
+);
+
 interface AppShellProps {
   gebruiker: SessionGebruiker;
   children: React.ReactNode;
@@ -106,6 +114,9 @@ export function AppShell({ gebruiker, children }: AppShellProps) {
 
       {/* A.R.I. floating chat widget */}
       <AriWidget />
+
+      {/* Auto-cluster job progress banner (global, survives navigation) */}
+      <AutoClusterJobWatcher />
     </div>
   );
 }

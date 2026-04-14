@@ -199,6 +199,7 @@ export interface AgendaTaak {
   uitvoerder: string | null;
   projectMap: string | null;
   fase: string | null;
+  cluster: string | null;
   omschrijving: string | null;
 }
 

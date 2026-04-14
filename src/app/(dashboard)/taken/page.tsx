@@ -595,6 +595,7 @@ function TakenPage() {
   const [selectedTaak, setSelectedTaak] = useState<Taak | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editFase, setEditFase] = useState("");
+  const [editCluster, setEditCluster] = useState("");
   const [editPrioriteit, setEditPrioriteit] = useState("");
   const [editDeadline, setEditDeadline] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -735,6 +736,74 @@ function TakenPage() {
     return Array.from(set).sort();
   }, [taken]);
 
+  // Bestaande cluster-namen over alle taken heen — gebruikt als datalist
+  // suggesties in de inline edit row zodat je consistent blijft typen.
+  const uniekeClusters = useMemo(() => {
+    const set = new Set<string>();
+    // Seed met standaard Autronis clusters zodat ze altijd beschikbaar zijn
+    const defaults = [
+      "backend-infra",
+      "frontend",
+      "klantcontact",
+      "content",
+      "admin",
+      "research",
+    ];
+    for (const d of defaults) set.add(d);
+    for (const t of taken) {
+      if (t.cluster && t.cluster.trim()) set.add(t.cluster.trim());
+    }
+    return Array.from(set).sort();
+  }, [taken]);
+
+  // Cluster claims: voor elk (projectId, cluster) tuple de user die
+  // momenteel een bezig-taak in dat cluster heeft. GroupKey = cluster —
+  // fase is NIET de fallback want één fase kan meerdere clusters bevatten
+  // die niet per se door dezelfde persoon horen uitgevoerd te worden.
+  function groupKeyFor(taak: Taak): string | null {
+    if (!taak.projectId || !taak.cluster) return null;
+    return `${taak.projectId}:${taak.cluster}`;
+  }
+
+  const clusterClaims = useMemo(() => {
+    const claims = new Map<
+      string,
+      { userId: number; userName: string; groupLabel: string }
+    >();
+    for (const t of taken) {
+      const key = groupKeyFor(t);
+      if (!key || !t.toegewezenAanId) continue;
+      if (t.status !== "bezig") continue;
+      if (!claims.has(key)) {
+        claims.set(key, {
+          userId: t.toegewezenAanId,
+          userName: t.toegewezenAanNaam?.split(" ")[0] ?? "iemand anders",
+          groupLabel: t.cluster ?? "",
+        });
+      }
+    }
+    return claims;
+  }, [taken]);
+
+  function clusterClaimFor(taak: Taak): { userId: number; userName: string; groupLabel: string } | null {
+    const key = groupKeyFor(taak);
+    if (!key) return null;
+    return clusterClaims.get(key) ?? null;
+  }
+
+  // Check of huidige user een cluster-taak mag pakken. Als een andere user
+  // het cluster al claimde, toon confirm dialog. Returns true als doorgaan OK.
+  const confirmClusterOverride = useCallback((taak: Taak): boolean => {
+    const key = groupKeyFor(taak);
+    const claim = key ? clusterClaims.get(key) : null;
+    if (!claim) return true;
+    if (claim.userId === currentUser?.id) return true;
+    return window.confirm(
+      `Deze taak zit in cluster "${claim.groupLabel}" dat ${claim.userName} momenteel oppakt. ` +
+      `Weet je zeker dat jij 'm wil pakken?`
+    );
+  }, [clusterClaims, currentUser?.id]);
+
   const showCheckBurst = useCallback((taskId: number) => {
     setCompletedTaskId(taskId);
     if (completedTimerRef.current) clearTimeout(completedTimerRef.current);
@@ -746,10 +815,13 @@ function TakenPage() {
     mutationFn: async ({ id, status }: { id: number; status: string }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})) as { fout?: string };
-        throw new Error(data.fout || "Kon status niet bijwerken");
+        const errData = await res.json().catch(() => ({})) as { fout?: string };
+        throw new Error(errData.fout || "Kon status niet bijwerken");
       }
-      return { id, status };
+      const data = await res.json().catch(() => ({})) as {
+        propagatie?: { aantal: number; groupLabel: string } | null;
+      };
+      return { id, status, propagatie: data.propagatie ?? null };
     },
     onMutate: async ({ id, status }) => {
       setMutatingCount((c) => c + 1);
@@ -773,7 +845,17 @@ function TakenPage() {
       }
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      // Toast wanneer cluster propagation heeft toegewezen
+      if (result.propagatie && result.propagatie.aantal > 0) {
+        const { aantal, groupLabel } = result.propagatie;
+        addToast(
+          `${aantal} taak${aantal === 1 ? "" : "en"} uit cluster "${groupLabel}" naar jou toegewezen`,
+          "succes"
+        );
+        // Refetch taken zodat de UI de nieuwe assignments laat zien
+        queryClient.invalidateQueries({ queryKey: ["taken"] });
+      }
       // Invalidate related queries after a short delay to not overwrite optimistic update
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
@@ -811,7 +893,7 @@ function TakenPage() {
   });
 
   const editMutation = useMutation({
-    mutationFn: async ({ id, ...body }: { id: number; fase?: string; prioriteit?: string; projectId?: null | string; deadline?: string | null }) => {
+    mutationFn: async ({ id, ...body }: { id: number; fase?: string; cluster?: string | null; prioriteit?: string; projectId?: null | string; deadline?: string | null }) => {
       const res = await fetch(`/api/taken/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error();
       return { id, body };
@@ -823,6 +905,7 @@ function TakenPage() {
       const previousData = queryClient.getQueriesData({ queryKey: ["taken"] });
       const patch: Partial<Taak> = {};
       if (body.fase !== undefined) patch.fase = body.fase ?? null;
+      if (body.cluster !== undefined) patch.cluster = body.cluster ?? null;
       if (body.prioriteit !== undefined) patch.prioriteit = body.prioriteit;
       if (body.deadline !== undefined) patch.deadline = body.deadline ?? null;
       if (body.projectId !== undefined) patch.projectId = body.projectId ? Number(body.projectId) : null;
@@ -867,6 +950,9 @@ function TakenPage() {
 
   const handleStartTimer = useCallback(async (taak: Taak) => {
     if (timer.isRunning) { addToast("Timer loopt al — stop eerst de huidige", "fout"); return; }
+    // Cluster soft-lock: als het cluster al door iemand anders wordt opgepakt,
+    // vraag eerst bevestiging voor we doorgaan.
+    if (!confirmClusterOverride(taak)) return;
     try {
       const res = await fetch("/api/tijdregistraties", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: taak.projectId, omschrijving: taak.titel, categorie: "development" }) });
       if (!res.ok) throw new Error();
@@ -875,7 +961,7 @@ function TakenPage() {
       if (taak.status === "open") statusMutation.mutate({ id: taak.id, status: "bezig" });
       addToast(`Timer gestart: ${taak.titel}`, "succes");
     } catch { addToast("Kon timer niet starten", "fout"); }
-  }, [timer, addToast, statusMutation]);
+  }, [timer, addToast, statusMutation, confirmClusterOverride]);
 
   const handlePlanTaak = useCallback((taak: Taak) => {
     const vandaagDatum = new Date().toISOString().slice(0, 10);
@@ -900,6 +986,47 @@ function TakenPage() {
     } catch (err) { addToast(err instanceof Error ? err.message : "Sync mislukt", "fout"); }
     finally { setSyncing(false); }
   };
+
+  // Auto-cluster: start een achtergrond job die alle open taken zonder
+  // cluster naar Claude stuurt en ze groepeert in standaard Autronis
+  // clusters. De job loopt door ook als je wegnavigeert — een globale
+  // watcher (AutoClusterJobWatcher in AppShell) volgt 'm via localStorage
+  // en toont een banner met voortgang + final toast.
+  const [autoClustering, setAutoClustering] = useState(false);
+  const handleAutoCluster = useCallback(async () => {
+    const ok = window.confirm(
+      "Auto-cluster: ik stuur alle open taken ZONDER cluster naar Claude en " +
+      "laat ze groeperen in de standaard Autronis clusters (backend-infra, " +
+      "frontend, klantcontact, content, admin, research). De job loopt op " +
+      "de achtergrond — je kan gewoon door met andere pages. Doorgaan?"
+    );
+    if (!ok) return;
+    setAutoClustering(true);
+    try {
+      const res = await fetch("/api/taken/auto-cluster", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ onlyMissing: true }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.jobId) {
+        throw new Error(data.fout || "Auto-cluster kon niet gestart worden");
+      }
+      // Store in localStorage + dispatch event zodat de global watcher
+      // direct begint met pollen
+      localStorage.setItem("autronis:auto-cluster-job", data.jobId);
+      window.dispatchEvent(
+        new CustomEvent("autronis:auto-cluster-started", {
+          detail: { jobId: data.jobId },
+        })
+      );
+      addToast("Auto-cluster gestart — check de progress banner onderaan", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Auto-cluster mislukt", "fout");
+    } finally {
+      setAutoClustering(false);
+    }
+  }, [addToast]);
 
   const openNieuwModal = useCallback(() => {
     setNieuwTitel(""); setNieuwProject(uniekeProjecten[0]?.id ?? ""); setNieuwFase("");
@@ -1077,6 +1204,14 @@ function TakenPage() {
 
   return (
     <PageTransition>
+      {/* Datalist met cluster suggesties voor inline edit. Globaal in de page
+          zodat alle inline <input list="cluster-suggesties"> fields er gebruik
+          van kunnen maken. */}
+      <datalist id="cluster-suggesties">
+        {uniekeClusters.map((c) => (
+          <option key={c} value={c} />
+        ))}
+      </datalist>
       <div className="max-w-[1400px] mx-auto p-4 lg:p-6 space-y-5">
         <PageHeader
           title="Taken"
@@ -1099,6 +1234,19 @@ function TakenPage() {
                 className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-autronis-accent/40 text-autronis-text-secondary hover:text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50">
                 <RefreshCw className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
                 Sync
+              </button>
+              <button
+                onClick={handleAutoCluster}
+                disabled={autoClustering}
+                title="Laat Claude alle open taken zonder cluster automatisch groeperen"
+                className="inline-flex items-center gap-1.5 px-3 py-2 border border-autronis-border hover:border-purple-500/40 text-autronis-text-secondary hover:text-purple-300 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+              >
+                {autoClustering ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5" />
+                )}
+                Auto-cluster
               </button>
               <button
                 onClick={openNieuweCategorie}
@@ -1444,13 +1592,15 @@ function TakenPage() {
                                       const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
                                       const isExp = expandedId === taak.id;
                                       const isClaude = taak.uitvoerder === "claude";
+                                      const claim = clusterClaimFor(taak);
+                                      const lockedByOther = claim && claim.userId !== currentUser?.id;
 
                                       return (
                                         <motion.div
                                           key={taak.id}
                                           ref={(el: HTMLDivElement | null) => { if (el) taakElementsRef.current.set(taak.id, el); else taakElementsRef.current.delete(taak.id); }}
                                           initial={{ opacity: 0, x: -6 }}
-                                          animate={{ opacity: taak.status === "afgerond" ? 0.4 : 1, x: 0 }}
+                                          animate={{ opacity: taak.status === "afgerond" ? 0.4 : lockedByOther ? 0.55 : 1, x: 0 }}
                                           transition={{ duration: 0.18, delay: Math.min(fase.taken.indexOf(taak) * 0.03, 0.3) }}
                                           draggable
                                           onDragStart={(e) => { (e as unknown as React.DragEvent).dataTransfer.setData("taakId", String(taak.id)); (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "move"; }}
@@ -1460,6 +1610,7 @@ function TakenPage() {
                                             pc.borderColor,
                                             highlightedTaakId === taak.id && "ring-2 ring-autronis-accent ring-offset-2 ring-offset-autronis-bg"
                                           )}
+                                          title={lockedByOther ? `${claim!.userName} is bezig in cluster "${claim!.groupLabel}"` : undefined}
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1491,6 +1642,22 @@ function TakenPage() {
                                               </span>
                                             )}
                                             {isClaude && <span className="badge-claude-shimmer flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
+                                            {lockedByOther && (
+                                              <span
+                                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 flex items-center gap-1 bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                                                title={`${claim!.userName} is bezig in cluster "${claim!.groupLabel}"`}
+                                              >
+                                                🔒 {claim!.userName}
+                                              </span>
+                                            )}
+                                            {taak.cluster && !lockedByOther && (
+                                              <span
+                                                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-autronis-accent/10 text-autronis-accent"
+                                                title={`Cluster: ${taak.cluster}`}
+                                              >
+                                                {taak.cluster}
+                                              </span>
+                                            )}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                                             {taak.deadline && (
                                               <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400 deadline-shake" : "text-autronis-text-secondary")}>
@@ -1507,7 +1674,7 @@ function TakenPage() {
                                                 </>
                                               )}
                                               {taak.status !== "afgerond" && <CopyPromptButton prompt={generateTaskPrompt(taak)} />}
-                                              <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditPrioriteit(taak.prioriteit), setEditDeadline(taak.deadline ?? ""))}
+                                              <button onClick={() => editingId === taak.id ? setEditingId(null) : (setEditingId(taak.id), setEditFase(taak.fase ?? ""), setEditCluster(taak.cluster ?? ""), setEditPrioriteit(taak.prioriteit), setEditDeadline(taak.deadline ?? ""))}
                                                 className={cn("flex-shrink-0 p-0.5 transition-colors", editingId === taak.id ? "text-autronis-accent" : "text-autronis-text-secondary hover:text-autronis-text-primary")}><Pencil className="w-3 h-3" /></button>
                                               {(taak.omschrijving || taak.prompt || taak.projectMap) && <button onClick={() => setExpandedId(isExp ? null : taak.id)} className="flex-shrink-0 p-0.5 text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">{isExp ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}</button>}
                                             </div>
@@ -1517,11 +1684,12 @@ function TakenPage() {
                                           {editingId === taak.id && (
                                             <div className="flex items-center gap-2 px-3 pb-1.5 pl-12">
                                               <input type="text" value={editFase} onChange={(e) => setEditFase(e.target.value)} placeholder="Fase..." className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary w-28 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
+                                              <input type="text" list="cluster-suggesties" value={editCluster} onChange={(e) => setEditCluster(e.target.value)} placeholder="Cluster..." className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary w-32 focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" title="Groepeert samenhangende taken zodat ze automatisch bij dezelfde persoon komen" />
                                               <select value={editPrioriteit} onChange={(e) => setEditPrioriteit(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50">
                                                 <option value="hoog">Hoog</option><option value="normaal">Normaal</option><option value="laag">Laag</option>
                                               </select>
                                               <input type="date" value={editDeadline} onChange={(e) => setEditDeadline(e.target.value)} className="bg-autronis-bg border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50" />
-                                              <button onClick={() => editMutation.mutate({ id: taak.id, fase: editFase || undefined, prioriteit: editPrioriteit, deadline: editDeadline || null })} className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-md text-xs font-medium">Opslaan</button>
+                                              <button onClick={() => editMutation.mutate({ id: taak.id, fase: editFase || undefined, cluster: editCluster.trim() || null, prioriteit: editPrioriteit, deadline: editDeadline || null })} className="px-2 py-1 bg-autronis-accent text-autronis-bg rounded-md text-xs font-medium">Opslaan</button>
                                               <button onClick={() => handleDelete(taak.id)} className="px-2 py-1 bg-red-500/15 text-red-400 rounded-md text-xs font-medium hover:bg-red-500/25 transition-colors">Verwijder</button>
                                             </div>
                                           )}

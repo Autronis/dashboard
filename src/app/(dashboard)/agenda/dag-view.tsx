@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useEffect, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal, ClipboardCopy } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, Coffee, Check, CheckSquare, X, Video, GripVertical, Terminal, ClipboardCopy, Play } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
@@ -984,9 +984,115 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 alleFases.get(fase)!.push(t);
               }
 
-              // Korte header beschrijving: fase namen
-              const beschrijving = Array.from(alleFases.keys()).slice(0, 3).join(" · ")
-                + (alleFases.size > 3 ? ` +${alleFases.size - 3}` : "");
+              // Detecteer dominante cluster in deze groep. Als alle taken
+              // hetzelfde cluster hebben, toon die in de header. Anders
+              // vallen we terug op fase-namen zoals voorheen.
+              const clusterCounts = new Map<string, number>();
+              for (const t of group) {
+                const c = t.cluster || "";
+                if (c) clusterCounts.set(c, (clusterCounts.get(c) ?? 0) + 1);
+              }
+              const dominanteCluster = clusterCounts.size === 1
+                ? Array.from(clusterCounts.keys())[0]
+                : null;
+
+              // Korte header beschrijving: cluster naam of fase namen
+              const beschrijving = dominanteCluster
+                ? dominanteCluster
+                : Array.from(alleFases.keys()).slice(0, 3).join(" · ")
+                  + (alleFases.size > 3 ? ` +${alleFases.size - 3}` : "");
+
+              // Start hele sessie: zet alle taken in de groep naar 'bezig'
+              // via individuele PUT calls zodat de cluster cascade +
+              // historische owner check per taak kan draaien.
+              const handleStartSessie = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const openTaken = group.filter((t) => t.status === "open");
+                if (openTaken.length === 0) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Geen open taken in deze sessie", type: "fout" },
+                    })
+                  );
+                  return;
+                }
+                try {
+                  const resultaten = await Promise.all(
+                    openTaken.map((t) =>
+                      fetch(`/api/taken/${t.id}`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "bezig" }),
+                      })
+                    )
+                  );
+                  const gefaald = resultaten.filter((r) => !r.ok).length;
+                  const gelukt = openTaken.length - gefaald;
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: gefaald > 0
+                          ? `${gelukt}/${openTaken.length} taken gestart (${gefaald} gefaald)`
+                          : `${gelukt} taken gestart in cluster sessie`,
+                        type: gefaald > 0 ? "fout" : "succes",
+                      },
+                    })
+                  );
+                  window.dispatchEvent(new CustomEvent("autronis:agenda-refetch"));
+                } catch {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Kon sessie niet starten", type: "fout" },
+                    })
+                  );
+                }
+              };
+
+              // Afrond hele sessie: bulk status update — geen cascade nodig
+              const handleAfrondSessie = async (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const nietAfgerond = group.filter((t) => t.status !== "afgerond");
+                if (nietAfgerond.length === 0) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: { bericht: "Sessie is al afgerond", type: "fout" },
+                    })
+                  );
+                  return;
+                }
+                try {
+                  const res = await fetch("/api/taken/bulk", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      ids: nietAfgerond.map((t) => t.id),
+                      updates: { status: "afgerond" },
+                    }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.fout || "Bulk update mislukt");
+                  }
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: `${nietAfgerond.length} taken afgerond`,
+                        type: "succes",
+                      },
+                    })
+                  );
+                  window.dispatchEvent(new CustomEvent("autronis:agenda-refetch"));
+                } catch (err) {
+                  window.dispatchEvent(
+                    new CustomEvent("autronis:toast", {
+                      detail: {
+                        bericht: err instanceof Error ? err.message : "Afrond mislukt",
+                        type: "fout",
+                      },
+                    })
+                  );
+                }
+              };
 
               // Gestructureerde prompt voor Claude chat — inclusief projectmap cd
               const handleKopieerPrompt = (e: React.MouseEvent) => {
@@ -1102,6 +1208,28 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                       <ClipboardCopy className="w-2.5 h-2.5" />
                       Kopieer
                     </button>
+                    {group.some((t) => t.status === "open") && (
+                      <button
+                        type="button"
+                        onClick={handleStartSessie}
+                        title={`Start alle ${group.filter((t) => t.status === "open").length} open taken`}
+                        className="text-[10px] font-medium text-blue-200 hover:text-blue-50 bg-blue-500/25 hover:bg-blue-500/40 px-1.5 py-0.5 rounded flex-shrink-0 inline-flex items-center gap-1 transition-colors"
+                      >
+                        <Play className="w-2.5 h-2.5" />
+                        Start
+                      </button>
+                    )}
+                    {group.some((t) => t.status !== "afgerond") && (
+                      <button
+                        type="button"
+                        onClick={handleAfrondSessie}
+                        title="Rond hele sessie af"
+                        className="text-[10px] font-medium text-emerald-200 hover:text-emerald-50 bg-emerald-500/25 hover:bg-emerald-500/40 px-1.5 py-0.5 rounded flex-shrink-0 inline-flex items-center gap-1 transition-colors"
+                      >
+                        <Check className="w-2.5 h-2.5" />
+                        Afrond
+                      </button>
+                    )}
                     <span className="text-[10px] text-purple-400/70 tabular-nums flex-shrink-0">{afgerond}/{group.length}</span>
                     {expanded ? (
                       <ChevronUp className="w-3 h-3 text-purple-400/70 flex-shrink-0" />

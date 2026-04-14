@@ -107,6 +107,15 @@ if (isTurso) {
   client.execute("ALTER TABLE taken ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
     .catch(() => { /* column may already exist */ });
 
+  // Cluster op taken: groepering van samenhangende taken (bv. backend-infra,
+  // frontend, klantcontact). Wanneer iemand een taak in een cluster oppakt
+  // worden de andere open taken in datzelfde (project, cluster) tuple
+  // automatisch aan hem toegewezen.
+  client.execute("ALTER TABLE taken ADD COLUMN cluster TEXT")
+    .catch(() => { /* column may already exist */ });
+  client.execute("CREATE INDEX IF NOT EXISTS idx_taken_cluster ON taken(project_id, cluster)")
+    .catch(() => {});
+
   // Project intake flow (fase 2): scope storage kolommen op projecten
   client.execute("ALTER TABLE projecten ADD COLUMN scope_data TEXT")
     .catch(() => { /* column may already exist */ });
@@ -665,6 +674,16 @@ if (isTurso) {
   if (!projColNames.includes("scope_pdf_url")) {
     sqliteDb.exec("ALTER TABLE projecten ADD COLUMN scope_pdf_url TEXT");
   }
+
+  // Cluster kolom op taken: groepering van samenhangende taken (bv.
+  // backend-infra, frontend, klantcontact). Wanneer iemand een taak in
+  // een cluster oppakt worden de andere open taken in datzelfde (project,
+  // cluster) tuple automatisch aan hem toegewezen.
+  const takenCols = sqliteDb.prepare("PRAGMA table_info(taken)").all() as { name: string }[];
+  if (!takenCols.some((c: { name: string }) => c.name === "cluster")) {
+    sqliteDb.exec("ALTER TABLE taken ADD COLUMN cluster TEXT");
+  }
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_taken_cluster ON taken(project_id, cluster)");
 
   // Project intakes wizard state
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS project_intakes (

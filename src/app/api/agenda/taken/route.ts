@@ -22,6 +22,7 @@ export async function GET() {
         toegewezenAanId: taken.toegewezenAan,
         uitvoerder: taken.uitvoerder,
         fase: taken.fase,
+        cluster: taken.cluster,
         omschrijving: taken.omschrijving,
         projectMap: taken.projectMap,
         projectNaam: projecten.naam,

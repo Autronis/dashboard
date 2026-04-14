@@ -366,6 +366,12 @@ export const taken = sqliteTable("taken", {
   titel: text("titel").notNull(),
   omschrijving: text("omschrijving"),
   fase: text("fase"),
+  // Cluster: groepering van samenhangende taken binnen een project.
+  // Free-form text (bv. "backend-infra", "frontend", "klantcontact").
+  // Wanneer iemand een taak in een cluster oppakt, krijgen de andere
+  // open taken in datzelfde (project, cluster) tuple automatisch deze
+  // gebruiker als toegewezene en verschijnen als "aanbevolen" in zijn view.
+  cluster: text("cluster"),
   volgorde: integer("volgorde").default(0),
   status: text("status", { enum: ["open", "bezig", "afgerond"] }).default("open"),
   deadline: text("deadline"),

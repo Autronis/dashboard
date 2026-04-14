@@ -922,7 +922,11 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             sessies.push(current);
 
             return sessies.map((group) => {
-              if (group.length < 2) return null; // Enkele Claude taken als normaal blok
+              // Ook single-taak "sessies" krijgen dezelfde render path zodat
+              // de verwijder-knop altijd beschikbaar is. Anders zou een losse
+              // Claude taak nergens zichtbaar zijn (de handmatige draggable
+              // loop filtert Claude taken weg).
+              if (group.length === 0) return null;
               const sessieKey = group[0].id; // stabiele key op basis van eerste taak
               const expanded = expandedSessies.has(sessieKey);
 

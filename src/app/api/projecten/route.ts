@@ -187,8 +187,16 @@ export async function GET(req: NextRequest) {
       // Determine last meaningful activity
       const laatsteActiviteit = activiteitMap.get(p.id) || p.bijgewerktOp;
 
+      // Auto-afgerond: als alle taken klaar zijn en het project niet handmatig
+      // op on-hold staat, override de status zodat 'ie niet eeuwig op 'actief'
+      // hangt. Persisteert niet in DB — alleen output.
+      const isAutoAfgerond =
+        stats.totaal > 0 && stats.afgerond === stats.totaal && p.status !== "on-hold";
+      const effectieveStatus = isAutoAfgerond ? "afgerond" : (p.status ?? "actief");
+
       return {
         ...p,
+        status: effectieveStatus,
         takenTotaal: stats.totaal,
         takenAfgerond: stats.afgerond,
         takenOpen: stats.open,
@@ -201,11 +209,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // KPIs
-    const totaal = lijst.length;
-    const actief = lijst.filter((p) => p.status === "actief").length;
-    const afgerond = lijst.filter((p) => p.status === "afgerond").length;
-    const onHold = lijst.filter((p) => p.status === "on-hold").length;
+    // KPIs — gebruik effectieveStatus zodat auto-afgeronde projecten in de
+    // juiste bucket terechtkomen.
+    const totaal = projectenMetTaken.length;
+    const actief = projectenMetTaken.filter((p) => p.status === "actief").length;
+    const afgerond = projectenMetTaken.filter((p) => p.status === "afgerond").length;
+    const onHold = projectenMetTaken.filter((p) => p.status === "on-hold").length;
     const takenOpenTotaal = projectenMetTaken.reduce((sum, p) => sum + p.takenOpen, 0);
     const totaleUren = projectenMetTaken.reduce((sum, p) => sum + p.totaalMinuten, 0);
 

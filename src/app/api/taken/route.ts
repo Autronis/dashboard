@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
     const toegewezenAan = searchParams.get("toegewezenAan");
     const projectIdFilter = searchParams.get("projectId");
     const faseFilter = searchParams.get("fase");
+    const scope = searchParams.get("scope"); // mij | syb | team | vrij | alle
 
     // Filter taken op project-eigenaarschap. Sem ziet projecten zonder
     // eigenaar (legacy NULL) plus sem/team/vrij. Syb ziet syb/team/vrij.
@@ -23,12 +24,34 @@ export async function GET(req: NextRequest) {
     const visibleCodes: ("sem" | "syb" | "team" | "vrij")[] =
       gebruiker.id === 2 ? ["syb", "team", "vrij"] : ["sem", "team", "vrij"];
 
+    // Scope reduceert de zichtbare set verder op basis van de tab-knop.
+    // Mij = mijn solo + samen, Syb = Syb solo + samen, Team = alleen samen,
+    // Vrij = alleen open backlog. Alle = alle voor jou zichtbare projecten.
+    let scopeCodes: ("sem" | "syb" | "team" | "vrij")[] | null = null;
+    if (scope === "mij") {
+      scopeCodes = gebruiker.id === 2 ? ["syb", "team"] : ["sem", "team"];
+    } else if (scope === "syb") {
+      scopeCodes = ["syb", "team"];
+    } else if (scope === "team") {
+      scopeCodes = ["team"];
+    } else if (scope === "vrij") {
+      scopeCodes = ["vrij"];
+    }
+
+    const effectiveCodes = scopeCodes
+      ? scopeCodes.filter((c) => visibleCodes.includes(c))
+      : visibleCodes;
+
     const conditions = [
       sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`,
       or(
         sql`${taken.projectId} IS NULL`,
-        inArray(projecten.eigenaar, visibleCodes),
-        gebruiker.id === 1 ? sql`${projecten.eigenaar} IS NULL` : sql`1=0`
+        inArray(projecten.eigenaar, effectiveCodes),
+        // Backward compat voor legacy projecten zonder eigenaar (alleen Sem,
+        // alleen wanneer je in 'alle' of 'mij' modus zit).
+        gebruiker.id === 1 && (scope === null || scope === "alle" || scope === "mij")
+          ? sql`${projecten.eigenaar} IS NULL`
+          : sql`1=0`
       )!,
     ];
     if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));

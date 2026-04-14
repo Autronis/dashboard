@@ -1051,7 +1051,14 @@ export default function AgendaPage() {
               });
               const data = await res.json();
               if (!res.ok) throw new Error(data.fout || "Kon dag niet plannen");
-              addToast(`${data.totaal} taken ingepland`, "succes");
+              const blokText = data.clusterBlokken > 0 ? ` in ${data.clusterBlokken} cluster sessie(s)` : "";
+              addToast(`${data.totaal} taken ingepland${blokText}`, "succes");
+              if (data.ongegroepeerdGeskipt > 0) {
+                addToast(
+                  `${data.ongegroepeerdGeskipt} Claude taken zonder cluster geskipt — draai Auto-cluster op /taken`,
+                  "fout"
+                );
+              }
               queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
             } catch (err) {
               addToast(err instanceof Error ? err.message : "AI planning mislukt", "fout");

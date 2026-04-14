@@ -1130,7 +1130,7 @@ function TakenPage() {
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-8 pr-3 py-2 text-xs text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50" />
             </div>
             {activeFilterCount > 0 && (
-              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setToegewezenAanFilterUser(currentUser?.id ? String(currentUser.id) : "alle"); setZoek(""); setHideCompleted(false); }}
+              <button onClick={() => { setStatusFilter("alle"); setProjectFilter("alle"); setFaseFilter("alle"); setPrioriteitFilter("alle"); setUitvoerderFilter("alle"); setScopeFilter("mij"); setZoek(""); setHideCompleted(false); }}
                 className="flex items-center gap-1 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-xl transition-colors whitespace-nowrap">
                 <X className="w-3.5 h-3.5" /> Wis filters
               </button>

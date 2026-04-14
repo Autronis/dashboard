@@ -1,24 +1,25 @@
 /**
  * Pakket-calculator voor Sales Engine mini-voorstellen.
  *
- * Genereert drie tiers (Basis / Pro / Enterprise) volgens de scope-generator
- * skill richtlijnen (~/.claude/skills/scope/SKILL.md fase 4):
+ * Bepaalt **scope** (welke kansen in welke tier komen) en levert een
+ * conservatieve **besparing-range** als hypothese voor het intake gesprek.
  *
- *   - Simpel (1 workflow, 2-3 stappen):    €1.500 – €3.000   → Basis
- *   - Medium (meerdere workflows):          €3.000 – €8.000   → Pro
- *   - Complex (AI agents, custom):          €8.000 – €25.000  → Enterprise
+ * Wat het NIET doet: concrete investeringsbedragen of ROI berekenen. De
+ * exacte prijs wordt nooit in de klant-PDF getoond — die wordt in een
+ * gratis intake gesprek vastgesteld op basis van value-based pricing.
+ * Zie scope-generator skill (~/.claude/skills/scope/SKILL.md) fase 4.
  *
- *   Regel: "de prijs moet maximaal 30-50% van de jaarlijkse besparing zijn
- *   zodat de ROI overtuigend is"
- *
- * De skill rekent value-based: niet uurtje-factuurtje, maar op geschatte
- * jaarlijkse besparing × conversie-factor. Hieronder conservatieve defaults
- * die realistisch klinken voor MKB klanten zonder overdreven beloftes.
+ * Tiers:
+ *   - Basis:      pilot scope (top 2 hoge-impact kansen)
+ *   - Pro:        standaard scope (top 4 hoog + middel kansen)
+ *   - Enterprise: volledig (alle kansen)
  */
 
-const UURTARIEF_HANDMATIG_WERK = 50; // €/uur — backoffice tarief, niet €75-95 consultancy
-const CONVERSIE_FACTOR = 0.6;        // AI bespaart ~60% van manueel werk, geen 100%
-const PRICE_PCT_VAN_BESPARING = 0.35; // prijs = 35% van jaarlijkse besparing (skill: 30-50%)
+// Conservatieve schatting parameters
+const UURTARIEF_HANDMATIG_WERK = 40; // €/uur — backoffice tarief, niet €75-95 consultancy
+const CONVERSIE_FACTOR = 0.4; // AI bespaart ~40% van manueel werk (was 60%, verder verlaagd)
+const RANGE_SPREAD = 0.25; // ±25% spread voor de range (€X – €Y notatie)
+const MAX_BESPARING = 60_000; // realisme cap voor MKB klanten — was 100k
 
 export interface KansInput {
   titel: string;
@@ -31,6 +32,11 @@ export interface KansInput {
 
 export type Tier = "basis" | "pro" | "enterprise";
 
+export interface BesparingRange {
+  laag: number;
+  hoog: number;
+}
+
 export interface TierPakket {
   tier: Tier;
   naam: string;
@@ -38,11 +44,10 @@ export interface TierPakket {
   scope: string;
   kansen: KansInput[];
   urenPerWeek: number;
-  jaarlijkseBesparing: number;
-  investering: number;
-  terugverdientijdMaanden: number;
-  minPrijs: number;
-  maxPrijs: number;
+  // Besparing als range (laag–hoog), niet als één hard getal
+  besparingRange: BesparingRange;
+  // Beschrijvende complexiteits-label voor in de PDF
+  complexiteitLabel: string;
 }
 
 export interface PakketResult {
@@ -58,8 +63,8 @@ function parseUrenPerWeek(text: string | null): number {
   return parseFloat(match[1].replace(",", "."));
 }
 
-function roundTo500(n: number): number {
-  return Math.round(n / 500) * 500;
+function roundTo1k(n: number): number {
+  return Math.round(n / 1000) * 1000;
 }
 
 function calcTier(opts: {
@@ -67,40 +72,31 @@ function calcTier(opts: {
   naam: string;
   subtitle: string;
   scope: string;
+  complexiteitLabel: string;
   kansen: KansInput[];
-  minPrijs: number;
-  maxPrijs: number;
 }): TierPakket {
   const urenPerWeek = opts.kansen.reduce(
     (sum, k) => sum + parseUrenPerWeek(k.geschatteTijdsbesparing),
     0
   );
+
+  // Conservatieve besparing schatting
   const rawBesparing = urenPerWeek * 52 * UURTARIEF_HANDMATIG_WERK * CONVERSIE_FACTOR;
-  // Cap besparing op €100k/jaar — realisme voor MKB klanten
-  const jaarlijkseBesparing = Math.round(Math.min(rawBesparing, 100_000));
+  const cappedBesparing = Math.min(rawBesparing, MAX_BESPARING);
 
-  // Prijs = 35% van jaarlijkse besparing, gecapt binnen de tier range
-  let investering = roundTo500(jaarlijkseBesparing * PRICE_PCT_VAN_BESPARING);
-  if (investering < opts.minPrijs) investering = opts.minPrijs;
-  if (investering > opts.maxPrijs) investering = opts.maxPrijs;
-
-  const terugverdientijdMaanden =
-    jaarlijkseBesparing > 0
-      ? Math.max(1, Math.ceil((investering / jaarlijkseBesparing) * 12))
-      : 0;
+  // Range met ±25% spread, afgerond op €1k voor leesbaarheid
+  const laag = roundTo1k(cappedBesparing * (1 - RANGE_SPREAD));
+  const hoog = roundTo1k(cappedBesparing * (1 + RANGE_SPREAD));
 
   return {
     tier: opts.tier,
     naam: opts.naam,
     subtitle: opts.subtitle,
     scope: opts.scope,
+    complexiteitLabel: opts.complexiteitLabel,
     kansen: opts.kansen,
     urenPerWeek,
-    jaarlijkseBesparing,
-    investering,
-    terugverdientijdMaanden,
-    minPrijs: opts.minPrijs,
-    maxPrijs: opts.maxPrijs,
+    besparingRange: { laag, hoog },
   };
 }
 
@@ -123,9 +119,8 @@ export function berekenPakketten(kansen: KansInput[]): PakketResult {
     naam: "Basis",
     subtitle: "Pilot · 1-2 quick wins",
     scope: "Eén workflow automatiseren als proof-of-concept. Perfect om te starten zonder grote investering.",
+    complexiteitLabel: "Simpel",
     kansen: hoog.slice(0, 2),
-    minPrijs: 1500,
-    maxPrijs: 3000,
   });
 
   const pro = calcTier({
@@ -133,9 +128,8 @@ export function berekenPakketten(kansen: KansInput[]): PakketResult {
     naam: "Pro",
     subtitle: "Standaard · kernprocessen",
     scope: "De belangrijkste processen automatiseren met meerdere workflows en integraties. Onze meest gekozen optie.",
+    complexiteitLabel: "Medium",
     kansen: hoogMiddel.slice(0, 4),
-    minPrijs: 3000,
-    maxPrijs: 8000,
   });
 
   const enterprise = calcTier({
@@ -143,9 +137,8 @@ export function berekenPakketten(kansen: KansInput[]): PakketResult {
     naam: "Enterprise",
     subtitle: "Volledig · end-to-end",
     scope: "Alle geïdentificeerde kansen aanpakken. AI agents, custom logic, dashboards en 6 maanden onderhoud.",
+    complexiteitLabel: "Complex",
     kansen: sorted,
-    minPrijs: 8000,
-    maxPrijs: 25000,
   });
 
   return { basis, pro, enterprise };

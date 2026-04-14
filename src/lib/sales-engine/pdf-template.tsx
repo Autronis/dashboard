@@ -525,6 +525,12 @@ function formatEuro(n: number): string {
   return `€${n.toLocaleString("nl-NL")}`;
 }
 
+function formatRange(range: { laag: number; hoog: number }): string {
+  // Show as "€20k – €40k" for readability instead of full numbers
+  const k = (n: number) => `€${Math.round(n / 1000)}k`;
+  return `${k(range.laag)} – ${k(range.hoog)}`;
+}
+
 // ────────────────────────────────────────────────────────────────────
 // Main PDF
 // ────────────────────────────────────────────────────────────────────
@@ -628,12 +634,6 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
             </Text>
             <Text style={s.kpiLabel}>Automation{"\n"}Readiness</Text>
           </View>
-          <View style={[s.kpiTile, s.kpiTileSuccess]}>
-            <Text style={[s.kpiValue, s.kpiValueSuccess]}>
-              {formatEuro(gekozen.jaarlijkseBesparing)}
-            </Text>
-            <Text style={s.kpiLabel}>Besparing{"\n"}per jaar</Text>
-          </View>
           <View style={[s.kpiTile, s.kpiTileWarning]}>
             <Text style={[s.kpiValue, s.kpiValueWarning]}>
               {gekozen.urenPerWeek}u
@@ -641,18 +641,24 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
             <Text style={s.kpiLabel}>Tijdwinst{"\n"}per week</Text>
           </View>
           <View style={s.kpiTile}>
-            <Text style={s.kpiValue}>{kansen.length}</Text>
+            <Text style={s.kpiValue}>{gekozen.kansen.length}</Text>
             <Text style={s.kpiLabel}>
-              Automatiseringen{"\n"}geïdentificeerd
+              Geselecteerde{"\n"}automatiseringen
             </Text>
           </View>
           <View style={s.kpiTile}>
-            <Text style={s.kpiValue}>~{gekozen.terugverdientijdMaanden} mnd</Text>
-            <Text style={s.kpiLabel}>Terugverdientijd</Text>
+            <Text style={s.kpiValue}>{kansen.length}</Text>
+            <Text style={s.kpiLabel}>
+              Totale kansen{"\n"}in scan
+            </Text>
           </View>
           <View style={s.kpiTile}>
-            <Text style={s.kpiValue}>{gekozen.naam}</Text>
-            <Text style={s.kpiLabel}>Gekozen{"\n"}pakket</Text>
+            <Text style={s.kpiValue}>~6 wk</Text>
+            <Text style={s.kpiLabel}>Doorlooptijd{"\n"}van bouw</Text>
+          </View>
+          <View style={s.kpiTile}>
+            <Text style={s.kpiValue}>{gekozen.complexiteitLabel}</Text>
+            <Text style={s.kpiLabel}>Complexiteits{"\n"}niveau</Text>
           </View>
         </View>
 
@@ -803,90 +809,33 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
           </Text>
         </View>
 
-        {/* ── Sectie 04 — Drie pakketten ───────────── */}
-        <View style={s.sectionHeader} wrap={false} minPresenceAhead={260}>
+        {/* ── Sectie 04 — Investering & maatwerk ──── */}
+        <View style={s.sectionHeader} wrap={false} minPresenceAhead={220}>
           <Text style={s.sectionNumber}>Sectie 04</Text>
-          <Text style={s.sectionTitle}>Drie pakket-opties</Text>
+          <Text style={s.sectionTitle}>Investering &amp; maatwerk</Text>
         </View>
 
         <Text style={s.paragraph}>
-          Wij bieden drie pakketten aan — van een pilot tot een volledige
-          rollout. Het{" "}
-          <Text style={s.strong}>{gekozen.naam}</Text>-pakket is voor{" "}
-          {data.bedrijfsnaam} onze aanbeveling, gebaseerd op de
-          geïdentificeerde kansen. De andere opties blijven op tafel voor als
-          u klein wil starten of juist alles in één keer wil doen.
+          Bij Autronis werken wij met{" "}
+          <Text style={s.strong}>value-based pricing</Text>: de investering
+          hangt af van de waarde die wij voor uw bedrijf creëren, niet van
+          een uurtje-factuurtje model. De exacte scope en investering bepalen
+          wij samen in een gratis intake gesprek.
         </Text>
 
-        <View style={s.pakkettenGrid} wrap={false}>
-          {tierOrder.map((tier) => {
-            const p = pakketten[tier];
-            const highlight = tier === gekozenTier;
-            return (
-              <View
-                key={tier}
-                style={highlight ? [s.pakketCard, s.pakketCardHighlighted] : s.pakketCard}
-              >
-                <View style={s.pakketBadgeRow}>
-                  <Text
-                    style={highlight ? [s.pakketNaam, s.pakketNaamHighlighted] : s.pakketNaam}
-                  >
-                    {p.naam}
-                  </Text>
-                  {highlight && (
-                    <Text style={s.pakketSelectedTag}>Aanbevolen</Text>
-                  )}
-                </View>
-                <Text style={s.pakketSubtitle}>{p.subtitle}</Text>
-                <Text
-                  style={highlight ? [s.pakketPrijs, s.pakketPrijsHighlighted] : s.pakketPrijs}
-                >
-                  {formatEuro(p.investering)}
-                </Text>
-                <Text style={s.pakketPrijsLabel}>eenmalige investering</Text>
-                <Text style={s.pakketScope}>{p.scope}</Text>
-                <View style={s.pakketMeta}>
-                  <View style={s.pakketMetaRow}>
-                    <Text style={s.pakketMetaLabel}>Besparing/jaar</Text>
-                    <Text style={s.pakketMetaValue}>
-                      {formatEuro(p.jaarlijkseBesparing)}
-                    </Text>
-                  </View>
-                  <View style={s.pakketMetaRow}>
-                    <Text style={s.pakketMetaLabel}>Tijdwinst/week</Text>
-                    <Text style={s.pakketMetaValue}>{p.urenPerWeek}u</Text>
-                  </View>
-                  <View style={s.pakketMetaRow}>
-                    <Text style={s.pakketMetaLabel}>Terugverdientijd</Text>
-                    <Text style={s.pakketMetaValue}>
-                      ~{p.terugverdientijdMaanden} mnd
-                    </Text>
-                  </View>
-                  <View style={s.pakketMetaRow}>
-                    <Text style={s.pakketMetaLabel}>Aantal kansen</Text>
-                    <Text style={s.pakketMetaValue}>{p.kansen.length}</Text>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-
         <View style={[s.card, s.cardAccent]} wrap={false}>
-          <Text style={s.label}>Wat zit er in het {gekozen.naam}-pakket</Text>
+          <Text style={s.label}>Wat u krijgt in elk traject</Text>
           <Text style={s.paragraph}>
             <Text style={s.strong}>Analyse &amp; design</Text> — requirements
             sessie, architectuur uitwerken, integratie plan.
           </Text>
           <Text style={s.paragraph}>
-            <Text style={s.strong}>Bouw &amp; implementatie</Text> — de{" "}
-            {gekozen.kansen.length} geselecteerde automatisering
-            {gekozen.kansen.length === 1 ? "" : "en"} gebouwd, getest en
-            gedocumenteerd.
+            <Text style={s.strong}>Bouw &amp; implementatie</Text> — alle
+            geselecteerde automatiseringen gebouwd, getest, gedocumenteerd.
           </Text>
           <Text style={s.paragraph}>
-            <Text style={s.strong}>Go-live begeleiding</Text> — we staan 2 weken
-            na launch standby voor aanpassingen en monitoring.
+            <Text style={s.strong}>Go-live begeleiding</Text> — we staan 2
+            weken na launch standby voor aanpassingen en monitoring.
           </Text>
           <Text style={s.paragraph}>
             <Text style={s.strong}>Hand-over documentatie</Text> — uw team
@@ -895,22 +844,23 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
         </View>
 
         <View style={[s.card, s.cardSuccess]} wrap={false}>
-          <Text style={s.label}>Rekenvoorbeeld {gekozen.naam}-pakket</Text>
+          <Text style={s.label}>Geschatte waarde voor uw bedrijf</Text>
           <Text style={s.paragraph}>
-            Bij een investering van{" "}
-            <Text style={s.strong}>{formatEuro(gekozen.investering)}</Text> en
-            een maandelijkse besparing van ongeveer{" "}
+            Op basis van onze website-analyse zien wij potentieel voor{" "}
             <Text style={s.strong}>
-              {formatEuro(Math.round(gekozen.jaarlijkseBesparing / 12))}
+              circa {gekozen.urenPerWeek} uur per week tijdwinst
             </Text>
-            , bent u na ~{gekozen.terugverdientijdMaanden} maanden op
-            break-even. Elke besparing daarna is pure winst.
+            . Dat vertaalt zich naar een geschatte besparing in de orde van{" "}
+            <Text style={s.strong}>
+              {formatRange(gekozen.besparingRange)} per jaar
+            </Text>
+            , afhankelijk van de werkelijke complexiteit en uurkosten in uw
+            organisatie.
           </Text>
           <Text style={[s.paragraph, { marginBottom: 0 }]}>
-            <Text style={s.strong}>Note:</Text> deze schatting is een
-            hypothese op basis van de website-analyse. De exacte investering
-            stellen we vast in het intake gesprek — nooit meer dan 35% van de
-            verwachte jaarlijkse besparing.
+            <Text style={s.strong}>Disclaimer:</Text> dit is een hypothese op
+            basis van publiek beschikbare data. De exacte cijfers en
+            investering stellen we vast in het intake gesprek.
           </Text>
         </View>
 

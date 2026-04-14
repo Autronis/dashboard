@@ -107,6 +107,28 @@ if (isTurso) {
   client.execute("ALTER TABLE taken ADD COLUMN eigenaar TEXT DEFAULT 'sem'")
     .catch(() => { /* column may already exist */ });
 
+  // Project intake flow (fase 2): scope storage kolommen op projecten
+  client.execute("ALTER TABLE projecten ADD COLUMN scope_data TEXT")
+    .catch(() => { /* column may already exist */ });
+  client.execute("ALTER TABLE projecten ADD COLUMN scope_pdf_url TEXT")
+    .catch(() => { /* column may already exist */ });
+
+  // Project intakes wizard state
+  client.execute(`CREATE TABLE IF NOT EXISTS project_intakes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER REFERENCES projecten(id),
+    stap TEXT DEFAULT 'concept',
+    klant_concept TEXT,
+    creatieve_ideeen TEXT,
+    gekozen_invalshoek TEXT,
+    scope_status TEXT DEFAULT 'niet_gestart',
+    bron TEXT DEFAULT 'dashboard',
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_project_intakes_project_id ON project_intakes(project_id)").catch(() => {});
+
   // remote_commits tabel voor GitHub webhook → banner flow
   client.execute(`CREATE TABLE IF NOT EXISTS remote_commits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -630,6 +652,32 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now')),
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);
+
+  // Project intake flow (fase 2): scope storage kolommen op projecten
+  const projCols = sqliteDb.prepare("PRAGMA table_info(projecten)").all() as { name: string }[];
+  const projColNames = projCols.map((c: { name: string }) => c.name);
+  if (!projColNames.includes("scope_data")) {
+    sqliteDb.exec("ALTER TABLE projecten ADD COLUMN scope_data TEXT");
+  }
+  if (!projColNames.includes("scope_pdf_url")) {
+    sqliteDb.exec("ALTER TABLE projecten ADD COLUMN scope_pdf_url TEXT");
+  }
+
+  // Project intakes wizard state
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS project_intakes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id INTEGER REFERENCES projecten(id),
+    stap TEXT DEFAULT 'concept',
+    klant_concept TEXT,
+    creatieve_ideeen TEXT,
+    gekozen_invalshoek TEXT,
+    scope_status TEXT DEFAULT 'niet_gestart',
+    bron TEXT DEFAULT 'dashboard',
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_project_intakes_project_id ON project_intakes(project_id)");
 
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS follow_up_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

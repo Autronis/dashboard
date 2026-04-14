@@ -69,12 +69,41 @@ export const projecten = sqliteTable("projecten", {
   // repo in plaats van een lege map te maken, zodat Sem en Syb dezelfde
   // werkboom hebben zodra ze hun agent runnen.
   githubUrl: text("github_url"),
+  // Scope plan JSON (output van de scope-generator skill — 6-fase wizard)
+  scopeData: text("scope_data"),
+  // Public URL naar gegenereerde scope PDF (Vercel Blob)
+  scopePdfUrl: text("scope_pdf_url"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxKlantId: index("idx_projecten_klant_id").on(table.klantId),
   idxStatusActief: index("idx_projecten_status_actief").on(table.status, table.isActief),
+}));
+
+// ============ PROJECT INTAKES ============
+// Wizard state voor de project-intake flow (6 fases). Persistent zodat de
+// intake vanuit dashboard én Claude chat kan worden verdergezet.
+export const projectIntakes = sqliteTable("project_intakes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  projectId: integer("project_id").references(() => projecten.id),
+  // Huidige stap: concept | eigenaar | aangemaakt | invalshoeken | scope | klant | klaar
+  stap: text("stap").default("concept"),
+  // Originele klant/concept beschrijving (vrije tekst van Sem of Syb)
+  klantConcept: text("klant_concept"),
+  // 3-5 creatieve invalshoeken (JSON array van { naam, beschrijving })
+  creatieveIdeeen: text("creatieve_ideeen"),
+  // Gekozen invalshoek (string of index)
+  gekozenInvalshoek: text("gekozen_invalshoek"),
+  // Status van de scope-generatie: niet_gestart | bezig | klaar | overgeslagen
+  scopeStatus: text("scope_status").default("niet_gestart"),
+  // Bron van de intake: chat | dashboard
+  bron: text("bron").default("dashboard"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxProjectId: index("idx_project_intakes_project_id").on(table.projectId),
 }));
 
 // ============ TIJDREGISTRATIES ============

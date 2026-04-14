@@ -548,7 +548,6 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
   const detailKansen = kansen.filter((k) => k.impact === "hoog").slice(0, 3);
   const { pakketten, gekozenTier } = data;
   const gekozen = pakketten[gekozenTier];
-  const tierOrder: Tier[] = ["basis", "pro", "enterprise"];
 
   return (
     <Document>

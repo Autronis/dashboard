@@ -72,9 +72,9 @@ export default function OutreachSection() {
   const [limitDraft, setLimitDraft] = useState<number>(5);
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch("/api/leads/outreach");
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -82,21 +82,22 @@ export default function OutreachSection() {
       }
       const json = (await res.json()) as OutreachData;
       setData(json);
-      if (json.settings?.dag_limiet) setLimitDraft(json.settings.dag_limiet);
+      if (json.settings?.dag_limiet && !editingLimit) setLimitDraft(json.settings.dag_limiet);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  }, []);
+  }, [editingLimit]);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Realtime-ish: refetch elke 15s
-  usePoll(load, 15000);
+  // Realtime-ish: silent refetch elke 15s — geen loading flicker
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 15000);
 
   async function saveLimit() {
     if (!data?.settings) return;

@@ -140,9 +140,9 @@ export default function LeadsEmailsPage() {
   // Bedrijfsanalyse collapsible (per email id)
   const [showSummaryIds, setShowSummaryIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch("/api/leads/emails");
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -152,9 +152,9 @@ export default function LeadsEmailsPage() {
       setEmails(data.emails ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -162,8 +162,9 @@ export default function LeadsEmailsPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: refetch elke 10s — emails veranderen vaak (sent/replied)
-  usePoll(load, 10000);
+  // Realtime-ish: silent refetch elke 10s — emails veranderen vaak
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 10000);
 
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};

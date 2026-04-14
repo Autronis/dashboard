@@ -17,7 +17,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SkeletonTaken } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { CheckBurst, Confetti } from "@/components/ui/confetti-dynamic";
-import { useTaken } from "@/hooks/queries/use-taken";
+import { useTaken, type TakenScope } from "@/hooks/queries/use-taken";
 import { useCurrentUser } from "@/hooks/queries/use-team";
 import type { Taak, ProjectVoortgang } from "@/hooks/queries/use-taken";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -579,20 +579,12 @@ function TakenPage() {
   const [faseFilter, setFaseFilter] = useState("alle");
   const [prioriteitFilter, setPrioriteitFilter] = useState("alle");
   const [uitvoerderFilter, setUitvoerderFilter] = useState("alle");
-  // Default: eigen taken. Initialiseert op "alle" tot useCurrentUser klaar is,
-  // dan eenmalig naar de eigen id (tenzij de gebruiker zelf al een keuze maakte).
   const { data: currentUser } = useCurrentUser();
-  const [toegewezenAanFilter, setToegewezenAanFilter] = useState<string>("alle");
-  const [filterTouched, setFilterTouched] = useState(false);
-  useEffect(() => {
-    if (!filterTouched && currentUser?.id) {
-      setToegewezenAanFilter(String(currentUser.id));
-    }
-  }, [currentUser?.id, filterTouched]);
-  const setToegewezenAanFilterUser = (v: string) => {
-    setFilterTouched(true);
-    setToegewezenAanFilter(v);
-  };
+  // Scope filter — werkt op project.eigenaar (mij/syb/team/vrij/alle).
+  // Default = "mij" (mijn solo + team projecten). Backend mapt 'mij' op
+  // basis van current user id, dus voor Syb betekent 'mij' = syb + team.
+  const [scopeFilter, setScopeFilter] = useState<TakenScope>("mij");
+  void currentUser;
   const [zoek, setZoek] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
@@ -634,7 +626,7 @@ function TakenPage() {
     projectId: projectFilter,
     fase: faseFilter,
     prioriteit: prioriteitFilter,
-    toegewezenAan: toegewezenAanFilter,
+    scope: scopeFilter,
   }, { pauseRefetch: mutatingCount > 0 });
 
   const { data: mappenData } = useQuery({
@@ -993,8 +985,8 @@ function TakenPage() {
     faseFilter !== "alle",
     prioriteitFilter !== "alle",
     uitvoerderFilter !== "alle",
-    // "Mij" (eigen id) is de default — telt niet als actief filter
-    toegewezenAanFilter !== "alle" && toegewezenAanFilter !== String(currentUser?.id ?? ""),
+    // "Mij" is de default — telt niet als actief filter
+    scopeFilter !== "mij",
     zoek.length > 0,
     hideCompleted,
   ].filter(Boolean).length;
@@ -1078,31 +1070,30 @@ function TakenPage() {
 
         {/* FILTER BAR — compact */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Quick toggle: Mij / Sem / Syb / Heel team / Niet toegewezen */}
+          {/* Scope toggle: filter op project-eigenaarschap.
+              Mij = mijn solo projecten + team. Syb = idem voor Syb.
+              Team = alleen samenwerk-projecten. Vrij = open backlog. */}
           <div className="inline-flex items-center bg-autronis-card border border-autronis-border rounded-xl p-0.5 text-xs">
-            {(() => {
-              const eigenId = currentUser?.id ? String(currentUser.id) : null;
-              const opties: Array<{ value: string; label: string }> = [];
-              if (eigenId) opties.push({ value: eigenId, label: "Mij" });
-              if (eigenId !== "1") opties.push({ value: "1", label: "Sem" });
-              if (eigenId !== "2") opties.push({ value: "2", label: "Syb" });
-              opties.push({ value: "alle", label: "Team" });
-              opties.push({ value: "geen", label: "Vrij" });
-              return opties.map((o) => (
-                <button
-                  key={o.value}
-                  onClick={() => setToegewezenAanFilterUser(o.value)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg font-medium transition-colors",
-                    toegewezenAanFilter === o.value
-                      ? "bg-autronis-accent/15 text-autronis-accent"
-                      : "text-autronis-text-secondary hover:text-autronis-text-primary"
-                  )}
-                >
-                  {o.label}
-                </button>
-              ));
-            })()}
+            {([
+              { value: "mij", label: "Mij" },
+              { value: "syb", label: "Syb" },
+              { value: "team", label: "Team" },
+              { value: "vrij", label: "Vrij" },
+              { value: "alle", label: "Alle" },
+            ] as const).map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setScopeFilter(o.value)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg font-medium transition-colors",
+                  scopeFilter === o.value
+                    ? "bg-autronis-accent/15 text-autronis-accent"
+                    : "text-autronis-text-secondary hover:text-autronis-text-primary"
+                )}
+              >
+                {o.label}
+              </button>
+            ))}
           </div>
           <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)} className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50">
             <option value="alle">Alle projecten</option>

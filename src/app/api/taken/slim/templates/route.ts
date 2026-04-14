@@ -3,24 +3,17 @@ import { db } from "@/lib/db";
 import { slimmeTakenTemplates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc } from "drizzle-orm";
-import { seedSystemTemplates } from "@/lib/slimme-taken";
+import { ensureSystemTemplates } from "@/lib/slimme-taken";
 
 // GET /api/taken/slim/templates
-// Returnt alle actieve templates uit DB. Seed de defaults als de tabel
-// leeg is.
+// Returnt alle actieve templates uit DB. Sync system templates met de
+// lib bij elke call (idempotent).
 export async function GET() {
   try {
     await requireAuth();
 
-    // Check of tabel leeg is — zo ja, seed de defaults
-    const bestaand = await db
-      .select({ id: slimmeTakenTemplates.id })
-      .from(slimmeTakenTemplates)
-      .limit(1);
-
-    if (bestaand.length === 0) {
-      await seedSystemTemplates();
-    }
+    // Sync: deprecate oude slugs + upsert huidige system templates
+    await ensureSystemTemplates();
 
     const rows = await db
       .select()

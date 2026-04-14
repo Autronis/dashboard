@@ -59,7 +59,8 @@ export async function POST(req: NextRequest) {
     const url: string | undefined = body?.url;
     const logoBase64: string | undefined = body?.logoBase64;
     const brandName: string | undefined = body?.brandName?.trim();
-    const accent: string = typeof body?.accent === "string" && body.accent.trim() ? body.accent.trim() : "#17B8A5";
+    const accentInput: string = typeof body?.accent === "string" ? body.accent.trim() : "";
+    const accent: string = accentInput || "#17B8A5"; // fallback voor direct-generate (JSX heeft een concreet hex nodig)
     const notes: string = typeof body?.notes === "string" ? body.notes.trim() : "";
 
     if (!brandName) {

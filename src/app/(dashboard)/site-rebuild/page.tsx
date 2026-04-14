@@ -21,7 +21,7 @@ export default function SiteRebuildPage() {
   const [url, setUrl] = useState("");
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [brandName, setBrandName] = useState("");
-  const [accent, setAccent] = useState("#17B8A5");
+  const [accent, setAccent] = useState(""); // leeg = Claude kiest zelf op basis van scrape
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -321,12 +321,12 @@ export default function SiteRebuildPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-2">
-                Accent kleur
+                Accent kleur <span className="text-autronis-text-secondary/60 normal-case font-normal">(optioneel — leeg = Claude kiest)</span>
               </label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
-                  value={accent}
+                  value={accent || "#17B8A5"}
                   onChange={(e) => setAccent(e.target.value)}
                   className="w-12 h-11 rounded-xl border border-autronis-border bg-autronis-bg cursor-pointer"
                 />
@@ -334,8 +334,19 @@ export default function SiteRebuildPage() {
                   type="text"
                   value={accent}
                   onChange={(e) => setAccent(e.target.value)}
-                  className="flex-1 px-3 py-2.5 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary font-mono text-sm"
+                  placeholder="auto (Claude kiest passend bij de bron)"
+                  className="flex-1 px-3 py-2.5 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary font-mono text-sm placeholder:text-autronis-text-secondary/50 placeholder:font-sans"
                 />
+                {accent && (
+                  <button
+                    type="button"
+                    onClick={() => setAccent("")}
+                    className="px-3 py-2.5 rounded-xl border border-autronis-border bg-autronis-bg text-xs text-autronis-text-secondary hover:text-red-400"
+                    title="Leegmaken"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
 

@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     const mode: "url" | "logo" = body?.mode;
     const url: string | undefined = body?.url;
     const brandName: string = (body?.brandName ?? "").trim();
-    const accent: string = typeof body?.accent === "string" && body.accent.trim() ? body.accent.trim() : "#17B8A5";
+    const accentRaw: string = typeof body?.accent === "string" ? body.accent.trim() : "";
+    const accent: string = accentRaw || "AUTO"; // "AUTO" = Claude kiest een passende accent kleur
     const notes: string = typeof body?.notes === "string" ? body.notes.trim() : "";
 
     if (!brandName) {
@@ -55,7 +56,7 @@ Jouw opdracht: upgrade bestaande klant-content tot een jaw-dropping **dark premi
 - Jet-black achtergrond \`#0a0a0b\` met subtiele ambient glows
 - Display headlines in **Space Grotesk** (clamp(3rem, 8vw, 7rem))
 - Body in **Inter**
-- Één accent kleur: **${accent}** — spaarzaam gebruikt voor CTAs, onderlijnen, key numbers, hovers
+- Één accent kleur, spaarzaam gebruikt voor CTAs, onderlijnen, key numbers, hovers${accent === "AUTO" ? " — **kies er zelf één** die past bij de content/industrie van de bron (bv. tech → teal/cyaan, food → warm oranje, fashion → koper, healthcare → soft groen)" : `: **${accent}**`}
 - Genereuze whitespace, 8pt grid, geen clutter
 - Section flow: hero → proof bar → features (3-col) → specs (count-up numbers) → testimonial (als data beschikbaar) → CTA
 - Geen stock photos. Gebruik CSS gradients, geometrische vormen, emoji, of svg glyphs
@@ -65,7 +66,7 @@ Jouw opdracht: upgrade bestaande klant-content tot een jaw-dropping **dark premi
 ## Brand
 
 - **Brand naam**: ${brandName}
-- **Accent**: ${accent}
+- **Accent**: ${accent === "AUTO" ? "automatisch kiezen" : accent}
 - **Extra instructies van de gebruiker**: ${notes || "(geen)"}
 
 ${sourceBlock}

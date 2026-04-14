@@ -1080,6 +1080,12 @@ export default function AgendaPage() {
                   "fout"
                 );
               }
+              if (data.overlapGeskipt > 0) {
+                addToast(
+                  `${data.overlapGeskipt} taken niet gepland — geen vrij slot (botst met bestaande agenda items)`,
+                  "fout"
+                );
+              }
               queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
             } catch (err) {
               addToast(err instanceof Error ? err.message : "AI planning mislukt", "fout");

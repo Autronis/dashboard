@@ -1462,6 +1462,20 @@ function TakenPage() {
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            {/* Bulk select checkbox — verschijnt on hover, of altijd als er al een selectie is */}
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); toggleTaakSelected(taak.id); }}
+                                              className={cn(
+                                                "flex-shrink-0 w-3.5 h-3.5 rounded border transition-all flex items-center justify-center",
+                                                selectedTaakIds.has(taak.id)
+                                                  ? "bg-autronis-accent border-autronis-accent opacity-100"
+                                                  : "border-autronis-border/50 opacity-0 group-hover:opacity-100",
+                                                selectedTaakIds.size > 0 && "opacity-100"
+                                              )}
+                                              title="Selecteer voor bulk actie"
+                                            >
+                                              {selectedTaakIds.has(taak.id) && <Check className="w-2.5 h-2.5 text-autronis-bg" />}
+                                            </button>
                                             <button onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); handleStatusToggle(taak); }} className={cn("flex-shrink-0 transition-colors hover:scale-110", sc.color)} title={`Status: ${sc.label}`}>
                                               <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
                                             </button>
@@ -1606,6 +1620,47 @@ function TakenPage() {
 
         {/* Sync confetti */}
         <Confetti active={showSyncConfetti} />
+
+        {/* Bulk action bar — verschijnt zodra je taken selecteert */}
+        <AnimatePresence>
+          {selectedTaakIds.size > 0 && (
+            <motion.div
+              initial={{ y: 60, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 60, opacity: 0 }}
+              className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-autronis-card border border-autronis-accent/40 rounded-2xl shadow-2xl shadow-black/50 px-5 py-3 flex items-center gap-3"
+            >
+              <span className="text-sm text-autronis-text-primary">
+                <span className="font-semibold tabular-nums">{selectedTaakIds.size}</span> taak{selectedTaakIds.size !== 1 ? "en" : ""}
+              </span>
+              <span className="text-xs text-autronis-text-secondary">→ wijs toe aan</span>
+              <div className="inline-flex items-center gap-1">
+                {([
+                  { code: "sem", label: "Sem", color: "bg-teal-500/15 text-teal-300" },
+                  { code: "syb", label: "Syb", color: "bg-blue-500/15 text-blue-300" },
+                  { code: "team", label: "Team", color: "bg-purple-500/15 text-purple-300" },
+                  { code: "vrij", label: "Vrij", color: "bg-amber-500/15 text-amber-300" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.code}
+                    onClick={() => bulkEigenaarMutation.mutate({ ids: Array.from(selectedTaakIds), eigenaar: opt.code })}
+                    disabled={bulkEigenaarMutation.isPending}
+                    className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50", opt.color)}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={clearSelection}
+                className="ml-1 p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors"
+                title="Selectie wissen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Taak detail modal */}
         <AnimatePresence>

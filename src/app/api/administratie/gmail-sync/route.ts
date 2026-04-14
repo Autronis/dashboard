@@ -81,13 +81,15 @@ export async function GET(request: NextRequest) {
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    // Search for emails with PDF attachments from last 48h.
-    // Cron runs hourly so 48h gives an overlap window: stragglers that arrive
-    // right after one run still get picked up by the next. The dedupe on
-    // email_id makes re-scanning safe and idempotent.
+    // Search window: default 2d (cron runs hourly → 48h overlap is a safe
+    // vangnet). Override via ?since=<N>d|m|y for manual backfills, e.g.
+    // ?since=30d to catch everything in the last month on first run.
+    const sinceParam = new URL(request.url).searchParams.get("since") ?? "2d";
+    const safeSince = /^\d+[dmy]$/.test(sinceParam) ? sinceParam : "2d";
+
     const listResult = await gmail.users.messages.list({
       userId: "me",
-      q: "has:attachment filename:pdf newer_than:2d",
+      q: `has:attachment filename:pdf newer_than:${safeSince}`,
       maxResults: 50,
     });
 

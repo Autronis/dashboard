@@ -43,6 +43,10 @@
     {
       "path": "/api/revolut/sync",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/slimme-taken-recurring",
+      "schedule": "0 7 * * *"
     }
   ]
 }

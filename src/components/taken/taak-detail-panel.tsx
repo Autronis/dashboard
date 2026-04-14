@@ -253,11 +253,12 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                   </div>
                 )}
 
-                {/* Eigenaar picker — alleen voor losse taken (zonder project).
-                    Voor taken MET project erft 'm van project.eigenaar. */}
-                {!taak.projectId && (
-                  <div>
-                    <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-2">Eigenaar</p>
+                {/* Eigenaar picker — voor élke taak. Bij taken met project
+                    geldt de override boven de project-eigenaar. */}
+                <div>
+                  <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-2">
+                    Eigenaar {taak.projectId && <span className="text-autronis-text-secondary/60 normal-case">(override op project)</span>}
+                  </p>
                     <div className="inline-flex items-center gap-1 bg-autronis-bg/50 border border-autronis-border rounded-xl p-1">
                       {(["sem", "syb", "team", "vrij"] as const).map((code) => {
                         const labels: Record<string, string> = { sem: "Sem", syb: "Syb", team: "Team", vrij: "Vrij" };
@@ -291,8 +292,7 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                </div>
 
                 {/* Status + Prioriteit toggles */}
                 <div className="space-y-3">

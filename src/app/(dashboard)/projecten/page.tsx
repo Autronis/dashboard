@@ -36,6 +36,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { PageHeader } from "@/components/ui/page-header";
 import { useProjectenMetKpis } from "@/hooks/queries/use-projecten";
 import type { Project } from "@/hooks/queries/use-projecten";
+import { MiniEigenaarPicker } from "@/components/projecten/eigenaar-picker";
 
 import { useToast } from "@/hooks/use-toast";
 import { useTimer } from "@/hooks/use-timer";

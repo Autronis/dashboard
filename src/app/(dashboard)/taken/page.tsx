@@ -987,17 +987,18 @@ function TakenPage() {
     finally { setSyncing(false); }
   };
 
-  // Auto-cluster: stuur alle open taken zonder cluster naar Claude en laat
-  // ze groeperen in standaard Autronis clusters. Werkt als een eenmalige
-  // backfill — daarna hebben nieuwe taken al een cluster omdat Claude die
-  // direct bij aanmaak meegeeft (zie CLAUDE.md regel).
+  // Auto-cluster: start een achtergrond job die alle open taken zonder
+  // cluster naar Claude stuurt en ze groepeert in standaard Autronis
+  // clusters. De job loopt door ook als je wegnavigeert — een globale
+  // watcher (AutoClusterJobWatcher in AppShell) volgt 'm via localStorage
+  // en toont een banner met voortgang + final toast.
   const [autoClustering, setAutoClustering] = useState(false);
   const handleAutoCluster = useCallback(async () => {
     const ok = window.confirm(
       "Auto-cluster: ik stuur alle open taken ZONDER cluster naar Claude en " +
       "laat ze groeperen in de standaard Autronis clusters (backend-infra, " +
-      "frontend, klantcontact, content, admin, research). Dit kost wat API " +
-      "tokens. Doorgaan?"
+      "frontend, klantcontact, content, admin, research). De job loopt op " +
+      "de achtergrond — je kan gewoon door met andere pages. Doorgaan?"
     );
     if (!ok) return;
     setAutoClustering(true);
@@ -1008,21 +1009,24 @@ function TakenPage() {
         body: JSON.stringify({ onlyMissing: true }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.fout || "Auto-cluster mislukt");
-      const summary = Object.entries(data.perCluster ?? {})
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(", ");
-      addToast(
-        `${data.bijgewerkt} van ${data.totaal} taken gelabeld${summary ? ` — ${summary}` : ""}`,
-        "succes"
+      if (!res.ok || !data.jobId) {
+        throw new Error(data.fout || "Auto-cluster kon niet gestart worden");
+      }
+      // Store in localStorage + dispatch event zodat de global watcher
+      // direct begint met pollen
+      localStorage.setItem("autronis:auto-cluster-job", data.jobId);
+      window.dispatchEvent(
+        new CustomEvent("autronis:auto-cluster-started", {
+          detail: { jobId: data.jobId },
+        })
       );
-      queryClient.invalidateQueries({ queryKey: ["taken"] });
+      addToast("Auto-cluster gestart — check de progress banner onderaan", "succes");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Auto-cluster mislukt", "fout");
     } finally {
       setAutoClustering(false);
     }
-  }, [addToast, queryClient]);
+  }, [addToast]);
 
   const openNieuwModal = useCallback(() => {
     setNieuwTitel(""); setNieuwProject(uniekeProjecten[0]?.id ?? ""); setNieuwFase("");

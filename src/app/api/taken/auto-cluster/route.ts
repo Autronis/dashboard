@@ -4,17 +4,24 @@ import { taken, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import {
+  createJob,
+  markJobDone,
+  markJobError,
+  updateJob,
+} from "@/lib/auto-cluster-jobs";
 
 // POST /api/taken/auto-cluster
-// Stuurt alle open taken (of alleen taken zonder cluster) naar Claude
-// en vraagt hem ze te groeperen in standaard Autronis clusters:
-// backend-infra / frontend / klantcontact / content / admin / research.
+// Start een auto-cluster job asynchroon en returnt direct een jobId.
+// De verwerking loopt door op de server ook als de client wegnavigeert.
+// Gebruik GET /api/taken/auto-cluster/status?jobId=X om voortgang te
+// peilen.
 //
 // Body: { projectId?: number, onlyMissing?: boolean }
 //   projectId    — beperk tot 1 project, anders alle projecten
 //   onlyMissing  — als true, alleen taken zonder cluster (default true)
 //
-// Response: { totaal, bijgewerkt, perCluster: Record<cluster, aantal> }
+// Response: { jobId: string, status: "started" }
 
 const CLUSTER_DEFINITIES = `
 - backend-infra: Supabase (schemas, edge functions, RLS), n8n workflows, scripts, API routes, database migraties, server-side integraties, DevOps, hosting, webhooks
@@ -70,33 +77,30 @@ interface ClusterAssignment {
   cluster: string;
 }
 
-export async function POST(req: NextRequest) {
+async function runJob(
+  jobId: string,
+  gebruikerId: number,
+  projectIdFilter: number | undefined,
+  onlyMissing: boolean
+): Promise<void> {
   try {
-    const gebruiker = await requireAuth();
-    const body = (await req.json().catch(() => ({}))) as {
-      projectId?: number;
-      onlyMissing?: boolean;
-    };
-
-    const projectIdFilter = body.projectId;
-    const onlyMissing = body.onlyMissing !== false; // default true
-
     // Filter: only open tasks, belonging to visible projects for this user
-    // (sem sees sem/team/vrij/null, syb sees syb/team/vrij)
     const visibleCodes: ("sem" | "syb" | "team" | "vrij")[] =
-      gebruiker.id === 2 ? ["syb", "team", "vrij"] : ["sem", "team", "vrij"];
+      gebruikerId === 2 ? ["syb", "team", "vrij"] : ["sem", "team", "vrij"];
 
     const conditions = [
       eq(taken.status, "open"),
-      // task must belong to a project — we need projectId for cluster scoping
       sql`${taken.projectId} IS NOT NULL`,
     ];
     if (onlyMissing) conditions.push(isNull(taken.cluster));
     if (projectIdFilter) conditions.push(eq(taken.projectId, projectIdFilter));
 
     const visibilityCondition = or(
-      sql`${projecten.eigenaar} IN (${sql.join(visibleCodes.map((c) => sql`${c}`), sql`, `)})`,
-      gebruiker.id === 1 ? sql`${projecten.eigenaar} IS NULL` : sql`1=0`
+      sql`${projecten.eigenaar} IN (${sql.join(
+        visibleCodes.map((c) => sql`${c}`),
+        sql`, `
+      )})`,
+      gebruikerId === 1 ? sql`${projecten.eigenaar} IS NULL` : sql`1=0`
     );
     if (visibilityCondition) conditions.push(visibilityCondition);
 
@@ -111,28 +115,22 @@ export async function POST(req: NextRequest) {
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))
       .where(and(...conditions))
-      .limit(500); // safety cap
+      .limit(500);
+
+    updateJob(jobId, { totaal: rows.length });
 
     if (rows.length === 0) {
-      return NextResponse.json({
-        totaal: 0,
-        bijgewerkt: 0,
-        perCluster: {},
-        bericht: onlyMissing
-          ? "Alle open taken hebben al een cluster."
-          : "Geen open taken gevonden.",
-      });
+      markJobDone(jobId, { totaal: 0, bijgewerkt: 0, perCluster: {} });
+      return;
     }
 
-    // Chunk into batches of ~100 tasks per Claude call to stay within
-    // context + keep responses manageable.
     const BATCH_SIZE = 100;
-    const allAssignments: ClusterAssignment[] = [];
     const batches: TaakVoorAI[][] = [];
     for (let i = 0; i < rows.length; i += BATCH_SIZE) {
       batches.push(rows.slice(i, i + BATCH_SIZE));
     }
 
+    const allAssignments: ClusterAssignment[] = [];
     const anthropic = Anthropic(undefined, "/api/taken/auto-cluster");
 
     for (const batch of batches) {
@@ -168,12 +166,11 @@ export async function POST(req: NextRequest) {
           }
         }
       } catch {
-        // Batch parse fail — skip and continue. We log the full response in
-        // tracked-anthropic so Sem kan het handmatig nakijken in de token log.
+        // Batch parse fail — skip this batch
       }
     }
 
-    // Apply assignments — update each task's cluster field
+    // Apply assignments + live update progress per write
     let bijgewerkt = 0;
     const perCluster: Record<string, number> = {};
 
@@ -189,15 +186,39 @@ export async function POST(req: NextRequest) {
       if (res.length > 0) {
         bijgewerkt++;
         perCluster[assignment.cluster] = (perCluster[assignment.cluster] ?? 0) + 1;
+        // Live update every 20 writes so de UI ziet progress
+        if (bijgewerkt % 20 === 0) {
+          updateJob(jobId, { bijgewerkt, perCluster: { ...perCluster } });
+        }
       }
     }
 
-    return NextResponse.json({
-      totaal: rows.length,
-      bijgewerkt,
-      perCluster,
-      ongemapt: rows.length - bijgewerkt,
-    });
+    markJobDone(jobId, { totaal: rows.length, bijgewerkt, perCluster });
+  } catch (error) {
+    markJobError(jobId, error instanceof Error ? error.message : "Onbekende fout");
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const gebruiker = await requireAuth();
+    const body = (await req.json().catch(() => ({}))) as {
+      projectId?: number;
+      onlyMissing?: boolean;
+    };
+
+    const job = createJob(gebruiker.id);
+
+    // Fire-and-forget: run het job async. We awaiten 'm niet zodat de
+    // response direct terug gaat.
+    void runJob(
+      job.id,
+      gebruiker.id,
+      body.projectId,
+      body.onlyMissing !== false // default true
+    );
+
+    return NextResponse.json({ jobId: job.id, status: "started" });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

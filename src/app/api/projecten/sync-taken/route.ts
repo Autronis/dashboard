@@ -21,8 +21,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken } = body as {
+    const { projectNaam, voltooide_taken, nieuwe_taken, replace_all: replaceAll, alle_taken, eigenaar } = body as {
       projectNaam: string;
+      // eigenaar is alleen vereist bij auto-create van een NIEUW project.
+      // Bestaande projecten syncen werkt zonder.
+      eigenaar?: "sem" | "syb" | "team" | "vrij";
       voltooide_taken?: string[];
       // nieuwe_taken accepteert zowel strings als objecten met uitgebreide velden
       nieuwe_taken?: Array<string | {
@@ -95,7 +98,25 @@ export async function POST(req: NextRequest) {
     }
 
     if (!project) {
-      // Auto-create project if it doesn't exist
+      // Eigenaar is verplicht bij auto-create van een NIEUW project.
+      // Reden: anders staat het op NULL en is alleen voor Sem zichtbaar →
+      // Syb mist het. Vraag de gebruiker EERST voor wie het project is.
+      const VALID_EIGENAREN = ["sem", "syb", "team", "vrij"] as const;
+      if (!eigenaar || !VALID_EIGENAREN.includes(eigenaar)) {
+        return NextResponse.json(
+          {
+            fout:
+              `Project "${projectNaam.trim()}" bestaat nog niet en kan niet automatisch worden aangemaakt zonder eigenaar. ` +
+              `Vraag de gebruiker EERST voor wie dit project is en voeg "eigenaar" toe aan de POST body. ` +
+              `Geldige waardes: sem (alleen Sem) | syb (alleen Syb) | team (beiden samen) | vrij (niet toegewezen, iedereen mag pakken).`,
+            vereiste_velden: { eigenaar: "sem | syb | team | vrij" },
+            project_bestaat_niet: projectNaam.trim(),
+          },
+          { status: 400 }
+        );
+      }
+
+      // Auto-create project (eigenaar is nu gegarandeerd geldig)
       const [nieuwProject] = await db
         .insert(projecten)
         .values({
@@ -103,6 +124,7 @@ export async function POST(req: NextRequest) {
           status: "actief",
           isActief: 1,
           voortgangPercentage: 0,
+          eigenaar,
           aangemaaktDoor: userId,
         })
         .returning();

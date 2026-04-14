@@ -250,6 +250,7 @@ export async function POST(req: NextRequest) {
       omschrijving?: string;
       status?: "actief" | "afgerond" | "on-hold";
       klantId?: number;
+      eigenaar?: "sem" | "syb" | "team" | "vrij";
     };
 
     if (!body.naam?.trim()) {
@@ -267,6 +268,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ project: existing, bestaand: true });
     }
 
+    // Eigenaar is verplicht bij aanmaken van een NIEUW project — niemand mag
+    // anoniem projecten droppen. Vier opties: sem | syb | team | vrij.
+    // Reden: zonder eigenaar staat een project default op NULL en is alleen
+    // voor Sem zichtbaar — dat geeft chaos in een gedeeld dashboard.
+    const VALID_EIGENAREN = ["sem", "syb", "team", "vrij"] as const;
+    if (!body.eigenaar || !VALID_EIGENAREN.includes(body.eigenaar)) {
+      return NextResponse.json(
+        {
+          fout:
+            "eigenaar is verplicht bij aanmaken van een nieuw project. " +
+            "Kies één van: sem (alleen Sem), syb (alleen Syb), team (beiden), vrij (niet toegewezen). " +
+            "Vraag de gebruiker EERST voor wie het project is voordat je deze call opnieuw doet.",
+          vereiste_velden: { eigenaar: "sem | syb | team | vrij" },
+        },
+        { status: 400 }
+      );
+    }
+
     // Create new project
     const [project] = await db
       .insert(projecten)
@@ -275,6 +294,7 @@ export async function POST(req: NextRequest) {
         omschrijving: body.omschrijving || null,
         status: body.status || "actief",
         klantId: body.klantId || null,
+        eigenaar: body.eigenaar,
         aangemaaktDoor: userId,
         isActief: 1,
         voortgangPercentage: 0,

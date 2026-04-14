@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, Repeat, TrendingUp, Sparkles } from "lucide-react";
+import { Search, Filter, Repeat, TrendingUp, Sparkles, Paperclip, FileX } from "lucide-react";
 import { useFinancienTransacties, useFinancienCategorieen, type FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { DonutChart } from "./donut-chart";
 import { TransactieDetail } from "./transactie-detail";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type Type = "bij" | "af";
 type Periode = "maand" | "kwartaal" | "jaar" | "alles";
-type QuickFilter = "alle" | "abonnementen" | "investeringen" | "eenmalig";
+type QuickFilter = "alle" | "abonnementen" | "investeringen" | "eenmalig" | "zonder-bon";
 
 function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
@@ -85,6 +85,8 @@ export function TransactiesZone() {
         return alleTransacties.filter((t) => t.fiscaalType === "investering");
       case "eenmalig":
         return alleTransacties.filter((t) => t.isAbonnement !== 1);
+      case "zonder-bon":
+        return alleTransacties.filter((t) => !t.storageUrl && !t.bonPad);
       default:
         return alleTransacties;
     }
@@ -102,6 +104,7 @@ export function TransactiesZone() {
     abonnementen: alleTransacties.filter((t) => t.isAbonnement === 1).length,
     investeringen: alleTransacties.filter((t) => t.fiscaalType === "investering").length,
     eenmalig: alleTransacties.filter((t) => t.isAbonnement !== 1).length,
+    "zonder-bon": alleTransacties.filter((t) => !t.storageUrl && !t.bonPad).length,
   }), [alleTransacties]);
 
   return (
@@ -192,6 +195,7 @@ export function TransactiesZone() {
           { key: "abonnementen", label: "Abonnementen", icon: Repeat },
           { key: "investeringen", label: "Investeringen", icon: TrendingUp },
           { key: "eenmalig", label: "Eenmalig", icon: Filter },
+          { key: "zonder-bon", label: "Zonder bon", icon: FileX },
         ] as Array<{ key: QuickFilter; label: string; icon: typeof Sparkles }>).map((qf) => {
           const Icon = qf.icon;
           const isActive = quickFilter === qf.key;
@@ -262,6 +266,12 @@ export function TransactiesZone() {
                               </p>
                               {t.isAbonnement === 1 && (
                                 <Repeat className="w-3 h-3 text-purple-400 shrink-0" />
+                              )}
+                              {(t.storageUrl || t.bonPad) && (
+                                <Paperclip
+                                  className="w-3 h-3 text-autronis-accent shrink-0"
+                                  aria-label="Bon gekoppeld"
+                                />
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">

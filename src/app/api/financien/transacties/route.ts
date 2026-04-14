@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
         isAbonnement: bankTransacties.isAbonnement,
         gekoppeldFactuurId: bankTransacties.gekoppeldFactuurId,
         storageUrl: bankTransacties.storageUrl,
+        bonPad: bankTransacties.bonPad,
       })
       .from(bankTransacties)
       .where(conditions.length > 0 ? and(...conditions) : undefined)

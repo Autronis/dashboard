@@ -16,6 +16,7 @@ export interface FinancienTransactie {
   isAbonnement: number | null;
   gekoppeldFactuurId: number | null;
   storageUrl: string | null;
+  bonPad: string | null;
 }
 
 export interface TransactiesFilters {

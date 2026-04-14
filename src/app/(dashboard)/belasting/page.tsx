@@ -930,6 +930,133 @@ export default function BelastingPage() {
         {/* ===== TAB: OVERZICHT ===== */}
         {activeTab === "overzicht" && (
           <div className="space-y-6">
+            {/* Slimme Suggesties — top ongebruikte tips prominent op overzicht */}
+            {(() => {
+              const openTips = (tipsData?.tips ?? [])
+                .filter((t) => !t.toegepast)
+                .sort((a, b) => {
+                  // AI tips eerst, dan op aangemaakt desc
+                  if (a.isAiGegenereerd !== b.isAiGegenereerd) return b.isAiGegenereerd - a.isAiGegenereerd;
+                  return b.aangemaaktOp.localeCompare(a.aangemaaktOp);
+                })
+                .slice(0, 3);
+              const catConfig: Record<string, { label: string; color: string; bg: string }> = {
+                aftrekpost: { label: "Aftrekpost", color: "text-emerald-400", bg: "bg-emerald-500/10" },
+                regeling: { label: "Regeling", color: "text-blue-400", bg: "bg-blue-500/10" },
+                subsidie: { label: "Subsidie", color: "text-purple-400", bg: "bg-purple-500/10" },
+                optimalisatie: { label: "Optimalisatie", color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
+                weetje: { label: "Weetje", color: "text-yellow-400", bg: "bg-yellow-500/10" },
+              };
+              const totaal = tipsData?.totaal ?? 0;
+              const toegepast = tipsData?.toegepast ?? 0;
+
+              return (
+                <div className="bg-gradient-to-br from-autronis-accent/8 via-autronis-card to-autronis-card border border-autronis-accent/25 rounded-2xl p-6 lg:p-7 shadow-lg shadow-autronis-accent/5">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-autronis-accent/15 flex items-center justify-center">
+                        <Sparkles className="w-5 h-5 text-autronis-accent" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-autronis-text-primary">Slimme suggesties</h2>
+                        <p className="text-xs text-autronis-text-secondary mt-0.5">
+                          {totaal > 0
+                            ? `${toegepast}/${totaal} toegepast · ${openTips.length > 0 ? `${totaal - toegepast} nog open` : "alles klaar"}`
+                            : "AI analyseert je cijfers en geeft persoonlijk advies"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const toegepasteTips = (tipsData?.tips ?? [])
+                          .filter((t) => t.toegepast === 1)
+                          .map((t) => t.titel);
+                        genereerTipsMutation.mutate({
+                          omzet: wvData?.brutoOmzet,
+                          kosten: wvData?.totaleKosten,
+                          winst: wvData?.brutowinst,
+                          urenBehaald: urenCriterium?.behaaldUren,
+                          investeringen: totaalInvestering,
+                          branche: "IT / AI & Automatisering",
+                          toegepasteTips,
+                          jaar,
+                        }, {
+                          onSuccess: (data) => addToast(`${data.gegenereerd} nieuwe tips gegenereerd`, "succes"),
+                          onError: (err) => addToast(err.message, "fout"),
+                        });
+                      }}
+                      disabled={genereerTipsMutation.isPending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent/15 text-autronis-accent rounded-lg text-xs font-semibold hover:bg-autronis-accent/25 transition-colors disabled:opacity-50"
+                    >
+                      <Sparkles className={cn("w-3.5 h-3.5", genereerTipsMutation.isPending && "animate-spin")} />
+                      {genereerTipsMutation.isPending ? "Genereren..." : "Genereer nieuwe"}
+                    </button>
+                  </div>
+
+                  {openTips.length === 0 && totaal === 0 ? (
+                    <div className="text-center py-6">
+                      <Lightbulb className="w-8 h-8 text-autronis-text-secondary/30 mx-auto mb-2" />
+                      <p className="text-sm text-autronis-text-secondary">Nog geen tips — klik &quot;Genereer nieuwe&quot; om AI-advies op te halen</p>
+                    </div>
+                  ) : openTips.length === 0 ? (
+                    <div className="text-center py-6">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-400/50 mx-auto mb-2" />
+                      <p className="text-sm text-autronis-text-secondary">Alle {totaal} tips toegepast — top bezig!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {openTips.map((tip) => {
+                        const cat = catConfig[tip.categorie] ?? catConfig.weetje;
+                        return (
+                          <motion.div
+                            key={tip.id}
+                            layout
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="group flex items-start gap-3 p-3.5 rounded-xl bg-autronis-bg/40 border border-autronis-border/50 hover:border-autronis-accent/40 transition-all"
+                          >
+                            <button
+                              onClick={() => toggleTipMutation.mutate(
+                                { id: tip.id, toegepast: true },
+                                { onSuccess: () => addToast("Tip toegepast!", "succes") }
+                              )}
+                              className="flex-shrink-0 mt-0.5"
+                              title="Markeer als toegepast"
+                            >
+                              <Square className="w-5 h-5 text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors" />
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold text-autronis-text-primary">{tip.titel}</p>
+                                <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full", cat.bg, cat.color)}>
+                                  {cat.label}
+                                </span>
+                                {tip.isAiGegenereerd === 1 && (
+                                  <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/15 text-purple-400 rounded font-medium">AI</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-autronis-text-secondary mt-1">{tip.beschrijving}</p>
+                              {tip.voordeel && (
+                                <p className="text-xs font-semibold text-autronis-accent mt-1.5">💰 {tip.voordeel}</p>
+                              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                      {totaal > 3 && (
+                        <button
+                          onClick={() => setActiveTab("optimalisatie")}
+                          className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-autronis-text-secondary hover:text-autronis-accent transition-colors"
+                        >
+                          Bekijk alle {totaal} tips <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Jouw situatie nu */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Jouw situatie nu</h2>

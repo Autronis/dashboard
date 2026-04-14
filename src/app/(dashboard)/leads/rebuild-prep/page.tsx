@@ -19,6 +19,17 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { PrepLeadResult } from "@/lib/lead-rebuild-prep";
 
+interface LinkedinLeadRow {
+  id: string;
+  name: string | null;
+  website: string | null;
+  location: string | null;
+  search_term: string | null;
+  linkedin_url: string | null;
+  folder: string | null;
+  created_at: string;
+}
+
 interface GoogleMapsLeadRow {
   id: string;
   name: string | null;
@@ -31,13 +42,27 @@ interface GoogleMapsLeadRow {
   created_at: string;
 }
 
+// Unified shape for the prep page — we merge both sources into one list.
+interface UnifiedLead {
+  id: string;
+  source: "linkedin" | "google_maps";
+  name: string | null;
+  website: string | null;
+  location: string | null;
+  address: string | null;
+  categoryLabel: string | null; // category (gmaps) OR search_term (linkedin)
+  externalUrl: string | null;   // google_maps_url OR linkedin_url
+  folder: string | null;
+  created_at: string;
+}
+
 const BATCH_LIMIT = 20;
 
 type SiteFilter = "alle" | "met_site" | "zonder_site";
 
 export default function LeadsRebuildPrepPage() {
   const { addToast } = useToast();
-  const [leads, setLeads] = useState<GoogleMapsLeadRow[]>([]);
+  const [leads, setLeads] = useState<UnifiedLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
@@ -50,14 +75,54 @@ export default function LeadsRebuildPrepPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/leads/google-maps");
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.fout || `HTTP ${res.status}`);
+      const [linkedinRes, gmapsRes] = await Promise.all([
+        fetch("/api/leads"),
+        fetch("/api/leads/google-maps"),
+      ]);
+      if (!linkedinRes.ok) {
+        const body = await linkedinRes.json().catch(() => ({}));
+        throw new Error(body.fout || `LinkedIn leads HTTP ${linkedinRes.status}`);
       }
-      const data = await res.json();
-      const rows: GoogleMapsLeadRow[] = data.leads ?? [];
-      setLeads(rows);
+      if (!gmapsRes.ok) {
+        const body = await gmapsRes.json().catch(() => ({}));
+        throw new Error(body.fout || `Google Maps leads HTTP ${gmapsRes.status}`);
+      }
+      const linkedinData = await linkedinRes.json();
+      const gmapsData = await gmapsRes.json();
+
+      const linkedinLeads: UnifiedLead[] = (linkedinData.leads ?? []).map(
+        (l: LinkedinLeadRow): UnifiedLead => ({
+          id: l.id,
+          source: "linkedin",
+          name: l.name,
+          website: l.website,
+          location: l.location,
+          address: null,
+          categoryLabel: l.search_term,
+          externalUrl: l.linkedin_url,
+          folder: l.folder,
+          created_at: l.created_at,
+        })
+      );
+      const gmapsLeads: UnifiedLead[] = (gmapsData.leads ?? []).map(
+        (l: GoogleMapsLeadRow): UnifiedLead => ({
+          id: l.id,
+          source: "google_maps",
+          name: l.name,
+          website: l.website,
+          location: l.location,
+          address: l.address,
+          categoryLabel: l.category,
+          externalUrl: l.google_maps_url,
+          folder: l.folder,
+          created_at: l.created_at,
+        })
+      );
+
+      const merged = [...linkedinLeads, ...gmapsLeads].sort((a, b) =>
+        (b.created_at || "").localeCompare(a.created_at || "")
+      );
+      setLeads(merged);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
@@ -82,7 +147,7 @@ export default function LeadsRebuildPrepPage() {
     if (zoek.trim()) {
       const q = zoek.toLowerCase();
       list = list.filter((l) =>
-        [l.name, l.location, l.address, l.category, l.website]
+        [l.name, l.location, l.address, l.categoryLabel, l.website]
           .filter(Boolean)
           .some((v) => v!.toLowerCase().includes(q))
       );
@@ -335,22 +400,22 @@ export default function LeadsRebuildPrepPage() {
                             )}
                           </td>
                           <td className="py-2.5 px-4 text-autronis-text-muted">
-                            {lead.category || "—"}
+                            {lead.categoryLabel || "—"}
                           </td>
                           <td className="py-2.5 px-4 text-autronis-text-muted">
                             {lead.location || lead.address || "—"}
                           </td>
                           <td className="py-2.5 px-4">
-                            {lead.google_maps_url && (
+                            {lead.externalUrl && (
                               <a
-                                href={lead.google_maps_url}
+                                href={lead.externalUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
                                 className="inline-flex items-center gap-1 text-autronis-text-muted hover:text-autronis-accent text-xs"
                               >
                                 <MapPin className="w-3.5 h-3.5" />
-                                Maps
+                                {lead.source === "linkedin" ? "LinkedIn" : "Maps"}
                               </a>
                             )}
                           </td>

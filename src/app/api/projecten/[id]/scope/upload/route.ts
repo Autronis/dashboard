@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { db } from "@/lib/db";
 import { projecten } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 // POST /api/projecten/[id]/scope/upload
@@ -16,7 +16,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    await requireAuthOrApiKey(req);
 
     const { id } = await params;
     const projectId = parseInt(id, 10);

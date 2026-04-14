@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RedactText } from "@/components/leads/redact-text";
+import { usePoll } from "@/lib/use-poll";
 
 interface LinkedinLeadRow {
   id: string;
@@ -191,6 +192,9 @@ export default function LeadsOverzichtPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime-ish: refetch elke 12s zolang tab actief is
+  usePoll(load, 12000);
 
   const folders = useMemo(() => {
     const set = new Set<string>();

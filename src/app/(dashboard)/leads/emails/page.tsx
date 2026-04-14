@@ -471,7 +471,7 @@ export default function LeadsEmailsPage() {
           onClick={load}
           className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
         >
-          <Loader2 className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+          <Loader2 className={cn("w-3.5 h-3.5", loading && emails.length === 0 && "animate-spin")} />
           Vernieuwen
         </button>
       </div>

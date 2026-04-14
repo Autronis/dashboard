@@ -218,7 +218,8 @@ export default function LeadsDashboardPage() {
       .slice(0, 10);
   }, [emails]);
 
-  if (loading) {
+  // Alleen initial loading toont de spinner — daarna polled load() achtergrond
+  if (loading && leads.length === 0 && emails.length === 0) {
     return (
       <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
         <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -227,7 +228,7 @@ export default function LeadsDashboardPage() {
     );
   }
 
-  if (error) {
+  if (error && leads.length === 0) {
     return (
       <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5 text-sm text-red-400">
         <p className="font-medium">Kon statistieken niet laden</p>

@@ -1,145 +1,160 @@
-# Handoff — 2026-04-13
+# Handoff — 2026-04-14
 
-## Wat is er gedaan (deze sessie)
+## Wat is er gedaan deze sessie
 
-### Lead-integratie (lead-dashboard-v2 → /leads/* in hoofddashboard)
-Live op productie via merge `sem/lead-integratie`:
-- **`src/lib/supabase-leads.ts`** — aparte Supabase client voor `hurzsuwaccglzoblqkxd` project
-- **`src/types/supabase-leads.ts`** — 727 regels Database types
-- **Env vars in Vercel**: `SUPABASE_LEADS_URL` + `SUPABASE_LEADS_SERVICE_KEY`
-- **Pagina's** (10 totaal):
-  - `/leads` — overzicht met klikbare KPI stats, source filter (LinkedIn/GMaps), folder dropdown, bulk delete, checkbox selectie
-  - `/leads/contacts` — volledig herschreven (was minimale stub): source tabs, advanced filters (5x Ja/Nee), folder dropdown, search, checkbox + Select Top N, bulk Enrich/Generate/Export CSV (Hunter.io compatible)
-  - `/leads/emails` — sort toggle, checkbox selectie, bulk approve/reject/send, individuele Verzend nu, inline edit subject+body, Opnieuw genereren voor failed
-  - `/leads/enrichment` — kandidaten + 6 tabs + bulk enrich/clean
-  - `/leads/folders` — CRUD met cascade, klikbare folder names → detail
-  - `/leads/folders/[naam]` — folder detail met 5 tabs binnen folder + bulk acties
-  - `/leads/website-leads` — Google Maps search + bellijst met status flow
-  - `/leads/handmatig` — failed enrichments handmatig email/website toevoegen
-  - `/leads/automations` — scraper runs overzicht (NB: zoekformulieren ontbreken nog)
-  - `/leads/dashboard` — funnel statistieken (NB: Recent Activity feed ontbreekt)
-  - `/leads/instellingen` — webhook URL beheer
-- **API routes** (11 totaal):
-  - `GET/PATCH/DELETE /api/leads` (incl. bulk delete + bulk PATCH)
-  - `GET/PATCH/DELETE /api/leads/emails` (PATCH ondersteunt nu subject/body/recipient_email + bulk via `{ids,email_status}`)
-  - `POST /api/leads/emails/send` — n8n webhook proxy met optimistic 'sending' + rollback
-  - `GET/POST/PATCH/DELETE /api/leads/folders` met cascade
-  - `GET/PATCH /api/leads/website-leads`
-  - `POST /api/leads/website-leads/search`
-  - `POST /api/leads/edge-function/[name]` — proxy met whitelist van 14 functions
-  - `GET/DELETE /api/leads/scraper-runs`
-  - `GET/DELETE /api/leads/google-maps`
-  - `GET/PATCH /api/leads/outreach`
-  - `GET/PATCH /api/leads/settings`
-- **Sidebar**: Sales hub uitgebreid met 9 lead sub-items
-- **Namespace fix**: oude interne CRM leads verhuisd van `/api/leads/*` naar `/api/klant-leads/*` (callers in `use-leads.ts`, `email-composer.tsx`, `docs/route.ts` bijgewerkt)
-- **Lead count**: 863 leads (filter op `user_id = SYB_USER_ID` toegevoegd door Syb)
+Heel veel, in losse features:
 
-### GitHub auto-create
-Live op productie via merge `feat/github-autocreate`:
-- `src/lib/github.ts` — fetch-based GH helper
-- `src/app/api/projecten/route.ts` — POST roept `createProjectRepo()` aan na insert
-- `src/app/api/admin/migrate/github-url/route.ts` — idempotent ALTER TABLE
-- Schema: `github_url` kolom op `projecten`
-- Desktop agent `project_sync.rs` — clone ipv mkdir wanneer github_url aanwezig
-- **Vercel env vars gezet**: `GITHUB_TOKEN` + `GITHUB_ORG=Autronis`
-- **Migration gerund**: `github_url` kolom toegevoegd aan Turso (fixte ook 500 errors op projecten tabel)
-- **End-to-end getest**: nieuwe project via POST creëert auto repo onder `github.com/Autronis/<slug>`
+### Proposal Presentation Deck (feature af, in worktree — NOG NIET GEMERGED NAAR MAIN)
+Complete implementatie van een bold-agency dark premium proposal deck. 24 taken, alle uit plan gebouwd via subagent batching.
 
-### Windows setup voor Syb
-- `syb-windows-setup/` map met hooks/auto-sync-taken.py + .cmd, claude-sync.json.example, settings.json.snippet, CLAUDE.md.template, INSTALL-WINDOWS.md
-- `syb-windows-setup.zip` (11KB) ligt klaar in dashboard root
-- Discord bericht klaargezet (Sem moet 'm nog versturen + zip aanhangen)
+- **Worktree**: `.worktrees/proposals` op branch `feat/proposals`
+- **Spec**: `docs/superpowers/specs/2026-04-13-proposal-presentation-deck-design.md`
+- **Plan**: `docs/superpowers/plans/2026-04-13-proposal-presentation-deck.md`
+- **Wat het doet**: Herschreven `/proposals/nieuw` + `/proposals/[id]` + `/proposal/[token]` publieke view met scroll-deck + demo modus (fullscreen + arrow keys + fade transitions) + PDF via `@react-pdf/renderer` die identiek is aan web deck. Structured slides per type (cover, situatie, aanpak, deliverables, tijdlijn, investering, waarom, volgende stap) + hybride free markdown escape hatch. Vercel Blob voor afbeeldingen.
+- **Extra klein feature**: inline "Nieuwe klant"-knop in `/proposals/nieuw` zodat je een prospect kan toevoegen zonder eerst naar `/klanten` te gaan (commit `e2cb870` in worktree)
+- **Status**: 24 commits in worktree. Werkt lokaal (getest via `npm run dev -p 3789`). NIET gemerged naar main omdat auto-sync op main intussen doorging met andere features en main heeft sindsdien ook `proposals/*` routes verwijderd (cleanup door andere chat) — dus merge nu zou conflicten geven die handmatig opgelost moeten worden.
+- **Wat te doen**: Als Sem deze feature live wil, beslissen of we (a) de worktree rebased op main en conflicts oplossen, (b) alles vers in main reapply'en, of (c) 'm als proof-of-concept laten staan en de proposals code opnieuw bouwen wanneer nodig.
 
-### Agenda fixes (eerder deze sessie)
-- Backend snap logic vervangen door overlap-detectie in `/api/taken/[id]/route.ts`
-- handlePlanFase sequentieel ipv parallel
-- Side-by-side lane layout voor overlappende handmatige taken én calendar events in dag-view
-- 22 stale "afgerond + ingepland" taken opgeruimd via nieuwe `/api/agenda/cleanup-afgerond` endpoint
-- Agenda API filtert nu afgerond uit
-- Wiki PDF italic font fix (verwijderd ipv crash)
+### Agenda Notificatie Dedup (live op main)
+- Root cause: `/api/notifications/pending` werd door de Tauri desktop app in een loop gepolld, elke meeting binnen 30 min werd elke poll opnieuw als notificatie teruggegeven → Syb kreeg dezelfde afspraak-reminder 20-30× per meeting
+- Fix: nieuwe kolom `agenda_items.herinnering_verstuurd_op`, na eerste pickup wordt 'ie gezet, volgende polls skippen 'm. 4-uurs escape hatch voor edge cases.
+- Auto-migratie voor zowel Turso (libsql) als lokaal (better-sqlite3)
+- **Commits**: `8572225` (fix) + `767ca79` (merge)
 
-## Wat nog open staat — KRITISCH (anders is port functioneel onaf)
+### Recall.ai Meeting Bot — Volledig gefixed (live op main)
+Flow: user voegt meeting toe met meet link → bot joined automatisch. Was compleet stuk door zeven losse bugs:
 
-Volgens Syb's "Lead Dashboard Volledige Port Spec" zijn er nog drie features die hij in zijn localhost wel heeft maar in onze port niet:
+1. **`createRecallBot` slikte errors** — `catch {}` zonder error terug te geven. Meeting werd opgeslagen "alsof het werkte", status bleef op `null`, bot was er nooit geweest. Nu return endpoint `recallFout` veld + console.error naar Vercel logs + status `mislukt` bij faal.
+2. **`meetings.recall_fout` kolom toegevoegd** — error wordt persistent opgeslagen, UI toont 'm in de rode "Verwerking mislukt" kaart in een mono-block. (commit `718d1d7`)
+3. **`join_at` werd niet meegegeven** aan Recall API — bot probeerde meteen te joinen bij meeting create ipv op de meeting tijd zelf. Voor toekomstige meetings = timeout in lobby. Fix: pass `datum` als `join_at`, bot wordt ingepland.
+4. **Cron `*/15 * * * *` gaf Vercel Hobby plan error** (Hobby = daily only) — Vercel deploys faalden. Gereverted naar `0 6 * * *` (dagelijks 6u UTC). Cron is nu safety net, hoofdpad is `join_at` bij create.
+5. **`RECALL_API_KEY` stond in env var `RECALL_API_REGION`** (user error, de key hash stond onder het region veld) — URL werd `https://c8dca...recall.ai/api/v1` → ENOTFOUND. User heeft dit zelf gefixed in Vercel. ⚠️ **`c8dca563a16de007eebb3da1a425c3c21b1c72f9` staat nu in DB + chat — Sem moet de key roteren in recall.ai.**
+6. **`/api/meetings/recall-webhook` was niet in `PUBLIC_PATHS`** in `src/proxy.ts` → alle Recall callbacks werden naar /login geredirect → meeting bleef eeuwig "verwerken". Fix: toegevoegd aan PUBLIC_PATHS.
+7. **Tijdzone bug** — frontend stuurde `datum` als `YYYY-MM-DDTHH:MM` zonder tijdzone. Vercel runt in UTC, dus 14:52 werd 14:52 UTC = 16:52 Amsterdam → bot 2u te laat ingepland. Fix: frontend doet nu `new Date(datum).toISOString()` voor submit.
 
-### 1. Google Maps unified view in `/leads` index 🚨
-**Probleem**: het origineel (`Index.tsx`, 476 regels) unifieert BEIDE tabellen (`leads` LinkedIn + `google_maps_leads` Google Maps) tot één lijst van `UnifiedLead`. **Bij ons toont `/leads` nu alleen de `leads` tabel, dus de helft van de leads (Google Maps) is onzichtbaar op de hoofdpagina.**
+**Debug tip gebruikt**: Turso-query direct vanuit terminal (via `@libsql/client` in dashboard project cwd met .env.local) — sneller dan Vercel logs, zeer nuttig. Commits: `4fa5b51`, `efcb971`, `8715620`, `718d1d7`.
 
-**Hoe fixen**:
-- API: nieuwe `GET /api/leads/google-maps` route bestaat al — alleen ophalen
-- Frontend: `/leads/page.tsx` moet beide ophalen en mergen naar één `UnifiedLead` type
-- `UnifiedLead` interface uit lead-dashboard-v2 `Index.tsx` regels 23-42 kopiëren
-- Mapping helpers: `unifyLinkedinLead()` en `unifyGmapsLead()` (zie regels 56-89 van origineel)
-- Source filter werkt al, alleen de data-bron moet breder
+### Meeting Samenvatting Prompt (live)
+Oude prompt vroeg "bullet points als string" → GPT-4o-mini leverde `.,` comma-joined troep. Nieuwe prompt heeft expliciete formatting rules: markdown bullets met `-` prefix, echte newlines, correcte Nederlandse interpunctie, voorbeelden erbij. Commit `494892b`.
 
-### 2. `/leads/automations` zoekformulieren 🚨
-**Probleem**: Mijn versie heeft alleen blinde "trigger LinkedIn" / "trigger Google Maps" knoppen zonder velden. **Zonder forms kan je geen meaningful scrape starten.**
+### YT Knowledge Pipeline Fix (live)
+`youtube-transcript` npm package v1.3.0 is **gebroken** — `"type": "module"` + `"main": "dist/youtube-transcript.common.js"` (CJS) conflict → Node vond geen exports → elke video kreeg instant `failed`.
 
-**Hoe fixen** (zie origineel `Automations.tsx` regels 1-229):
-- LinkedIn form velden: `folder` (FolderSelect), `query`, `location`, `max_items`, `start_page`, `company_size` (1-10/11-50/51-200/201-500/501-1000/1000+)
-- Google Maps form velden: `folder`, `query`, `location`, `max_items`
-- Beide POSTen naar bestaande `/api/leads/edge-function/trigger-scraper` resp. `/trigger-google-maps-scraper` met de form data als `body`
-- Folder dropdown: gebruikt bestaande `/api/leads/folders` GET
-- Run history (laatste 20 runs) bestaat al in mijn versie
+Vervangen met inline Innertube fetcher + ytInitialPlayerResponse HTML parser. Geen nieuwe dependency. Commit `db2c75e`.
 
-### 3. `/leads/emails` recipient_email inline edit
-**Probleem**: PATCH route accepteert `recipient_email` al, maar UI knop ontbreekt om 'm te wijzigen.
+### Site Rebuild Tool (live)
+Groot nieuw feature. Dashboard pagina `/site-rebuild` die:
+- URL (Firecrawl scrape) OF logo upload
+- Brand naam + accent (optioneel, leeg = Claude kiest passend bij bron)
+- Drie knoppen:
+  - **Genereer direct** — one-shot Claude API call → `html` voor iframe preview + `jsxBody` voor Next.js scaffold → downloadable ZIP met compleet Next.js 15 + Tailwind project
+  - **Bouw Claude prompt** — zelfde context maar geeft een paste-ready prompt voor claude.ai (extended thinking + artifacts + iteratie)
+  - **Alleen scrape** — raw Firecrawl markdown, copy button (vervangt de oude `/scrape` pagina die is verwijderd)
 
-**Hoe fixen**:
-- In `/leads/emails/page.tsx` rond regel 580 (waar `→ {email.recipient_email}` getoond wordt)
-- Klik op het email adres → input verschijnt → save → PATCH met `{ id, recipient_email: nieuwe waarde }`
+Files:
+- `src/lib/firecrawl.ts` — shared `scrapeUrl()` + `searchWeb()` (Firecrawl /v1/search)
+- `src/lib/site-rebuild-scaffold.ts` — Next.js 15 + Tailwind scaffold builder (package.json, tsconfig, tailwind config, layout.tsx, page.tsx met geïnjecteerde JSX, globals.css, README, .gitignore)
+- `src/app/api/site-rebuild/generate/route.ts` — Claude call met system prompt die JSON `{html, jsxBody}` terugeist
+- `src/app/api/site-rebuild/download/route.ts` — gebruikt `archiver` (al in deps) om ZIP te builden
+- `src/app/api/site-rebuild/prompt/route.ts` — assembleert paste-ready prompt zonder Claude call
+- `src/app/api/scrape/route.ts` — generic endpoint (niet meer vanuit UI gebruikt, nog wel intern)
+- `src/app/(dashboard)/site-rebuild/page.tsx` — 2-col form + iframe preview
+- Sidebar: "Site Rebuild" onder Content
 
-## Wat nog open staat — LAGE PRIO (nice-to-haves)
+Commits: `31828a56`, `4fa5b51`, `1f42893e`, `076a9a88`.
 
-4. **OutreachSection component** onderaan `/leads/emails` — los blok dat outreach pipeline status toont
-5. **`/leads/dashboard` Recent Activity feed** — laatste 10 events (replies, sends, failures)
-6. **Bedrijfsanalyse collapsible** in `/leads/emails` — `company_summary` veld uitklapbaar
-7. **Painpoint badge** in email header (zit nu in meta footer)
-8. **Stuck email recovery** — automatic 10s check op 'sending' status reset (edge case)
-9. **Demo mode toggle** in `/leads/instellingen` — `useDemo` voor screenshots
+### Team Vergelijking Profielfoto's (live)
+Ronde foto's van Sem + Syb boven hun kolommen in de home-page widget. Commit `624aa419`. Gebruikt `/foto-sem.jpg` + `/foto-syb.jpg` uit `public/`.
 
-## Belangrijke beslissingen
+### Lead Rebuild Prep — ⚠️ IN PROGRESS, NOG NIET AF ⚠️
+Dit is waar we waren toen we besloten tot handoff. Deze feature moet de volgende sessie afmaken.
 
-- **Aparte Supabase client**: `SUPABASE_URL` in env wijst naar het Storage project (`uhdkxstedvytowbaiers`), niet naar het leads project (`hurzsuwaccglzoblqkxd`). Daarom nieuwe env vars `SUPABASE_LEADS_URL` + `SUPABASE_LEADS_SERVICE_KEY` voor de leads client. Nooit `NEXT_PUBLIC_` prefix — alle calls server-side via API routes.
-- **`SYB_USER_ID` hardcoded** in `src/lib/supabase-leads.ts` als `9497e39a-734f-4ce4-81db-230d590064ea`. Wordt gebruikt voor folder inserts en scraper run filters. Vervang later met mapping vanuit iron-session als multi-user lead systeem nodig wordt.
-- **Pagination**: Supabase default cap is 1000 rijen — overal pagination loop met `range(from, to)` tot batch leeg, max 50 pagina's safety.
-- **Hybrid auth** op alle `/api/leads/*` routes (session OR Bearer) zodat scripts en desktop agent het ook kunnen aanroepen.
-- **Email send flow**: optimistic `'sending'` status zodra request binnenkomt, rollback naar `'approved'` als webhook faalt, n8n update later naar `'sent'`/`'replied'`.
-- **Edge function proxy** met whitelist (14 functions) ipv open passthrough — voorkomt willekeurige function calls.
-- **CSV export**: eigen implementatie zonder externe dep (`exportLeadsAsCSV` in `/leads/contacts/page.tsx` en `/leads/folders/[naam]/page.tsx`). Hunter.io kolommen: first_name/last_name/email/company/website/phone/location/linkedin_url/source/folder.
-- **Namespace collision**: bestaande interne CRM `/api/leads/*` (Nederlands schema) verplaatst naar `/api/klant-leads/*` om de namespace vrij te maken voor de leadgen integratie. Geen page gebruikt de oude hook nu, dus geen breakage.
-- **GitHub PAT**: gebruikt classic PAT met `repo` scope. Heeft GEEN `delete_repo` scope, dus test repo's moeten handmatig via UI weggehaald worden. PAT staat nog in chat history van vorige sessie — **moet geroteerd worden** via github.com/settings/tokens.
+**Wat het moet doen**: Een batch-tool op `/leads/rebuild-prep` die voor elke lead zonder website (uit de Supabase leads tabel, Google Maps source):
+1. **SERP-check** — Firecrawl `/v1/search` op "bedrijfsnaam + locatie" om te verifiëren of ze ECHT geen site hebben (Google Maps mist vaak de website-field)
+2. **Sector fit** — classificeer op basis van `category` veld: fysiek product → scroll-stop geschikt, dienst → statische upgrade, onbekend → handmatig
+3. **Claude prompt builder** — assembleer een paste-ready prompt voor claude.ai met alle lead-context, klaar voor site generation
+
+**Wat er al klaar staat op main**:
+- ✅ `src/lib/firecrawl.ts` → `searchWeb(query, limit)` toegevoegd
+- ✅ `src/lib/lead-rebuild-fit.ts` → `classifyFit(category, name)` keyword-based classifier met Dutch Google Maps categorieën (product/service keyword lists, returnt `{verdict, label, reason}`)
+
+**Wat nog moet**:
+1. Extend `/api/site-rebuild/prompt/route.ts` met `mode: "brief"` (zonder scrape, alleen brand + notes) — OF inline de prompt-assembly in de shared helper (mijn voorkeur: inline in helper om nested HTTP calls te vermijden)
+2. Nieuwe shared helper `src/lib/lead-rebuild-prep.ts` met `async function prepLead(lead): Promise<{lead, serp, fit, prompt}>` die alles orkestreert
+3. Nieuwe endpoint `POST /api/leads/prep-rebuild/route.ts` — body `{ leadIds: string[] }`, returnt array van prep resultaten. Parallel-limit 3 à 5 om Firecrawl niet te overbelasten.
+4. Nieuwe page `src/app/(dashboard)/leads/rebuild-prep/page.tsx`:
+   - Query `/api/leads` (Supabase leads)
+   - Filter client-side op `!lead.website`
+   - Lijst met checkboxes + "Prep geselecteerde" knop (hard limit 20 per batch)
+   - Resultaten tabel: lead naam + SERP verdict (found URL of "bevestigd geen site") + fit badge (scroll-stop / static / unknown) + Copy prompt knop per rij
+5. Sidebar entry onder Leads (of header-knop op `/leads`)
+
+**Belangrijk context voor volgende chat**:
+- Leads leven in externe Supabase (zie `src/lib/supabase-leads.ts`), niet in lokale Turso. Dus ophalen via `getSupabaseLeads().from("leads").select("*").eq("user_id", SYB_USER_ID)`.
+- Lead schema: `id, name, website, phone, emails, location, address, category, google_maps_url, rating, reviews_count, created_at` — relevante velden voor prep zijn `name, website, location, category, address`.
+- Firecrawl search is paid per query — vandaar de batch limit + hard cap.
+- Sem wil BATCH, niet per-lead. Hij wil "prep alle 50 leads in één klik, krijg 50 prompts terug".
+- De per-lead flow kan later als progressive enhancement.
+
+## Belangrijke beslissingen deze sessie
+
+- **Worktrees zijn opgegeven als coordinatie-mechanisme.** Dev server draait nu direct in main repo op `localhost:3000`. User had last van hot reload die de "oude" code uit een cluster-worktree bleef tonen. We hebben main into feat/clusters gemerged om te voorkomen dat 't weer gebeurt. Fuck die worktrees, zoals de user het noemde.
+- **Vercel Hobby plan = daily crons max.** `*/15` breekt de build. Voor meetings is de main fix `join_at` bij create, dus cron is een safety net en daily is acceptabel.
+- **Accent kleur in site-rebuild is optioneel.** Firecrawl geeft alleen markdown (geen CSS), dus als user 'm leeg laat kiest Claude een passende kleur op basis van industry.
+- **`/scrape` standalone page verwijderd**, `/site-rebuild` doet nu alle drie: scrape + prompt + generate.
+- **Localhost dev server config**: `NODE_OPTIONS='--max-old-space-size=4096' npx next dev -p 3000` vanuit main dashboard cwd. Eén keer gecrasht met exit 144 bij 2GB heap → 4GB werkt stabiel.
 
 ## Huidige staat
 
 - **Branch**: `main`
-- **Laatste commit**: `cac39ac feat(leads): folder detail + bulk delete + remaining API routes`
-- **Uncommitted changes**: `M src/components/layout/sidebar.tsx` (door user/linter aangepast — niet door Claude — laat staan, niet reverten)
-- **Openstaande issues**:
-  - 2 test projecten (id 33, 34) staan in dashboard — handmatig opruimen via `/projecten` UI
-  - 1 test repo `github.com/Autronis/gh-test-1776097309-33449` — handmatig deleten in GitHub UI
-  - GitHub PAT moet geroteerd worden (classic PAT zonder `delete_repo` scope)
-  - `syb-windows-setup.zip` ligt klaar maar nog niet naar Syb gestuurd
-  - Stale `.next/dev/types/validator.ts` errors in tsc — niet door mij, pre-existing
+- **Laatste commit op origin/main**: `38508bf3` (Auto-sync)
+- **Laatste eigen commit van deze sessie**: `076a9a88` (site-rebuild scrape merge + optional accent)
+- **Uncommitted op main**: `M src/app/(dashboard)/taken/page.tsx` + `?? src/components/taken/slimme-taken-modal.tsx` — niet van deze sessie, andere chat bezig met taken. **Niet committen**.
+- **Dev server**: `localhost:3000` zou moeten draaien vanuit main repo (PID checken met `lsof -iTCP:3000`). Pad: `/Users/semmiegijs/Autronis/Projects/autronis-dashboard`.
+- **Worktrees in `.worktrees/`**: proposals (feat/proposals, 24 commits onaangeraakt), meldingen-dedup, meeting-bot-fix, meeting-error-visible, recall-error-cause, clusters (gemerged), en een paar andere. Kunnen blijven staan of worden opgeruimd afhankelijk van of we proposals nog willen.
 
-## Volgende stappen
+## Openstaande issues / waarschuwingen
 
-1. **Read this HANDOFF.md** + run `git status` + `git log --oneline -3` om huidige staat te verifiëren
-2. **Begin met de drie kritische items**:
-   - **Eerst**: Google Maps unified view in `/leads` index — biggest user-facing gap
-   - **Daarna**: `/leads/automations` zoekformulieren — anders kan Sem geen scrapes starten
-   - **Daarna**: recipient_email inline edit op `/leads/emails`
-3. **Daarna eventueel**: lage prio nice-to-haves (OutreachSection, Recent Activity feed, etc.)
-4. **Verifieer telkens** met `npx tsc --noEmit` en commit per logische unit
-5. **Auto-sync hook** synct commits naar dashboard automatisch — geen handmatige sync nodig
+- **⚠️ RECALL_API_KEY gelekt**: `c8dca563a16de007eebb3da1a425c3c21b1c72f9` staat in Turso DB (meetings.recall_fout), in deze chat, en in logs. **Sem moet deze key ROTEREN in recall.ai → Developers → API Keys.** Ik heb het hem meerdere keren laten weten maar 't is nog niet gedaan.
+- **Proposals feature in worktree niet gemerged**: 24 commits, werkende code, niet op main. Zie sectie hierboven over drie opties.
+- **Auto-sync hook commit elke paar minuten**: verwarrend voor debugging, maar niet kapot. Je ziet commits in git log van andere files die je niet hebt aangeraakt — dat is Sem's andere werk via de hook.
 
-## Context
+## Volgende stappen (voor `/pickup`)
 
-- **Spec bron**: `lead-dashboard-v2` Lovable repo (https://github.com/Autronis/lead-dashboard-v2). Alle origineel pagina's te fetchen via `gh api repos/Autronis/lead-dashboard-v2/contents/src/pages/<file>.tsx --jq .content | base64 -d`
-- **Architectuur regel**: elke `supabase.from('...').select(...)` in origineel wordt `fetch('/api/leads/...')` in port. Elke `supabase.functions.invoke('...')` wordt `POST /api/leads/edge-function/[name]`.
-- **Auto-sync hook**: commit-hook synct automatisch taken naar dashboard. Edits worden vanzelf gecommit door de PostToolUse hook.
-- **Vercel deploys**: ~2 min na elke `git push origin main`. Beide leads + dashboard env vars staan al in production.
-- **Sem's setup**: Mac, dev server draait al op `localhost:3000`. Dashboard URL: `dashboard.autronis.nl`.
-- **Syb's situatie**: Windows (laptop + PC). Nog niet de syb-windows-setup geïnstalleerd. Service key voor lead-dashboard-v2 Supabase staat al in Vercel.
-- **Auto-commit hook** kan je commits stelen — controleer altijd `git log` voor je een commit doet om dubbele commits te voorkomen. Als de hook je commit al heeft gedaan, krijg je "nothing to commit" wat OK is.
+1. **Pickup handoff**: lees dit document, check `git log --oneline -20` om de laatste commits te zien
+2. **Check dev server**: `lsof -iTCP:3000 -sTCP:LISTEN -P -n` — als dood, herstart vanuit dashboard dir: `cd /Users/semmiegijs/Autronis/Projects/autronis-dashboard && NODE_OPTIONS='--max-old-space-size=4096' npx next dev -p 3000` in een background bash
+3. **Bouw lead rebuild prep batch feature af**:
+   - `src/lib/lead-rebuild-prep.ts` — shared helper
+   - `src/app/api/leads/prep-rebuild/route.ts` — POST endpoint met parallel limit
+   - `src/app/(dashboard)/leads/rebuild-prep/page.tsx` — batch UI
+   - Sidebar entry
+4. **Commit + push** per logische stap zodat Sem op localhost:3000 live kan meekijken
+5. **Testen**: pick a handful of leads without website from Sem's Supabase, run prep, verify prompts komen door, Copy button werkt, claude.ai open link werkt
+6. **Vraag Sem of proposals feature nog moet worden afgemaakt** — als ja: plan de merge of rebuild strategie
+
+## Dingen die je NIET moet doen
+
+- Proposals feature worktree aanraken zonder Sem's toestemming (24 commits werk, kan conflicten)
+- Taken page / slimme-taken-modal aanraken — dat is lopend werk van een andere chat via auto-sync
+- Iets pushen in `.worktrees/clusters` — is al gemerged in main, verder werk erin is verloren
+- De dev server op localhost:3000 killen zonder te herstarten — Sem test er live op
+- Destructive git (reset --hard, branch -D) zonder toestemming
+
+## Belangrijke referenties
+
+- **Live URL**: `https://dashboard.autronis.nl`
+- **Local dev**: `http://localhost:3000`
+- **Dashboard CLAUDE.md**: `/Users/semmiegijs/Autronis/Projects/autronis-dashboard/CLAUDE.md` (Vercel deploy rules, auto-sync hook, team sync API, taken sync flow)
+- **Autronis CLAUDE.md (parent)**: `/Users/semmiegijs/Autronis/CLAUDE.md` (worktree regel, context management, STT dictionary auto-learn, strategische discipline)
+- **Turso direct query pattern** (handig voor debugging):
+  ```bash
+  cd /Users/semmiegijs/Autronis/Projects/autronis-dashboard && node -e "
+  const { createClient } = require('@libsql/client');
+  require('dotenv').config({ path: '.env.local' });
+  const c = createClient({ url: process.env.TURSO_DATABASE_URL, authToken: process.env.TURSO_AUTH_TOKEN });
+  (async () => { const r = await c.execute('SELECT ... FROM ...'); console.log(JSON.stringify(r.rows, null, 2)); })();
+  "
+  ```
+- **Vercel CLI**: `vercel ls` (deploys), `vercel inspect <url> --logs` (build logs — streaming logs werken niet goed via CLI)
+
+Veel plezier. Pick up at `/pickup` en doe de lead-rebuild-prep feature af.

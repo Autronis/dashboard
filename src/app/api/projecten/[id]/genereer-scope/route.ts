@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
@@ -7,9 +9,11 @@ import { projecten } from "@/lib/db/schema";
 import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
-// Force Node.js runtime (not Edge) — we spawn a child process.
+// Force Node.js runtime (not Edge) — we execute a child process.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const execFileAsync = promisify(execFile);
 
 // POST /api/projecten/[id]/genereer-scope
 // Body: the scope JSON produced by the scope-generator skill (6-fase wizard
@@ -69,39 +73,32 @@ export async function POST(
     const jsonPath = path.join(tmpDir, "scope.json");
     await fs.writeFile(jsonPath, JSON.stringify(scopeData, null, 2), "utf-8");
 
-    // Spawn the skill — it will generate the PDF and upload to /scope/upload.
-    // child_process is loaded dynamically to keep Turbopack from attempting
-    // to bundle/resolve it at build time.
-    const { spawn } = await import("child_process");
-    const output = await new Promise<{ stdout: string; stderr: string; code: number }>(
-      (resolve, reject) => {
-        const child = spawn("node", [skillPath, jsonPath, String(projectId)], {
-          cwd: path.dirname(skillPath),
-          env: process.env,
-        });
-
-        let stdout = "";
-        let stderr = "";
-        child.stdout.on("data", (chunk) => (stdout += chunk.toString()));
-        child.stderr.on("data", (chunk) => (stderr += chunk.toString()));
-        child.on("error", reject);
-        child.on("close", (code) => resolve({ stdout, stderr, code: code ?? 1 }));
-      }
-    );
-
-    // Cleanup tempfile
-    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-
-    if (output.code !== 0) {
+    // Run the skill — it generates the PDF and uploads it via /scope/upload.
+    // Using execFile (with a static import) works around a Turbopack quirk
+    // where `spawn("node", [...])` is mis-identified as a dynamic module
+    // resolve call at build time.
+    let output: { stdout: string; stderr: string };
+    try {
+      output = await execFileAsync("node", [skillPath, jsonPath, String(projectId)], {
+        cwd: path.dirname(skillPath),
+        maxBuffer: 10 * 1024 * 1024, // 10MB — scope JSON responses can be large
+      });
+    } catch (err) {
+      // Cleanup tempfile before bubbling up
+      await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+      const execErr = err as { stdout?: string; stderr?: string; code?: number };
       return NextResponse.json(
         {
-          fout: `Scope generatie mislukt (exit ${output.code})`,
-          stderr: output.stderr,
-          stdout: output.stdout,
+          fout: `Scope generatie mislukt (exit ${execErr.code ?? 1})`,
+          stderr: execErr.stderr ?? "",
+          stdout: execErr.stdout ?? "",
         },
         { status: 500 }
       );
     }
+
+    // Cleanup tempfile
+    await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
 
     // The skill prints a JSON line when upload succeeded
     let skillResult: { localPath?: string; url?: string; projectId?: number } = {};

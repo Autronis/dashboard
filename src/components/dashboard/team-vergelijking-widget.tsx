@@ -56,10 +56,34 @@ export function TeamVergelijkingWidget() {
       </div>
 
       <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-2 text-center pb-2 border-b border-autronis-border">
-          <span className="text-xs font-semibold text-autronis-text-primary truncate">{a.naam.split(" ")[0]}</span>
-          <span className="text-[10px] text-autronis-text-secondary self-center">vs</span>
-          <span className="text-xs font-semibold text-autronis-text-primary truncate">{b.naam.split(" ")[0]}</span>
+        <div className="grid grid-cols-3 gap-2 items-center pb-3 border-b border-autronis-border">
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-autronis-accent/40 bg-autronis-bg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/foto-${a.naam.split(" ")[0].toLowerCase()}.jpg`}
+                alt={a.naam}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="text-xs font-semibold text-autronis-text-primary truncate max-w-full">
+              {a.naam.split(" ")[0]}
+            </span>
+          </div>
+          <span className="text-[10px] text-autronis-text-secondary text-center">vs</span>
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-purple-400/40 bg-autronis-bg">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/foto-${b.naam.split(" ")[0].toLowerCase()}.jpg`}
+                alt={b.naam}
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <span className="text-xs font-semibold text-autronis-text-primary truncate max-w-full">
+              {b.naam.split(" ")[0]}
+            </span>
+          </div>
         </div>
 
         {metrics.map((m) => {

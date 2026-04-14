@@ -321,62 +321,70 @@ export default function LeadsOverzichtPage() {
   ].filter(Boolean).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <Target className="w-6 h-6 text-autronis-accent" />
-            Leads
+          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
+            <Target className="w-7 h-7 text-autronis-accent" />
+            Alle Leads
           </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Alle outreach leads uit de Autronis lead-generation pipeline.
+          <p className="text-sm text-autronis-text-secondary mt-1.5">
+            Overzicht van al je leads uit verschillende bronnen
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/leads/enrichment"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
           >
             <Zap className="w-3.5 h-3.5" /> Enrichment
           </Link>
           <Link
             href="/leads/emails"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
           >
             <Mail className="w-3.5 h-3.5" /> Emails
           </Link>
         </div>
       </div>
 
-      {/* Klikbare stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* Klikbare stats — Lovable look met grote tiles */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <ClickableStat
           label="Totaal leads"
           waarde={stats.total}
           icon={Users}
+          accent="cyan"
           active={statToggle === "all"}
           onClick={() => setStatToggle("all")}
+          sub={`${stats.total} leads`}
         />
         <ClickableStat
           label="Met email"
           waarde={stats.metEmail}
           icon={Mail}
+          accent="blue"
           active={statToggle === "with_email"}
           onClick={() => setStatToggle(statToggle === "with_email" ? "all" : "with_email")}
-        />
-        <ClickableStat
-          label="Met telefoon"
-          waarde={stats.metTel}
-          icon={Phone}
-          active={statToggle === "with_phone"}
-          onClick={() => setStatToggle(statToggle === "with_phone" ? "all" : "with_phone")}
+          sub={`${stats.metEmail} met email`}
         />
         <ClickableStat
           label="Met website"
           waarde={stats.metWebsite}
           icon={Globe}
+          accent="green"
           active={statToggle === "with_website"}
           onClick={() => setStatToggle(statToggle === "with_website" ? "all" : "with_website")}
+          sub={`${stats.metWebsite} met website`}
+        />
+        <ClickableStat
+          label="Met telefoon"
+          waarde={stats.metTel}
+          icon={Phone}
+          accent="purple"
+          active={statToggle === "with_phone"}
+          onClick={() => setStatToggle(statToggle === "with_phone" ? "all" : "with_phone")}
+          sub={`${stats.metTel} met telefoon`}
         />
       </div>
 
@@ -500,11 +508,17 @@ export default function LeadsOverzichtPage() {
       )}
 
       {!loading && !error && gefilterd.length > 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card overflow-hidden">
+        <div className="rounded-2xl border border-autronis-border bg-autronis-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-autronis-border flex items-center justify-between">
+            <h2 className="text-base font-semibold text-autronis-text-primary">Leads</h2>
+            <span className="text-xs text-autronis-text-secondary tabular-nums">
+              {gefilterd.length} resultaten
+            </span>
+          </div>
           <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
+            <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
               <tr>
-                <th className="w-10 px-3 py-2.5">
+                <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
                     checked={selectedIds.size === gefilterd.slice(0, 200).length && gefilterd.length > 0}
@@ -512,11 +526,12 @@ export default function LeadsOverzichtPage() {
                     className="rounded border-autronis-border accent-autronis-accent"
                   />
                 </th>
-                <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Locatie</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Folder</th>
-                <th className="text-left px-3 py-2.5 font-medium">Contact</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Status</th>
+                <th className="text-left px-4 py-3 font-semibold">Bron</th>
+                <th className="text-left px-4 py-3 font-semibold">Naam</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Locatie</th>
+                <th className="text-left px-4 py-3 font-semibold">Contact</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Folder</th>
+                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
@@ -532,7 +547,7 @@ export default function LeadsOverzichtPage() {
                       selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
                     )}
                   >
-                    <td className="px-3 py-2.5">
+                    <td className="px-4 py-4">
                       <input
                         type="checkbox"
                         checked={selected}
@@ -541,29 +556,35 @@ export default function LeadsOverzichtPage() {
                         className="rounded border-autronis-border accent-autronis-accent"
                       />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full",
+                          lead.source === "google_maps"
+                            ? "bg-autronis-accent/15 text-autronis-accent"
+                            : "bg-purple-500/15 text-purple-300"
+                        )}
+                      >
+                        {lead.source === "google_maps" ? (
+                          <MapPin className="w-3 h-3" />
+                        ) : (
+                          <Linkedin className="w-3 h-3" />
+                        )}
+                        {lead.source === "google_maps" ? "Locatie" : "Bedrijf"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4">
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-autronis-text-primary truncate">
+                        <span className="font-semibold text-sm text-autronis-text-primary truncate">
                           <RedactText>{lead.name || "(geen naam)"}</RedactText>
                         </span>
-                        {lead.source === "google_maps" ? (
-                          <MapPin
-                            className="w-3 h-3 text-autronis-accent flex-shrink-0"
-                            aria-label="Google Maps"
-                          />
-                        ) : (
-                          <Linkedin
-                            className="w-3 h-3 text-purple-300 flex-shrink-0"
-                            aria-label="LinkedIn"
-                          />
-                        )}
                         {lead.website && (
                           <a
                             href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-autronis-text-secondary hover:text-autronis-accent flex-shrink-0"
+                            className="text-autronis-text-secondary/60 hover:text-autronis-accent flex-shrink-0"
                             title={lead.website}
                           >
                             <ExternalLink className="w-3 h-3" />
@@ -576,38 +597,49 @@ export default function LeadsOverzichtPage() {
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-autronis-text-secondary hidden md:table-cell">
+                    <td className="px-4 py-4 text-autronis-text-secondary hidden md:table-cell">
                       {lead.location && (
-                        <span className="inline-flex items-center gap-1 text-xs">
-                          <MapPin className="w-3 h-3" />
-                          {(lead.location || "").split(",")[0]}
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <MapPin className="w-3 h-3 text-autronis-text-secondary/50" />
+                          <RedactText>{(lead.location || "").split(",")[0]}</RedactText>
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      {lead.folder && (
-                        <Link
-                          href={`/leads/folders/${encodeURIComponent(lead.folder)}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
-                        >
-                          {lead.folder}
-                        </Link>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 text-xs text-autronis-text-secondary">
-                        {emails.length > 0 && (
-                          <span className="inline-flex items-center gap-1" title={emails.join(", ")}>
-                            <Mail className="w-3 h-3" /> {emails.length}
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-3 text-xs text-autronis-text-secondary">
+                        {emails.length > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1.5 text-autronis-text-primary"
+                            title={emails.join(", ")}
+                          >
+                            <Mail className="w-3 h-3 text-blue-400" />
+                            <RedactText>{emails[0]}</RedactText>
+                            {emails.length > 1 && (
+                              <span className="text-[10px] text-autronis-text-secondary/60">
+                                +{emails.length - 1}
+                              </span>
+                            )}
                           </span>
+                        ) : (
+                          <span className="text-autronis-text-secondary/40">—</span>
                         )}
                         {lead.phone && (
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex items-center gap-1 text-autronis-text-secondary/70">
                             <Phone className="w-3 h-3" />
                           </span>
                         )}
                       </div>
+                    </td>
+                    <td className="px-4 py-4 hidden md:table-cell">
+                      {lead.folder && (
+                        <Link
+                          href={`/leads/folders/${encodeURIComponent(lead.folder)}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
+                        >
+                          {lead.folder}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       {lead.outreach_status && (
@@ -639,41 +671,81 @@ export default function LeadsOverzichtPage() {
   );
 }
 
+type StatAccent = "cyan" | "blue" | "green" | "purple";
+
+const STAT_ACCENT: Record<
+  StatAccent,
+  { iconBg: string; iconColor: string; valueColor: string; activeBorder: string }
+> = {
+  cyan: {
+    iconBg: "bg-autronis-accent/15",
+    iconColor: "text-autronis-accent",
+    valueColor: "text-autronis-accent",
+    activeBorder: "border-autronis-accent/60",
+  },
+  blue: {
+    iconBg: "bg-blue-500/15",
+    iconColor: "text-blue-400",
+    valueColor: "text-blue-400",
+    activeBorder: "border-blue-500/60",
+  },
+  green: {
+    iconBg: "bg-emerald-500/15",
+    iconColor: "text-emerald-400",
+    valueColor: "text-emerald-400",
+    activeBorder: "border-emerald-500/60",
+  },
+  purple: {
+    iconBg: "bg-purple-500/15",
+    iconColor: "text-purple-400",
+    valueColor: "text-purple-400",
+    activeBorder: "border-purple-500/60",
+  },
+};
+
 function ClickableStat({
   label,
   waarde,
   icon: Icon,
+  accent,
+  sub,
   active,
   onClick,
 }: {
   label: string;
   waarde: number;
   icon: typeof Users;
+  accent: StatAccent;
+  sub?: string;
   active: boolean;
   onClick: () => void;
 }) {
+  const cfg = STAT_ACCENT[accent];
   return (
     <button
       onClick={onClick}
       className={cn(
-        "rounded-xl border p-4 text-left transition-colors",
-        active
-          ? "border-autronis-accent/60 bg-autronis-accent/5"
-          : "border-autronis-border bg-autronis-card hover:border-autronis-accent/30"
+        "rounded-2xl border bg-autronis-card p-6 text-left transition-all hover:border-autronis-accent/30",
+        active ? cfg.activeBorder : "border-autronis-border"
       )}
     >
       <div
         className={cn(
-          "flex items-center gap-2 text-xs mb-1.5",
-          active ? "text-autronis-accent" : "text-autronis-text-secondary"
+          "h-10 w-10 rounded-xl flex items-center justify-center mb-4",
+          cfg.iconBg
         )}
       >
-        <Icon className="w-3.5 h-3.5" />
-        {label}
+        <Icon className={cn("w-5 h-5", cfg.iconColor)} />
       </div>
-      <div className="text-2xl font-bold text-autronis-text-primary tabular-nums">
+      <div className={cn("text-4xl font-bold tabular-nums leading-none", cfg.valueColor)}>
         {waarde.toLocaleString("nl-NL")}
       </div>
+      <div className="text-xs uppercase tracking-wider text-autronis-text-secondary mt-2.5 font-medium">
+        {label}
+      </div>
+      {sub && (
+        <div className="text-[11px] text-autronis-text-secondary/60 mt-1">{sub}</div>
+      )}
     </button>
   );
 }

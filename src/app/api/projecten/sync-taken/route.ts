@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
       nieuwe_taken?: Array<string | {
         titel: string;
         fase?: string;
+        cluster?: string;       // Groepering van samenhangende taken (bv. backend-infra)
         prioriteit?: "laag" | "normaal" | "hoog";
         omschrijving?: string; // Stappen / context / acceptatiecriteria
         geschatteDuur?: number; // Minuten
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
         titel: string;
         status: string;
         fase?: string;
+        cluster?: string;
         volgorde?: number;
         prioriteit?: "laag" | "normaal" | "hoog";
         omschrijving?: string;
@@ -224,6 +226,7 @@ export async function POST(req: NextRequest) {
           if (t.geschatteDuur) updates.geschatteDuur = t.geschatteDuur;
           if (t.prompt) updates.prompt = t.prompt;
           if (t.prioriteit) updates.prioriteit = t.prioriteit;
+          if (t.cluster !== undefined) updates.cluster = t.cluster?.trim() || null;
           await db.update(taken).set(updates).where(eq(taken.id, ex.id));
         } else {
           // Insert new task
@@ -235,6 +238,7 @@ export async function POST(req: NextRequest) {
             status: finalStatus,
             prioriteit: t.prioriteit ?? "normaal",
             fase: t.fase || null,
+            cluster: t.cluster?.trim() || null,
             volgorde: t.volgorde ?? 0,
             omschrijving: t.omschrijving ?? null,
             geschatteDuur: t.geschatteDuur ?? null,
@@ -334,6 +338,9 @@ export async function POST(req: NextRequest) {
         if (!trimmed) continue;
 
         const fase = isObject ? entry.fase ?? null : null;
+        const cluster = isObject && typeof entry.cluster === "string" && entry.cluster.trim()
+          ? entry.cluster.trim()
+          : null;
         const prioriteit = (isObject && entry.prioriteit) ? entry.prioriteit : "normaal";
         const omschrijving = isObject ? entry.omschrijving ?? null : null;
         const geschatteDuur = isObject ? entry.geschatteDuur ?? null : null;
@@ -363,6 +370,7 @@ export async function POST(req: NextRequest) {
             status: "open",
             prioriteit,
             fase,
+            cluster,
             omschrijving,
             geschatteDuur,
             prompt,

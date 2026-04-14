@@ -82,6 +82,7 @@ export async function GET(req: NextRequest) {
         titel: taken.titel,
         omschrijving: taken.omschrijving,
         fase: taken.fase,
+        cluster: taken.cluster,
         volgorde: taken.volgorde,
         status: taken.status,
         deadline: taken.deadline,
@@ -188,7 +189,7 @@ export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
     const body = await req.json();
-    const { projectId, titel, omschrijving, status, deadline, prioriteit, fase, volgorde, uitvoerder, prompt, projectMap } = body;
+    const { projectId, titel, omschrijving, status, deadline, prioriteit, fase, cluster, volgorde, uitvoerder, prompt, projectMap } = body;
 
     if (!titel?.trim()) {
       return NextResponse.json({ fout: "Titel is verplicht." }, { status: 400 });
@@ -203,6 +204,7 @@ export async function POST(req: NextRequest) {
         titel: titel.trim(),
         omschrijving: omschrijving?.trim() || null,
         fase: fase || null,
+        cluster: typeof cluster === "string" && cluster.trim() ? cluster.trim() : null,
         volgorde: volgorde ?? 0,
         status: status || "open",
         deadline: deadline || null,

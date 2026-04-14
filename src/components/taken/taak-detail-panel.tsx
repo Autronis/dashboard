@@ -30,6 +30,7 @@ interface Taak {
   titel: string;
   omschrijving: string | null;
   fase: string | null;
+  cluster: string | null;
   status: "open" | "bezig" | "afgerond" | null;
   prioriteit: "laag" | "normaal" | "hoog" | null;
   deadline: string | null;
@@ -233,8 +234,8 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                 </div>
 
                 {/* Project + fase */}
-                {(taak.projectNaam || taak.fase) && (
-                  <div className="flex items-center gap-2 text-xs">
+                {(taak.projectNaam || taak.fase || taak.cluster) && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     {taak.projectNaam && (
                       <Link
                         href={`/projecten/${taak.projectId}`}
@@ -248,6 +249,15 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                       <span className="flex items-center gap-1.5 px-2.5 py-1 bg-autronis-bg text-autronis-text-secondary rounded-lg">
                         <Tag className="w-3 h-3" />
                         {taak.fase}
+                      </span>
+                    )}
+                    {taak.cluster && (
+                      <span
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-autronis-accent/10 text-autronis-accent rounded-lg font-medium"
+                        title={`Cluster: ${taak.cluster}`}
+                      >
+                        <FolderOpen className="w-3 h-3" />
+                        {taak.cluster}
                       </span>
                     )}
                   </div>

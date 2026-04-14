@@ -93,6 +93,7 @@ export async function PUT(
     if (body.deadline !== undefined) updateData.deadline = body.deadline || null;
     if (body.prioriteit !== undefined) updateData.prioriteit = body.prioriteit;
     if (body.fase !== undefined) updateData.fase = body.fase || null;
+    if (body.cluster !== undefined) updateData.cluster = body.cluster?.trim() || null;
     if (body.eigenaar !== undefined && ["sem", "syb", "team", "vrij"].includes(body.eigenaar)) {
       updateData.eigenaar = body.eigenaar;
     }
@@ -142,6 +143,46 @@ export async function PUT(
         projectId: huidig.projectId,
         bericht,
       }).execute().catch(() => {});
+    }
+
+    // Cluster propagation: als deze taak naar 'bezig' gaat én in een cluster
+    // zit, wijs alle andere open taken in datzelfde (projectId, cluster) tuple
+    // automatisch toe aan deze gebruiker. Taken die al zijn toegewezen aan
+    // een ander blijven onaangeraakt (soft lock — de frontend toont een
+    // warning dialog voordat de ander ze alsnog probeert te pakken).
+    const clusterNaam = bijgewerkt.cluster;
+    const isNuBezig = body.status === "bezig" && huidig?.status !== "bezig";
+    if (isNuBezig && clusterNaam && bijgewerkt.projectId) {
+      const aanbevolen = await db
+        .update(taken)
+        .set({
+          toegewezenAan: gebruiker.id,
+          bijgewerktOp: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(taken.projectId, bijgewerkt.projectId),
+            eq(taken.cluster, clusterNaam),
+            eq(taken.status, "open"),
+            isNull(taken.toegewezenAan),
+            ne(taken.id, Number(id))
+          )
+        )
+        .returning({ id: taken.id });
+
+      if (aanbevolen.length > 0) {
+        db.insert(teamActiviteit).values({
+          gebruikerId: gebruiker.id,
+          type: "taak_update",
+          taakId: Number(id),
+          projectId: bijgewerkt.projectId,
+          bericht: `heeft cluster "${clusterNaam}" geclaimd (${aanbevolen.length} aanbevolen vervolgtaken)`,
+          metadata: JSON.stringify({
+            cluster: clusterNaam,
+            aanbevolenTaakIds: aanbevolen.map((t) => t.id),
+          }),
+        }).execute().catch(() => {});
+      }
     }
 
     // Sync with Google Calendar in the background — skip for status-only changes

@@ -7,6 +7,7 @@ export interface Taak {
   titel: string;
   omschrijving: string | null;
   fase: string | null;
+  cluster: string | null;
   volgorde: number;
   status: string;
   deadline: string | null;

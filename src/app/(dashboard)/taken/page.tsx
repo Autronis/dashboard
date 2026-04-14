@@ -735,6 +735,49 @@ function TakenPage() {
     return Array.from(set).sort();
   }, [taken]);
 
+  // Cluster claims: voor elk (projectId, cluster) tuple de user die
+  // momenteel een "bezig" taak in dat cluster heeft. Key = "projectId:cluster".
+  // Gebruikt voor soft-lock visual + waarschuwingsdialog in de UI.
+  const clusterClaims = useMemo(() => {
+    const claims = new Map<string, { userId: number; userName: string }>();
+    for (const t of taken) {
+      if (
+        t.status === "bezig" &&
+        t.cluster &&
+        t.projectId &&
+        t.toegewezenAanId
+      ) {
+        const key = `${t.projectId}:${t.cluster}`;
+        if (!claims.has(key)) {
+          claims.set(key, {
+            userId: t.toegewezenAanId,
+            userName: t.toegewezenAanNaam?.split(" ")[0] ?? "iemand anders",
+          });
+        }
+      }
+    }
+    return claims;
+  }, [taken]);
+
+  function clusterClaimFor(taak: Taak): { userId: number; userName: string } | null {
+    if (!taak.cluster || !taak.projectId) return null;
+    return clusterClaims.get(`${taak.projectId}:${taak.cluster}`) ?? null;
+  }
+
+  // Check of huidige user een cluster-taak mag pakken. Als een andere user
+  // het cluster al claimde, toon confirm dialog. Returns true als doorgaan OK.
+  const confirmClusterOverride = useCallback((taak: Taak): boolean => {
+    const claim = taak.cluster && taak.projectId
+      ? clusterClaims.get(`${taak.projectId}:${taak.cluster}`)
+      : null;
+    if (!claim) return true;
+    if (claim.userId === currentUser?.id) return true;
+    return window.confirm(
+      `Deze taak zit in cluster "${taak.cluster}" dat ${claim.userName} momenteel oppakt. ` +
+      `Weet je zeker dat jij 'm wil pakken?`
+    );
+  }, [clusterClaims, currentUser?.id]);
+
   const showCheckBurst = useCallback((taskId: number) => {
     setCompletedTaskId(taskId);
     if (completedTimerRef.current) clearTimeout(completedTimerRef.current);
@@ -867,6 +910,9 @@ function TakenPage() {
 
   const handleStartTimer = useCallback(async (taak: Taak) => {
     if (timer.isRunning) { addToast("Timer loopt al — stop eerst de huidige", "fout"); return; }
+    // Cluster soft-lock: als het cluster al door iemand anders wordt opgepakt,
+    // vraag eerst bevestiging voor we doorgaan.
+    if (!confirmClusterOverride(taak)) return;
     try {
       const res = await fetch("/api/tijdregistraties", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectId: taak.projectId, omschrijving: taak.titel, categorie: "development" }) });
       if (!res.ok) throw new Error();
@@ -875,7 +921,7 @@ function TakenPage() {
       if (taak.status === "open") statusMutation.mutate({ id: taak.id, status: "bezig" });
       addToast(`Timer gestart: ${taak.titel}`, "succes");
     } catch { addToast("Kon timer niet starten", "fout"); }
-  }, [timer, addToast, statusMutation]);
+  }, [timer, addToast, statusMutation, confirmClusterOverride]);
 
   const handlePlanTaak = useCallback((taak: Taak) => {
     const vandaagDatum = new Date().toISOString().slice(0, 10);
@@ -1444,13 +1490,15 @@ function TakenPage() {
                                       const isVerlopen = taak.deadline && taak.deadline < vandaag && taak.status !== "afgerond";
                                       const isExp = expandedId === taak.id;
                                       const isClaude = taak.uitvoerder === "claude";
+                                      const claim = clusterClaimFor(taak);
+                                      const lockedByOther = claim && claim.userId !== currentUser?.id;
 
                                       return (
                                         <motion.div
                                           key={taak.id}
                                           ref={(el: HTMLDivElement | null) => { if (el) taakElementsRef.current.set(taak.id, el); else taakElementsRef.current.delete(taak.id); }}
                                           initial={{ opacity: 0, x: -6 }}
-                                          animate={{ opacity: taak.status === "afgerond" ? 0.4 : 1, x: 0 }}
+                                          animate={{ opacity: taak.status === "afgerond" ? 0.4 : lockedByOther ? 0.55 : 1, x: 0 }}
                                           transition={{ duration: 0.18, delay: Math.min(fase.taken.indexOf(taak) * 0.03, 0.3) }}
                                           draggable
                                           onDragStart={(e) => { (e as unknown as React.DragEvent).dataTransfer.setData("taakId", String(taak.id)); (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "move"; }}
@@ -1460,6 +1508,7 @@ function TakenPage() {
                                             pc.borderColor,
                                             highlightedTaakId === taak.id && "ring-2 ring-autronis-accent ring-offset-2 ring-offset-autronis-bg"
                                           )}
+                                          title={lockedByOther ? `${claim!.userName} is bezig in cluster "${taak.cluster}"` : undefined}
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1491,6 +1540,20 @@ function TakenPage() {
                                               </span>
                                             )}
                                             {isClaude && <span className="badge-claude-shimmer flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full text-purple-400 font-semibold flex-shrink-0"><Bot className="w-2.5 h-2.5" />Claude</span>}
+                                            {taak.cluster && (
+                                              <span
+                                                className={cn(
+                                                  "text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 flex items-center gap-1",
+                                                  lockedByOther
+                                                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                                                    : "bg-autronis-accent/10 text-autronis-accent"
+                                                )}
+                                                title={lockedByOther ? `${claim!.userName} is in dit cluster bezig` : `Cluster: ${taak.cluster}`}
+                                              >
+                                                {lockedByOther && "🔒"}
+                                                {taak.cluster}
+                                              </span>
+                                            )}
                                             <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0", pc.bg, pc.color)}>{pc.label}</span>
                                             {taak.deadline && (
                                               <div className={cn("text-[10px] font-medium flex-shrink-0 tabular-nums", isVerlopen ? "text-red-400 deadline-shake" : "text-autronis-text-secondary")}>

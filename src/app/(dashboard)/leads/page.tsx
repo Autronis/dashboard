@@ -16,6 +16,8 @@ import {
   Linkedin,
   Trash2,
   X,
+  Sparkles,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -339,6 +341,12 @@ export default function LeadsOverzichtPage() {
         </div>
         <div className="flex items-center gap-2">
           <Link
+            href="/leads/rebuild-prep"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Rebuild Prep
+          </Link>
+          <Link
             href="/leads/enrichment"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
           >
@@ -636,14 +644,21 @@ export default function LeadsOverzichtPage() {
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden md:table-cell">
-                      {lead.folder && (
+                      {lead.folder ? (
                         <Link
                           href={`/leads/folders/${encodeURIComponent(lead.folder)}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20"
+                          className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20 max-w-[180px] truncate"
+                          title={lead.folder}
                         >
-                          {lead.folder}
+                          <FolderOpen className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">{lead.folder}</span>
                         </Link>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-autronis-border/30 text-autronis-text-secondary/60">
+                          <FolderOpen className="w-3 h-3" />
+                          geen
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">

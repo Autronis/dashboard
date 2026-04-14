@@ -1,14 +1,15 @@
 // Per-lead prep pipeline for the `/leads/rebuild-prep` batch tool.
 //
-// Flow:
-//   1. SERP check — Firecrawl /v1/search to verify the lead really has no site.
-//   2. Sector fit — keyword classifier on the Google Maps category.
-//   3. Prompt assembly — paste-ready Claude prompt, inlined (no nested HTTP).
+// Two modes per lead, automatically routed on lead.website:
 //
-// The prompt format matches /api/site-rebuild/prompt so prep output can be
-// pasted into claude.ai with extended thinking + artifacts.
+//   (A) No website on file → SERP check via Firecrawl /v1/search to verify the
+//       lead really has no site, then "from scratch" pitch prompt.
+//   (B) Has website on file → Firecrawl /v1/scrape the existing site, inline
+//       its markdown into the prompt, then "upgrade this site" prompt.
+//
+// Sector-fit classification (scroll_stop vs static_upgrade) runs for both modes.
 
-import { searchWeb, type SearchResult } from "./firecrawl";
+import { scrapeUrl, searchWeb, type SearchResult } from "./firecrawl";
 import { classifyFit, type FitResult } from "./lead-rebuild-fit";
 
 export type PrepLeadInput = {
@@ -28,9 +29,21 @@ export type SerpCheck = {
   note: string;
 };
 
+export type SiteScrape = {
+  ran: boolean;
+  url: string | null;
+  title: string | null;
+  markdown: string | null;
+  error: string | null;
+};
+
+export type PrepMode = "upgrade" | "fresh";
+
 export type PrepLeadResult = {
   lead: PrepLeadInput;
+  mode: PrepMode;
   serp: SerpCheck;
+  scrape: SiteScrape;
   fit: FitResult;
   prompt: string;
 };

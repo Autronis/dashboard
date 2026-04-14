@@ -225,6 +225,9 @@ export async function GET(req: NextRequest) {
         tags: meetings.tags,
         transcript: meetings.transcript,
         audioPad: meetings.audioPad,
+        meetingUrl: meetings.meetingUrl,
+        recallBotId: meetings.recallBotId,
+        recallFout: meetings.recallFout,
         aangemaaktOp: meetings.aangemaaktOp,
       })
       .from(meetings)
@@ -253,6 +256,8 @@ export async function GET(req: NextRequest) {
           samenvatting: meetings.samenvatting, actiepunten: meetings.actiepunten,
           sentiment: meetings.sentiment, tags: meetings.tags,
           transcript: meetings.transcript, audioPad: meetings.audioPad,
+          meetingUrl: meetings.meetingUrl,
+          recallBotId: meetings.recallBotId, recallFout: meetings.recallFout,
           aangemaaktOp: meetings.aangemaaktOp,
         })
         .from(meetings)
@@ -266,7 +271,7 @@ export async function GET(req: NextRequest) {
     const enrichedDbMeetings = dbMeetings.map((m) => ({
       ...m,
       bron: "database" as const,
-      meetingUrl: null as string | null,
+      // meetingUrl, recallBotId, recallFout komen al uit de select
       deelnemers: [] as Attendee[],
       eindDatum: null as string | null,
       bronNaam: null as string | null,
@@ -326,6 +331,8 @@ export async function GET(req: NextRequest) {
         tags: "[]",
         transcript: null as string | null,
         audioPad: null as string | null,
+        recallBotId: null as string | null,
+        recallFout: null as string | null,
         aangemaaktOp: null as string | null,
         hasNotities: false,
       }));
@@ -415,19 +422,19 @@ export async function POST(req: NextRequest) {
       const { createRecallBot, isRecallConfigured } = await import("@/lib/recall");
       if (!isRecallConfigured()) {
         recallFout = "Recall niet geconfigureerd (RECALL_API_KEY ontbreekt op de server).";
-        await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${Number(result.lastInsertRowid)}`);
+        await db.run(sql`UPDATE meetings SET status = 'mislukt', recall_fout = ${recallFout} WHERE id = ${Number(result.lastInsertRowid)}`);
       } else {
         try {
           // Geef datum mee zodat Recall de bot inplant op de meeting start in plaats van direct te joinen.
           // Voor toekomstige meetings voorkomt dit dat de bot vroegtijdig timeout in de lobby.
           const joinAt = datum ? new Date(datum) : undefined;
           const bot = await createRecallBot(meetingUrl.trim(), titel, joinAt);
-          await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id}, status = 'verwerken' WHERE id = ${Number(result.lastInsertRowid)}`);
+          await db.run(sql`UPDATE meetings SET recall_bot_id = ${bot.id}, status = 'verwerken', recall_fout = NULL WHERE id = ${Number(result.lastInsertRowid)}`);
           recallBot = bot;
         } catch (err) {
           recallFout = err instanceof Error ? err.message : String(err);
           console.error("[meetings] Recall bot dispatch failed:", recallFout);
-          await db.run(sql`UPDATE meetings SET status = 'mislukt' WHERE id = ${Number(result.lastInsertRowid)}`);
+          await db.run(sql`UPDATE meetings SET status = 'mislukt', recall_fout = ${recallFout} WHERE id = ${Number(result.lastInsertRowid)}`);
         }
       }
     }

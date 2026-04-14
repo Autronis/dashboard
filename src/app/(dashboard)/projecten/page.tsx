@@ -393,18 +393,24 @@ function ProjectCard({ project, onStartTimer, onOpenVSCode, onDelete, zoek }: { 
         )}
       </div>
 
-      {/* Activity + velocity */}
+      {/* Activity + velocity + eigenaar */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <div className={cn("w-2 h-2 rounded-full flex-shrink-0", activityDot.color, activityDot.pulse && "activity-dot-active")} title={activityDot.label} />
           <p className="text-[10px] text-autronis-text-secondary/70">{activityDot.label}</p>
         </div>
-        {project.status === "actief" && (
-          <div className={cn("flex items-center gap-0.5 text-[10px]", velocity.color)}>
-            <VelocityIcon className="w-3 h-3" />
-            <span>{velocity.label}</span>
+        <div className="flex items-center gap-2">
+          {project.status === "actief" && (
+            <div className={cn("flex items-center gap-0.5 text-[10px]", velocity.color)}>
+              <VelocityIcon className="w-3 h-3" />
+              <span>{velocity.label}</span>
+            </div>
+          )}
+          {/* Eigenaar mini-picker — onClick stopt navigatie naar detail */}
+          <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="flex-shrink-0">
+            <MiniEigenaarPicker projectId={project.id} current={project.eigenaar ?? null} />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Quick actions - visible on hover */}

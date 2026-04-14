@@ -200,8 +200,8 @@ export default function LeadsRebuildPrepPage() {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="mb-4 flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[220px] max-w-md">
           <Search className="w-4 h-4 text-autronis-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
@@ -211,9 +211,30 @@ export default function LeadsRebuildPrepPage() {
             className="w-full pl-9 pr-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text placeholder:text-autronis-text-muted focus:border-autronis-accent outline-none"
           />
         </div>
+        <div className="flex items-center gap-1.5 p-1 rounded-lg bg-autronis-card border border-autronis-border">
+          {(
+            [
+              { key: "alle", label: `Alle (${counts.total})` },
+              { key: "zonder_site", label: `Zonder site (${counts.withoutSite})` },
+              { key: "met_site", label: `Met site (${counts.withSite})` },
+            ] as const
+          ).map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setSiteFilter(f.key)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-medium transition",
+                siteFilter === f.key
+                  ? "bg-autronis-accent text-black"
+                  : "text-autronis-text-muted hover:text-autronis-text"
+              )}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
         <div className="text-sm text-autronis-text-muted">
-          {leads.length} leads zonder website · {gefilterd.length} zichtbaar ·{" "}
-          {selectedIds.size} geselecteerd
+          {gefilterd.length} zichtbaar · {selectedIds.size} geselecteerd
         </div>
         {selectedIds.size > 0 && (
           <button
@@ -245,6 +266,7 @@ export default function LeadsRebuildPrepPage() {
                   <tr className="text-left text-autronis-text-muted">
                     <th className="py-3 px-4 w-10"></th>
                     <th className="py-3 px-4">Naam</th>
+                    <th className="py-3 px-4 w-28">Mode</th>
                     <th className="py-3 px-4">Categorie</th>
                     <th className="py-3 px-4">Locatie</th>
                     <th className="py-3 px-4 w-20"></th>
@@ -254,7 +276,7 @@ export default function LeadsRebuildPrepPage() {
                   {gefilterd.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="py-12 text-center text-autronis-text-muted"
                       >
                         Geen leads gevonden.
@@ -263,6 +285,7 @@ export default function LeadsRebuildPrepPage() {
                   ) : (
                     gefilterd.map((lead) => {
                       const checked = selectedIds.has(lead.id);
+                      const hasSite = !!lead.website?.trim();
                       return (
                         <tr
                           key={lead.id}
@@ -284,7 +307,32 @@ export default function LeadsRebuildPrepPage() {
                             />
                           </td>
                           <td className="py-2.5 px-4 text-autronis-text font-medium">
-                            {lead.name || "(geen naam)"}
+                            <div>{lead.name || "(geen naam)"}</div>
+                            {hasSite && lead.website && (
+                              <a
+                                href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[11px] text-autronis-text-muted hover:text-autronis-accent inline-flex items-center gap-1 mt-0.5"
+                              >
+                                <Globe className="w-3 h-3" />
+                                {lead.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                              </a>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-4">
+                            {hasSite ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                                <Wrench className="w-3 h-3" />
+                                Upgrade
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+                                <Sparkles className="w-3 h-3" />
+                                Fresh
+                              </span>
+                            )}
                           </td>
                           <td className="py-2.5 px-4 text-autronis-text-muted">
                             {lead.category || "—"}
@@ -348,7 +396,7 @@ function ResultCard({
   onCopy: (r: PrepLeadResult) => void;
   copied: boolean;
 }) {
-  const { lead, serp, fit } = result;
+  const { lead, mode, serp, scrape, fit } = result;
 
   const fitStyles =
     fit.verdict === "scroll_stop_good"
@@ -357,23 +405,40 @@ function ResultCard({
         ? "bg-sky-500/10 text-sky-300 border-sky-500/30"
         : "bg-zinc-500/10 text-zinc-300 border-zinc-500/30";
 
-  const serpStyles =
-    serp.verdict === "site_found"
+  const modeStyles =
+    mode === "upgrade"
       ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
-      : serp.verdict === "no_site"
-        ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-        : serp.verdict === "error"
-          ? "bg-red-500/10 text-red-300 border-red-500/30"
-          : "bg-zinc-500/10 text-zinc-300 border-zinc-500/30";
+      : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
 
-  const serpLabel =
-    serp.verdict === "site_found"
-      ? "Site mogelijk gevonden"
-      : serp.verdict === "no_site"
-        ? "Bevestigd geen site"
-        : serp.verdict === "error"
-          ? "SERP error"
-          : "Overgeslagen";
+  const modeLabel = mode === "upgrade" ? "Upgrade bestaande site" : "Fresh build";
+
+  // Secondary status: scrape success for upgrade mode, SERP verdict for fresh mode.
+  let statusLabel: string | null = null;
+  let statusStyles = "bg-zinc-500/10 text-zinc-300 border-zinc-500/30";
+
+  if (mode === "upgrade") {
+    if (scrape.error) {
+      statusLabel = "Scrape faalde";
+      statusStyles = "bg-red-500/10 text-red-300 border-red-500/30";
+    } else if (scrape.markdown) {
+      statusLabel = `Gescraped (${scrape.markdown.length.toLocaleString("nl-NL")} chars)`;
+      statusStyles = "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
+    }
+  } else {
+    if (serp.verdict === "site_found") {
+      statusLabel = "SERP: site gevonden";
+      statusStyles = "bg-amber-500/10 text-amber-300 border-amber-500/30";
+    } else if (serp.verdict === "no_site") {
+      statusLabel = "SERP: geen site";
+      statusStyles = "bg-emerald-500/10 text-emerald-300 border-emerald-500/30";
+    } else if (serp.verdict === "error") {
+      statusLabel = "SERP error";
+      statusStyles = "bg-red-500/10 text-red-300 border-red-500/30";
+    }
+  }
+
+  const linkUrl = mode === "upgrade" ? scrape.url : serp.foundUrl;
+  const footerNote = mode === "upgrade" ? scrape.error || null : serp.note;
 
   return (
     <div className="rounded-xl bg-autronis-card border border-autronis-border p-4">
@@ -384,33 +449,42 @@ function ResultCard({
               {lead.name || "(geen naam)"}
             </span>
             <span
+              className={cn("px-2 py-0.5 rounded-md text-xs border", modeStyles)}
+            >
+              {modeLabel}
+            </span>
+            <span
               className={cn("px-2 py-0.5 rounded-md text-xs border", fitStyles)}
             >
               {fit.label}
             </span>
-            <span
-              className={cn("px-2 py-0.5 rounded-md text-xs border", serpStyles)}
-            >
-              {serpLabel}
-            </span>
+            {statusLabel && (
+              <span
+                className={cn("px-2 py-0.5 rounded-md text-xs border", statusStyles)}
+              >
+                {statusLabel}
+              </span>
+            )}
           </div>
           <div className="text-xs text-autronis-text-muted mt-1">
             {[lead.category, lead.location || lead.address].filter(Boolean).join(" · ") || "—"}
           </div>
-          {serp.foundUrl && (
+          {linkUrl && (
             <a
-              href={serp.foundUrl}
+              href={linkUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-autronis-accent hover:underline mt-1.5"
             >
               <ExternalLink className="w-3 h-3" />
-              {serp.foundUrl}
+              {linkUrl}
             </a>
           )}
-          <div className="text-xs text-autronis-text-muted mt-1 italic">
-            {serp.note}
-          </div>
+          {footerNote && (
+            <div className="text-xs text-autronis-text-muted mt-1 italic">
+              {footerNote}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button

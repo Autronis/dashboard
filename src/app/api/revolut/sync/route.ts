@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
 import { db } from "@/lib/db";
@@ -185,84 +185,114 @@ Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score
   return geanalyseerd;
 }
 
-// POST /api/revolut/sync — Sync transactions from Revolut
+// Core sync logic — shared by POST (user-triggered) and GET (Vercel Cron)
+async function runSync(): Promise<SyncResultaat> {
+  const status = await getVerbindingStatus();
+  if (!status.gekoppeld) {
+    throw new Error("Revolut niet gekoppeld");
+  }
+
+  // Fetch last 30 days of transactions (or since last sync)
+  const from = status.laatsteSyncOp
+    ? new Date(status.laatsteSyncOp).toISOString()
+    : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const transacties = await getTransactions({
+    from,
+    count: 1000,
+  });
+
+  let nieuweTransacties = 0;
+  const nieuweIds: number[] = [];
+
+  for (const tx of transacties) {
+    if (tx.state !== "completed") continue;
+
+    for (const leg of tx.legs) {
+      // Skip if already synced
+      const [bestaand] = await db
+        .select({ id: bankTransacties.id })
+        .from(bankTransacties)
+        .where(eq(bankTransacties.revolutTransactieId, tx.id))
+        .limit(1);
+
+      if (bestaand) continue;
+
+      const isUitgaand = leg.amount < 0;
+      const merchantNaam = tx.merchant?.name || leg.description || tx.reference || "Onbekend";
+
+      const [inserted] = await db.insert(bankTransacties).values({
+        datum: (tx.completed_at || tx.created_at).split("T")[0],
+        omschrijving: leg.description || tx.reference || merchantNaam,
+        bedrag: Math.abs(leg.amount),
+        type: isUitgaand ? "af" : "bij",
+        bank: "revolut",
+        revolutTransactieId: tx.id,
+        merchantNaam: isUitgaand ? merchantNaam : null,
+        merchantCategorie: tx.merchant?.category_code || null,
+        status: "onbekend",
+      }).returning({ id: bankTransacties.id });
+
+      nieuweTransacties++;
+      if (inserted && isUitgaand) nieuweIds.push(inserted.id);
+    }
+  }
+
+  // Update last sync timestamp
+  await db
+    .update(revolutVerbinding)
+    .set({
+      laatsteSyncOp: new Date().toISOString(),
+      bijgewerktOp: new Date().toISOString(),
+    })
+    .where(eq(revolutVerbinding.isActief, 1));
+
+  // Detect new subscriptions
+  const gedetecteerdeAbonnementen = await detecteerAbonnementen();
+
+  // AI analyse of new transactions (max 20 per sync to keep fast)
+  const geanalyseerd = await analyseerTransacties(nieuweIds.slice(0, 20));
+
+  return {
+    nieuweTransacties,
+    gedetecteerdeAbonnementen,
+    geanalyseerd,
+  };
+}
+
+// POST /api/revolut/sync — User-triggered sync from dashboard
 export async function POST() {
   try {
     await requireAuth();
-
-    const status = await getVerbindingStatus();
-    if (!status.gekoppeld) {
-      return NextResponse.json({ fout: "Revolut niet gekoppeld" }, { status: 400 });
-    }
-
-    // Fetch last 30 days of transactions (or since last sync)
-    const from = status.laatsteSyncOp
-      ? new Date(status.laatsteSyncOp).toISOString()
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    const transacties = await getTransactions({
-      from,
-      count: 1000,
-    });
-
-    let nieuweTransacties = 0;
-    const nieuweIds: number[] = [];
-
-    for (const tx of transacties) {
-      if (tx.state !== "completed") continue;
-
-      for (const leg of tx.legs) {
-        // Skip if already synced
-        const [bestaand] = await db
-          .select({ id: bankTransacties.id })
-          .from(bankTransacties)
-          .where(eq(bankTransacties.revolutTransactieId, tx.id))
-          .limit(1);
-
-        if (bestaand) continue;
-
-        const isUitgaand = leg.amount < 0;
-        const merchantNaam = tx.merchant?.name || leg.description || tx.reference || "Onbekend";
-
-        const [inserted] = await db.insert(bankTransacties).values({
-          datum: (tx.completed_at || tx.created_at).split("T")[0],
-          omschrijving: leg.description || tx.reference || merchantNaam,
-          bedrag: Math.abs(leg.amount),
-          type: isUitgaand ? "af" : "bij",
-          bank: "revolut",
-          revolutTransactieId: tx.id,
-          merchantNaam: isUitgaand ? merchantNaam : null,
-          merchantCategorie: tx.merchant?.category_code || null,
-          status: "onbekend",
-        }).returning({ id: bankTransacties.id });
-
-        nieuweTransacties++;
-        if (inserted && isUitgaand) nieuweIds.push(inserted.id);
-      }
-    }
-
-    // Update last sync timestamp
-    await db
-      .update(revolutVerbinding)
-      .set({
-        laatsteSyncOp: new Date().toISOString(),
-        bijgewerktOp: new Date().toISOString(),
-      })
-      .where(eq(revolutVerbinding.isActief, 1));
-
-    // Detect new subscriptions
-    const gedetecteerdeAbonnementen = await detecteerAbonnementen();
-
-    // AI analyse of new transactions (max 20 per sync to keep fast)
-    const geanalyseerd = await analyseerTransacties(nieuweIds.slice(0, 20));
-
-    const resultaat: SyncResultaat = {
-      nieuweTransacties,
-      gedetecteerdeAbonnementen,
-      geanalyseerd,
-    };
-
+    const resultaat = await runSync();
     return NextResponse.json(resultaat);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Sync mislukt";
+    const status = message === "Revolut niet gekoppeld" ? 400 : 500;
+    return NextResponse.json({ fout: message }, { status });
+  }
+}
+
+// GET /api/revolut/sync — Vercel Cron (every hour). Keeps Revolut access token
+// fresh and pulls in new transactions automatically, so we don't miss days
+// when nobody opens the dashboard.
+export async function GET(request: NextRequest) {
+  // Verify cron secret
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ fout: "Niet geautoriseerd" }, { status: 401 });
+    }
+  }
+
+  try {
+    const resultaat = await runSync();
+    return NextResponse.json({
+      succes: true,
+      ...resultaat,
+      tijdstip: new Date().toISOString(),
+    });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Sync mislukt" },

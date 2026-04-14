@@ -6,6 +6,11 @@ import { eq } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { PresentatiePDF, type PresentatieData } from "@/lib/sales-engine/presentatie-template";
 
+// Never cache — template can change and we always want the latest render.
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const STANDAARD_UURTARIEF = 75;
 
 function parseUrenPerWeek(text: string | null): number {

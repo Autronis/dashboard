@@ -187,6 +187,8 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
 
       {/* Slide 3: Bedrijfsprofiel + Samenvatting */}
       <Page size="A4" orientation="landscape" style={s.slide}>
+        <View style={s.accentBar} fixed />
+        <SlideHeader kicker="Sectie 01 · Analyse" />
         <Text style={s.contentTitle}>Uw Bedrijf</Text>
         {data.bedrijfsProfiel && (
           <View style={{ marginBottom: 16 }}>
@@ -199,7 +201,7 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
         <Text style={s.contentSubtitle}>Samenvatting</Text>
         <Text style={s.contentText}>{data.samenvatting}</Text>
         <SlideNr />
-        <Footer />
+        <FooterBar section="Sectie 01 — Analyse" />
       </Page>
 
       {/* Slide 4: Sectie — Kansen */}
@@ -211,6 +213,8 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
 
       {/* Slide 5: Top kansen */}
       <Page size="A4" orientation="landscape" style={s.slide}>
+        <View style={s.accentBar} fixed />
+        <SlideHeader kicker="Sectie 02 · Kansen" />
         <Text style={s.contentTitle}>Top Automatiseringskansen</Text>
         {topKansen.map((kans, i) => (
           <View key={i} style={[s.kansRow, i % 2 === 0 ? s.kansRowEven : {}]}>
@@ -225,7 +229,7 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
           </View>
         ))}
         <SlideNr />
-        <Footer />
+        <FooterBar section="Sectie 02 — Kansen" />
       </Page>
 
       {/* Slide 6: Sectie — ROI */}
@@ -237,6 +241,8 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
 
       {/* Slide 7: ROI Metrics */}
       <Page size="A4" orientation="landscape" style={s.slide}>
+        <View style={s.accentBar} fixed />
+        <SlideHeader kicker="Sectie 03 · ROI" />
         <Text style={s.contentTitle}>Return on Investment</Text>
         <View style={s.metricsRow}>
           <View style={s.metricCard}>
@@ -267,11 +273,13 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
           </Text>
         </View>
         <SlideNr />
-        <Footer />
+        <FooterBar section="Sectie 03 — ROI" />
       </Page>
 
       {/* Slide 8: Fasering */}
       <Page size="A4" orientation="landscape" style={s.slide}>
+        <View style={s.accentBar} fixed />
+        <SlideHeader kicker="Sectie 04 · Fasering" />
         <Text style={s.contentTitle}>Voorgestelde Fasering</Text>
         {[
           { fase: "Fase 1 — Quick Wins", desc: "Eenvoudige automatiseringen met directe impact", duur: "Week 1-2" },
@@ -289,11 +297,13 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
           </View>
         ))}
         <SlideNr />
-        <Footer />
+        <FooterBar section="Sectie 04 — Fasering" />
       </Page>
 
       {/* Slide 9: CTA */}
       <Page size="A4" orientation="landscape" style={s.slide}>
+        <View style={s.accentBar} fixed />
+        <SlideHeader kicker="Sectie 05 · Volgende stap" />
         <Text style={s.contentTitle}>Volgende Stap</Text>
         <Text style={s.contentText}>
           Wij staan klaar om uw automatiseringsreis te begeleiden. Plan een vrijblijvend gesprek
@@ -303,7 +313,7 @@ export function PresentatiePDF({ data }: { data: PresentatieData }) {
           <Text style={s.ctaTitle}>Plan een gratis strategiegesprek</Text>
           <Text style={s.ctaText}>{data.bookingUrl ?? "https://cal.com/autronis"}</Text>
         </View>
-        <Footer />
+        <FooterBar section="Sectie 05 — Volgende stap" />
       </Page>
     </Document>
   );

@@ -82,6 +82,51 @@ export default function SiteRebuildPage() {
     }
   };
 
+  const buildClaudePrompt = async () => {
+    if (!brandName.trim()) {
+      addToast("Brand naam is verplicht", "fout");
+      return;
+    }
+    if (mode === "url" && !url.trim()) {
+      addToast("Plak een URL", "fout");
+      return;
+    }
+    // Logo-mode: prompt endpoint accepteert 'm zonder base64 — logo wordt niet meegestuurd
+    // want een losse prompt kan geen afbeelding embedden. User uploadt 'm zelf in claude.ai.
+
+    setPromptLoading(true);
+    setPromptOutput(null);
+    try {
+      const res = await fetch("/api/site-rebuild/prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          url: url.trim() || undefined,
+          brandName: brandName.trim(),
+          accent,
+          notes: notes.trim() || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Prompt bouwen mislukt");
+      setPromptOutput(data.prompt);
+      addToast("Prompt klaar — kopieer of open claude.ai", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Mislukt", "fout");
+    } finally {
+      setPromptLoading(false);
+    }
+  };
+
+  const copyPrompt = async () => {
+    if (!promptOutput) return;
+    await navigator.clipboard.writeText(promptOutput);
+    setPromptCopied(true);
+    addToast("Prompt gekopieerd", "succes");
+    setTimeout(() => setPromptCopied(false), 2000);
+  };
+
   const downloadZip = async () => {
     if (!result) return;
     setDownloading(true);
@@ -275,24 +320,92 @@ export default function SiteRebuildPage() {
               />
             </div>
 
-            <button
-              type="button"
-              onClick={generate}
-              disabled={loading}
-              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-autronis-accent text-autronis-bg font-semibold disabled:opacity-50 hover:bg-autronis-accent-hover transition"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Genereren... (kan ~30s duren)
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  Genereer site
-                </>
-              )}
-            </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={generate}
+                disabled={loading || promptLoading}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-autronis-accent text-autronis-bg font-semibold disabled:opacity-50 hover:bg-autronis-accent-hover transition"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Bezig...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Genereer direct
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={buildClaudePrompt}
+                disabled={loading || promptLoading}
+                className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary font-semibold hover:border-autronis-accent/40 disabled:opacity-50 transition"
+              >
+                {promptLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Bezig...
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-4 h-4" />
+                    Bouw Claude prompt
+                  </>
+                )}
+              </button>
+            </div>
+            <p className="text-[11px] text-autronis-text-secondary leading-relaxed">
+              <strong className="text-autronis-text-primary">Direct</strong>: API-call → live preview + download ZIP (~30s).<br />
+              <strong className="text-autronis-text-primary">Claude prompt</strong>: plak in claude.ai voor extended thinking, artifact preview en iteratie.
+              {mode === "logo" && " (Logo zelf plak je daar handmatig mee, dit endpoint stuurt geen afbeelding door.)"}
+            </p>
+
+            {promptOutput && (
+              <div className="pt-4 border-t border-autronis-border space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary">
+                    Claude prompt
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={copyPrompt}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-autronis-border bg-autronis-bg text-xs text-autronis-text-primary hover:border-autronis-accent/40"
+                    >
+                      {promptCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          Gekopieerd
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Kopieer
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href="https://claude.ai/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Open claude.ai
+                    </a>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-autronis-border bg-autronis-bg p-3 max-h-64 overflow-auto">
+                  <pre className="text-[11px] text-autronis-text-primary whitespace-pre-wrap font-mono leading-relaxed">
+                    {promptOutput}
+                  </pre>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Preview */}

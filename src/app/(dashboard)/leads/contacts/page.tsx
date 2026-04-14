@@ -381,16 +381,16 @@ export default function LeadsContactsPage() {
   );
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-7">
       {/* Header + actiebalk */}
       <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <Users className="w-6 h-6 text-autronis-accent" />
+          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
+            <Users className="w-7 h-7 text-autronis-accent" />
             Contacten
           </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Beheer alle leads en contacten — selecteer en run enrichment of email generatie.
+          <p className="text-sm text-autronis-text-secondary mt-1.5">
+            Beheer al je contacten en run enrichment of email generatie
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">

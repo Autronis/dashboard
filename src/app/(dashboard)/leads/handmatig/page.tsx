@@ -189,17 +189,17 @@ export default function LeadsHandmatigPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <PhoneCall className="w-6 h-6 text-autronis-accent" />
+          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
+            <PhoneCall className="w-7 h-7 text-autronis-accent" />
             Handmatig Opvolgen
           </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1 max-w-2xl">
-            Leads waar automatische enrichment geen email kon vinden. Bel ze,
-            of voeg handmatig een email of website toe.
+          <p className="text-sm text-autronis-text-secondary mt-1.5 max-w-2xl">
+            Leads waar automatische enrichment geen email kon vinden — bel ze
+            of voeg handmatig een email of website toe
           </p>
         </div>
         <span className="text-sm text-autronis-text-secondary tabular-nums">
@@ -243,15 +243,21 @@ export default function LeadsHandmatigPage() {
       )}
 
       {!loading && !error && gefilterd.length > 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card overflow-hidden">
+        <div className="rounded-2xl border border-autronis-border bg-autronis-card overflow-hidden">
+          <div className="px-6 py-4 border-b border-autronis-border flex items-center justify-between">
+            <h2 className="text-base font-semibold text-autronis-text-primary">Te bellen</h2>
+            <span className="text-xs text-autronis-text-secondary tabular-nums">
+              {gefilterd.length} leads
+            </span>
+          </div>
           <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
+            <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
               <tr>
-                <th className="text-left px-4 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Telefoon</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Locatie</th>
-                <th className="text-left px-4 py-2.5 font-medium hidden lg:table-cell">Status</th>
-                <th className="text-right px-4 py-2.5 font-medium">Acties</th>
+                <th className="text-left px-4 py-3 font-semibold">Bedrijf</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Telefoon</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Locatie</th>
+                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Status</th>
+                <th className="text-right px-4 py-3 font-semibold">Acties</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">

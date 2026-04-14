@@ -79,7 +79,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Bestaande ingeplande taken op deze dag (vermijd conflicten)
+    // Bestaande ingeplande taken op deze dag (vermijd conflicten). We pakken
+    // zowel open als bezig taken — je wil niet dat de AI overheen plant van
+    // iets dat je al aan het doen bent.
     const bestaandeIngepland = await db
       .select({
         id: taken.id,
@@ -88,12 +90,30 @@ export async function POST(req: NextRequest) {
         ingeplandEind: taken.ingeplandEind,
       })
       .from(taken)
-      .where(eq(taken.status, "open"))
+      .where(or(eq(taken.status, "open"), eq(taken.status, "bezig")))
       .all();
 
-    const alIngepland = bestaandeIngepland
-      .filter((t) => t.ingeplandStart?.startsWith(datum))
-      .map((t) => `- ${t.titel}: ${t.ingeplandStart?.slice(11, 16)} – ${t.ingeplandEind?.slice(11, 16)}`);
+    // Filter op de gevraagde dag + verzamel in een set van blocking
+    // intervals [start, eind) voor server-side anti-overlap. Taken die we in
+    // deze call zelf plannen worden NIET als blocker gebruikt bij hun eigen
+    // plan-stap (we filteren op id), maar wel bij opvolgende items.
+    interface BlockingInterval {
+      start: number; // ms
+      eind: number;  // ms
+      label: string;
+    }
+    const blockingIntervals: BlockingInterval[] = [];
+    for (const t of bestaandeIngepland) {
+      if (!t.ingeplandStart?.startsWith(datum)) continue;
+      const s = new Date(t.ingeplandStart).getTime();
+      const e = t.ingeplandEind ? new Date(t.ingeplandEind).getTime() : s + 30 * 60000;
+      if (isNaN(s) || isNaN(e)) continue;
+      blockingIntervals.push({ start: s, eind: e, label: t.titel });
+    }
+    // Voor de AI: menselijk leesbare lijst van bestaande intervals
+    const alIngepland = blockingIntervals.map(
+      (b) => `- ${b.label}: ${new Date(b.start).toTimeString().slice(0, 5)}–${new Date(b.eind).toTimeString().slice(0, 5)}`
+    );
 
     // Bouw de takenlijst voor AI — ZONDER Claude taken (die plannen we als blokken).
     // Handmatige taken krijgen ook hun cluster mee zodat de AI ze kan groeperen.
@@ -166,6 +186,34 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
 
     const tijdRegex = /^\d{2}:\d{2}$/;
     const gepland: Array<{ id: number; titel: string; start: string; eind: string; cluster?: string }> = [];
+    let geskiptOverlap = 0;
+
+    // Helper: shift een voorgesteld [start, eind] slot totdat 't niet meer
+    // overlapt met enige blocker. Check vanaf 08:00, max 12 iteraties.
+    // Respecteert ook de werkdag boundary (niet later dan 17:00).
+    function schuifNaarVrijSlot(
+      startMs: number,
+      duurMinuten: number
+    ): { start: number; eind: number } | null {
+      const DAG_EIND = new Date(`${datum}T17:00:00`).getTime();
+      const duurMs = duurMinuten * 60000;
+      let s = startMs;
+      let e = s + duurMs;
+      for (let iter = 0; iter < 20; iter++) {
+        if (e > DAG_EIND) return null;
+        const botsing = blockingIntervals.find((b) => s < b.eind && e > b.start);
+        if (!botsing) return { start: s, eind: e };
+        // Schuif naar het einde van de botsende blocker + 5 min buffer
+        s = botsing.eind + 5 * 60000;
+        e = s + duurMs;
+      }
+      return null;
+    }
+
+    function formatTijd(ms: number): string {
+      const d = new Date(ms);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
 
     // Plan de cluster blokken — elk blok pakt alle taken uit diens cluster
     // en geeft ze dezelfde start/eind
@@ -174,9 +222,18 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       if (!planItem) continue;
       if (!tijdRegex.test(planItem.start) || !tijdRegex.test(planItem.eind)) continue;
 
-      const startISO = `${datum}T${planItem.start}:00`;
-      const eindISO = `${datum}T${planItem.eind}:00`;
-      if (isNaN(new Date(startISO).getTime()) || isNaN(new Date(eindISO).getTime())) continue;
+      const voorgesteldStart = new Date(`${datum}T${planItem.start}:00`).getTime();
+      if (isNaN(voorgesteldStart)) continue;
+
+      // Check tegen bestaande blockers + al-geplande items uit deze call
+      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, planItem.duur);
+      if (!vrijSlot) {
+        geskiptOverlap++;
+        continue; // geen plek op de dag, skip dit cluster blok
+      }
+
+      const startISO = `${datum}T${formatTijd(vrijSlot.start)}:00`;
+      const eindISO = `${datum}T${formatTijd(vrijSlot.eind)}:00`;
 
       for (const taakId of blok.taakIds) {
         const taak = claudeTaken.find((t) => t.id === taakId);
@@ -193,23 +250,37 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
         gepland.push({
           id: taakId,
           titel: taak.titel,
-          start: planItem.start,
-          eind: planItem.eind,
+          start: formatTijd(vrijSlot.start),
+          eind: formatTijd(vrijSlot.eind),
           cluster: blok.cluster,
         });
       }
+      // Registreer dit blok als blocker voor volgende items
+      blockingIntervals.push({
+        start: vrijSlot.start,
+        eind: vrijSlot.eind,
+        label: `Claude sessie ${blok.cluster}`,
+      });
     }
 
-    // Plan handmatige taken individueel
+    // Plan handmatige taken individueel — zelfde anti-overlap logica
     for (const item of planning) {
       if (item.id < 0) continue; // Skip cluster blokken (al verwerkt)
       const taak = handmatigeTaken.find((t) => t.id === item.id);
       if (!taak) continue;
       if (!tijdRegex.test(item.start) || !tijdRegex.test(item.eind)) continue;
 
-      const startISO = `${datum}T${item.start}:00`;
-      const eindISO = `${datum}T${item.eind}:00`;
-      if (isNaN(new Date(startISO).getTime()) || isNaN(new Date(eindISO).getTime())) continue;
+      const voorgesteldStart = new Date(`${datum}T${item.start}:00`).getTime();
+      if (isNaN(voorgesteldStart)) continue;
+
+      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, item.duur);
+      if (!vrijSlot) {
+        geskiptOverlap++;
+        continue;
+      }
+
+      const startISO = `${datum}T${formatTijd(vrijSlot.start)}:00`;
+      const eindISO = `${datum}T${formatTijd(vrijSlot.eind)}:00`;
 
       await db
         .update(taken)
@@ -223,9 +294,15 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       gepland.push({
         id: item.id,
         titel: taak.titel,
-        start: item.start,
-        eind: item.eind,
+        start: formatTijd(vrijSlot.start),
+        eind: formatTijd(vrijSlot.eind),
         cluster: taak.cluster ?? undefined,
+      });
+      // Registreer als blocker voor volgende items
+      blockingIntervals.push({
+        start: vrijSlot.start,
+        eind: vrijSlot.eind,
+        label: taak.titel,
       });
     }
 
@@ -235,6 +312,7 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       totaal: gepland.length,
       clusterBlokken: clusterBlokken.length,
       ongegroepeerdGeskipt: claudeZonderCluster.length,
+      overlapGeskipt: geskiptOverlap,
     });
   } catch (error) {
     return NextResponse.json(

@@ -1383,14 +1383,14 @@ function TakenPage() {
                                     <>
                                       <button
                                         onClick={() => { setRenamingFase({ projectId: project.projectId, oude: fase.fase }); setRenameValue(fase.fase); }}
-                                        className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
+                                        className="flex-shrink-0 p-0.5 rounded text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors"
                                         title="Hernoem categorie"
                                       >
                                         <Pencil className="w-3 h-3" />
                                       </button>
                                       <button
                                         onClick={() => { setQuickAddFase({ projectId: project.projectId, fase: fase.fase }); setQuickAddTitel(""); }}
-                                        className="flex-shrink-0 opacity-0 group-hover/fase:opacity-100 p-0.5 rounded text-autronis-text-secondary/50 hover:text-autronis-accent transition-all"
+                                        className="flex-shrink-0 p-0.5 rounded text-autronis-text-secondary/40 hover:text-autronis-accent transition-colors"
                                         title="Snel taak toevoegen (of druk N)"
                                       >
                                         <Plus className="w-3 h-3" />
@@ -1462,15 +1462,14 @@ function TakenPage() {
                                         >
                                           <div className="flex items-center gap-2 px-3 py-1.5">
                                             <GripVertical className="w-3 h-3 text-autronis-text-secondary/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            {/* Bulk select checkbox — verschijnt on hover, of altijd als er al een selectie is */}
+                                            {/* Bulk select checkbox — altijd zichtbaar, subtle */}
                                             <button
                                               onClick={(e) => { e.stopPropagation(); toggleTaakSelected(taak.id); }}
                                               className={cn(
                                                 "flex-shrink-0 w-3.5 h-3.5 rounded border transition-all flex items-center justify-center",
                                                 selectedTaakIds.has(taak.id)
-                                                  ? "bg-autronis-accent border-autronis-accent opacity-100"
-                                                  : "border-autronis-border/50 opacity-0 group-hover:opacity-100",
-                                                selectedTaakIds.size > 0 && "opacity-100"
+                                                  ? "bg-autronis-accent border-autronis-accent"
+                                                  : "border-autronis-border hover:border-autronis-accent/50"
                                               )}
                                               title="Selecteer voor bulk actie"
                                             >

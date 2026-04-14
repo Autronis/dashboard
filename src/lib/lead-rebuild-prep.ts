@@ -73,38 +73,7 @@ function isDirectoryHit(url: string): boolean {
   return DIRECTORY_HOSTS.some((d) => host === d || host.endsWith(`.${d}`));
 }
 
-export function buildLeadPrompt(input: {
-  name: string;
-  location: string | null;
-  category: string | null;
-  fit: FitResult;
-  serp: SerpCheck;
-  existingWebsite: string | null;
-}): string {
-  const { name, location, category, fit, serp, existingWebsite } = input;
-
-  const verdictLine = existingWebsite
-    ? `Deze lead heeft al een site: ${existingWebsite}. Gebruik die als referentie (upgrade-job, niet from-scratch).`
-    : serp.verdict === "site_found" && serp.foundUrl
-      ? `⚠️ SERP-check vond mogelijk een bestaande site: ${serp.foundUrl}. Check eerst of het echt van ${name} is voor je begint.`
-      : serp.verdict === "no_site"
-        ? `SERP-check bevestigt: geen bestaande site gevonden. Bouw from-scratch.`
-        : serp.verdict === "error"
-          ? `SERP-check faalde (${serp.note}). Ga uit van geen bestaande site.`
-          : `SERP-check overgeslagen.`;
-
-  const fitLine =
-    fit.verdict === "scroll_stop_good"
-      ? `Sector-fit: **${fit.label}**. Dit is een fysiek product — overweeg een scroll-stop hero animatie.`
-      : fit.verdict === "static_upgrade"
-        ? `Sector-fit: **${fit.label}**. Dienstverlening — bouw een dark premium statische site, geen scroll-stop animatie.`
-        : `Sector-fit: **${fit.label}**. ${fit.reason}`;
-
-  return `Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
-
-Jouw opdracht: bouw een jaw-dropping **dark premium landing page** voor een nieuwe lead uit onze database, klaar om aan de klant te laten zien als pitch.
-
-## Design system (verplicht)
+const DESIGN_SYSTEM_BLOCK = `## Design system (verplicht)
 
 - Jet-black achtergrond \`#0a0a0b\` met subtiele ambient glows
 - Display headlines in **Space Grotesk** (clamp(3rem, 8vw, 7rem))
@@ -114,14 +83,48 @@ Jouw opdracht: bouw een jaw-dropping **dark premium landing page** voor een nieu
 - Section flow: hero → proof bar → features (3-col) → specs / numbers → testimonial (als plausibel) → CTA
 - Geen stock photos. Gebruik CSS gradients, geometrische vormen, emoji, of svg glyphs
 - Fully responsive via Tailwind utility classes
-- Tenminste één CTA-knop die glow'd on hover
+- Tenminste één CTA-knop die glow'd on hover`;
+
+function fitLineFor(fit: FitResult): string {
+  if (fit.verdict === "scroll_stop_good") {
+    return `Sector-fit: **${fit.label}** ✅ — Dit is een fysiek product. **Overweeg een scroll-stop hero animatie** (exploded product view, scroll-driven reveal) als centrale wow-factor.`;
+  }
+  if (fit.verdict === "static_upgrade") {
+    return `Sector-fit: **${fit.label}** — Dienstverlening, **geen scroll-stop animatie**. Bouw een dark premium statische site met sterke typografie en witruimte.`;
+  }
+  return `Sector-fit: **${fit.label}** — ${fit.reason}. Schat zelf in of scroll-stop past.`;
+}
+
+export function buildFreshPrompt(input: {
+  name: string;
+  location: string | null;
+  category: string | null;
+  fit: FitResult;
+  serp: SerpCheck;
+}): string {
+  const { name, location, category, fit, serp } = input;
+
+  const verdictLine =
+    serp.verdict === "site_found" && serp.foundUrl
+      ? `⚠️ SERP-check vond mogelijk een bestaande site: ${serp.foundUrl}. Check eerst of het echt van ${name} is voor je begint.`
+      : serp.verdict === "no_site"
+        ? `SERP-check bevestigt: geen bestaande site gevonden. Bouw from-scratch.`
+        : serp.verdict === "error"
+          ? `SERP-check faalde (${serp.note}). Ga uit van geen bestaande site.`
+          : `SERP-check overgeslagen.`;
+
+  return `Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
+
+Jouw opdracht: bouw een jaw-dropping **dark premium landing page** voor een nieuwe lead uit onze database, klaar om aan de klant te laten zien als pitch.
+
+${DESIGN_SYSTEM_BLOCK}
 
 ## Lead context
 
 - **Bedrijfsnaam**: ${name}
 - **Locatie**: ${location || "(onbekend)"}
 - **Categorie (Google Maps)**: ${category || "(onbekend)"}
-- ${fitLine}
+- ${fitLineFor(fit)}
 - ${verdictLine}
 
 ## Wat ik van je wil
@@ -133,12 +136,122 @@ Lever **één Next.js 15 + Tailwind landing page** (artifact). Gebruik alleen Ta
 Gebruik Claude artifacts zodat ik 'm live kan previewen en daarna kan itereren ("maak 'm bolder", "voeg pricing toe", "meer animatie", etc).`;
 }
 
+export function buildUpgradePrompt(input: {
+  name: string;
+  location: string | null;
+  category: string | null;
+  fit: FitResult;
+  scrape: SiteScrape;
+}): string {
+  const { name, location, category, fit, scrape } = input;
+
+  const sourceBlock = scrape.markdown
+    ? `## Huidige site — content (Firecrawl markdown van ${scrape.url})
+
+${scrape.markdown}`
+    : `## Huidige site
+
+URL: ${scrape.url || "(onbekend)"}
+${scrape.error ? `Scrape faalde: ${scrape.error}. Ga open de URL zelf in een browser voor context.` : "Scrape overgeslagen."}`;
+
+  return `Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
+
+Jouw opdracht: **upgrade** de bestaande website van een lead tot een jaw-dropping **dark premium landing page**, klaar om als pitch te laten zien ("zo kan jullie site eruit zien").
+
+${DESIGN_SYSTEM_BLOCK}
+
+## Lead context
+
+- **Bedrijfsnaam**: ${name}
+- **Locatie**: ${location || "(onbekend)"}
+- **Categorie (Google Maps)**: ${category || "(onbekend)"}
+- ${fitLineFor(fit)}
+
+${sourceBlock}
+
+## Wat ik van je wil
+
+Lever **één Next.js 15 + Tailwind landing page** (artifact). Gebruik alleen Tailwind utility classes.
+
+**Gebruik ECHTE copy uit de bron hierboven** — productnamen, services, USPs, testimonials. Herschrijf voor punch en ritme, maar verzin GEEN features, specs of claims die er niet staan. Als content ontbreekt: honest placeholder ("Coming soon", "tbd") of laat de sectie weg.
+
+Dit is een upgrade-pitch: maak duidelijk zichtbaar welke secties sterker worden (bolder hero, premium proof-bar, modernere features grid). De klant moet "wow dit is veel beter dan wat we nu hebben" denken zodra ze 'm zien.
+
+Gebruik Claude artifacts zodat ik 'm live kan previewen en daarna kan itereren ("maak 'm bolder", "voeg pricing toe", "meer animatie", etc).`;
+}
+
+function normalizeUrl(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
   const name = (lead.name ?? "").trim();
   const location = lead.location?.trim() || lead.address?.trim() || null;
-
   const fit = classifyFit(lead.category, name);
 
+  const existingWebsite = lead.website?.trim() || null;
+
+  // Empty state
+  const emptySerp: SerpCheck = {
+    ran: false,
+    verdict: "skipped",
+    foundUrl: null,
+    candidates: [],
+    note: "Niet van toepassing",
+  };
+  const emptyScrape: SiteScrape = {
+    ran: false,
+    url: null,
+    title: null,
+    markdown: null,
+    error: null,
+  };
+
+  // ── Mode A: has website → scrape + upgrade prompt ──
+  if (existingWebsite) {
+    const url = normalizeUrl(existingWebsite);
+    let scrape: SiteScrape = { ...emptyScrape, url };
+    try {
+      const result = await scrapeUrl(url, 12000);
+      scrape = {
+        ran: true,
+        url: result.url,
+        title: result.title,
+        markdown: result.markdown,
+        error: null,
+      };
+    } catch (e) {
+      scrape = {
+        ran: true,
+        url,
+        title: null,
+        markdown: null,
+        error: e instanceof Error ? e.message : "Scrape faalde",
+      };
+    }
+
+    const prompt = buildUpgradePrompt({
+      name: name || "(naam onbekend)",
+      location,
+      category: lead.category,
+      fit,
+      scrape,
+    });
+
+    return {
+      lead,
+      mode: "upgrade",
+      serp: emptySerp,
+      scrape,
+      fit,
+      prompt,
+    };
+  }
+
+  // ── Mode B: no website → SERP check + fresh prompt ──
   let serp: SerpCheck;
 
   if (!name) {
@@ -148,14 +261,6 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
       foundUrl: null,
       candidates: [],
       note: "Geen bedrijfsnaam — SERP-check overgeslagen",
-    };
-  } else if (lead.website?.trim()) {
-    serp = {
-      ran: false,
-      verdict: "skipped",
-      foundUrl: lead.website.trim(),
-      candidates: [],
-      note: "Lead heeft al een website — SERP-check overgeslagen",
     };
   } else {
     const query = location ? `${name} ${location}` : name;
@@ -192,14 +297,20 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
     }
   }
 
-  const prompt = buildLeadPrompt({
+  const prompt = buildFreshPrompt({
     name: name || "(naam onbekend)",
     location,
     category: lead.category,
     fit,
     serp,
-    existingWebsite: lead.website?.trim() || null,
   });
 
-  return { lead, serp, fit, prompt };
+  return {
+    lead,
+    mode: "fresh",
+    serp,
+    scrape: emptyScrape,
+    fit,
+    prompt,
+  };
 }

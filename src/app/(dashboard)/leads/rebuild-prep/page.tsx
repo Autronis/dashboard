@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   MapPin,
   ChevronLeft,
+  Globe,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -31,12 +33,15 @@ interface GoogleMapsLeadRow {
 
 const BATCH_LIMIT = 20;
 
+type SiteFilter = "alle" | "met_site" | "zonder_site";
+
 export default function LeadsRebuildPrepPage() {
   const { addToast } = useToast();
   const [leads, setLeads] = useState<GoogleMapsLeadRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
+  const [siteFilter, setSiteFilter] = useState<SiteFilter>("alle");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [preppingLoader, setPreppingLoader] = useState(false);
   const [results, setResults] = useState<PrepLeadResult[]>([]);
@@ -52,9 +57,7 @@ export default function LeadsRebuildPrepPage() {
       }
       const data = await res.json();
       const rows: GoogleMapsLeadRow[] = data.leads ?? [];
-      // Filter: enkel leads zonder website — dit is het hele punt van de tool.
-      const withoutWebsite = rows.filter((l) => !l.website?.trim());
-      setLeads(withoutWebsite);
+      setLeads(rows);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
@@ -67,15 +70,25 @@ export default function LeadsRebuildPrepPage() {
     load();
   }, [load]);
 
+  const counts = useMemo(() => {
+    const withSite = leads.filter((l) => !!l.website?.trim()).length;
+    return { total: leads.length, withSite, withoutSite: leads.length - withSite };
+  }, [leads]);
+
   const gefilterd = useMemo(() => {
-    if (!zoek.trim()) return leads;
-    const q = zoek.toLowerCase();
-    return leads.filter((l) =>
-      [l.name, l.location, l.address, l.category]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q))
-    );
-  }, [leads, zoek]);
+    let list = leads;
+    if (siteFilter === "met_site") list = list.filter((l) => !!l.website?.trim());
+    else if (siteFilter === "zonder_site") list = list.filter((l) => !l.website?.trim());
+    if (zoek.trim()) {
+      const q = zoek.toLowerCase();
+      list = list.filter((l) =>
+        [l.name, l.location, l.address, l.category, l.website]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q))
+      );
+    }
+    return list;
+  }, [leads, siteFilter, zoek]);
 
   const resultById = useMemo(() => {
     const m = new Map<string, PrepLeadResult>();
@@ -151,9 +164,11 @@ export default function LeadsRebuildPrepPage() {
               Lead Rebuild Prep
             </h1>
             <p className="text-autronis-text-muted mt-1 max-w-2xl">
-              Batch-tool voor Google Maps leads zonder website. Verifieert via Firecrawl
-              of ze echt geen site hebben, classificeert de sector en genereert een
-              paste-ready Claude prompt per lead. Max {BATCH_LIMIT} per batch.
+              Batch-tool voor Google Maps leads. Leads <b>zonder</b> website
+              krijgen een SERP-check + "from scratch" prompt. Leads <b>mét</b>{" "}
+              website worden gescraped zodat je een upgrade-pitch kan geven.
+              Beide kanten krijgen sector-fit voor scroll-stop animatie. Max{" "}
+              {BATCH_LIMIT} per batch.
             </p>
           </div>
           <div className="flex items-center gap-2">

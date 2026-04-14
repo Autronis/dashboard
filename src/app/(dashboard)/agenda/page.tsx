@@ -185,6 +185,17 @@ export default function AgendaPage() {
     }
   }, [checkGoogleStatus, addToast]);
 
+  // Start/Afrond cluster sessie buttons in dag-view dispatchen dit event
+  // zodat we de agenda-taken opnieuw fetchen na een bulk status update.
+  useEffect(() => {
+    const handler = () => {
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+    };
+    window.addEventListener("autronis:agenda-refetch", handler);
+    return () => window.removeEventListener("autronis:agenda-refetch", handler);
+  }, [queryClient]);
+
   const handleGoogleConnect = async () => {
     setGoogleLoading(true);
     try {

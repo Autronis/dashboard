@@ -31,6 +31,7 @@ import { openProjectInVSCode } from "@/lib/desktop-agent";
 import { useProjectDetail } from "@/hooks/queries/use-projecten";
 import type { Fase, FaseTaak, ProjectDetail } from "@/hooks/queries/use-projecten";
 import { EigenaarPicker } from "@/components/projecten/eigenaar-picker";
+import { KlantPicker } from "@/components/projecten/klant-picker";
 import { ProjectRemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 
 // ============ Sub-components ============
@@ -616,12 +617,12 @@ export default function ProjectDetailPage() {
                 <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">{project.naam}</h1>
                 <StatusBadge status={project.status ?? "actief"} />
                 <EigenaarPicker projectId={project.id} current={project.eigenaar ?? null} />
+                <KlantPicker
+                  projectId={project.id}
+                  currentKlantId={project.klantId ?? null}
+                  currentKlantNaam={project.klantNaam ?? null}
+                />
               </div>
-              {project.klantNaam && (
-                <p className="text-sm text-autronis-text-secondary">
-                  Klant: <span className="text-autronis-text-primary">{project.klantNaam}</span>
-                </p>
-              )}
 
               <div className="flex items-center gap-5 text-sm text-autronis-text-secondary flex-wrap">
                 <span className="flex items-center gap-1.5">

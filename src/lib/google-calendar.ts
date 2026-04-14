@@ -1,7 +1,12 @@
 import { google } from "googleapis";
 import { db } from "@/lib/db";
 import { googleTokens } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
+
+// Default calendar_id for the primary Google Calendar token row. Other
+// calendar_id values (e.g. "gmail") live in the same table but have their
+// own scope + refresh_token and must never be touched by calendar code.
+const PRIMARY_CALENDAR_ID = "primary";
 
 const SCOPES = ["https://www.googleapis.com/auth/calendar"];
 const REDIRECT_URI = `${process.env.NEXT_PUBLIC_URL ?? "http://localhost:3000"}/api/auth/google/callback`;
@@ -28,7 +33,12 @@ export async function getTokensForUser(gebruikerId: number) {
   const [row] = await db
     .select()
     .from(googleTokens)
-    .where(eq(googleTokens.gebruikerId, gebruikerId))
+    .where(
+      and(
+        eq(googleTokens.gebruikerId, gebruikerId),
+        eq(googleTokens.calendarId, PRIMARY_CALENDAR_ID)
+      )
+    )
     .limit(1);
   return row ?? null;
 }
@@ -44,7 +54,8 @@ export async function getAuthenticatedClient(gebruikerId: number) {
     expiry_date: new Date(tokens.expiresAt).getTime(),
   });
 
-  // Auto-refresh if expired
+  // Auto-refresh if expired. Update ONLY the primary calendar row —
+  // filtering by id keeps the gmail row (and any future scopes) untouched.
   const now = Date.now();
   const expiry = new Date(tokens.expiresAt).getTime();
   if (now >= expiry - 60_000) {
@@ -58,7 +69,7 @@ export async function getAuthenticatedClient(gebruikerId: number) {
           : tokens.expiresAt,
         bijgewerktOp: new Date().toISOString(),
       })
-      .where(eq(googleTokens.gebruikerId, gebruikerId));
+      .where(eq(googleTokens.id, tokens.id));
     client.setCredentials(credentials);
   }
 

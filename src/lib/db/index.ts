@@ -710,6 +710,29 @@ if (isTurso) {
   }
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_taken_cluster ON taken(project_id, cluster)");
 
+  // Slimme taken templates — DB-backed library van vooraf gedefinieerde
+  // Claude-uitvoerbare acties. Wordt bij eerste GET geseed met de defaults
+  // uit src/lib/slimme-taken.ts.
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS slimme_taken_templates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    naam TEXT NOT NULL,
+    beschrijving TEXT,
+    cluster TEXT NOT NULL,
+    geschatte_duur INTEGER DEFAULT 15,
+    prompt TEXT NOT NULL,
+    velden TEXT,
+    is_systeem INTEGER DEFAULT 0,
+    is_actief INTEGER DEFAULT 1,
+    recurring_day_of_week INTEGER,
+    recurring_laatste_run TEXT,
+    aangemaakt_door INTEGER REFERENCES gebruikers(id),
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_slimme_taken_actief ON slimme_taken_templates(is_actief)");
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_slimme_taken_recurring ON slimme_taken_templates(recurring_day_of_week)");
+
   // Project intakes wizard state
   sqliteDb.exec(`CREATE TABLE IF NOT EXISTS project_intakes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

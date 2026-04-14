@@ -186,3 +186,40 @@ export function fillPromptTemplate(template: string, veldWaarden: Record<string,
 export function fillNaamTemplate(naam: string, veldWaarden: Record<string, string>): string {
   return naam.replace(/\{(\w+)\}/g, (match, key) => veldWaarden[key] ?? match);
 }
+
+/**
+ * Seed de systeem templates in de DB. Idempotent — gebruikt ON CONFLICT
+ * DO NOTHING via de slug unique constraint. Returnt hoeveel nieuwe
+ * templates zijn toegevoegd.
+ */
+export async function seedSystemTemplates(): Promise<number> {
+  const { db } = await import("@/lib/db");
+  const { slimmeTakenTemplates } = await import("@/lib/db/schema");
+  const { eq } = await import("drizzle-orm");
+
+  let toegevoegd = 0;
+  for (const template of SLIMME_TAKEN) {
+    // Check of template met deze slug al bestaat
+    const bestaand = await db
+      .select({ id: slimmeTakenTemplates.id })
+      .from(slimmeTakenTemplates)
+      .where(eq(slimmeTakenTemplates.slug, template.id))
+      .limit(1);
+
+    if (bestaand.length > 0) continue;
+
+    await db.insert(slimmeTakenTemplates).values({
+      slug: template.id,
+      naam: template.naam,
+      beschrijving: template.beschrijving,
+      cluster: template.cluster,
+      geschatteDuur: template.geschatteDuur,
+      prompt: template.prompt,
+      velden: template.velden ? JSON.stringify(template.velden) : null,
+      isSysteem: 1,
+      isActief: 1,
+    });
+    toegevoegd++;
+  }
+  return toegevoegd;
+}

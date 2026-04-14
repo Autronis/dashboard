@@ -303,6 +303,13 @@ export function MiniVoorstelPDF({ data }: { data: MiniVoorstelData }) {
   return (
     <Document>
       <Page size="A4" style={s.page}>
+        {/* NIEUW-V2 MARKER — if you see this red banner at top, the new code is live */}
+        <View style={{ backgroundColor: "#DC2626", padding: 6, marginBottom: 8 }}>
+          <Text style={{ color: "#FFFFFF", fontSize: 11, fontFamily: "Helvetica-Bold", textAlign: "center" }}>
+            NIEUW-V2 · TEMPLATE CHECK · {new Date().toISOString()}
+          </Text>
+        </View>
+
         {/* Teal accent bar across the top */}
         <View style={s.accentBar} fixed />
 

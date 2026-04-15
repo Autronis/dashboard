@@ -2319,7 +2319,9 @@ export default function AgendaPage() {
                                             className="overflow-hidden"
                                           >
                                             <div className="space-y-0.5 px-2 pb-2 pt-0.5">
-                                              {fase.taken.map((taak) => (
+                                              {fase.taken.map((taak) => {
+                                                const taakIsClaude = taak.uitvoerder === "claude";
+                                                return (
                                                 <div
                                                   key={taak.id}
                                                   draggable
@@ -2342,8 +2344,23 @@ export default function AgendaPage() {
                                                   {taak.prioriteit === "hoog" && (
                                                     <span className="text-[8px] text-red-400 flex-shrink-0">!</span>
                                                   )}
+                                                  {/* Snel-plan vandaag: planFase met alleen deze taak. */}
+                                                  <button
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      const v = new Date();
+                                                      const datum = `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+                                                      handlePlanFase([taak], datum, taakIsClaude ? "08:00" : "09:00");
+                                                    }}
+                                                    title="Plan vandaag"
+                                                    className="opacity-0 group-hover:opacity-100 text-[10px] font-bold leading-none w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-opacity"
+                                                    style={{ backgroundColor: fpk.border + "30", color: fpk.text }}
+                                                  >
+                                                    +
+                                                  </button>
                                                 </div>
-                                              ))}
+                                                );
+                                              })}
                                             </div>
                                           </motion.div>
                                         )}

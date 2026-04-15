@@ -12,6 +12,21 @@
 ## Parallelle Chats — Worktree First
 Als een chat code gaat aanraken en er draaien parallel andere Claude chats in hetzelfde project, begin dan met `/worktree <sectie>` als allereerste commando (bv. `/worktree team`, `/worktree tijd`, `/worktree financien`). Dat isoleert het werk op een eigen `feat/<sectie>` branch in een aparte directory onder `.worktrees/`, zodat twee chats elkaar niet clobberen. Main worktree blijft gereserveerd voor één chat tegelijk. Alleen lezen/analyseren zonder edits? Geen worktree nodig.
 
+## Pushen — NIET automatisch, alleen bewust
+Twee auto-push mechanismen zijn **uit** gezet (beide zorgden voor spam op Vercel Hobby, parallel chats lieten continu deploys queuen):
+
+1. `.git/hooks/post-commit` in beide repos → hernoemd naar `.disabled`
+2. **Desktop Agent `nl.autronis.dashboard` launchagent** → `launchctl unload ~/Library/LaunchAgents/nl.autronis.dashboard.plist`. Die Rust-agent scande elke 2 min alle project-dirs en deed `git add -A && commit && push`. Dat was de echte spam-bron. Als je 'm weer aan zet (voor screen-time sync), is het een TODO om `git_sync` in `desktop-agent/src-tauri/src/project_sync.rs` los te maken van auto-push — bijv. een `auto_push: bool` config flag die default false is.
+
+**Nieuwe regel voor Claude:**
+1. Committen mag gewoon zo vaak als nodig (lokaal, gratis, no-op voor Vercel)
+2. `git push` alleen als je een **echte code change** wil deployen die in productie moet
+3. Docs, CLAUDE.md updates, refactors-zonder-gedrag-verandering → commit maar push niet, tenzij de user er expliciet om vraagt
+4. Batch multiple commits in één push waar mogelijk — één push = één Vercel build
+5. Parallel chats zien elkaars werk via het lokale filesystem (niet via remote push), dus je hoeft niet te pushen alleen om coordinatie. Alleen bij echte deploy-wens.
+
+**Vraag in twijfel gewoon:** "Wil je dat ik dit nu pushet (= Vercel deploy triggert) of laten we het lokaal tot de volgende echte deploy?"
+
 ## Dashboard Task Sync
 De auto-sync hook (`~/.claude/hooks/auto-sync-taken.py`) synct taken automatisch na git commits en TodoWrite. Config: `~/.config/autronis/claude-sync.json`.
 
@@ -26,6 +41,192 @@ curl -X POST "$URL/api/projecten/sync-taken" \
 ```
 
 **Regels:** Altijd fase + beschrijving meegeven. Dashboard is single source of truth. Sync DIRECT bij afronden, niet pas aan het einde.
+
+## Clusters — groeperen van samenhangende taken
+
+Taken hebben naast `fase` ook een optioneel `cluster` veld. **Een cluster groepeert taken die door dezelfde persoon uitgevoerd moeten worden**, omdat ze dezelfde context/expertise delen. Wanneer iemand een taak in een cluster oppakt (status → bezig of agenda-planned), worden alle andere open taken in datzelfde (project, cluster) tuple automatisch aan die persoon toegewezen.
+
+**BELANGRIJK:** fase en cluster zijn NIET hetzelfde. Eén fase kan meerdere clusters bevatten. Bijvoorbeeld in fase "Fase 1: Setup" kunnen zowel `backend-infra` taken zitten (Supabase schema, n8n workflow) als `frontend` taken (initiële UI). Die horen niet bij dezelfde persoon.
+
+### Standaard cluster-namen (Autronis convention)
+Gebruik ALTIJD een van deze namen als de taak in de betreffende categorie valt. Verzin geen nieuwe tenzij het echt niet past:
+
+| Cluster | Wat erin hoort |
+|---|---|
+| `backend-infra` | Supabase (schemas, edge functions, RLS), n8n workflows, scripts, API routes, database migraties, server-side integraties |
+| `frontend` | Lovable prototypes, dashboard widgets, UI componenten, pagina's, HTML email templates, React/Next code |
+| `klantcontact` | Intake calls, offerte opstellen, klant onboarden, follow-ups, mails naar klant |
+| `content` | Copy schrijven, blog posts, social media content, video scripts, design werk |
+| `admin` | Facturen, financiën, planning, belasting, documentatie updates |
+| `research` | Concurrentie analyse, tool vergelijk, YouTube research, markt onderzoek |
+
+### Bij NIEUWE taken die Claude aanmaakt (via sync-taken of POST /api/taken)
+**ALTIJD een cluster meegeven** als de taak duidelijk in één van de categorieën valt. Alleen weglaten als het echt een mengbak is (zeldzaam).
+
+```json
+{
+  "nieuwe_taken": [
+    {
+      "titel": "Supabase edge function voor enrichment",
+      "fase": "Fase 2: Data pipeline",
+      "cluster": "backend-infra",
+      "omschrijving": "..."
+    },
+    {
+      "titel": "Lovable prototype van de leads tabel",
+      "fase": "Fase 2: Data pipeline",
+      "cluster": "frontend",
+      "omschrijving": "..."
+    }
+  ]
+}
+```
+
+### Bij NIEUWE projecten (intake flow)
+Als Sem of Syb een nieuw project start en jij de initiële taken genereert, **groepeer ze direct in clusters**. Dat is de belangrijkste moment om dit goed te doen — achteraf labelen is extra werk.
+
+Denk vooruit: "deze 12 taken vallen uit elkaar in 3 clusters: `backend-infra` (4 stuks), `frontend` (5 stuks), `klantcontact` (3 stuks)". Zet die clusters bij elke individuele taak. Zo kan Sem of Syb gewoon één taak uit `backend-infra` pakken en heeft 'ie meteen de hele cluster onder zich.
+
+### NOOIT
+- Cluster gebruiken als "wie gaat dit doen" tag (daar is `eigenaar` voor)
+- Alle taken in 1 cluster gooien zonder na te denken
+- Een cluster verzinnen als een standaard naam ook past
+- Cluster meegeven als je écht niet kan bepalen waar het hoort — laat 'm dan leeg
+
+## Project Aanmaken — Eigenaar VERPLICHT vragen
+Het dashboard is gedeeld door Sem en Syb. Elk project heeft een `eigenaar` veld dat bepaalt wie het ziet:
+
+| Code | Wanneer |
+|---|---|
+| `sem` | Alleen Sem (klant of intern) — Syb ziet 'm niet |
+| `syb` | Alleen Syb — Sem ziet 'm niet |
+| `team` | Beiden werken eraan — beiden zien 'm |
+| `vrij` | Niet toegewezen, iemand pakt 'm op — beiden zien 'm |
+
+**Voordat je een nieuw project aanmaakt** in het dashboard (via `POST /api/projecten` óf impliciet via een sync-taken call met een naam die nog niet bestaat), MOET je éérst de gebruiker vragen voor wie het is. Geen aanname maken, geen "lijkt me sem" — gewoon vragen. De API weigert sinds nu elke nieuw-project call zonder geldige `eigenaar` met een 400.
+
+**Hoe je 't doet:**
+```bash
+# 1. Vraag de gebruiker: "Voor wie is dit project? sem, syb, team, of vrij?"
+# 2. Maak het project aan met eigenaar in de body:
+curl -X POST "$URL/api/projecten" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"naam":"Nieuw Project","eigenaar":"team","omschrijving":"..."}'
+# 3. Daarna kun je sync-taken voor dat project gebruiken zonder eigenaar opnieuw mee te geven.
+```
+
+**Of in één call via sync-taken:**
+```bash
+curl -X POST "$URL/api/projecten/sync-taken" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"projectNaam":"Nieuw Project","eigenaar":"team","nieuwe_taken":[...]}'
+```
+
+Sla deze stap NOOIT over. Als de auto-sync hook een 400 geeft over ontbrekende eigenaar → dat is de reminder dat je moet vragen.
+
+## Project Intake — Intent detectie & flow
+
+**Wanneer je dit MOET activeren:** zodra Sem of Syb in een chat zegt iets in de geest van:
+- "voor klant X willen we Y bouwen / opzetten / automatiseren"
+- "we hebben een nieuwe klant en die wil ..."
+- "kunnen we voor [bedrijfsnaam] een [systeem/automation/workflow] maken"
+- "ik heb een idee voor [bedrijf/klant]: ..."
+- "nieuw project: [naam]"
+- vergelijkbare formuleringen die duidelijk een nieuw werk-initiatief beschrijven
+
+Dit is **intake-intent**. Reageer NIET met "ja goed idee, hoe wil je het aanpakken" — start de intake flow.
+
+### De flow (vijf fases, in volgorde, niet skippen)
+
+**Fase 1: Concept samenvatten + eigenaar vragen**
+"Begrepen — je wil voor [X] een [Y] doen. Voor wie is dit project? sem, syb, team, of vrij?"
+Wacht op antwoord, vraag door als concept vaag is.
+
+**Fase 2: Chat-start aanroepen (één call doet alles)**
+Zodra je eigenaar + een verzonnen projectnaam hebt, roep het chat-start endpoint aan. Dit creëert in één call:
+- een `project_intakes` rij met `bron: "chat"` + je klantConcept
+- een `projecten` rij met juiste eigenaar (triggert auto GitHub repo aanmaak)
+- 3-5 creatieve invalshoeken via Claude Sonnet 4.5 (op server)
+- retourneert een `dashboardUrl` die Sem in de browser kan openen om verder te gaan
+
+```bash
+CONFIG=$(cat ~/.config/autronis/claude-sync.json)
+URL=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['dashboard_url'])")
+KEY=$(echo $CONFIG | python3 -c "import sys,json; print(json.load(sys.stdin)['api_key'])")
+
+curl -s -X POST "$URL/api/projecten/intake/chat-start" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{
+    "klantConcept": "<alles wat je weet over klant + probleem + context>",
+    "naam": "<korte projectnaam>",
+    "eigenaar": "sem|syb|team|vrij",
+    "genereerInvalshoeken": true
+  }'
+```
+
+Response bevat `{intake, project, invalshoeken, dashboardUrl}`.
+
+Bevestig aan Sem: "Project '[naam]' aangemaakt (id [X]). GitHub repo: [url]. Hier zijn [N] invalshoeken, én je kan verder in de browser: [dashboardUrl]".
+
+**Fase 3: Invalshoeken tonen + laten kiezen**
+Toon de response `invalshoeken` array inline in de chat:
+```
+1. **[naam]** — [beschrijving]
+   *Impact:* [impact] · *Aanpak:* [aanpak]
+2. ...
+```
+
+Vraag welke richting resoneert. Bij keuze:
+```bash
+curl -s -X PATCH "$URL/api/projecten/intake/<intakeId>" \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"gekozenInvalshoek": "<naam>", "stap": "project"}'
+```
+
+**Fase 4: Scope generatie aanbieden**
+"Wil je dat ik nu het volledige scope-plan opstel? Ik gebruik de `/scope` skill (6-fase interview) en upload de PDF direct naar het dashboard. Of we slaan dit over en doen het later."
+
+- **JA**: invoke de `/scope` skill (`~/.claude/skills/scope/`). De skill doorloopt het interview, genereert een JSON, en run je dan met:
+  ```bash
+  node ~/.claude/skills/scope/generate-pdf.js <json-path> <projectId>
+  ```
+  Het laatste argument (`<projectId>`) uploadt de PDF naar Vercel Blob en zet `scope_pdf_url` op het project. De skill print een JSON line met `{localPath, url, projectId}`.
+- **NEE / Later**: PATCH `scopeStatus: "overgeslagen"` op de intake en ga door.
+
+**Fase 5: Klant koppeling — UITGESTELD**
+**KRITIEK: maak NU geen klant aan in het dashboard.** Het project mag prima zonder klant bestaan zolang er nog geen deal is. Pas wanneer Sem/Syb expliciet zegt "klant heeft akkoord", "we beginnen", "scope is geaccepteerd", o.i.d. → ga naar fase 6.
+
+Vermeld kort: "Klant koppeling staat uit tot er akkoord is. Pingt me wanneer 't zover is."
+
+**Fase 6: Klant aanmaken + project koppelen (later, na akkoord)**
+Triggert wanneer iemand zegt: "klant heeft akkoord", "scope geaccepteerd", "we mogen beginnen", "deal rond", o.i.d.
+
+Stappen:
+1. Vraag klantgegevens op (één vraag per keer of in batch, jouw keuze):
+   - Bedrijfsnaam (verplicht)
+   - Contactpersoon
+   - Email (verplicht voor facturatie)
+   - Telefoon
+   - Adres
+   - KVK nummer
+   - BTW nummer
+   - Uurtarief (default 95 als niet opgegeven)
+   - Branche
+2. `POST /api/klanten` met de gegevens → krijg klantId terug
+3. `PUT /api/projecten/[id]` met `{klantId}` om de koppeling te leggen
+4. Bevestig: "Klant [naam] aangemaakt en gekoppeld aan project. Alles staat in dashboard onder /klanten/[id]."
+
+### Wanneer je deze flow OVERSLAAT
+- Project bestaat al in dashboard → niet opnieuw aanmaken, sluit aan bij bestaande
+- User zegt expliciet "skip de scope" → spring naar fase 5
+- Het is een intern Autronis project zonder externe klant → fase 5+6 niet van toepassing
+- User zegt "alleen aanmaken, ik vul de rest later in" → doe alleen fase 1+2, sla 3-6 over
+
+### Wat je NIET doet
+- Geen aannames over eigenaar — altijd vragen
+- Geen klant aanmaken voor er akkoord is
+- Geen scope genereren zonder uitdrukkelijke OK in fase 4
+- Geen project aanmaken zonder fase 1 (eigenaar) eerst af te ronden
 
 ## Context Management
 - **25%**: waarschuw Sem

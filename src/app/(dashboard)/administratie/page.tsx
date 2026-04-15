@@ -327,10 +327,11 @@ export default function AdministratiePage() {
             <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
               <div>
                 <h2 className="text-lg font-bold text-autronis-text-primary">
-                  Documentdekking {formatPeriodeLabel(jaar, kwartaal)}
+                  Kostendekking {formatPeriodeLabel(jaar, kwartaal)}
                 </h2>
                 <p className="text-xs text-autronis-text-secondary mt-0.5">
-                  Hoeveel van je werkelijke uitgaven heb je als PDF in het archief?
+                  Voor hoeveel van je <strong>uitgaven</strong> heb je een bewijs-PDF? Nodig om voorbelasting terug te vragen.
+                  Verzonden facturen hebben hun eigen PDF en tellen niet mee.
                 </p>
               </div>
               <div className="text-right">

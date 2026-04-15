@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, LogOut, Timer } from "lucide-react";
+import { Menu, LogOut, Timer, Search } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationCenter } from "@/components/ui/notification-center";
 import { useSidebar } from "@/hooks/use-sidebar";
@@ -89,6 +89,18 @@ export function Header({ gebruiker }: HeaderProps) {
               </span>
             </Link>
           )}
+
+          {/* Search shortcut — mobiel altijd zichtbaar in header zodat het
+              command palette met 1 tap te bereiken is, ongeacht welke route
+              de ActionDock toont. Op desktop blijft ⌘K de standaard. */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("autronis:open-command-palette"))}
+            className="p-2 rounded-lg hover:bg-autronis-border text-autronis-text-secondary lg:hidden"
+            aria-label="Zoeken"
+            title="Zoeken (⌘K)"
+          >
+            <Search className="w-5 h-5" />
+          </button>
 
           <NotificationCenter />
           <ThemeToggle />

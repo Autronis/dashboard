@@ -91,13 +91,9 @@ export async function POST() {
             kwartaal: 4,
             jaar,
           },
-          {
-            type: "kvk_publicatie",
-            omschrijving: `KvK publicatieplicht ${jaar}`,
-            datum: `${jaar}-01-01`,
-            kwartaal: null,
-            jaar,
-          },
+          // KvK publicatieplicht geldt alleen voor BV's en NV's, NIET voor
+          // eenmanszaak/VOF. Autronis is een VOF dus deze deadline is niet
+          // van toepassing en wordt bewust niet geseed.
         ];
 
         for (const deadline of deadlinesToCreate) {

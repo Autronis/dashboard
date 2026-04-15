@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, externeKalenders } from "@/lib/db/schema";
-import { eq, or, and, isNull, sql } from "drizzle-orm";
+import { eq, or, and, isNull, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
@@ -44,7 +44,23 @@ export async function GET() {
           or(
             eq(taken.status, "open"),
             eq(taken.status, "bezig")
-          )
+          ),
+          // Privacy + actief filter op project.
+          // Sem ziet sem/team/vrij + projecten zonder eigenaar (legacy NULL).
+          // Syb ziet syb/team/vrij. Inactieve projecten worden weggefilterd.
+          // Taken zonder gekoppeld project blijven altijd zichtbaar.
+          or(
+            isNull(taken.projectId),
+            and(
+              sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`,
+              gebruiker.id === 2
+                ? inArray(projecten.eigenaar, ["syb", "team", "vrij"])
+                : or(
+                    inArray(projecten.eigenaar, ["sem", "team", "vrij"]),
+                    isNull(projecten.eigenaar)
+                  )
+            )!
+          )!
         )
       )
       .orderBy(

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inkomendeFacturen, bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, between, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { uploadToStorage } from "@/lib/supabase";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { findBestMatch } from "@/lib/match-factuur";
 
 interface InvoiceData {
   leverancier: string;
@@ -12,6 +13,7 @@ interface InvoiceData {
   btwBedrag: number | null;
   factuurnummer: string | null;
   datum: string;
+  currency: "EUR" | "USD" | "GBP" | null;
 }
 
 async function extractInvoiceData(pdfBuffer: Buffer, filename: string): Promise<InvoiceData | null> {
@@ -40,7 +42,25 @@ async function extractInvoiceData(pdfBuffer: Buffer, filename: string): Promise<
           },
           {
             type: "text",
-            text: 'Extract the following from this invoice: leverancier (supplier name), bedrag (total amount including VAT), btwBedrag (VAT amount), factuurnummer (invoice number), datum (invoice date as YYYY-MM-DD). Respond with valid JSON only: {"leverancier": "...", "bedrag": 123.45, "btwBedrag": 21.00, "factuurnummer": "...", "datum": "YYYY-MM-DD"}. Use null for fields you cannot find.',
+            text: `Is this an invoice, receipt, or credit note? If yes, extract structured data. If not (e.g. shipping confirmation, newsletter, contract), respond with exactly: {"isFactuur": false}.
+
+If it IS an invoice/receipt/credit note, respond with valid JSON:
+{
+  "isFactuur": true,
+  "leverancier": "Company name as it appears (include 'Inc.', 'Ltd', 'B.V.' etc.)",
+  "bedrag": 123.45,
+  "btwBedrag": 21.00,
+  "factuurnummer": "INV-12345",
+  "datum": "YYYY-MM-DD",
+  "currency": "EUR"
+}
+
+CRITICAL RULES:
+- "bedrag" is the TOTAL amount (incl. BTW/tax) as a plain number without currency symbol.
+- "currency" MUST be "EUR", "USD", or "GBP". Look at the currency symbol — € = EUR, $ = USD, £ = GBP. NEVER assume EUR by default.
+- "btwBedrag" is only non-null for Dutch invoices with NL BTW. Foreign / reverse-charge invoices get 0 or null.
+- "datum" is the invoice issue date, not payment or due date.
+- Only respond with valid JSON, no other text.`,
           },
         ],
       },
@@ -52,16 +72,23 @@ async function extractInvoiceData(pdfBuffer: Buffer, filename: string): Promise<
 
   try {
     const parsed = JSON.parse(textBlock.text) as {
+      isFactuur: boolean;
       leverancier?: string;
       bedrag?: number;
       btwBedrag?: number | null;
       factuurnummer?: string | null;
       datum?: string;
+      currency?: string;
     };
 
-    if (!parsed.leverancier || !parsed.bedrag || !parsed.datum) {
+    if (!parsed.isFactuur || !parsed.leverancier || !parsed.bedrag || !parsed.datum) {
       return null;
     }
+
+    const currency =
+      parsed.currency === "USD" || parsed.currency === "GBP" || parsed.currency === "EUR"
+        ? parsed.currency
+        : null;
 
     return {
       leverancier: parsed.leverancier,
@@ -69,56 +96,33 @@ async function extractInvoiceData(pdfBuffer: Buffer, filename: string): Promise<
       btwBedrag: parsed.btwBedrag ?? null,
       factuurnummer: parsed.factuurnummer ?? null,
       datum: parsed.datum,
+      currency,
     };
   } catch {
     return null;
   }
 }
 
-async function findMatchingTransaction(bedrag: number) {
-  const absBedrag = Math.abs(bedrag);
-  const lower = -(absBedrag * 1.05);
-  const upper = -(absBedrag * 0.95);
-
-  const matches = await db
-    .select()
-    .from(bankTransacties)
-    .where(
-      and(
-        eq(bankTransacties.type, "af"),
-        between(bankTransacties.bedrag, lower, upper),
-        isNull(bankTransacties.storageUrl),
-        isNull(bankTransacties.bonPad)
-      )
-    )
-    .limit(1);
-
-  if (matches.length > 0) return matches[0];
-
-  // Also try positive amount range
-  const lowerBound = absBedrag * 0.95;
-  const upperBound = absBedrag * 1.05;
-
-  const positiveMatches = await db
-    .select()
-    .from(bankTransacties)
-    .where(
-      and(
-        eq(bankTransacties.type, "af"),
-        between(bankTransacties.bedrag, lowerBound, upperBound),
-        isNull(bankTransacties.storageUrl),
-        isNull(bankTransacties.bonPad)
-      )
-    )
-    .limit(1);
-
-  return positiveMatches[0] ?? null;
-}
-
-// POST /api/administratie/upload — Manual PDF invoice upload
+// POST /api/administratie/upload — PDF invoice upload
+//
+// Accepts both:
+//   - Multipart form with field `bestand` (web upload button)
+//   - x-api-key header + multipart `bestand` (iOS Shortcut)
+//
+// Flow: Claude Sonnet Vision extracts invoice data → Supabase upload →
+// scoring matcher tries to link to a bank_transactie → insert row in
+// inkomende_facturen with status gematcht/onbekoppeld.
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth();
+    // Auth: either session (requireAuth) or x-api-key matching SESSION_SECRET
+    const apiKey = request.headers.get("x-api-key");
+    const authHeader = request.headers.get("authorization");
+    const sessionSecret = process.env.SESSION_SECRET;
+    const isShortcut =
+      sessionSecret && (apiKey === sessionSecret || authHeader === `Bearer ${sessionSecret}`);
+    if (!isShortcut) {
+      await requireAuth();
+    }
 
     const formData = await request.formData();
     const bestand = formData.get("bestand");
@@ -140,7 +144,7 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await bestand.arrayBuffer();
     const pdfBuffer = Buffer.from(arrayBuffer);
 
-    // Extract invoice data via Claude Vision
+    // Extract invoice data via Claude Vision (currency-aware)
     const invoiceData = await extractInvoiceData(pdfBuffer, bestand.name);
 
     if (!invoiceData) {
@@ -150,7 +154,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload to Supabase Storage
+    // Filter: eigen Autronis uitgaande facturen horen niet in inkomende_facturen.
+    if (/autronis/i.test(invoiceData.leverancier)) {
+      return NextResponse.json(
+        {
+          fout: "Dit lijkt een eigen Autronis-factuur (uitgaand). Die horen in /facturen, niet in administratie/inkomend.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Upload PDF naar Supabase Storage
     const year = new Date().getFullYear();
     const timestamp = Date.now();
     const safeFilename = bestand.name.replace(/[^a-zA-Z0-9._-]/g, "_");
@@ -158,11 +172,18 @@ export async function POST(request: NextRequest) {
 
     await uploadToStorage(storagePath, pdfBuffer, "application/pdf");
 
-    // Auto-match with bank transaction
-    const matchedTransactie = await findMatchingTransaction(invoiceData.bedrag);
-    const status = matchedTransactie ? "gematcht" : "onbekoppeld";
+    // Auto-match via scoring matcher. Non-EUR invoices zetten we als
+    // onbekoppeld zodat Sem ze handmatig kan koppelen (het bedrag op de
+    // factuur wijkt af van de bank-tx na currency conversion).
+    const skipAutoMatch = invoiceData.currency && invoiceData.currency !== "EUR";
+    const match = skipAutoMatch
+      ? null
+      : await findBestMatch({
+          leverancier: invoiceData.leverancier,
+          bedrag: invoiceData.bedrag,
+          datum: invoiceData.datum,
+        });
 
-    // Create inkomendeFacturen record
     const [factuur] = await db
       .insert(inkomendeFacturen)
       .values({
@@ -173,24 +194,35 @@ export async function POST(request: NextRequest) {
         datum: invoiceData.datum,
         storageUrl: storagePath,
         emailId: null,
-        bankTransactieId: matchedTransactie?.id ?? null,
-        status,
+        bankTransactieId: match?.tx.id ?? null,
+        status: match ? "gematcht" : "onbekoppeld",
         verwerkOp: new Date().toISOString(),
       })
       .returning();
 
-    // If matched, update the bank transaction with storageUrl
-    if (matchedTransactie) {
+    if (match) {
       await db
         .update(bankTransacties)
         .set({ storageUrl: storagePath, status: "gematcht" })
-        .where(eq(bankTransacties.id, matchedTransactie.id));
+        .where(eq(bankTransacties.id, match.tx.id));
     }
 
     return NextResponse.json({
       succes: true,
       factuur,
-      status,
+      status: match ? "gematcht" : "onbekoppeld",
+      gematchtAan: match
+        ? {
+            id: match.tx.id,
+            merchant: match.tx.merchantNaam ?? match.tx.omschrijving,
+            bedrag: match.tx.bedrag,
+            score: Math.round(match.score * 100),
+            reasons: match.reasons,
+          }
+        : null,
+      currencyWarning: skipAutoMatch
+        ? `Factuur is in ${invoiceData.currency}, niet EUR — niet auto-gematcht want bedrag verschilt na wisselkoers. Koppel handmatig.`
+        : null,
     });
   } catch (error) {
     return NextResponse.json(

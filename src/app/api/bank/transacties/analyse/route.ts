@@ -182,17 +182,22 @@ export async function POST(req: NextRequest) {
     try {
       const analyse = await analyseTransactie(context);
 
+      // Defensief updaten: alleen velden vullen die nog leeg zijn.
+      // Voorkomt dat Sem's handmatige BTW/categorie/fiscaalType wordt
+      // overschreven door een AI-guess.
+      const updates: Record<string, string | number | null> = {
+        aiBeschrijving: analyse.aiBeschrijving,
+        isAbonnement: analyse.isAbonnement ? 1 : 0,
+        overdodigheidScore: analyse.overdodigheidScore,
+        subsidieMogelijkheden: JSON.stringify(analyse.subsidieMogelijkheden),
+      };
+      if (tx.fiscaalType == null) updates.fiscaalType = analyse.fiscaalType;
+      if (tx.btwBedrag == null) updates.btwBedrag = analyse.btwBedrag;
+      if (tx.kiaAftrek == null) updates.kiaAftrek = analyse.kiaAftrek;
+
       await db
         .update(bankTransacties)
-        .set({
-          aiBeschrijving: analyse.aiBeschrijving,
-          isAbonnement: analyse.isAbonnement ? 1 : 0,
-          overdodigheidScore: analyse.overdodigheidScore,
-          fiscaalType: analyse.fiscaalType,
-          subsidieMogelijkheden: JSON.stringify(analyse.subsidieMogelijkheden),
-          btwBedrag: analyse.btwBedrag,
-          kiaAftrek: analyse.kiaAftrek,
-        })
+        .set(updates)
         .where(eq(bankTransacties.id, tx.id));
 
       geanalyseerd++;

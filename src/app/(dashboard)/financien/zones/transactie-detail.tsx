@@ -192,37 +192,65 @@ export function TransactieDetail({ transactie, onClose }: Props) {
               </div>
 
               {/* Bon / factuur koppeling */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={handleUploadBon}
+              />
               {(transactie.storageUrl || transactie.bonPad) ? (
-                <button
-                  onClick={() => openBon((transactie.storageUrl ?? transactie.bonPad)!)}
-                  disabled={openingBon}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-autronis-accent/10 border border-autronis-accent/25 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors disabled:opacity-50 text-left"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-autronis-accent/20 flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-4 h-4 text-autronis-accent" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-autronis-text-primary">
-                      {openingBon ? "Openen..." : "Bekijk bon / factuur"}
-                    </p>
-                    <p className="text-[11px] text-autronis-text-secondary truncate">
-                      {(transactie.storageUrl ?? transactie.bonPad)?.split("/").pop()}
-                    </p>
-                  </div>
-                  <ExternalLink className="w-4 h-4 text-autronis-text-secondary flex-shrink-0" />
-                </button>
-              ) : (
-                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
-                  <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
-                    <Paperclip className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-amber-300">Geen bon gekoppeld</p>
-                    <p className="text-[11px] text-amber-300/70">
-                      Upload de factuur via /administratie of laat 'm automatisch syncen vanuit Gmail
-                    </p>
-                  </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => openBon((transactie.storageUrl ?? transactie.bonPad)!)}
+                    disabled={openingBon}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-autronis-accent/10 border border-autronis-accent/25 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors disabled:opacity-50 text-left"
+                  >
+                    <div className="w-9 h-9 rounded-lg bg-autronis-accent/20 flex items-center justify-center flex-shrink-0">
+                      <FileText className="w-4 h-4 text-autronis-accent" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-autronis-text-primary">
+                        {openingBon ? "Openen..." : "Bekijk bon / factuur"}
+                      </p>
+                      <p className="text-[11px] text-autronis-text-secondary truncate">
+                        {(transactie.storageUrl ?? transactie.bonPad)?.split("/").pop()}
+                      </p>
+                    </div>
+                    <ExternalLink className="w-4 h-4 text-autronis-text-secondary flex-shrink-0" />
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-xs text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/30 transition-colors disabled:opacity-50"
+                  >
+                    {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                    {uploading ? "Uploaden..." : "Vervang met andere factuur"}
+                  </button>
                 </div>
+              ) : (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/5 border border-amber-500/25 hover:bg-amber-500/10 hover:border-amber-500/40 transition-colors disabled:opacity-50 text-left"
+                >
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                    {uploading ? (
+                      <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                    ) : (
+                      <Upload className="w-4 h-4 text-amber-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-amber-300">
+                      {uploading ? "Uploaden..." : "Upload factuur / bon"}
+                    </p>
+                    <p className="text-[11px] text-amber-300/70">
+                      PDF selecteren. Wordt direct gekoppeld aan deze transactie, Claude extract leest bedrag + BTW automatisch.
+                    </p>
+                  </div>
+                  <Paperclip className="w-4 h-4 text-amber-400/60 flex-shrink-0" />
+                </button>
               )}
 
               {/* AI description */}

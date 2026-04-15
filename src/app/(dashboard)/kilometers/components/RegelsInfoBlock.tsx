@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 // sense interpretatie voor een klein bureau/VOF.
 
 export function RegelsInfoBlock() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden">

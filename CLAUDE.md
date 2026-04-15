@@ -59,6 +59,9 @@ npm run build        # Production build
 npx tsc --noEmit     # TypeScript check (altijd runnen na wijzigingen)
 ```
 
+### Turbopack + .worktrees/ valkuil
+Turbopack's file watcher overloadt als er een `.worktrees/` directory in de project root zit met meerdere geparkeerde git worktrees (dev server hangt of crasht bij elke hot reload). **Houd `.worktrees/` weg uit de project root** — gebruik `/tmp/autronis-worktrees-parked-<timestamp>/` of een andere locatie buiten de tree. Als Turbopack alsnog traag is, fallback naar webpack via `NODE_OPTIONS='--max-old-space-size=6144' npx next dev -p 3000` (zonder `--turbo`).
+
 ## Environment Variables
 ```
 SESSION_SECRET=...        # iron-session secret (min 32 chars, vereist)

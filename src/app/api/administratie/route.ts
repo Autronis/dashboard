@@ -198,6 +198,13 @@ export async function GET(request: NextRequest) {
         )
       );
 
+    // "Zonder bon" = bank tx zonder bewijs. Een bank tx telt als "met bewijs"
+    // als ÉÉN van deze waar is:
+    //   - storageUrl is gevuld (gmail-sync of manual koppel zet 'm)
+    //   - bonPad is gevuld (legacy local file)
+    //   - er bestaat een inkomende_facturen rij die naar deze tx wijst
+    //     (vroegere matchers updateden alleen de inkomende-kant, niet de
+    //     bank-kant; die fallback voorkomt undertelling)
     const [zonderBon] = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
@@ -211,6 +218,7 @@ export async function GET(request: NextRequest) {
           lte(bankTransacties.datum, end),
           sql`${bankTransacties.storageUrl} IS NULL`,
           sql`${bankTransacties.bonPad} IS NULL`,
+          sql`NOT EXISTS (SELECT 1 FROM ${inkomendeFacturen} WHERE ${inkomendeFacturen.bankTransactieId} = ${bankTransacties.id})`,
           sql`(${bankTransacties.fiscaalType} IS NULL OR ${bankTransacties.fiscaalType} != 'prive')`,
           sql`(${bankTransacties.categorie} IS NULL OR ${bankTransacties.categorie} != 'vermogen')`
         )

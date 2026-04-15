@@ -328,14 +328,21 @@ export function TransactiesZone() {
                               )}
                             </div>
                           </div>
-                          <span
-                            className={cn(
-                              "text-sm font-semibold tabular-nums shrink-0",
-                              t.type === "bij" ? "text-emerald-400" : "text-rose-300"
+                          <div className="flex flex-col items-end shrink-0 gap-0.5">
+                            <span
+                              className={cn(
+                                "text-sm font-semibold tabular-nums",
+                                t.type === "bij" ? "text-emerald-400" : "text-rose-300"
+                              )}
+                            >
+                              {t.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(t.bedrag))}
+                            </span>
+                            {t.btwBedrag != null && t.btwBedrag > 0 && (
+                              <span className="text-[10px] text-cyan-400/80 tabular-nums font-medium">
+                                BTW {formatEuro(t.btwBedrag)}
+                              </span>
                             )}
-                          >
-                            {t.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(t.bedrag))}
-                          </span>
+                          </div>
                         </button>
                       );
                     })}

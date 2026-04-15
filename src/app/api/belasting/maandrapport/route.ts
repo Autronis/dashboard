@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankTransacties, uitgaven, verdeelRegels, openstaandeVerrekeningen } from "@/lib/db/schema";
+import { bankTransacties, verdeelRegels, openstaandeVerrekeningen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { BORG_CONFIG } from "@/lib/borg-config";
@@ -123,33 +123,21 @@ export async function GET(req: NextRequest) {
       return Math.round((Math.abs(bedrag) / 1.21) * 0.21 * 100) / 100;
     }
 
-    // Combine into unified list
-    let items: RapportItem[] = [
-      ...transacties.map((t) => ({
-        id: t.id,
-        bron: "bankTransacties" as const,
-        datum: t.datum,
-        omschrijving: t.merchantNaam || t.omschrijving,
-        categorie: t.categorie,
-        bankNaam: t.bank,
-        bedragInclBtw: Math.abs(t.bedrag),
-        btwBedrag: t.btwBedrag ?? schatBtw(t.bedrag, t.merchantNaam || t.omschrijving),
-        eigenaar: t.eigenaar,
-        splitRatio: t.splitRatio,
-      })),
-      ...uitgavenData.map((u) => ({
-        id: u.id,
-        bron: "uitgaven" as const,
-        datum: u.datum,
-        omschrijving: u.leverancier || u.omschrijving,
-        categorie: u.categorie,
-        bankNaam: null,
-        bedragInclBtw: u.bedrag,
-        btwBedrag: u.btwBedrag ?? schatBtw(u.bedrag, u.leverancier || u.omschrijving),
-        eigenaar: u.eigenaar,
-        splitRatio: u.splitRatio,
-      })),
-    ];
+    // Unified list uit bank_transacties (de `uitgaven` tabel is deprecated
+    // en wordt niet meer gevuld). Vermogensstortingen zijn al type=bij dus
+    // worden hier vanzelf uitgesloten.
+    let items: RapportItem[] = transacties.map((t) => ({
+      id: t.id,
+      bron: "bankTransacties" as const,
+      datum: t.datum,
+      omschrijving: t.merchantNaam || t.omschrijving,
+      categorie: t.categorie,
+      bankNaam: t.bank,
+      bedragInclBtw: Math.abs(t.bedrag),
+      btwBedrag: t.btwBedrag ?? schatBtw(t.bedrag, t.merchantNaam || t.omschrijving),
+      eigenaar: t.eigenaar,
+      splitRatio: t.splitRatio,
+    }));
 
     // Apply verdeelregels to untagged items
     items = items.map((item) => applyVerdeelRegels(item, regels));

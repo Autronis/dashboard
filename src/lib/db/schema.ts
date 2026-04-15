@@ -190,6 +190,11 @@ export const inkomsten = sqliteTable("inkomsten", {
 });
 
 // ============ UITGAVEN ============
+// @deprecated — niet meer gebruiken voor nieuwe code. Alle kosten staan in
+// `bank_transacties` met type='af'. De belasting-routes lezen hun kosten
+// via `src/lib/belasting-helpers.ts` → `getKostenTotalen / getKostenRijen`.
+// Deze tabel blijft bestaan voor migratie-compatibiliteit maar wordt door
+// niks meer gevuld.
 export const uitgaven = sqliteTable("uitgaven", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   omschrijving: text("omschrijving").notNull(),

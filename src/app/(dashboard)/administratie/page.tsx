@@ -51,8 +51,8 @@ type KoppelingFilter = "alle" | "gematcht" | "onbekoppeld";
 
 const typeFilters: { label: string; value: FilterType }[] = [
   { label: "Alle", value: "alle" },
-  { label: "Inkomend", value: "inkomend" },
-  { label: "Uitgaand", value: "uitgaand" },
+  { label: "Van leveranciers", value: "inkomend" },
+  { label: "Eigen facturen", value: "uitgaand" },
   { label: "Bonnetjes", value: "bonnetjes" },
 ];
 
@@ -298,19 +298,25 @@ export default function AdministratiePage() {
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
             <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
               <TrendingDown className="w-3.5 h-3.5" />
-              Inkomend (kosten)
+              Ontvangen facturen
             </div>
             <p className="text-2xl font-bold tabular-nums text-rose-400">
               {formatCurrency(totalen.inkomend)}
+            </p>
+            <p className="text-[11px] text-autronis-text-secondary mt-1">
+              Bonnen/facturen van leveranciers (= kosten)
             </p>
           </div>
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
             <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
               <TrendingUp className="w-3.5 h-3.5" />
-              Uitgaand (omzet)
+              Verzonden facturen
             </div>
             <p className="text-2xl font-bold tabular-nums text-emerald-400">
               {formatCurrency(totalen.uitgaand)}
+            </p>
+            <p className="text-[11px] text-autronis-text-secondary mt-1">
+              Eigen facturen aan klanten (= omzet)
             </p>
           </div>
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">

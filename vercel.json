@@ -38,11 +38,11 @@
     },
     {
       "path": "/api/administratie/gmail-sync",
-      "schedule": "0 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/revolut/sync",
-      "schedule": "0 * * * *"
+      "schedule": "0 7 * * *"
     },
     {
       "path": "/api/cron/slimme-taken-recurring",

@@ -210,6 +210,7 @@ if (isTurso) {
     "ALTER TABLE facturen ADD COLUMN terugkeer_status TEXT",
     "ALTER TABLE facturen ADD COLUMN volgende_factuurdatum TEXT",
     "ALTER TABLE facturen ADD COLUMN bron_factuur_id INTEGER REFERENCES facturen(id)",
+    "ALTER TABLE facturen ADD COLUMN verwerkt_in_aangifte TEXT",
   ]) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }

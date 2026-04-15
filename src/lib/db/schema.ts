@@ -158,6 +158,10 @@ export const facturen = sqliteTable("facturen", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
   pdfStorageUrl: text("pdf_storage_url"),
+  // "Q1-2026" etc. als deze factuur al in een eerdere BTW-aangifte is
+  // verwerkt. Facturen met deze waarde worden wel getoond in overzichten
+  // (als bewijs) maar tellen niet mee in huidige BTW/omzet berekeningen.
+  verwerktInAangifte: text("verwerkt_in_aangifte"),
 }, (table) => ({
   idxKlantId: index("idx_facturen_klant_id").on(table.klantId),
   idxProjectId: index("idx_facturen_project_id").on(table.projectId),

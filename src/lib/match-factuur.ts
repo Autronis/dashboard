@@ -77,6 +77,66 @@ function dateScore(a: string, b: string): number {
 const WEIGHTS = { name: 0.5, amount: 0.3, date: 0.2 };
 const MIN_SCORE = 0.55; // must have SOME name overlap to pass
 
+// Find all candidate bank-transactions for a factuur, scored and sorted.
+// Used by the manual matching UI so Sem can pick from the top N candidates.
+// Unlike findBestMatch this does NOT enforce the MIN_SCORE threshold — it
+// returns everything that has at least some name overlap or a close amount,
+// so Sem can override the matcher when needed.
+export async function findCandidates(
+  hint: FactuurHint,
+  limit = 10
+): Promise<MatchResult[]> {
+  const absBedrag = Math.abs(hint.bedrag);
+  // Wider window: ±30% amount, ±45 days. Caller filters down via score.
+  const lo = absBedrag * 0.7;
+  const hi = absBedrag * 1.3;
+  const negLo = -hi;
+  const negHi = -lo;
+
+  const hintDate = new Date(hint.datum);
+  const windowStart = new Date(hintDate.getTime() - 45 * 86400000).toISOString().slice(0, 10);
+  const windowEnd = new Date(hintDate.getTime() + 45 * 86400000).toISOString().slice(0, 10);
+
+  const candidates = await db
+    .select()
+    .from(bankTransacties)
+    .where(
+      and(
+        eq(bankTransacties.type, "af"),
+        or(
+          and(gte(bankTransacties.bedrag, lo), lte(bankTransacties.bedrag, hi)),
+          and(gte(bankTransacties.bedrag, negLo), lte(bankTransacties.bedrag, negHi))
+        ),
+        isNull(bankTransacties.storageUrl),
+        isNull(bankTransacties.bonPad),
+        gte(bankTransacties.datum, windowStart),
+        lte(bankTransacties.datum, windowEnd)
+      )
+    )
+    .orderBy(desc(bankTransacties.datum))
+    .limit(100);
+
+  const scored: MatchResult[] = candidates.map((tx) => {
+    const name = nameOverlap(hint.leverancier, tx.merchantNaam || tx.omschrijving || "");
+    const amt = amountScore(hint.bedrag, tx.bedrag);
+    const dat = dateScore(hint.datum, tx.datum);
+    const score = WEIGHTS.name * name + WEIGHTS.amount * amt + WEIGHTS.date * dat;
+
+    const reasons: string[] = [];
+    if (name >= 0.5) reasons.push(`naam match ${Math.round(name * 100)}%`);
+    else if (name > 0) reasons.push(`deels naam ${Math.round(name * 100)}%`);
+    if (amt === 1) reasons.push("bedrag exact");
+    else if (amt >= 0.75) reasons.push("bedrag ±5%");
+    else if (amt >= 0.4) reasons.push("bedrag ±10%");
+    if (dat >= 0.8) reasons.push("binnen week");
+    else if (dat >= 0.5) reasons.push("binnen 2 weken");
+
+    return { tx, score, reasons };
+  });
+
+  return scored.sort((a, b) => b.score - a.score).slice(0, limit);
+}
+
 export async function findBestMatch(hint: FactuurHint): Promise<MatchResult | null> {
   const absBedrag = Math.abs(hint.bedrag);
   // Looser candidate window (±15%) — scoring filters later

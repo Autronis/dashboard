@@ -8,6 +8,7 @@ import {
 import { PageTransition } from "@/components/ui/page-transition";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { KoppelModal } from "./koppel-modal";
 
 // ─── Types ──────────────────────────────────────────────────────
 interface Document {
@@ -104,6 +105,7 @@ export default function AdministratiePage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [rematching, setRematching] = useState(false);
+  const [koppelFactuurId, setKoppelFactuurId] = useState<number | null>(null);
 
   // ─── Fetch data ─────────────────────────────────────────────
   const fetchData = useCallback(async () => {
@@ -229,7 +231,7 @@ export default function AdministratiePage() {
           <div>
             <h1 className="text-3xl font-bold text-autronis-text-primary">Administratie</h1>
             <p className="text-base text-autronis-text-secondary mt-1">
-              Alle facturen, bonnetjes en documenten op één plek — automatisch gematcht aan bank-transacties
+              Klik op een inkomende factuur om te koppelen · bonnetjes openen direct de PDF
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -429,10 +431,20 @@ export default function AdministratiePage() {
                 <div className="divide-y divide-autronis-border/30">
                   {items.map((doc) => {
                     const isOnbekoppeld = doc.status === "onbekoppeld";
+                    const openHandler = () => {
+                      if (doc.type === "inkomend") {
+                        // Inkomende facturen openen de koppel modal — daar kan
+                        // je PDF bekijken én koppelen / ontkoppelen.
+                        setKoppelFactuurId(doc.id);
+                      } else {
+                        // Bonnetjes + uitgaande facturen openen direct de PDF.
+                        openDocument(doc.storageUrl);
+                      }
+                    };
                     return (
                       <button
                         key={`${doc.type}-${doc.id}`}
-                        onClick={() => openDocument(doc.storageUrl)}
+                        onClick={openHandler}
                         className="w-full flex items-center gap-4 pl-4 pr-5 py-3.5 hover:bg-autronis-bg/40 transition-colors text-left relative"
                       >
                         {/* Colored left accent bar — per type */}
@@ -501,6 +513,11 @@ export default function AdministratiePage() {
           </div>
         )}
       </div>
+      <KoppelModal
+        factuurId={koppelFactuurId}
+        onClose={() => setKoppelFactuurId(null)}
+        onLinked={fetchData}
+      />
     </PageTransition>
   );
 }

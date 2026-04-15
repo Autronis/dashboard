@@ -3,6 +3,39 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+// Debounce: alleen pushen als de laatste push naar dezelfde repo >10 min
+// geleden was. Zorgt dat parallel werkende Claude chats niet elk een
+// Vercel deploy triggeren — commits accumuleren lokaal, push komt 1x
+// per 10 min per repo.
+const PUSH_DEBOUNCE_SECS: u64 = 600;
+
+fn last_push_marker(dir_name: &str) -> std::path::PathBuf {
+    let base = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("/tmp"))
+        .join("autronis-desktop-agent")
+        .join("last-push");
+    let _ = fs::create_dir_all(&base);
+    base.join(dir_name)
+}
+
+fn seconds_since_last_push(dir_name: &str) -> Option<u64> {
+    let marker = last_push_marker(dir_name);
+    let content = fs::read_to_string(&marker).ok()?;
+    let last: u64 = content.trim().parse().ok()?;
+    let now = SystemTime::now().duration_since(UNIX_EPOCH).ok()?.as_secs();
+    Some(now.saturating_sub(last))
+}
+
+fn record_push(dir_name: &str) {
+    let marker = last_push_marker(dir_name);
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let _ = fs::write(&marker, now.to_string());
+}
 
 fn projects_dir() -> std::path::PathBuf {
     if cfg!(target_os = "macos") {
@@ -235,9 +268,23 @@ fn git_sync(dir: &Path) {
         .unwrap_or(false);
 
     if committed {
+        // Debounce: skip push als we binnen PUSH_DEBOUNCE_SECS al gepusht
+        // hebben. Commits blijven lokaal en worden bij de volgende push
+        // mee-gepushed in één Vercel deploy.
+        if let Some(elapsed) = seconds_since_last_push(&dir_name) {
+            if elapsed < PUSH_DEBOUNCE_SECS {
+                eprintln!(
+                    "[project-sync] Committed {} but skipping push ({}s since last, debounce {}s)",
+                    dir_name, elapsed, PUSH_DEBOUNCE_SECS
+                );
+                return;
+            }
+        }
+
         match git_cmd(dir, &["push", "--quiet"]) {
             Some(p) if p.status.success() => {
                 eprintln!("[project-sync] Auto-pushed {}", dir_name);
+                record_push(&dir_name);
             },
             Some(p) => {
                 let stderr = String::from_utf8_lossy(&p.stderr);

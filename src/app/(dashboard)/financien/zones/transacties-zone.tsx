@@ -92,8 +92,22 @@ export function TransactiesZone() {
     }
   }, [alleTransacties, quickFilter]);
 
+  // Totaal telt vermogensstortingen NIET mee — die zijn eigen vermogen,
+  // geen omzet. Ze krijgen wel een eigen pill in de lijst zodat je ze ziet.
   const totaal = useMemo(
-    () => transacties.reduce((s, t) => s + Math.abs(t.bedrag), 0),
+    () =>
+      transacties.reduce(
+        (s, t) => (t.categorie === "vermogen" ? s : s + Math.abs(t.bedrag)),
+        0
+      ),
+    [transacties]
+  );
+
+  const vermogenTotaal = useMemo(
+    () =>
+      transacties
+        .filter((t) => t.categorie === "vermogen")
+        .reduce((s, t) => s + Math.abs(t.bedrag), 0),
     [transacties]
   );
 

@@ -178,7 +178,53 @@ export async function GET(request: NextRequest) {
       totalen.btw += doc.btwBedrag ?? 0;
     }
 
-    return NextResponse.json({ documenten, onbekoppeld, totalen });
+    // Werkelijke bedrijfskosten uit bank_transacties — zelfde periode als
+    // de documenten. Toont Sem meteen hoeveel er NOG geen PDF bewijs heeft
+    // en hoeveel BTW er werkelijk te vorderen is bij aangifte.
+    const [bankUitgaven] = await db
+      .select({
+        totaalIncl: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
+        totaalBtw: sql<number>`COALESCE(SUM(${bankTransacties.btwBedrag}), 0)`,
+        aantal: sql<number>`COUNT(*)`,
+      })
+      .from(bankTransacties)
+      .where(
+        and(
+          eq(bankTransacties.type, "af"),
+          gte(bankTransacties.datum, start),
+          lte(bankTransacties.datum, end),
+          sql`(${bankTransacties.fiscaalType} IS NULL OR ${bankTransacties.fiscaalType} != 'prive')`,
+          sql`(${bankTransacties.categorie} IS NULL OR ${bankTransacties.categorie} != 'vermogen')`
+        )
+      );
+
+    const [zonderBon] = await db
+      .select({
+        totaal: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
+        aantal: sql<number>`COUNT(*)`,
+      })
+      .from(bankTransacties)
+      .where(
+        and(
+          eq(bankTransacties.type, "af"),
+          gte(bankTransacties.datum, start),
+          lte(bankTransacties.datum, end),
+          sql`${bankTransacties.storageUrl} IS NULL`,
+          sql`${bankTransacties.bonPad} IS NULL`,
+          sql`(${bankTransacties.fiscaalType} IS NULL OR ${bankTransacties.fiscaalType} != 'prive')`,
+          sql`(${bankTransacties.categorie} IS NULL OR ${bankTransacties.categorie} != 'vermogen')`
+        )
+      );
+
+    const bankTotalen = {
+      werkelijkeKostenIncl: Number(bankUitgaven?.totaalIncl ?? 0),
+      werkelijkeBtw: Number(bankUitgaven?.totaalBtw ?? 0),
+      bankTxAantal: Number(bankUitgaven?.aantal ?? 0),
+      zonderBonBedrag: Number(zonderBon?.totaal ?? 0),
+      zonderBonAantal: Number(zonderBon?.aantal ?? 0),
+    };
+
+    return NextResponse.json({ documenten, onbekoppeld, totalen, bankTotalen });
   } catch (error) {
     console.error("[/api/administratie] error:", error);
     return NextResponse.json(

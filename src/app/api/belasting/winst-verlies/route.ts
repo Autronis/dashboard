@@ -214,47 +214,48 @@ export async function GET(req: NextRequest) {
       ? Math.round((geschatteBelasting / belastbaarInkomen) * 1000) / 10
       : 0;
 
-    // Per kwartaal breakdown
-    const perKwartaal: KwartaalData[] = [];
-    for (let q = 1; q <= 4; q++) {
-      const { start, end } = getQuarterDateRange(q, jaar);
-
-      const qOmzet = await db
-        .select({
-          totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
-        })
-        .from(facturen)
-        .where(
-          and(
-            eq(facturen.status, "betaald"),
-            eq(facturen.isActief, 1),
-            gte(facturen.betaaldOp, start),
-            lte(facturen.betaaldOp, end),
-            NIET_VERWERKT
-          )
+    // Per kwartaal breakdown — 2 queries totaal (i.p.v. 8) via GROUP BY
+    // op kwartaal-label. Scheelt veel round-trips naar Turso.
+    const omzetPerQ = await db
+      .select({
+        q: sql<number>`CAST((CAST(strftime('%m', ${facturen.betaaldOp}) AS INTEGER) - 1) / 3 + 1 AS INTEGER)`,
+        totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
+      })
+      .from(facturen)
+      .where(
+        and(
+          eq(facturen.status, "betaald"),
+          eq(facturen.isActief, 1),
+          gte(facturen.betaaldOp, jaarStart),
+          lte(facturen.betaaldOp, jaarEind),
+          NIET_VERWERKT
         )
-        .get();
+      )
+      .groupBy(sql`CAST((CAST(strftime('%m', ${facturen.betaaldOp}) AS INTEGER) - 1) / 3 + 1 AS INTEGER)`);
 
-      const qKosten = await db
-        .select({
-          totaalIncl: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
-          totaalBtw: sql<number>`COALESCE(SUM(${bankTransacties.btwBedrag}), 0)`,
-        })
-        .from(bankTransacties)
-        .where(KOSTEN_WHERE(start, end))
-        .get();
+    const kostenPerQ = await db
+      .select({
+        q: sql<number>`CAST((CAST(strftime('%m', ${bankTransacties.datum}) AS INTEGER) - 1) / 3 + 1 AS INTEGER)`,
+        totaalIncl: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
+        totaalBtw: sql<number>`COALESCE(SUM(${bankTransacties.btwBedrag}), 0)`,
+      })
+      .from(bankTransacties)
+      .where(KOSTEN_WHERE(jaarStart, jaarEind))
+      .groupBy(sql`CAST((CAST(strftime('%m', ${bankTransacties.datum}) AS INTEGER) - 1) / 3 + 1 AS INTEGER)`);
 
-      const qOmzetVal = Math.round((qOmzet?.totaal ?? 0) * 100) / 100;
-      const qKostenVal =
-        Math.round(((qKosten?.totaalIncl ?? 0) - (qKosten?.totaalBtw ?? 0)) * 100) / 100;
+    const omzetMap = new Map(omzetPerQ.map((r) => [Number(r.q), Number(r.totaal ?? 0)]));
+    const kostenMap = new Map(
+      kostenPerQ.map((r) => [
+        Number(r.q),
+        Math.round((Number(r.totaalIncl ?? 0) - Number(r.totaalBtw ?? 0)) * 100) / 100,
+      ])
+    );
 
-      perKwartaal.push({
-        kwartaal: q,
-        omzet: qOmzetVal,
-        kosten: qKostenVal,
-        winst: Math.round((qOmzetVal - qKostenVal) * 100) / 100,
-      });
-    }
+    const perKwartaal: KwartaalData[] = [1, 2, 3, 4].map((q) => {
+      const o = Math.round((omzetMap.get(q) ?? 0) * 100) / 100;
+      const k = kostenMap.get(q) ?? 0;
+      return { kwartaal: q, omzet: o, kosten: k, winst: Math.round((o - k) * 100) / 100 };
+    });
 
     return NextResponse.json({
       winstVerlies: {

@@ -71,7 +71,7 @@ export function useBelasting(jaar: number) {
 
       return { deadlines, aangiftes, urenCriterium };
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -109,7 +109,7 @@ export function useWinstVerlies(jaar: number) {
       const data = await res.json();
       return data.winstVerlies;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -136,7 +136,7 @@ export function useInvesteringen() {
       const data = await res.json();
       return data.investeringen;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -229,7 +229,7 @@ export function useVoorlopigeAanslagen(jaar: number) {
       const data = await res.json();
       return data.aanslagen;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -310,7 +310,7 @@ export function useReserveringen(jaar: number) {
         tekort: data.samenvatting?.tekort ?? 0,
       };
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -360,7 +360,7 @@ export function useJaaroverzicht(jaar: number) {
       const data = await res.json();
       return data.jaaroverzicht;
     },
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -387,7 +387,7 @@ export function useAuditLog(entiteitType?: string) {
       const data = await res.json();
       return data.logs || [];
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 }
 
@@ -422,7 +422,7 @@ export function useBelastingTips(jaar: number) {
       if (!res.ok) throw new Error("Kon tips niet laden");
       return res.json();
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 }
 

@@ -31,10 +31,19 @@ interface Totalen {
   btw: number;
 }
 
+interface BankTotalen {
+  werkelijkeKostenIncl: number;
+  werkelijkeBtw: number;
+  bankTxAantal: number;
+  zonderBonBedrag: number;
+  zonderBonAantal: number;
+}
+
 interface ApiResponse {
   documenten: Document[];
   onbekoppeld: number;
   totalen: Totalen;
+  bankTotalen: BankTotalen;
 }
 
 // ─── Constants ──────────────────────────────────────────────────

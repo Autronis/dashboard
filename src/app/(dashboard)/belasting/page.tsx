@@ -1061,7 +1061,13 @@ export default function BelastingPage() {
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <h2 className="text-xl font-bold text-autronis-text-primary mb-5">Jouw situatie nu</h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* BTW Status */}
+                {/* BTW Status — teOntvangen override: groen in plaats van rood */}
+                {(() => {
+                  const teOntvangenCard = nettoAfdragen < 0;
+                  // Wanneer je geld terug krijgt = groen, anders de normale btwStatus kleur
+                  const effectiveStatus: "ok" | "warning" | "danger" =
+                    teOntvangenCard ? "ok" : btwStatus;
+                  return (
                 <motion.div
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -1069,11 +1075,11 @@ export default function BelastingPage() {
                   whileHover={{ scale: 1.02 }}
                   className={cn(
                     "p-5 rounded-xl border transition-all duration-300",
-                    btwStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
-                    btwStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
+                    effectiveStatus === "danger" ? "border-red-500/30 bg-red-500/5" :
+                    effectiveStatus === "warning" ? "border-yellow-500/30 bg-yellow-500/5" :
                     "border-emerald-500/30 bg-emerald-500/5"
                   )}
-                  style={glowStyle(btwStatus)}
+                  style={glowStyle(effectiveStatus)}
                 >
                   {(() => {
                     // Positief nettoAfdragen = te betalen (rood)
@@ -1123,6 +1129,8 @@ export default function BelastingPage() {
                     );
                   })()}
                 </motion.div>
+                );
+                })()}
 
                 {/* Belasting reservering */}
                 <motion.div

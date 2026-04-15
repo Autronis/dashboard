@@ -366,7 +366,15 @@ export default function AdministratiePage() {
                 <p className="font-bold text-emerald-400 tabular-nums">
                   {formatCurrency(bankTotalen.werkelijkeKostenIncl - bankTotalen.zonderBonBedrag)}
                 </p>
-                <p className="text-[10px] text-autronis-text-secondary">{bankTotalen.bankTxAantal - bankTotalen.zonderBonAantal} items</p>
+                <p className="text-[10px] text-autronis-text-secondary">
+                  {bankTotalen.bankTxAantal - bankTotalen.zonderBonAantal} gekoppeld
+                  {onbekoppeldAantal > 0 && (
+                    <> · <button
+                      onClick={() => setKoppeling("onbekoppeld")}
+                      className="text-autronis-accent hover:underline"
+                    >{onbekoppeldAantal} losse PDF&apos;s in archief</button></>
+                  )}
+                </p>
               </div>
               <div>
                 <p className="text-autronis-text-secondary mb-0.5">Zonder bon</p>

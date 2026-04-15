@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     const toegewezenAan = searchParams.get("toegewezenAan");
     const projectIdFilter = searchParams.get("projectId");
     const faseFilter = searchParams.get("fase");
-    const scope = searchParams.get("scope"); // mij | syb | team | vrij | alle
+    const scope = searchParams.get("scope"); // mij | sem | syb | team | vrij | alle
 
     // Filter taken op project-eigenaarschap. Sem ziet projecten zonder
     // eigenaar (legacy NULL) plus sem/team/vrij. Syb ziet syb/team/vrij.
@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
     let scopeCodes: ("sem" | "syb" | "team" | "vrij")[] | null = null;
     if (scope === "mij") {
       scopeCodes = gebruiker.id === 2 ? ["syb", "team"] : ["sem", "team"];
+    } else if (scope === "sem") {
+      scopeCodes = ["sem", "team"];
     } else if (scope === "syb") {
       scopeCodes = ["syb", "team"];
     } else if (scope === "team") {

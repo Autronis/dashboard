@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inkomendeFacturen, bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
@@ -8,9 +8,17 @@ import { findBestMatch } from "@/lib/match-factuur";
 // POST /api/administratie/rematch — probeer alle onbekoppelde inkomende
 // facturen opnieuw te koppelen met de scoring matcher (leverancier + bedrag
 // + datum gecombineerd). Idempotent: al-gematchte rows worden niet aangeraakt.
-export async function POST() {
+// Accepteert zowel een ingelogde sessie als een Bearer SESSION_SECRET header
+// zodat CLI-calls werken (zelfde pattern als gmail-sync).
+export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    const authHeader = req.headers.get("authorization");
+    const sessionSecret = process.env.SESSION_SECRET;
+    const hasBearerAuth =
+      sessionSecret && authHeader === `Bearer ${sessionSecret}`;
+    if (!hasBearerAuth) {
+      await requireAuth();
+    }
 
     const onbekoppeld = await db
       .select()

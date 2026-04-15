@@ -47,7 +47,7 @@ interface TakenResponse {
   projecten: ProjectVoortgang[];
 }
 
-export type TakenScope = "mij" | "syb" | "team" | "vrij" | "alle";
+export type TakenScope = "mij" | "sem" | "syb" | "team" | "vrij" | "alle";
 
 interface TakenFilters {
   status?: string;

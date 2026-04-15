@@ -583,11 +583,15 @@ function TakenPage() {
   const [prioriteitFilter, setPrioriteitFilter] = useState("alle");
   const [uitvoerderFilter, setUitvoerderFilter] = useState("alle");
   const { data: currentUser } = useCurrentUser();
-  // Scope filter — werkt op project.eigenaar (mij/syb/team/vrij/alle).
+  // Scope filter — werkt op project.eigenaar (mij/sem/syb/team/vrij/alle).
   // Default = "mij" (mijn solo + team projecten). Backend mapt 'mij' op
   // basis van current user id, dus voor Syb betekent 'mij' = syb + team.
   const [scopeFilter, setScopeFilter] = useState<TakenScope>("mij");
-  void currentUser;
+  // De "andere persoon" tab: als Sem ingelogd is → Syb, als Syb → Sem.
+  const anderePersoon: { value: TakenScope; label: string } =
+    currentUser?.id === 2
+      ? { value: "sem", label: "Sem" }
+      : { value: "syb", label: "Syb" };
   const [zoek, setZoek] = useState("");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [collapsedProjects, setCollapsedProjects] = useState<Set<number>>(new Set());
@@ -1442,12 +1446,12 @@ function TakenPage() {
         {/* FILTER BAR — compact */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Scope toggle: filter op project-eigenaarschap.
-              Mij = mijn solo projecten + team. Syb = idem voor Syb.
+              Mij = mijn solo projecten + team. Tweede tab = de andere persoon.
               Team = alleen samenwerk-projecten. Vrij = open backlog. */}
           <div className="inline-flex items-center bg-autronis-card border border-autronis-border rounded-xl p-0.5 text-xs">
             {([
               { value: "mij", label: "Mij" },
-              { value: "syb", label: "Syb" },
+              anderePersoon,
               { value: "team", label: "Team" },
               { value: "vrij", label: "Vrij" },
               { value: "alle", label: "Alle" },

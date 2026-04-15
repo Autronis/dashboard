@@ -177,11 +177,19 @@ export async function GET(request: NextRequest) {
 
           await uploadToStorage(storagePath, pdfBuffer, "application/pdf");
 
-          // Auto-match with bank transaction (type "af", ±5% amount, no existing storageUrl/bonPad)
-          const matchedTransactie = await findMatchingTransaction(invoiceData.bedrag);
-
-          // Create inkomendeFacturen record
-          const status = matchedTransactie ? "gematcht" : "onbekoppeld";
+          // Auto-match with bank transaction using scoring matcher
+          // (leverancier-naam + bedrag + datum combined). Foreign-currency
+          // invoices are intentionally NOT auto-matched because the amount
+          // on the invoice differs from the bank amount after conversion —
+          // they end up as "onbekoppeld" so Sem can handmatig koppelen.
+          const skipAutoMatch = invoiceData.currency && invoiceData.currency !== "EUR";
+          const match = skipAutoMatch
+            ? null
+            : await findBestMatch({
+                leverancier: invoiceData.leverancier,
+                bedrag: invoiceData.bedrag,
+                datum: invoiceData.datum,
+              });
 
           await db.insert(inkomendeFacturen).values({
             leverancier: invoiceData.leverancier,
@@ -191,17 +199,17 @@ export async function GET(request: NextRequest) {
             datum: invoiceData.datum,
             storageUrl: storagePath,
             emailId: msgRef.id,
-            bankTransactieId: matchedTransactie?.id ?? null,
-            status,
+            bankTransactieId: match?.tx.id ?? null,
+            status: match ? "gematcht" : "onbekoppeld",
             verwerkOp: new Date().toISOString(),
           });
 
           // If matched, update the bank transaction with storageUrl
-          if (matchedTransactie) {
+          if (match) {
             await db
               .update(bankTransacties)
               .set({ storageUrl: storagePath })
-              .where(eq(bankTransacties.id, matchedTransactie.id));
+              .where(eq(bankTransacties.id, match.tx.id));
           }
 
           verwerkt++;
@@ -352,46 +360,3 @@ CRITICAL RULES:
   }
 }
 
-// Find matching bank transaction (type "af", ±5% amount, no storageUrl or bonPad)
-async function findMatchingTransaction(bedrag: number) {
-  const lowerBound = bedrag * 0.95;
-  const upperBound = bedrag * 1.05;
-
-  // Use negative amount for "af" transactions (money going out)
-  const absBedrag = Math.abs(bedrag);
-  const lower = -(absBedrag * 1.05);
-  const upper = -(absBedrag * 0.95);
-
-  const matches = await db
-    .select()
-    .from(bankTransacties)
-    .where(
-      and(
-        eq(bankTransacties.type, "af"),
-        between(bankTransacties.bedrag, lower, upper),
-        isNull(bankTransacties.storageUrl),
-        isNull(bankTransacties.bonPad)
-      )
-    )
-    .limit(1);
-
-  // Also try with positive amount matching
-  if (matches.length === 0) {
-    const positiveMatches = await db
-      .select()
-      .from(bankTransacties)
-      .where(
-        and(
-          eq(bankTransacties.type, "af"),
-          between(bankTransacties.bedrag, lowerBound, upperBound),
-          isNull(bankTransacties.storageUrl),
-          isNull(bankTransacties.bonPad)
-        )
-      )
-      .limit(1);
-
-    return positiveMatches[0] ?? null;
-  }
-
-  return matches[0] ?? null;
-}

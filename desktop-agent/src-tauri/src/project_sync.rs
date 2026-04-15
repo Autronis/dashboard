@@ -209,6 +209,18 @@ fn detect_tech_stack(dir: &Path) -> Vec<String> {
 }
 
 fn is_project_dir(dir: &Path) -> bool {
+    // Skip git worktree checkouts: in een worktree is .git een FILE met
+    // "gitdir: ..." inhoud, niet een directory. Een echt project heeft .git
+    // als directory (of helemaal niet). Worktrees moeten geen losse
+    // dashboard-projecten worden — dat creëert duplicaten van het hoofdproject.
+    let dot_git = dir.join(".git");
+    if dot_git.is_file() {
+        return false;
+    }
+    // Skip dirs die zelf .worktrees heten (parent van worktree checkouts)
+    if dir.file_name().and_then(|n| n.to_str()) == Some(".worktrees") {
+        return false;
+    }
     dir.join("PROJECT_BRIEF.md").exists()
         || dir.join("TODO.md").exists()
         || dir.join("package.json").exists()

@@ -699,13 +699,36 @@ function TakenPage() {
     return result;
   }, [taken, uitvoerderFilter, statusFilter, vandaag]);
 
+  // Slimme taken: losse Claude-uitvoerbare taken (geen project, fase=Slimme taken).
+  // Worden apart in een prominent blok bovenaan getoond, niet in de normale
+  // project groepering.
+  const slimmeActies = useMemo(() => {
+    return gefilterdeTaken
+      .filter((t) =>
+        t.projectId === null &&
+        t.uitvoerder === "claude" &&
+        (t.fase === "Slimme taken" || t.fase === "Slimme taken (recurring)")
+      )
+      .sort((a, b) => {
+        // Hoogste prio + meest recent eerst
+        const pa = prioriteitConfig[a.prioriteit]?.sortOrder ?? 1;
+        const pb = prioriteitConfig[b.prioriteit]?.sortOrder ?? 1;
+        if (pa !== pb) return pa - pb;
+        return (b.aangemaaktOp ?? "").localeCompare(a.aangemaaktOp ?? "");
+      });
+  }, [gefilterdeTaken]);
+
+  const slimmeActieIds = useMemo(() => new Set(slimmeActies.map((t) => t.id)), [slimmeActies]);
+
   const gegroepeerd = useMemo(() => {
-    const groepen = groepeerTaken(gefilterdeTaken);
+    // Filter slimme acties uit de normale groepering — die staan al apart bovenaan
+    const restTaken = gefilterdeTaken.filter((t) => !slimmeActieIds.has(t.id));
+    const groepen = groepeerTaken(restTaken);
     // Hide fully completed projects when hideCompleted is on or filtering by non-afgerond status
     if (hideCompleted) return groepen.filter((p) => p.afgerond < p.totaal);
     if (statusFilter !== "afgerond" && statusFilter !== "alle") return groepen.filter((p) => p.totaal > p.afgerond);
     return groepen;
-  }, [gefilterdeTaken, statusFilter, hideCompleted]);
+  }, [gefilterdeTaken, statusFilter, hideCompleted, slimmeActieIds]);
 
   // "Vandaag doen" — top 5 niet-afgeronde taken
   const vandaagTaken = useMemo(() => {
@@ -1289,6 +1312,106 @@ function TakenPage() {
 
         {/* 1. VANDAAG DOEN — bovenaan, full width, prominent */}
         <VandaagDoenCard taken={vandaagTaken} onStatusToggle={handleMarkDone} onStartTimer={handleStartTimer} onPlanTaak={handlePlanTaak} onEdit={(id, body) => editMutation.mutate({ id, ...body })} />
+
+        {/* 1b. SLIMME ACTIES — losse Claude-uitvoerbare taken die beiden kunnen pakken */}
+        {slimmeActies.length > 0 && (
+          <div className="rounded-2xl border border-autronis-accent/30 bg-gradient-to-br from-autronis-accent/[0.08] to-autronis-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-autronis-accent/20">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-autronis-accent/15 flex items-center justify-center">
+                  <Sparkles className="w-3.5 h-3.5 text-autronis-accent" />
+                </div>
+                <h2 className="text-sm font-semibold text-autronis-text-primary">
+                  Slimme acties
+                </h2>
+                <span className="text-[11px] text-autronis-text-secondary tabular-nums">
+                  {slimmeActies.length} open · vrij om te pakken
+                </span>
+              </div>
+              <button
+                onClick={() => setSlimmeTakenOpen(true)}
+                className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-medium text-autronis-accent hover:bg-autronis-accent/10 transition-colors"
+              >
+                <Plus className="w-3 h-3" />
+                Nieuwe
+              </button>
+            </div>
+            <div className="divide-y divide-autronis-accent/10">
+              {slimmeActies.slice(0, 8).map((taak) => {
+                const sc = statusConfig[taak.status] || statusConfig.open;
+                const StatusIcon = sc.icon;
+                return (
+                  <div
+                    key={taak.id}
+                    className="flex items-center gap-3 px-5 py-2 hover:bg-autronis-accent/[0.04] transition-colors group"
+                  >
+                    <button
+                      onClick={() => handleStatusToggle(taak)}
+                      className={cn("flex-shrink-0", sc.color)}
+                      title={`Status: ${sc.label}`}
+                    >
+                      <StatusIcon className={cn("w-3.5 h-3.5", taak.status === "bezig" && "animate-spin")} />
+                    </button>
+                    <button
+                      onClick={() => setSelectedTaak(taak)}
+                      className="flex-1 min-w-0 text-left"
+                    >
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          "text-xs font-medium truncate",
+                          taak.status === "afgerond"
+                            ? "text-autronis-text-secondary line-through"
+                            : "text-autronis-text-primary"
+                        )}>
+                          {taak.titel}
+                        </span>
+                        {taak.cluster && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent font-medium">
+                            {taak.cluster}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-autronis-text-secondary/60">
+                          {taak.geschatteDuur ?? 15} min
+                        </span>
+                      </div>
+                    </button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                      {taak.status !== "afgerond" && (
+                        <>
+                          <button
+                            onClick={() => handlePlanTaak(taak)}
+                            className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors"
+                            title="Plan in agenda"
+                          >
+                            <CalendarPlus className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => handleStartTimer(taak)}
+                            className="p-1 text-autronis-text-secondary hover:text-autronis-accent transition-colors"
+                            title="Start timer"
+                          >
+                            <Timer className="w-3 h-3" />
+                          </button>
+                          <CopyPromptButton prompt={generateTaskPrompt(taak)} />
+                        </>
+                      )}
+                    </div>
+                    {taak.toegewezenAanNaam && (
+                      <span className="text-[10px] text-autronis-text-secondary/70 flex-shrink-0">
+                        {taak.toegewezenAanNaam.split(" ")[0]}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+              {slimmeActies.length > 8 && (
+                <div className="px-5 py-2 text-[11px] text-autronis-text-secondary/60 text-center">
+                  +{slimmeActies.length - 8} meer
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* 2. STATUS TABS */}
         <div className="flex items-center gap-1 bg-autronis-card border border-autronis-border rounded-xl p-1 overflow-x-auto scrollbar-none">

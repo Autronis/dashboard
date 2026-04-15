@@ -1,0 +1,76 @@
+name: Sync Syb's lead-dashboard-v2
+
+# Detecteert wijzigingen in https://github.com/Autronis/lead-dashboard-v2 en
+# updatet automatisch:
+#   - src/types/supabase-leads.ts (via supabase CLI)
+#   - ALLOWED_FUNCTIONS whitelist in edge-function proxy
+#   - Maakt een dashboard taak aan met een samenvatting van wat Syb veranderde
+#
+# Triggers:
+#   - Elke 30 min via cron (poll fallback)
+#   - workflow_dispatch (handmatig vanuit GitHub UI)
+#   - repository_dispatch met type "syb-lead-dashboard-pushed" — gefired door
+#     een Action in lead-dashboard-v2 zelf, voor instant sync
+#
+# Vereiste secrets:
+#   SUPABASE_ACCESS_TOKEN — personal access token van supabase.com/dashboard/account/tokens
+#   DASHBOARD_API_KEY     — API key voor dashboard.autronis.nl (zie .env.local)
+#   GH_PAT (optioneel)    — als GITHUB_TOKEN niet genoeg rechten heeft op de Autronis org
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [syb-lead-dashboard-pushed]
+
+concurrency:
+  group: syb-leads-sync
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dashboard
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Configure git
+        run: |
+          git config user.name "autronis-sync-bot"
+          git config user.email "sync@autronis.nl"
+
+      - name: Authenticate gh CLI
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: gh auth status
+
+      - name: Run Syb sync
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          DASHBOARD_API_KEY: ${{ secrets.DASHBOARD_API_KEY }}
+          DASHBOARD_URL: https://dashboard.autronis.nl
+        run: node scripts/sync-syb-leads.mjs
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ -f .syb-sync-state.json ]; then
+            echo "### Syb sync state" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat .syb-sync-state.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi

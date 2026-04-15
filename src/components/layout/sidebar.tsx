@@ -38,8 +38,8 @@ function isLauncher(item: NavLink | LauncherLink): item is LauncherLink {
 const navSections: (NavLink | NavSection | "divider")[] = [
   // Dagelijks — altijd zichtbaar
   { label: "Dashboard", icon: LayoutDashboard, href: "/" },
-  { label: "Taken", icon: CheckSquare, href: "/taken" },
   { label: "Agenda", icon: Calendar, href: "/agenda" },
+  { label: "Taken", icon: CheckSquare, href: "/taken" },
 
   // De 6 hubs
   {

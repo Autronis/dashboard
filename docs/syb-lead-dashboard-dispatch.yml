@@ -1,0 +1,37 @@
+# Optional companion workflow voor Autronis/lead-dashboard-v2.
+#
+# Doel: zodra Syb iets naar main pushed in lead-dashboard-v2, fired deze
+# workflow direct een repository_dispatch event af naar Autronis/dashboard,
+# zodat onze sync workflow meteen draait i.p.v. te wachten op de 30-min cron.
+#
+# Hoe te installeren:
+#   1. Copy dit bestand naar Autronis/lead-dashboard-v2/.github/workflows/notify-dashboard.yml
+#   2. Maak een GitHub PAT met `repo` scope (of fine-grained: contents:write op
+#      Autronis/dashboard) en zet 'm in lead-dashboard-v2 secrets als
+#      DASHBOARD_DISPATCH_TOKEN.
+#   3. Push. Vanaf nu triggert elke push naar main een instant sync aan onze kant.
+#
+# Zonder deze workflow draait de sync nog steeds, maar pas binnen 30 minuten
+# (cron interval in .github/workflows/sync-syb-leads.yml).
+
+name: Notify Autronis dashboard
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch sync to Autronis/dashboard
+        env:
+          GH_TOKEN: ${{ secrets.DASHBOARD_DISPATCH_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            /repos/Autronis/dashboard/dispatches \
+            -f event_type='syb-lead-dashboard-pushed' \
+            -F client_payload[sha]='${{ github.sha }}' \
+            -F client_payload[message]='${{ github.event.head_commit.message }}'

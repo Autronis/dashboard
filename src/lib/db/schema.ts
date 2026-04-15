@@ -1029,6 +1029,19 @@ export const screenTimeSamenvattingen = sqliteTable("screen_time_samenvattingen"
   uniekGebruikerDatum: uniqueIndex("uniek_gebruiker_datum").on(table.gebruikerId, table.datum),
 }));
 
+// ============ FOCUS LOGS ============
+// Korte 1-zin samenvattingen die Claude (Code chat) periodiek schrijft
+// over wat de user op dat moment doet. Worden door de screen-time AI
+// gebruikt als extra context om rijkere timeline beschrijvingen te
+// genereren bovenop alleen window titles.
+export const focusLogs = sqliteTable("focus_logs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  tekst: text("tekst").notNull(), // 1 zin, max ~150 chars
+  bron: text("bron").default("claude-code"), // claude-code | manueel | n8n
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ BRIEFINGS ============
 
 export const briefings = sqliteTable("briefings", {

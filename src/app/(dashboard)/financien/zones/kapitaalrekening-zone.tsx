@@ -89,10 +89,13 @@ export function KapitaalrekeningZone() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Wallet className="w-5 h-5 text-autronis-accent" />
           <h2 className="text-lg font-semibold text-autronis-text-primary">Kapitaalrekening {jaar}</h2>
+          <span className="text-[10px] uppercase tracking-wide bg-autronis-bg border border-autronis-border rounded-full px-2 py-0.5 text-autronis-text-secondary">
+            Revolut Business
+          </span>
         </div>
         <span className="text-xs text-autronis-text-secondary">Team-uitgaven: <span className="text-autronis-text-primary font-semibold tabular-nums">{formatEuro(teamUitgaven)}</span> · 50/50 verdeeld</span>
       </div>
@@ -119,6 +122,10 @@ export function KapitaalrekeningZone() {
             Onderaan zie je wie wie nog moet betalen om gelijk te staan. Label uitgaven in
             <code className="text-autronis-text-primary px-1">/financien</code> als &quot;Sem&quot;, &quot;Syb&quot; of &quot;Team&quot;
             via het zijpaneel als je op een transactie klikt.
+          </p>
+          <p className="text-[11px] text-autronis-text-secondary/70 italic">
+            Telt alleen mee: transacties op je <strong className="text-autronis-text-primary">huidige Revolut Business</strong> rekening.
+            Oude ING / inhaal-imports horen niet in deze partner-tracking thuis (die data is van vóór de kapitaalrekening feature).
           </p>
         </div>
       </UitlegBlock>

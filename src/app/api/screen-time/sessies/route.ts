@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { screenTimeEntries, projecten, klanten } from "@/lib/db/schema";
+import { screenTimeEntries, projecten, klanten, focusLogs } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, asc, sql } from "drizzle-orm";
+import { eq, and, asc, sql, gte, lte } from "drizzle-orm";
 import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 
 // ─── Cache ───
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 4;
+const CACHE_VERSION = 5;
+
+// Focus log entry — wat de Claude chat heeft gemeld
+interface FocusLogEntry {
+  tijd: number; // unix ms
+  tekst: string;
+}
 
 // ─── Types ───
 interface Sessie {
@@ -28,7 +34,7 @@ interface Sessie {
 }
 
 // ─── AI beschrijvingen (alleen tekst, geen categorie) ───
-async function generateBeschrijvingen(sessies: Sessie[]): Promise<string[]> {
+async function generateBeschrijvingen(sessies: Sessie[], focusLogsList: FocusLogEntry[] = []): Promise<string[]> {
   if (sessies.length === 0) return [];
 
   const noiseRe = /^(Overlay Knipprogramma|Knipprogramma|Spotify|next-server|Nederlands$|Openen$|Nieuw tabblad|Rainmeter|PowerToys|PToyTray|Overloopvenster|Open Folder$|Naamloos$|localhost$)/i;
@@ -44,12 +50,24 @@ async function generateBeschrijvingen(sessies: Sessie[]): Promise<string[]> {
       .slice(0, 15).join(" | ");
     const dur = Math.round(s.duurSeconden / 60);
     const appStr = s.app;
-    return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}`;
+
+    // Match focus log entries die binnen deze sessie tijdvenster vallen
+    const sessieStart = new Date(s.startTijd).getTime();
+    const sessieEind = new Date(s.eindTijd).getTime();
+    const sessieFocus = focusLogsList
+      .filter((f) => f.tijd >= sessieStart && f.tijd <= sessieEind)
+      .map((f) => f.tekst)
+      .slice(0, 5);
+    const focusStr = sessieFocus.length > 0
+      ? ` ChatFocus: ${sessieFocus.join(" | ")}`
+      : "";
+
+    return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}.${focusStr}`;
   }).join("\n");
 
-  const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je UITSLUITEND op de venstertitels.
+  const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je op de venstertitels EN als beschikbaar de ChatFocus regels (1-zin samenvattingen die Claude in real-time loggde over wat er besproken werd).
 
-GOUDEN REGEL: beschrijf ALLEEN wat je ZEKER weet op basis van de venstertitels. Als je het niet zeker weet, wees vaag ("Browsergebruik en research") in plaats van iets te verzinnen.
+GOUDEN REGEL: beschrijf ALLEEN wat je ZEKER weet. Bij venstertitels die afgekapt zijn (eindigen op "…") of generic zijn, geef voorrang aan ChatFocus regels — die zijn altijd accurater dan een afgekapte file naam.
 
 HOE TE BEPALEN WAT IEMAND DEED:
 1. Kijk welke APP de meeste minuten heeft — die bepaalt de hoofdactiviteit
@@ -383,8 +401,35 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Focus logs van Claude Code chat ophalen voor deze dag (zelfde
+    // gebruiker, zelfde NL local datum). Worden in generateBeschrijvingen
+    // per sessie tijdvenster gematched zodat de AI rijke context heeft
+    // ook als window titles afgekapt of generic zijn.
+    const dagStart = `${datum}T00:00:00`;
+    const dagEind = `${datum}T23:59:59`;
+    const focusRows = await db
+      .select({
+        tekst: focusLogs.tekst,
+        aangemaaktOp: focusLogs.aangemaaktOp,
+      })
+      .from(focusLogs)
+      .where(
+        and(
+          eq(focusLogs.gebruikerId, gebruikerId),
+          gte(focusLogs.aangemaaktOp, dagStart),
+          lte(focusLogs.aangemaaktOp, dagEind)
+        )
+      )
+      .all();
+    const focusLogsList: FocusLogEntry[] = focusRows
+      .filter((r) => r.aangemaaktOp)
+      .map((r) => ({
+        tijd: new Date(r.aangemaaktOp!).getTime(),
+        tekst: r.tekst,
+      }));
+
     // AI beschrijvingen (tekst only, categorie stays from DB)
-    const cacheKey = `v${CACHE_VERSION}:${datum}:${gebruikerId}`;
+    const cacheKey = `v${CACHE_VERSION}:${datum}:${gebruikerId}:f${focusLogsList.length}`;
     const cached = cache.get(cacheKey);
     let beschrijvingen: string[];
 
@@ -392,7 +437,7 @@ export async function GET(req: NextRequest) {
     if (cached && cached.beschrijvingen.length === sessies.length && (Date.now() - cached.ts) < CACHE_TTL) {
       beschrijvingen = cached.beschrijvingen;
     } else {
-      beschrijvingen = await generateBeschrijvingen(sessies);
+      beschrijvingen = await generateBeschrijvingen(sessies, focusLogsList);
       cache.set(cacheKey, { beschrijvingen, ts: Date.now() });
     }
 

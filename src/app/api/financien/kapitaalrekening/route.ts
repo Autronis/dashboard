@@ -5,6 +5,13 @@ import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql, isNull, or, ne } from "drizzle-orm";
 import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 
+// Kapitaalrekening telt ALLEEN op de huidige zakelijke Revolut rekening.
+// Eerdere ING / inhaal-imports / oudere Revolut imports horen niet in dit
+// overzicht thuis omdat ze de onboarding-fase representeren toen er nog
+// geen partner-tracking bestond. Sem heeft expliciet gevraagd: "alleen
+// nieuwe uitgaves en inkomsten op de huidige Revolut rekening".
+const HUIDIGE_BANK = "revolut";
+
 // Kapitaalrekening per VOF-partner. Berekent voor Sem en Syb apart:
 //
 //   Ingelegd        — som van vermogensstortingen waarvan eigenaar=hen
@@ -50,7 +57,7 @@ export async function GET(req: NextRequest) {
     const start = `${jaar}-01-01`;
     const eind = `${jaar}-12-31`;
 
-    // 1. Ingelegd per partner (stortingen)
+    // 1. Ingelegd per partner (stortingen) — alleen huidige Revolut
     const stortingen = await db
       .select({
         eigenaar: bankTransacties.eigenaar,
@@ -59,6 +66,7 @@ export async function GET(req: NextRequest) {
       .from(bankTransacties)
       .where(
         and(
+          eq(bankTransacties.bank, HUIDIGE_BANK),
           eq(bankTransacties.type, "bij"),
           eq(bankTransacties.categorie, VERMOGEN_CATEGORIE),
           gte(bankTransacties.datum, start),
@@ -67,7 +75,7 @@ export async function GET(req: NextRequest) {
       )
       .groupBy(bankTransacties.eigenaar);
 
-    // 2. Eigen uitgaven per partner (eigenaar=sem of eigenaar=syb)
+    // 2. Eigen uitgaven per partner — alleen huidige Revolut
     const eigenUitgaven = await db
       .select({
         eigenaar: bankTransacties.eigenaar,
@@ -76,6 +84,7 @@ export async function GET(req: NextRequest) {
       .from(bankTransacties)
       .where(
         and(
+          eq(bankTransacties.bank, HUIDIGE_BANK),
           eq(bankTransacties.type, "af"),
           gte(bankTransacties.datum, start),
           lte(bankTransacties.datum, eind),
@@ -85,8 +94,7 @@ export async function GET(req: NextRequest) {
       )
       .groupBy(bankTransacties.eigenaar);
 
-    // 3. Team uitgaven (gedeeld of NULL) — moeten we per rij doen omdat
-    //    de splitRatio per rij anders kan zijn
+    // 3. Team uitgaven — alleen huidige Revolut
     const teamRows = await db
       .select({
         bedrag: bankTransacties.bedrag,
@@ -96,6 +104,7 @@ export async function GET(req: NextRequest) {
       .from(bankTransacties)
       .where(
         and(
+          eq(bankTransacties.bank, HUIDIGE_BANK),
           eq(bankTransacties.type, "af"),
           gte(bankTransacties.datum, start),
           lte(bankTransacties.datum, eind),

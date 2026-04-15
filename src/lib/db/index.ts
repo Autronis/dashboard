@@ -35,6 +35,15 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  client.execute(`CREATE TABLE IF NOT EXISTS focus_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    tekst TEXT NOT NULL,
+    bron TEXT DEFAULT 'claude-code',
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_focus_logs_gebr_tijd ON focus_logs(gebruiker_id, aangemaakt_op)`).catch(() => {});
+
   client.execute(`CREATE TABLE IF NOT EXISTS belasting_tips (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     categorie TEXT NOT NULL,

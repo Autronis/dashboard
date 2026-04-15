@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle } from "lucide-react";
+import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { useToast } from "@/hooks/use-toast";

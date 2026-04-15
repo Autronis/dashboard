@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
-import { isVermogensstorting, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { isVermogensstorting, wieGestort, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 import { findFactuurMatch, linkTxToFactuur } from "@/lib/match-inkomend";
 import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
@@ -227,6 +227,7 @@ async function runSync(): Promise<SyncResultaat> {
 
       // Detect owner equity deposit (Sem / Syb private → Revolut business)
       const vermogen = isVermogensstorting(type, merchantNaam, omschrijving);
+      const stortingDoor = vermogen ? wieGestort(merchantNaam, omschrijving) : null;
 
       const [inserted] = await db.insert(bankTransacties).values({
         datum: (tx.completed_at || tx.created_at).split("T")[0],
@@ -241,6 +242,9 @@ async function runSync(): Promise<SyncResultaat> {
         // Vermogensstortingen worden direct gemarkeerd — geen BTW, aparte
         // categorie zodat ze uit de omzet-/BTW-aggregaties worden gefilterd.
         categorie: vermogen ? VERMOGEN_CATEGORIE : null,
+        // Eigenaar voor stortingen → wie heeft 'm gedaan (sem/syb), zodat de
+        // kapitaalrekening berekening kan splitsen wie wat heeft ingelegd.
+        eigenaar: stortingDoor,
         status: vermogen ? "gecategoriseerd" : "onbekend",
       }).returning({ id: bankTransacties.id });
 

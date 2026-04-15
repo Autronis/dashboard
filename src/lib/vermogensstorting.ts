@@ -16,6 +16,9 @@ const OWNER_NAME_PATTERNS = [
   /\bsprenkeler\b/i,
 ];
 
+const SEM_PATTERN = /\bgijsberts\b/i;
+const SYB_PATTERN = /\bsprenkeler\b/i;
+
 export const VERMOGEN_CATEGORIE = "vermogen";
 
 export function isVermogensstorting(
@@ -28,4 +31,19 @@ export function isVermogensstorting(
 
   const haystack = `${merchantNaam ?? ""} ${omschrijving ?? ""}`;
   return OWNER_NAME_PATTERNS.some((re) => re.test(haystack));
+}
+
+// Returns which partner did the deposit, based on family name in the
+// merchant or description. Returns null if name is ambiguous (so caller
+// can decide to leave eigenaar untagged).
+//
+// "Sprenkeler" → Syb (his legal surname). "Gijsberts" → Sem.
+export function wieGestort(
+  merchantNaam: string | null,
+  omschrijving: string | null
+): "sem" | "syb" | null {
+  const haystack = `${merchantNaam ?? ""} ${omschrijving ?? ""}`;
+  if (SEM_PATTERN.test(haystack)) return "sem";
+  if (SYB_PATTERN.test(haystack)) return "syb";
+  return null;
 }

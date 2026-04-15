@@ -1114,6 +1114,25 @@ export default function BelastingPage() {
                             ? `BTW Q${currentQuarter} — af te dragen`
                             : `BTW Q${currentQuarter}`}
                         </p>
+                        {(() => {
+                          const btwDeadline = deadlines.find(
+                            (d) => d.type === "btw" && d.kwartaal === currentQuarter && d.jaar === jaar && !d.afgerond
+                          );
+                          if (!btwDeadline) return null;
+                          const dagen = Math.ceil(
+                            (new Date(btwDeadline.datum).getTime() - nu.getTime()) / (1000 * 60 * 60 * 24)
+                          );
+                          return (
+                            <p className={cn(
+                              "text-[11px] mt-1.5 flex items-center gap-1",
+                              dagen < 7 ? "text-red-400 font-semibold" : dagen < 30 ? "text-yellow-400" : "text-autronis-text-secondary/80"
+                            )}>
+                              <CalendarClock className="w-3 h-3" />
+                              Indienen vóór {formatDatum(btwDeadline.datum)}
+                              {dagen > 0 && dagen < 60 && ` (${dagen} dagen)`}
+                            </p>
+                          );
+                        })()}
                         {(btwStatus === "danger" || teOntvangen) && btwStatus !== "ok" && (
                           <button
                             onClick={() => setActiveTab("acties")}

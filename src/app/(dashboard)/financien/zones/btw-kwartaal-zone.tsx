@@ -53,10 +53,13 @@ export function BtwKwartaalZone() {
   const [openKwartaal, setOpenKwartaal] = useState<number | null>(null);
 
   function exporteer(kwartaal: number) {
-    // Same-tab download via <a> element so the browser uses the session cookie
+    // Same-tab download via <a> element so the browser uses the session cookie.
+    // `download` attribute hints the filename, Content-Disposition on the
+    // server forces the save dialog, rel=noopener for safety.
     const url = `/api/financien/btw-kwartaal/export?jaar=${jaar}&kwartaal=${kwartaal}`;
     const a = document.createElement("a");
     a.href = url;
+    a.download = `BTW-aangifte_Q${kwartaal}_${jaar}.csv`;
     a.rel = "noopener";
     document.body.appendChild(a);
     a.click();

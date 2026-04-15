@@ -64,9 +64,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "projects array is verplicht" }, { status: 400 });
     }
 
+    // Filter out worktree-style entries: een dir die ".worktrees" in z'n pad
+    // bevat is een git worktree checkout, geen echt project. Wordt anders als
+    // dashboard-project aangemaakt met duplicate taken.
+    const filtered = projects.filter((p) => {
+      const dir = (p?.dir || "").toLowerCase();
+      return !dir.includes(".worktrees") && !dir.includes("worktree");
+    });
+    const skipped = projects.length - filtered.length;
+    if (skipped > 0) {
+      console.warn(`[sync-from-agent] Skipped ${skipped} worktree entries`);
+    }
+
     const results: SyncResult[] = [];
 
-    for (const proj of projects) {
+    for (const proj of filtered) {
       // Find or create project
       let project = await db
         .select({ id: projecten.id })

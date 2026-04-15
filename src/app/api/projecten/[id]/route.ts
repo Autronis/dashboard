@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { projecten, klanten, taken, tijdregistraties, screenTimeEntries, notificaties } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, ne } from "drizzle-orm";
 
 const VALID_EIGENAAR = new Set(["sem", "syb", "team", "vrij"]);
@@ -239,7 +239,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuth();
+    await requireAuthOrApiKey(req);
     const { id } = await params;
     const projectId = parseInt(id, 10);
     if (isNaN(projectId)) {

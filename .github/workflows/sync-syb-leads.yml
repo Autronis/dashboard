@@ -18,8 +18,12 @@ name: Sync Syb's lead-dashboard-v2
 #   GH_PAT (optioneel)    — als GITHUB_TOKEN niet genoeg rechten heeft op de Autronis org
 
 on:
-  schedule:
-    - cron: "*/30 * * * *"
+  # Schedule trigger uitgezet — vereist GH_PAT, SUPABASE_ACCESS_TOKEN en
+  # DASHBOARD_API_KEY secrets die niet zijn ingesteld. Triggerde 48 failure
+  # mails per dag. Re-enable via secrets toevoegen + onderstaande regels uit
+  # commentaar halen.
+  # schedule:
+  #   - cron: "*/30 * * * *"
   workflow_dispatch:
   repository_dispatch:
     types: [syb-lead-dashboard-pushed]

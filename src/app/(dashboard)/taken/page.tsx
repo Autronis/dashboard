@@ -1371,7 +1371,7 @@ function TakenPage() {
                           </span>
                         )}
                         <span className="text-[10px] text-autronis-text-secondary/60">
-                          {taak.geschatteDuur ?? 15} min
+                          slim
                         </span>
                       </div>
                     </button>

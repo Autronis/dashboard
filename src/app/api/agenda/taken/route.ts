@@ -4,6 +4,13 @@ import { taken, projecten, externeKalenders } from "@/lib/db/schema";
 import { eq, or, and, isNull, sql, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth";
 
+// In-memory cooldown: auto-uitplan loopt max 1x per uur per process.
+// Voorkomt dat elke /agenda load een UPDATE triggert. Bij Vercel cold
+// start wordt dit gereset (acceptable — dat is hooguit 1x per nieuwe
+// instance). Op localhost holdt 'ie zolang de dev server runt.
+let lastAutoUitplanRun = 0;
+const AUTO_UITPLAN_COOLDOWN_MS = 60 * 60 * 1000; // 1 uur
+
 // GET /api/agenda/taken - Haal open/bezig taken op voor kalender
 export async function GET() {
   try {
@@ -11,20 +18,24 @@ export async function GET() {
 
     // Auto-uitplan: open/bezig taken die in het verleden zijn ingepland
     // (en dus niet zijn afgerond) worden teruggezet naar 'niet ingepland'
-    // zodat ze weer in 'Te plannen' verschijnen. Loopt bij elke load,
-    // idempotent. Vergelijking gebeurt op NL-local datum: alles met
-    // ingepland_start vóór vandaag 00:00 lokaal wordt uitgepland.
-    const todayLocal = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
-    await db
-      .update(taken)
-      .set({ ingeplandStart: null, ingeplandEind: null })
-      .where(
-        and(
-          or(eq(taken.status, "open"), eq(taken.status, "bezig")),
-          sql`${taken.ingeplandStart} IS NOT NULL`,
-          sql`substr(${taken.ingeplandStart}, 1, 10) < ${todayLocal}`
-        )
-      );
+    // zodat ze weer in 'Te plannen' verschijnen. Idempotent maar wel
+    // een UPDATE — daarom achter een 1u cooldown. Vergelijking gebeurt
+    // op NL-local datum: alles met ingepland_start vóór vandaag 00:00
+    // lokaal wordt uitgepland.
+    if (Date.now() - lastAutoUitplanRun > AUTO_UITPLAN_COOLDOWN_MS) {
+      lastAutoUitplanRun = Date.now();
+      const todayLocal = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+      await db
+        .update(taken)
+        .set({ ingeplandStart: null, ingeplandEind: null })
+        .where(
+          and(
+            or(eq(taken.status, "open"), eq(taken.status, "bezig")),
+            sql`${taken.ingeplandStart} IS NOT NULL`,
+            sql`substr(${taken.ingeplandStart}, 1, 10) < ${todayLocal}`
+          )
+        );
+    }
 
     const rows = await db
       .select({

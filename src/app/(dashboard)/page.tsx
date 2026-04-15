@@ -65,6 +65,7 @@ import { KilometerWidget } from "./components/KilometerWidget";
 import { DoelenWidget } from "@/components/dashboard/doelen-widget";
 import { TeamVergelijkingWidget } from "@/components/dashboard/team-vergelijking-widget";
 import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
+import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
 import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 
 // ============ HELPERS ============
@@ -1064,6 +1065,9 @@ export default function DashboardPage() {
 
             {/* Kilometer widget */}
             <KilometerWidget />
+
+            {/* Open intakes — projecten in de pijplijn */}
+            <OpenIntakesWidget />
           </div>
 
           {/* Right column */}

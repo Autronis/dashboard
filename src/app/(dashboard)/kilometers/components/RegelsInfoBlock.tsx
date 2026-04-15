@@ -48,15 +48,23 @@ export function RegelsInfoBlock() {
           >
             <div className="px-5 pb-5 space-y-5 border-t border-autronis-border/50 pt-5">
               {/* Algemeen principe */}
-              <div className="bg-autronis-bg/30 rounded-xl p-4">
-                <p className="text-sm text-autronis-text-primary font-medium mb-1">
+              <div className="bg-autronis-bg/30 rounded-xl p-4 space-y-2">
+                <p className="text-sm text-autronis-text-primary font-medium">
                   Het basisprincipe
                 </p>
                 <p className="text-xs text-autronis-text-secondary leading-relaxed">
                   Wat telt is <strong className="text-autronis-text-primary">het doel van de rit</strong>, niet
                   waar je naartoe rijdt. Is de rit nodig voor je bedrijfsvoering →
                   zakelijk (€0,23/km aftrek). Is hij voor jezelf → privé, niet aftrekbaar.
-                  Heen én terug tellen allebei.
+                  Heen én terug tellen allebei. Files, omwegen en parkeer-rondjes tellen ook
+                  mee in de km die je opgeeft.
+                </p>
+                <p className="text-[11px] text-autronis-text-secondary/80 leading-relaxed">
+                  Dit regime geldt alleen voor je <strong className="text-autronis-text-primary">privé-auto die
+                  je voor zakelijke ritten gebruikt</strong>. Voor een &quot;auto van de zaak&quot;
+                  gelden andere regels (bijtelling) — die rijdt Sem niet, dus niet relevant.
+                  Zakelijke <strong className="text-autronis-text-primary">fietsritten</strong> tellen ook voor €0,23/km
+                  (sinds 2023 — registreer ze hier net zo goed).
                 </p>
               </div>
 
@@ -154,6 +162,80 @@ export function RegelsInfoBlock() {
                     </p>
                   </div>
                 </div>
+              </div>
+
+              {/* APART aftrekbaar bovenop €0,23 */}
+              <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-blue-400 mb-2">
+                  Bovenop de €0,23/km — apart aftrekbaar
+                </p>
+                <ul className="space-y-1.5">
+                  {[
+                    "Parkeerkosten bij een zakelijke rit (parkeergarage, parkeermeter, Q-Park) — bewaar het bonnetje",
+                    "Tol (Liefkenshoektunnel, Franse péages, Eurotunnel) — apart bonnetje opvoeren",
+                    "Veerboot (bv. TESO Texel) als 't voor een zakelijk doel is",
+                    "Stallingskosten bij overnachting (klantbezoek met overnachten)",
+                  ].map((regel) => (
+                    <li key={regel} className="flex items-start gap-2 text-[11px] text-autronis-text-secondary">
+                      <span className="text-blue-400/60 mt-0.5">+</span>
+                      <span>{regel}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-autronis-text-secondary/70 mt-2 italic">
+                  Deze boek je los als &quot;kosten&quot; in /administratie — niet bij km.
+                </p>
+              </div>
+
+              {/* Zit AL in de €0,23 */}
+              <div className="bg-rose-500/5 border border-rose-500/20 rounded-xl p-4">
+                <p className="text-xs font-semibold text-rose-400 mb-2">
+                  Zit al in de €0,23/km — NIET apart claimen
+                </p>
+                <ul className="space-y-1.5">
+                  {[
+                    "Brandstof / tanken voor zakelijke ritten",
+                    "Onderhoud, APK, banden, ruitenwissers",
+                    "Afschrijving, leasekosten, rente",
+                    "Autoverzekering, MRB (wegenbelasting)",
+                    "Carwash, ruitvloeistof, smeermiddelen",
+                    "Verkeersboetes — die zijn sowieso NOOIT aftrekbaar",
+                  ].map((regel) => (
+                    <li key={regel} className="flex items-start gap-2 text-[11px] text-autronis-text-secondary">
+                      <span className="text-rose-400/60 mt-0.5">−</span>
+                      <span>{regel}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-autronis-text-secondary/70 mt-2 italic">
+                  Het forfait van €0,23/km is een &quot;all-in&quot; vergoeding voor alle autokosten.
+                  Dubbel claimen = naheffing bij controle.
+                </p>
+              </div>
+
+              {/* Bewijsplicht / administratie */}
+              <div className="bg-autronis-bg/30 rounded-xl p-4">
+                <p className="text-xs font-semibold text-autronis-text-primary mb-2">
+                  Wat moet je bijhouden per rit (verplicht voor bewijs)
+                </p>
+                <ul className="space-y-1.5">
+                  {[
+                    "Datum",
+                    "Vertrek- en aankomstadres (of locatienaam)",
+                    "Aantal gereden kilometers (heen + terug)",
+                    "Doel van de rit (klantnaam, vergadering, materiaal ophalen, etc.)",
+                    "Eventueel: km-stand begin en eind van het jaar",
+                  ].map((regel) => (
+                    <li key={regel} className="flex items-start gap-2 text-[11px] text-autronis-text-secondary">
+                      <span className="text-autronis-accent/60 mt-0.5">▸</span>
+                      <span>{regel}</span>
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-autronis-text-secondary/70 mt-2 italic">
+                  Dit dashboard vult dat allemaal automatisch in als je een rit toevoegt.
+                  Bewaar de rittenadministratie minstens 7 jaar (fiscale bewaarplicht).
+                </p>
               </div>
 
               {/* Praktische tip */}

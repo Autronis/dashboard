@@ -2189,7 +2189,7 @@ export default function AgendaPage() {
                     </span>
                   </div>
 
-                  {takenPerProject.length === 0 ? (
+                  {takenPerProject.length === 0 && slimmeActiesAgenda.length === 0 ? (
                     <div className="py-3 space-y-3">
                       <p className="text-xs text-autronis-text-secondary text-center">
                         {plannenFilter !== "alle" ? "Geen taken voor dit filter" : "Alle taken zijn ingepland!"}
@@ -2358,6 +2358,52 @@ export default function AgendaPage() {
                           </div>
                         );
                       })}
+
+                      {/* ── Slimme acties sectie ── losse Claude taken */}
+                      {slimmeActiesAgenda.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-autronis-accent/20">
+                          <div className="flex items-center gap-2 px-1 mb-2">
+                            <Sparkles className="w-3 h-3 text-autronis-accent flex-shrink-0" />
+                            <span className="text-[11px] font-semibold text-autronis-accent uppercase tracking-wider flex-1">
+                              Slimme acties
+                            </span>
+                            <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">
+                              {slimmeActiesAgenda.length}
+                            </span>
+                          </div>
+                          <div className="space-y-0.5 px-2">
+                            {slimmeActiesAgenda.map((taak) => (
+                              <div
+                                key={taak.id}
+                                draggable
+                                onDragStart={(e) => {
+                                  setDragTaak(taak);
+                                  e.dataTransfer.setData("text/plain", String(taak.id));
+                                  e.dataTransfer.effectAllowed = "move";
+                                }}
+                                onDragEnd={() => setDragTaak(null)}
+                                onClick={() => openPlanModal(taak)}
+                                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] hover:bg-autronis-accent/10 cursor-grab active:cursor-grabbing group"
+                              >
+                                <button
+                                  className="w-3 h-3 rounded-full border border-autronis-accent/40 hover:border-emerald-400 flex-shrink-0"
+                                  onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
+                                  title="Afvinken"
+                                />
+                                <span className="truncate flex-1 text-autronis-text-primary">{taak.titel}</span>
+                                {taak.cluster && (
+                                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent flex-shrink-0">
+                                    {taak.cluster}
+                                  </span>
+                                )}
+                                {taak.prioriteit === "hoog" && (
+                                  <span className="text-[8px] text-red-400 flex-shrink-0">!</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                   )}

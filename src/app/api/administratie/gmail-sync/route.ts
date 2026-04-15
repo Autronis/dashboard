@@ -169,6 +169,18 @@ export async function GET(request: NextRequest) {
             continue;
           }
 
+          // Skip eigen uitgaande facturen — die horen in de facturen tabel,
+          // niet in inkomende_facturen. De gmail-inbox kan forwards/cc's
+          // van eigen verzonden PDFs bevatten.
+          if (/autronis/i.test(invoiceData.leverancier)) {
+            resultaten.push({
+              emailId: msgRef.id,
+              onderwerp: subjectHeader,
+              status: "geen_factuur",
+            });
+            continue;
+          }
+
           // Upload PDF to Supabase Storage
           const year = new Date().getFullYear();
           const timestamp = Date.now();

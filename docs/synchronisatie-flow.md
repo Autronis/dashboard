@@ -144,13 +144,13 @@ Log in op `http://localhost:3000` met je Autronis account en je bent klaar.
 
 Staat compleet gedocumenteerd in `syb-windows-setup/INSTALL-WINDOWS.md` in de dashboard repo. Het komt hierop neer:
 
-1. Clone de repo naar `C:\Users\syb20\Projects\autronis-dashboard` (of vergelijkbaar)
+1. Clone de repo naar een willekeurige dir (Syb gebruikt `C:\Users\syb20\Projects\dashboard\` — de folder naam maakt niks uit, alleen de dir zelf moet bestaan)
 2. `.env.local` kopiëren uit 1Password
 3. `npm install` (node 20+ vereist)
 4. `npm run dev`
 5. Claude Code voor Windows installeren
-6. Hook: `syb-windows-setup/hooks/auto-sync-taken.cmd` kopiëren naar de juiste plek (`%USERPROFILE%\.claude\hooks\`)
-7. Config: `%APPDATA%\autronis\claude-sync.json` aanmaken
+6. Hook: `syb-windows-setup/hooks/auto-sync-taken.py` + `auto-sync-taken.cmd` kopiëren naar `%USERPROFILE%\.claude\hooks\`
+7. Config: `%USERPROFILE%\.config\autronis\claude-sync.json` aanmaken (**niet** `%APPDATA%` — de hook leest `os.path.expanduser("~/.config/autronis/claude-sync.json")`)
 8. `CLAUDE.md` in Syb's home dir plaatsen
 
 **De `syb-windows-setup.zip` in de dashboard repo root** bevat alle Windows-specifieke files bij elkaar. Sem heeft die al klaar staan om naar Syb te sturen.
@@ -182,7 +182,7 @@ Dan ga je problemen krijgen. Trek ze gelijk via 1Password. **`TURSO_DATABASE_URL
 
 ### "Claude Code start, maar geen enkele hook wordt getriggerd"
 
-Controleer de Claude Code settings file (`~/.claude/settings.json` op Mac, `%APPDATA%\claude\settings.json` op Windows) of de hooks zijn geregistreerd. Als de hooks uit staan: zet ze aan en start Claude Code opnieuw.
+Controleer de Claude Code settings file (`~/.claude/settings.json` op Mac, `%USERPROFILE%\.claude\settings.json` op Windows) of de hooks zijn geregistreerd. Als de hooks uit staan: zet ze aan en start Claude Code opnieuw.
 
 ## Gerelateerde docs
 

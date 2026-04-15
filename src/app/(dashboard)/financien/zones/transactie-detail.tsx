@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink } from "lucide-react";
+import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink, Upload, Loader2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +31,10 @@ interface Props {
 export function TransactieDetail({ transactie, onClose }: Props) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState<FiscaalType | "clear" | null>(null);
   const [openingBon, setOpeningBon] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   async function openBon(pad: string) {
     setOpeningBon(true);
@@ -45,6 +47,40 @@ export function TransactieDetail({ transactie, onClose }: Props) {
       addToast(err instanceof Error ? err.message : "Kon bon niet openen", "fout");
     } finally {
       setOpeningBon(false);
+    }
+  }
+
+  async function handleUploadBon(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !transactie) return;
+
+    if (file.type !== "application/pdf") {
+      addToast("Alleen PDF-bestanden", "fout");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("bestand", file);
+      // Force-link aan deze specifieke transactie — skip de scoring matcher
+      formData.append("transactieId", String(transactie.id));
+
+      const res = await fetch("/api/administratie/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        const { fout } = (await res.json().catch(() => ({ fout: "Upload mislukt" }))) as { fout?: string };
+        throw new Error(fout ?? "Upload mislukt");
+      }
+      addToast("Factuur gekoppeld aan transactie", "succes");
+      await queryClient.invalidateQueries({ queryKey: ["financien-transacties"] });
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Upload mislukt", "fout");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   }
 

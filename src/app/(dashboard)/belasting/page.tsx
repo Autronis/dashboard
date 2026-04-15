@@ -2115,10 +2115,10 @@ export default function BelastingPage() {
                     ok: totaalInvestering >= 2801,
                     label: "Kleinschaligheidsinvesteringsaftrek (KIA)",
                     desc: totaalInvestering >= 2801
-                      ? `${formatBedrag(berekenKIA(totaalInvestering))} aftrek op ${formatBedrag(totaalInvestering)} investeringen`
+                      ? `${formatBedrag(berekenKIA(totaalInvestering))} aftrek op ${formatBedrag(totaalInvestering)} investeringen. Je trekt dit bovenop de normale kosten af, wat je winst verlaagt en dus inkomstenbelasting bespaart.`
                       : kiaKans !== null
-                      ? `Investeer nog ${formatBedrag(kiaKans)} om in aanmerking te komen voor 28% KIA`
-                      : `Nog geen investeringen geregistreerd`,
+                      ? `Je hebt nu ${formatBedrag(totaalInvestering)} aan zakelijke investeringen. Investeer nog ${formatBedrag(kiaKans)} (totaal ≥ €2.801) om in aanmerking te komen voor 28% KIA-aftrek — dat is ongeveer ${formatBedrag(kiaKans * 0.28)} belastingvoordeel.`
+                      : `KIA staat voor Kleinschaligheidsinvesteringsaftrek. Als je minimaal €2.801 aan bedrijfsmiddelen (laptops, monitoren, tools, meubilair) investeert in een jaar, krijg je tot 28% extra aftrek. Markeer een uitgave als "investering" via het financiën detail panel om 'm hier te zien.`,
                     icon: Package,
                     highlight: kiaKans !== null && kiaKans < 500,
                   },
@@ -2217,12 +2217,12 @@ export default function BelastingPage() {
               <h3 className="text-sm font-semibold text-autronis-text-secondary mt-6 mb-3">Fiscale regelingen</h3>
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                 {[
-                  { naam: "Zelfstandigenaftrek", waarde: "3.750", status: urenCriterium?.zelfstandigenaftrek ? "ok" as const : "warning" as const },
-                  { naam: "Startersaftrek", waarde: "2.123", status: "warning" as const },
-                  { naam: "MKB-winstvrijstelling", waarde: "14%", status: urenCriterium?.mkbVrijstelling ? "ok" as const : "warning" as const },
-                  { naam: "KIA", waarde: "tot 28%", status: totaalInvestering > 0 ? "ok" as const : "warning" as const },
-                  { naam: "FOR opbouw", waarde: "max 9,44%", status: "warning" as const },
-                  { naam: "Km-vergoeding", waarde: "0,23/km", status: "warning" as const },
+                  { naam: "Zelfstandigenaftrek", waarde: "€ 3.750", status: urenCriterium?.zelfstandigenaftrek ? "ok" as const : "warning" as const },
+                  { naam: "Startersaftrek", waarde: "€ 2.123", status: "warning" as const },
+                  { naam: "MKB-winstvrijstelling", waarde: "14 %", status: urenCriterium?.mkbVrijstelling ? "ok" as const : "warning" as const },
+                  { naam: "KIA", waarde: "tot 28 %", status: totaalInvestering > 0 ? "ok" as const : "warning" as const },
+                  { naam: "FOR opbouw", waarde: "max 9,44 %", status: "warning" as const },
+                  { naam: "Km-vergoeding", waarde: "€ 0,23/km", status: "warning" as const },
                 ].map((item) => {
                   const cfg = getStatusIndicator(item.status);
                   return (

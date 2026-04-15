@@ -374,7 +374,11 @@ export function TransactiesZone() {
       </div>
 
       {/* Detail panel */}
-      <TransactieDetail transactie={selectedTrans} onClose={() => setSelectedTrans(null)} />
+      <TransactieDetail
+        transactie={selectedTrans}
+        onClose={() => setSelectedTrans(null)}
+        onUpdate={(patch) => setSelectedTrans((prev) => (prev ? { ...prev, ...patch } : prev))}
+      />
     </div>
   );
 }

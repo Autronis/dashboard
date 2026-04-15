@@ -26,9 +26,10 @@ function statusKleur(status: string | null): { text: string; classes: string; ic
 interface Props {
   transactie: FinancienTransactie | null;
   onClose: () => void;
+  onUpdate?: (patch: Partial<FinancienTransactie>) => void;
 }
 
-export function TransactieDetail({ transactie, onClose }: Props) {
+export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,8 +75,19 @@ export function TransactieDetail({ transactie, onClose }: Props) {
         const { fout } = (await res.json().catch(() => ({ fout: "Upload mislukt" }))) as { fout?: string };
         throw new Error(fout ?? "Upload mislukt");
       }
+      const data = (await res.json()) as { factuur?: { storageUrl?: string | null } };
       addToast("Factuur gekoppeld aan transactie", "succes");
-      await queryClient.invalidateQueries({ queryKey: ["financien-transacties"] });
+      // Optimistic update zodat het detail-paneel direct de bon-link toont
+      // zonder dat de gebruiker hoeft te sluiten/heropen.
+      if (data.factuur?.storageUrl) {
+        onUpdate?.({ storageUrl: data.factuur.storageUrl, status: "gematcht" });
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["financien-transacties"] }),
+        queryClient.invalidateQueries({ queryKey: ["financien-categorieen"] }),
+        queryClient.invalidateQueries({ queryKey: ["financien-dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["btw-kwartaal"] }),
+      ]);
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Upload mislukt", "fout");
     } finally {

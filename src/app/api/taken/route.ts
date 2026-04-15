@@ -41,8 +41,15 @@ export async function GET(req: NextRequest) {
       scopeCodes = ["vrij"];
     }
 
+    // Expliciete user-scopes ("sem" of "syb") overriden de privacy default,
+    // anders zou Syb's "Sem" tab niks laten zien. Andere scopes blijven
+    // door visibleCodes filteren zodat Syb niet per ongeluk via "alle"
+    // Sem's solo werk ziet.
+    const explicitUserScope = scope === "sem" || scope === "syb";
     const effectiveCodes = scopeCodes
-      ? scopeCodes.filter((c) => visibleCodes.includes(c))
+      ? explicitUserScope
+        ? scopeCodes
+        : scopeCodes.filter((c) => visibleCodes.includes(c))
       : visibleCodes;
 
     const conditions = [

@@ -370,8 +370,38 @@ export default function AgendaPage() {
   const nietIngeplandeTaken = useMemo(() => agendaTaken.filter((t) => !t.ingeplandStart), [agendaTaken]);
 
   // Groepeer niet-ingeplande taken per project → fase. Fase is de primaire werkeenheid.
+  // Slimme acties: losse Claude-uitvoerbare taken (projectId=null,
+  // fase=Slimme taken). Apart getoond in een eigen sectie onder de
+  // project taken in de "Te plannen" sidebar.
+  const slimmeActiesAgenda = useMemo(() => {
+    return nietIngeplandeTaken
+      .filter((t) =>
+        !t.projectNaam &&
+        t.uitvoerder === "claude" &&
+        (t.fase === "Slimme taken" || t.fase === "Slimme taken (recurring)")
+      )
+      .filter((t) => {
+        if (plannenFilter === "hoog") return t.prioriteit === "hoog";
+        if (plannenFilter === "bezig") return t.status === "bezig";
+        return true;
+      })
+      .sort((a, b) => {
+        const prioOrder: Record<string, number> = { hoog: 0, normaal: 1, laag: 2 };
+        const pa = prioOrder[a.prioriteit] ?? 1;
+        const pb = prioOrder[b.prioriteit] ?? 1;
+        if (pa !== pb) return pa - pb;
+        return 0;
+      });
+  }, [nietIngeplandeTaken, plannenFilter]);
+
+  const slimmeActieAgendaIds = useMemo(
+    () => new Set(slimmeActiesAgenda.map((t) => t.id)),
+    [slimmeActiesAgenda]
+  );
+
   const takenPerProject = useMemo(() => {
     const filtered = nietIngeplandeTaken
+      .filter((t) => !slimmeActieAgendaIds.has(t.id)) // Slimme acties uitfilteren
       .filter((t) => {
         if (plannenFilter === "hoog") return t.prioriteit === "hoog";
         if (plannenFilter === "bezig") return t.status === "bezig";
@@ -410,7 +440,7 @@ export default function AgendaPage() {
         .sort((a, b) => a.faseNaam.localeCompare(b.faseNaam, "nl", { numeric: true }));
     }
     return Object.values(groups).sort((a, b) => b.taken.length - a.taken.length);
-  }, [nietIngeplandeTaken, plannenFilter]);
+  }, [nietIngeplandeTaken, plannenFilter, slimmeActieAgendaIds]);
 
   // Ingeplande taken per dag
   const ingeplandPerDag = useMemo(() => {

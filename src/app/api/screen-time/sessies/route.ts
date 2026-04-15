@@ -9,7 +9,7 @@ import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 5;
+const CACHE_VERSION = 6;
 
 // Focus log entry — wat de Claude chat heeft gemeld
 interface FocusLogEntry {
@@ -65,9 +65,13 @@ async function generateBeschrijvingen(sessies: Sessie[], focusLogsList: FocusLog
     return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}.${focusStr}`;
   }).join("\n");
 
-  const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je op de venstertitels EN als beschikbaar de ChatFocus regels (1-zin samenvattingen die Claude in real-time loggde over wat er besproken werd).
+  const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je op de venstertitels EN de ChatFocus regels (1-zin samenvattingen die de user naar Claude stuurde — het zijn de LETTERLIJKE onderwerpen die besproken werden in die tijdvenster).
 
-GOUDEN REGEL: beschrijf ALLEEN wat je ZEKER weet. Bij venstertitels die afgekapt zijn (eindigen op "…") of generic zijn, geef voorrang aan ChatFocus regels — die zijn altijd accurater dan een afgekapte file naam.
+GOUDEN REGEL — CHATFOCUS HEEFT VOORRANG:
+- Als er ChatFocus regels aanwezig zijn, MOET je die als primaire informatie gebruiken. Dat is de WERKELIJKE activiteit van de user, accurater dan welke window title ook.
+- Combineer ChatFocus met window titles om een compleet verhaal te maken: "Debugging agent sync via Claude chat (ChatFocus: screen tracking issue) + VS Code in autronis-dashboard".
+- Window titles zoals "Code en Autronis Dashboard" zijn TE GENERIC — als je ChatFocus hebt, gebruik die om het concreet te maken ("Werk aan slimme taken sectie in agenda page" i.p.v. "Code geschreven").
+- ALS er GEEN ChatFocus is, gebruik dan alleen de titels. Afgekapte titels (eindigen op "…") = beschrijf vaag.
 
 HOE TE BEPALEN WAT IEMAND DEED:
 1. Kijk welke APP de meeste minuten heeft — die bepaalt de hoofdactiviteit

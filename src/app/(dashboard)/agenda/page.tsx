@@ -256,6 +256,32 @@ export default function AgendaPage() {
   const [aiPlanLoading, setAiPlanLoading] = useState(false);
   const [slimmeTakenOpen, setSlimmeTakenOpen] = useState(false);
 
+  // Templates voor de slimme acties sectie. Worden direct uit
+  // /api/taken/slim geladen en als draggable cards getoond zodat Sem
+  // een template kan klikken/slepen zonder eerst de modal te openen.
+  type SlimmeTemplate = {
+    id: string;
+    slug: string;
+    naam: string;
+    beschrijving: string | null;
+    cluster: string;
+    geschatteDuur: number | null;
+    velden: Array<{ key: string; label: string }> | null;
+  };
+  const [slimmeTemplates, setSlimmeTemplates] = useState<SlimmeTemplate[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/taken/slim")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && Array.isArray(d.templates)) setSlimmeTemplates(d.templates);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function handlePlanTaak(id: number, start: string, eind: string, duur: number, kalenderId?: number) {
     planTaak.mutate(
       { id, ingeplandStart: start, ingeplandEind: eind, geschatteDuur: duur, kalenderId },
@@ -2376,8 +2402,12 @@ export default function AgendaPage() {
                         );
                       })}
 
-                      {/* ── Slimme acties sectie ── losse Claude taken */}
-                      {slimmeActiesAgenda.length > 0 && (
+                      {/* ── Slimme acties sectie ── templates direct uit DB */}
+                      {/* Toon de slimme taken templates ALS keuzes (niet als bestaande
+                          taken). Klik = open modal voorgevuld met die template, vul
+                          velden in, taak wordt aangemaakt + gepland op de geselecteerde
+                          dag. Geen handmatige stap meer nodig om ze "te zien". */}
+                      {slimmeTemplates.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-autronis-accent/20">
                           <div className="flex items-center gap-2 px-1 mb-2">
                             <Sparkles className="w-3 h-3 text-autronis-accent flex-shrink-0" />
@@ -2385,38 +2415,38 @@ export default function AgendaPage() {
                               Slimme acties
                             </span>
                             <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">
-                              {slimmeActiesAgenda.length}
+                              {slimmeTemplates.length}
                             </span>
                           </div>
-                          <div className="space-y-0.5 px-2">
-                            {slimmeActiesAgenda.map((taak) => (
-                              <div
-                                key={taak.id}
-                                draggable
-                                onDragStart={(e) => {
-                                  setDragTaak(taak);
-                                  e.dataTransfer.setData("text/plain", String(taak.id));
-                                  e.dataTransfer.effectAllowed = "move";
-                                }}
-                                onDragEnd={() => setDragTaak(null)}
-                                onClick={() => openPlanModal(taak)}
-                                className="flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] hover:bg-autronis-accent/10 cursor-grab active:cursor-grabbing group"
+                          <div className="space-y-1 px-1">
+                            {slimmeTemplates.map((tpl) => (
+                              <button
+                                key={tpl.id}
+                                onClick={() => setSlimmeTakenOpen(true)}
+                                className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg border border-autronis-accent/20 bg-autronis-accent/5 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors group"
+                                title={tpl.beschrijving || tpl.naam}
                               >
-                                <button
-                                  className="w-3 h-3 rounded-full border border-autronis-accent/40 hover:border-emerald-400 flex-shrink-0"
-                                  onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
-                                  title="Afvinken"
-                                />
-                                <span className="truncate flex-1 text-autronis-text-primary">{taak.titel}</span>
-                                {taak.cluster && (
-                                  <span className="text-[9px] px-1 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent flex-shrink-0">
-                                    {taak.cluster}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-[11px] font-medium text-autronis-text-primary truncate">
+                                    {tpl.naam}
+                                  </div>
+                                  {tpl.beschrijving && (
+                                    <div className="text-[9px] text-autronis-text-secondary/70 truncate">
+                                      {tpl.beschrijving}
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                  <span className="text-[8px] px-1 py-0.5 rounded-full bg-autronis-accent/20 text-autronis-accent">
+                                    {tpl.cluster}
                                   </span>
-                                )}
-                                {taak.prioriteit === "hoog" && (
-                                  <span className="text-[8px] text-red-400 flex-shrink-0">!</span>
-                                )}
-                              </div>
+                                  {tpl.geschatteDuur && (
+                                    <span className="text-[8px] text-autronis-text-secondary/60 tabular-nums">
+                                      {tpl.geschatteDuur}m
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
                             ))}
                           </div>
                         </div>

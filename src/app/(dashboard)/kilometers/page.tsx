@@ -19,6 +19,7 @@ import { KmStandPanel } from "./components/KmStandPanel";
 import { DonutChart } from "./components/DonutChart";
 import { TerugkerendeRittenModal } from "./components/TerugkerendeRittenModal";
 import { BelastingrapportKnop } from "./components/BelastingrapportKnop";
+import { RegelsInfoBlock } from "./components/RegelsInfoBlock";
 import { PageTransition } from "@/components/ui/page-transition";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { Modal } from "@/components/ui/modal";
@@ -727,6 +728,8 @@ export default function KilometersPage() {
             </button>
           </div>
         </div>
+
+        <RegelsInfoBlock />
 
         {/* Jaaroverzicht panel — animated height */}
         <AnimatePresence>

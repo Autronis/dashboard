@@ -60,13 +60,29 @@ const vermogenRes = await turso.execute(`
 console.log(`\n=== Q2 2026 — vermogensstortingen (apart, niet in omzet) ===`);
 console.log(`  ${vermogenRes.rows[0].aantal} transacties, €${Number(vermogenRes.rows[0].totaal).toFixed(2)}`);
 
-// Omzet uit facturen tabel
+// Omzet uit facturen tabel — excludeert al verwerkte aangifte-items
 const omzetRes = await turso.execute(`
   SELECT COALESCE(SUM(bedrag_excl_btw), 0) as totaal, COUNT(*) as aantal
   FROM facturen
   WHERE status = 'betaald' AND is_actief = 1
     AND betaald_op >= '${Q2_START}' AND betaald_op <= '${Q2_END}'
+    AND verwerkt_in_aangifte IS NULL
 `);
+
+// Wat er sowieso als Q1 is gemarkeerd (blijft zichtbaar, telt niet mee)
+const verwerktRes = await turso.execute(`
+  SELECT factuurnummer, bedrag_excl_btw, verwerkt_in_aangifte, betaald_op
+  FROM facturen WHERE verwerkt_in_aangifte IS NOT NULL
+`);
+console.log(`\n=== Gemarkeerd als al-aangegeven (niet in huidige totalen) ===`);
+for (const r of verwerktRes.rows) {
+  console.log(`  ${r.factuurnummer} €${r.bedrag_excl_btw} (${r.verwerkt_in_aangifte}, betaald ${r.betaald_op})`);
+}
+
+const verwerktInk = await turso.execute(`
+  SELECT COUNT(*) as n FROM inkomende_facturen WHERE verwerkt_in_aangifte IS NOT NULL
+`);
+console.log(`\nInkomende facturen als Q1 gemarkeerd: ${verwerktInk.rows[0].n}`);
 console.log(`\n=== Q2 2026 — omzet uit facturen tabel (excl BTW) ===`);
 console.log(`  ${omzetRes.rows[0].aantal} betaalde facturen, €${Number(omzetRes.rows[0].totaal).toFixed(2)}`);
 

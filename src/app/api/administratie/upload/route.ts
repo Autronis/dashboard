@@ -224,6 +224,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const isForeignCurrency =
+      invoiceData.currency !== null && invoiceData.currency !== "EUR";
+
     const [factuur] = await db
       .insert(inkomendeFacturen)
       .values({
@@ -234,35 +237,44 @@ export async function POST(request: NextRequest) {
         datum: invoiceData.datum,
         storageUrl: storagePath,
         emailId: null,
-        bankTransactieId: match?.tx.id ?? null,
-        status: match ? "gematcht" : "onbekoppeld",
+        bankTransactieId: matchTx?.id ?? null,
+        status: matchTx
+          ? forceTransactieId
+            ? "handmatig_gematcht"
+            : "gematcht"
+          : "onbekoppeld",
         verwerkOp: new Date().toISOString(),
       })
       .returning();
 
-    if (match) {
+    if (matchTx) {
       await db
         .update(bankTransacties)
         .set({ storageUrl: storagePath, status: "gematcht" })
-        .where(eq(bankTransacties.id, match.tx.id));
+        .where(eq(bankTransacties.id, matchTx.id));
     }
 
     return NextResponse.json({
       succes: true,
       factuur,
-      status: match ? "gematcht" : "onbekoppeld",
-      gematchtAan: match
+      status: matchTx
+        ? forceTransactieId
+          ? "handmatig_gematcht"
+          : "gematcht"
+        : "onbekoppeld",
+      gematchtAan: matchTx
         ? {
-            id: match.tx.id,
-            merchant: match.tx.merchantNaam ?? match.tx.omschrijving,
-            bedrag: match.tx.bedrag,
-            score: Math.round(match.score * 100),
-            reasons: match.reasons,
+            id: matchTx.id,
+            merchant: matchTx.merchantNaam ?? matchTx.omschrijving,
+            bedrag: matchTx.bedrag,
+            score: matchScore,
+            reasons: matchReasons,
           }
         : null,
-      currencyWarning: skipAutoMatch
-        ? `Factuur is in ${invoiceData.currency}, niet EUR — niet auto-gematcht want bedrag verschilt na wisselkoers. Koppel handmatig.`
-        : null,
+      currencyWarning:
+        isForeignCurrency && !forceTransactieId
+          ? `Factuur is in ${invoiceData.currency}, niet EUR — niet auto-gematcht want bedrag verschilt na wisselkoers. Koppel handmatig.`
+          : null,
     });
   } catch (error) {
     return NextResponse.json(

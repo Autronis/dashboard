@@ -1,16 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankTransacties } from "@/lib/db/schema";
+import { bankTransacties, facturen, inkomendeFacturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, gte, lt, sql, or, isNull, ne } from "drizzle-orm";
+import { and, gte, lt, sql, or, isNull, ne, isNotNull, eq, exists } from "drizzle-orm";
 import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 
 // Helper for one-quarter aggregation. Vermogensstortingen (owner equity
 // deposits) worden uitgesloten van omzet én BTW — zijn geen omzet.
+// Daarnaast: bank-transacties die gekoppeld zijn aan een outgoing factuur
+// of inkomende factuur waarvan verwerkt_in_aangifte gevuld is, blijven
+// zichtbaar maar tellen niet meer mee in de huidige BTW-aangifte (anders
+// double-counten ze met een eerdere periode die al ingediend is).
 async function kwartaalTotalen(start: string, eind: string) {
   const nietVermogen = or(
     isNull(bankTransacties.categorie),
     ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
+  );
+
+  const nietVerwerkt = and(
+    sql`NOT EXISTS (SELECT 1 FROM ${facturen} WHERE ${facturen.bankTransactieId} = ${bankTransacties.id} AND ${facturen.verwerktInAangifte} IS NOT NULL)`,
+    sql`NOT EXISTS (SELECT 1 FROM ${inkomendeFacturen} WHERE ${inkomendeFacturen.bankTransactieId} = ${bankTransacties.id} AND ${inkomendeFacturen.verwerktInAangifte} IS NOT NULL)`
   );
 
   const [row] = await db
@@ -27,7 +36,8 @@ async function kwartaalTotalen(start: string, eind: string) {
       and(
         gte(bankTransacties.datum, start),
         lt(bankTransacties.datum, eind),
-        nietVermogen
+        nietVermogen,
+        nietVerwerkt
       )
     );
 

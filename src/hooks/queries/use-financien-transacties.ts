@@ -17,6 +17,8 @@ export interface FinancienTransactie {
   gekoppeldFactuurId: number | null;
   storageUrl: string | null;
   bonPad: string | null;
+  eigenaar: "sem" | "syb" | "gedeeld" | null;
+  splitRatio: string | null;
 }
 
 export interface TransactiesFilters {

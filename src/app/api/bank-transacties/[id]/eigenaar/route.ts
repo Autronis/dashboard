@@ -17,13 +17,17 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const body = await req.json();
     const { eigenaar, splitRatio } = body;
 
-    if (!eigenaar || !["sem", "syb", "gedeeld"].includes(eigenaar)) {
-      return NextResponse.json({ fout: "Eigenaar moet 'sem', 'syb' of 'gedeeld' zijn" }, { status: 400 });
+    // null/empty = clear (= team default 50/50). Otherwise must be one
+    // of the known values.
+    if (eigenaar !== null && eigenaar !== "" && !["sem", "syb", "gedeeld"].includes(eigenaar)) {
+      return NextResponse.json({ fout: "Eigenaar moet 'sem', 'syb', 'gedeeld' of null zijn" }, { status: 400 });
     }
+
+    const eigenaarValue = eigenaar === "" ? null : eigenaar;
 
     await db
       .update(bankTransacties)
-      .set({ eigenaar, splitRatio: splitRatio ?? null })
+      .set({ eigenaar: eigenaarValue, splitRatio: splitRatio ?? null })
       .where(eq(bankTransacties.id, transactieId));
 
     return NextResponse.json({ succes: true });

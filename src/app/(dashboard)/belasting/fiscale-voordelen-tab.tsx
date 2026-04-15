@@ -239,7 +239,7 @@ export function FiscaleVoordelenTab() {
                         <p className="text-sm font-semibold text-autronis-text-primary">{inv.naam}</p>
                         {inv.aiBeschrijving && <p className="text-xs text-autronis-text-secondary mt-0.5">{inv.aiBeschrijving}</p>}
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <span className="text-[10px] text-autronis-text-tertiary">{new Date(inv.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}</span>
+                          <span className="text-[10px] text-autronis-text-tertiary">{inv.datum ? new Date(inv.datum).toLocaleDateString("nl-NL", { day: "numeric", month: "short" }) : "—"}</span>
                           {inv.kiaAftrek > 0 && (
                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-medium">
                               KIA: {formatBedrag(inv.kiaAftrek)}

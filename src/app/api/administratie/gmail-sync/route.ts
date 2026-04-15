@@ -368,6 +368,8 @@ CRITICAL RULES:
       factuurnummer: parsed.factuurnummer ?? null,
       datum: parsed.datum,
       currency,
+      omschrijving: null,
+      categorie: null,
     };
   } catch {
     return null;

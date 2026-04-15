@@ -71,6 +71,61 @@ export async function GET() {
     const eigenScreenUren = await berekenActieveUren(gebruiker.id, weekVanDatum, weekTotDatum);
     const eigenUrenTotaal = Math.round(eigenScreenUren * 60); // convert to minutes for consistency
 
+    // Splitsing Autronis (intern werk) vs Klant (declarabel) — gebaseerd op
+    // ruwe screen-time entries deze week. Een entry telt als "autronis"
+    // wanneer er geen project is, het project geen klant heeft, of de
+    // klantnaam "autronis" bevat. We schalen daarna naar `eigenUrenTotaal`
+    // zodat de som van de twee buckets exact gelijk is aan de canonical
+    // berekenActieveUren waarde (voorkomt afrondingsverschillen tussen het
+    // Uren KPI getal en de subbalkjes).
+    const projectInfo = await db
+      .select({
+        projectId: projecten.id,
+        klantId: projecten.klantId,
+        klantBedrijfsnaam: klanten.bedrijfsnaam,
+      })
+      .from(projecten)
+      .leftJoin(klanten, eq(projecten.klantId, klanten.id));
+    const isAutronisMap = new Map<number, boolean>();
+    for (const p of projectInfo) {
+      isAutronisMap.set(
+        p.projectId,
+        p.klantId === null ||
+          p.klantBedrijfsnaam === null ||
+          p.klantBedrijfsnaam.toLowerCase().includes("autronis")
+      );
+    }
+
+    const ruweEntries = await db
+      .select({
+        projectId: screenTimeEntries.projectId,
+        duurSeconden: screenTimeEntries.duurSeconden,
+      })
+      .from(screenTimeEntries)
+      .where(
+        and(
+          eq(screenTimeEntries.gebruikerId, gebruiker.id),
+          ne(screenTimeEntries.categorie, "afleiding"),
+          ne(screenTimeEntries.categorie, "inactief"),
+          gte(screenTimeEntries.startTijd, weekVanDatum),
+          lte(screenTimeEntries.startTijd, weekTotDatum + "T23:59:59")
+        )
+      );
+    let autronisSec = 0;
+    let klantSec = 0;
+    for (const e of ruweEntries) {
+      const sec = e.duurSeconden ?? 0;
+      if (e.projectId === null || (isAutronisMap.get(e.projectId) ?? true)) {
+        autronisSec += sec;
+      } else {
+        klantSec += sec;
+      }
+    }
+    const totaalRawSec = autronisSec + klantSec;
+    const schaal = totaalRawSec > 0 ? eigenUrenTotaal / (totaalRawSec / 60) : 0;
+    const autronisMin = Math.round((autronisSec / 60) * schaal);
+    const klantMin = Math.max(0, eigenUrenTotaal - autronisMin);
+
     // Uren deze week - teamgenoot (ook screen time)
     let teamgenootUren = 0;
     if (teamgenoot) {
@@ -294,6 +349,8 @@ export async function GET() {
           totaal: eigenUrenTotaal + teamgenootUren,
           eigen: eigenUrenTotaal,
           teamgenoot: teamgenootUren,
+          autronis: autronisMin,
+          klant: klantMin,
         },
         urenVorigeWeek: eigenUrenVorigeWeekMin,
         actieveProjecten: actieveProjectenCount?.count || 0,

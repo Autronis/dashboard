@@ -64,22 +64,26 @@ const SERVICE_KEYWORDS = [
 ];
 
 export function classifyFit(category: string | null | undefined, name?: string | null): FitResult {
-  if (!category?.trim()) {
+  const cat = category?.trim() || "";
+  const nm = name?.trim() || "";
+
+  if (!cat && !nm) {
     return {
       verdict: "unknown",
       label: "Onbekend",
-      reason: "Geen categorie bekend — handmatig inschatten",
+      reason: "Geen categorie of naam bekend — handmatig inschatten",
     };
   }
 
-  const haystack = `${category.toLowerCase()} ${(name ?? "").toLowerCase()}`;
+  const haystack = `${cat.toLowerCase()} ${nm.toLowerCase()}`;
+  const signal = cat || `bedrijfsnaam "${nm}"`;
 
   const productHit = PRODUCT_KEYWORDS.find((k) => haystack.includes(k));
   if (productHit) {
     return {
       verdict: "scroll_stop_good",
       label: "Scroll-stop geschikt",
-      reason: `Categorie "${category}" matcht "${productHit}" — fysiek product, scroll-stop animatie past`,
+      reason: `${signal} matcht "${productHit}" — fysiek product, scroll-stop animatie past`,
     };
   }
 
@@ -88,13 +92,13 @@ export function classifyFit(category: string | null | undefined, name?: string |
     return {
       verdict: "static_upgrade",
       label: "Statische upgrade",
-      reason: `Categorie "${category}" matcht "${serviceHit}" — dienstverlening, beter een dark premium statische site`,
+      reason: `${signal} matcht "${serviceHit}" — dienstverlening, beter een dark premium statische site`,
     };
   }
 
   return {
     verdict: "unknown",
     label: "Onbekend",
-    reason: `Categorie "${category}" niet herkend — handmatig inschatten`,
+    reason: `${signal} niet herkend — handmatig inschatten`,
   };
 }

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { focusLogs } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 
 // POST /api/focus/log
 // Body: { tekst: string, bron?: string }
 // Schrijft een korte 1-zin samenvatting van wat de user op dat moment
 // doet. Wordt door /api/screen-time/sessies opgehaald als extra context
-// voor rijkere timeline beschrijvingen.
+// voor rijkere timeline beschrijvingen. Accepteert zowel cookie session
+// (browser) als Bearer API key (Claude Code hook).
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const body = (await req.json()) as { tekst?: string; bron?: string };
 
     const tekst = body.tekst?.trim();

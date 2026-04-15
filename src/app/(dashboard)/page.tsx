@@ -901,6 +901,49 @@ export default function DashboardPage() {
           </Link>
         </motion.div>
 
+        {/* Uren splitsing — Autronis (intern) vs Klant (declarabel) */}
+        {kpis.urenDezeWeek.eigen > 0 && (() => {
+          const totaalMin = kpis.urenDezeWeek.eigen;
+          const autronisMin = kpis.urenDezeWeek.autronis;
+          const klantMin = kpis.urenDezeWeek.klant;
+          const autronisPct = totaalMin > 0 ? Math.round((autronisMin / totaalMin) * 100) : 0;
+          const klantPct = 100 - autronisPct;
+          return (
+            <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2.5">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-autronis-text-secondary" />
+                  <span className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Uren deze week — splitsing</span>
+                </div>
+                <div className="flex items-center gap-3 text-[11px] tabular-nums">
+                  <span className="text-blue-400 font-semibold">Klant {formatUren(Math.round(klantMin))}</span>
+                  <span className="text-autronis-text-secondary">·</span>
+                  <span className="text-autronis-accent font-semibold">Autronis {formatUren(Math.round(autronisMin))}</span>
+                </div>
+              </div>
+              <div className="flex h-2 rounded-full overflow-hidden bg-autronis-bg">
+                {klantPct > 0 && (
+                  <div
+                    className="bg-blue-400/80 transition-all"
+                    style={{ width: `${klantPct}%` }}
+                    title={`Klant: ${klantPct}%`}
+                  />
+                )}
+                {autronisPct > 0 && (
+                  <div
+                    className="bg-autronis-accent/80 transition-all"
+                    style={{ width: `${autronisPct}%` }}
+                    title={`Autronis: ${autronisPct}%`}
+                  />
+                )}
+              </div>
+              <p className="text-[10px] text-autronis-text-secondary/60 mt-1.5">
+                Declarabel: {klantPct}% · Intern: {autronisPct}%
+              </p>
+            </motion.div>
+          );
+        })()}
+
         {/* Inzichten alert bar — prominent under KPIs */}
         {inzichten.length > 0 && (
           <motion.div variants={sectionVariants} className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">

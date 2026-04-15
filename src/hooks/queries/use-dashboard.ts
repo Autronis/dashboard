@@ -5,7 +5,7 @@ interface DashboardData {
   kpis: {
     omzetDezeMaand: number;
     omzetVorigeMaand: number;
-    urenDezeWeek: { totaal: number; eigen: number; teamgenoot: number };
+    urenDezeWeek: { totaal: number; eigen: number; teamgenoot: number; autronis: number; klant: number };
     urenVorigeWeek: number;
     actieveProjecten: number;
     deadlinesDezeWeek: number;

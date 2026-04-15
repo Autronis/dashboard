@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { eq, and, gte, lt, sql, or, isNull, ne } from "drizzle-orm";
+import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+
+// SQL filter: exclude vermogensstortingen (owner equity deposits) from
+// revenue / BTW aggregates. They're not business revenue.
+const NIET_VERMOGEN = or(
+  isNull(bankTransacties.categorie),
+  ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
+);
 
 // Helper for aggregating one month in a single query
 async function maandTotalen(start: string, eind: string) {
@@ -12,7 +20,13 @@ async function maandTotalen(start: string, eind: string) {
       uitgaven: sql<number>`COALESCE(SUM(CASE WHEN ${bankTransacties.type} = 'af' THEN ABS(${bankTransacties.bedrag}) ELSE 0 END), 0)`,
     })
     .from(bankTransacties)
-    .where(and(gte(bankTransacties.datum, start), lt(bankTransacties.datum, eind)));
+    .where(
+      and(
+        gte(bankTransacties.datum, start),
+        lt(bankTransacties.datum, eind),
+        NIET_VERMOGEN
+      )
+    );
   return {
     inkomsten: Number(row?.inkomsten ?? 0),
     uitgaven: Number(row?.uitgaven ?? 0),
@@ -80,7 +94,8 @@ export async function GET() {
       .all();
     const btwTerugTeVragen = btwRows.reduce((sum, r) => sum + (r.btw ?? 0), 0);
 
-    // 5. BTW af te dragen (huidig kwartaal, alleen inkomende btw)
+    // 5. BTW af te dragen (huidig kwartaal, alleen inkomende btw,
+    // vermogensstortingen uitgesloten — geen omzet)
     const btwAfRows = await db
       .select({ btw: bankTransacties.btwBedrag })
       .from(bankTransacties)
@@ -88,7 +103,8 @@ export async function GET() {
         and(
           eq(bankTransacties.type, "bij"),
           gte(bankTransacties.datum, kwartaalStart),
-          lt(bankTransacties.datum, kwartaalEind)
+          lt(bankTransacties.datum, kwartaalEind),
+          NIET_VERMOGEN
         )
       )
       .all();

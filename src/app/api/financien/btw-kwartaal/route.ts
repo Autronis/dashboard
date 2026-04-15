@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, gte, lt, sql } from "drizzle-orm";
+import { and, gte, lt, sql, or, isNull, ne } from "drizzle-orm";
+import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 
-// Helper for one-quarter aggregation
+// Helper for one-quarter aggregation. Vermogensstortingen (owner equity
+// deposits) worden uitgesloten van omzet én BTW — zijn geen omzet.
 async function kwartaalTotalen(start: string, eind: string) {
+  const nietVermogen = or(
+    isNull(bankTransacties.categorie),
+    ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
+  );
+
   const [row] = await db
     .select({
       inkomsten: sql<number>`COALESCE(SUM(CASE WHEN ${bankTransacties.type} = 'bij' THEN ABS(${bankTransacties.bedrag}) ELSE 0 END), 0)`,
@@ -16,7 +23,13 @@ async function kwartaalTotalen(start: string, eind: string) {
       totaalItems: sql<number>`COUNT(*)`,
     })
     .from(bankTransacties)
-    .where(and(gte(bankTransacties.datum, start), lt(bankTransacties.datum, eind)));
+    .where(
+      and(
+        gte(bankTransacties.datum, start),
+        lt(bankTransacties.datum, eind),
+        nietVermogen
+      )
+    );
 
   return {
     inkomsten: Number(row?.inkomsten ?? 0),

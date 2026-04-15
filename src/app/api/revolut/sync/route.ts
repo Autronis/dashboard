@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
+import { isVermogensstorting, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
 import { eq, sql, and } from "drizzle-orm";
@@ -219,21 +220,30 @@ async function runSync(): Promise<SyncResultaat> {
       if (bestaand) continue;
 
       const isUitgaand = leg.amount < 0;
+      const type: "af" | "bij" = isUitgaand ? "af" : "bij";
       const merchantNaam = tx.merchant?.name || leg.description || tx.reference || "Onbekend";
+      const omschrijving = leg.description || tx.reference || merchantNaam;
+
+      // Detect owner equity deposit (Sem / Syb private → Revolut business)
+      const vermogen = isVermogensstorting(type, merchantNaam, omschrijving);
 
       const [inserted] = await db.insert(bankTransacties).values({
         datum: (tx.completed_at || tx.created_at).split("T")[0],
-        omschrijving: leg.description || tx.reference || merchantNaam,
+        omschrijving,
         bedrag: Math.abs(leg.amount),
-        type: isUitgaand ? "af" : "bij",
+        type,
         bank: "revolut",
         revolutTransactieId: tx.id,
         merchantNaam: isUitgaand ? merchantNaam : null,
         merchantCategorie: tx.merchant?.category_code || null,
-        status: "onbekend",
+        // Vermogensstortingen worden direct gemarkeerd — geen BTW, aparte
+        // categorie zodat ze uit de omzet-/BTW-aggregaties worden gefilterd.
+        categorie: vermogen ? VERMOGEN_CATEGORIE : null,
+        status: vermogen ? "gecategoriseerd" : "onbekend",
       }).returning({ id: bankTransacties.id });
 
       nieuweTransacties++;
+      // Skip AI analyse on equity deposits — they're not expenses.
       if (inserted && isUitgaand) nieuweIds.push(inserted.id);
     }
   }

@@ -102,8 +102,8 @@ export function DonutChart({
         </text>
         <text x={cx} y={cy + 14} textAnchor="middle" className="fill-autronis-text-primary text-xl font-bold tabular-nums">
           {active
-            ? new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(active.totaal)
-            : new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(totaal)}
+            ? new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(active.totaal)
+            : new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totaal)}
         </text>
         {active && (
           <text x={cx} y={cy + 30} textAnchor="middle" className="fill-autronis-text-secondary text-[10px] capitalize">

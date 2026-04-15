@@ -14,7 +14,7 @@ type Periode = "maand" | "kwartaal" | "jaar" | "alles";
 type QuickFilter = "alle" | "abonnementen" | "investeringen" | "eenmalig" | "zonder-bon";
 
 function formatEuro(n: number): string {
-  return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(n);
+  return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
 function formatDatumGroep(iso: string): string {

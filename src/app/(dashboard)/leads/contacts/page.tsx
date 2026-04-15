@@ -143,7 +143,7 @@ const EMAIL_STATUS_BADGE: Record<string, { label: string; bg: string; text: stri
   generating: { label: "Bezig", bg: "bg-blue-500/15", text: "text-blue-400" },
   generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400" },
   approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
-  sent: { label: "Verstuurd", bg: "bg-green-500/15", text: "text-green-400" },
+  sent: { label: "Verstuurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
   failed: { label: "Gefaald", bg: "bg-red-500/15", text: "text-red-400" },
   error: { label: "Error", bg: "bg-red-500/15", text: "text-red-400" },
   replied: { label: "Reply", bg: "bg-autronis-accent/15", text: "text-autronis-accent" },

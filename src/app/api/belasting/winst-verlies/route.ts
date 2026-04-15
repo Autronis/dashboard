@@ -2,14 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
   facturen,
-  uitgaven,
+  bankTransacties,
   investeringen,
   kilometerRegistraties,
   urenCriterium,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql, or, isNull, ne } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+
+// Kosten-filter: type=af, privé-uitgaven uitsluiten (die tellen niet als
+// bedrijfskosten), vermogensstortingen hebben type=bij dus onnodig hier.
+const KOSTEN_WHERE = (start: string, eind: string) =>
+  and(
+    eq(bankTransacties.type, "af"),
+    gte(bankTransacties.datum, start),
+    lte(bankTransacties.datum, eind),
+    or(isNull(bankTransacties.fiscaalType), ne(bankTransacties.fiscaalType, "prive")),
+    or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE))
+  );
 
 interface KwartaalData {
   kwartaal: number;
@@ -102,29 +114,27 @@ export async function GET(req: NextRequest) {
 
     const brutoOmzet = Math.round((omzetResult?.totaal ?? 0) * 100) / 100;
 
-    // Kosten per categorie
+    // Kosten per categorie — leest uit bank_transacties. Het bedrag is
+    // incl. BTW; we trekken btw_bedrag eraf zodat kosten ex BTW zijn
+    // (consistent met omzet ex BTW uit de facturen tabel).
     const kostenRows = await db
       .select({
-        categorie: uitgaven.categorie,
-        totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
+        categorie: bankTransacties.categorie,
+        totaalIncl: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
+        totaalBtw: sql<number>`COALESCE(SUM(${bankTransacties.btwBedrag}), 0)`,
       })
-      .from(uitgaven)
-      .where(
-        and(
-          gte(uitgaven.datum, jaarStart),
-          lte(uitgaven.datum, jaarEind)
-        )
-      )
-      .groupBy(uitgaven.categorie)
-      ;
+      .from(bankTransacties)
+      .where(KOSTEN_WHERE(jaarStart, jaarEind))
+      .groupBy(bankTransacties.categorie);
 
     const kostenPerCategorie: KostenPerCategorie = {};
     let totaleKosten = 0;
     for (const row of kostenRows) {
       const cat = row.categorie ?? "overig";
-      const bedrag = Math.round((row.totaal ?? 0) * 100) / 100;
-      kostenPerCategorie[cat] = bedrag;
-      totaleKosten += bedrag;
+      const excl = Math.round(((row.totaalIncl ?? 0) - (row.totaalBtw ?? 0)) * 100) / 100;
+      // Aggregate — meerdere rows kunnen dezelfde cat hebben (null groep)
+      kostenPerCategorie[cat] = (kostenPerCategorie[cat] ?? 0) + excl;
+      totaleKosten += excl;
     }
     totaleKosten = Math.round(totaleKosten * 100) / 100;
 
@@ -220,19 +230,16 @@ export async function GET(req: NextRequest) {
 
       const qKosten = await db
         .select({
-          totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)`,
+          totaalIncl: sql<number>`COALESCE(SUM(ABS(${bankTransacties.bedrag})), 0)`,
+          totaalBtw: sql<number>`COALESCE(SUM(${bankTransacties.btwBedrag}), 0)`,
         })
-        .from(uitgaven)
-        .where(
-          and(
-            gte(uitgaven.datum, start),
-            lte(uitgaven.datum, end)
-          )
-        )
+        .from(bankTransacties)
+        .where(KOSTEN_WHERE(start, end))
         .get();
 
       const qOmzetVal = Math.round((qOmzet?.totaal ?? 0) * 100) / 100;
-      const qKostenVal = Math.round((qKosten?.totaal ?? 0) * 100) / 100;
+      const qKostenVal =
+        Math.round(((qKosten?.totaalIncl ?? 0) - (qKosten?.totaalBtw ?? 0)) * 100) / 100;
 
       perKwartaal.push({
         kwartaal: q,

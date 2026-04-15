@@ -1,52 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Info, Check, X, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Check, X, AlertCircle } from "lucide-react";
+import { UitlegBlock } from "@/components/ui/uitleg-block";
 
 // In-dashboard cheat sheet voor wat wel/niet als zakelijke kilometer telt.
-// Collapsable zodat 't niet storend is als je 'm vaak ziet, maar 1 klik om
-// te checken als je twijfelt over een rit. Bron: Belastingdienst + common-
-// sense interpretatie voor een klein bureau/VOF.
+// Bron: Belastingdienst + common-sense interpretatie voor een klein bureau/VOF.
 
 export function RegelsInfoBlock() {
-  const [open, setOpen] = useState(true);
-
   return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-autronis-bg/40 transition-colors"
-      >
-        <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-          <Info className="w-4 h-4 text-blue-400" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-autronis-text-primary">
-            Wat telt als zakelijke kilometer?
-          </p>
-          <p className="text-[11px] text-autronis-text-secondary mt-0.5">
-            {open ? "Klik om in te klappen" : "Klik voor de regels — €0,23/km aftrek"}
-          </p>
-        </div>
-        <ChevronDown
-          className={cn(
-            "w-4 h-4 text-autronis-text-secondary transition-transform flex-shrink-0",
-            open && "rotate-180"
-          )}
-        />
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="px-5 pb-5 space-y-5 border-t border-autronis-border/50 pt-5">
+    <UitlegBlock
+      id="kilometers-regels"
+      titel="Wat telt als zakelijke kilometer?"
+      subtitel="Klik voor de regels — €0,23/km aftrek"
+      accent="blue"
+    >
               {/* Algemeen principe */}
               <div className="bg-autronis-bg/30 rounded-xl p-4 space-y-2">
                 <p className="text-sm text-autronis-text-primary font-medium">
@@ -252,10 +219,6 @@ export function RegelsInfoBlock() {
                   je accountant voor de zekerheid, het is €30 maar je weet het zeker.
                 </p>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+    </UitlegBlock>
   );
 }

@@ -1,5 +1,6 @@
 import * as schema from "./schema";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
+import { autoMigrateSchemaDrift } from "./auto-migrate";
 
 // Use the better-sqlite3 type as base — libsql is API-compatible at runtime
 type DrizzleDB = ReturnType<typeof drizzleSqlite<typeof schema>>;
@@ -523,6 +524,22 @@ if (isTurso) {
     aantal_keer_gebruikt INTEGER DEFAULT 0,
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
+
+  // Schema drift detector — runs after the explicit migrations above and
+  // catches any columns that schema.ts adds but nobody remembered to add
+  // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
+  // stderr so Vercel logs them.
+  autoMigrateSchemaDrift(client, schema)
+    .then((drift) => {
+      if (drift.applied.length > 0) {
+        console.log(`[auto-migrate] added ${drift.applied.length} columns: ${drift.applied.join(", ")}`);
+      }
+      if (drift.errors.length > 0) {
+        console.error(`[auto-migrate] ${drift.errors.length} errors:`);
+        for (const err of drift.errors) console.error(`  ${err.sql}: ${err.error}`);
+      }
+    })
+    .catch((err) => console.error("[auto-migrate] fatal:", err));
 
   db = drizzle(client, { schema }) as DrizzleDB;
 } else {

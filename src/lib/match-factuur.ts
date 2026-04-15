@@ -10,12 +10,18 @@
 // Rinkel invoice with a €12.10 Anthropic PDF.
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
-import { and, eq, isNull, or, gte, lte, desc } from "drizzle-orm";
+import { and, eq, isNull, or, gte, lte, desc, sql } from "drizzle-orm";
 
 export interface FactuurHint {
   leverancier: string;
   bedrag: number;
   datum: string;
+  // Optional currency code (e.g. "EUR", "USD", "GBP"). When set, candidate
+  // bank transactions with a *different* non-null valuta are filtered out —
+  // prevents a $12.10 Anthropic USD invoice from matching a €12.10 bank tx.
+  // Candidate txs with NULL valuta (legacy rows pre-currency-tracking) are
+  // still accepted so we don't regress match rates on existing data.
+  valuta?: string | null;
 }
 
 export interface MatchResult {
@@ -97,6 +103,10 @@ export async function findCandidates(
   const windowStart = new Date(hintDate.getTime() - 45 * 86400000).toISOString().slice(0, 10);
   const windowEnd = new Date(hintDate.getTime() + 45 * 86400000).toISOString().slice(0, 10);
 
+  const valutaFilter = hint.valuta
+    ? or(isNull(bankTransacties.valuta), eq(bankTransacties.valuta, hint.valuta))
+    : sql`1=1`;
+
   const candidates = await db
     .select()
     .from(bankTransacties)
@@ -110,7 +120,8 @@ export async function findCandidates(
         isNull(bankTransacties.storageUrl),
         isNull(bankTransacties.bonPad),
         gte(bankTransacties.datum, windowStart),
-        lte(bankTransacties.datum, windowEnd)
+        lte(bankTransacties.datum, windowEnd),
+        valutaFilter
       )
     )
     .orderBy(desc(bankTransacties.datum))
@@ -150,6 +161,10 @@ export async function findBestMatch(hint: FactuurHint): Promise<MatchResult | nu
   const windowStart = new Date(hintDate.getTime() - 21 * 86400000).toISOString().slice(0, 10);
   const windowEnd = new Date(hintDate.getTime() + 21 * 86400000).toISOString().slice(0, 10);
 
+  const valutaFilter = hint.valuta
+    ? or(isNull(bankTransacties.valuta), eq(bankTransacties.valuta, hint.valuta))
+    : sql`1=1`;
+
   const candidates = await db
     .select()
     .from(bankTransacties)
@@ -163,7 +178,8 @@ export async function findBestMatch(hint: FactuurHint): Promise<MatchResult | nu
         isNull(bankTransacties.storageUrl),
         isNull(bankTransacties.bonPad),
         gte(bankTransacties.datum, windowStart),
-        lte(bankTransacties.datum, windowEnd)
+        lte(bankTransacties.datum, windowEnd),
+        valutaFilter
       )
     )
     .orderBy(desc(bankTransacties.datum))

@@ -203,6 +203,7 @@ export async function GET(request: NextRequest) {
                 leverancier: invoiceData.leverancier,
                 bedrag: invoiceData.bedrag,
                 datum: invoiceData.datum,
+                valuta: invoiceData.currency,
               });
 
           await db.insert(inkomendeFacturen).values({
@@ -211,6 +212,7 @@ export async function GET(request: NextRequest) {
             btwBedrag: invoiceData.btwBedrag,
             factuurnummer: invoiceData.factuurnummer,
             datum: invoiceData.datum,
+            valuta: invoiceData.currency,
             storageUrl: storagePath,
             emailId: msgRef.id,
             bankTransactieId: match?.tx.id ?? null,

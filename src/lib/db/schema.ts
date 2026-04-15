@@ -650,6 +650,7 @@ export const bankTransacties = sqliteTable("bank_transacties", {
   merchantNaam: text("merchant_naam"),
   merchantCategorie: text("merchant_categorie"),
   aiBeschrijving: text("ai_beschrijving"),
+  valuta: text("valuta"), // "EUR" / "USD" / "GBP" etc. — NULL voor legacy tx zonder info
   isAbonnement: integer("is_abonnement").default(0),
   overdodigheidScore: text("overbodigheid_score", { enum: ["noodzakelijk", "nuttig", "overbodig"] }),
   fiscaalType: text("fiscaal_type", { enum: ["investering", "kosten", "prive"] }),
@@ -672,6 +673,7 @@ export const inkomendeFacturen = sqliteTable("inkomende_facturen", {
   btwBedrag: real("btw_bedrag"),
   factuurnummer: text("factuurnummer"),
   datum: text("datum").notNull(),
+  valuta: text("valuta"), // "EUR" / "USD" / "GBP" — NULL voor legacy rows
   storageUrl: text("storage_url").notNull(),
   emailId: text("email_id").unique(),
   bankTransactieId: integer("bank_transactie_id").references(() => bankTransacties.id),

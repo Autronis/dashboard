@@ -197,6 +197,7 @@ if (isTurso) {
     "ALTER TABLE bank_transacties ADD COLUMN subsidie_mogelijkheden TEXT",
     "ALTER TABLE bank_transacties ADD COLUMN btw_bedrag REAL",
     "ALTER TABLE bank_transacties ADD COLUMN kia_aftrek REAL",
+    "ALTER TABLE bank_transacties ADD COLUMN valuta TEXT",
   ]) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
@@ -235,6 +236,7 @@ if (isTurso) {
   client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_status ON inkomende_facturen(status)").catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_datum ON inkomende_facturen(datum)").catch(() => {});
   client.execute("ALTER TABLE inkomende_facturen ADD COLUMN verwerkt_in_aangifte TEXT").catch(() => {});
+  client.execute("ALTER TABLE inkomende_facturen ADD COLUMN valuta TEXT").catch(() => {});
 
   // Video samenvattingen table on Turso
   client.execute(`CREATE TABLE IF NOT EXISTS video_samenvattingen (
@@ -592,6 +594,14 @@ if (isTurso) {
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN revolut_transactie_id TEXT");
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_naam TEXT");
     sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN merchant_categorie TEXT");
+  }
+  if (!bankCols.some((c: { name: string }) => c.name === "valuta")) {
+    sqliteDb.exec("ALTER TABLE bank_transacties ADD COLUMN valuta TEXT");
+  }
+
+  const inkFactCols = sqliteDb.prepare("PRAGMA table_info(inkomende_facturen)").all() as { name: string }[];
+  if (inkFactCols.length > 0 && !inkFactCols.some((c: { name: string }) => c.name === "valuta")) {
+    sqliteDb.exec("ALTER TABLE inkomende_facturen ADD COLUMN valuta TEXT");
   }
 
   // Asset gallery table

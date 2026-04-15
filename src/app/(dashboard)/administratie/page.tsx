@@ -323,10 +323,13 @@ export default function AdministratiePage() {
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
             <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">
               <Calculator className="w-3.5 h-3.5" />
-              BTW te verrekenen
+              BTW op deze documenten
             </div>
             <p className="text-2xl font-bold tabular-nums text-autronis-text-primary">
               {formatCurrency(totalen.btw)}
+            </p>
+            <p className="text-[11px] text-autronis-text-secondary mt-1">
+              Alleen PDFs in archief — voor echte aangifte zie /belasting
             </p>
           </div>
         </div>

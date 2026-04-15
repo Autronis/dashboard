@@ -1348,6 +1348,192 @@ export default function BelastingPage() {
                 />
               </motion.div>
             </div>
+
+            {/* Snelle samenvatting uit alle andere tabs — zodat je niet
+                hoeft te klikken om te zien wat er speelt */}
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h2 className="text-xl font-bold text-autronis-text-primary">In één oogopslag</h2>
+                  <p className="text-xs text-autronis-text-secondary mt-0.5">Samenvatting uit alle tabs</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* BTW & aangiftes (Acties tab) */}
+                <button
+                  onClick={() => setActiveTab("acties")}
+                  className="group text-left p-5 rounded-xl bg-autronis-bg/40 border border-autronis-border hover:border-autronis-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Receipt className="w-4 h-4 text-blue-400" />
+                    <h3 className="text-sm font-bold text-autronis-text-primary">BTW & aangiftes</h3>
+                    <ArrowRight className="w-3 h-3 text-autronis-text-secondary/50 group-hover:text-autronis-accent ml-auto transition-colors" />
+                  </div>
+                  {(() => {
+                    const openAangiftes = aangiftes.filter((a) => a.status === "open");
+                    const huidig = aangiftes.find((a) => a.kwartaal === currentQuarter);
+                    const eerstvolgendeBtwDeadline = deadlines
+                      .filter((d) => d.type === "btw" && !d.afgerond)
+                      .sort((a, b) => a.datum.localeCompare(b.datum))[0];
+                    return (
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-autronis-text-secondary">Q{currentQuarter} saldo</span>
+                          <span className={cn(
+                            "font-semibold tabular-nums",
+                            nettoAfdragen < 0 ? "text-emerald-400" : nettoAfdragen > 0 ? "text-red-400" : "text-autronis-text-primary"
+                          )}>
+                            {nettoAfdragen < 0 ? `+${formatBedrag(Math.abs(nettoAfdragen))} terug` : nettoAfdragen > 0 ? `−${formatBedrag(nettoAfdragen)} te betalen` : "€ 0"}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-autronis-text-secondary">Status Q{currentQuarter}</span>
+                          <span className="font-semibold text-autronis-text-primary capitalize">{huidig?.status ?? "onbekend"}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-autronis-text-secondary">Open kwartalen</span>
+                          <span className="font-semibold text-autronis-text-primary tabular-nums">{openAangiftes.length} / 4</span>
+                        </div>
+                        {eerstvolgendeBtwDeadline && (
+                          <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-autronis-border/50">
+                            <span className="text-autronis-text-secondary">Volgende deadline</span>
+                            <span className="font-semibold text-amber-400">
+                              {formatDatum(eerstvolgendeBtwDeadline.datum)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </button>
+
+                {/* Winst/verlies (Analyse tab) */}
+                <button
+                  onClick={() => setActiveTab("analyse")}
+                  className="group text-left p-5 rounded-xl bg-autronis-bg/40 border border-autronis-border hover:border-autronis-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-sm font-bold text-autronis-text-primary">Winst & verlies {jaar}</h3>
+                    <ArrowRight className="w-3 h-3 text-autronis-text-secondary/50 group-hover:text-autronis-accent ml-auto transition-colors" />
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Omzet (excl BTW)</span>
+                      <span className="font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData?.brutoOmzet ?? 0)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Kosten (excl BTW)</span>
+                      <span className="font-semibold text-rose-400 tabular-nums">{formatBedrag(wvData?.totaleKosten ?? 0)}</span>
+                    </div>
+                    {(wvData?.afschrijvingen ?? 0) > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-autronis-text-secondary">Afschrijvingen</span>
+                        <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(wvData!.afschrijvingen)}</span>
+                      </div>
+                    )}
+                    {(wvData?.kmAftrek ?? 0) > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-autronis-text-secondary">Km-aftrek</span>
+                        <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(wvData!.kmAftrek)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-autronis-border/50">
+                      <span className="text-autronis-text-secondary">Brutowinst</span>
+                      <span className={cn(
+                        "font-semibold tabular-nums",
+                        (wvData?.brutowinst ?? 0) >= 0 ? "text-emerald-400" : "text-rose-400"
+                      )}>
+                        {formatBedrag(wvData?.brutowinst ?? 0)}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Fiscale kansen (Fiscale Voordelen tab) */}
+                <button
+                  onClick={() => setActiveTab("fiscaal")}
+                  className="group text-left p-5 rounded-xl bg-autronis-bg/40 border border-autronis-border hover:border-autronis-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <PiggyBank className="w-4 h-4 text-purple-400" />
+                    <h3 className="text-sm font-bold text-autronis-text-primary">Fiscale voordelen</h3>
+                    <ArrowRight className="w-3 h-3 text-autronis-text-secondary/50 group-hover:text-autronis-accent ml-auto transition-colors" />
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Investeringen {jaar}</span>
+                      <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(totaalInvestering)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">KIA-aftrek</span>
+                      <span className={cn(
+                        "font-semibold tabular-nums",
+                        totaalInvestering >= 2801 ? "text-emerald-400" : "text-autronis-text-secondary"
+                      )}>
+                        {totaalInvestering >= 2801 ? formatBedrag(berekenKIA(totaalInvestering)) : "nog niet actief"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">KIA drempel</span>
+                      <span className="font-semibold text-autronis-text-primary tabular-nums">
+                        {totaalInvestering >= 2801 ? "✓ gehaald" : `${Math.round((totaalInvestering / 2801) * 100)}%`}
+                      </span>
+                    </div>
+                    {kiaKans !== null && (
+                      <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-autronis-border/50">
+                        <span className="text-autronis-text-secondary">Nog te investeren</span>
+                        <span className="font-semibold text-amber-400 tabular-nums">{formatBedrag(kiaKans)}</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {/* Optimalisatie (Optimalisatie tab) */}
+                <button
+                  onClick={() => setActiveTab("optimalisatie")}
+                  className="group text-left p-5 rounded-xl bg-autronis-bg/40 border border-autronis-border hover:border-autronis-accent/40 transition-colors"
+                >
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="w-4 h-4 text-autronis-accent" />
+                    <h3 className="text-sm font-bold text-autronis-text-primary">Optimalisatie</h3>
+                    <ArrowRight className="w-3 h-3 text-autronis-text-secondary/50 group-hover:text-autronis-accent ml-auto transition-colors" />
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Optimalisatie score</span>
+                      <span className={cn(
+                        "font-semibold tabular-nums",
+                        optimalisatieOk >= 5 ? "text-emerald-400" : optimalisatieOk >= 3 ? "text-yellow-400" : "text-red-400"
+                      )}>
+                        {optimalisatieOk} / 6
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Zelfstandigenaftrek</span>
+                      <span className={cn(
+                        "font-semibold",
+                        urenCriterium?.voldoet ? "text-emerald-400" : "text-autronis-text-secondary"
+                      )}>
+                        {urenCriterium?.voldoet ? "✓ behaald" : `${Math.round(((urenCriterium?.behaaldUren ?? 0) / 1225) * 100)}% uren`}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-autronis-text-secondary">Actieve tips</span>
+                      <span className="font-semibold text-autronis-text-primary tabular-nums">
+                        {tipsData ? `${tipsData.toegepast} / ${tipsData.totaal}` : "—"}
+                      </span>
+                    </div>
+                    {reserveringTekort > 0 && (
+                      <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-autronis-border/50">
+                        <span className="text-autronis-text-secondary">Reservering tekort</span>
+                        <span className="font-semibold text-orange-400 tabular-nums">{formatBedrag(reserveringTekort)}</span>
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

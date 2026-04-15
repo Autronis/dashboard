@@ -15,6 +15,8 @@ interface InvoiceData {
   factuurnummer: string | null;
   datum: string;
   currency: "EUR" | "USD" | "GBP" | null;
+  omschrijving: string | null;
+  categorie: string | null;
 }
 
 interface SyncResultaat {

@@ -14,6 +14,8 @@ interface InvoiceData {
   factuurnummer: string | null;
   datum: string;
   currency: "EUR" | "USD" | "GBP" | null;
+  omschrijving: string | null;
+  categorie: string | null;
 }
 
 async function extractInvoiceData(pdfBuffer: Buffer, filename: string): Promise<InvoiceData | null> {
@@ -52,7 +54,9 @@ If it IS an invoice/receipt/credit note, respond with valid JSON:
   "btwBedrag": 21.00,
   "factuurnummer": "INV-12345",
   "datum": "YYYY-MM-DD",
-  "currency": "EUR"
+  "currency": "EUR",
+  "omschrijving": "USB-C kabel 2m + Type-A adapter",
+  "categorie": "hardware"
 }
 
 CRITICAL RULES:
@@ -60,6 +64,8 @@ CRITICAL RULES:
 - "currency" MUST be "EUR", "USD", or "GBP". Look at the currency symbol — € = EUR, $ = USD, £ = GBP. NEVER assume EUR by default.
 - "btwBedrag" is only non-null for Dutch invoices with NL BTW. Foreign / reverse-charge invoices get 0 or null.
 - "datum" is the invoice issue date, not payment or due date.
+- "omschrijving": ONE short Dutch sentence describing what was actually bought/paid for. Look at the invoice lines, not just the supplier. Example: for Temu with "Woonkamer LED-striplicht 5m" on the lines, write "LED-striplicht 5m voor kantoor". For a Kabelshop invoice with "USB-C 3.2 1m + HDMI 2m" write "USB-C + HDMI kabels". Max 80 chars. Use null if the invoice has no clear line items (pure service fee, etc).
+- "categorie" MUST be one of: "hardware", "software", "kantoor", "telefoon", "hosting", "marketing", "onderwijs", "reiskosten", "verzekeringen", "accountant", "overig". Pick the best fit based on what was bought.
 - Only respond with valid JSON, no other text.`,
           },
         ],
@@ -79,6 +85,8 @@ CRITICAL RULES:
       factuurnummer?: string | null;
       datum?: string;
       currency?: string;
+      omschrijving?: string | null;
+      categorie?: string | null;
     };
 
     if (!parsed.isFactuur || !parsed.leverancier || !parsed.bedrag || !parsed.datum) {
@@ -97,6 +105,8 @@ CRITICAL RULES:
       factuurnummer: parsed.factuurnummer ?? null,
       datum: parsed.datum,
       currency,
+      omschrijving: parsed.omschrijving ?? null,
+      categorie: parsed.categorie ?? null,
     };
   } catch {
     return null;
@@ -248,9 +258,30 @@ export async function POST(request: NextRequest) {
       .returning();
 
     if (matchTx) {
+      // Verrijk de bank_transactie met wat er op de factuur staat: korte
+      // omschrijving + categorie. Overschrijf alleen als velden nog leeg
+      // zijn — niet de handmatige input van Sem overrulen.
+      const enrichUpdate: Record<string, string | null> = {
+        storageUrl: storagePath,
+        status: "gematcht",
+      };
+      const [existing] = await db
+        .select({
+          aiBeschrijving: bankTransacties.aiBeschrijving,
+          categorie: bankTransacties.categorie,
+        })
+        .from(bankTransacties)
+        .where(eq(bankTransacties.id, matchTx.id))
+        .limit(1);
+      if (invoiceData.omschrijving && !existing?.aiBeschrijving) {
+        enrichUpdate.aiBeschrijving = invoiceData.omschrijving;
+      }
+      if (invoiceData.categorie && !existing?.categorie) {
+        enrichUpdate.categorie = invoiceData.categorie;
+      }
       await db
         .update(bankTransacties)
-        .set({ storageUrl: storagePath, status: "gematcht" })
+        .set(enrichUpdate)
         .where(eq(bankTransacties.id, matchTx.id));
     }
 

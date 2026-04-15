@@ -131,6 +131,13 @@ function regenerateTypes() {
     return { changed: false, error: null };
   }
 
+  if (!process.env.SUPABASE_ACCESS_TOKEN) {
+    log("  ✗ SUPABASE_ACCESS_TOKEN ontbreekt — kan types niet regenereren");
+    log("    Maak er een aan op https://supabase.com/dashboard/account/tokens");
+    log("    en zet 'm in .env.local en GitHub Secrets.");
+    return { changed: false, error: "SUPABASE_ACCESS_TOKEN missing" };
+  }
+
   let output;
   try {
     output = execSync(
@@ -138,9 +145,15 @@ function regenerateTypes() {
       { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
     );
   } catch (e) {
-    const msg = e.stderr?.toString() || e.message;
-    log(`  ✗ Type regen faalde: ${msg.split("\n")[0]}`);
-    return { changed: false, error: msg };
+    const stderr = e.stderr?.toString() || "";
+    // Filter npm warnings; pick the first non-warning line
+    const realError = stderr
+      .split("\n")
+      .filter((l) => l.trim() && !l.startsWith("npm warn") && !l.startsWith("npm notice"))
+      .join("\n")
+      .trim() || e.message;
+    log(`  ✗ Type regen faalde: ${realError.split("\n")[0]}`);
+    return { changed: false, error: realError };
   }
 
   if (!output.includes("export type Database")) {

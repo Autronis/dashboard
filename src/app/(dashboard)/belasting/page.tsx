@@ -679,7 +679,9 @@ export default function BelastingPage() {
     const urenPerDag = urenCriterium.behaaldUren / dagVanJaar;
     if (urenPerDag <= 0) return { datum: "", haalbaar: false };
     const dagenNodig = (urenCriterium.doelUren - urenCriterium.behaaldUren) / urenPerDag;
+    if (!Number.isFinite(dagenNodig) || dagenNodig < 0) return { datum: "", haalbaar: false };
     const prognoseDatum = new Date(nu.getTime() + dagenNodig * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(prognoseDatum.getTime())) return { datum: "", haalbaar: false };
     const haalbaar = prognoseDatum.getFullYear() === jaar;
     return {
       datum: prognoseDatum.toLocaleDateString("nl-NL", { day: "numeric", month: "long" }),

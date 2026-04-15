@@ -237,6 +237,7 @@ async function runSync(): Promise<SyncResultaat> {
         revolutTransactieId: tx.id,
         merchantNaam: isUitgaand ? merchantNaam : null,
         merchantCategorie: tx.merchant?.category_code || null,
+        valuta: leg.currency || null,
         // Vermogensstortingen worden direct gemarkeerd — geen BTW, aparte
         // categorie zodat ze uit de omzet-/BTW-aggregaties worden gefilterd.
         categorie: vermogen ? VERMOGEN_CATEGORIE : null,

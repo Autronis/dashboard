@@ -44,10 +44,20 @@ export async function POST(req: NextRequest) {
     }> = [];
 
     for (const factuur of onbekoppeld) {
+      // Skip foreign-currency facturen bij auto-rematch. Amount op factuur
+      // staat in invoice-currency, bank-tx amount in bank-currency — zonder
+      // conversie kunnen we niet matchen. Blijven 'onbekoppeld' voor
+      // handmatige review via /api/administratie/koppel.
+      if (factuur.valuta && factuur.valuta !== "EUR") {
+        resultaten.push({ id: factuur.id, leverancier: factuur.leverancier, bedrag: factuur.bedrag });
+        continue;
+      }
+
       const match = await findBestMatch({
         leverancier: factuur.leverancier,
         bedrag: factuur.bedrag,
         datum: factuur.datum,
+        valuta: factuur.valuta,
       });
 
       if (!match) {

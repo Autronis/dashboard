@@ -221,6 +221,7 @@ export async function POST(request: NextRequest) {
             leverancier: invoiceData.leverancier,
             bedrag: invoiceData.bedrag,
             datum: invoiceData.datum,
+            valuta: invoiceData.currency,
           });
       if (match) {
         matchTx = {
@@ -245,6 +246,7 @@ export async function POST(request: NextRequest) {
         btwBedrag: invoiceData.btwBedrag,
         factuurnummer: invoiceData.factuurnummer,
         datum: invoiceData.datum,
+        valuta: invoiceData.currency,
         storageUrl: storagePath,
         emailId: null,
         bankTransactieId: matchTx?.id ?? null,

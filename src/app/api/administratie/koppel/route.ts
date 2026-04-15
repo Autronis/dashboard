@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
       leverancier: factuur.leverancier,
       bedrag: factuur.bedrag,
       datum: factuur.datum,
+      valuta: factuur.valuta,
     });
 
     return NextResponse.json({

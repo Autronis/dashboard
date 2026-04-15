@@ -2,73 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inkomendeFacturen, bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, eq, isNull, between, sql } from "drizzle-orm";
-
-// Find a bank transaction that matches a given amount ±5%, with no existing bon.
-// Handles both positive (Revolut sync) and negative (ING import) amount conventions.
-async function findMatchingTransaction(bedrag: number, datumHint?: string) {
-  const absBedrag = Math.abs(bedrag);
-  const lo = absBedrag * 0.95;
-  const hi = absBedrag * 1.05;
-  const negLo = -(absBedrag * 1.05);
-  const negHi = -(absBedrag * 0.95);
-
-  // First try positive range (Revolut convention)
-  const positive = await db
-    .select()
-    .from(bankTransacties)
-    .where(
-      and(
-        eq(bankTransacties.type, "af"),
-        between(bankTransacties.bedrag, lo, hi),
-        isNull(bankTransacties.storageUrl),
-        isNull(bankTransacties.bonPad)
-      )
-    )
-    .limit(5);
-
-  if (positive.length > 0) {
-    // If a datum hint is given, prefer the closest date
-    if (datumHint) {
-      positive.sort((a, b) => {
-        const da = Math.abs(new Date(a.datum).getTime() - new Date(datumHint).getTime());
-        const db2 = Math.abs(new Date(b.datum).getTime() - new Date(datumHint).getTime());
-        return da - db2;
-      });
-    }
-    return positive[0];
-  }
-
-  // Fallback: negative range (ING import)
-  const negative = await db
-    .select()
-    .from(bankTransacties)
-    .where(
-      and(
-        eq(bankTransacties.type, "af"),
-        between(bankTransacties.bedrag, negLo, negHi),
-        isNull(bankTransacties.storageUrl),
-        isNull(bankTransacties.bonPad)
-      )
-    )
-    .limit(5);
-
-  if (negative.length === 0) return null;
-
-  if (datumHint) {
-    negative.sort((a, b) => {
-      const da = Math.abs(new Date(a.datum).getTime() - new Date(datumHint).getTime());
-      const db2 = Math.abs(new Date(b.datum).getTime() - new Date(datumHint).getTime());
-      return da - db2;
-    });
-  }
-  return negative[0];
-}
+import { eq, sql } from "drizzle-orm";
+import { findBestMatch } from "@/lib/match-factuur";
 
 // POST /api/administratie/rematch — probeer alle onbekoppelde inkomende
-// facturen opnieuw te koppelen aan een bank-transactie. Idempotent: facturen
-// die al gematcht zijn blijven gematcht, onbekoppelde blijven proberen te
-// matchen totdat er een match gevonden wordt of definitief niet kan.
+// facturen opnieuw te koppelen met de scoring matcher (leverancier + bedrag
+// + datum gecombineerd). Idempotent: al-gematchte rows worden niet aangeraakt.
 export async function POST() {
   try {
     await requireAuth();
@@ -79,10 +18,23 @@ export async function POST() {
       .where(eq(inkomendeFacturen.status, "onbekoppeld"));
 
     let gematcht = 0;
-    const resultaten: Array<{ id: number; leverancier: string; bedrag: number; gematchtAan?: number }> = [];
+    const resultaten: Array<{
+      id: number;
+      leverancier: string;
+      bedrag: number;
+      gematchtAan?: number;
+      merchant?: string;
+      score?: number;
+      reasons?: string[];
+    }> = [];
 
     for (const factuur of onbekoppeld) {
-      const match = await findMatchingTransaction(factuur.bedrag, factuur.datum);
+      const match = await findBestMatch({
+        leverancier: factuur.leverancier,
+        bedrag: factuur.bedrag,
+        datum: factuur.datum,
+      });
+
       if (!match) {
         resultaten.push({ id: factuur.id, leverancier: factuur.leverancier, bedrag: factuur.bedrag });
         continue;
@@ -91,7 +43,7 @@ export async function POST() {
       await db
         .update(inkomendeFacturen)
         .set({
-          bankTransactieId: match.id,
+          bankTransactieId: match.tx.id,
           status: "gematcht",
         })
         .where(eq(inkomendeFacturen.id, factuur.id));
@@ -100,7 +52,7 @@ export async function POST() {
         await db
           .update(bankTransacties)
           .set({ storageUrl: factuur.storageUrl })
-          .where(eq(bankTransacties.id, match.id));
+          .where(eq(bankTransacties.id, match.tx.id));
       }
 
       gematcht++;
@@ -108,7 +60,10 @@ export async function POST() {
         id: factuur.id,
         leverancier: factuur.leverancier,
         bedrag: factuur.bedrag,
-        gematchtAan: match.id,
+        gematchtAan: match.tx.id,
+        merchant: match.tx.merchantNaam ?? match.tx.omschrijving,
+        score: Math.round(match.score * 100),
+        reasons: match.reasons,
       });
     }
 

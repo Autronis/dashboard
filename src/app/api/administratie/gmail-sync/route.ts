@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { google } from "googleapis";
 import { db } from "@/lib/db";
 import { googleTokens, inkomendeFacturen, bankTransacties } from "@/lib/db/schema";
-import { eq, and, isNull, between } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { getOAuth2Client } from "@/lib/google-calendar";
 import { uploadToStorage } from "@/lib/supabase";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { findBestMatch } from "@/lib/match-factuur";
 
 interface InvoiceData {
   leverancier: string;
@@ -13,6 +14,7 @@ interface InvoiceData {
   btwBedrag: number | null;
   factuurnummer: string | null;
   datum: string;
+  currency: "EUR" | "USD" | "GBP" | null;
 }
 
 interface SyncResultaat {
@@ -289,7 +291,25 @@ async function analyzeInvoice(pdfBuffer: Buffer, filename: string): Promise<Invo
           },
           {
             type: "text",
-            text: 'Is this an invoice? If yes, extract leverancier, bedrag, btwBedrag, factuurnummer, datum as JSON. If not an invoice, respond with exactly: {"isFactuur": false}. If it IS an invoice, respond with: {"isFactuur": true, "leverancier": "...", "bedrag": 123.45, "btwBedrag": 21.00, "factuurnummer": "...", "datum": "YYYY-MM-DD"}. Only respond with valid JSON, nothing else.',
+            text: `Is this an invoice, receipt, or credit note? If yes, extract structured data. If not (e.g. shipping confirmation, newsletter, contract, agreement), respond with exactly: {"isFactuur": false}.
+
+If it IS an invoice/receipt/credit note, respond with valid JSON:
+{
+  "isFactuur": true,
+  "leverancier": "Company name as it appears (include 'Inc.', 'Ltd', 'B.V.' etc.)",
+  "bedrag": 123.45,
+  "btwBedrag": 21.00,
+  "factuurnummer": "INV-12345",
+  "datum": "YYYY-MM-DD",
+  "currency": "EUR"
+}
+
+CRITICAL RULES:
+- "bedrag" is the TOTAL amount (incl. BTW/tax) as it appears on the invoice, as a number without currency symbol.
+- "currency" MUST be one of "EUR", "USD", "GBP". Look carefully at the currency symbol (€ = EUR, $ = USD, £ = GBP) or the explicit currency code on the invoice. NEVER assume EUR as default — if the invoice shows "$12.10" the currency is USD.
+- "btwBedrag" is only non-null for Dutch invoices with NL BTW. For foreign / reverse-charge invoices (Anthropic Ireland, Google Ireland, US invoices) set it to 0 or null.
+- "datum" is the invoice issue date, not payment or due date.
+- Only respond with valid JSON, no other text.`,
           },
         ],
       },
@@ -307,11 +327,17 @@ async function analyzeInvoice(pdfBuffer: Buffer, filename: string): Promise<Invo
       btwBedrag?: number;
       factuurnummer?: string;
       datum?: string;
+      currency?: string;
     };
 
     if (!parsed.isFactuur || !parsed.leverancier || !parsed.bedrag || !parsed.datum) {
       return null;
     }
+
+    const currency =
+      parsed.currency === "USD" || parsed.currency === "GBP" || parsed.currency === "EUR"
+        ? parsed.currency
+        : null;
 
     return {
       leverancier: parsed.leverancier,
@@ -319,6 +345,7 @@ async function analyzeInvoice(pdfBuffer: Buffer, filename: string): Promise<Invo
       btwBedrag: parsed.btwBedrag ?? null,
       factuurnummer: parsed.factuurnummer ?? null,
       datum: parsed.datum,
+      currency,
     };
   } catch {
     return null;

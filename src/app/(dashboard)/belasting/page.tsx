@@ -1455,7 +1455,12 @@ export default function BelastingPage() {
                     )}
                     {(wvData?.kmAftrek ?? 0) > 0 && (
                       <div className="flex items-center justify-between">
-                        <span className="text-autronis-text-secondary">Km-aftrek</span>
+                        <span className="text-autronis-text-secondary">
+                          Km-aftrek
+                          <span className="ml-1.5 text-[10px] text-autronis-text-secondary/60 tabular-nums">
+                            ({Math.round(wvData!.kmTotaal ?? 0)} km × €{(wvData!.kmTarief ?? 0.23).toFixed(2)})
+                          </span>
+                        </span>
                         <span className="font-semibold text-autronis-text-primary tabular-nums">{formatBedrag(wvData!.kmAftrek)}</span>
                       </div>
                     )}
@@ -2026,7 +2031,12 @@ export default function BelastingPage() {
                         )}
                         {wvData.kmAftrek > 0 && (
                           <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex items-center justify-between">
-                            <span className="text-sm text-autronis-text-primary">Km-aftrek</span>
+                            <div className="flex flex-col">
+                              <span className="text-sm text-autronis-text-primary">Km-aftrek</span>
+                              <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums">
+                                {Math.round(wvData.kmTotaal ?? 0)} km × €{(wvData.kmTarief ?? 0.23).toFixed(2)}
+                              </span>
+                            </div>
                             <span className="text-sm font-semibold text-emerald-400 tabular-nums">{formatBedrag(wvData.kmAftrek)}</span>
                           </div>
                         )}
@@ -2331,10 +2341,10 @@ export default function BelastingPage() {
                   },
                   {
                     ok: (wvData?.kmAftrek ?? 0) > 0,
-                    label: "Kilometervergoeeding (€0,23/km)",
+                    label: "Kilometervergoeding (€0,23/km)",
                     desc: (wvData?.kmAftrek ?? 0) > 0
-                      ? `${formatBedrag(wvData!.kmAftrek)} geclaimd`
-                      : `Registreer zakelijke kilometers voor aftrek`,
+                      ? `${Math.round(wvData!.kmTotaal ?? 0)} km × €${(wvData!.kmTarief ?? 0.23).toFixed(2)} = ${formatBedrag(wvData!.kmAftrek)} geclaimd`
+                      : `Registreer zakelijke kilometers voor aftrek (€0,23 per km)`,
                     icon: Car,
                   },
                   {

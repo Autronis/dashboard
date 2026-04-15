@@ -177,7 +177,8 @@ export async function GET(req: NextRequest) {
       .get();
 
     const totaalKm = kmResult?.totaalKm ?? 0;
-    const kmAftrek = Math.round(totaalKm * 0.23 * 100) / 100;
+    const KM_TARIEF = 0.23;
+    const kmAftrek = Math.round(totaalKm * KM_TARIEF * 100) / 100;
 
     // Uren criterium check
     const urenRecord = await db
@@ -265,6 +266,8 @@ export async function GET(req: NextRequest) {
         totaleKosten,
         afschrijvingen: totaleAfschrijvingen,
         kmAftrek,
+        kmTotaal: Math.round(totaalKm * 100) / 100,
+        kmTarief: KM_TARIEF,
         brutowinst,
         urenCriterium: {
           totaalUren,

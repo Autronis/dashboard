@@ -91,6 +91,8 @@ export interface WinstVerliesData {
   totaleKosten: number;
   afschrijvingen: number;
   kmAftrek: number;
+  kmTotaal: number;
+  kmTarief: number;
   brutowinst: number;
   zelfstandigenaftrek: number;
   mkbVrijstelling: number;

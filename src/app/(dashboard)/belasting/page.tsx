@@ -2297,7 +2297,7 @@ export default function BelastingPage() {
         )}
 
         {/* ===== TAB: OPTIMALISATIE ===== */}
-        {activeTab === "fiscaal" && <FiscaleVoordelenTab />}
+        {activeTab === "fiscaal" && <FiscaleVoordelenTab jaar={jaar} />}
 
         {activeTab === "optimalisatie" && (
           <div className="space-y-6">

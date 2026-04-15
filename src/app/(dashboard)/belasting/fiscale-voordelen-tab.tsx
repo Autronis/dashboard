@@ -9,6 +9,7 @@ import {
 import { cn, formatBedrag } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 
 interface FiscaleInvestering {
   id: number;
@@ -44,32 +45,41 @@ const SUBSIDIE_INFO: Record<string, { label: string; color: string; bg: string; 
   EIA: { label: "EIA", color: "text-yellow-400", bg: "bg-yellow-500/15", desc: "Energie-investeringsaftrek — energiebesparend" },
 };
 
-async function fetchFiscaleData(): Promise<AnalyseData> {
-  const res = await fetch("/api/bank/transacties/analyse");
+async function fetchFiscaleData(jaar: number): Promise<AnalyseData> {
+  const res = await fetch(`/api/bank/transacties/analyse?jaar=${jaar}`);
   if (!res.ok) throw new Error("Kon fiscale data niet laden");
   return res.json() as Promise<AnalyseData>;
 }
 
-export function FiscaleVoordelenTab() {
+interface FiscaleVoordelenTabProps {
+  jaar: number;
+}
+
+export function FiscaleVoordelenTab({ jaar }: FiscaleVoordelenTabProps) {
   const queryClient = useQueryClient();
+  const { addToast } = useToast();
   const [analysing, setAnalysing] = useState(false);
 
   const { data, isLoading: loading } = useQuery({
-    queryKey: ["fiscale-voordelen"],
-    queryFn: fetchFiscaleData,
-    staleTime: 5 * 60_000, // Cache for 5 minutes
+    queryKey: ["fiscale-voordelen", jaar],
+    queryFn: () => fetchFiscaleData(jaar),
+    staleTime: 5 * 60_000,
   });
 
   const runAnalyse = async () => {
     setAnalysing(true);
     try {
-      await fetch("/api/bank/transacties/analyse", {
+      const res = await fetch("/api/bank/transacties/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
+      if (!res.ok) throw new Error("Analyse mislukt");
       queryClient.invalidateQueries({ queryKey: ["fiscale-voordelen"] });
-    } catch { /* ignore */ }
+      addToast("Transacties geanalyseerd", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Analyse mislukt", "fout");
+    }
     setAnalysing(false);
   };
 
@@ -168,7 +178,7 @@ export function FiscaleVoordelenTab() {
       <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6">
         <div className="flex items-center gap-2 mb-4">
           <Calculator className="w-5 h-5 text-autronis-accent" />
-          <h3 className="text-base font-bold text-autronis-text-primary">KIA Calculator {new Date().getFullYear()}</h3>
+          <h3 className="text-base font-bold text-autronis-text-primary">KIA Calculator {jaar}</h3>
         </div>
 
         {/* Progress bar */}
@@ -213,7 +223,7 @@ export function FiscaleVoordelenTab() {
       {/* Investeringen per kwartaal */}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-autronis-border">
-          <h3 className="text-base font-bold text-autronis-text-primary">Investeringen {new Date().getFullYear()}</h3>
+          <h3 className="text-base font-bold text-autronis-text-primary">Investeringen {jaar}</h3>
         </div>
         {Object.keys(perKwartaal).length === 0 ? (
           <div className="p-6 text-center text-sm text-autronis-text-tertiary">
@@ -227,7 +237,7 @@ export function FiscaleVoordelenTab() {
                 <summary className="flex items-center justify-between px-6 py-3 cursor-pointer hover:bg-autronis-bg/30 transition-all border-b border-autronis-border">
                   <div className="flex items-center gap-2">
                     <ChevronDown className="w-4 h-4 text-autronis-text-tertiary group-open:rotate-180 transition-transform" />
-                    <span className="text-sm font-semibold text-autronis-text-primary">{kwartaal} {new Date().getFullYear()}</span>
+                    <span className="text-sm font-semibold text-autronis-text-primary">{kwartaal} {jaar}</span>
                     <span className="text-xs text-autronis-text-tertiary">({items.length} items)</span>
                   </div>
                   <span className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatBedrag(totaal)}</span>
@@ -304,18 +314,18 @@ export function FiscaleVoordelenTab() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-autronis-accent" />
-            <h3 className="text-base font-bold text-autronis-text-primary">Fiscaal Jaaroverzicht {new Date().getFullYear()}</h3>
+            <h3 className="text-base font-bold text-autronis-text-primary">Fiscaal Jaaroverzicht {jaar}</h3>
           </div>
           <div className="flex items-center gap-2">
-            <a href={`/api/belasting/export?type=csv&jaar=${new Date().getFullYear()}`} download
+            <a href={`/api/belasting/export?type=csv&jaar=${jaar}`} download
               className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
               CSV Export
             </a>
-            <a href={`/api/belasting/export?type=btw&jaar=${new Date().getFullYear()}`} download
+            <a href={`/api/belasting/export?type=btw&jaar=${jaar}`} download
               className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
               BTW Export
             </a>
-            <a href={`/api/belasting/export?type=winstverdeling&jaar=${new Date().getFullYear()}`} download
+            <a href={`/api/belasting/export?type=winstverdeling&jaar=${jaar}`} download
               className="flex items-center gap-1.5 px-3 py-1.5 bg-autronis-bg border border-autronis-border rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-all">
               Winstverdeling
             </a>

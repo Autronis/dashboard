@@ -210,8 +210,11 @@ export async function POST(req: NextRequest) {
 }
 
 // GET: AI-detected subscriptions + fiscal overview
-export async function GET() {
+export async function GET(req: NextRequest) {
   await requireAuth();
+  const { searchParams } = new URL(req.url);
+  const jaarParam = searchParams.get("jaar");
+  const jaarOverride = jaarParam && /^\d{4}$/.test(jaarParam) ? parseInt(jaarParam, 10) : null;
 
   // Subscriptions
   const abos = await db
@@ -243,8 +246,10 @@ export async function GET() {
     .from(bankTransacties)
     .where(and(isNull(bankTransacties.aiBeschrijving), eq(bankTransacties.type, "af")));
 
-  // Fiscal overview: investments this year
-  const jaar = new Date().getFullYear();
+  // Fiscal overview: investments for selected year (defaults to current)
+  const jaar = jaarOverride ?? new Date().getFullYear();
+  const jaarStart = `${jaar}-01-01`;
+  const jaarEind = `${jaar + 1}-01-01`;
   const investeringen = await db
     .select()
     .from(bankTransacties)
@@ -252,7 +257,8 @@ export async function GET() {
       and(
         eq(bankTransacties.type, "af"),
         eq(bankTransacties.fiscaalType, "investering"),
-        sql`${bankTransacties.datum} >= '${jaar}-01-01'`
+        sql`${bankTransacties.datum} >= ${jaarStart}`,
+        sql`${bankTransacties.datum} < ${jaarEind}`
       )
     )
     .orderBy(sql`${bankTransacties.datum} DESC`);
@@ -267,7 +273,8 @@ export async function GET() {
         eq(bankTransacties.type, "af"),
         sql`${bankTransacties.fiscaalType} != 'prive' OR ${bankTransacties.fiscaalType} IS NULL`,
         sql`${bankTransacties.btwBedrag} > 0`,
-        sql`${bankTransacties.datum} >= '${jaar}-01-01'`
+        sql`${bankTransacties.datum} >= ${jaarStart}`,
+        sql`${bankTransacties.datum} < ${jaarEind}`
       )
     );
 

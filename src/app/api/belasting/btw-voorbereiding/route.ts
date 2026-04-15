@@ -75,25 +75,25 @@ export async function POST(req: NextRequest) {
       lte(facturen.factuurdatum, end),
     )).get();
 
-    // Get all uitgaven in quarter for rubriek 4 + 5b
-    const alleUitgaven = await db.select().from(uitgaven).where(and(
-      gte(uitgaven.datum, start),
-      lte(uitgaven.datum, end),
-    ));
+    // Get all bank_transacties in quarter for rubriek 4 + 5b. We read from
+    // bank_transacties (the canonical cost source) and classify suppliers
+    // as buiten-EU / binnen-EU / binnenland based on leverancier name.
+    const alleKosten = await getKostenRijen(start, end);
 
     let r4aOmzet = 0;
     let r4bOmzet = 0;
     let voorbelasting = 0;
 
-    for (const u of alleUitgaven) {
-      const buitenland = isBuitenEu(u.leverancier, u.isBuitenland ?? null);
+    for (const u of alleKosten) {
+      const exclBtw = u.bedrag - u.btwBedrag;
+      const buitenland = classificeerBuitenland(u.leverancier);
       if (buitenland === "buiten_eu") {
-        r4aOmzet += u.bedrag;
+        r4aOmzet += exclBtw;
       } else if (buitenland === "binnen_eu") {
-        r4bOmzet += u.bedrag;
+        r4bOmzet += exclBtw;
       } else {
         // Binnenland — btw_bedrag is voorbelasting
-        voorbelasting += u.btwBedrag ?? 0;
+        voorbelasting += u.btwBedrag;
       }
     }
 

@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { btwAangiftes, facturen, uitgaven } from "@/lib/db/schema";
+import { btwAangiftes, facturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { getKostenTotalen } from "@/lib/belasting-helpers";
 
 function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; end: string } {
   switch (kwartaal) {
@@ -54,22 +55,11 @@ export async function GET(req: NextRequest) {
         )
         .get();
 
-      // BTW betaald: from uitgaven within quarter
-      const uitgavenResult = await db
-        .select({
-          totaalBtw: sql<number>`COALESCE(SUM(${uitgaven.btwBedrag}), 0)`,
-        })
-        .from(uitgaven)
-        .where(
-          and(
-            gte(uitgaven.datum, start),
-            lte(uitgaven.datum, end)
-          )
-        )
-        .get();
+      // BTW betaald: voorbelasting uit bank_transacties (canonical kostenbron)
+      const kostenTotalen = await getKostenTotalen(start, end);
 
       const btwOntvangen = Math.round((facturenResult?.totaalBtw ?? 0) * 100) / 100;
-      const btwBetaald = Math.round((uitgavenResult?.totaalBtw ?? 0) * 100) / 100;
+      const btwBetaald = kostenTotalen.btw;
       const btwAfdragen = Math.round((btwOntvangen - btwBetaald) * 100) / 100;
 
       return {

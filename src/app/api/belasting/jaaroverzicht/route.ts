@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
   facturen,
-  uitgaven,
   investeringen,
   kilometerRegistraties,
   urenCriterium,
@@ -14,6 +13,7 @@ import {
 import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { getKostenPerCategorie, getKostenTotalen } from "@/lib/belasting-helpers";
 
 interface KwartaalOmzet {
   kwartaal: number;
@@ -99,22 +99,10 @@ export async function GET(req: NextRequest) {
       omzetPerKwartaal.push({ kwartaal: q, bedrag: Math.round((r?.totaal ?? 0) * 100) / 100 });
     }
 
-    // === KOSTEN ===
-    const kostenRows = await db
-      .select({ categorie: uitgaven.categorie, totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)` })
-      .from(uitgaven)
-      .where(and(gte(uitgaven.datum, jaarStart), lte(uitgaven.datum, jaarEind)))
-      .groupBy(uitgaven.categorie)
-      ;
-
-    const kostenPerCategorie: Record<string, number> = {};
+    // === KOSTEN === (bank_transacties, excl BTW, vermogen + privé uitgesloten)
+    const kostenPerCategorie = await getKostenPerCategorie(jaarStart, jaarEind);
     let kostenTotaal = 0;
-    for (const row of kostenRows) {
-      const cat = row.categorie ?? "overig";
-      const bedrag = Math.round((row.totaal ?? 0) * 100) / 100;
-      kostenPerCategorie[cat] = bedrag;
-      kostenTotaal += bedrag;
-    }
+    for (const v of Object.values(kostenPerCategorie)) kostenTotaal += v;
     kostenTotaal = Math.round(kostenTotaal * 100) / 100;
 
     // === BTW ===
@@ -139,14 +127,10 @@ export async function GET(req: NextRequest) {
         .where(and(eq(facturen.status, "betaald"), eq(facturen.isActief, 1), gte(facturen.betaaldOp, start), lte(facturen.betaaldOp, end)))
         .get();
 
-      const uResult = await db
-        .select({ totaal: sql<number>`COALESCE(SUM(${uitgaven.btwBedrag}), 0)` })
-        .from(uitgaven)
-        .where(and(gte(uitgaven.datum, start), lte(uitgaven.datum, end)))
-        .get();
+      const uBtw = await getKostenTotalen(start, end);
 
       const ontvangen = Math.round((fResult?.totaal ?? 0) * 100) / 100;
-      const betaald = Math.round((uResult?.totaal ?? 0) * 100) / 100;
+      const betaald = uBtw.btw;
       btwOntvangenTotaal += ontvangen;
       btwBetaaldTotaal += betaald;
 

@@ -110,16 +110,6 @@ export async function GET(req: NextRequest) {
       ))
       .orderBy(bankTransacties.datum);
 
-    // Fetch uitgaven for the month
-    const uitgavenData = await db
-      .select()
-      .from(uitgaven)
-      .where(and(
-        gte(uitgaven.datum, maandStart),
-        lte(uitgaven.datum, maandEind),
-      ))
-      .orderBy(uitgaven.datum);
-
     // Fetch verdeelregels
     const regels = await db.select().from(verdeelRegels);
 

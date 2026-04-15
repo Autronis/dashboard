@@ -4,7 +4,6 @@ import {
   belastingReserveringen,
   belastingAuditLog,
   facturen,
-  uitgaven,
   investeringen,
   kilometerRegistraties,
   urenCriterium,
@@ -12,6 +11,7 @@ import {
 import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
+import { getKostenTotalen } from "@/lib/belasting-helpers";
 
 function berekenBelasting2026(belastbaarInkomen: number): number {
   if (belastbaarInkomen <= 0) return 0;
@@ -34,13 +34,9 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
 
   const brutoOmzet = omzetResult?.totaal ?? 0;
 
-  const kostenResult = await db
-    .select({ totaal: sql<number>`COALESCE(SUM(${uitgaven.bedrag}), 0)` })
-    .from(uitgaven)
-    .where(and(gte(uitgaven.datum, jaarStart), lte(uitgaven.datum, jaarEind)))
-    .get();
-
-  const totaleKosten = kostenResult?.totaal ?? 0;
+  // Kosten excl BTW uit bank_transacties (privé + vermogen uitgesloten)
+  const kostenTotalen = await getKostenTotalen(jaarStart, jaarEind);
+  const totaleKosten = kostenTotalen.exclBtw;
 
   // Afschrijvingen
   const alleInvesteringen = await db.select().from(investeringen);

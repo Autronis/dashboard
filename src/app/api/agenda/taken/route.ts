@@ -9,6 +9,23 @@ export async function GET() {
   try {
     const gebruiker = await requireAuth();
 
+    // Auto-uitplan: open/bezig taken die in het verleden zijn ingepland
+    // (en dus niet zijn afgerond) worden teruggezet naar 'niet ingepland'
+    // zodat ze weer in 'Te plannen' verschijnen. Loopt bij elke load,
+    // idempotent. Vergelijking gebeurt op NL-local datum: alles met
+    // ingepland_start vóór vandaag 00:00 lokaal wordt uitgepland.
+    const todayLocal = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
+    await db
+      .update(taken)
+      .set({ ingeplandStart: null, ingeplandEind: null })
+      .where(
+        and(
+          or(eq(taken.status, "open"), eq(taken.status, "bezig")),
+          sql`${taken.ingeplandStart} IS NOT NULL`,
+          sql`substr(${taken.ingeplandStart}, 1, 10) < ${todayLocal}`
+        )
+      );
+
     const rows = await db
       .select({
         id: taken.id,

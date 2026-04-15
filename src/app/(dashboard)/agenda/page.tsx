@@ -369,14 +369,17 @@ export default function AgendaPage() {
   // Niet ingeplande taken (voor sidebar)
   const nietIngeplandeTaken = useMemo(() => agendaTaken.filter((t) => !t.ingeplandStart), [agendaTaken]);
 
-  // Slimme acties = ALLE Claude-uitvoerbare taken, ongeacht project of
-  // fase. Ze worden uit takenPerProject gefilterd en in een eigen flat
-  // sectie onderaan getoond zodat Sem ze direct kan slepen zonder eerst
-  // door project>fase nesting te navigeren. Project context wordt per
-  // taak getoond via een klein label.
+  // Groepeer niet-ingeplande taken per project → fase. Fase is de primaire werkeenheid.
+  // Slimme acties: losse Claude-uitvoerbare taken (projectId=null,
+  // fase=Slimme taken). Apart getoond in een eigen sectie onder de
+  // project taken in de "Te plannen" sidebar.
   const slimmeActiesAgenda = useMemo(() => {
     return nietIngeplandeTaken
-      .filter((t) => t.uitvoerder === "claude")
+      .filter((t) =>
+        !t.projectNaam &&
+        t.uitvoerder === "claude" &&
+        (t.fase === "Slimme taken" || t.fase === "Slimme taken (recurring)")
+      )
       .filter((t) => {
         if (plannenFilter === "hoog") return t.prioriteit === "hoog";
         if (plannenFilter === "bezig") return t.status === "bezig";
@@ -387,10 +390,7 @@ export default function AgendaPage() {
         const pa = prioOrder[a.prioriteit] ?? 1;
         const pb = prioOrder[b.prioriteit] ?? 1;
         if (pa !== pb) return pa - pb;
-        // Daarna sorteren op project naam zodat zelfde projecten bij elkaar staan
-        const pna = a.projectNaam || "";
-        const pnb = b.projectNaam || "";
-        return pna.localeCompare(pnb);
+        return 0;
       });
   }, [nietIngeplandeTaken, plannenFilter]);
 
@@ -2376,19 +2376,19 @@ export default function AgendaPage() {
                         );
                       })}
 
-                      {/* ── Claude taken sectie ── alle AI-uitvoerbare taken plat */}
+                      {/* ── Slimme acties sectie ── losse Claude taken */}
                       {slimmeActiesAgenda.length > 0 && (
                         <div className="mt-3 pt-3 border-t border-autronis-accent/20">
                           <div className="flex items-center gap-2 px-1 mb-2">
                             <Sparkles className="w-3 h-3 text-autronis-accent flex-shrink-0" />
                             <span className="text-[11px] font-semibold text-autronis-accent uppercase tracking-wider flex-1">
-                              Claude taken
+                              Slimme acties
                             </span>
                             <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">
                               {slimmeActiesAgenda.length}
                             </span>
                           </div>
-                          <div className="space-y-0.5 px-2 max-h-[60vh] overflow-y-auto">
+                          <div className="space-y-0.5 px-2">
                             {slimmeActiesAgenda.map((taak) => (
                               <div
                                 key={taak.id}
@@ -2407,12 +2407,7 @@ export default function AgendaPage() {
                                   onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
                                   title="Afvinken"
                                 />
-                                <div className="flex-1 min-w-0">
-                                  <div className="truncate text-autronis-text-primary">{taak.titel}</div>
-                                  {taak.projectNaam && (
-                                    <div className="truncate text-[9px] text-autronis-text-secondary/60">{taak.projectNaam}</div>
-                                  )}
-                                </div>
+                                <span className="truncate flex-1 text-autronis-text-primary">{taak.titel}</span>
                                 {taak.cluster && (
                                   <span className="text-[9px] px-1 py-0.5 rounded-full bg-autronis-accent/15 text-autronis-accent flex-shrink-0">
                                     {taak.cluster}

@@ -70,7 +70,50 @@ ANTHROPIC_API_KEY=...     # Claude AI
 MOLLIE_API_KEY=...        # Betaalintegratie
 NEXT_PUBLIC_URL=...       # Publieke URL voor webhooks/links
 NOTION_API_KEY=...        # Notion integratie
+SUPABASE_ACCESS_TOKEN=... # Personal access token van supabase.com — voor sync-syb-leads (types regen)
 ```
+
+## Auto-sync van Syb's lead-dashboard-v2
+
+Syb beheert `https://github.com/Autronis/lead-dashboard-v2` (Lovable React app + Supabase project hurzsuwaccglzoblqkxd). Ons dashboard praat met zijn Supabase via service key. Wijzigingen aan zijn schema of edge functions vereisen aan onze kant updates aan `src/types/supabase-leads.ts` en de `ALLOWED_FUNCTIONS` whitelist in de edge-function proxy.
+
+Die sync gebeurt automatisch via [scripts/sync-syb-leads.mjs](scripts/sync-syb-leads.mjs) en de GitHub Action [.github/workflows/sync-syb-leads.yml](.github/workflows/sync-syb-leads.yml).
+
+### Wat er auto gebeurt
+1. **Cron** elke 30 min (of `repository_dispatch` als de companion Action in lead-dashboard-v2 aan staat) → script draait
+2. Script vergelijkt `gh api repos/Autronis/lead-dashboard-v2/commits/main` met `.syb-sync-state.json`
+3. Per categorie wijziging:
+   - `supabase/migrations/*.sql` veranderd → `npx supabase gen types typescript --project-id hurzsuwaccglzoblqkxd > src/types/supabase-leads.ts`
+   - `supabase/functions/*` veranderd → `ALLOWED_FUNCTIONS` Set in `src/app/api/leads/edge-function/[name]/route.ts` wordt gepatcht (toegevoegd/verwijderd, alfabetisch gesorteerd)
+4. Als er code wijzigingen zijn → committen + pushen naar main → Vercel deployt
+5. Een dashboard-taak wordt aangemaakt onder project "Autronis Dashboard", cluster `backend-infra`, met samenvatting van wat Syb veranderde + suggestie of er UI werk bij komt kijken
+
+### Vereiste GitHub Secrets
+- `SUPABASE_ACCESS_TOKEN` — maak aan op [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens), nodig voor types regen
+- `DASHBOARD_API_KEY` — `atr_...` key (zelfde als `INTERNAL_API_KEY`/auto-sync hook), voor het aanmaken van de samenvattings-taak
+- `GH_PAT` (optioneel) — alleen nodig als `GITHUB_TOKEN` niet genoeg rechten heeft op de Autronis org. Standaard `GITHUB_TOKEN` zou moeten werken.
+
+### Lokaal handmatig draaien
+```bash
+# Dry run — laat alleen zien wat de script zou doen
+node scripts/sync-syb-leads.mjs --dry-run --verbose
+
+# Echt draaien (commits + pushed)
+SUPABASE_ACCESS_TOKEN=sbp_xxx DASHBOARD_API_KEY=atr_xxx node scripts/sync-syb-leads.mjs
+
+# Force een sync zelfs als HEAD niet veranderd is (handig voor testing)
+node scripts/sync-syb-leads.mjs --force --dry-run
+
+# Lokaal wel committen maar niet pushen
+SKIP_PUSH=1 node scripts/sync-syb-leads.mjs
+```
+
+### Instant trigger (optioneel)
+Standaard polled de cron elke 30 min. Voor instant sync: copy [docs/syb-lead-dashboard-dispatch.yml](docs/syb-lead-dashboard-dispatch.yml) naar `Autronis/lead-dashboard-v2/.github/workflows/notify-dashboard.yml`. Dat fired een `repository_dispatch` event af bij elke push naar main, en onze sync workflow draait dan binnen seconden ipv halfuren.
+
+### Wat NIET auto wordt gedaan
+- UI changes — als Syb een nieuwe kolom toevoegt, krijg jij een taak ("Syb voegde X kolom toe — surfacen?"). Een mens of Claude moet beslissen of die kolom in `/leads` of `/leads/rebuild-prep` getoond moet worden, een filter krijgt, etc. Auto-gegenereerde UI is te risky.
+- Edge function gedrag — als Syb de body shape of response shape van een bestaande function verandert, blijft onze proxy 'm gewoon doorforwarden. Onze frontend code die er vanuit gaat moet handmatig worden bijgewerkt. De taak waarschuwt hier wel voor.
 
 ## Taken Ophalen bij Sessiestart (VERPLICHT)
 Bij het BEGIN van elke sessie MOET je de openstaande taken ophalen uit het dashboard. Dit is de single source of truth — niet TODO.md, niet de conversatie.

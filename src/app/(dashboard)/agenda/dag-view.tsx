@@ -290,7 +290,7 @@ interface DagViewProps {
   onNavigeer: (richting: -1 | 1) => void;
   items: AnyEvent[];
   onItemClick?: (item: AgendaItem) => void;
-  onSlotClick?: (datum: string) => void;
+  onSlotClick?: (datum: string, tijd?: string) => void;
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
   onTaakDetail?: (taakId: number) => void;
@@ -683,7 +683,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             <div
               key={uur}
               onClick={() => {
-                if (onSlotClick) onSlotClick(datumStr);
+                if (onSlotClick) onSlotClick(datumStr, `${String(uur).padStart(2, "0")}:00`);
               }}
               className="absolute left-0 right-0 flex border-b border-autronis-border/15 cursor-pointer hover:bg-autronis-accent/[0.03] transition-colors"
               style={{ top: `${(uur - startUur) * UUR_HOOGTE}px`, height: `${UUR_HOOGTE}px` }}

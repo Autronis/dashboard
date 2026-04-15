@@ -629,14 +629,51 @@ export default function AgendaPage() {
     setWeekOffset(0);
   }
 
-  function openNieuwModal(datum?: string) {
+  function openNieuwModal(datum?: string, tijd?: string) {
     setSelectedItem(null);
     setTitel("");
     setOmschrijving("");
     setType("afspraak");
-    setStartDatum(datum || datumStr(jaar, maand, vandaag.getDate()));
-    setStartTijd("09:00");
-    setEindTijd("10:00");
+    const targetDatum = datum || datumStr(jaar, maand, vandaag.getDate());
+    setStartDatum(targetDatum);
+
+    // Bepaal de start-tijd: gebruik de geklikte tijd indien gegeven,
+    // anders default 09:00. Daarna controleren of dat slot al bezet is —
+    // zo ja, schuif het start-uur door totdat we een vrij uur vinden
+    // (max +12 stappen). Voorkomt dat een nieuwe afspraak een bestaande
+    // overschrijft.
+    const items = itemsPerDag[targetDatum] ?? [];
+    const ingeplandOpDatum = ingeplandeTaken?.filter((t) =>
+      t.ingeplandStart && t.ingeplandStart.slice(0, 10) === targetDatum
+    ) ?? [];
+    const bezetteUren = new Set<number>();
+    for (const it of items) {
+      if (!("startDatum" in it)) continue;
+      if ("heleDag" in it && (it as { heleDag?: number | boolean }).heleDag) continue;
+      const start = it.startDatum;
+      if (!start || start.length <= 10) continue;
+      const eind = "eindDatum" in it ? (it as { eindDatum?: string | null }).eindDatum : null;
+      const sUur = parseInt(start.slice(11, 13), 10);
+      const eUur = eind && eind.length > 10 ? parseInt(eind.slice(11, 13), 10) : sUur + 1;
+      for (let h = sUur; h < eUur; h++) bezetteUren.add(h);
+    }
+    for (const t of ingeplandOpDatum) {
+      if (!t.ingeplandStart) continue;
+      const sUur = parseInt(t.ingeplandStart.slice(11, 13), 10);
+      const duur = t.geschatteDuur || 60;
+      const eUur = sUur + Math.ceil(duur / 60);
+      for (let h = sUur; h < eUur; h++) bezetteUren.add(h);
+    }
+
+    let startUur = tijd ? parseInt(tijd.slice(0, 2), 10) : 9;
+    for (let probe = 0; probe < 12 && bezetteUren.has(startUur); probe++) {
+      startUur++;
+      if (startUur >= 23) break;
+    }
+    const eindUur = Math.min(23, startUur + 1);
+    const fmt = (n: number) => `${String(n).padStart(2, "0")}:00`;
+    setStartTijd(fmt(startUur));
+    setEindTijd(fmt(eindUur));
     setHeleDag(false);
     setModalOpen(true);
   }
@@ -1248,7 +1285,7 @@ export default function AgendaPage() {
                 return itemsPerDag[ds] || [];
               })()}
               onItemClick={(item) => openItemDetail(item)}
-              onSlotClick={(d) => openNieuwModal(d)}
+              onSlotClick={(d, t) => openNieuwModal(d, t)}
               ingeplandeTaken={ingeplandeTaken}
               onTaakDetail={(id) => setTaakDetailId(id)}
               onPlanTaak={(taak, datum, tijd) => {

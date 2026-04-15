@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink, Upload, Loader2 } from "lucide-react";
+import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink, Upload, Loader2, Lock } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { useToast } from "@/hooks/use-toast";
@@ -361,6 +361,55 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
                     Wordt meegenomen als investering — fiscaal via KIA / afschrijving.
                   </p>
                 )}
+              </div>
+
+              {/* Borg toggle — markeer als balans-post (vordering/schuld). */}
+              <div>
+                <button
+                  disabled={savingEigenaar}
+                  onClick={async () => {
+                    const isBorg = transactie.categorie === "borg";
+                    setSavingEigenaar(true);
+                    try {
+                      const res = await fetch(`/api/financien/transacties/${transactie.id}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ categorie: isBorg ? null : "borg" }),
+                      });
+                      if (!res.ok) throw new Error("Fout bij opslaan");
+                      onUpdate?.({ categorie: isBorg ? null : "borg" });
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: ["financien-transacties"] }),
+                        queryClient.invalidateQueries({ queryKey: ["borgen"] }),
+                        queryClient.invalidateQueries({ queryKey: ["financien-dashboard"] }),
+                        queryClient.invalidateQueries({ queryKey: ["btw-kwartaal"] }),
+                        queryClient.invalidateQueries({ queryKey: ["kapitaalrekening"] }),
+                      ]);
+                      addToast(isBorg ? "Borg-label verwijderd" : "Gemarkeerd als borg", "succes");
+                    } catch (err) {
+                      addToast(err instanceof Error ? err.message : "Fout", "fout");
+                    } finally {
+                      setSavingEigenaar(false);
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-left",
+                    transactie.categorie === "borg"
+                      ? "bg-purple-500/10 border-purple-500/40 text-purple-400"
+                      : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary",
+                    savingEigenaar && "opacity-60 cursor-not-allowed"
+                  )}
+                >
+                  <Lock className="w-4 h-4 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold">
+                      {transactie.categorie === "borg" ? "Gemarkeerd als borg" : "Markeer als borg"}
+                    </p>
+                    <p className="text-[11px] opacity-80">
+                      Borg / waarborgsom — geen kosten, geen omzet. Telt mee in /financien Borgen-overzicht.
+                    </p>
+                  </div>
+                </button>
               </div>
 
               {/* Eigenaar / kapitaalrekening picker — alleen voor uitgaven */}

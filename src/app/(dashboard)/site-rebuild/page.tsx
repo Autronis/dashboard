@@ -27,6 +27,34 @@ export default function SiteRebuildPage() {
   const [downloading, setDownloading] = useState(false);
   const [promptLoading, setPromptLoading] = useState(false);
   const [scrapeLoading, setScrapeLoading] = useState(false);
+  const [optimizeLoading, setOptimizeLoading] = useState(false);
+
+  const optimizeNotes = async () => {
+    if (!notes.trim()) {
+      addToast("Type eerst iets in het instructies veld", "fout");
+      return;
+    }
+    setOptimizeLoading(true);
+    try {
+      const res = await fetch("/api/site-rebuild/optimize-instructies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notes: notes.trim(),
+          url: mode === "url" ? url.trim() : undefined,
+          brandNaam: brandName.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Optimaliseren mislukt");
+      setNotes(data.instructies);
+      addToast("Instructies geoptimaliseerd", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Optimaliseren mislukt", "fout");
+    } finally {
+      setOptimizeLoading(false);
+    }
+  };
   const [result, setResult] = useState<Result | null>(null);
   const [promptOutput, setPromptOutput] = useState<string | null>(null);
   const [promptOutputKind, setPromptOutputKind] = useState<"prompt" | "raw">("prompt");
@@ -351,14 +379,30 @@ export default function SiteRebuildPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary mb-2">
-                Extra instructies (optioneel)
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wide text-autronis-text-secondary">
+                  Extra instructies (optioneel)
+                </label>
+                <button
+                  type="button"
+                  onClick={optimizeNotes}
+                  disabled={optimizeLoading || !notes.trim()}
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-semibold uppercase tracking-wide bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/30 hover:bg-autronis-accent/20 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                  title="Type een paar woorden, klik om uit te breiden naar concrete briefing"
+                >
+                  {optimizeLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-3 h-3" />
+                  )}
+                  {optimizeLoading ? "Bezig..." : "Optimaliseer met AI"}
+                </button>
+              </div>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Focus op duurzaamheid, doelgroep is 40+, hero video al aanwezig..."
+                rows={4}
+                placeholder="Type hier kort iets ('focus op zorg', 'moet eruit zien als apple') en klik op 'Optimaliseer met AI' — Claude expand'et naar concrete bullet briefing."
                 className="w-full px-3 py-2.5 rounded-xl border border-autronis-border bg-autronis-bg text-autronis-text-primary resize-none"
               />
             </div>

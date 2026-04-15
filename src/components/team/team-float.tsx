@@ -40,11 +40,12 @@ export function TeamFloat() {
   const anderen = bezigMet.filter((t) => t.gebruikerId !== huidigeGebruiker.id);
   const actief = bezigMet.length;
 
-  // Op md (waar ActionDock centered op bottom-6 staat) plaatsen we TeamFloat
-  // boven de dock zodat ze niet horizontaal botsen. Op lg+ staat de dock
-  // ver genoeg weg en kunnen we terug naar bottom-6.
+  // ActionDock zit op alle md+ schermen op bottom-6 als gecentreerde pill
+  // die met de zijbalk meeschuift. TeamFloat blijft daarom altijd op
+  // bottom-24 (96px boven de dock) zodat de expanded panel (w-72) en de
+  // dock-pill nooit horizontaal botsen, ongeacht viewport breedte.
   return (
-    <div className="hidden md:block fixed bottom-24 lg:bottom-6 left-4 lg:left-[17rem] z-40">
+    <div className="hidden md:block fixed bottom-24 left-4 lg:left-[17rem] z-40">
       {/* Collapsed: compact indicator */}
       {!open && (
         <motion.button

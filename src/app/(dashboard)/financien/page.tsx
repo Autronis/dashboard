@@ -5,6 +5,7 @@ import { StatusZone } from "./zones/status-zone";
 import { TransactiesZone } from "./zones/transacties-zone";
 import { BtwKwartaalZone } from "./zones/btw-kwartaal-zone";
 import { KapitaalrekeningZone } from "./zones/kapitaalrekening-zone";
+import { BorgenZone } from "./zones/borgen-zone";
 import { ArchiefZone } from "./zones/archief-zone";
 
 export default function FinancienPage() {
@@ -31,7 +32,10 @@ export default function FinancienPage() {
         {/* Zone 4: Kapitaalrekening — wie heeft hoeveel ingelegd / saldo */}
         <KapitaalrekeningZone />
 
-        {/* Zone 5: Archief (collapsed) */}
+        {/* Zone 5: Borgen — vorderingen + schulden, geen P&L */}
+        <BorgenZone />
+
+        {/* Zone 6: Archief (collapsed) */}
         <ArchiefZone />
       </div>
     </PageTransition>

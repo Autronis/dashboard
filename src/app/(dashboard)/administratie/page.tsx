@@ -232,7 +232,7 @@ export default function AdministratiePage() {
           <div>
             <h1 className="text-3xl font-bold text-autronis-text-primary">Administratie</h1>
             <p className="text-base text-autronis-text-secondary mt-1">
-              Klik op een inkomende factuur om te koppelen · bonnetjes openen direct de PDF
+              Documenten-archief voor je facturen en bonnetjes. Klik op een inkomende factuur om te koppelen. Voor je BTW-aangifte zie <a href="/belasting" className="text-autronis-accent hover:underline">/belasting</a>.
             </p>
           </div>
           <div className="flex items-center gap-3">

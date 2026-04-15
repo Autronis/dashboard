@@ -87,6 +87,11 @@ function formatDatumKort(iso: string): string {
   return new Date(iso).toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
 }
 
+function formatPeriodeLabel(jaar: number, kwartaal: number): string {
+  if (kwartaal === 0) return `${jaar}`;
+  return `Q${kwartaal} ${jaar}`;
+}
+
 function groupByMonth(docs: Document[]): Array<{ month: string; items: Document[]; totaal: number }> {
   const groups: Record<string, Document[]> = {};
   for (const doc of docs) {
@@ -218,6 +223,17 @@ export default function AdministratiePage() {
   // ─── Derived ────────────────────────────────────────────────
   const onbekoppeldAantal = data?.onbekoppeld ?? 0;
   const totalen = data?.totalen ?? { inkomend: 0, uitgaand: 0, btw: 0 };
+  const bankTotalen = data?.bankTotalen ?? {
+    werkelijkeKostenIncl: 0,
+    werkelijkeBtw: 0,
+    bankTxAantal: 0,
+    zonderBonBedrag: 0,
+    zonderBonAantal: 0,
+  };
+  const dekkingPct =
+    bankTotalen.werkelijkeKostenIncl > 0
+      ? Math.round(((bankTotalen.werkelijkeKostenIncl - bankTotalen.zonderBonBedrag) / bankTotalen.werkelijkeKostenIncl) * 100)
+      : 100;
 
   const filteredDocs = useMemo(() => {
     if (!data) return [];
@@ -303,7 +319,75 @@ export default function AdministratiePage() {
           </div>
         )}
 
-        {/* KPI Cards */}
+        {/* Dekking-overzicht — toont werkelijke uitgaven uit bank vs hoeveel
+            daar al een bewijs-PDF van is. Klikbaar: scrollt naar "zonder bon"
+            filter op /financien zodat je direct kan uploaden. */}
+        {bankTotalen.bankTxAantal > 0 && (
+          <div className="bg-gradient-to-br from-autronis-accent/8 via-autronis-card to-autronis-card border border-autronis-accent/20 rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-autronis-text-primary">
+                  Documentdekking {formatPeriodeLabel(jaar, kwartaal)}
+                </h2>
+                <p className="text-xs text-autronis-text-secondary mt-0.5">
+                  Hoeveel van je werkelijke uitgaven heb je als PDF in het archief?
+                </p>
+              </div>
+              <div className="text-right">
+                <p className={cn(
+                  "text-3xl font-bold tabular-nums",
+                  dekkingPct >= 90 ? "text-emerald-400" :
+                  dekkingPct >= 50 ? "text-yellow-400" : "text-orange-400"
+                )}>
+                  {dekkingPct}%
+                </p>
+                <p className="text-[11px] text-autronis-text-secondary">bewijs compleet</p>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="h-2 bg-autronis-bg rounded-full overflow-hidden mb-4">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  dekkingPct >= 90 ? "bg-emerald-500" :
+                  dekkingPct >= 50 ? "bg-yellow-500" : "bg-orange-500"
+                )}
+                style={{ width: `${dekkingPct}%` }}
+              />
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div>
+                <p className="text-autronis-text-secondary mb-0.5">Werkelijke kosten</p>
+                <p className="font-bold text-autronis-text-primary tabular-nums">{formatCurrency(bankTotalen.werkelijkeKostenIncl)}</p>
+                <p className="text-[10px] text-autronis-text-secondary">{bankTotalen.bankTxAantal} transacties</p>
+              </div>
+              <div>
+                <p className="text-autronis-text-secondary mb-0.5">Met bewijs-PDF</p>
+                <p className="font-bold text-emerald-400 tabular-nums">
+                  {formatCurrency(bankTotalen.werkelijkeKostenIncl - bankTotalen.zonderBonBedrag)}
+                </p>
+                <p className="text-[10px] text-autronis-text-secondary">{bankTotalen.bankTxAantal - bankTotalen.zonderBonAantal} items</p>
+              </div>
+              <div>
+                <p className="text-autronis-text-secondary mb-0.5">Zonder bon</p>
+                <a
+                  href="/financien?filter=zonder-bon"
+                  className="font-bold text-orange-400 tabular-nums hover:underline"
+                >
+                  {formatCurrency(bankTotalen.zonderBonBedrag)}
+                </a>
+                <p className="text-[10px] text-autronis-text-secondary">{bankTotalen.zonderBonAantal} items · upload vanuit /financien</p>
+              </div>
+              <div>
+                <p className="text-autronis-text-secondary mb-0.5">BTW bij aangifte</p>
+                <p className="font-bold text-autronis-accent tabular-nums">{formatCurrency(bankTotalen.werkelijkeBtw)}</p>
+                <p className="text-[10px] text-autronis-text-secondary">uit bank, klopt met /belasting</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* KPI Cards — wat er in het documenten-archief zit */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
             <div className="flex items-center gap-2 text-autronis-text-secondary text-xs uppercase tracking-wide mb-2">

@@ -1075,23 +1075,53 @@ export default function BelastingPage() {
                   )}
                   style={glowStyle(btwStatus)}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-emerald-400" : btwStatus === "warning" ? "text-yellow-400" : "text-red-400")} />
-                    <StatusBadge
-                      status={btwStatus}
-                      label={btwStatus === "ok" ? "Betaald" : btwStatus === "warning" ? "Ingediend" : "Actie nodig"}
-                    />
-                  </div>
-                  <p className="text-2xl font-bold text-autronis-text-primary tabular-nums">{formatBedrag(nettoAfdragen)}</p>
-                  <p className="text-sm text-autronis-text-secondary mt-1">BTW afdracht Q{currentQuarter}</p>
-                  {btwStatus === "danger" && (
-                    <button
-                      onClick={() => setActiveTab("acties")}
-                      className="mt-3 text-xs font-semibold text-red-400 hover:text-red-300 flex items-center gap-1 transition-colors"
-                    >
-                      Aangifte doen <ArrowRight className="w-3 h-3" />
-                    </button>
-                  )}
+                  {(() => {
+                    // Positief nettoAfdragen = te betalen (rood)
+                    // Negatief = je krijgt terug (groen)
+                    const teBetalen = nettoAfdragen > 0;
+                    const teOntvangen = nettoAfdragen < 0;
+                    const absBedrag = Math.abs(nettoAfdragen);
+                    return (
+                      <>
+                        <div className="flex items-center justify-between mb-3">
+                          <Receipt className={cn("w-5 h-5", btwStatus === "ok" ? "text-emerald-400" : btwStatus === "warning" ? "text-yellow-400" : teOntvangen ? "text-emerald-400" : "text-red-400")} />
+                          <StatusBadge
+                            status={teOntvangen ? "ok" : btwStatus}
+                            label={
+                              btwStatus === "ok" ? "Betaald"
+                              : btwStatus === "warning" ? "Ingediend"
+                              : teOntvangen ? "Geld terug"
+                              : "Actie nodig"
+                            }
+                          />
+                        </div>
+                        <p className={cn(
+                          "text-2xl font-bold tabular-nums",
+                          teOntvangen ? "text-emerald-400" : teBetalen ? "text-red-400" : "text-autronis-text-primary"
+                        )}>
+                          {formatBedrag(absBedrag)}
+                        </p>
+                        <p className="text-sm text-autronis-text-secondary mt-1">
+                          {teOntvangen
+                            ? `BTW Q${currentQuarter} — terug te vorderen`
+                            : teBetalen
+                            ? `BTW Q${currentQuarter} — af te dragen`
+                            : `BTW Q${currentQuarter}`}
+                        </p>
+                        {(btwStatus === "danger" || teOntvangen) && btwStatus !== "ok" && (
+                          <button
+                            onClick={() => setActiveTab("acties")}
+                            className={cn(
+                              "mt-3 text-xs font-semibold flex items-center gap-1 transition-colors",
+                              teOntvangen ? "text-emerald-400 hover:text-emerald-300" : "text-red-400 hover:text-red-300"
+                            )}
+                          >
+                            {teOntvangen ? "Aangifte indienen om terug te krijgen" : "Aangifte doen"} <ArrowRight className="w-3 h-3" />
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </motion.div>
 
                 {/* Belasting reservering */}

@@ -62,6 +62,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: TrendingUp,
         children: [
           { label: "Klanten", icon: Users, href: "/klanten" },
+          { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
           // Lead-generation pipeline (lead-dashboard-v2 integratie).
           // Alle onderliggende routes zitten onder /leads/* en praten met de
           // externe Supabase via /api/leads/* server routes.
@@ -93,7 +94,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Automations", icon: Zap, href: "/leads/automations" },
           { label: "Lead Instellingen", icon: Settings, href: "/leads/instellingen" },
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
-          { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
         ],
       },
       {

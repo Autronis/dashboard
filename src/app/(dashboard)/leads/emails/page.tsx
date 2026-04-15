@@ -58,7 +58,7 @@ const STATUS_CONFIG: Record<
   generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400", icon: Eye },
   approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: CheckCircle },
   failed: { label: "Gefaald", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
-  sent: { label: "Verstuurd", bg: "bg-green-500/15", text: "text-green-400", icon: CheckCircle2 },
+  sent: { label: "Verstuurd", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: CheckCircle2 },
   error: { label: "Verzendfout", bg: "bg-red-500/15", text: "text-red-400", icon: AlertTriangle },
   sending: { label: "Verzenden...", bg: "bg-blue-500/15", text: "text-blue-400", icon: Loader2 },
   replied: { label: "Beantwoord", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: MessageSquare },

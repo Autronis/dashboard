@@ -57,7 +57,7 @@ export function TeamFloat() {
           <div className="relative">
             <Users className="w-4 h-4 text-autronis-accent" />
             {actief > 0 && (
-              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-green-500 status-pulse" />
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-500 status-pulse" />
             )}
           </div>
           <span className="text-xs font-medium text-autronis-text-primary">
@@ -96,7 +96,7 @@ export function TeamFloat() {
                 <span className="text-sm font-semibold text-autronis-text-primary">Team Live</span>
                 {actief > 0 && (
                   <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 status-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 status-pulse" />
                     {actief}
                   </span>
                 )}
@@ -139,7 +139,7 @@ export function TeamFloat() {
                             </p>
                           )}
                         </div>
-                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 flex-shrink-0" />
                       </div>
                     );
                   })}

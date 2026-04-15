@@ -562,7 +562,7 @@ export default function ContractDetailPage() {
                       </div>
                       <button
                         onClick={handleToepassen}
-                        className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-green-300 transition-colors"
+                        className="flex items-center gap-1.5 text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Toepassen in contract

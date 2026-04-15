@@ -48,7 +48,7 @@ export function TeamLiveWidget() {
         <Users className="w-4.5 h-4.5 text-autronis-accent" />
         <h3 className="text-sm font-semibold text-autronis-text-primary">Team Live</h3>
         <div className="ml-auto flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-green-500 status-pulse" />
+          <div className="w-2 h-2 rounded-full bg-emerald-500 status-pulse" />
           <span className="text-[10px] text-emerald-400 font-medium">{bezigMet.length} actief</span>
         </div>
       </div>
@@ -67,7 +67,7 @@ export function TeamLiveWidget() {
                 </div>
                 <span className="text-xs font-medium text-autronis-text-primary">{t.gebruikerNaam}</span>
                 <div className="ml-auto flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <span className="text-[10px] text-emerald-400">bezig</span>
                 </div>
               </div>

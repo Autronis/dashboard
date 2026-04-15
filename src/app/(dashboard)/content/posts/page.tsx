@@ -488,7 +488,7 @@ export default function ContentPostsPage() {
               <button
                 onClick={handleBulkGoedkeuren}
                 disabled={selectedIds.size === 0 || updatePost.isPending}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-colors disabled:opacity-60 btn-press"
+                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-60 btn-press"
               >
                 {updatePost.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
                 {selectedIds.size > 0 ? `Goedkeuren (${selectedIds.size})` : "Selecteer posts"}

@@ -906,7 +906,7 @@ export default function BelastingPage() {
                       tab.id === "acties"
                         ? (isActive ? "bg-red-400/20 text-red-300" : "bg-red-500/15 text-red-400")
                         : tab.id === "optimalisatie" && tipsData && tipsData.toegepast === tipsData.totaal && tipsData.totaal > 0
-                        ? (isActive ? "bg-emerald-400/20 text-green-300" : "bg-emerald-500/15 text-emerald-400")
+                        ? (isActive ? "bg-emerald-400/20 text-emerald-300" : "bg-emerald-500/15 text-emerald-400")
                         : (isActive ? "bg-autronis-accent/20 text-autronis-accent" : "bg-autronis-border text-autronis-text-secondary")
                     )}>
                       {badge}
@@ -1975,7 +1975,7 @@ export default function BelastingPage() {
                         { label: "− Kosten", value: wvData.totaleKosten, color: "text-orange-400", subtract: true },
                         ...(wvData.afschrijvingen > 0 ? [{ label: "− Afschr.", value: wvData.afschrijvingen, color: "text-orange-300", subtract: true }] : []),
                         ...(wvData.zelfstandigenaftrek > 0 ? [{ label: "− ZA", value: wvData.zelfstandigenaftrek, color: "text-emerald-400", subtract: true }] : []),
-                        ...(wvData.mkbVrijstelling > 0 ? [{ label: "− MKB", value: wvData.mkbVrijstelling, color: "text-green-300", subtract: true }] : []),
+                        ...(wvData.mkbVrijstelling > 0 ? [{ label: "− MKB", value: wvData.mkbVrijstelling, color: "text-emerald-300", subtract: true }] : []),
                         { label: "Belastbaar", value: wvData.belastbaarInkomen, color: "text-blue-400" },
                         { label: "Belasting", value: wvData.geschatteBelasting, color: "text-purple-400" },
                       ]}

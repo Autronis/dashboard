@@ -266,7 +266,7 @@ export default function OfferteDetailPage() {
               <>
                 <button
                   onClick={() => handleStatusUpdate("geaccepteerd")}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition-colors"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Geaccepteerd

@@ -17,7 +17,7 @@ function ProgressBar({ afgerond, totaal }: { afgerond: number; totaal: number })
     <div className="flex items-center gap-2">
       <div className="flex-1 h-2 rounded-full bg-autronis-border/50">
         <div
-          className={`h-2 rounded-full transition-all duration-500 ${pct === 100 ? "bg-green-400" : "bg-autronis-accent"}`}
+          className={`h-2 rounded-full transition-all duration-500 ${pct === 100 ? "bg-emerald-400" : "bg-autronis-accent"}`}
           style={{ width: `${pct}%` }}
         />
       </div>

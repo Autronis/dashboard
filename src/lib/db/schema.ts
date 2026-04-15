@@ -679,6 +679,9 @@ export const inkomendeFacturen = sqliteTable("inkomende_facturen", {
   status: text("status", { enum: ["gematcht", "onbekoppeld", "handmatig_gematcht"] }).default("onbekoppeld"),
   verwerkOp: text("verwerk_op").notNull(),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  // "Q1-2026" etc. als deze bon al in een eerdere BTW-aangifte is verwerkt.
+  // Blijft zichtbaar in /administratie maar telt niet mee in totalen.
+  verwerktInAangifte: text("verwerkt_in_aangifte"),
 });
 
 export const offertes = sqliteTable("offertes", {

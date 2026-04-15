@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inkomendeFacturen, facturen, bankTransacties } from "@/lib/db/schema";
+import { inkomendeFacturen, facturen, bankTransacties, klanten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, desc, sql, isNotNull, like } from "drizzle-orm";
 
@@ -15,6 +15,7 @@ interface Document {
   storageUrl: string | null;
   factuurnummer: string | null;
   transactieId: number | null;
+  verwerktInAangifte: string | null;
 }
 
 function getDateRange(jaar: number, kwartaal?: number): { start: string; end: string } {
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest) {
           storageUrl: f.storageUrl,
           factuurnummer: f.factuurnummer ?? null,
           transactieId: f.bankTransactieId ?? null,
+          verwerktInAangifte: f.verwerktInAangifte ?? null,
         });
       }
     }

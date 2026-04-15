@@ -234,6 +234,7 @@ if (isTurso) {
   client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_email_id ON inkomende_facturen(email_id)").catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_status ON inkomende_facturen(status)").catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_datum ON inkomende_facturen(datum)").catch(() => {});
+  client.execute("ALTER TABLE inkomende_facturen ADD COLUMN verwerkt_in_aangifte TEXT").catch(() => {});
 
   // Video samenvattingen table on Turso
   client.execute(`CREATE TABLE IF NOT EXISTS video_samenvattingen (

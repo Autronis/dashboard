@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
 import { isVermogensstorting, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { findFactuurMatch, linkTxToFactuur } from "@/lib/match-inkomend";
 import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
 import { eq, sql, and } from "drizzle-orm";
@@ -245,6 +246,19 @@ async function runSync(): Promise<SyncResultaat> {
       nieuweTransacties++;
       // Skip AI analyse on equity deposits — they're not expenses.
       if (inserted && isUitgaand) nieuweIds.push(inserted.id);
+
+      // Inkomend (type=bij), geen vermogen → probeer te matchen aan eigen
+      // uitgaande factuur. Als match: link beide en markeer factuur betaald.
+      if (inserted && !isUitgaand && !vermogen) {
+        const match = await findFactuurMatch(
+          Math.abs(leg.amount),
+          omschrijving,
+          (tx.completed_at || tx.created_at).split("T")[0]
+        );
+        if (match) {
+          await linkTxToFactuur(inserted.id, match, (tx.completed_at || tx.created_at).split("T")[0]);
+        }
+      }
     }
   }
 

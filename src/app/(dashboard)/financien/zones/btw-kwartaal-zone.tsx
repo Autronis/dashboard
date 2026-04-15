@@ -47,6 +47,26 @@ function statusLabel(k: BtwKwartaal): string {
   return "Toekomst";
 }
 
+// BTW-aangifte moet uiterlijk op de laatste dag van de maand NA het kwartaal
+// binnen zijn bij de Belastingdienst. Q1 → 30 april, Q2 → 31 juli, etc.
+function getBtwDeadline(eindDatum: string): Date {
+  const e = new Date(eindDatum);
+  return new Date(e.getFullYear(), e.getMonth() + 2, 0);
+}
+
+function formatDeadline(d: Date): string {
+  return `${d.getDate()} ${MONTHS_NL[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function deadlineUrgency(d: Date, status: BtwKwartaal["status"]): { text: string; color: string } {
+  if (status === "aangedaan") return { text: `Ingediend voor ${formatDeadline(d)}`, color: "text-emerald-400/70" };
+  const now = new Date();
+  const days = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return { text: `Te laat — deadline was ${formatDeadline(d)}`, color: "text-rose-400" };
+  if (days <= 14) return { text: `Indienen vóór ${formatDeadline(d)} (${days}d)`, color: "text-orange-400" };
+  return { text: `Indienen vóór ${formatDeadline(d)}`, color: "text-autronis-text-secondary/70" };
+}
+
 export function BtwKwartaalZone() {
   const jaar = new Date().getFullYear();
   const { data, isLoading } = useBtwKwartaal(jaar);
@@ -83,6 +103,8 @@ export function BtwKwartaalZone() {
           const isOpen = openKwartaal === k.kwartaal;
           const isLeeg = k.status === "leeg";
           const periode = formatPeriode(k.startDatum, k.eindDatum);
+          const deadline = getBtwDeadline(k.eindDatum);
+          const deadlineInfo = deadlineUrgency(deadline, k.status);
           return (
             <div key={k.kwartaal} className="border-b border-autronis-border/30 last:border-0">
               <button
@@ -103,6 +125,9 @@ export function BtwKwartaalZone() {
                       <span className="text-xs text-autronis-text-secondary">{periode}</span>
                     </div>
                     <span className="text-[11px] text-autronis-text-secondary/80 mt-0.5">{statusLabel(k)}</span>
+                    {!isLeeg && (
+                      <span className={cn("text-[11px] mt-0.5", deadlineInfo.color)}>{deadlineInfo.text}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">

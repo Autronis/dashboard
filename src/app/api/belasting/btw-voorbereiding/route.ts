@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { btwAangiftes, facturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
+import { eq, and, gte, lte, sql, isNull, ne } from "drizzle-orm";
 import { getKostenRijen } from "@/lib/belasting-helpers";
 
 // Known foreign suppliers — used to classify whether a bank_transactie
@@ -51,12 +51,15 @@ export async function POST(req: NextRequest) {
 
     const { start, end } = getQuarterDateRange(kwartaal, jaar);
 
-    // Rubriek 1a: Omzet binnenland 21%
+    // Rubriek 1a/1b: omzet binnenland. NL-ZZP'ers werken op het facturerings-
+    // stelsel — je rapporteert op factuurdatum, niet op betaaldatum. Dus alle
+    // verstuurde + betaalde facturen tellen mee. Concepten skippen we (zijn
+    // nog niet uitgegaan naar de klant).
     const r1a = await db.select({
       omzet: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
       btw: sql<number>`COALESCE(SUM(${facturen.btwBedrag}), 0)`,
     }).from(facturen).where(and(
-      eq(facturen.status, "betaald"),
+      ne(facturen.status, "concept"),
       eq(facturen.isActief, 1),
       eq(facturen.btwPercentage, 21),
       gte(facturen.factuurdatum, start),
@@ -64,12 +67,11 @@ export async function POST(req: NextRequest) {
       isNull(facturen.verwerktInAangifte),
     )).get();
 
-    // Rubriek 1b: Omzet binnenland 9%
     const r1b = await db.select({
       omzet: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
       btw: sql<number>`COALESCE(SUM(${facturen.btwBedrag}), 0)`,
     }).from(facturen).where(and(
-      eq(facturen.status, "betaald"),
+      ne(facturen.status, "concept"),
       eq(facturen.isActief, 1),
       eq(facturen.btwPercentage, 9),
       gte(facturen.factuurdatum, start),

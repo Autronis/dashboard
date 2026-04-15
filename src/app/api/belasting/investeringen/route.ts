@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { investeringen, belastingAuditLog } from "@/lib/db/schema";
+import { investeringen, belastingAuditLog, bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { sql } from "drizzle-orm";
+import { sql, eq, and, gte, lte } from "drizzle-orm";
 
 function berekenJaarlijkseAfschrijving(
   bedrag: number,
@@ -30,26 +30,72 @@ export async function GET() {
       .orderBy(sql`${investeringen.datum} DESC`)
       ;
 
-    const enriched = alleInvesteringen.map((inv) => ({
-      ...inv,
-      jaarlijkseAfschrijving: berekenJaarlijkseAfschrijving(
-        inv.bedrag,
-        inv.restwaarde ?? 0,
-        inv.afschrijvingstermijn ?? 5
-      ),
+    // Ook bank_transacties die door de AI-analyse als investering zijn
+    // gemarkeerd (fiscaal_type = 'investering'). Die hebben geen eigen rij
+    // in de investeringen-tabel maar zijn wél investeringen voor KIA /
+    // afschrijvingen / fiscale voordelen.
+    const bankInvesteringen = await db
+      .select({
+        id: bankTransacties.id,
+        merchantNaam: bankTransacties.merchantNaam,
+        omschrijving: bankTransacties.omschrijving,
+        bedrag: bankTransacties.bedrag,
+        datum: bankTransacties.datum,
+        aiBeschrijving: bankTransacties.aiBeschrijving,
+        categorie: bankTransacties.categorie,
+        kiaAftrek: bankTransacties.kiaAftrek,
+      })
+      .from(bankTransacties)
+      .where(
+        and(
+          eq(bankTransacties.type, "af"),
+          eq(bankTransacties.fiscaalType, "investering")
+        )
+      );
+
+    // Shape bank tx → investering-achtig object. Negative id range (-1000) om
+    // te voorkomen dat ze botsen met echte investeringen tabel rijen, en
+    // zodat de frontend weet dat 't een bank-bron is (via negative id check).
+    const bankAsInv = bankInvesteringen.map((b) => ({
+      id: -(b.id + 1000),
+      naam: b.merchantNaam || b.omschrijving,
+      bedrag: Math.abs(b.bedrag),
+      datum: b.datum,
+      categorie: "hardware" as const,
+      afschrijvingstermijn: 5,
+      restwaarde: 0,
+      notities: b.aiBeschrijving,
+      kiaAftrek: b.kiaAftrek ?? 0,
+      aangemaaktDoor: null,
+      aangemaaktOp: null,
+      jaarlijkseAfschrijving: berekenJaarlijkseAfschrijving(Math.abs(b.bedrag), 0, 5),
+      bron: "bank_transactie" as const,
     }));
+
+    const enriched = [
+      ...alleInvesteringen.map((inv) => ({
+        ...inv,
+        jaarlijkseAfschrijving: berekenJaarlijkseAfschrijving(
+          inv.bedrag,
+          inv.restwaarde ?? 0,
+          inv.afschrijvingstermijn ?? 5
+        ),
+        bron: "investeringen_tabel" as const,
+      })),
+      ...bankAsInv,
+    ].sort((a, b) => (b.datum ?? "").localeCompare(a.datum ?? ""));
 
     // KIA berekening over huidige jaar investeringen
     const huidigJaar = new Date().getFullYear();
     const jaarStart = `${huidigJaar}-01-01`;
     const jaarEind = `${huidigJaar}-12-31`;
 
-    const investeringenDitJaar = alleInvesteringen.filter(
-      (inv) => inv.datum >= jaarStart && inv.datum <= jaarEind
+    const investeringenDitJaar = enriched.filter(
+      (inv) => (inv.datum ?? "") >= jaarStart && (inv.datum ?? "") <= jaarEind
     );
 
     const totaalInvesteringDitJaar = investeringenDitJaar.reduce(
-      (sum, inv) => sum + inv.bedrag,
+      (sum, inv) => sum + (inv.bedrag ?? 0),
       0
     );
 

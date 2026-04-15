@@ -34,6 +34,7 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState<FiscaalType | "clear" | null>(null);
+  const [savingEigenaar, setSavingEigenaar] = useState(false);
   const [openingBon, setOpeningBon] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -93,6 +94,34 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+  async function setEigenaar(id: number, eigenaar: "sem" | "syb" | "gedeeld" | null) {
+    setSavingEigenaar(true);
+    try {
+      const res = await fetch(`/api/bank-transacties/${id}/eigenaar`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ eigenaar }),
+      });
+      if (!res.ok) {
+        const { fout } = (await res.json().catch(() => ({ fout: "Fout" }))) as { fout?: string };
+        throw new Error(fout ?? "Kon eigenaar niet opslaan");
+      }
+      onUpdate?.({ eigenaar });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["financien-transacties"] }),
+        queryClient.invalidateQueries({ queryKey: ["kapitaalrekening"] }),
+      ]);
+      addToast(
+        eigenaar === null ? "Terug op team (50/50)" : `Toegewezen aan ${eigenaar}`,
+        "succes"
+      );
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Fout bij opslaan", "fout");
+    } finally {
+      setSavingEigenaar(false);
     }
   }
 
@@ -333,6 +362,46 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
                   </p>
                 )}
               </div>
+
+              {/* Eigenaar / kapitaalrekening picker — alleen voor uitgaven */}
+              {transactie.type === "af" && (
+                <div>
+                  <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-2">
+                    Voor wie?
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { val: null, label: "Team", hint: "50/50 verdeeld", color: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10" },
+                      { val: "sem" as const, label: "Sem", hint: "Volledig Sem", color: "text-emerald-400 border-emerald-500/40 bg-emerald-500/10" },
+                      { val: "syb" as const, label: "Syb", hint: "Volledig Syb", color: "text-blue-400 border-blue-500/40 bg-blue-500/10" },
+                    ]).map(({ val, label, hint, color }) => {
+                      const isActive =
+                        (val === null && (transactie.eigenaar === null || transactie.eigenaar === "gedeeld")) ||
+                        (val !== null && transactie.eigenaar === val);
+                      return (
+                        <button
+                          key={label}
+                          disabled={savingEigenaar}
+                          onClick={() => setEigenaar(transactie.id, val)}
+                          className={cn(
+                            "px-3 py-2 rounded-lg border text-xs font-medium transition text-left",
+                            isActive
+                              ? color
+                              : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary",
+                            savingEigenaar && "opacity-60 cursor-not-allowed"
+                          )}
+                        >
+                          <div className="font-semibold">{label}</div>
+                          <div className="text-[10px] opacity-70">{hint}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-autronis-text-secondary/70 mt-2">
+                    Telt mee voor de kapitaalrekening op /financien — wie heeft hoeveel ingelegd, en wie moet wie nog betalen.
+                  </p>
+                </div>
+              )}
             </div>
           </motion.aside>
         </>

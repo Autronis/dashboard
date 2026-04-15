@@ -42,6 +42,14 @@ export const FISCAAL_STYLES: Record<FiscaalType, TagStyle> = {
   },
 };
 
+// Vermogensstortingen — eigen geld vanuit Sem/Syb privé naar de zaak.
+// Geen omzet, geen BTW, wordt uit alle business-totalen gefilterd.
+export const VERMOGEN_STYLE: TagStyle = {
+  label: "Vermogen",
+  pill: "bg-violet-500/10 text-violet-400 border-violet-500/25",
+  accent: "bg-violet-500",
+};
+
 // Category colors — deterministic hash so each category gets a stable hue
 // without having to enumerate them up front. Covers the common enum values
 // plus anything free-text the AI / user might add.

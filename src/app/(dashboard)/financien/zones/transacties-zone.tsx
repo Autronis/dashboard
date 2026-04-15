@@ -6,7 +6,7 @@ import { Search, Filter, Repeat, TrendingUp, Sparkles, Paperclip, FileX } from "
 import { useFinancienTransacties, useFinancienCategorieen, type FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { DonutChart } from "./donut-chart";
 import { TransactieDetail } from "./transactie-detail";
-import { FISCAAL_STYLES, TYPE_STYLES, categoriePill } from "./fiscaal-colors";
+import { FISCAAL_STYLES, TYPE_STYLES, VERMOGEN_STYLE, categoriePill } from "./fiscaal-colors";
 import { cn } from "@/lib/utils";
 
 type Type = "bij" | "af";
@@ -199,6 +199,11 @@ export function TransactiesZone() {
         <div className="text-sm text-autronis-text-secondary tabular-nums">
           <span className="text-autronis-text-primary font-semibold">{formatEuro(totaal)}</span>
           <span className="ml-1">· {transacties.length} {transacties.length === 1 ? "transactie" : "transacties"}</span>
+          {vermogenTotaal > 0 && (
+            <span className="ml-2 text-violet-400">
+              + {formatEuro(vermogenTotaal)} vermogen
+            </span>
+          )}
         </div>
       </div>
 
@@ -289,15 +294,27 @@ export function TransactiesZone() {
                               )}
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              {t.categorie && (
+                              {t.categorie === "vermogen" ? (
                                 <span
                                   className={cn(
-                                    "px-1.5 py-0.5 rounded text-[10px] font-medium border capitalize",
-                                    categoriePill(t.categorie)
+                                    "px-1.5 py-0.5 rounded text-[10px] font-medium border",
+                                    VERMOGEN_STYLE.pill
                                   )}
+                                  title="Vermogensstorting — niet meegeteld in omzet of BTW"
                                 >
-                                  {t.categorie}
+                                  {VERMOGEN_STYLE.label}
                                 </span>
+                              ) : (
+                                t.categorie && (
+                                  <span
+                                    className={cn(
+                                      "px-1.5 py-0.5 rounded text-[10px] font-medium border capitalize",
+                                      categoriePill(t.categorie)
+                                    )}
+                                  >
+                                    {t.categorie}
+                                  </span>
+                                )
                               )}
                               {t.fiscaalType && t.fiscaalType !== "kosten" && (
                                 <span

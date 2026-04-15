@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, gte, lt, desc, or, isNull, ne } from "drizzle-orm";
-import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { and, gte, lt, desc } from "drizzle-orm";
+import { notBalansCategorie } from "@/lib/borg";
 
 // CSV field escaping: wrap in double-quotes, escape internal quotes by doubling them.
 function csvField(value: string | number | null | undefined): string {
@@ -48,9 +48,9 @@ export async function GET(req: NextRequest) {
     eindDatum.setDate(eindDatum.getDate() - 1);
     const eindStr = eindDatum.toISOString().slice(0, 10);
 
-    // Exclude vermogensstortingen from the aangifte — owner equity deposits
-    // are not revenue. They're tracked elsewhere in the dashboard for
-    // completeness but have no place in a BTW aangifte.
+    // Exclude vermogensstortingen + borgen from the aangifte — beide zijn
+    // balans-posten, geen P&L. Worden elders in dashboard getrackt maar
+    // horen niet in een BTW aangifte thuis.
     const transacties = await db
       .select()
       .from(bankTransacties)
@@ -58,10 +58,7 @@ export async function GET(req: NextRequest) {
         and(
           gte(bankTransacties.datum, start),
           lt(bankTransacties.datum, eind),
-          or(
-            isNull(bankTransacties.categorie),
-            ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
-          )
+          notBalansCategorie()
         )
       )
       .orderBy(desc(bankTransacties.datum));

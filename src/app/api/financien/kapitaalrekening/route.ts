@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, eq, gte, lte, sql, isNull, or, ne } from "drizzle-orm";
+import { and, eq, gte, lte, sql, isNull, or } from "drizzle-orm";
 import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { notBalansCategorie } from "@/lib/borg";
 
 // Kapitaalrekening telt ALLEEN op de huidige zakelijke Revolut rekening.
 // Eerdere ING / inhaal-imports / oudere Revolut imports horen niet in dit
@@ -89,7 +90,7 @@ export async function GET(req: NextRequest) {
           gte(bankTransacties.datum, start),
           lte(bankTransacties.datum, eind),
           or(eq(bankTransacties.eigenaar, "sem"), eq(bankTransacties.eigenaar, "syb")),
-          or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE))
+          notBalansCategorie()
         )
       )
       .groupBy(bankTransacties.eigenaar);
@@ -109,7 +110,7 @@ export async function GET(req: NextRequest) {
           gte(bankTransacties.datum, start),
           lte(bankTransacties.datum, eind),
           or(isNull(bankTransacties.eigenaar), eq(bankTransacties.eigenaar, "gedeeld")),
-          or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE))
+          notBalansCategorie()
         )
       );
 

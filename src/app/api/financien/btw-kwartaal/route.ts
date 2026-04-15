@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties, inkomendeFacturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, gte, lt, sql, or, isNull, ne } from "drizzle-orm";
-import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { and, gte, lt, sql } from "drizzle-orm";
+import { notBalansCategorie } from "@/lib/borg";
 
 // Helper for one-quarter aggregation. Vermogensstortingen (owner equity
 // deposits) worden uitgesloten van omzet én BTW — zijn geen omzet.
@@ -14,10 +14,7 @@ import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 // geen FK-relatie en wordt dus niet geëxcludeerd; voor consistentie met
 // /belasting werkt die view direct op de facturen-tabel.
 async function kwartaalTotalen(start: string, eind: string) {
-  const nietVermogen = or(
-    isNull(bankTransacties.categorie),
-    ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
-  );
+  const nietVermogen = notBalansCategorie();
 
   const nietVerwerkt = sql`NOT EXISTS (SELECT 1 FROM ${inkomendeFacturen} WHERE ${inkomendeFacturen.bankTransactieId} = ${bankTransacties.id} AND ${inkomendeFacturen.verwerktInAangifte} IS NOT NULL)`;
 

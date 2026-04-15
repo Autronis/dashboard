@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
 import { isVermogensstorting, wieGestort, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { isBorg, BORG_CATEGORIE } from "@/lib/borg";
 import { findFactuurMatch, linkTxToFactuur } from "@/lib/match-inkomend";
 import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
@@ -228,6 +229,12 @@ async function runSync(): Promise<SyncResultaat> {
       // Detect owner equity deposit (Sem / Syb private → Revolut business)
       const vermogen = isVermogensstorting(type, merchantNaam, omschrijving);
       const stortingDoor = vermogen ? wieGestort(merchantNaam, omschrijving) : null;
+      // Detect borg/waarborgsom — buiten P&L net als vermogen.
+      const borg = !vermogen && isBorg(merchantNaam, omschrijving);
+
+      // Categorie: vermogen wins (incoming deposit), borg secondary (typically
+      // outgoing). Beide worden uit P&L-aggregaties gefilterd.
+      const balansCategorie = vermogen ? VERMOGEN_CATEGORIE : borg ? BORG_CATEGORIE : null;
 
       const [inserted] = await db.insert(bankTransacties).values({
         datum: (tx.completed_at || tx.created_at).split("T")[0],
@@ -239,22 +246,25 @@ async function runSync(): Promise<SyncResultaat> {
         merchantNaam: isUitgaand ? merchantNaam : null,
         merchantCategorie: tx.merchant?.category_code || null,
         valuta: leg.currency || null,
-        // Vermogensstortingen worden direct gemarkeerd — geen BTW, aparte
-        // categorie zodat ze uit de omzet-/BTW-aggregaties worden gefilterd.
-        categorie: vermogen ? VERMOGEN_CATEGORIE : null,
+        // Vermogensstortingen + borgen worden direct gemarkeerd — geen BTW,
+        // aparte categorie zodat ze uit de omzet-/BTW-aggregaties worden
+        // gefilterd. Beide zijn balans-posten, geen P&L.
+        categorie: balansCategorie,
         // Eigenaar voor stortingen → wie heeft 'm gedaan (sem/syb), zodat de
         // kapitaalrekening berekening kan splitsen wie wat heeft ingelegd.
         eigenaar: stortingDoor,
-        status: vermogen ? "gecategoriseerd" : "onbekend",
+        status: balansCategorie ? "gecategoriseerd" : "onbekend",
       }).returning({ id: bankTransacties.id });
 
       nieuweTransacties++;
-      // Skip AI analyse on equity deposits — they're not expenses.
-      if (inserted && isUitgaand) nieuweIds.push(inserted.id);
+      // Skip AI analyse on balance-sheet items (vermogen, borg) — geen P&L,
+      // dus geen kosten-classificatie nodig.
+      if (inserted && isUitgaand && !borg) nieuweIds.push(inserted.id);
 
-      // Inkomend (type=bij), geen vermogen → probeer te matchen aan eigen
-      // uitgaande factuur. Als match: link beide en markeer factuur betaald.
-      if (inserted && !isUitgaand && !vermogen) {
+      // Inkomend (type=bij), geen vermogen, geen borg → probeer te matchen
+      // aan eigen uitgaande factuur. Als match: link beide en markeer
+      // factuur betaald.
+      if (inserted && !isUitgaand && !vermogen && !borg) {
         const match = await findFactuurMatch(
           Math.abs(leg.amount),
           omschrijving,

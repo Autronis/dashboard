@@ -15,17 +15,17 @@ import { and, eq, gte, lte, sql, or, isNull, ne } from "drizzle-orm";
 // in current omzet / BTW calculations.
 const NIET_VERWERKT = isNull(facturen.verwerktInAangifte);
 import { berekenActieveUren } from "@/lib/screen-time-uren";
-import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { notBalansCategorie } from "@/lib/borg";
 
-// Kosten-filter: type=af, privé-uitgaven uitsluiten (die tellen niet als
-// bedrijfskosten), vermogensstortingen hebben type=bij dus onnodig hier.
+// Kosten-filter: type=af, privé-uitgaven uitsluiten, vermogen + borg
+// (balans-posten) ook eruit.
 const KOSTEN_WHERE = (start: string, eind: string) =>
   and(
     eq(bankTransacties.type, "af"),
     gte(bankTransacties.datum, start),
     lte(bankTransacties.datum, eind),
     or(isNull(bankTransacties.fiscaalType), ne(bankTransacties.fiscaalType, "prive")),
-    or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE))
+    notBalansCategorie()
   );
 
 interface KwartaalData {

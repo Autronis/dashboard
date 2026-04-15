@@ -101,12 +101,12 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: Euro,
         children: [
           { label: "Overzicht", icon: Euro, href: "/financien" },
-          { label: "Facturen", icon: Receipt, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
-          { label: "Offertes", icon: FileText, href: "/offertes" },
-          { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
           { label: "Belasting", icon: Landmark, href: "/belasting" },
           { label: "Administratie", icon: FolderArchive, href: "/administratie" },
           { label: "Kilometers", icon: Car, href: "/kilometers" },
+          { label: "Facturen", icon: Receipt, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
+          { label: "Offertes", icon: FileText, href: "/offertes" },
+          { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
         ],
       },
       {

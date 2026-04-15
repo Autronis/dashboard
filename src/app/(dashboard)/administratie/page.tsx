@@ -442,8 +442,16 @@ export default function AdministratiePage() {
                         // Inkomende facturen openen de koppel modal — daar kan
                         // je PDF bekijken én koppelen / ontkoppelen.
                         setKoppelFactuurId(doc.id);
+                      } else if (doc.type === "uitgaand") {
+                        // Eigen facturen: als er een PDF is open die, anders
+                        // navigeer naar de factuur detail page in het dashboard.
+                        if (doc.storageUrl) {
+                          openDocument(doc.storageUrl);
+                        } else {
+                          window.open(`/facturen/${doc.id}`, "_self");
+                        }
                       } else {
-                        // Bonnetjes + uitgaande facturen openen direct de PDF.
+                        // Bonnetjes openen direct de PDF.
                         openDocument(doc.storageUrl);
                       }
                     };

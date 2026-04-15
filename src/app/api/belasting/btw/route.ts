@@ -28,14 +28,36 @@ export async function GET(req: NextRequest) {
     const jaarParam = searchParams.get("jaar");
     const jaar = jaarParam ? parseInt(jaarParam, 10) : new Date().getFullYear();
 
-    const aangiftes = await db
+    let aangiftes = await db
       .select()
       .from(btwAangiftes)
       .where(eq(btwAangiftes.jaar, jaar))
-      .orderBy(btwAangiftes.kwartaal)
-      ;
+      .orderBy(btwAangiftes.kwartaal);
 
-    // Auto-calculate BTW from facturen and uitgaven per quarter
+    // Auto-seed missing quarters. Without this, if a year only has Q1
+    // seeded, the UI shows €0 for Q2/Q3/Q4 instead of the live numbers
+    // computed from bank_transacties.
+    const bestaandeKwartalen = new Set(aangiftes.map((a) => a.kwartaal));
+    const missingQuarters = [1, 2, 3, 4].filter((q) => !bestaandeKwartalen.has(q));
+    if (missingQuarters.length > 0) {
+      for (const kwartaal of missingQuarters) {
+        await db.insert(btwAangiftes).values({
+          kwartaal,
+          jaar,
+          btwOntvangen: 0,
+          btwBetaald: 0,
+          btwAfdragen: 0,
+          status: "open",
+        }).run();
+      }
+      aangiftes = await db
+        .select()
+        .from(btwAangiftes)
+        .where(eq(btwAangiftes.jaar, jaar))
+        .orderBy(btwAangiftes.kwartaal);
+    }
+
+    // Auto-calculate BTW from facturen and bank_transacties per quarter
     const enrichedAangiftes = await Promise.all(aangiftes.map(async (aangifte) => {
       const { start, end } = getQuarterDateRange(aangifte.kwartaal, aangifte.jaar);
 

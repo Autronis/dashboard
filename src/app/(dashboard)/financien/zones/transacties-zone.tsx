@@ -293,6 +293,11 @@ export function TransactiesZone() {
                                 />
                               )}
                             </div>
+                            {t.aiBeschrijving && (
+                              <p className="text-[11px] text-autronis-text-secondary/80 truncate mt-0.5 italic">
+                                {t.aiBeschrijving}
+                              </p>
+                            )}
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               {t.categorie === "vermogen" ? (
                                 <span

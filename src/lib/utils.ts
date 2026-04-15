@@ -12,8 +12,10 @@ export function cn(...inputs: ClassValue[]) {
  * Format a date string or Date object to Dutch long format
  * e.g. "12 maart 2026"
  */
-export function formatDatum(datum: string | Date): string {
+export function formatDatum(datum: string | Date | null | undefined): string {
+  if (!datum) return "—";
   const d = typeof datum === "string" ? new Date(datum) : datum;
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("nl-NL", {
     day: "numeric",
     month: "long",
@@ -23,10 +25,12 @@ export function formatDatum(datum: string | Date): string {
 
 /**
  * Format a date string or Date object to Dutch short format
- * e.g. "12-03-2026"
+ * e.g. "12-03-2026". Returns "—" when input is null/undefined/invalid.
  */
-export function formatDatumKort(datum: string | Date): string {
+export function formatDatumKort(datum: string | Date | null | undefined): string {
+  if (!datum) return "—";
   const d = typeof datum === "string" ? new Date(datum) : datum;
+  if (isNaN(d.getTime())) return "—";
   return d.toLocaleDateString("nl-NL", {
     day: "2-digit",
     month: "2-digit",

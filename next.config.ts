@@ -62,7 +62,14 @@ const nextConfig: NextConfig = {
     // exclude from the file watcher / module graph.
   },
   outputFileTracingExcludes: {
-    "*": [".worktrees/**/*"],
+    "*": [
+      ".worktrees/**/*",
+      // desktop-agent is een aparte Tauri/Rust app, niet onderdeel van
+      // de Next runtime. Sluit hem uit van serverless function tracing,
+      // anders sleept Vercel de 2GB Rust target/ cache mee in elke
+      // function bundle (overschrijdt 300MB limiet).
+      "desktop-agent/**/*",
+    ],
   },
 };
 

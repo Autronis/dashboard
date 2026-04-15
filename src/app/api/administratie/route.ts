@@ -67,14 +67,18 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Uitgaande facturen (from facturen table where pdfStorageUrl IS NOT NULL)
+    // Uitgaande facturen — alle actieve facturen in de periode, ook zonder
+    // gekoppelde PDF in Supabase. Dat laatste blokkeerde eerder eigen
+    // facturen die wel als omzet tellen op /belasting maar nergens zichtbaar
+    // waren op /administratie. De paperclip-indicator in de lijst maakt
+    // alsnog duidelijk welke wél een PDF hebben.
     if (!type || type === "uitgaand") {
       const uitgaand = await db
         .select()
         .from(facturen)
         .where(
           and(
-            isNotNull(facturen.pdfStorageUrl),
+            eq(facturen.isActief, 1),
             gte(facturen.factuurdatum, start),
             lte(facturen.factuurdatum, end)
           )

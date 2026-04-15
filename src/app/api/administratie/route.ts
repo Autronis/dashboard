@@ -155,6 +155,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ documenten, onbekoppeld, totalen });
   } catch (error) {
+    console.error("[/api/administratie] error:", error);
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },
       { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }

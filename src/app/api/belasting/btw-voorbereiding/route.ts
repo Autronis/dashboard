@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       eq(facturen.btwPercentage, 21),
       gte(facturen.factuurdatum, start),
       lte(facturen.factuurdatum, end),
+      isNull(facturen.verwerktInAangifte),
     )).get();
 
     // Rubriek 1b: Omzet binnenland 9%

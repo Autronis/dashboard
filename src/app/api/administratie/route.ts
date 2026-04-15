@@ -70,14 +70,25 @@ export async function GET(request: NextRequest) {
     }
 
     // Uitgaande facturen — alle actieve facturen in de periode, ook zonder
-    // gekoppelde PDF in Supabase. Dat laatste blokkeerde eerder eigen
-    // facturen die wel als omzet tellen op /belasting maar nergens zichtbaar
-    // waren op /administratie. De paperclip-indicator in de lijst maakt
-    // alsnog duidelijk welke wél een PDF hebben.
+    // gekoppelde PDF in Supabase. De leverancier-kolom toont nu de klant-
+    // naam (via LEFT JOIN klanten) in plaats van hardcoded "Autronis".
+    // Facturen met verwerktInAangifte gezet blijven in de lijst maar tellen
+    // niet mee in totalen (zie hieronder bij KPI berekening).
     if (!type || type === "uitgaand") {
       const uitgaand = await db
-        .select()
+        .select({
+          id: facturen.id,
+          factuurnummer: facturen.factuurnummer,
+          bedragInclBtw: facturen.bedragInclBtw,
+          btwBedrag: facturen.btwBedrag,
+          factuurdatum: facturen.factuurdatum,
+          status: facturen.status,
+          pdfStorageUrl: facturen.pdfStorageUrl,
+          verwerktInAangifte: facturen.verwerktInAangifte,
+          klantBedrijfsnaam: klanten.bedrijfsnaam,
+        })
         .from(facturen)
+        .leftJoin(klanten, eq(facturen.klantId, klanten.id))
         .where(
           and(
             eq(facturen.isActief, 1),
@@ -90,7 +101,7 @@ export async function GET(request: NextRequest) {
         documenten.push({
           id: f.id,
           type: "uitgaand",
-          leverancier: "Autronis",
+          leverancier: f.klantBedrijfsnaam ?? "Onbekende klant",
           bedrag: f.bedragInclBtw ?? 0,
           btwBedrag: f.btwBedrag ?? null,
           datum: f.factuurdatum ?? "",
@@ -98,6 +109,7 @@ export async function GET(request: NextRequest) {
           storageUrl: f.pdfStorageUrl ?? null,
           factuurnummer: f.factuurnummer,
           transactieId: null,
+          verwerktInAangifte: f.verwerktInAangifte ?? null,
         });
       }
     }
@@ -128,6 +140,7 @@ export async function GET(request: NextRequest) {
           storageUrl: b.storageUrl ?? null,
           factuurnummer: null,
           transactieId: b.id,
+          verwerktInAangifte: null,
         });
       }
     }
@@ -143,14 +156,20 @@ export async function GET(request: NextRequest) {
 
     const onbekoppeld = onbekoppeldRow?.count ?? 0;
 
-    // Calculate totals
+    // Calculate totals. Skip rows die al in een eerdere aangifte zijn
+    // verwerkt — die blijven in de lijst maar tellen niet mee.
     const totalen = {
       inkomend: 0,
       uitgaand: 0,
       btw: 0,
+      verwerktAantal: 0,
     };
 
     for (const doc of documenten) {
+      if (doc.verwerktInAangifte) {
+        totalen.verwerktAantal++;
+        continue;
+      }
       if (doc.type === "inkomend" || doc.type === "bonnetje") {
         totalen.inkomend += doc.bedrag;
       } else if (doc.type === "uitgaand") {

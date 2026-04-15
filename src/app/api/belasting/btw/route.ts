@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { btwAangiftes, facturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
 import { getKostenTotalen } from "@/lib/belasting-helpers";
 
 function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; end: string } {
@@ -61,7 +61,8 @@ export async function GET(req: NextRequest) {
     const enrichedAangiftes = await Promise.all(aangiftes.map(async (aangifte) => {
       const { start, end } = getQuarterDateRange(aangifte.kwartaal, aangifte.jaar);
 
-      // BTW ontvangen: from betaalde facturen within quarter
+      // BTW ontvangen: from betaalde facturen within quarter, al verwerkte
+      // aangifte-items uitgesloten om dubbele telling te voorkomen.
       const facturenResult = await db
         .select({
           totaalBtw: sql<number>`COALESCE(SUM(${facturen.btwBedrag}), 0)`,
@@ -72,7 +73,8 @@ export async function GET(req: NextRequest) {
             eq(facturen.status, "betaald"),
             eq(facturen.isActief, 1),
             gte(facturen.betaaldOp, start),
-            lte(facturen.betaaldOp, end)
+            lte(facturen.betaaldOp, end),
+            isNull(facturen.verwerktInAangifte)
           )
         )
         .get();

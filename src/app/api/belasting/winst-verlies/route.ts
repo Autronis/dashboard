@@ -9,6 +9,11 @@ import {
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { and, eq, gte, lte, sql, or, isNull, ne } from "drizzle-orm";
+
+// Exclude facturen that were already reported in an earlier BTW-aangifte.
+// These stay visible in /administratie as proof but must not double-count
+// in current omzet / BTW calculations.
+const NIET_VERWERKT = isNull(facturen.verwerktInAangifte);
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 
@@ -96,7 +101,7 @@ export async function GET(req: NextRequest) {
     const jaarStart = `${jaar}-01-01`;
     const jaarEind = `${jaar}-12-31`;
 
-    // Bruto omzet: betaalde facturen
+    // Bruto omzet: betaalde facturen (verwerkt_in_aangifte uitgesloten)
     const omzetResult = await db
       .select({
         totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)`,
@@ -107,7 +112,8 @@ export async function GET(req: NextRequest) {
           eq(facturen.status, "betaald"),
           eq(facturen.isActief, 1),
           gte(facturen.betaaldOp, jaarStart),
-          lte(facturen.betaaldOp, jaarEind)
+          lte(facturen.betaaldOp, jaarEind),
+          NIET_VERWERKT
         )
       )
       .get();
@@ -223,7 +229,8 @@ export async function GET(req: NextRequest) {
             eq(facturen.status, "betaald"),
             eq(facturen.isActief, 1),
             gte(facturen.betaaldOp, start),
-            lte(facturen.betaaldOp, end)
+            lte(facturen.betaaldOp, end),
+            NIET_VERWERKT
           )
         )
         .get();

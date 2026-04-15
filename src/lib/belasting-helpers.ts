@@ -18,15 +18,17 @@
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { and, eq, gte, lte, sql, or, isNull, ne, desc } from "drizzle-orm";
-import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { notBalansCategorie } from "@/lib/borg";
 
+// Borg en vermogen zijn beide balans-posten, geen P&L. Beide worden via
+// `notBalansCategorie()` uit alle kosten/winst/BTW aggregaties gefilterd.
 export function kostenWhere(start: string, eind: string) {
   return and(
     eq(bankTransacties.type, "af"),
     gte(bankTransacties.datum, start),
     lte(bankTransacties.datum, eind),
     or(isNull(bankTransacties.fiscaalType), ne(bankTransacties.fiscaalType, "prive")),
-    or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE))
+    notBalansCategorie()
   );
 }
 

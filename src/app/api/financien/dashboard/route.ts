@@ -2,15 +2,12 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lt, sql, or, isNull, ne } from "drizzle-orm";
-import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { eq, and, gte, lt, sql } from "drizzle-orm";
+import { notBalansCategorie } from "@/lib/borg";
 
-// SQL filter: exclude vermogensstortingen (owner equity deposits) from
-// revenue / BTW aggregates. They're not business revenue.
-const NIET_VERMOGEN = or(
-  isNull(bankTransacties.categorie),
-  ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)
-);
+// SQL filter: exclude balance-sheet transacties (vermogen + borg) uit
+// alle revenue / BTW aggregaties. Beide zijn geen P&L items.
+const NIET_VERMOGEN = notBalansCategorie();
 
 // Helper for aggregating one month in a single query
 async function maandTotalen(start: string, eind: string) {

@@ -61,6 +61,14 @@ const SERVICE_KEYWORDS = [
   "school", "opleiding", "training", "les", "cursus", "docent",
   // automotive services
   "garage", "autobedrijf", "apk",
+  // English equivalents (LinkedIn leads zijn vaak Engelstalig)
+  "recruitment", "staffing", "consulting", "agency", "law firm", "lawyer",
+  "accounting", "accountant", "real estate", "realtor", "insurance",
+  "marketing", "advertising", "construction", "contractor", "plumbing",
+  "electrician", "cleaning", "repair", "service", "services",
+  "clinic", "dental", "medical", "therapy", "fitness studio",
+  "cafe", "bistro", "pub", "lodging", "guesthouse",
+  "studio", "photography", "videography",
 ];
 
 export function classifyFit(category: string | null | undefined, name?: string | null): FitResult {

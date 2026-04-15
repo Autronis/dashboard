@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Loader2, Check, Plus, Trash2, Pencil, Calendar, Settings2 } from "lucide-react";
+import { X, Zap, Loader2, Check, Plus, Trash2, Pencil, Calendar, Settings2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,6 +57,19 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
   // Multi-select state: set van geselecteerde slugs + hun velden
   const [bulkSlugs, setBulkSlugs] = useState<Set<string>>(new Set());
   const [bulkVelden, setBulkVelden] = useState<Record<string, Record<string, string>>>({});
+
+  // AI suggesties state — gegenereerde template ideeën van Claude
+  type SuggestedTemplate = {
+    naam: string;
+    beschrijving: string;
+    cluster: string;
+    geschatteDuur: number;
+    prompt: string;
+    velden?: Array<{ key: string; label: string }>;
+  };
+  const [suggesties, setSuggesties] = useState<SuggestedTemplate[]>([]);
+  const [suggLoading, setSuggLoading] = useState(false);
+  const [savingIdx, setSavingIdx] = useState<number | null>(null);
 
   // Template form state (aanmaken / bewerken)
   const [formData, setFormData] = useState<{
@@ -243,6 +256,57 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
       await loadTemplates();
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Verwijderen mislukt", "fout");
+    }
+  }
+
+  async function handleGenereerSuggesties() {
+    setSuggLoading(true);
+    setSuggesties([]);
+    try {
+      const res = await fetch("/api/taken/slim/templates/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aantal: 5 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Genereren mislukt");
+      setSuggesties(data.suggesties ?? []);
+      if ((data.suggesties ?? []).length === 0) {
+        addToast("Claude returnde geen suggesties", "fout");
+      }
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Genereren mislukt", "fout");
+    } finally {
+      setSuggLoading(false);
+    }
+  }
+
+  async function handleSaveSuggestie(idx: number) {
+    const s = suggesties[idx];
+    if (!s) return;
+    setSavingIdx(idx);
+    try {
+      const res = await fetch("/api/taken/slim/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          naam: s.naam,
+          beschrijving: s.beschrijving,
+          cluster: s.cluster,
+          geschatteDuur: s.geschatteDuur,
+          prompt: s.prompt,
+          velden: s.velden ?? [],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || "Opslaan mislukt");
+      addToast(`"${s.naam}" toegevoegd`, "succes");
+      setSuggesties((curr) => curr.filter((_, i) => i !== idx));
+      await loadTemplates();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Opslaan mislukt", "fout");
+    } finally {
+      setSavingIdx(null);
     }
   }
 
@@ -511,25 +575,94 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
                 {/* BEHEER mode — lijst met edit/delete per template */}
                 {!loading && mode === "beheer" && (
                   <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        setSelected(null);
-                        setFormData({
-                          naam: "",
-                          beschrijving: "",
-                          cluster: "research",
-                          geschatteDuur: 15,
-                          prompt: "",
-                          velden: [],
-                          recurringDayOfWeek: null,
-                        });
-                        setMode("edit");
-                      }}
-                      className="w-full rounded-xl border border-dashed border-autronis-accent/40 bg-autronis-accent/[0.03] p-3 flex items-center justify-center gap-2 text-xs font-medium text-autronis-accent hover:bg-autronis-accent/[0.08] transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Nieuwe template
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelected(null);
+                          setFormData({
+                            naam: "",
+                            beschrijving: "",
+                            cluster: "research",
+                            geschatteDuur: 15,
+                            prompt: "",
+                            velden: [],
+                            recurringDayOfWeek: null,
+                          });
+                          setMode("edit");
+                        }}
+                        className="flex-1 rounded-xl border border-dashed border-autronis-accent/40 bg-autronis-accent/[0.03] p-3 flex items-center justify-center gap-2 text-xs font-medium text-autronis-accent hover:bg-autronis-accent/[0.08] transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Nieuwe template
+                      </button>
+                      <button
+                        onClick={handleGenereerSuggesties}
+                        disabled={suggLoading}
+                        className="flex-1 rounded-xl border border-autronis-accent/40 bg-autronis-accent/10 p-3 flex items-center justify-center gap-2 text-xs font-medium text-autronis-accent hover:bg-autronis-accent/20 transition-colors disabled:opacity-60"
+                      >
+                        {suggLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        AI genereer 5 ideeën
+                      </button>
+                    </div>
+
+                    {/* AI suggesties lijst — verschijnt na klik op "AI genereer" */}
+                    {suggesties.length > 0 && (
+                      <div className="space-y-2 rounded-xl border border-autronis-accent/30 bg-autronis-accent/5 p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Sparkles className="w-3.5 h-3.5 text-autronis-accent" />
+                          <span className="text-xs font-semibold text-autronis-accent">
+                            {suggesties.length} suggesties — kies wat je wil bewaren
+                          </span>
+                        </div>
+                        {suggesties.map((s, idx) => {
+                          const cfg = CLUSTER_KLEUR[s.cluster] ?? CLUSTER_KLEUR.admin;
+                          return (
+                            <div
+                              key={idx}
+                              className="rounded-lg border border-autronis-border/60 bg-autronis-bg/40 p-2.5 flex items-start gap-2"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <h4 className="text-xs font-semibold text-autronis-text-primary truncate">
+                                    {s.naam}
+                                  </h4>
+                                  <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full border flex-shrink-0", cfg.bg, cfg.text, cfg.border)}>
+                                    {s.cluster}
+                                  </span>
+                                  <span className="text-[9px] text-autronis-text-secondary/60 tabular-nums flex-shrink-0">
+                                    {s.geschatteDuur}m
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-autronis-text-secondary line-clamp-2">
+                                  {s.beschrijving}
+                                </p>
+                              </div>
+                              <div className="flex flex-col gap-1 flex-shrink-0">
+                                <button
+                                  onClick={() => handleSaveSuggestie(idx)}
+                                  disabled={savingIdx === idx}
+                                  className="p-1.5 rounded text-autronis-accent hover:bg-autronis-accent/15 transition-colors disabled:opacity-60"
+                                  title="Toevoegen"
+                                >
+                                  {savingIdx === idx ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <Plus className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => setSuggesties((curr) => curr.filter((_, i) => i !== idx))}
+                                  className="p-1.5 rounded text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                  title="Verwerpen"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                     {templates.map((t) => {
                       const cfg = CLUSTER_KLEUR[t.cluster] ?? CLUSTER_KLEUR.admin;
                       return (

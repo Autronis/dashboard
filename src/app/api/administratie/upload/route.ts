@@ -126,6 +126,15 @@ export async function POST(request: NextRequest) {
 
     const formData = await request.formData();
     const bestand = formData.get("bestand");
+    // Optional: force-link this invoice to a specific bank_transactie,
+    // bypassing the scoring matcher. Used by /financien detail panel when
+    // Sem uploads directly from a transaction row — he already knows which
+    // transaction this invoice belongs to.
+    const forceTransactieRaw = formData.get("transactieId");
+    const forceTransactieId =
+      typeof forceTransactieRaw === "string" && /^\d+$/.test(forceTransactieRaw)
+        ? Number(forceTransactieRaw)
+        : null;
 
     if (!bestand || !(bestand instanceof File)) {
       return NextResponse.json(
@@ -172,17 +181,48 @@ export async function POST(request: NextRequest) {
 
     await uploadToStorage(storagePath, pdfBuffer, "application/pdf");
 
-    // Auto-match via scoring matcher. Non-EUR invoices zetten we als
-    // onbekoppeld zodat Sem ze handmatig kan koppelen (het bedrag op de
-    // factuur wijkt af van de bank-tx na currency conversion).
-    const skipAutoMatch = invoiceData.currency && invoiceData.currency !== "EUR";
-    const match = skipAutoMatch
-      ? null
-      : await findBestMatch({
-          leverancier: invoiceData.leverancier,
-          bedrag: invoiceData.bedrag,
-          datum: invoiceData.datum,
-        });
+    // If caller explicitly passed a transactieId, use that (overrules the
+    // matcher). Otherwise run the scoring matcher. Non-EUR invoices still
+    // skip auto-match because amounts differ after currency conversion.
+    let matchTx: { id: number; merchantNaam: string | null; omschrijving: string; bedrag: number } | null = null;
+    let matchScore: number | null = null;
+    let matchReasons: string[] = [];
+
+    if (forceTransactieId) {
+      const [forced] = await db
+        .select()
+        .from(bankTransacties)
+        .where(eq(bankTransacties.id, forceTransactieId))
+        .limit(1);
+      if (forced) {
+        matchTx = {
+          id: forced.id,
+          merchantNaam: forced.merchantNaam,
+          omschrijving: forced.omschrijving,
+          bedrag: forced.bedrag,
+        };
+        matchReasons = ["handmatig gekoppeld vanuit /financien"];
+      }
+    } else {
+      const skipAutoMatch = invoiceData.currency && invoiceData.currency !== "EUR";
+      const match = skipAutoMatch
+        ? null
+        : await findBestMatch({
+            leverancier: invoiceData.leverancier,
+            bedrag: invoiceData.bedrag,
+            datum: invoiceData.datum,
+          });
+      if (match) {
+        matchTx = {
+          id: match.tx.id,
+          merchantNaam: match.tx.merchantNaam,
+          omschrijving: match.tx.omschrijving,
+          bedrag: match.tx.bedrag,
+        };
+        matchScore = Math.round(match.score * 100);
+        matchReasons = match.reasons;
+      }
+    }
 
     const [factuur] = await db
       .insert(inkomendeFacturen)

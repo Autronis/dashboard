@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 export interface BtwKwartaal {
   kwartaal: number;
   label: string;
+  startDatum: string;
+  eindDatum: string;
   status: "leeg" | "huidig" | "klaar" | "aangedaan";
   inkomsten: number;
   uitgaven: number;

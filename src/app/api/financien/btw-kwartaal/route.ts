@@ -63,9 +63,18 @@ export async function GET(req: NextRequest) {
         status = "huidig";
       }
 
+      // Eind-datum van het kwartaal zelf (inclusief) is de dag vóór de
+      // start van het volgende kwartaal — de `eind` variabele hierboven is
+      // exclusief voor de SQL query.
+      const eindDatum = new Date(eind);
+      eindDatum.setDate(eindDatum.getDate() - 1);
+      const eindDatumStr = eindDatum.toISOString().slice(0, 10);
+
       kwartalen.push({
         kwartaal: q,
         label: `Q${q} ${jaar}`,
+        startDatum: start,
+        eindDatum: eindDatumStr,
         status,
         inkomsten: Math.round(totalen.inkomsten * 100) / 100,
         uitgaven: Math.round(totalen.uitgaven * 100) / 100,

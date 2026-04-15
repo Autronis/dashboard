@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { btwAangiftes, facturen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, isNull } from "drizzle-orm";
 import { getKostenRijen } from "@/lib/belasting-helpers";
 
 // Known foreign suppliers — used to classify whether a bank_transactie
@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       eq(facturen.btwPercentage, 9),
       gte(facturen.factuurdatum, start),
       lte(facturen.factuurdatum, end),
+      isNull(facturen.verwerktInAangifte),
     )).get();
 
     // Get all bank_transacties in quarter for rubriek 4 + 5b. We read from

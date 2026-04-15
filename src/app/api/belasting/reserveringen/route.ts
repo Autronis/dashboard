@@ -9,7 +9,7 @@ import {
   urenCriterium,
 } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, eq, gte, lte, sql } from "drizzle-orm";
+import { and, eq, gte, lte, sql, isNull } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 import { getKostenTotalen } from "@/lib/belasting-helpers";
 
@@ -29,7 +29,7 @@ async function berekenGeschatteBelasting(jaar: number): Promise<number> {
   const omzetResult = await db
     .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragExclBtw}), 0)` })
     .from(facturen)
-    .where(and(eq(facturen.status, "betaald"), eq(facturen.isActief, 1), gte(facturen.betaaldOp, jaarStart), lte(facturen.betaaldOp, jaarEind)))
+    .where(and(eq(facturen.status, "betaald"), eq(facturen.isActief, 1), gte(facturen.betaaldOp, jaarStart), lte(facturen.betaaldOp, jaarEind), isNull(facturen.verwerktInAangifte)))
     .get();
 
   const brutoOmzet = omzetResult?.totaal ?? 0;

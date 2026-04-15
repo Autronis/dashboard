@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inkomendeFacturen, bankTransacties } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, isNull } from "drizzle-orm";
 import { findBestMatch } from "@/lib/match-factuur";
 
 // POST /api/administratie/rematch — probeer alle onbekoppelde inkomende
@@ -20,10 +20,17 @@ export async function POST(req: NextRequest) {
       await requireAuth();
     }
 
+    // Skip facturen die al in een eerdere aangifte zijn verwerkt — die
+    // hoeven niet meer aan een bank-transactie gekoppeld te worden.
     const onbekoppeld = await db
       .select()
       .from(inkomendeFacturen)
-      .where(eq(inkomendeFacturen.status, "onbekoppeld"));
+      .where(
+        and(
+          eq(inkomendeFacturen.status, "onbekoppeld"),
+          isNull(inkomendeFacturen.verwerktInAangifte)
+        )
+      );
 
     let gematcht = 0;
     const resultaten: Array<{

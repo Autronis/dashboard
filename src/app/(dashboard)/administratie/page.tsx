@@ -22,6 +22,7 @@ interface Document {
   storageUrl: string | null;
   factuurnummer: string | null;
   transactieId: number | null;
+  verwerktInAangifte: string | null;
 }
 
 interface Totalen {
@@ -484,9 +485,19 @@ export default function AdministratiePage() {
 
                         {/* Leverancier + factuurnummer */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-autronis-text-primary truncate">
-                            {doc.leverancier}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium text-autronis-text-primary truncate">
+                              {doc.leverancier}
+                            </p>
+                            {doc.verwerktInAangifte && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/25 font-medium whitespace-nowrap"
+                                title={`Al aangegeven in ${doc.verwerktInAangifte} — telt niet mee in totalen`}
+                              >
+                                ✓ {doc.verwerktInAangifte}
+                              </span>
+                            )}
+                          </div>
                           {doc.factuurnummer && (
                             <p className="text-xs text-autronis-text-secondary truncate">
                               {doc.factuurnummer}

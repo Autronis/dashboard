@@ -32,12 +32,7 @@ function getDateRange(jaar: number, kwartaal?: number): { start: string; end: st
 // GET /api/administratie?jaar=2025&kwartaal=1&type=inkomend
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get("authorization");
-    const sessionSecret = process.env.SESSION_SECRET;
-    const hasBearer = sessionSecret && authHeader === `Bearer ${sessionSecret}`;
-    if (!hasBearer) {
-      await requireAuth();
-    }
+    await requireAuth();
 
     const { searchParams } = new URL(request.url);
     const jaar = parseInt(searchParams.get("jaar") ?? String(new Date().getFullYear()), 10);

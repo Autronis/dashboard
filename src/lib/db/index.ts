@@ -200,6 +200,39 @@ if (isTurso) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
 
+  // Missing facturen columns — Drizzle schema had them, Turso didn't.
+  // The administratie page and factuur edit/create routes crash without these.
+  for (const col of [
+    "ALTER TABLE facturen ADD COLUMN pdf_storage_url TEXT",
+    "ALTER TABLE facturen ADD COLUMN terugkeer_aantal INTEGER",
+    "ALTER TABLE facturen ADD COLUMN terugkeer_eenheid TEXT",
+    "ALTER TABLE facturen ADD COLUMN terugkeer_status TEXT",
+    "ALTER TABLE facturen ADD COLUMN volgende_factuurdatum TEXT",
+    "ALTER TABLE facturen ADD COLUMN bron_factuur_id INTEGER REFERENCES facturen(id)",
+  ]) {
+    client.execute(col).catch(() => { /* column may already exist */ });
+  }
+
+  // inkomende_facturen table — needed for Gmail PDF sync + administratie page.
+  client.execute(`CREATE TABLE IF NOT EXISTS inkomende_facturen (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    leverancier TEXT NOT NULL,
+    bedrag REAL NOT NULL,
+    btw_bedrag REAL,
+    factuurnummer TEXT,
+    datum TEXT NOT NULL,
+    storage_url TEXT NOT NULL,
+    email_id TEXT UNIQUE,
+    bank_transactie_id INTEGER REFERENCES bank_transacties(id),
+    uitgave_id INTEGER REFERENCES uitgaven(id),
+    status TEXT DEFAULT 'onbekoppeld' CHECK (status IN ('gematcht', 'onbekoppeld', 'handmatig_gematcht')),
+    verwerk_op TEXT NOT NULL,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_email_id ON inkomende_facturen(email_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_status ON inkomende_facturen(status)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_inkomende_facturen_datum ON inkomende_facturen(datum)").catch(() => {});
+
   // Video samenvattingen table on Turso
   client.execute(`CREATE TABLE IF NOT EXISTS video_samenvattingen (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -125,7 +125,7 @@ OUTPUT: alleen JSON array, geen markdown:
         slug,
         naam: s.naam,
         beschrijving: s.beschrijving,
-        cluster: s.cluster as typeof VALID_CLUSTERS[number],
+        cluster: s.cluster as "backend-infra" | "frontend" | "klantcontact" | "content" | "admin" | "research",
         geschatteDuur: s.geschatteDuur,
         prompt: s.prompt,
         velden: s.velden && s.velden.length > 0 ? JSON.stringify(s.velden) : null,

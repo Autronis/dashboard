@@ -255,6 +255,7 @@ export default function AgendaPage() {
   const [expandedProjecten, setExpandedProjecten] = useState<Set<string>>(new Set());
   const [aiPlanLoading, setAiPlanLoading] = useState(false);
   const [slimmeTakenOpen, setSlimmeTakenOpen] = useState(false);
+  const [slimmeTakenPreSelect, setSlimmeTakenPreSelect] = useState<string | undefined>();
 
   // Templates voor de slimme acties sectie. Worden direct uit
   // /api/taken/slim geladen en als draggable cards getoond zodat Sem
@@ -2459,7 +2460,7 @@ export default function AgendaPage() {
                             {slimmeTemplates.map((tpl) => (
                               <button
                                 key={tpl.id}
-                                onClick={() => setSlimmeTakenOpen(true)}
+                                onClick={() => { setSlimmeTakenPreSelect(tpl.slug); setSlimmeTakenOpen(true); }}
                                 className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg border border-autronis-accent/20 bg-autronis-accent/5 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors group"
                                 title={tpl.beschrijving || tpl.naam}
                               >
@@ -2900,8 +2901,9 @@ export default function AgendaPage() {
       />
       <SlimmeTakenModal
         open={slimmeTakenOpen}
-        onClose={() => setSlimmeTakenOpen(false)}
+        onClose={() => { setSlimmeTakenOpen(false); setSlimmeTakenPreSelect(undefined); }}
         ingeplandVoor={`${selectedDag.getFullYear()}-${String(selectedDag.getMonth() + 1).padStart(2, "0")}-${String(selectedDag.getDate()).padStart(2, "0")}`}
+        preSelectedSlug={slimmeTakenPreSelect}
         onCreated={() => {
           queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
           queryClient.invalidateQueries({ queryKey: ["taken"] });

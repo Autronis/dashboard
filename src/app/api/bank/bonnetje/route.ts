@@ -52,23 +52,34 @@ Antwoord ALLEEN als JSON: {"bedrag":23.50,"btwBedrag":4.08,"datum":"2026-03-31",
 // POST /api/bank/bonnetje — Upload receipt photo, OCR, auto-match
 export async function POST(req: NextRequest) {
   try {
-    // Auth via x-api-key, Bearer token, of session cookie
+    const formData = await req.formData();
+
+    // Auth via header (x-api-key / Authorization) of form body veld "key"
     const xApiKey = req.headers.get("x-api-key");
     const authHeader = req.headers.get("authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const bodyKey = formData.get("key") as string | null;
 
-    if (xApiKey !== process.env.SESSION_SECRET && bearerToken !== process.env.SESSION_SECRET) {
-      // Fallback: probeer API key auth (voor iOS Shortcuts met Bearer token)
-      if (bearerToken) {
+    const validKey = [xApiKey, bearerToken, bodyKey].some(
+      (k) => k && k === process.env.SESSION_SECRET
+    );
+
+    if (!validKey) {
+      // Fallback: probeer API key auth of session cookie
+      if (bearerToken || bodyKey) {
         const { requireApiKey } = await import("@/lib/auth");
-        await requireApiKey(req);
+        try {
+          // Maak een fake request met Authorization header voor requireApiKey
+          const fakeReq = new Request(req.url, { headers: { authorization: `Bearer ${bearerToken || bodyKey}` } });
+          await requireApiKey(fakeReq as unknown as import("next/server").NextRequest);
+        } catch {
+          return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
+        }
       } else {
         const { requireAuth } = await import("@/lib/auth");
         await requireAuth();
       }
     }
-
-    const formData = await req.formData();
     const file = formData.get("bonnetje") as File | null;
     const base64Input = formData.get("base64") as string | null;
     const mediaTypeInput = formData.get("mediaType") as string | null;

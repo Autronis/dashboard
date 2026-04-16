@@ -882,6 +882,12 @@ function TakenPage() {
       addToast(error instanceof Error ? error.message : "Kon status niet bijwerken", "fout");
     },
     onSuccess: (result) => {
+      // Status-feedback toast zodat Sem/Syb ziet dat de actie is doorgekomen
+      if (result.status === "bezig") {
+        addToast("Taak gestart", "succes");
+      } else if (result.status === "afgerond") {
+        addToast("Taak afgerond", "succes");
+      }
       // Toast wanneer cluster propagation heeft toegewezen
       if (result.propagatie && result.propagatie.aantal > 0) {
         const { aantal, groupLabel } = result.propagatie;

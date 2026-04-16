@@ -94,11 +94,14 @@ Alleen JSON, geen uitleg.`,
     fs.writeFileSync(path.join(uploadsDir, fileName), buffer);
     const bonPad = `data/uploads/bonnetjes/${fileName}`;
 
-    // Auto-match with bank transaction
+    // Auto-match with bank transaction (bedrag + naam)
     let matchedTransactie = null;
-    if (parsed.bedrag) {
-      const margin = parsed.bedrag * 0.15;
-      const matches = await db.select({
+    if (parsed.bedrag || parsed.leverancier) {
+      // Zoek op bedrag (±15%) OF op leveranciersnaam — pakt de beste match
+      const amountMargin = (parsed.bedrag ?? 0) * 0.15;
+      const leverancierLower = (parsed.leverancier ?? "").toLowerCase();
+
+      const candidates = await db.select({
         id: bankTransacties.id,
         datum: bankTransacties.datum,
         omschrijving: bankTransacties.omschrijving,
@@ -107,20 +110,31 @@ Alleen JSON, geen uitleg.`,
       }).from(bankTransacties).where(
         and(
           eq(bankTransacties.type, "af"),
-          sql`ABS(${bankTransacties.bedrag} - ${parsed.bedrag}) < ${margin}`,
-          sql`${bankTransacties.bonPad} IS NULL`
+          sql`${bankTransacties.bonPad} IS NULL`,
+          // Bedrag in range OF leverancier in naam/omschrijving
+          parsed.bedrag && leverancierLower
+            ? sql`(ABS(${bankTransacties.bedrag} - ${parsed.bedrag}) < ${amountMargin} OR LOWER(COALESCE(${bankTransacties.merchantNaam}, '') || ' ' || COALESCE(${bankTransacties.omschrijving}, '')) LIKE ${'%' + leverancierLower + '%'})`
+            : parsed.bedrag
+              ? sql`ABS(${bankTransacties.bedrag} - ${parsed.bedrag}) < ${amountMargin}`
+              : sql`LOWER(COALESCE(${bankTransacties.merchantNaam}, '') || ' ' || COALESCE(${bankTransacties.omschrijving}, '')) LIKE ${'%' + leverancierLower + '%'}`
         )
-      ).limit(5);
+      ).limit(10);
 
-      if (matches.length > 0) {
-        // Score by amount + date + name proximity
-        const scored = matches.map(m => {
-          let score = 10 - Math.abs(m.bedrag - (parsed.bedrag ?? 0)) * 2;
+      if (candidates.length > 0) {
+        const scored = candidates.map(m => {
+          let score = 0;
+          // Bedrag match (max 10 punten)
+          if (parsed.bedrag) {
+            score += Math.max(0, 10 - Math.abs(m.bedrag - parsed.bedrag) * 2);
+          }
+          // Datum match (max 5 punten)
           if (parsed.datum) {
             const diff = Math.abs(new Date(m.datum).getTime() - new Date(parsed.datum).getTime()) / 86400000;
             score += Math.max(0, 5 - diff * 2);
           }
-          if (parsed.leverancier && (m.merchantNaam || m.omschrijving || "").toLowerCase().includes(parsed.leverancier.toLowerCase())) {
+          // Naam match (10 punten) — zoek in merchantNaam EN omschrijving
+          const txText = ((m.merchantNaam || "") + " " + (m.omschrijving || "")).toLowerCase();
+          if (leverancierLower && txText.includes(leverancierLower)) {
             score += 10;
           }
           return { ...m, score };

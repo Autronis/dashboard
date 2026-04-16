@@ -25,6 +25,12 @@ import {
   ListTodo,
   Zap,
   Sparkles,
+  Phone,
+  PenLine,
+  FileText,
+  Palette,
+  Handshake,
+  Megaphone,
 } from "lucide-react";
 import { SlimmeTakenModal } from "@/components/taken/slimme-taken-modal";
 import { cn, formatDatum } from "@/lib/utils";

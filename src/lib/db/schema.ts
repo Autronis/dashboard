@@ -10,6 +10,7 @@ export const gebruikers = sqliteTable("gebruikers", {
   rol: text("rol", { enum: ["admin", "gebruiker"] }).default("gebruiker"),
   uurtariefStandaard: real("uurtarief_standaard"),
   themaVoorkeur: text("thema_voorkeur", { enum: ["donker", "licht"] }).default("donker"),
+  avatarUrl: text("avatar_url"),
   tweeFactorGeheim: text("twee_factor_geheim"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),

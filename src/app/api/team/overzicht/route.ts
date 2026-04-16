@@ -55,7 +55,7 @@ export async function GET(_req: NextRequest) {
     const vorigeWeek = getPreviousWeek(now);
 
     const users = await db
-      .select({ id: gebruikers.id, naam: gebruikers.naam })
+      .select({ id: gebruikers.id, naam: gebruikers.naam, avatarUrl: gebruikers.avatarUrl })
       .from(gebruikers)
       .orderBy(gebruikers.id);
 

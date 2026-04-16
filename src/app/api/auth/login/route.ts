@@ -79,6 +79,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     email: gebruiker.email,
     rol: gebruiker.rol as "admin" | "gebruiker",
     themaVoorkeur: gebruiker.themaVoorkeur as "donker" | "licht" | null,
+    avatarUrl: gebruiker.avatarUrl ?? null,
   };
   await session.save();
 

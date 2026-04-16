@@ -24,6 +24,7 @@ export interface SessionGebruiker {
   email: string;
   rol: GebruikerRol;
   themaVoorkeur: ThemaVoorkeur;
+  avatarUrl?: string | null;
   uurtariefStandaard?: number | null;
 }
 

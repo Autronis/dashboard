@@ -30,6 +30,7 @@ export interface SessionGebruiker {
   email: string;
   rol: "admin" | "gebruiker";
   themaVoorkeur: "donker" | "licht" | null;
+  avatarUrl: string | null;
 }
 
 export interface SessionData {

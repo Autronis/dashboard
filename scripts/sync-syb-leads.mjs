@@ -345,6 +345,37 @@ async function createDashboardTask({ commits, changes, typesChanged, whitelistCh
     return;
   }
   log(`  ✓ Dashboard taak aangemaakt`);
+
+  // Push notificatie naar Sem (user id 1) zodat hij 't meteen ziet
+  await sendPushNotification(apiKey, dashboardUrl, titel, commits);
+}
+
+async function sendPushNotification(apiKey, dashboardUrl, titel, commits) {
+  const bericht = commits.length === 1
+    ? commits[0].message
+    : `${commits.length} commits — ${commits[0].message}`;
+
+  try {
+    const res = await fetch(`${dashboardUrl}/api/push/test`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        titel: `🔄 ${titel}`,
+        bericht,
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      log(`  ✓ Push notificatie verstuurd (${data.verzonden} devices)`);
+    } else {
+      log(`  ⚠ Push notificatie faalde: HTTP ${res.status}`);
+    }
+  } catch (e) {
+    log(`  ⚠ Push notificatie faalde: ${e.message}`);
+  }
 }
 
 // ── 4. Git commit & push ──────────────────────────────────────────
@@ -450,21 +481,19 @@ async function main() {
     commits = [getCommitInfo(headSha)];
   }
 
-  // Taak aanmaken als er iets relevants veranderd is
+  // Altijd taak + push notificatie bij elke nieuwe Syb push
   const somethingChanged =
     typesResult.changed ||
     whitelistResult.changed ||
     changes.migrations.length > 0 ||
     changes.functions.length > 0;
 
-  if (somethingChanged) {
-    await createDashboardTask({
-      commits,
-      changes,
-      typesChanged: typesResult.changed,
-      whitelistChange: whitelistResult,
-    });
-  }
+  await createDashboardTask({
+    commits,
+    changes,
+    typesChanged: typesResult.changed,
+    whitelistChange: whitelistResult,
+  });
 
   // State bijwerken
   const summary = [

@@ -2573,11 +2573,12 @@ export default function AgendaPage() {
                               <div className="text-[11px] text-autronis-text-secondary/60 line-through decoration-autronis-text-secondary/30">
                                 {t.titel}
                               </div>
-                              {t.projectNaam && (
-                                <div className="text-[9px] text-autronis-text-secondary/40">
-                                  {t.projectNaam}
-                                </div>
-                              )}
+                              <div className="text-[9px] text-autronis-text-secondary/40">
+                                {t.bijgewerktOp
+                                  ? new Date(t.bijgewerktOp).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" })
+                                  : ""}
+                                {t.projectNaam && ` · ${t.projectNaam}`}
+                              </div>
                             </div>
                             <button
                               onClick={() => {

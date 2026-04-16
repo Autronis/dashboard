@@ -368,6 +368,9 @@ export async function DELETE(
     // Fetch before deleting to get googleEventId
     const [taak] = await db.select().from(taken).where(eq(taken.id, Number(id))).limit(1);
 
+    // Verwijder gerelateerde records die FK constraints hebben
+    await db.delete(teamActiviteit).where(eq(teamActiviteit.taakId, Number(id)));
+
     await db.delete(taken).where(eq(taken.id, Number(id)));
 
     // Remove from Google Calendar if linked

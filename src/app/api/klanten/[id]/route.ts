@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken, klantUren } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, or, sql, desc, ne, isNull } from "drizzle-orm";
 
@@ -260,6 +260,37 @@ export async function GET(
       .groupBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`)
       .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
 
+    // Klant-uren (Claude sessie-gebaseerde uren)
+    const klantUrenLijst = await db
+      .select({
+        id: klantUren.id,
+        projectId: klantUren.projectId,
+        projectNaam: projecten.naam,
+        datum: klantUren.datum,
+        duurMinuten: klantUren.duurMinuten,
+        omschrijving: klantUren.omschrijving,
+        bron: klantUren.bron,
+      })
+      .from(klantUren)
+      .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+      .where(eq(klantUren.klantId, Number(id)))
+      .orderBy(desc(klantUren.datum))
+      .limit(50);
+
+    const klantUrenPerProject = await db
+      .select({
+        projectId: klantUren.projectId,
+        projectNaam: projecten.naam,
+        totaalMinuten: sql<number>`sum(${klantUren.duurMinuten})`,
+        aantalSessies: sql<number>`count(*)`,
+      })
+      .from(klantUren)
+      .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+      .where(eq(klantUren.klantId, Number(id)))
+      .groupBy(klantUren.projectId);
+
+    const klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
+
     // Relatie status
     const nu = new Date();
     const alleDatums = [
@@ -384,6 +415,8 @@ export async function GET(
       laatsteContact,
       dagenSindsContact,
       maandelijkseOmzet,
+      klantUren: klantUrenLijst,
+      klantUrenPerProject,
       kpis: {
         aantalProjecten: projectenMetUren.length,
         totaalMinuten: totaalUren?.totaal || 0,
@@ -397,6 +430,8 @@ export async function GET(
         openTaken: openTakenLijst.length,
         clv: Math.round(clv * 100) / 100,
         gemiddeldeMaandOmzet: Math.round(gemiddeldeMaandOmzet * 100) / 100,
+        klantUrenTotaal: klantUrenTotaal,
+        klantUrenSessies: klantUrenLijst.length,
       },
     });
   } catch (error) {

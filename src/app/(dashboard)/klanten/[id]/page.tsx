@@ -45,7 +45,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useKlantDetail, NotFoundError } from "@/hooks/queries/use-klant-detail";
-import type { TijdlijnItem, NextAction } from "@/hooks/queries/use-klant-detail";
+import type { TijdlijnItem, NextAction, KlantUurEntry, KlantUrenPerProject } from "@/hooks/queries/use-klant-detail";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageTransition } from "@/components/ui/page-transition";
 import { KlantModal } from "../klant-modal";
@@ -115,7 +115,7 @@ const nextActionIcons: Record<string, typeof Receipt> = {
   offerte: FileCheck,
 };
 
-type Tab = "overzicht" | "tijdlijn" | "financieel" | "documenten";
+type Tab = "overzicht" | "uren" | "tijdlijn" | "financieel" | "documenten";
 type TijdlijnFilter = "alles" | "factuur" | "meeting" | "notitie" | "tijdregistratie" | "offerte";
 
 function PortalLinkButton({ klantId }: { klantId: number }) {
@@ -287,7 +287,7 @@ export default function KlantDetailPage() {
     );
   }
 
-  const { klant, projecten, notities, documenten, recenteTijdregistraties, facturen, offertes, meetings, tijdlijn, kpis, openTaken, nextActions, relatieStatus, laatsteContact, dagenSindsContact, maandelijkseOmzet } = data;
+  const { klant, projecten, notities, documenten, recenteTijdregistraties, facturen, offertes, meetings, tijdlijn, kpis, openTaken, nextActions, relatieStatus, laatsteContact, dagenSindsContact, maandelijkseOmzet, klantUren = [], klantUrenPerProject = [] } = data;
 
   // Parse JSON fields
   const diensten: string[] = klant.diensten ? JSON.parse(klant.diensten) : [];
@@ -295,6 +295,7 @@ export default function KlantDetailPage() {
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "overzicht", label: "Overzicht" },
+    { key: "uren", label: "Uren", count: klantUren.length },
     { key: "tijdlijn", label: "Tijdlijn", count: tijdlijn.length },
     { key: "financieel", label: "Financieel", count: facturen.length + offertes.length },
     { key: "documenten", label: "Documenten", count: documenten.length },

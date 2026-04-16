@@ -115,6 +115,23 @@ interface MaandOmzet {
   omzet: number;
 }
 
+interface KlantUurEntry {
+  id: number;
+  projectId: number | null;
+  projectNaam: string | null;
+  datum: string;
+  duurMinuten: number;
+  omschrijving: string | null;
+  bron: string | null;
+}
+
+interface KlantUrenPerProject {
+  projectId: number | null;
+  projectNaam: string | null;
+  totaalMinuten: number;
+  aantalSessies: number;
+}
+
 interface KlantKpis {
   aantalProjecten: number;
   totaalMinuten: number;
@@ -128,6 +145,8 @@ interface KlantKpis {
   openTaken: number;
   clv: number;
   gemiddeldeMaandOmzet: number;
+  klantUrenTotaal: number;
+  klantUrenSessies: number;
 }
 
 interface KlantData {
@@ -146,6 +165,8 @@ interface KlantData {
   laatsteContact: string | null;
   dagenSindsContact: number | null;
   maandelijkseOmzet: MaandOmzet[];
+  klantUren: KlantUurEntry[];
+  klantUrenPerProject: KlantUrenPerProject[];
   kpis: KlantKpis;
 }
 
@@ -172,4 +193,4 @@ export function useKlantDetail(id: number) {
   });
 }
 
-export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis, OpenTaak, NextAction, MaandOmzet };
+export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis, OpenTaak, NextAction, MaandOmzet, KlantUurEntry, KlantUrenPerProject };

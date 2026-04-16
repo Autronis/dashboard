@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { getTransactions, getVerbindingStatus } from "@/lib/revolut";
 import { isVermogensstorting, wieGestort, VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 import { isBorg, BORG_CATEGORIE } from "@/lib/borg";
+import { schatBtwBedrag } from "@/lib/leverancier-land";
 import { findFactuurMatch, linkTxToFactuur } from "@/lib/match-inkomend";
 import { db } from "@/lib/db";
 import { bankTransacties, abonnementen, revolutVerbinding } from "@/lib/db/schema";
@@ -161,7 +162,13 @@ Antwoord ALLEEN als JSON: {"beschrijving":"...","isAbonnement":true/false,"score
         };
 
         const fiscaalType = result.fiscaalType ?? "kosten";
-        const btwBedrag = fiscaalType !== "prive" ? Math.round((tx.bedrag / 1.21) * 0.21 * 100) / 100 : 0;
+        // Buitenlandse leveranciers (Vercel, Anthropic, GitHub, etc.) brengen
+        // geen NL BTW in rekening. Die krijgen btwBedrag=0 in plaats van de
+        // blinde 21% schatting. Verlegde BTW wordt apart behandeld in de
+        // BTW-aangifte rubrieken (4a/4b).
+        const btwBedrag = fiscaalType !== "prive"
+          ? schatBtwBedrag(tx.bedrag, tx.merchantNaam ?? tx.omschrijving)
+          : 0;
         const kiaAftrek = fiscaalType === "investering" && tx.bedrag >= 2801 && tx.bedrag <= 69764
           ? Math.round(tx.bedrag * 0.28) : 0;
 

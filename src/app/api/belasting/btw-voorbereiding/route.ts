@@ -5,27 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, isNull, ne } from "drizzle-orm";
 import { getKostenRijen } from "@/lib/belasting-helpers";
 
-// Known foreign suppliers — used to classify whether a bank_transactie
-// counts as binnenlandse voorbelasting (btwBedrag → rubriek 5b) or as
-// buitenlandse inkoop (no binnenlandse BTW aftrekbaar, wel reverse-charge
-// rubriek 4a/4b). The Vision extractor can override this later by setting
-// explicit country metadata, but for now we match on leverancier name.
-const BUITEN_EU_LEVERANCIERS = [
-  "anthropic", "aws", "amazon web services", "openai",
-  "vercel", "google cloud", "microsoft azure", "stripe",
-  "digitalocean", "cloudflare", "github", "notion",
-  "figma", "slack", "zoom", "higgsfield", "fal",
-];
-const BINNEN_EU_LEVERANCIERS = [
-  "google ireland", "google cloud emea", "zoho corporation", "turso",
-];
-
-function classificeerBuitenland(leverancier: string): "buiten_eu" | "binnen_eu" | null {
-  const lower = leverancier.toLowerCase();
-  if (BUITEN_EU_LEVERANCIERS.some((naam) => lower.includes(naam))) return "buiten_eu";
-  if (BINNEN_EU_LEVERANCIERS.some((naam) => lower.includes(naam))) return "binnen_eu";
-  return null;
-}
+import { classificeerLeverancier } from "@/lib/leverancier-land";
 
 function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; end: string } {
   switch (kwartaal) {
@@ -90,7 +70,7 @@ export async function POST(req: NextRequest) {
 
     for (const u of alleKosten) {
       const exclBtw = u.bedrag - u.btwBedrag;
-      const buitenland = classificeerBuitenland(u.leverancier);
+      const buitenland = classificeerLeverancier(u.leverancier);
       if (buitenland === "buiten_eu") {
         r4aOmzet += exclBtw;
       } else if (buitenland === "binnen_eu") {

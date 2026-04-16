@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, lte, sql, or, isNull, ne } from "drizzle-orm";
 import { BORG_CONFIG } from "@/lib/borg-config";
 import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
+import { schatBtwBedrag } from "@/lib/leverancier-land";
 
 interface RapportItem {
   id: number;
@@ -122,14 +123,9 @@ export async function GET(req: NextRequest) {
     // Fetch verdeelregels
     const regels = await db.select().from(verdeelRegels);
 
-    // Known foreign suppliers where no Dutch BTW applies
-    const buitenlandseLeveranciers = ["temu", "turso", "vercel", "google workspace", "stripe"];
-
     function schatBtw(bedrag: number, omschrijving: string): number | null {
-      const lower = omschrijving.toLowerCase();
-      if (buitenlandseLeveranciers.some((b) => lower.includes(b))) return null;
-      // Dutch BTW: 21% included in price → bedrag / 1.21 * 0.21
-      return Math.round((Math.abs(bedrag) / 1.21) * 0.21 * 100) / 100;
+      const est = schatBtwBedrag(bedrag, omschrijving);
+      return est === 0 ? null : est;
     }
 
     // Unified list uit bank_transacties (de `uitgaven` tabel is deprecated

@@ -2719,6 +2719,57 @@ export default function AgendaPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* ── Routines (due/overdue) ── */}
+                  {dueRoutines.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-autronis-border/30">
+                      <div className="flex items-center gap-2 px-1 mb-2">
+                        <AlertTriangle className="w-3 h-3 text-amber-400/70 flex-shrink-0" />
+                        <span className="text-[10px] font-semibold text-autronis-text-secondary/50 uppercase tracking-wider flex-1">
+                          Routines
+                        </span>
+                        <span className="text-[10px] tabular-nums text-amber-400/60 flex-shrink-0">
+                          {overdueRoutines.length > 0 ? `${overdueRoutines.length} overdue` : `${binnenkortRoutines.length} binnenkort`}
+                        </span>
+                      </div>
+                      <div className="space-y-1 px-1">
+                        {dueRoutines.map((r) => {
+                          const isOverdue = r.status === "overdue";
+                          const freqLabel = r.frequentie === "wekelijks" ? "w" : r.frequentie === "maandelijks" ? "m" : "kw";
+                          return (
+                            <div
+                              key={r.id}
+                              className="flex items-center gap-2 px-2 py-1.5 rounded-lg group hover:bg-autronis-bg/30 transition-colors"
+                              title={r.beschrijving ?? r.naam}
+                            >
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                                isOverdue ? "bg-red-400" : "bg-amber-400"
+                              )} />
+                              <div className="flex-1 min-w-0">
+                                <div className={cn(
+                                  "text-[11px] font-medium",
+                                  isOverdue ? "text-red-300/80" : "text-amber-300/70"
+                                )}>
+                                  {r.naam}
+                                </div>
+                                <div className="text-[9px] text-autronis-text-secondary/40">
+                                  {r.dagenGeleden !== null ? `${r.dagenGeleden}d geleden` : "nooit gedaan"} · {freqLabel}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => markeerRoutineVoltooid(r.id)}
+                                className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center text-emerald-400 hover:bg-emerald-500/15 transition-all flex-shrink-0"
+                                title="Markeer als gedaan"
+                              >
+                                <Check className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 

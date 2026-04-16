@@ -873,6 +873,150 @@ export default function KlantDetailPage() {
       </motion.div>
       )}
 
+      {/* Uren tab */}
+      {activeTab === "uren" && (
+      <motion.div key="uren" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
+        <div className="space-y-6">
+          {/* Uren KPI cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-autronis-accent/10">
+                  <Clock className="w-4 h-4 text-autronis-accent" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal)}</p>
+              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totaal gelogd</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-purple-500/10">
+                  <Timer className="w-4 h-4 text-purple-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.klantUrenSessies}</p>
+              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Sessies</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10">
+                  <Euro className="w-4 h-4 text-emerald-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-emerald-400 tabular-nums">
+                {formatBedrag((kpis.klantUrenTotaal / 60) * (klant.uurtarief || 0))}
+              </p>
+              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Waarde (uren x tarief)</p>
+            </div>
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-2 rounded-xl bg-blue-500/10">
+                  <FolderKanban className="w-4 h-4 text-blue-400" />
+                </div>
+              </div>
+              <p className="text-2xl font-bold text-blue-400 tabular-nums">{klantUrenPerProject.length}</p>
+              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Projecten</p>
+            </div>
+          </div>
+
+          {/* Per project breakdown */}
+          {klantUrenPerProject.length > 0 && (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Uren per project</h2>
+              <div className="space-y-4">
+                {klantUrenPerProject
+                  .sort((a: KlantUrenPerProject, b: KlantUrenPerProject) => b.totaalMinuten - a.totaalMinuten)
+                  .map((pp: KlantUrenPerProject) => {
+                    const maxMin = Math.max(...klantUrenPerProject.map((p: KlantUrenPerProject) => p.totaalMinuten), 1);
+                    const pct = Math.max((pp.totaalMinuten / maxMin) * 100, 4);
+                    return (
+                      <div key={pp.projectId ?? "geen"} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-autronis-text-primary">
+                            {pp.projectNaam || "Geen project"}
+                          </span>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-autronis-text-secondary">{pp.aantalSessies} sessies</span>
+                            <span className="font-bold text-autronis-accent tabular-nums">{formatUren(pp.totaalMinuten)}</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-autronis-border rounded-full h-2">
+                          <motion.div
+                            className="bg-autronis-accent h-2 rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.6, ease: "easeOut" }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* Sessie log */}
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+            <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Sessie log</h2>
+            {klantUren.length === 0 ? (
+              <div className="text-center py-10">
+                <Clock className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+                <p className="text-base text-autronis-text-secondary">
+                  Nog geen uren gelogd voor deze klant.
+                </p>
+                <p className="text-sm text-autronis-text-secondary/60 mt-1">
+                  Uren worden automatisch bijgehouden wanneer Claude sessies eindigen.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {klantUren.map((uur: KlantUurEntry, i: number) => (
+                  <motion.div
+                    key={uur.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.03 }}
+                    className="bg-autronis-bg/50 rounded-xl p-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-autronis-text-primary">
+                            {formatDatumKort(uur.datum)}
+                          </span>
+                          {uur.projectNaam && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
+                              {uur.projectNaam}
+                            </span>
+                          )}
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                            uur.bron === "claude-sessie"
+                              ? "bg-purple-500/10 text-purple-400"
+                              : "bg-slate-500/10 text-slate-400"
+                          )}>
+                            {uur.bron === "claude-sessie" ? "Claude" : "Handmatig"}
+                          </span>
+                        </div>
+                        {uur.omschrijving && (
+                          <p className="text-sm text-autronis-text-secondary leading-relaxed">
+                            {uur.omschrijving}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-base font-bold text-autronis-text-primary tabular-nums flex-shrink-0">
+                        {formatUren(uur.duurMinuten)}
+                      </span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+      )}
+
       {/* Timeline tab */}
       {activeTab === "tijdlijn" && (
       <motion.div key="tijdlijn" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>

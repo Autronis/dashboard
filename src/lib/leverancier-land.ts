@@ -37,11 +37,17 @@ export function classificeerLeverancier(leverancier: string): "buiten_eu" | "bin
 }
 
 // Schat BTW bedrag op basis van leverancier-land.
-// buiten_eu/binnen_eu → €0 (geen NL BTW op factuur, verlegde BTW wordt
-// apart behandeld in de BTW-aangifte rubrieken).
-// binnenlands (null) → standaard 21% teruggerekend uit bedrag incl BTW.
+//
+//   buiten_eu  → altijd €0 (VS bedrijf factureerd nooit NL BTW)
+//   binnen_eu  → standaard 21% (ze kúnnen BTW rekenen als je geen VAT-nr
+//                hebt opgegeven — conservatief schatten is beter dan 0)
+//   binnenlands → standaard 21%
+//
+// De BTW-aangifte rubrieken (4a/4b/5b) gebruiken classificeerLeverancier()
+// apart om verlegde BTW correct te verwerken.
 export function schatBtwBedrag(bedragInclBtw: number, leverancier: string): number {
   const land = classificeerLeverancier(leverancier);
-  if (land !== null) return 0;
+  if (land === "buiten_eu") return 0;
+  // binnen_eu en binnenlands: schat 21%
   return Math.round((Math.abs(bedragInclBtw) / 1.21) * 0.21 * 100) / 100;
 }

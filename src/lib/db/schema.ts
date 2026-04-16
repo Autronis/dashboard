@@ -449,7 +449,7 @@ export const routines = sqliteTable("routines", {
   naam: text("naam").notNull(),
   beschrijving: text("beschrijving"),
   categorie: text("categorie", {
-    enum: ["security", "financieel", "infra", "kwaliteit", "admin"],
+    enum: ["security", "financieel", "infra", "kwaliteit", "admin", "creatief", "groei"],
   }).notNull(),
   frequentie: text("frequentie", {
     enum: ["wekelijks", "maandelijks", "per_kwartaal"],

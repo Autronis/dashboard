@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { eq, sql } from "drizzle-orm";
 
 type Frequentie = "wekelijks" | "maandelijks" | "per_kwartaal";
-type Categorie = "security" | "financieel" | "infra" | "kwaliteit" | "admin";
+type Categorie = "security" | "financieel" | "infra" | "kwaliteit" | "admin" | "creatief" | "groei";
 
 const SEED_ROUTINES: Array<{
   naam: string;
@@ -72,6 +72,62 @@ const SEED_ROUTINES: Array<{
     beschrijving: "Wat doen concurrenten? Nieuwe AI-automation tools op de markt? Pricing benchmark",
     categorie: "kwaliteit",
     frequentie: "per_kwartaal",
+  },
+  // ── Creatief ──
+  {
+    naam: "Content ideeën brainstorm",
+    beschrijving: "Verzamel 10 content ideeën: case studies, LinkedIn posts, video's, tutorials. Wat resoneert bij de doelgroep?",
+    categorie: "creatief",
+    frequentie: "wekelijks",
+  },
+  {
+    naam: "Portfolio & case study refresh",
+    beschrijving: "Zijn er nieuwe projecten die als case study kunnen? Bestaande case studies updaten met resultaten",
+    categorie: "creatief",
+    frequentie: "maandelijks",
+  },
+  {
+    naam: "AI tool scouting",
+    beschrijving: "Welke nieuwe AI tools/modellen zijn er? Iets dat we voor klanten of intern kunnen inzetten? Demo's proberen",
+    categorie: "creatief",
+    frequentie: "wekelijks",
+  },
+  {
+    naam: "Klant success stories verzamelen",
+    beschrijving: "Check bij actieve klanten: meetbare resultaten? Quotes voor testimonials? ROI data?",
+    categorie: "creatief",
+    frequentie: "maandelijks",
+  },
+  {
+    naam: "Interne workflow optimalisatie",
+    beschrijving: "Waar verliezen we tijd? Welk handmatig proces kan geautomatiseerd? Welke tool missen we?",
+    categorie: "creatief",
+    frequentie: "maandelijks",
+  },
+  // ── Groei ──
+  {
+    naam: "Lead pipeline review",
+    beschrijving: "Hoeveel leads in elke fase? Waar zit de bottleneck? Follow-ups nodig? Outreach strategie bijstellen",
+    categorie: "groei",
+    frequentie: "wekelijks",
+  },
+  {
+    naam: "Netwerk & partnerships check",
+    beschrijving: "Nieuwe partnerships mogelijk? Bestaande relaties onderhouden? Events/meetups gepland?",
+    categorie: "groei",
+    frequentie: "maandelijks",
+  },
+  {
+    naam: "Pricing & packaging evaluatie",
+    beschrijving: "Kloppen onze tarieven nog? Nieuwe packages nodig? Upsell mogelijkheden bij bestaande klanten?",
+    categorie: "groei",
+    frequentie: "per_kwartaal",
+  },
+  {
+    naam: "Kennis & skills development",
+    beschrijving: "Welke skills missen we? Cursussen/certificeringen nodig? YouTube research topics voor deze maand",
+    categorie: "groei",
+    frequentie: "maandelijks",
   },
 ];
 

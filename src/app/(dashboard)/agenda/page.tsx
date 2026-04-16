@@ -2265,17 +2265,17 @@ export default function AgendaPage() {
                         {plannenFilter !== "alle" ? "Geen taken voor dit filter" : "Alle taken zijn ingepland!"}
                       </p>
                       {plannenFilter === "alle" && (
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 px-2">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 px-2 mb-1.5">
                             <span className="text-[10px] font-semibold text-autronis-text-secondary/60 uppercase tracking-wider">Wat je nu kunt doen</span>
                           </div>
                           {[
-                            { tekst: "Lead opvolgen — bel of mail een prospect", kleur: "text-emerald-400/70", icon: "📞" },
-                            { tekst: "LinkedIn post schrijven over recent werk", kleur: "text-blue-400/70", icon: "✍️" },
-                            { tekst: "Offerte opstellen voor openstaande lead", kleur: "text-amber-400/70", icon: "📄" },
-                            { tekst: "Portfolio/case study bijwerken", kleur: "text-purple-400/70", icon: "🎨" },
-                            { tekst: "Netwerken — connecties leggen op LinkedIn", kleur: "text-cyan-400/70", icon: "🤝" },
-                            { tekst: "Content plannen — blog, video, social media", kleur: "text-pink-400/70", icon: "📱" },
+                            { tekst: "Lead opvolgen — bel of mail een prospect", kleur: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", Icon: Phone },
+                            { tekst: "LinkedIn post schrijven over recent werk", kleur: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", Icon: PenLine },
+                            { tekst: "Offerte opstellen voor openstaande lead", kleur: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20", Icon: FileText },
+                            { tekst: "Portfolio/case study bijwerken", kleur: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", Icon: Palette },
+                            { tekst: "Netwerken — connecties leggen op LinkedIn", kleur: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20", Icon: Handshake },
+                            { tekst: "Content plannen — blog, video, social media", kleur: "text-pink-400", bg: "bg-pink-500/10", border: "border-pink-500/20", Icon: Megaphone },
                           ].map((s) => (
                             <button
                               key={s.tekst}
@@ -2290,11 +2290,12 @@ export default function AgendaPage() {
                                 setHeleDag(false);
                                 setModalOpen(true);
                               }}
-                              className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-autronis-accent/10 transition-colors w-full text-left group"
+                              className="flex items-center gap-2.5 px-2 py-2 rounded-lg border border-transparent hover:border-autronis-border/40 hover:bg-autronis-bg/40 transition-all w-full text-left group"
                             >
-                              <span className="text-xs">{s.icon}</span>
-                              <span className={`text-xs ${s.kleur} group-hover:text-autronis-accent transition-colors`}>{s.tekst}</span>
-                              <span className="text-[9px] text-autronis-text-secondary/30 ml-auto hidden group-hover:inline">+ inplannen</span>
+                              <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0", s.bg, "border", s.border)}>
+                                <s.Icon className={cn("w-3 h-3", s.kleur)} />
+                              </div>
+                              <span className="text-[11px] text-autronis-text-secondary group-hover:text-autronis-text-primary transition-colors leading-tight">{s.tekst}</span>
                             </button>
                           ))}
                         </div>

@@ -822,10 +822,32 @@ export const aiGesprekken = sqliteTable("ai_gesprekken", {
 });
 
 // ============ MODULE 6: SALES ============
-// Proposals zijn samengevoegd met offertes (fase 4 Project Intake Flow).
-// Het oude proposals + proposal_regels schema is verwijderd; de Turso tabellen
-// blijven ongebruikt achter en kunnen later gedropt worden — beide waren leeg
-// bij de merge, dus geen data-migratie nodig.
+// Proposals — deck-based proposal system met slides, DemoMode en PDF generatie
+export const proposals = sqliteTable("proposals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  klantId: integer("klant_id").references(() => klanten.id),
+  titel: text("titel").notNull(),
+  status: text("status", { enum: ["concept", "verzonden", "bekeken", "ondertekend", "afgewezen"] }).default("concept"),
+  secties: text("secties").default("[]"),
+  totaalBedrag: real("totaal_bedrag").default(0),
+  geldigTot: text("geldig_tot"),
+  token: text("token").unique(),
+  ondertekendOp: text("ondertekend_op"),
+  ondertekendDoor: text("ondertekend_door"),
+  ondertekening: text("ondertekening"),
+  aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+export const proposalRegels = sqliteTable("proposal_regels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  proposalId: integer("proposal_id").references(() => proposals.id, { onDelete: "cascade" }),
+  omschrijving: text("omschrijving").notNull(),
+  aantal: real("aantal").notNull(),
+  eenheidsprijs: real("eenheidsprijs").notNull(),
+  totaal: real("totaal"),
+});
 
 export const klanttevredenheid = sqliteTable("klanttevredenheid", {
   id: integer("id").primaryKey({ autoIncrement: true }),

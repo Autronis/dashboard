@@ -303,6 +303,35 @@ export default function LeadsWebsiteLeadsPage() {
         })}
       </div>
 
+      {/* Website check filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/60 font-semibold">
+          Website check:
+        </span>
+        {(
+          [
+            { key: "alle", label: "Alle" },
+            { key: "verified_geen", label: `Verified geen website (${websiteCounts.verified})` },
+            { key: "heeft_website", label: `Heeft website (${websiteCounts.heeftWebsite})` },
+            { key: "niet_gecheckt", label: `Niet gecheckt (${websiteCounts.nietGecheckt})` },
+          ] as const
+        ).map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setWebsiteFilter(f.key)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+              websiteFilter === f.key
+                ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
+                : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+            )}
+          >
+            {f.key === "verified_geen" && <Filter className="w-3 h-3" />}
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Zoek */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
@@ -367,6 +396,16 @@ export default function LeadsWebsiteLeadsPage() {
                       >
                         {STATUS_OPTIONS.find((s) => s.value === lead.status)?.label || lead.status}
                       </span>
+                      {lead.website_confidence && CONFIDENCE_BADGE[lead.website_confidence] && (() => {
+                        const badge = CONFIDENCE_BADGE[lead.website_confidence!];
+                        const Icon = badge.icon;
+                        return (
+                          <span className={cn("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium", badge.style)}>
+                            <Icon className="w-2.5 h-2.5" />
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                       {lead.rating != null && (
                         <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400">
                           <Star className="w-2.5 h-2.5 fill-amber-400" />
@@ -394,6 +433,25 @@ export default function LeadsWebsiteLeadsPage() {
 
                 {expanded && (
                   <div className="border-t border-autronis-border bg-autronis-bg/40 p-4 space-y-3">
+                    {/* Website check resultaat */}
+                    {lead.website_url && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                        <Globe className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div className="min-w-0">
+                          <span className="text-[10px] uppercase tracking-wide text-emerald-400/70 font-medium">Gevonden website</span>
+                          <a
+                            href={lead.website_url.startsWith("http") ? lead.website_url : `https://${lead.website_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-sm text-emerald-300 hover:text-emerald-200 truncate"
+                          >
+                            {lead.website_url.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                            <ExternalLink className="w-3 h-3 inline ml-1" />
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Contact info */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {lead.phone && (

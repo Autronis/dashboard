@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink, Upload, Loader2, Lock } from "lucide-react";
+import { X, Receipt, Calendar, Building2, Tag, CheckCircle2, Circle, AlertCircle, FileText, Paperclip, ExternalLink, Upload, Loader2, Lock, Globe } from "lucide-react";
+import { classificeerLeverancier } from "@/lib/leverancier-land";
 import { useQueryClient } from "@tanstack/react-query";
 import type { FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { useToast } from "@/hooks/use-toast";
@@ -199,16 +200,40 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
               </div>
 
               {/* Amount */}
-              <div className="text-center py-6 bg-autronis-bg rounded-xl">
-                <p className={cn("text-4xl font-bold tabular-nums", transactie.type === "bij" ? "text-emerald-400" : "text-autronis-text-primary")}>
-                  {transactie.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(transactie.bedrag))}
-                </p>
-                {transactie.btwBedrag != null && transactie.btwBedrag > 0 && (
-                  <p className="text-xs text-autronis-text-secondary mt-2">
-                    BTW: {formatEuro(transactie.btwBedrag)}
-                  </p>
-                )}
-              </div>
+              {(() => {
+                const leverancierNaam = transactie.merchantNaam ?? transactie.omschrijving ?? "";
+                const landClassificatie = classificeerLeverancier(leverancierNaam);
+                return (
+                  <>
+                    <div className="text-center py-6 bg-autronis-bg rounded-xl">
+                      <p className={cn("text-4xl font-bold tabular-nums", transactie.type === "bij" ? "text-emerald-400" : "text-autronis-text-primary")}>
+                        {transactie.type === "bij" ? "+" : "−"}{formatEuro(Math.abs(transactie.bedrag))}
+                      </p>
+                      {transactie.btwBedrag != null && transactie.btwBedrag > 0 && (
+                        <p className="text-xs text-autronis-text-secondary mt-2">
+                          BTW: {formatEuro(transactie.btwBedrag)}
+                        </p>
+                      )}
+                      {landClassificatie === "buiten_eu" && transactie.type === "af" && (
+                        <p className="text-[11px] text-blue-400/80 mt-1">Buiten EU — geen NL BTW, verlegde BTW bij aangifte</p>
+                      )}
+                    </div>
+
+                    {landClassificatie === "binnen_eu" && transactie.type === "af" && (
+                      <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3">
+                        <Globe className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-[11px] text-autronis-text-secondary">
+                          <p className="font-semibold text-amber-400 mb-0.5">Binnen-EU leverancier</p>
+                          <p>
+                            Heb je je BTW-nummer opgegeven bij {leverancierNaam.split(" ")[0]}? Dan factureren ze 0% (reverse charge)
+                            en kun je de BTW hier op €0 zetten. Zonder BTW-nummer rekenen ze gewoon 21%.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Main info */}
               <div className="space-y-3">

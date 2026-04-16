@@ -98,7 +98,7 @@ export async function requireAuthOrApiKey(req: NextRequest): Promise<SessionGebr
     return await requireAuth();
   } catch {
     const gebruikerId = await requireApiKey(req);
-    return { id: gebruikerId, naam: gebruikerId === 1 ? "Sem Gijsberts" : "Syb", email: "", rol: "admin", themaVoorkeur: null };
+    return { id: gebruikerId, naam: gebruikerId === 1 ? "Sem Gijsberts" : "Syb", email: "", rol: "admin", themaVoorkeur: null, avatarUrl: null };
   }
 }
 

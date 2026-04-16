@@ -17,6 +17,7 @@ interface TopProject {
 interface UserOverzicht {
   id: number;
   naam: string;
+  avatarUrl: string | null;
   urenDezeWeek: number;
   urenVorigeWeek: number;
   autronisUren: number;
@@ -47,7 +48,9 @@ const AVATAR_COLORS: Record<number, string> = {
   2: "from-blue-500 to-blue-700",
 };
 
-const AVATAR_PHOTOS: Record<number, string> = {
+// Avatar photos komen nu uit de database (gebruikers.avatar_url)
+// Fallback op hardcoded mapping voor backwards-compat tot alle users een avatar_url hebben
+const AVATAR_PHOTOS_FALLBACK: Record<number, string> = {
   1: "/foto-sem.jpg",
   2: "/foto-syb.jpg",
 };
@@ -129,7 +132,7 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
   const urenDelta = Math.round((user.urenDezeWeek - user.urenVorigeWeek) * 10) / 10;
   const heeftUren = user.urenDezeWeek > 0;
   const avatarGradient = AVATAR_COLORS[user.id] ?? "from-slate-500 to-slate-700";
-  const avatarPhoto = AVATAR_PHOTOS[user.id];
+  const avatarPhoto = user.avatarUrl ?? AVATAR_PHOTOS_FALLBACK[user.id];
 
   return (
     <motion.div

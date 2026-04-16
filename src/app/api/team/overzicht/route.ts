@@ -155,6 +155,7 @@ export async function GET(_req: NextRequest) {
         return {
           id: user.id,
           naam: user.naam,
+          avatarUrl: user.avatarUrl ?? null,
           urenDezeWeek,
           urenVorigeWeek,
           autronisUren,

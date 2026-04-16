@@ -461,17 +461,18 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Actions footer */}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-autronis-border/30">
+                {/* Actions footer — sticky onderaan zodat knoppen altijd bereikbaar zijn */}
+                <div className="sticky bottom-0 bg-autronis-card flex items-center justify-between gap-2 pt-3 pb-1 border-t border-autronis-border/30 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
                   <button
-                    onClick={() => {
-                      if (confirm(`Taak "${taak.titel}" verwijderen?`)) {
-                        deleteMutation.mutate();
-                      }
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                    onClick={() => deleteMutation.mutate()}
+                    disabled={deleteMutation.isPending}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    {deleteMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5" />
+                    )}
                     Verwijder
                   </button>
                   <Link

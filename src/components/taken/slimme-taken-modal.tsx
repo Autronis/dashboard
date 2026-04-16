@@ -38,13 +38,17 @@ const CLUSTER_KLEUR: Record<string, { bg: string; text: string; border: string }
 
 const DAG_LABELS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 
-export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
+export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preSelectedSlug }: {
   open: boolean;
   onClose: () => void;
   onCreated?: () => void;
   /** ISO datum (YYYY-MM-DD). Als gezet wordt de taak direct gepland op
    *  09:00 van die dag. Gebruikt vanuit /agenda "Slimme taak" knop. */
   ingeplandVoor?: string;
+  /** Als gezet, springt de modal direct naar form mode voor deze template.
+   *  Gebruikt vanuit /agenda sidebar wanneer een specifieke template
+   *  wordt aangeklikt. */
+  preSelectedSlug?: string;
 }) {
   const { addToast } = useToast();
   const [templates, setTemplates] = useState<SlimmeTaakTemplate[]>([]);
@@ -105,8 +109,25 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor }: {
 
   useEffect(() => {
     if (!open) return;
-    loadTemplates();
-  }, [open, loadTemplates]);
+    loadTemplates().then(() => {
+      // Als preSelectedSlug is meegegeven, auto-select die template
+      if (preSelectedSlug) {
+        // templates state is nog niet geüpdate op dit punt,
+        // dus we doen de lookup in de volgende tick
+        setTimeout(() => {
+          setTemplates((prev) => {
+            const match = prev.find((t) => t.slug === preSelectedSlug);
+            if (match) {
+              setSelected(match);
+              setVeldWaarden({});
+              setMode("form");
+            }
+            return prev;
+          });
+        }, 0);
+      }
+    });
+  }, [open, loadTemplates, preSelectedSlug]);
 
   useEffect(() => {
     if (!open) {

@@ -169,7 +169,19 @@ Regels:
         .where(eq(projectIntakes.id, intake.id));
     }
 
-    // 4. Refetch final intake state and build response
+    // 4. Fire-and-forget: genereer slimme taken suggesties voor dit project
+    if (project) {
+      const cronSecret = process.env.CRON_SECRET;
+      const suggestUrl = new URL("/api/cron/slimme-taken-suggest", req.url);
+      suggestUrl.searchParams.set("bron", `project:${naam}`);
+      suggestUrl.searchParams.set("projectContext", `${naam}: ${klantConcept}`);
+      suggestUrl.searchParams.set("aantal", "3");
+      fetch(suggestUrl.toString(), {
+        headers: cronSecret ? { authorization: `Bearer ${cronSecret}` } : {},
+      }).catch(() => {});
+    }
+
+    // 5. Refetch final intake state and build response
     const [finalIntake] = await db
       .select()
       .from(projectIntakes)

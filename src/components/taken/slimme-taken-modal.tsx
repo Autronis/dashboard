@@ -144,6 +144,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       const res = await fetch("/api/taken/slim");
       const data = await res.json();
       setTemplates(data.templates ?? []);
+      setPersistedSuggesties(data.suggesties ?? []);
     } catch {
       addToast("Kon templates niet laden", "fout");
     } finally {
@@ -419,6 +420,32 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
     }
   }
 
+  async function handleAcceptSuggestie(dbId: number) {
+    try {
+      const res = await fetch(`/api/taken/slim/templates/${dbId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActief: 1 }),
+      });
+      if (!res.ok) throw new Error("Accepteren mislukt");
+      addToast("Template toegevoegd", "succes");
+      setPersistedSuggesties((curr) => curr.filter((s) => s.dbId !== dbId));
+      await loadTemplates();
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Fout", "fout");
+    }
+  }
+
+  async function handleDismissSuggestie(dbId: number) {
+    try {
+      const res = await fetch(`/api/taken/slim/templates/${dbId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Verwijderen mislukt");
+      setPersistedSuggesties((curr) => curr.filter((s) => s.dbId !== dbId));
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Fout", "fout");
+    }
+  }
+
   function startEdit(template: SlimmeTaakTemplate) {
     setSelected(template);
     setFormData({
@@ -532,7 +559,63 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                   </div>
                 )}
 
-                {/* BROWSE mode — grid van templates */}
+                {/* BROWSE mode — suggesties + grid van templates */}
+                {!loading && mode === "browse" && persistedSuggesties.length > 0 && (
+                  <div className="mb-4 space-y-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="text-xs font-semibold text-amber-300">
+                        {persistedSuggesties.length} nieuwe suggesties
+                      </span>
+                      <span className="text-[10px] text-amber-400/50 ml-auto">
+                        {persistedSuggesties[0]?.bron === "weekly-cron" ? "wekelijks" : persistedSuggesties[0]?.bron?.replace("project:", "") ?? ""}
+                      </span>
+                    </div>
+                    {persistedSuggesties.map((s) => {
+                      const cfg = CLUSTER_KLEUR[s.cluster] ?? CLUSTER_KLEUR.admin;
+                      return (
+                        <div
+                          key={s.dbId}
+                          className="rounded-lg border border-autronis-border/60 bg-autronis-bg/40 p-2.5 flex items-start gap-2"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <h4 className="text-xs font-semibold text-autronis-text-primary truncate">
+                                {s.naam}
+                              </h4>
+                              <span className={cn("text-[9px] px-1.5 py-0.5 rounded-full border flex-shrink-0", cfg.bg, cfg.text, cfg.border)}>
+                                {s.cluster}
+                              </span>
+                              <span className="text-[9px] text-autronis-text-secondary/60 tabular-nums flex-shrink-0">
+                                {s.geschatteDuur}m
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-autronis-text-secondary line-clamp-2">
+                              {s.beschrijving}
+                            </p>
+                          </div>
+                          <div className="flex flex-col gap-1 flex-shrink-0">
+                            <button
+                              onClick={() => handleAcceptSuggestie(s.dbId)}
+                              className="p-1.5 rounded text-amber-400 hover:bg-amber-500/15 transition-colors"
+                              title="Toevoegen"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDismissSuggestie(s.dbId)}
+                              className="p-1.5 rounded text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Verwerpen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {!loading && mode === "browse" && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {templates.map((t) => {

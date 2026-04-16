@@ -853,6 +853,22 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`);
 
+  // Klant-uren: automatische urenregistratie per Claude sessie
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS klant_uren (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant_id INTEGER NOT NULL REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    datum TEXT NOT NULL,
+    duur_minuten INTEGER NOT NULL,
+    omschrijving TEXT,
+    bron TEXT DEFAULT 'claude-sessie',
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_klant_id ON klant_uren(klant_id)");
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_project_id ON klant_uren(project_id)");
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_datum ON klant_uren(datum)");
+
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });
 }

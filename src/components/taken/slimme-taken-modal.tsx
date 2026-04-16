@@ -261,9 +261,13 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Aanmaken mislukt");
       const suffix = ingeplandVoor ? ` en gepland om ${startTijd}` : "";
-      addToast(`Slimme taak "${data.taak.titel}" aangemaakt${suffix}`, "succes");
+      addToast(`"${data.taak.titel}" toegevoegd${suffix}`, "succes");
       onCreated?.();
-      onClose();
+      // Blijf in de modal, ga terug naar browse
+      setSelected(null);
+      setVeldWaarden({});
+      setAiResult(null);
+      setMode("browse");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Aanmaken mislukt", "fout");
     } finally {

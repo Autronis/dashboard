@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     // Probeer beide tabellen — LinkedIn (`leads`) is waar Syb's data nu in zit,
     // Google Maps (`google_maps_leads`) is voor de toekomst. Ids zijn uniek per
     // tabel dus we kunnen ze los vragen en mergen.
-    const [linkedinRes, gmapsRes] = await Promise.all([
+    const [linkedinRes, gmapsRes, websiteRes] = await Promise.all([
       supabase
         .from("leads")
         .select("id, name, website, location, search_term")
@@ -45,6 +45,10 @@ export async function POST(req: NextRequest) {
         .from("google_maps_leads")
         .select("id, name, website, location, address, category")
         .eq("user_id", SYB_USER_ID)
+        .in("id", leadIds),
+      supabase
+        .from("website_leads")
+        .select("id, name, address, city, category, has_website, website_url, website_confidence")
         .in("id", leadIds),
     ]);
 
@@ -60,12 +64,15 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+    if (websiteRes.error) {
+      return NextResponse.json(
+        { fout: `Supabase error (website_leads): ${websiteRes.error.message}` },
+        { status: 500 }
+      );
+    }
 
     const byId = new Map<string, PrepLeadInput>();
     for (const row of linkedinRes.data ?? []) {
-      // LinkedIn leads hebben geen `category` of `address`, maar wel
-      // `search_term` (de query waarmee Syb ze vond, bv. "bouwbedrijven utrecht")
-      // — dat is genoeg signaal voor de sector-fit classifier.
       byId.set(row.id, {
         id: row.id,
         name: row.name,
@@ -83,6 +90,22 @@ export async function POST(req: NextRequest) {
         location: row.location,
         address: row.address,
         category: row.category,
+      });
+    }
+    for (const row of websiteRes.data ?? []) {
+      // website_leads hebben Syb's SERP data direct op de rij
+      byId.set(row.id, {
+        id: row.id,
+        name: row.name,
+        website: row.website_url,
+        location: row.city,
+        address: row.address,
+        category: row.category,
+        sybSerp: {
+          hasWebsite: row.has_website,
+          websiteUrl: row.website_url,
+          confidence: row.website_confidence,
+        },
       });
     }
 

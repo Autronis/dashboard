@@ -13,6 +13,12 @@ import { scrapePage, ScrapeError, type ScrapeSource } from "./scraper";
 import { classifyFit, type FitResult } from "./lead-rebuild-fit";
 import { getSupabaseLeads } from "./supabase-leads";
 
+export type SybSerpData = {
+  hasWebsite: boolean | null;
+  websiteUrl: string | null;
+  confidence: string | null;
+};
+
 export type PrepLeadInput = {
   id: string;
   name: string | null;
@@ -20,6 +26,7 @@ export type PrepLeadInput = {
   location: string | null;
   address: string | null;
   category: string | null;
+  sybSerp?: SybSerpData | null;
 };
 
 export type SerpCheck = {
@@ -238,71 +245,39 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
     };
   }
 
-  // ── Mode B: no website → check Syb's website_leads SERP data ──
+  // ── Mode B: no website → gebruik Syb's SERP data als beschikbaar ──
+  // PrepLeadInput kan een sybSerp veld bevatten als de lead uit website_leads
+  // komt (daar is de SERP check al gedaan). Voor LinkedIn leads zonder
+  // website is er geen SERP data beschikbaar.
   let serp: SerpCheck;
 
-  if (!name) {
+  const sybData = lead.sybSerp;
+  if (sybData) {
+    if (sybData.hasWebsite && sybData.websiteUrl) {
+      serp = {
+        ran: true,
+        verdict: "site_found",
+        foundUrl: sybData.websiteUrl,
+        candidates: [],
+        note: `Syb's SERP: website gevonden (confidence: ${sybData.confidence || "unknown"})`,
+      };
+    } else {
+      serp = {
+        ran: true,
+        verdict: "no_site",
+        foundUrl: null,
+        candidates: [],
+        note: `Syb's SERP: bevestigd geen website (confidence: ${sybData.confidence || "NONE"})`,
+      };
+    }
+  } else {
     serp = {
       ran: false,
       verdict: "skipped",
       foundUrl: null,
       candidates: [],
-      note: "Geen bedrijfsnaam — SERP-check overgeslagen",
+      note: "Geen SERP data beschikbaar voor deze lead",
     };
-  } else {
-    // Kijk of Syb deze lead al gecheckt heeft in website_leads
-    // (hij draait SERP checks via zijn eigen pipeline en slaat resultaat op)
-    try {
-      const supabase = getSupabaseLeads();
-      const { data: match } = await supabase
-        .from("website_leads")
-        .select("has_website, website_url, website_confidence")
-        .ilike("name", name)
-        .limit(1)
-        .maybeSingle();
-
-      if (match && match.has_website === true && match.website_url) {
-        serp = {
-          ran: true,
-          verdict: "site_found",
-          foundUrl: match.website_url,
-          candidates: [],
-          note: `Syb's SERP: website gevonden (confidence: ${match.website_confidence || "unknown"})`,
-        };
-      } else if (match && match.has_website === false) {
-        serp = {
-          ran: true,
-          verdict: "no_site",
-          foundUrl: null,
-          candidates: [],
-          note: `Syb's SERP: bevestigd geen website (confidence: ${match.website_confidence || "NONE"})`,
-        };
-      } else if (match) {
-        serp = {
-          ran: true,
-          verdict: "no_site",
-          foundUrl: null,
-          candidates: [],
-          note: "Syb's SERP: gecheckt, geen website gevonden",
-        };
-      } else {
-        serp = {
-          ran: false,
-          verdict: "skipped",
-          foundUrl: null,
-          candidates: [],
-          note: "Niet gevonden in Syb's website_leads — nog niet gecheckt",
-        };
-      }
-    } catch {
-      serp = {
-        ran: false,
-        verdict: "skipped",
-        foundUrl: null,
-        candidates: [],
-        note: "Kon website_leads tabel niet bereiken",
-      };
-    }
   }
 
   const prompt = buildFreshPrompt({

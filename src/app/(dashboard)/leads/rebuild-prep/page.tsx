@@ -75,9 +75,10 @@ export default function LeadsRebuildPrepPage() {
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const [linkedinRes, gmapsRes] = await Promise.all([
+      const [linkedinRes, gmapsRes, websiteRes] = await Promise.all([
         fetch("/api/leads"),
         fetch("/api/leads/google-maps"),
+        fetch("/api/leads/website-leads"),
       ]);
       if (!linkedinRes.ok) {
         const body = await linkedinRes.json().catch(() => ({}));
@@ -87,8 +88,13 @@ export default function LeadsRebuildPrepPage() {
         const body = await gmapsRes.json().catch(() => ({}));
         throw new Error(body.fout || `Google Maps leads HTTP ${gmapsRes.status}`);
       }
+      if (!websiteRes.ok) {
+        const body = await websiteRes.json().catch(() => ({}));
+        throw new Error(body.fout || `Website leads HTTP ${websiteRes.status}`);
+      }
       const linkedinData = await linkedinRes.json();
       const gmapsData = await gmapsRes.json();
+      const websiteData = await websiteRes.json();
 
       const linkedinLeads: UnifiedLead[] = (linkedinData.leads ?? []).map(
         (l: LinkedinLeadRow): UnifiedLead => ({
@@ -119,7 +125,40 @@ export default function LeadsRebuildPrepPage() {
         })
       );
 
-      const merged = [...linkedinLeads, ...gmapsLeads].sort((a, b) =>
+      interface WebsiteLeadRow {
+        id: string;
+        name: string;
+        address: string | null;
+        city: string | null;
+        category: string | null;
+        has_website: boolean | null;
+        website_url: string | null;
+        website_confidence: string | null;
+        google_maps_url: string | null;
+        created_at: string;
+      }
+
+      const websiteLeads: UnifiedLead[] = (websiteData.leads ?? []).map(
+        (l: WebsiteLeadRow): UnifiedLead => ({
+          id: l.id,
+          source: "google_maps",
+          name: l.name,
+          website: l.website_url,
+          location: l.city,
+          address: l.address,
+          categoryLabel: l.category,
+          externalUrl: l.google_maps_url,
+          folder: null,
+          created_at: l.created_at,
+          sybSerp: l.has_website != null ? {
+            hasWebsite: l.has_website,
+            websiteUrl: l.website_url,
+            confidence: l.website_confidence,
+          } : undefined,
+        })
+      );
+
+      const merged = [...linkedinLeads, ...gmapsLeads, ...websiteLeads].sort((a, b) =>
         (b.created_at || "").localeCompare(a.created_at || "")
       );
       setLeads(merged);

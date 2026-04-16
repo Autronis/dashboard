@@ -630,7 +630,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                           >
                             {DUUR_OPTIES.map((d) => (
                               <option key={d} value={d}>
-                                {d >= 60 ? `${d / 60}u${d % 60 ? ` ${d % 60}m` : ""}` : `${d} min`}
+                                {d >= 60 ? `${Math.floor(d / 60)}u${d % 60 ? ` ${d % 60}m` : ""}` : `${d} min`}
                               </option>
                             ))}
                           </select>

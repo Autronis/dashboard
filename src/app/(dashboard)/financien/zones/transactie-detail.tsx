@@ -37,6 +37,7 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
   const [savingEigenaar, setSavingEigenaar] = useState(false);
   const [openingBon, setOpeningBon] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   async function openBon(pad: string) {
     setOpeningBon(true);

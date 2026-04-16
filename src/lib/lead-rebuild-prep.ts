@@ -9,9 +9,9 @@
 //
 // Sector-fit classification (scroll_stop vs static_upgrade) runs for both modes.
 
-import { searchWeb, type SearchResult } from "./firecrawl";
 import { scrapePage, ScrapeError, type ScrapeSource } from "./scraper";
 import { classifyFit, type FitResult } from "./lead-rebuild-fit";
+import { getSupabaseLeads } from "./supabase-leads";
 
 export type PrepLeadInput = {
   id: string;

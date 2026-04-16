@@ -31,6 +31,7 @@ import {
   Palette,
   Handshake,
   Megaphone,
+  CheckCircle2,
 } from "lucide-react";
 import { SlimmeTakenModal } from "@/components/taken/slimme-taken-modal";
 import { cn, formatDatum } from "@/lib/utils";
@@ -236,9 +237,12 @@ export default function AgendaPage() {
   const { data: externeEvents = [] } = useExterneEvents(jaar, maand);
   const { data: deadlineEvents = [] } = useDeadlineEvents(jaar, maand);
   const { data: kalenders = [] } = useExterneKalenders();
-  const { data: agendaTaken = [] } = useAgendaTaken();
+  const { data: agendaTakenData } = useAgendaTaken();
+  const agendaTaken = agendaTakenData?.taken ?? [];
+  const recentAfgerond = agendaTakenData?.recentAfgerond ?? [];
   const planTaak = usePlanTaak();
   const unplanTaak = useUnplanTaak();
+  const undoAfgerond = useUndoAfgerond();
   const uitplannenAlle = useUitplannenAlle();
   const [planModalTaak, setPlanModalTaak] = useState<AgendaTaak | null>(null);
   const [planPrefillDatum, setPlanPrefillDatum] = useState<string | undefined>();
@@ -2544,6 +2548,53 @@ export default function AgendaPage() {
                       )}
                     </div>
 
+                  )}
+
+                  {/* ── Recent afgerond (laatste 24u) ── */}
+                  {recentAfgerond.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-autronis-border/30">
+                      <div className="flex items-center gap-2 px-1 mb-2">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400/60 flex-shrink-0" />
+                        <span className="text-[10px] font-semibold text-autronis-text-secondary/50 uppercase tracking-wider flex-1">
+                          Recent afgerond
+                        </span>
+                        <span className="text-[10px] tabular-nums text-autronis-text-secondary/40 flex-shrink-0">
+                          {recentAfgerond.length}
+                        </span>
+                      </div>
+                      <div className="space-y-0.5 px-1">
+                        {recentAfgerond.map((t) => (
+                          <div
+                            key={t.id}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-lg group hover:bg-autronis-bg/30 transition-colors"
+                          >
+                            <CheckCircle2 className="w-3 h-3 text-emerald-400/40 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[11px] text-autronis-text-secondary/60 line-through decoration-autronis-text-secondary/30">
+                                {t.titel}
+                              </div>
+                              {t.projectNaam && (
+                                <div className="text-[9px] text-autronis-text-secondary/40">
+                                  {t.projectNaam}
+                                </div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => {
+                                undoAfgerond.mutate(t.id, {
+                                  onSuccess: () => addToast(`"${t.titel}" teruggezet naar open`, "succes"),
+                                  onError: () => addToast("Kon niet ongedaan maken", "fout"),
+                                });
+                              }}
+                              className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 text-[9px] font-medium text-amber-400 hover:bg-amber-500/10 rounded transition-all flex-shrink-0"
+                              title="Zet terug naar open"
+                            >
+                              Undo
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </motion.div>
               )}

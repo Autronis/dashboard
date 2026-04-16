@@ -786,12 +786,16 @@ function TakenPage() {
   }, [taken]);
 
   // Cluster claims: voor elk (projectId, cluster) tuple de user die
-  // momenteel een bezig-taak in dat cluster heeft. GroupKey = cluster —
-  // fase is NIET de fallback want één fase kan meerdere clusters bevatten
-  // die niet per se door dezelfde persoon horen uitgevoerd te worden.
+  // momenteel een bezig-taak in dat cluster heeft. Primair op cluster,
+  // met fase als fallback voor projecten waar nog geen clusters zijn
+  // toegekend (#104435). De fallback is een zwakker signaal — één fase
+  // kan meerdere clusters bevatten — maar geeft alsnog een soft-lock
+  // warning die de user kan overrulen via confirm.
   function groupKeyFor(taak: Taak): string | null {
-    if (!taak.projectId || !taak.cluster) return null;
-    return `${taak.projectId}:${taak.cluster}`;
+    if (!taak.projectId) return null;
+    if (taak.cluster) return `${taak.projectId}:c:${taak.cluster}`;
+    if (taak.fase) return `${taak.projectId}:f:${taak.fase}`;
+    return null;
   }
 
   const clusterClaims = useMemo(() => {
@@ -799,6 +803,9 @@ function TakenPage() {
       string,
       { userId: number; userName: string; groupLabel: string }
     >();
+    // Cluster-keys hebben prioriteit: een latere fase-claim mag een
+    // bestaande cluster-claim niet overschrijven binnen hetzelfde
+    // (project, X) omdat clusters specifieker zijn.
     for (const t of taken) {
       const key = groupKeyFor(t);
       if (!key || !t.toegewezenAanId) continue;
@@ -807,7 +814,7 @@ function TakenPage() {
         claims.set(key, {
           userId: t.toegewezenAanId,
           userName: t.toegewezenAanNaam?.split(" ")[0] ?? "iemand anders",
-          groupLabel: t.cluster ?? "",
+          groupLabel: t.cluster ?? t.fase ?? "",
         });
       }
     }

@@ -53,10 +53,17 @@ export async function PUT(
         // niet expliciet aan de huidige user is toegewezen via eerdere
         // body fields.
         if (body.toegewezenAan === undefined) {
-          const historisch = await inferClusterOwner(huidig.projectId, geclassificeerd);
+          const historisch = await inferClusterOwner(huidig.projectId, geclassificeerd, huidig.fase);
           if (historisch && historisch !== gebruiker.id) {
             body.toegewezenAan = historisch;
           }
+        }
+      } else if (body.toegewezenAan === undefined && huidig.fase) {
+        // AI classify faalde — val terug op fase-based ownership lookup
+        // (#104434). Beter dan niemand toewijzen.
+        const historisch = await inferClusterOwner(huidig.projectId, null, huidig.fase);
+        if (historisch && historisch !== gebruiker.id) {
+          body.toegewezenAan = historisch;
         }
       }
     }

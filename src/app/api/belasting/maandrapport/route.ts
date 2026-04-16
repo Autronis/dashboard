@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankTransacties, verdeelRegels, openstaandeVerrekeningen } from "@/lib/db/schema";
+import { bankTransacties, inkomendeFacturen, verdeelRegels, openstaandeVerrekeningen } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq, and, gte, lte, sql, or, isNull, ne } from "drizzle-orm";
 import { BORG_CONFIG } from "@/lib/borg-config";
+import { VERMOGEN_CATEGORIE } from "@/lib/vermogensstorting";
 
 interface RapportItem {
   id: number;
@@ -99,7 +100,12 @@ export async function GET(req: NextRequest) {
     const lastDay = new Date(jaar, maandNr, 0).getDate();
     const maandEind = `${maandParam}-${String(lastDay).padStart(2, "0")}`;
 
-    // Fetch bank transactions for the month (type = "af" = expenses)
+    // Fetch bank transactions for the month (type = "af" = expenses).
+    // Consistent met /api/belasting/winst-verlies en /api/financien/btw-kwartaal:
+    // - prive uitgaven uitsluiten (fiscaalType = 'prive')
+    // - vermogensstortingen uitsluiten (categorie = VERMOGEN_CATEGORIE)
+    // - tx gekoppeld aan een inkomende factuur die al verwerkt is in een
+    //   eerdere BTW-aangifte uitsluiten (anders double-count)
     const transacties = await db
       .select()
       .from(bankTransacties)
@@ -107,6 +113,9 @@ export async function GET(req: NextRequest) {
         eq(bankTransacties.type, "af"),
         gte(bankTransacties.datum, maandStart),
         lte(bankTransacties.datum, maandEind),
+        or(isNull(bankTransacties.fiscaalType), ne(bankTransacties.fiscaalType, "prive")),
+        or(isNull(bankTransacties.categorie), ne(bankTransacties.categorie, VERMOGEN_CATEGORIE)),
+        sql`NOT EXISTS (SELECT 1 FROM ${inkomendeFacturen} WHERE ${inkomendeFacturen.bankTransactieId} = ${bankTransacties.id} AND ${inkomendeFacturen.verwerktInAangifte} IS NOT NULL)`,
       ))
       .orderBy(bankTransacties.datum);
 

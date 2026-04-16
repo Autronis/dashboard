@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { scrapeUrl } from "@/lib/firecrawl";
+import { scrapePage } from "@/lib/scraper";
 
 // POST /api/site-rebuild/prompt
 // Same body shape as /generate, but instead of calling Claude the endpoint
@@ -34,10 +34,10 @@ export async function POST(req: NextRequest) {
       if (!url?.trim()) {
         return NextResponse.json({ fout: "URL is verplicht bij mode=url" }, { status: 400 });
       }
-      const scraped = await scrapeUrl(url.trim(), 15000);
+      const scraped = await scrapePage(url.trim());
       sourceUrl = scraped.url;
       sourceTitle = scraped.title;
-      sourceBlock = `## Huidige website content (Firecrawl markdown van ${scraped.url})
+      sourceBlock = `## Huidige website content (markdown van ${scraped.url})
 
 ${scraped.markdown}`;
     } else {

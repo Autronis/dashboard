@@ -115,28 +115,56 @@ ${taak.projectNaam ? `Project: ${taak.projectNaam}` : ""}`,
 
 export async function inferClusterOwner(
   projectId: number,
-  cluster: string | null | undefined
+  cluster: string | null | undefined,
+  fase?: string | null
 ): Promise<number | null> {
-  if (!cluster || !projectId) return null;
+  if (!projectId) return null;
 
-  const rij = await db
-    .select({
-      toegewezenAan: taken.toegewezenAan,
-      status: taken.status,
-      bijgewerktOp: taken.bijgewerktOp,
-    })
-    .from(taken)
-    .where(
-      and(
-        eq(taken.projectId, projectId),
-        eq(taken.cluster, cluster),
-        isNotNull(taken.toegewezenAan),
-        // Alleen taken waar iemand actief mee bezig is (geweest)
-        inArray(taken.status, ["bezig", "afgerond"])
+  // Primary: probeer een eigenaar te vinden binnen ditzelfde (project, cluster).
+  if (cluster) {
+    const rij = await db
+      .select({
+        toegewezenAan: taken.toegewezenAan,
+        status: taken.status,
+        bijgewerktOp: taken.bijgewerktOp,
+      })
+      .from(taken)
+      .where(
+        and(
+          eq(taken.projectId, projectId),
+          eq(taken.cluster, cluster),
+          isNotNull(taken.toegewezenAan),
+          // Alleen taken waar iemand actief mee bezig is (geweest)
+          inArray(taken.status, ["bezig", "afgerond"])
+        )
       )
-    )
-    .orderBy(desc(taken.bijgewerktOp))
-    .limit(1);
+      .orderBy(desc(taken.bijgewerktOp))
+      .limit(1);
+    if (rij[0]?.toegewezenAan) return rij[0].toegewezenAan;
+  }
 
-  return rij[0]?.toegewezenAan ?? null;
+  // Fallback: geen cluster (of niemand werkt al in dit cluster), maar wel een
+  // fase. Erf de eigenaar van de meest recente werkende taak in dezelfde
+  // (project, fase). Dit is een zwakkere signaal — meerdere clusters kunnen
+  // namelijk in één fase zitten — maar voor projecten waar nog geen cluster
+  // gezet is geeft dit nog steeds de juiste persoon mee in plaats van vrij
+  // te laten. Zie taak #104434.
+  if (fase) {
+    const rij = await db
+      .select({ toegewezenAan: taken.toegewezenAan })
+      .from(taken)
+      .where(
+        and(
+          eq(taken.projectId, projectId),
+          eq(taken.fase, fase),
+          isNotNull(taken.toegewezenAan),
+          inArray(taken.status, ["bezig", "afgerond"])
+        )
+      )
+      .orderBy(desc(taken.bijgewerktOp))
+      .limit(1);
+    return rij[0]?.toegewezenAan ?? null;
+  }
+
+  return null;
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { scrapeUrl } from "@/lib/firecrawl";
+import { scrapePage } from "@/lib/scraper";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
 // POST /api/site-rebuild/generate
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
       if (!url?.trim()) {
         return NextResponse.json({ fout: "URL is verplicht bij mode=url" }, { status: 400 });
       }
-      const scraped = await scrapeUrl(url.trim(), 15000);
+      const scraped = await scrapePage(url.trim());
       sourceMarkdown = scraped.markdown;
       sourceTitle = scraped.title;
       sourceUrl = scraped.url;

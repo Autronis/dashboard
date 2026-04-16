@@ -64,16 +64,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "projects array is verplicht" }, { status: 400 });
     }
 
-    // Filter out worktree-style entries: een dir die ".worktrees" in z'n pad
-    // bevat is een git worktree checkout, geen echt project. Wordt anders als
-    // dashboard-project aangemaakt met duplicate taken.
+    // Filter out worktree-style entries en parked worktree directories.
+    // Een dir die ".worktrees" / "worktree" / "worktrees-parked" in z'n pad
+    // bevat is een git worktree checkout, geen echt project. Wordt anders
+    // als dashboard-project aangemaakt met duplicate taken (zie #124438:
+    // 9 ghost projecten id 36-44 die hierdoor ontstonden voordat deze
+    // hardening werd uitgebreid).
+    //
+    // Daarnaast: een lege/ontbrekende dir of een dir met een tijdelijk pad
+    // (/tmp, /var/tmp) is per definitie geen project — skip die ook. Een
+    // ontbrekende of suspecte naam (begint met . of bevat slechts één
+    // woord en geen reguliere project-extensies) wordt eveneens gefilterd.
+    const SUSPECT_DIR_TOKENS = [".worktrees", "worktree", "worktrees-parked", "/tmp/", "/var/tmp/", "/.tmp"];
     const filtered = projects.filter((p) => {
       const dir = (p?.dir || "").toLowerCase();
-      return !dir.includes(".worktrees") && !dir.includes("worktree");
+      const naam = (p?.naam || "").trim();
+      if (!dir) return false;
+      if (!naam || naam.startsWith(".")) return false;
+      for (const token of SUSPECT_DIR_TOKENS) {
+        if (dir.includes(token)) return false;
+      }
+      return true;
     });
     const skipped = projects.length - filtered.length;
     if (skipped > 0) {
-      console.warn(`[sync-from-agent] Skipped ${skipped} worktree entries`);
+      console.warn(`[sync-from-agent] Skipped ${skipped} suspect entries (worktree/tmp/empty)`);
     }
 
     const results: SyncResult[] = [];

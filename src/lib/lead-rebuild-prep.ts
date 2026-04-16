@@ -9,7 +9,8 @@
 //
 // Sector-fit classification (scroll_stop vs static_upgrade) runs for both modes.
 
-import { scrapeUrl, searchWeb, type SearchResult } from "./firecrawl";
+import { searchWeb, type SearchResult } from "./firecrawl";
+import { scrapePage, ScrapeError, type ScrapeSource } from "./scraper";
 import { classifyFit, type FitResult } from "./lead-rebuild-fit";
 
 export type PrepLeadInput = {
@@ -35,6 +36,7 @@ export type SiteScrape = {
   title: string | null;
   markdown: string | null;
   error: string | null;
+  source: ScrapeSource | null;
 };
 
 export type PrepMode = "upgrade" | "fresh";
@@ -208,6 +210,7 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
     title: null,
     markdown: null,
     error: null,
+    source: null,
   };
 
   // ── Mode A: has website → scrape + upgrade prompt ──
@@ -215,21 +218,29 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
     const url = normalizeUrl(existingWebsite);
     let scrape: SiteScrape = { ...emptyScrape, url };
     try {
-      const result = await scrapeUrl(url, 12000);
+      const result = await scrapePage(url);
       scrape = {
         ran: true,
         url: result.url,
         title: result.title,
         markdown: result.markdown,
         error: null,
+        source: result.source,
       };
     } catch (e) {
+      const errMsg =
+        e instanceof ScrapeError
+          ? `Scrape faalde (${e.attempts.map((a) => `${a.source}: ${a.error}`).join("; ")})`
+          : e instanceof Error
+            ? e.message
+            : "Scrape faalde";
       scrape = {
         ran: true,
         url,
         title: null,
         markdown: null,
-        error: e instanceof Error ? e.message : "Scrape faalde",
+        error: errMsg,
+        source: "failed",
       };
     }
 

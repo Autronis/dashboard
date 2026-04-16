@@ -12,6 +12,7 @@ import {
   Globe,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,12 @@ const WEBHOOKS: WebhookConfig[] = [
     label: "Google Maps Scraper",
     description: "n8n webhook die Google Maps scraper runs start",
     icon: Globe,
+  },
+  {
+    id: "enrichment_webhook_url",
+    label: "Enrichment Webhook",
+    description: "n8n webhook die leads verrijkt (LinkedIn, website, contact info). Wordt nu vanuit Supabase edge function trigger-enrichment aangeroepen.",
+    icon: Sparkles,
   },
 ];
 

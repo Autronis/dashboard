@@ -1,6 +1,18 @@
 import React from "react";
 import path from "path";
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import fs from "fs";
+import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
+
+let _logoSrc: string | null = null;
+function getLogoSrc(): string {
+  if (!_logoSrc) {
+    try {
+      const buf = fs.readFileSync(path.join(process.cwd(), "public", "logo.png"));
+      _logoSrc = `data:image/png;base64,${buf.toString("base64")}`;
+    } catch { _logoSrc = ""; }
+  }
+  return _logoSrc;
+}
 
 const FONT_DIR = path.join(process.cwd(), "public", "fonts");
 
@@ -27,6 +39,11 @@ const styles = StyleSheet.create({
     padding: 60,
     justifyContent: "center",
     alignItems: "center",
+  },
+  coverLogo: {
+    width: 80,
+    height: 40,
+    marginBottom: 20,
   },
   coverBrand: {
     fontSize: 36,
@@ -135,11 +152,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
     paddingTop: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  footerLogo: {
+    width: 28,
+    height: 14,
   },
   footerText: {
     fontSize: 8,
     color: "#94A3B8",
     textAlign: "center",
+    flex: 1,
   },
 });
 
@@ -197,10 +222,13 @@ interface ProposalPDFProps {
 }
 
 export function ProposalPDF({ proposal, secties, regels, bedrijf }: ProposalPDFProps) {
+  const logoSrc = getLogoSrc();
+
   return (
     <Document>
       {/* Cover page */}
       <Page size="A4" style={styles.coverPage}>
+        {logoSrc && <Image src={logoSrc} style={styles.coverLogo} />}
         <Text style={styles.coverBrand}>{bedrijf.bedrijfsnaam || "Autronis"}</Text>
         <Text style={styles.coverTitel}>{proposal.titel}</Text>
         <Text style={styles.coverKlant}>
@@ -220,6 +248,7 @@ export function ProposalPDF({ proposal, secties, regels, bedrijf }: ProposalPDFP
           <Text style={styles.sectionContent}>{sectie.inhoud}</Text>
 
           <View style={styles.footer}>
+            {logoSrc && <Image src={logoSrc} style={styles.footerLogo} />}
             <Text style={styles.footerText}>
               {bedrijf.bedrijfsnaam || "Autronis"} — {proposal.titel}
             </Text>
@@ -265,6 +294,7 @@ export function ProposalPDF({ proposal, secties, regels, bedrijf }: ProposalPDFP
           )}
 
           <View style={styles.footer}>
+            {logoSrc && <Image src={logoSrc} style={styles.footerLogo} />}
             <Text style={styles.footerText}>
               {bedrijf.bedrijfsnaam || "Autronis"} — {proposal.titel}
               {proposal.geldigTot

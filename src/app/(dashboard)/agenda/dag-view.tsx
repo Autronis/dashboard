@@ -1124,23 +1124,37 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                 const buildPromptVoorProject = (proj: string, faseMap: Map<string, typeof group>) => {
                   const pad = projectPaden.get(proj) ?? "";
                   const taakTotaal = Array.from(faseMap.values()).reduce((a, b) => a + b.length, 0);
+
+                  // Groepeer primair per cluster (#107775). Taken zonder cluster
+                  // vallen terug op fase als groepsheader. Binnen een cluster
+                  // worden taken op fase gesorteerd zodat de volgorde logisch
+                  // blijft (bijv. "Fase 1" taken voor "Fase 2").
+                  const clusterMap = new Map<string, typeof group>();
+                  const projectTaken = Array.from(faseMap.values()).flat();
+                  for (const t of projectTaken) {
+                    const key = t.cluster || t.fase || "Overig";
+                    if (!clusterMap.has(key)) clusterMap.set(key, []);
+                    clusterMap.get(key)!.push(t);
+                  }
+
                   const out: string[] = [];
                   out.push(`# ${proj} · Claude sessie ${startLabel}–${eindLabel}`);
                   out.push("");
-                  out.push(`${taakTotaal} taken · ${faseMap.size} fase(s)`);
+                  out.push(`${taakTotaal} taken · ${clusterMap.size} cluster(s)`);
                   out.push("");
                   if (pad) {
                     out.push(`\`\`\`bash`);
                     out.push(`cd ${pad}`);
                     out.push(`\`\`\``);
                     out.push("");
-                    out.push(`Start met \`/prime\` om project context te laden. Werk per fase af, commit per fase — dashboard sync gaat automatisch via de hook.`);
+                    out.push(`Start met \`/prime\` om project context te laden. Werk per cluster af, commit per cluster — dashboard sync gaat automatisch via de hook.`);
                     out.push("");
                   }
-                  for (const [fase, faseTaken] of faseMap.entries()) {
-                    out.push(`## ${fase}`);
-                    for (const t of faseTaken) {
-                      out.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}`);
+                  for (const [cluster, clusterTaken] of clusterMap.entries()) {
+                    out.push(`## ${cluster}`);
+                    for (const t of clusterTaken) {
+                      const faseLabel = t.fase && t.fase !== cluster ? ` _(${t.fase})_` : "";
+                      out.push(`- [ ] ${t.titel}${t.prioriteit === "hoog" ? " **(HOOG)**" : ""}${faseLabel}`);
                       if (t.omschrijving) {
                         const omschr = t.omschrijving.split("\n").map((l) => `      ${l}`).join("\n");
                         out.push(omschr);

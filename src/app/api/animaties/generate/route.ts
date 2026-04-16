@@ -1,23 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TrackedAnthropic as Anthropic, type MessageParam } from "@/lib/ai/tracked-anthropic";
+import { scrapePage } from "@/lib/scraper";
 
 const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-async function scrapeUrl(url: string): Promise<string> {
-  const res = await fetch("https://api.firecrawl.dev/v1/scrape", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${process.env.FIRECRAWL_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ url, formats: ["markdown"] }),
-  });
-
-  if (!res.ok) throw new Error(`Firecrawl error: ${res.status}`);
-  const data = await res.json() as { success: boolean; data?: { markdown?: string } };
-  if (!data.success || !data.data?.markdown) throw new Error("Geen content gevonden");
-  return data.data.markdown.slice(0, 6000);
-}
 
 const EIND_EFFECTEN: Record<string, { label: string; promptB: string; promptC: string }> = {
   exploded: {
@@ -222,8 +207,8 @@ export async function POST(req: NextRequest) {
     bronLabel = product ?? "geüploade afbeelding";
   } else if (url) {
     try {
-      const scraped = await scrapeUrl(url);
-      userContent = [{ type: "text", text: `Genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2 op basis van:\n\nWebsite content:\n${scraped}` }];
+      const scraped = await scrapePage(url);
+      userContent = [{ type: "text", text: `Genereer 3 scroll-stop prompts voor Higgsfield Nano Banana 2 op basis van:\n\nWebsite content:\n${scraped.markdown}` }];
       bronLabel = url;
     } catch {
       return NextResponse.json({ error: "Kon URL niet scrapen. Probeer een productnaam." }, { status: 400 });

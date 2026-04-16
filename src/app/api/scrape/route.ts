@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
-import { scrapeUrl } from "@/lib/firecrawl";
+import { scrapePage } from "@/lib/scraper";
 
-// POST /api/scrape — scrape a URL via Firecrawl and return the markdown.
+// POST /api/scrape — scrape a URL and return markdown (Jina Reader + custom fallback).
 // Body: { url: string }
-// Response: { markdown, title, url } or { fout }
+// Response: { markdown, title, url, source } or { fout }
 export async function POST(req: NextRequest) {
   try {
     await requireAuth();
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Ongeldige URL" }, { status: 400 });
     }
 
-    const result = await scrapeUrl(url.trim());
+    const result = await scrapePage(url.trim());
     return NextResponse.json(result);
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Scrape mislukt";

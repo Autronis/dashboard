@@ -25,6 +25,18 @@ interface SlimmeTaakTemplate {
   recurringDayOfWeek: number | null;
 }
 
+interface TemplateSuggestie {
+  dbId: number;
+  slug: string;
+  naam: string;
+  beschrijving: string | null;
+  cluster: string;
+  geschatteDuur: number | null;
+  prompt: string;
+  velden: Array<{ key: string; label: string }> | null;
+  bron: string | null;
+}
+
 type ModalMode = "browse" | "form" | "multi-select" | "beheer" | "edit";
 
 const CLUSTER_KLEUR: Record<string, { bg: string; text: string; border: string }> = {
@@ -75,6 +87,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
 }) {
   const { addToast } = useToast();
   const [templates, setTemplates] = useState<SlimmeTaakTemplate[]>([]);
+  const [persistedSuggesties, setPersistedSuggesties] = useState<TemplateSuggestie[]>([]);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<ModalMode>("browse");
   const [selected, setSelected] = useState<SlimmeTaakTemplate | null>(null);

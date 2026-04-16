@@ -50,7 +50,14 @@ export async function PUT(
       updateData.velden = body.velden && body.velden.length > 0 ? JSON.stringify(body.velden) : null;
     }
     if (body.recurringDayOfWeek !== undefined) updateData.recurringDayOfWeek = body.recurringDayOfWeek;
-    if (body.isActief !== undefined) updateData.isActief = body.isActief;
+    if (body.isActief !== undefined) {
+      updateData.isActief = body.isActief;
+      // Bij activeren van een suggestie: flip is_suggestie naar 0
+      if (body.isActief === 1 && bestaand.isSuggestie === 1) {
+        updateData.isSuggestie = 0;
+        updateData.suggestieBron = null;
+      }
+    }
 
     const [bijgewerkt] = await db
       .update(slimmeTakenTemplates)

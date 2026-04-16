@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, slimmeTakenTemplates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { fillPromptTemplate, fillNaamTemplate, ensureSystemTemplates } from "@/lib/slimme-taken";
 import { findVrijSlot, getBlockingIntervalsVoorDag, formatSlotToIso } from "@/lib/agenda-slot-finder";
 
 // GET /api/taken/slim — lijst van beschikbare slimme taken templates (uit DB)
+// Returnt ook AI-voorgestelde templates apart als `suggesties`.
 export async function GET() {
   try {
     await requireAuth();
@@ -36,7 +37,31 @@ export async function GET() {
       recurringDayOfWeek: r.recurringDayOfWeek,
     }));
 
-    return NextResponse.json({ templates });
+    // Laad AI-suggesties (is_actief=0, is_suggestie=1)
+    const suggestieRows = await db
+      .select()
+      .from(slimmeTakenTemplates)
+      .where(
+        and(
+          eq(slimmeTakenTemplates.isSuggestie, 1),
+          eq(slimmeTakenTemplates.isActief, 0)
+        )
+      )
+      .orderBy(slimmeTakenTemplates.aangemaaktOp);
+
+    const suggesties = suggestieRows.map((r) => ({
+      dbId: r.id,
+      slug: r.slug,
+      naam: r.naam,
+      beschrijving: r.beschrijving,
+      cluster: r.cluster,
+      geschatteDuur: r.geschatteDuur,
+      prompt: r.prompt,
+      velden: r.velden ? JSON.parse(r.velden) : null,
+      bron: r.suggestieBron,
+    }));
+
+    return NextResponse.json({ templates, suggesties });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

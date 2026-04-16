@@ -53,12 +53,12 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
     }
   }
 
-  async function handleUploadBon(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !transactie) return;
+  async function uploadFile(file: File) {
+    if (!transactie) return;
 
-    if (file.type !== "application/pdf") {
-      addToast("Alleen PDF-bestanden", "fout");
+    const allowed = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      addToast("Alleen PDF of afbeeldingen (PNG/JPG/WebP)", "fout");
       return;
     }
 
@@ -66,7 +66,6 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
     try {
       const formData = new FormData();
       formData.append("bestand", file);
-      // Force-link aan deze specifieke transactie — skip de scoring matcher
       formData.append("transactieId", String(transactie.id));
 
       const res = await fetch("/api/administratie/upload", {
@@ -79,8 +78,6 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
       }
       const data = (await res.json()) as { factuur?: { storageUrl?: string | null } };
       addToast("Factuur gekoppeld aan transactie", "succes");
-      // Optimistic update zodat het detail-paneel direct de bon-link toont
-      // zonder dat de gebruiker hoeft te sluiten/heropen.
       if (data.factuur?.storageUrl) {
         onUpdate?.({ storageUrl: data.factuur.storageUrl, status: "gematcht" });
       }
@@ -96,6 +93,28 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  }
+
+  function handleUploadBon(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
   }
 
   async function setEigenaar(id: number, eigenaar: "sem" | "syb" | "gedeeld" | null) {
@@ -271,28 +290,37 @@ export function TransactieDetail({ transactie, onClose, onUpdate }: Props) {
                   </button>
                 </div>
               ) : (
-                <button
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-500/5 border border-amber-500/25 hover:bg-amber-500/10 hover:border-amber-500/40 transition-colors disabled:opacity-50 text-left"
+                  className={cn(
+                    "w-full flex flex-col items-center gap-2 px-4 py-5 rounded-xl border-2 border-dashed cursor-pointer transition-colors text-center",
+                    dragging
+                      ? "border-autronis-accent bg-autronis-accent/10"
+                      : "border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/50",
+                    uploading && "opacity-60 cursor-not-allowed"
+                  )}
                 >
-                  <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-amber-500/15 flex items-center justify-center">
                     {uploading ? (
-                      <Loader2 className="w-4 h-4 text-amber-400 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+                    ) : dragging ? (
+                      <Upload className="w-5 h-5 text-autronis-accent animate-bounce" />
                     ) : (
-                      <Upload className="w-4 h-4 text-amber-400" />
+                      <Upload className="w-5 h-5 text-amber-400" />
                     )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-amber-300">
-                      {uploading ? "Uploaden..." : "Upload factuur / bon"}
+                  <div>
+                    <p className={cn("text-sm font-semibold", dragging ? "text-autronis-accent" : "text-amber-300")}>
+                      {uploading ? "Uploaden..." : dragging ? "Laat los om te uploaden" : "Sleep factuur hierheen"}
                     </p>
-                    <p className="text-[11px] text-amber-300/70">
-                      PDF selecteren. Wordt direct gekoppeld aan deze transactie, Claude extract leest bedrag + BTW automatisch.
+                    <p className={cn("text-[11px] mt-0.5", dragging ? "text-autronis-accent/70" : "text-amber-300/70")}>
+                      of klik om te selecteren — PDF / PNG / JPG
                     </p>
                   </div>
-                  <Paperclip className="w-4 h-4 text-amber-400/60 flex-shrink-0" />
-                </button>
+                </div>
               )}
 
               {/* AI description */}

@@ -311,12 +311,14 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       if (!res.ok) throw new Error(data.fout || "Bulk aanmaken mislukt");
       const n = data.aangemaakt?.length ?? 0;
       const suffix = ingeplandVoor ? " en gepland in de agenda" : "";
-      addToast(`${n} slimme taken aangemaakt${suffix}`, "succes");
+      addToast(`${n} taken toegevoegd${suffix}`, "succes");
       if (data.fouten && data.fouten.length > 0) {
         addToast(`${data.fouten.length} fouten: ${data.fouten[0]}`, "fout");
       }
       onCreated?.();
-      onClose();
+      setBulkSlugs(new Set());
+      setBulkVelden({});
+      setMode("browse");
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Bulk mislukt", "fout");
     } finally {
@@ -435,6 +437,17 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       addToast("Template toegevoegd", "succes");
       setPersistedSuggesties((curr) => curr.filter((s) => s.dbId !== dbId));
       await loadTemplates();
+      // Genereer 1 nieuwe suggestie ter vervanging (fire-and-forget)
+      fetch("/api/taken/slim/templates/suggest-and-save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aantal: 1, bron: "refill" }),
+      })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.opgeslagen > 0) loadTemplates();
+        })
+        .catch(() => {});
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Fout", "fout");
     }

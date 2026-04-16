@@ -256,7 +256,17 @@ export function useUnplanTaak() {
       if (!res.ok) throw new Error("Uitplannen mislukt");
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (id) => {
+      // Optimistic: verwijder de taak direct uit de agenda cache
+      await queryClient.cancelQueries({ queryKey: ["agenda-taken"] });
+      queryClient.setQueriesData<AgendaTaak[]>(
+        { queryKey: ["agenda-taken"] },
+        (old) => old?.map((t) =>
+          t.id === id ? { ...t, ingeplandStart: null, ingeplandEind: null } : t
+        ),
+      );
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
       queryClient.invalidateQueries({ queryKey: ["agenda"] });
     },

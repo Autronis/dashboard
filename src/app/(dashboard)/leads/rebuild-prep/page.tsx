@@ -54,6 +54,7 @@ interface UnifiedLead {
   externalUrl: string | null;   // google_maps_url OR linkedin_url
   folder: string | null;
   created_at: string;
+  sybSerp?: { hasWebsite: boolean | null; websiteUrl: string | null; confidence: string | null };
 }
 
 const BATCH_LIMIT = 20;

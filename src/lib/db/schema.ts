@@ -1811,6 +1811,8 @@ export const slimmeTakenTemplates = sqliteTable("slimme_taken_templates", {
   velden: text("velden"), // JSON array
   isSysteem: integer("is_systeem").default(0),
   isActief: integer("is_actief").default(1),
+  isSuggestie: integer("is_suggestie").default(0), // 1 = voorgesteld door AI, wacht op acceptatie
+  suggestieBron: text("suggestie_bron"), // "weekly-cron", "project:ProjectNaam"
   recurringDayOfWeek: integer("recurring_day_of_week"), // 0=zo, 1=ma, ... 6=za
   recurringLaatsteRun: text("recurring_laatste_run"),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),

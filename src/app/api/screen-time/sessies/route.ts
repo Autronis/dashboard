@@ -617,12 +617,12 @@ export async function GET(req: NextRequest) {
     // ─── Focus Insights ───
     const inzichten: Array<{ type: "positief" | "waarschuwing" | "tip" | "actie"; tekst: string }> = [];
 
-    // Best time of day analysis
+    // Best time of day analysis — gebruik NL local uur, niet UTC
     const uurProductief: Record<number, number> = {};
     for (const s of sessies.filter(s => PRODUCTIEF_CATS.has(s.categorie))) {
-      const uur = new Date(s.startTijd).getHours();
+      const nlUur = parseInt(new Date(s.startTijd).toLocaleString("nl-NL", { hour: "2-digit", hour12: false, timeZone: "Europe/Amsterdam" }));
       const dur = (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 60000;
-      uurProductief[uur] = (uurProductief[uur] || 0) + dur;
+      uurProductief[nlUur] = (uurProductief[nlUur] || 0) + dur;
     }
     const besteUur = Object.entries(uurProductief).sort(([, a], [, b]) => b - a)[0];
     if (besteUur) {
@@ -670,7 +670,7 @@ export async function GET(req: NextRequest) {
 
     // Best focus block highlight
     if (besteFocusBlok && besteFocusBlok.duurMin >= 25) {
-      const startStr = new Date(besteFocusBlok.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+      const startStr = new Date(besteFocusBlok.startTijd).toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Amsterdam" });
       inzichten.push({
         type: "positief",
         tekst: `Beste focus blok: ${Math.round(besteFocusBlok.duurMin)} min om ${startStr} — "${besteFocusBlok.beschrijving}".`,

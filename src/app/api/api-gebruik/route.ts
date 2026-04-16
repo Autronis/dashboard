@@ -166,6 +166,7 @@ const apiFetchers: Record<string, () => Promise<{ gebruik?: ServiceResponse["geb
 };
 
 export async function GET() {
+  try {
   await requireAuth();
 
   // 1. Load service registry from DB
@@ -271,4 +272,9 @@ export async function GET() {
     },
     routeBreakdown,
   });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Onbekende fout";
+    console.error("API gebruik error:", error);
+    return NextResponse.json({ fout: message }, { status: message === "Niet geauthenticeerd" ? 401 : 500 });
+  }
 }

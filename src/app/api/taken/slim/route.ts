@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
       ingeplandVoor?: string | null;
       startTijd?: string | null;
       duur?: number | null;
+      stappen?: string[] | null;
       bulk?: Array<{ templateId: string; velden?: Record<string, string> }>;
     };
 
@@ -150,6 +151,15 @@ export async function POST(req: NextRequest) {
         // later handmatig worden ingepland.
       }
 
+      // Bouw omschrijving: template beschrijving + AI stappenplan indien aanwezig
+      let omschrijving = template.beschrijving ?? "";
+      if (body.stappen && body.stappen.length > 0) {
+        const stappenTekst = body.stappen.map((s, i) => `${i + 1}. ${s}`).join("\n");
+        omschrijving = omschrijving
+          ? `${omschrijving}\n\n**Stappenplan:**\n${stappenTekst}`
+          : `**Stappenplan:**\n${stappenTekst}`;
+      }
+
       const [nieuw] = await db
         .insert(taken)
         .values({
@@ -158,14 +168,14 @@ export async function POST(req: NextRequest) {
           toegewezenAan: null,
           eigenaar: "vrij",
           titel,
-          omschrijving: template.beschrijving,
+          omschrijving,
           cluster: template.cluster,
           fase: "Slimme taken",
           status: "open",
           prioriteit: "normaal",
           uitvoerder: "claude",
           prompt,
-          geschatteDuur: template.geschatteDuur,
+          geschatteDuur: body.duur ?? template.geschatteDuur,
           deadline: body.deadline || null,
           ingeplandStart,
           ingeplandEind,

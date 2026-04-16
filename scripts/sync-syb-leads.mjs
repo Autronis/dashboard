@@ -204,12 +204,19 @@ function writeAllowedFunctions(functions) {
   writeFileSync(ROUTE_FILE, updated);
 }
 
+// Functions die alleen extern worden aangeroepen (email links, n8n webhooks)
+// en NIET via onze dashboard proxy horen te lopen. Deze worden nooit aan de
+// ALLOWED_FUNCTIONS whitelist toegevoegd, zelfs als ze in Syb's repo staan.
+const EXCLUDED_FUNCTIONS = new Set([
+  "unsubscribe",
+]);
+
 function getCurrentSybFunctions() {
   const contents = ghJson(
     `api repos/${SYB_OWNER}/${SYB_REPO}/contents/supabase/functions`
   );
   return contents
-    .filter((c) => c.type === "dir" && !c.name.startsWith("_"))
+    .filter((c) => c.type === "dir" && !c.name.startsWith("_") && !EXCLUDED_FUNCTIONS.has(c.name))
     .map((c) => c.name)
     .sort();
 }

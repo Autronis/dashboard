@@ -85,6 +85,10 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
   const [startTijd, setStartTijd] = useState(() => getDefaultStartTijd(ingeplandVoor));
   const [duur, setDuur] = useState<number>(15); // wordt overschreven bij template selectie
 
+  // AI analyse + stappenplan state
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<{ toelichting: string; stappen: string[] } | null>(null);
+
   // Multi-select state: set van geselecteerde slugs + hun velden
   const [bulkSlugs, setBulkSlugs] = useState<Set<string>>(new Set());
   const [bulkVelden, setBulkVelden] = useState<Record<string, Record<string, string>>>({});
@@ -166,6 +170,8 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       setBulkVelden({});
       setStartTijd(getDefaultStartTijd(ingeplandVoor));
       setDuur(15);
+      setAiResult(null);
+      setAiLoading(false);
       setFormData({
         naam: "",
         beschrijving: "",
@@ -177,6 +183,41 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       });
     }
   }, [open, ingeplandVoor]);
+
+  // Auto-fetch AI analyse wanneer een template geselecteerd wordt (form mode)
+  useEffect(() => {
+    if (mode !== "form" || !selected) return;
+    setAiResult(null);
+    setAiLoading(true);
+    const controller = new AbortController();
+    fetch("/api/agenda/taken/schat-duur", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        titel: selected.naam,
+        omschrijving: selected.prompt,
+      }),
+      signal: controller.signal,
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!controller.signal.aborted) {
+          setAiResult({ toelichting: data.toelichting, stappen: data.stappen ?? [] });
+          // Update duur als AI een betere schatting geeft
+          if (data.geschatteDuur && data.geschatteDuur !== duur) {
+            setDuur(data.geschatteDuur);
+          }
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAiLoading(false);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAiLoading(false);
+      });
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, selected?.slug]);
 
   async function handleSingleSubmit() {
     if (!selected) return;
@@ -200,6 +241,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
           ingeplandVoor: ingeplandVoor ?? undefined,
           startTijd: ingeplandVoor ? startTijd : undefined,
           duur: ingeplandVoor ? duur : undefined,
+          stappen: aiResult?.stappen,
         }),
       });
       const data = await res.json();
@@ -657,6 +699,37 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                             />
                           </div>
                         ))}
+                      </div>
+                    )}
+
+                    {/* AI Stappenplan */}
+                    {(aiLoading || (aiResult?.stappen && aiResult.stappen.length > 0)) && (
+                      <div className="bg-purple-500/5 border border-purple-500/15 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          {aiLoading ? (
+                            <Loader2 className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                          )}
+                          <span className="text-xs font-semibold text-purple-300">
+                            {aiLoading ? "Analyse bezig..." : "Stappenplan"}
+                          </span>
+                          {aiResult?.toelichting && !aiLoading && (
+                            <span className="text-[10px] text-purple-400/60 ml-auto">{aiResult.toelichting}</span>
+                          )}
+                        </div>
+                        {aiResult?.stappen && aiResult.stappen.length > 0 && (
+                          <ol className="space-y-1.5 ml-0.5">
+                            {aiResult.stappen.map((stap, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-[10px] font-bold text-purple-400 bg-purple-500/15 w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  {i + 1}
+                                </span>
+                                <span className="text-xs text-purple-200/80 leading-relaxed">{stap}</span>
+                              </li>
+                            ))}
+                          </ol>
+                        )}
                       </div>
                     )}
 

@@ -12,6 +12,10 @@ import {
   Play,
   Star,
   Check,
+  ShieldCheck,
+  ShieldAlert,
+  ShieldQuestion,
+  Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -34,7 +38,20 @@ interface WebsiteLead {
   call_date: string | null;
   search_query: string | null;
   created_at: string;
+  // Syb's website-check feature (SERP verificatie)
+  has_website: boolean | null;
+  website_url: string | null;
+  website_confidence: "HIGH" | "MEDIUM" | "LIKELY_UNVERIFIED" | "NONE" | null;
 }
+
+type WebsiteFilter = "alle" | "verified_geen" | "heeft_website" | "niet_gecheckt";
+
+const CONFIDENCE_BADGE: Record<string, { label: string; style: string; icon: typeof ShieldCheck }> = {
+  HIGH: { label: "Website gevonden", style: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30", icon: ShieldCheck },
+  MEDIUM: { label: "Mogelijk website", style: "bg-amber-500/10 text-amber-300 border-amber-500/30", icon: ShieldAlert },
+  LIKELY_UNVERIFIED: { label: "Onzeker", style: "bg-orange-500/10 text-orange-300 border-orange-500/30", icon: ShieldQuestion },
+  NONE: { label: "Geen website", style: "bg-red-500/10 text-red-300 border-red-500/30", icon: ShieldCheck },
+};
 
 const STATUS_COLORS: Record<string, string> = {
   new: "bg-blue-500/15 text-blue-400",
@@ -61,6 +78,7 @@ export default function LeadsWebsiteLeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("alle");
+  const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("alle");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   // Search form
@@ -99,19 +117,33 @@ export default function LeadsWebsiteLeadsPage() {
     return counts;
   }, [leads]);
 
+  const websiteCounts = useMemo(() => {
+    const verified = leads.filter((l) => l.has_website === false && (l.website_confidence === "NONE" || !l.website_confidence)).length;
+    const heeftWebsite = leads.filter((l) => l.has_website === true).length;
+    const nietGecheckt = leads.filter((l) => l.has_website == null).length;
+    return { verified, heeftWebsite, nietGecheckt };
+  }, [leads]);
+
   const gefilterd = useMemo(() => {
     let result = leads;
     if (statusFilter !== "alle") result = result.filter((l) => l.status === statusFilter);
+    if (websiteFilter === "verified_geen") {
+      result = result.filter((l) => l.has_website === false && (l.website_confidence === "NONE" || !l.website_confidence));
+    } else if (websiteFilter === "heeft_website") {
+      result = result.filter((l) => l.has_website === true);
+    } else if (websiteFilter === "niet_gecheckt") {
+      result = result.filter((l) => l.has_website == null);
+    }
     if (zoek.trim()) {
       const q = zoek.toLowerCase();
       result = result.filter((l) =>
-        [l.name, l.city, l.address, l.category, l.search_query]
+        [l.name, l.city, l.address, l.category, l.search_query, l.website_url]
           .filter(Boolean)
           .some((v) => v!.toLowerCase().includes(q))
       );
     }
     return result;
-  }, [leads, statusFilter, zoek]);
+  }, [leads, statusFilter, websiteFilter, zoek]);
 
   async function triggerSearch() {
     if (!query.trim() || !city.trim()) {

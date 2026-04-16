@@ -203,11 +203,24 @@ export interface AgendaTaak {
   omschrijving: string | null;
 }
 
-async function fetchAgendaTaken(): Promise<AgendaTaak[]> {
+export interface RecentAfgerondeTaak {
+  id: number;
+  titel: string;
+  status: string;
+  projectNaam: string | null;
+  bijgewerktOp: string | null;
+}
+
+interface AgendaTakenResponse {
+  taken: AgendaTaak[];
+  recentAfgerond: RecentAfgerondeTaak[];
+}
+
+async function fetchAgendaTaken(): Promise<AgendaTakenResponse> {
   const res = await fetch("/api/agenda/taken");
-  if (!res.ok) return [];
-  const json = await res.json() as { taken: AgendaTaak[] };
-  return json.taken ?? [];
+  if (!res.ok) return { taken: [], recentAfgerond: [] };
+  const json = await res.json() as AgendaTakenResponse;
+  return { taken: json.taken ?? [], recentAfgerond: json.recentAfgerond ?? [] };
 }
 
 export function useAgendaTaken() {
@@ -215,6 +228,26 @@ export function useAgendaTaken() {
     queryKey: ["agenda-taken"],
     queryFn: fetchAgendaTaken,
     staleTime: 30_000,
+  });
+}
+
+export function useUndoAfgerond() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/taken/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "open" }),
+      });
+      if (!res.ok) throw new Error("Ongedaan maken mislukt");
+      return res.json();
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      queryClient.invalidateQueries({ queryKey: ["taken"] });
+    },
   });
 }
 

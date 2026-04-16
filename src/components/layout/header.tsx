@@ -47,7 +47,10 @@ export function Header({ gebruiker }: HeaderProps) {
 
   const initials = gebruiker.naam.charAt(0).toUpperCase();
 
-  const profielFoto = gebruiker.avatarUrl;
+  const profielFoto = gebruiker.avatarUrl ?? (
+    gebruiker.email === "sem@autronis.com" ? "/foto-sem.jpg" :
+    gebruiker.email === "syb@autronis.com" ? "/foto-syb.jpg" : null
+  );
 
   return (
     <header

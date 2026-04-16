@@ -96,7 +96,40 @@ export async function GET() {
         taken.deadline
       );
 
-    return NextResponse.json({ taken: rows });
+    // Recent afgeronde taken (laatste 24u) — voor undo in de agenda sidebar
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const recentAfgerond = await db
+      .select({
+        id: taken.id,
+        titel: taken.titel,
+        status: taken.status,
+        projectNaam: projecten.naam,
+        bijgewerktOp: taken.bijgewerktOp,
+      })
+      .from(taken)
+      .leftJoin(projecten, eq(taken.projectId, projecten.id))
+      .where(
+        and(
+          eq(taken.status, "afgerond"),
+          sql`${taken.bijgewerktOp} > ${oneDayAgo}`,
+          or(
+            isNull(taken.projectId),
+            and(
+              sql`(${projecten.isActief} = 1 OR ${projecten.isActief} IS NULL)`,
+              gebruiker.id === 2
+                ? inArray(projecten.eigenaar, ["syb", "team", "vrij"])
+                : or(
+                    inArray(projecten.eigenaar, ["sem", "team", "vrij"]),
+                    isNull(projecten.eigenaar)
+                  )
+            )!
+          )!
+        )
+      )
+      .orderBy(sql`${taken.bijgewerktOp} DESC`)
+      .limit(10);
+
+    return NextResponse.json({ taken: rows, recentAfgerond });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Onbekende fout";
     const isAuth = message === "Niet geauthenticeerd";

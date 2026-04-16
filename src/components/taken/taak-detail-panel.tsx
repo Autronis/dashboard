@@ -147,7 +147,10 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/taken/${taakId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Kon taak niet verwijderen");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || `Verwijderen mislukt (${res.status})`);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["taken"] });

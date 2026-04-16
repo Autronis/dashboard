@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Zap, Loader2, Check, Plus, Trash2, Pencil, Calendar, Settings2, Sparkles } from "lucide-react";
+import { X, Zap, Loader2, Check, Plus, Trash2, Pencil, Calendar, Settings2, Sparkles, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,6 +38,29 @@ const CLUSTER_KLEUR: Record<string, { bg: string; text: string; border: string }
 
 const DAG_LABELS = ["zo", "ma", "di", "wo", "do", "vr", "za"];
 
+// Tijdslots: 08:00 tot 17:00 in stappen van 30 minuten
+const TIJD_SLOTS = Array.from({ length: 19 }, (_, i) => {
+  const h = Math.floor(i / 2) + 8;
+  const m = (i % 2) * 30;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+});
+
+const DUUR_OPTIES = [15, 30, 45, 60, 90, 120];
+
+function getDefaultStartTijd(ingeplandVoor?: string): string {
+  if (!ingeplandVoor) return "09:00";
+  const nu = new Date();
+  const vandaag = nu.toISOString().slice(0, 10);
+  if (ingeplandVoor !== vandaag) return "09:00";
+  // Vandaag: rond af naar volgende 30-min slot
+  const minuten = nu.getHours() * 60 + nu.getMinutes();
+  const volgend = Math.ceil(minuten / 30) * 30;
+  const h = Math.floor(volgend / 60);
+  const m = volgend % 60;
+  if (h >= 17) return "09:00"; // te laat, fall back
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preSelectedSlug }: {
   open: boolean;
   onClose: () => void;
@@ -57,6 +80,10 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
   const [selected, setSelected] = useState<SlimmeTaakTemplate | null>(null);
   const [veldWaarden, setVeldWaarden] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  // Planning controls (alleen relevant als ingeplandVoor is gezet)
+  const [startTijd, setStartTijd] = useState(() => getDefaultStartTijd(ingeplandVoor));
+  const [duur, setDuur] = useState<number>(15); // wordt overschreven bij template selectie
 
   // Multi-select state: set van geselecteerde slugs + hun velden
   const [bulkSlugs, setBulkSlugs] = useState<Set<string>>(new Set());
@@ -120,6 +147,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
             if (match) {
               setSelected(match);
               setVeldWaarden({});
+              setDuur(match.geschatteDuur ?? 15);
               setMode("form");
             }
             return prev;
@@ -136,6 +164,8 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       setVeldWaarden({});
       setBulkSlugs(new Set());
       setBulkVelden({});
+      setStartTijd(getDefaultStartTijd(ingeplandVoor));
+      setDuur(15);
       setFormData({
         naam: "",
         beschrijving: "",
@@ -146,11 +176,12 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
         recurringDayOfWeek: null,
       });
     }
-  }, [open]);
+  }, [open, ingeplandVoor]);
 
   async function handleSingleSubmit() {
     if (!selected) return;
-    if (selected.velden) {
+    // Bij quick-plan (ingeplandVoor) zijn velden optioneel
+    if (!ingeplandVoor && selected.velden) {
       for (const veld of selected.velden) {
         if (!veldWaarden[veld.key]?.trim()) {
           addToast(`${veld.label} is verplicht`, "fout");
@@ -167,11 +198,13 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
           templateId: selected.slug,
           velden: veldWaarden,
           ingeplandVoor: ingeplandVoor ?? undefined,
+          startTijd: ingeplandVoor ? startTijd : undefined,
+          duur: ingeplandVoor ? duur : undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.fout || "Aanmaken mislukt");
-      const suffix = ingeplandVoor ? " en gepland in de agenda" : "";
+      const suffix = ingeplandVoor ? ` en gepland om ${startTijd}` : "";
       addToast(`Slimme taak "${data.taak.titel}" aangemaakt${suffix}`, "succes");
       onCreated?.();
       onClose();
@@ -430,11 +463,10 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                   <div className="mb-4 rounded-lg border border-autronis-accent/30 bg-autronis-accent/[0.06] px-3 py-2 flex items-center gap-2">
                     <Calendar className="w-3.5 h-3.5 text-autronis-accent flex-shrink-0" />
                     <span className="text-xs text-autronis-text-secondary">
-                      Wordt direct ingepland op{" "}
+                      Wordt ingepland op{" "}
                       <span className="text-autronis-accent font-semibold">
                         {new Date(ingeplandVoor).toLocaleDateString("nl-NL", { weekday: "long", day: "numeric", month: "long" })}
-                      </span>{" "}
-                      om 09:00
+                      </span>
                     </span>
                   </div>
                 )}
@@ -455,6 +487,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                           key={t.slug}
                           onClick={() => {
                             setSelected(t);
+                            setDuur(t.geschatteDuur ?? 15);
                             setMode("form");
                           }}
                           className="text-left rounded-xl border border-autronis-border bg-autronis-bg/30 p-4 hover:border-autronis-accent/40 hover:bg-autronis-accent/[0.03] transition-colors"
@@ -568,12 +601,52 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                       <p className="text-xs text-autronis-text-secondary">{selected.beschrijving}</p>
                     </div>
 
+                    {/* Starttijd + duur — alleen als ingeplandVoor is gezet */}
+                    {ingeplandVoor && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">
+                            <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                            Starttijd
+                          </label>
+                          <select
+                            value={startTijd}
+                            onChange={(e) => setStartTijd(e.target.value)}
+                            className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                          >
+                            {TIJD_SLOTS.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">
+                            Duur
+                          </label>
+                          <select
+                            value={duur}
+                            onChange={(e) => setDuur(parseInt(e.target.value))}
+                            className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                          >
+                            {DUUR_OPTIES.map((d) => (
+                              <option key={d} value={d}>
+                                {d >= 60 ? `${d / 60}u${d % 60 ? ` ${d % 60}m` : ""}` : `${d} min`}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
                     {selected.velden && selected.velden.length > 0 && (
                       <div className="space-y-3">
                         {selected.velden.map((veld) => (
                           <div key={veld.key}>
                             <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">
                               {veld.label}
+                              {ingeplandVoor && (
+                                <span className="text-autronis-text-secondary/40 font-normal ml-1">(optioneel)</span>
+                              )}
                             </label>
                             <input
                               type={veld.type ?? "text"}

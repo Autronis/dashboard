@@ -131,8 +131,9 @@ export async function POST(req: NextRequest) {
       let ingeplandStart: string | null = null;
       let ingeplandEind: string | null = null;
       if (body.ingeplandVoor) {
-        const duurMin = template.geschatteDuur ?? 15;
-        const slot = findVrijSlot(body.ingeplandVoor, "08:00", duurMin, blockers);
+        const duurMin = body.duur ?? template.geschatteDuur ?? 15;
+        const gewensteStart = body.startTijd ?? "08:00";
+        const slot = findVrijSlot(body.ingeplandVoor, gewensteStart, duurMin, blockers);
         if (slot) {
           ingeplandStart = formatSlotToIso(slot.start);
           ingeplandEind = formatSlotToIso(slot.eind);

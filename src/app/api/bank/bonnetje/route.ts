@@ -80,7 +80,10 @@ export async function POST(req: NextRequest) {
         await requireAuth();
       }
     }
-    const file = formData.get("bonnetje") as File | null;
+    // iOS Shortcuts stuurt foto's soms als Blob, soms als File, soms als string
+    const bonnetjeRaw = formData.get("bonnetje");
+    const file = bonnetjeRaw instanceof File ? bonnetjeRaw : null;
+    const blob = !file && bonnetjeRaw instanceof Blob ? bonnetjeRaw : null;
     const base64Input = formData.get("base64") as string | null;
     const mediaTypeInput = formData.get("mediaType") as string | null;
 
@@ -93,6 +96,16 @@ export async function POST(req: NextRequest) {
       buffer = Buffer.from(arrayBuffer);
       base64 = buffer.toString("base64");
       mediaType = file.type || "image/jpeg";
+    } else if (blob) {
+      const arrayBuffer = await blob.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+      base64 = buffer.toString("base64");
+      mediaType = blob.type || "image/jpeg";
+    } else if (typeof bonnetjeRaw === "string" && bonnetjeRaw.length > 100) {
+      // iOS Shortcuts kan de foto als base64 string sturen
+      base64 = bonnetjeRaw.replace(/^data:image\/\w+;base64,/, "");
+      buffer = Buffer.from(base64, "base64");
+      mediaType = "image/jpeg";
     } else if (base64Input) {
       base64 = base64Input;
       mediaType = mediaTypeInput || "image/jpeg";

@@ -152,6 +152,8 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["taken"] });
       queryClient.invalidateQueries({ queryKey: ["agenda"] });
+      queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+      queryClient.invalidateQueries({ queryKey: ["taak-detail", taakId] });
       addToast("Taak verwijderd", "succes");
       onClose();
     },
@@ -196,7 +198,7 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", damping: 26, stiffness: 300 }}
-            className="relative w-full max-w-3xl max-h-[90vh] bg-autronis-card border border-autronis-border rounded-2xl shadow-2xl overflow-y-auto"
+            className="relative w-full max-w-3xl max-h-[90vh] bg-autronis-card border border-autronis-border rounded-2xl shadow-2xl overflow-y-auto mx-2 sm:mx-auto"
           >
             {isLoading && (
               <div className="p-6">
@@ -215,12 +217,12 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
             )}
 
             {taak && (
-              <div className="p-6 lg:p-8 space-y-6">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-5 sm:space-y-6">
                 {/* Header — met wrap-enabled titel */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-1.5">Taak</p>
-                    <h2 className="text-2xl lg:text-3xl font-bold text-autronis-text-primary leading-tight break-words">
+                    <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-autronis-text-primary leading-tight break-words">
                       {taak.titel}
                     </h2>
                   </div>
@@ -428,7 +430,7 @@ export function TaakDetailPanel({ taakId, onClose }: Props) {
                 )}
 
                 {/* Meta info grid */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div className="bg-autronis-bg rounded-lg p-3">
                     <p className="text-[10px] uppercase text-autronis-text-secondary tracking-wide mb-1 flex items-center gap-1">
                       <Calendar className="w-3 h-3" />

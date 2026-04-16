@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -72,6 +72,10 @@ export default function LeadsRebuildPrepPage() {
   const [preppingLoader, setPreppingLoader] = useState(false);
   const [results, setResults] = useState<PrepLeadResult[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [batchPrepping, setBatchPrepping] = useState(false);
+  const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0, chunk: 0, totalChunks: 0 });
+  const [batchSkipped, setBatchSkipped] = useState(0);
+  const batchAbortRef = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -242,6 +246,60 @@ export default function LeadsRebuildPrepPage() {
     }
   }
 
+  async function runBatchPrep() {
+    const allIds = gefilterd.map((l) => l.id);
+    if (allIds.length === 0) return;
+
+    batchAbortRef.current = false;
+    setBatchPrepping(true);
+    setBatchSkipped(0);
+    setResults([]);
+
+    const chunks: string[][] = [];
+    for (let i = 0; i < allIds.length; i += BATCH_LIMIT) {
+      chunks.push(allIds.slice(i, i + BATCH_LIMIT));
+    }
+
+    setBatchProgress({ done: 0, total: allIds.length, chunk: 0, totalChunks: chunks.length });
+    const accumulated: PrepLeadResult[] = [];
+    let skipped = 0;
+
+    for (let c = 0; c < chunks.length; c++) {
+      if (batchAbortRef.current) break;
+
+      setBatchProgress((prev) => ({ ...prev, chunk: c + 1 }));
+
+      try {
+        const res = await fetch("/api/leads/prep-rebuild", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leadIds: chunks[c] }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          skipped += chunks[c].length;
+          setBatchSkipped(skipped);
+          continue;
+        }
+        const newResults: PrepLeadResult[] = data.resultaten ?? [];
+        accumulated.push(...newResults);
+        setResults([...accumulated]);
+        setBatchProgress((prev) => ({ ...prev, done: accumulated.length + skipped }));
+      } catch {
+        skipped += chunks[c].length;
+        setBatchSkipped(skipped);
+      }
+    }
+
+    setBatchPrepping(false);
+    const verb = batchAbortRef.current ? "Gestopt" : "Klaar";
+    addToast(`${verb}: ${accumulated.length} geprepareerd${skipped > 0 ? `, ${skipped} overgeslagen` : ""}`, "succes");
+  }
+
+  function stopBatchPrep() {
+    batchAbortRef.current = true;
+  }
+
   async function copyPrompt(r: PrepLeadResult) {
     try {
       await navigator.clipboard.writeText(r.prompt);
@@ -269,11 +327,10 @@ export default function LeadsRebuildPrepPage() {
               Lead Rebuild Prep
             </h1>
             <p className="text-autronis-text-muted mt-1 max-w-2xl">
-              Batch-tool voor Google Maps leads. Leads <b>zonder</b> website
-              krijgen een SERP-check + "from scratch" prompt. Leads <b>mét</b>{" "}
-              website worden gescraped zodat je een upgrade-pitch kan geven.
-              Beide kanten krijgen sector-fit voor scroll-stop animatie. Max{" "}
-              {BATCH_LIMIT} per batch.
+              Batch-tool voor alle leads. Leads <b>zonder</b> website krijgen
+              een SERP-check + &quot;from scratch&quot; prompt. Leads <b>mét</b>{" "}
+              website worden gescraped voor een upgrade-pitch. &quot;Prep alle&quot;
+              verwerkt alles in chunks van {BATCH_LIMIT}.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -286,7 +343,7 @@ export default function LeadsRebuildPrepPage() {
             </button>
             <button
               onClick={runPrep}
-              disabled={selectedIds.size === 0 || preppingLoader}
+              disabled={selectedIds.size === 0 || preppingLoader || batchPrepping}
               className="px-4 py-2 rounded-lg bg-autronis-accent text-black text-sm font-semibold hover:bg-autronis-accent-hover transition disabled:opacity-50 inline-flex items-center gap-2"
             >
               {preppingLoader ? (
@@ -298,6 +355,23 @@ export default function LeadsRebuildPrepPage() {
                 <>
                   <Sparkles className="w-4 h-4" />
                   Prep {selectedIds.size || ""} leads
+                </>
+              )}
+            </button>
+            <button
+              onClick={runBatchPrep}
+              disabled={gefilterd.length === 0 || batchPrepping || preppingLoader}
+              className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-500 transition disabled:opacity-50 inline-flex items-center gap-2"
+            >
+              {batchPrepping ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Bezig...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Prep alle {gefilterd.length}
                 </>
               )}
             </button>

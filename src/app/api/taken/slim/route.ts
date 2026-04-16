@@ -46,12 +46,12 @@ export async function GET() {
 }
 
 // POST /api/taken/slim — maak één of meerdere slimme taken aan uit templates
-// Body (single):  { templateId: string, velden?: Record<string, string>, deadline?: string, ingeplandVoor?: string }
-// Body (bulk):    { bulk: Array<{ templateId: string, velden?: Record<string, string> }>, deadline?: string, ingeplandVoor?: string }
+// Body (single):  { templateId: string, velden?: Record<string, string>, deadline?: string, ingeplandVoor?: string, startTijd?: string, duur?: number }
+// Body (bulk):    { bulk: Array<{ templateId: string, velden?: Record<string, string> }>, deadline?: string, ingeplandVoor?: string, startTijd?: string }
 //
 // ingeplandVoor: ISO datum (YYYY-MM-DD) — als gezet wordt de taak direct
-// gepland voor 09:00 op die datum met ingeplandStart/ingeplandEind op
-// basis van geschatteDuur. Gebruikt vanuit de /agenda "Slimme taak" knop.
+// gepland op die datum. startTijd (HH:MM, default "08:00") bepaalt de
+// gewenste starttijd. duur (minuten) overschrijft template geschatteDuur.
 export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
@@ -60,6 +60,8 @@ export async function POST(req: NextRequest) {
       velden?: Record<string, string>;
       deadline?: string | null;
       ingeplandVoor?: string | null;
+      startTijd?: string | null;
+      duur?: number | null;
       bulk?: Array<{ templateId: string; velden?: Record<string, string> }>;
     };
 
@@ -101,19 +103,23 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      // Validate velden
+      // Validate velden — bij quick-plan (ingeplandVoor gezet) zijn velden
+      // optioneel zodat je een template snel kan plannen zonder alles in te
+      // vullen. Lege placeholders worden dan gewoon niet ingevuld.
       const veldenDefinitie: Array<{ key: string; label: string }> = template.velden
         ? JSON.parse(template.velden)
         : [];
-      let validatieFout = false;
-      for (const veld of veldenDefinitie) {
-        if (!req.velden[veld.key]?.trim()) {
-          fouten.push(`Veld '${veld.label}' is verplicht voor '${template.naam}'`);
-          validatieFout = true;
-          break;
+      if (!body.ingeplandVoor) {
+        let validatieFout = false;
+        for (const veld of veldenDefinitie) {
+          if (!req.velden[veld.key]?.trim()) {
+            fouten.push(`Veld '${veld.label}' is verplicht voor '${template.naam}'`);
+            validatieFout = true;
+            break;
+          }
         }
+        if (validatieFout) continue;
       }
-      if (validatieFout) continue;
 
       const titel = fillNaamTemplate(template.naam, req.velden);
       const prompt = fillPromptTemplate(template.prompt, req.velden);

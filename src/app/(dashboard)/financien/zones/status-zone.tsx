@@ -51,9 +51,9 @@ export function StatusZone() {
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className={cn("h-28 lg:h-32 bg-autronis-card border border-autronis-border rounded-2xl animate-pulse", i === 4 && "col-span-2 md:col-span-1")} />
+          <div key={i} className={cn("h-28 xl:h-32 bg-autronis-card border border-autronis-border rounded-2xl animate-pulse", i === 4 && "col-span-2 md:col-span-1")} />
         ))}
       </div>
     );
@@ -65,14 +65,14 @@ export function StatusZone() {
   const nettoUp = (data.nettoDelta ?? 0) >= 0;
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:gap-4">
       {/* Card 1: Inkomsten */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-          <span className="text-[10px] lg:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Inkomsten</span>
+          <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Inkomsten</span>
         </div>
-        <p className="text-xl lg:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.inkomstenMaand)}</p>
+        <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.inkomstenMaand)}</p>
         {data.inkomstenDelta !== null && (
           <p className={cn("text-xs mt-1", inkomstenPositief ? "text-emerald-400" : "text-red-400")}>
             {inkomstenPositief ? "+" : ""}{data.inkomstenDelta}% vs vorige maand
@@ -82,12 +82,12 @@ export function StatusZone() {
       </div>
 
       {/* Card 2: Uitgaven */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <TrendingDown className="w-4 h-4 text-orange-400 flex-shrink-0" />
-          <span className="text-[10px] lg:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Uitgaven</span>
+          <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Uitgaven</span>
         </div>
-        <p className="text-xl lg:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.uitgavenMaand)}</p>
+        <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.uitgavenMaand)}</p>
         {data.uitgavenDelta !== null && (
           <p className={cn("text-xs mt-1", uitgavenGestegen ? "text-red-400" : "text-emerald-400")}>
             {uitgavenGestegen ? "+" : ""}{data.uitgavenDelta}% vs vorige maand
@@ -99,7 +99,7 @@ export function StatusZone() {
       {/* Card 3: Netto */}
       <div
         className={cn(
-          "border rounded-2xl p-4 lg:p-5 card-glow",
+          "border rounded-2xl p-4 xl:p-5 card-glow",
           nettoPositief
             ? "bg-emerald-500/5 border-emerald-500/20"
             : "bg-red-500/5 border-red-500/20"
@@ -107,9 +107,9 @@ export function StatusZone() {
       >
         <div className="flex items-center gap-2 mb-2">
           <Scale className={cn("w-4 h-4 flex-shrink-0", nettoPositief ? "text-emerald-400" : "text-red-400")} />
-          <span className="text-[10px] lg:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Netto</span>
+          <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Netto</span>
         </div>
-        <p className={cn("text-xl lg:text-3xl font-bold tabular-nums", nettoPositief ? "text-emerald-400" : "text-red-400")}>
+        <p className={cn("text-xl xl:text-3xl font-bold tabular-nums", nettoPositief ? "text-emerald-400" : "text-red-400")}>
           {formatEuro(data.netto)}
         </p>
         {data.nettoDelta !== null && (
@@ -120,22 +120,22 @@ export function StatusZone() {
       </div>
 
       {/* Card 4: BTW terug te vragen */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <Receipt className="w-4 h-4 text-autronis-accent flex-shrink-0" />
-          <span className="text-[10px] lg:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW terug</span>
+          <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW terug</span>
         </div>
-        <p className="text-xl lg:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwTerugTeVragen)}</p>
+        <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwTerugTeVragen)}</p>
         <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
       </div>
 
       {/* Card 5: BTW af te dragen */}
-      <div className="col-span-2 md:col-span-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 lg:p-5 card-glow">
+      <div className="col-span-2 md:col-span-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
         <div className="flex items-center gap-2 mb-2">
           <AlertCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />
-          <span className="text-[10px] lg:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW af te dragen</span>
+          <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW af te dragen</span>
         </div>
-        <p className="text-xl lg:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwAfTeDragen)}</p>
+        <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwAfTeDragen)}</p>
         <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
       </div>
     </div>

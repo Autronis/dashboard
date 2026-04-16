@@ -26,7 +26,7 @@ export type SerpCheck = {
   ran: boolean;
   verdict: "site_found" | "no_site" | "skipped" | "error";
   foundUrl: string | null;
-  candidates: SearchResult[];
+  candidates: { url: string; title: string }[];
   note: string;
 };
 
@@ -50,30 +50,6 @@ export type PrepLeadResult = {
   prompt: string;
 };
 
-// Domains that should never count as "the company's own website" in a SERP hit.
-const DIRECTORY_HOSTS = [
-  "google.com", "google.nl", "maps.google", "goo.gl",
-  "facebook.com", "fb.com", "instagram.com", "linkedin.com", "twitter.com",
-  "x.com", "tiktok.com", "youtube.com", "pinterest.com",
-  "yelp.com", "tripadvisor.com", "tripadvisor.nl", "thefork.com",
-  "kvk.nl", "opencorporates.com", "telefoonboek.nl", "detelefoongids.nl",
-  "goudengids.nl", "bedrijvenpagina.nl", "iens.nl", "eet.nu",
-  "werkspot.nl", "marktplaats.nl", "funda.nl",
-];
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return "";
-  }
-}
-
-function isDirectoryHit(url: string): boolean {
-  const host = hostOf(url);
-  if (!host) return true;
-  return DIRECTORY_HOSTS.some((d) => host === d || host.endsWith(`.${d}`));
-}
 
 const DESIGN_SYSTEM_BLOCK = `## Design system (verplicht)
 
@@ -262,7 +238,7 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
     };
   }
 
-  // ── Mode B: no website → SERP check + fresh prompt ──
+  // ── Mode B: no website → check Syb's website_leads SERP data ──
   let serp: SerpCheck;
 
   if (!name) {
@@ -274,36 +250,57 @@ export async function prepLead(lead: PrepLeadInput): Promise<PrepLeadResult> {
       note: "Geen bedrijfsnaam — SERP-check overgeslagen",
     };
   } else {
-    const query = location ? `${name} ${location}` : name;
+    // Kijk of Syb deze lead al gecheckt heeft in website_leads
+    // (hij draait SERP checks via zijn eigen pipeline en slaat resultaat op)
     try {
-      const results = await searchWeb(query, 5);
-      const firstOwn = results.find((r) => !isDirectoryHit(r.url));
-      if (firstOwn) {
+      const supabase = getSupabaseLeads();
+      const { data: match } = await supabase
+        .from("website_leads")
+        .select("has_website, website_url, website_confidence")
+        .ilike("name", name)
+        .limit(1)
+        .maybeSingle();
+
+      if (match && match.has_website === true && match.website_url) {
         serp = {
           ran: true,
           verdict: "site_found",
-          foundUrl: firstOwn.url,
-          candidates: results,
-          note: `SERP top hit: ${hostOf(firstOwn.url)}`,
+          foundUrl: match.website_url,
+          candidates: [],
+          note: `Syb's SERP: website gevonden (confidence: ${match.website_confidence || "unknown"})`,
         };
-      } else {
+      } else if (match && match.has_website === false) {
         serp = {
           ran: true,
           verdict: "no_site",
           foundUrl: null,
-          candidates: results,
-          note: results.length
-            ? "Alleen directory-hits gevonden (geen eigen domein)"
-            : "Geen SERP resultaten",
+          candidates: [],
+          note: `Syb's SERP: bevestigd geen website (confidence: ${match.website_confidence || "NONE"})`,
+        };
+      } else if (match) {
+        serp = {
+          ran: true,
+          verdict: "no_site",
+          foundUrl: null,
+          candidates: [],
+          note: "Syb's SERP: gecheckt, geen website gevonden",
+        };
+      } else {
+        serp = {
+          ran: false,
+          verdict: "skipped",
+          foundUrl: null,
+          candidates: [],
+          note: "Niet gevonden in Syb's website_leads — nog niet gecheckt",
         };
       }
-    } catch (e) {
+    } catch {
       serp = {
-        ran: true,
-        verdict: "error",
+        ran: false,
+        verdict: "skipped",
         foundUrl: null,
         candidates: [],
-        note: e instanceof Error ? e.message : "SERP-check faalde",
+        note: "Kon website_leads tabel niet bereiken",
       };
     }
   }

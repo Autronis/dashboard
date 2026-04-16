@@ -515,6 +515,7 @@ export type Database = {
           email: string | null
           facebook_url: string | null
           google_maps_url: string | null
+          has_website: boolean | null
           id: string
           name: string
           phone: string | null
@@ -526,6 +527,8 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string
+          website_confidence: string | null
+          website_url: string | null
         }
         Insert: {
           address?: string | null
@@ -538,6 +541,7 @@ export type Database = {
           email?: string | null
           facebook_url?: string | null
           google_maps_url?: string | null
+          has_website?: boolean | null
           id?: string
           name: string
           phone?: string | null
@@ -549,6 +553,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id: string
+          website_confidence?: string | null
+          website_url?: string | null
         }
         Update: {
           address?: string | null
@@ -561,6 +567,7 @@ export type Database = {
           email?: string | null
           facebook_url?: string | null
           google_maps_url?: string | null
+          has_website?: boolean | null
           id?: string
           name?: string
           phone?: string | null
@@ -572,6 +579,8 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+          website_confidence?: string | null
+          website_url?: string | null
         }
         Relationships: []
       }

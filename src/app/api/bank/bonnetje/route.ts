@@ -52,11 +52,20 @@ Antwoord ALLEEN als JSON: {"bedrag":23.50,"btwBedrag":4.08,"datum":"2026-03-31",
 // POST /api/bank/bonnetje — Upload receipt photo, OCR, auto-match
 export async function POST(req: NextRequest) {
   try {
-    // Auth via API key header (for mobile shortcuts) or session
-    const apiKey = req.headers.get("x-api-key");
-    if (apiKey !== process.env.SESSION_SECRET) {
-      const { requireAuth } = await import("@/lib/auth");
-      await requireAuth();
+    // Auth via x-api-key, Bearer token, of session cookie
+    const xApiKey = req.headers.get("x-api-key");
+    const authHeader = req.headers.get("authorization");
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+    if (xApiKey !== process.env.SESSION_SECRET && bearerToken !== process.env.SESSION_SECRET) {
+      // Fallback: probeer API key auth (voor iOS Shortcuts met Bearer token)
+      if (bearerToken) {
+        const { requireApiKey } = await import("@/lib/auth");
+        await requireApiKey(req);
+      } else {
+        const { requireAuth } = await import("@/lib/auth");
+        await requireAuth();
+      }
     }
 
     const formData = await req.formData();

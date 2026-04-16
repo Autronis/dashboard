@@ -1667,6 +1667,26 @@ export const apiTokenGebruik = sqliteTable("api_token_gebruik", {
   idxProviderDatum: index("idx_atg_provider_datum").on(table.provider, table.aangemaaktOp),
 }));
 
+// ============ API SERVICES REGISTRY ============
+
+export const apiServices = sqliteTable("api_services", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  slug: text("slug").notNull().unique(),
+  categorie: text("categorie", { enum: ["ai", "email", "media", "data", "betaal", "overig"] }).notNull().default("overig"),
+  omschrijving: text("omschrijving"),
+  envVar: text("env_var"),
+  dashboardUrl: text("dashboard_url"),
+  trackingType: text("tracking_type", { enum: ["db", "api", "geen"] }).notNull().default("geen"),
+  kostenType: text("kosten_type", { enum: ["usage", "infra", "gratis"] }).notNull().default("infra"),
+  providerSlug: text("provider_slug"),
+  icon: text("icon"),
+  volgorde: integer("volgorde").default(0),
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ FOLLOW-UP REGELS ============
 
 export const followUpRegels = sqliteTable("follow_up_regels", {

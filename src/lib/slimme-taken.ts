@@ -273,7 +273,9 @@ export function fillPromptTemplate(template: string, veldWaarden: Record<string,
 }
 
 export function fillNaamTemplate(naam: string, veldWaarden: Record<string, string>): string {
-  return naam.replace(/\{(\w+)\}/g, (match, key) => veldWaarden[key] ?? match);
+  const filled = naam.replace(/\{(\w+)\}/g, (_match, key) => veldWaarden[key]?.trim() || "");
+  // Ruim dubbele spaties en trailing interpunctie op die overblijven bij lege velden
+  return filled.replace(/\s{2,}/g, " ").trim();
 }
 
 /**

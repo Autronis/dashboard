@@ -153,6 +153,8 @@ export default function AgendaPage() {
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [taakDetailId, setTaakDetailId] = useState<number | null>(null);
   const [kalenderSettingsOpen, setKalenderSettingsOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedTaakIds, setSelectedTaakIds] = useState<Set<number>>(new Set());
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -311,6 +313,43 @@ export default function AgendaPage() {
       onSuccess: () => addToast("Taak uit agenda gehaald", "succes"),
       onError: () => addToast("Kon taak niet uitplannen", "fout"),
     });
+  }
+
+  function toggleTaakSelect(id: number) {
+    setSelectedTaakIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function bulkAction(action: "afronden" | "ontplannen" | "verwijderen") {
+    const ids = Array.from(selectedTaakIds);
+    if (ids.length === 0) return;
+    const body =
+      action === "afronden" ? { status: "afgerond" }
+      : action === "ontplannen" ? { ingeplandStart: null, ingeplandEind: null }
+      : null;
+
+    let ok = 0;
+    for (const id of ids) {
+      try {
+        const res = await fetch(`/api/taken/${id}`, {
+          method: body ? "PUT" : "DELETE",
+          headers: { "Content-Type": "application/json" },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+        if (res.ok) ok++;
+      } catch { /* skip */ }
+    }
+
+    const labels = { afronden: "afgerond", ontplannen: "uit planning gehaald", verwijderen: "verwijderd" };
+    addToast(`${ok} ${ok === 1 ? "taak" : "taken"} ${labels[action]}`, "succes");
+    setSelectedTaakIds(new Set());
+    setSelectMode(false);
+    queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+    queryClient.invalidateQueries({ queryKey: ["agenda"] });
+    queryClient.invalidateQueries({ queryKey: ["taken"] });
   }
 
   // Plan een hele fase in één keer. Alle taken krijgen consecutief slots
@@ -2258,10 +2297,45 @@ export default function AgendaPage() {
                         {f.label}
                       </button>
                     ))}
-                    <span className="ml-auto text-[10px] text-autronis-text-secondary/50 self-center tabular-nums">
-                      Sleep of klik
-                    </span>
+                    <button
+                      onClick={() => { setSelectMode(!selectMode); setSelectedTaakIds(new Set()); }}
+                      className={cn(
+                        "ml-auto text-[10px] self-center transition-colors",
+                        selectMode
+                          ? "text-autronis-accent font-medium"
+                          : "text-autronis-text-secondary/50 hover:text-autronis-text-secondary"
+                      )}
+                    >
+                      {selectMode ? "Klaar" : "Selecteer"}
+                    </button>
                   </div>
+
+                  {/* Bulk acties balk */}
+                  {selectMode && selectedTaakIds.size > 0 && (
+                    <div className="flex items-center gap-1.5 mb-3 p-2 rounded-xl bg-autronis-accent/5 border border-autronis-accent/20">
+                      <span className="text-[10px] text-autronis-accent font-semibold tabular-nums mr-auto">
+                        {selectedTaakIds.size} geselecteerd
+                      </span>
+                      <button
+                        onClick={() => bulkAction("afronden")}
+                        className="px-2 py-1 text-[10px] font-medium text-emerald-400 hover:bg-emerald-500/15 rounded-lg transition-colors"
+                      >
+                        Afronden
+                      </button>
+                      <button
+                        onClick={() => bulkAction("ontplannen")}
+                        className="px-2 py-1 text-[10px] font-medium text-amber-400 hover:bg-amber-500/15 rounded-lg transition-colors"
+                      >
+                        Uit planning
+                      </button>
+                      <button
+                        onClick={() => bulkAction("verwijderen")}
+                        className="px-2 py-1 text-[10px] font-medium text-red-400 hover:bg-red-500/15 rounded-lg transition-colors"
+                      >
+                        Verwijder
+                      </button>
+                    </div>
+                  )}
 
                   {takenPerProject.length === 0 && slimmeActiesAgenda.length === 0 ? (
                     <div className="py-3 space-y-3">
@@ -2442,43 +2516,60 @@ export default function AgendaPage() {
                                             <div className="space-y-0.5 px-2 pb-2 pt-0.5">
                                               {fase.taken.map((taak) => {
                                                 const taakIsClaude = taak.uitvoerder === "claude";
+                                                const isSelected = selectedTaakIds.has(taak.id);
                                                 return (
                                                 <div
                                                   key={taak.id}
-                                                  draggable
+                                                  draggable={!selectMode}
                                                   onDragStart={(e) => {
+                                                    if (selectMode) return;
                                                     setDragTaak(taak);
                                                     e.dataTransfer.setData("text/plain", String(taak.id));
                                                     e.dataTransfer.effectAllowed = "move";
                                                   }}
                                                   onDragEnd={() => setDragTaak(null)}
-                                                  onClick={() => openPlanModal(taak)}
-                                                  className="flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] hover:bg-white/5 cursor-grab active:cursor-grabbing group"
+                                                  onClick={() => selectMode ? toggleTaakSelect(taak.id) : openPlanModal(taak)}
+                                                  className={cn(
+                                                    "flex items-center gap-1.5 px-1.5 py-1 rounded text-[11px] group transition-colors",
+                                                    selectMode
+                                                      ? isSelected ? "bg-autronis-accent/10" : "hover:bg-white/5 cursor-pointer"
+                                                      : "hover:bg-white/5 cursor-grab active:cursor-grabbing"
+                                                  )}
                                                   style={{ color: fpk.text }}
                                                 >
-                                                  <button
-                                                    className="w-3 h-3 rounded-full border border-autronis-text-secondary/40 hover:border-emerald-400 flex-shrink-0"
-                                                    onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
-                                                    title="Afvinken"
-                                                  />
+                                                  {selectMode ? (
+                                                    <div className={cn(
+                                                      "w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all",
+                                                      isSelected ? "bg-autronis-accent border-autronis-accent" : "border-autronis-text-secondary/40"
+                                                    )}>
+                                                      {isSelected && <Check className="w-2.5 h-2.5 text-autronis-bg" />}
+                                                    </div>
+                                                  ) : (
+                                                    <button
+                                                      className="w-3 h-3 rounded-full border border-autronis-text-secondary/40 hover:border-emerald-400 flex-shrink-0"
+                                                      onClick={(e) => { e.stopPropagation(); handleTaakToggle(taak.id); }}
+                                                      title="Afvinken"
+                                                    />
+                                                  )}
                                                   <span className="truncate flex-1">{taak.titel}</span>
                                                   {taak.prioriteit === "hoog" && (
                                                     <span className="text-[8px] text-red-400 flex-shrink-0">!</span>
                                                   )}
-                                                  {/* Snel-plan vandaag: planFase met alleen deze taak. */}
-                                                  <button
-                                                    onClick={(e) => {
-                                                      e.stopPropagation();
-                                                      const v = new Date();
-                                                      const datum = `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
-                                                      handlePlanFase([taak], datum, taakIsClaude ? "08:00" : "09:00");
-                                                    }}
-                                                    title="Plan vandaag"
-                                                    className="opacity-0 group-hover:opacity-100 text-[10px] font-bold leading-none w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-opacity"
-                                                    style={{ backgroundColor: fpk.border + "30", color: fpk.text }}
-                                                  >
-                                                    +
-                                                  </button>
+                                                  {!selectMode && (
+                                                    <button
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const v = new Date();
+                                                        const datum = `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`;
+                                                        handlePlanFase([taak], datum, taakIsClaude ? "08:00" : "09:00");
+                                                      }}
+                                                      title="Plan vandaag"
+                                                      className="opacity-0 group-hover:opacity-100 text-[10px] font-bold leading-none w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-opacity"
+                                                      style={{ backgroundColor: fpk.border + "30", color: fpk.text }}
+                                                    >
+                                                      +
+                                                    </button>
+                                                  )}
                                                 </div>
                                                 );
                                               })}

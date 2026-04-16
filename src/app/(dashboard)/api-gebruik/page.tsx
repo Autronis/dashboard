@@ -92,7 +92,14 @@ const ROUTE_LABELS: Record<string, string> = {
   "/api/klanten/verrijk": "Klant Verrijking",
   "/api/screen-time/sessies": "Screen Time Sessies",
   "/api/uitgaven/scan": "Uitgaven Scan",
-  "ai/client": "AI Client (Groq/Anthropic)",
+  "/api/taken/auto-cluster": "Taken Auto-Cluster",
+  "/api/meetings/analyse": "Meeting Analyse",
+  "/api/site-rebuild/optimize-instructies": "Site Rebuild Optimalisatie",
+  "/api/administratie/upload": "Administratie Upload",
+  "administratie-upload": "Administratie Upload",
+  "gmail-sync": "Gmail Synchronisatie",
+  "ytk-cli/analyze (batch retroactief)": "YouTube Batch Analyse",
+  "ai/client": "AI Assistent",
 };
 
 const kostenTypeBadge: Record<string, { label: string; className: string }> = {

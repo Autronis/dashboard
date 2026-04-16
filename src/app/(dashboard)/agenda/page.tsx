@@ -246,6 +246,37 @@ export default function AgendaPage() {
   const unplanTaak = useUnplanTaak();
   const undoAfgerond = useUndoAfgerond();
   const uitplannenAlle = useUitplannenAlle();
+  // Routines (terugkerende checks)
+  interface Routine {
+    id: number;
+    naam: string;
+    beschrijving: string | null;
+    categorie: string;
+    frequentie: string;
+    status: "ok" | "binnenkort" | "overdue";
+    dagenGeleden: number | null;
+  }
+  const [routinesData, setRoutinesData] = useState<Routine[]>([]);
+  useEffect(() => {
+    fetch("/api/routines").then((r) => r.json()).then((d) => setRoutinesData(d.routines ?? [])).catch(() => {});
+  }, []);
+
+  const overdueRoutines = routinesData.filter((r) => r.status === "overdue");
+  const binnenkortRoutines = routinesData.filter((r) => r.status === "binnenkort");
+  const dueRoutines = [...overdueRoutines, ...binnenkortRoutines];
+
+  async function markeerRoutineVoltooid(id: number) {
+    await fetch("/api/routines", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setRoutinesData((prev) =>
+      prev.map((r) => r.id === id ? { ...r, status: "ok" as const, dagenGeleden: 0, laatstVoltooid: new Date().toISOString() } : r)
+    );
+    addToast("Routine afgevinkt", "succes");
+  }
+
   const [planModalTaak, setPlanModalTaak] = useState<AgendaTaak | null>(null);
   const [planPrefillDatum, setPlanPrefillDatum] = useState<string | undefined>();
   const [planPrefillTijd, setPlanPrefillTijd] = useState<string | undefined>();

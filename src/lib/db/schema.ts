@@ -443,6 +443,22 @@ export const auditLog = sqliteTable("audit_log", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
+// ============ ROUTINES (terugkerende operational checks) ============
+export const routines = sqliteTable("routines", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull(),
+  beschrijving: text("beschrijving"),
+  categorie: text("categorie", {
+    enum: ["security", "financieel", "infra", "kwaliteit", "admin"],
+  }).notNull(),
+  frequentie: text("frequentie", {
+    enum: ["wekelijks", "maandelijks", "per_kwartaal"],
+  }).notNull(),
+  laatstVoltooid: text("laatst_voltooid"), // ISO datetime
+  isActief: integer("is_actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
 // ============ TEAM ACTIVITEIT (live feed) ============
 export const teamActiviteit = sqliteTable("team_activiteit", {
   id: integer("id").primaryKey({ autoIncrement: true }),

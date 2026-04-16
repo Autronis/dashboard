@@ -9,7 +9,7 @@ import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 
 // Focus log entry — wat de Claude chat heeft gemeld
 interface FocusLogEntry {
@@ -41,12 +41,16 @@ async function generateBeschrijvingen(sessies: Sessie[], focusLogsList: FocusLog
   const musicRe = /Drake|Giveon|Chicago|Premium$|Siggy/i;
   // Dashboard/localhost titles are only relevant when Code is the dominant app (= actually developing)
   const dashboardNoiseRe = /^(Autronis Dashboard|localhost:\d+)/i;
+  // Claude Code sessie-namen zijn stale (eerste onderwerp, niet wat er NU gedaan wordt).
+  // Filter ze uit zodat de AI ze niet als activiteit interpreteert.
+  const claudeSessionRe = /^(Pickup |Fix |Debug |Build |Implement |Create |Add |Update |Refactor |Review )/i;
 
   const lines = sessies.map((s, i) => {
     const codeIsDominant = /^Code|^cursor/i.test(s.app.split(",")[0] || "");
     const titels = s.venstertitels
       .filter(t => !noiseRe.test(t) && !musicRe.test(t))
-      .filter(t => codeIsDominant || !dashboardNoiseRe.test(t)) // Only keep dashboard titles if Code is dominant
+      .filter(t => codeIsDominant || !dashboardNoiseRe.test(t))
+      .filter(t => !claudeSessionRe.test(t)) // Skip stale Claude Code sessie-namen
       .slice(0, 15).join(" | ");
     const dur = Math.round(s.duurSeconden / 60);
     const appStr = s.app;
@@ -83,7 +87,7 @@ PER APP TYPE:
 - Code/Cursor → kijk naar het WORKSPACE/PROJECT deel van de titel (na "—"). Bijv "tracker.rs — autronis-dashboard — Code" → "Gewerkt aan timetracker in autronis-dashboard". Noem ook het BESTAND als relevant.
 - Chrome met claude.ai → "Claude chat over [onderwerp]" of "AI-gesprek over [onderwerp]"
 - Chrome met dashboard.autronis.nl → alleen noemen als er actief mee gewerkt wordt, niet als achtergrondtab
-- Terminal/Claude Code → "Claude Code sessie in [project]" — herken dit aan terminal-achtige titels met projectnamen
+- Terminal/Claude Code → NEGEER de sessie-naam (bv. "Pickup command implementation", "Fix bug in X") — dat is de naam van het EERSTE onderwerp in de chat, niet wat er NU gedaan wordt. Gebruik in plaats daarvan de ChatFocus regels als die beschikbaar zijn. Als er geen ChatFocus is, zeg alleen "Claude Code sessie" zonder de sessie-naam te noemen.
 - YouTube → noem het ONDERWERP uit de videotitel
 - Discord/Slack → "Communicatie" + eventueel kanaal/onderwerp
 - TradingView → alleen noemen als TradingView zelf dominant is (meeste minuten)

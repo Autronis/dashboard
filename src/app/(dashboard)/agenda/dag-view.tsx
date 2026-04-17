@@ -924,11 +924,10 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             sessies.push(current);
 
             return sessies.map((group) => {
-              // Ook single-taak "sessies" krijgen dezelfde render path zodat
-              // de verwijder-knop altijd beschikbaar is. Anders zou een losse
-              // Claude taak nergens zichtbaar zijn (de handmatige draggable
-              // loop filtert Claude taken weg).
-              if (group.length === 0) return null;
+              // Alleen 2+ taken krijgen een sessie-blok. Single Claude taken
+              // worden als gewone DraggableTaakBlock gerenderd (behoudt
+              // projectnaam en click-to-detail).
+              if (group.length < 2) return null;
               const sessieKey = group[0].id; // stabiele key op basis van eerste taak
               const expanded = expandedSessies.has(sessieKey);
 
@@ -1413,8 +1412,27 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             return dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
 
-            // Claude taken worden altijd via het sessie-blok gerenderd (ook single-task)
-            if (taak.uitvoerder === "claude") return null;
+            // Skip Claude taken die onderdeel zijn van een sessie-blok (2+ overlappend/aansluitend)
+            if (taak.uitvoerder === "claude") {
+              const allClaude = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
+              if (allClaude.length >= 2) {
+                const sorted = [...allClaude].sort((a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime());
+                let inSessie = false;
+                let group = [sorted[0]];
+                for (let i = 1; i < sorted.length; i++) {
+                  const prevEnd = Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime()));
+                  const curStart = new Date(sorted[i].ingeplandStart!).getTime();
+                  if (curStart - prevEnd <= 15 * 60000) {
+                    group.push(sorted[i]);
+                  } else {
+                    if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
+                    group = [sorted[i]];
+                  }
+                }
+                if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
+                if (inSessie) return null;
+              }
+            }
 
             const startDate = new Date(taak.ingeplandStart);
             const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();

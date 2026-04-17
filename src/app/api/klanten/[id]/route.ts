@@ -261,35 +261,42 @@ export async function GET(
       .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
 
     // Klant-uren (Claude sessie-gebaseerde uren)
-    const klantUrenLijst = await db
-      .select({
-        id: klantUren.id,
-        projectId: klantUren.projectId,
-        projectNaam: projecten.naam,
-        datum: klantUren.datum,
-        duurMinuten: klantUren.duurMinuten,
-        omschrijving: klantUren.omschrijving,
-        bron: klantUren.bron,
-      })
-      .from(klantUren)
-      .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
-      .where(eq(klantUren.klantId, Number(id)))
-      .orderBy(desc(klantUren.datum))
-      .limit(50);
+    let klantUrenLijst: { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null }[] = [];
+    let klantUrenPerProject: { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number }[] = [];
+    let klantUrenTotaal = 0;
+    try {
+      klantUrenLijst = await db
+        .select({
+          id: klantUren.id,
+          projectId: klantUren.projectId,
+          projectNaam: projecten.naam,
+          datum: klantUren.datum,
+          duurMinuten: klantUren.duurMinuten,
+          omschrijving: klantUren.omschrijving,
+          bron: klantUren.bron,
+        })
+        .from(klantUren)
+        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+        .where(eq(klantUren.klantId, Number(id)))
+        .orderBy(desc(klantUren.datum))
+        .limit(50);
 
-    const klantUrenPerProject = await db
-      .select({
-        projectId: klantUren.projectId,
-        projectNaam: projecten.naam,
-        totaalMinuten: sql<number>`sum(${klantUren.duurMinuten})`,
-        aantalSessies: sql<number>`count(*)`,
-      })
-      .from(klantUren)
-      .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
-      .where(eq(klantUren.klantId, Number(id)))
-      .groupBy(klantUren.projectId);
+      klantUrenPerProject = await db
+        .select({
+          projectId: klantUren.projectId,
+          projectNaam: projecten.naam,
+          totaalMinuten: sql<number>`sum(${klantUren.duurMinuten})`,
+          aantalSessies: sql<number>`count(*)`,
+        })
+        .from(klantUren)
+        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+        .where(eq(klantUren.klantId, Number(id)))
+        .groupBy(klantUren.projectId);
 
-    const klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
+      klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
+    } catch (e) {
+      console.error("[klant-uren query error]", e);
+    }
 
     // Relatie status
     const nu = new Date();

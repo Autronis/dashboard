@@ -1,7 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { tursoClient, sqlite } from "@/lib/db";
 import { requireAuthOrApiKey } from "@/lib/auth";
-import { sql } from "drizzle-orm";
+
+// Raw query helper that works on both Turso and local SQLite
+async function query(sql: string, args: unknown[] = []): Promise<Record<string, unknown>[]> {
+  if (tursoClient) {
+    const result = await tursoClient.execute({ sql, args });
+    return result.rows as Record<string, unknown>[];
+  }
+  // Local SQLite
+  return sqlite.prepare(sql).all(...args) as Record<string, unknown>[];
+}
+
+async function run(sql: string, args: unknown[] = []) {
+  if (tursoClient) {
+    return tursoClient.execute({ sql, args });
+  }
+  return sqlite.prepare(sql).run(...args);
+}
 
 // GET /api/chat-sessies?gebruiker=sem — Return existing context tags for a user
 export async function GET(req: NextRequest) {
@@ -17,11 +33,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const tags = await db.all<{ tag: string; aantal: number; laatsteOnderwerp: string | null }>(
-      sql`SELECT context_tag as tag, count(*) as aantal,
-          (SELECT cs2.onderwerp FROM chat_sessies cs2 WHERE cs2.gebruiker = ${gebruiker} AND cs2.context_tag = chat_sessies.context_tag ORDER BY cs2.nummer DESC LIMIT 1) as laatsteOnderwerp
-          FROM chat_sessies WHERE gebruiker = ${gebruiker}
-          GROUP BY context_tag ORDER BY max(nummer) DESC`
+    const tags = await query(
+      `SELECT context_tag as tag, count(*) as aantal,
+       (SELECT cs2.onderwerp FROM chat_sessies cs2
+        WHERE cs2.gebruiker = ? AND cs2.context_tag = chat_sessies.context_tag
+        ORDER BY cs2.nummer DESC LIMIT 1) as laatsteOnderwerp
+       FROM chat_sessies WHERE gebruiker = ?
+       GROUP BY context_tag ORDER BY max(nummer) DESC`,
+      [gebruiker, gebruiker]
     );
 
     return NextResponse.json({ tags });
@@ -54,28 +73,28 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get next number via raw SQL to avoid drizzle schema issues with new tables
-    const maxResult = await db.all<{ max_nr: number | null }>(
-      sql`SELECT max(nummer) as max_nr FROM chat_sessies WHERE gebruiker = ${gebruiker} AND context_tag = ${contextTag}`
+    // Get next number
+    const maxResult = await query(
+      "SELECT max(nummer) as max_nr FROM chat_sessies WHERE gebruiker = ? AND context_tag = ?",
+      [gebruiker, contextTag]
     );
 
-    const nextNummer = (maxResult[0]?.max_nr ?? 0) + 1;
+    const nextNummer = (Number(maxResult[0]?.max_nr) || 0) + 1;
     const chatId = `${gebruiker.toUpperCase()}-${contextTag}-${String(nextNummer).padStart(3, "0")}`;
 
-    await db.run(
-      sql`INSERT INTO chat_sessies (gebruiker, context_tag, nummer, chat_id, onderwerp, klant_id, project_id)
-          VALUES (${gebruiker}, ${contextTag}, ${nextNummer}, ${chatId}, ${onderwerp || null}, ${klantId ?? null}, ${projectId ?? null})`
+    await run(
+      `INSERT INTO chat_sessies (gebruiker, context_tag, nummer, chat_id, onderwerp, klant_id, project_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [gebruiker, contextTag, nextNummer, chatId, onderwerp || null, klantId ?? null, projectId ?? null]
     );
 
-    // Get the inserted row
-    const inserted = await db.all<{ id: number }>(
-      sql`SELECT id FROM chat_sessies WHERE chat_id = ${chatId}`
-    );
+    // Get the inserted row ID
+    const inserted = await query("SELECT id FROM chat_sessies WHERE chat_id = ?", [chatId]);
 
     return NextResponse.json(
       {
         sessie: {
-          id: inserted[0]?.id ?? 0,
+          id: Number(inserted[0]?.id) || 0,
           chatId,
           nummer: nextNummer,
           contextTag,

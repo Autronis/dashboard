@@ -432,6 +432,29 @@ export default function LeadsRebuildPrepPage() {
         </div>
       )}
 
+      {batchPrepping && (
+        <div className="mb-4 p-4 rounded-xl bg-autronis-card border border-autronis-accent/30">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm text-autronis-text">
+              Chunk {batchProgress.chunk}/{batchProgress.totalChunks} — {batchProgress.done} van {batchProgress.total} leads verwerkt
+              {batchSkipped > 0 && <span className="text-amber-400 ml-2">({batchSkipped} overgeslagen)</span>}
+            </div>
+            <button
+              onClick={stopBatchPrep}
+              className="px-3 py-1 rounded-lg bg-red-500/20 text-red-300 text-xs font-medium hover:bg-red-500/30 transition"
+            >
+              Stop
+            </button>
+          </div>
+          <div className="w-full h-2 rounded-full bg-autronis-border">
+            <div
+              className="h-full rounded-full bg-autronis-accent transition-all duration-300"
+              style={{ width: `${batchProgress.total > 0 ? (batchProgress.done / batchProgress.total) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-autronis-accent" />

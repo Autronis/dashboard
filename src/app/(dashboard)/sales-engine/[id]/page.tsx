@@ -31,8 +31,14 @@ import {
   Loader2,
   RefreshCw,
   Rocket,
+  Copy,
+  Check,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { buildUpgradePrompt, buildFreshPrompt, type SiteScrape, type SerpCheck } from "@/lib/lead-rebuild-prep";
+import { classifyFit } from "@/lib/lead-rebuild-fit";
+import type { ScanDetail } from "@/hooks/queries/use-sales-engine";
 
 const statusConfig: Record<string, { label: string; kleur: string; icon: typeof Clock }> = {
   pending: { label: "Bezig", kleur: "text-yellow-400 bg-yellow-400/10", icon: Clock },

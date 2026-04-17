@@ -338,7 +338,10 @@ export const agendaItems = sqliteTable("agenda_items", {
   herinneringVerstuurdOp: text("herinnering_verstuurd_op"),
   googleEventId: text("google_event_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
-});
+}, (table) => ({
+  idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),
+  idxGebruikerId: index("idx_agenda_gebruiker").on(table.gebruikerId),
+}));
 
 // ============ EXTERNE KALENDERS ============
 export const externeKalenders = sqliteTable("externe_kalenders", {

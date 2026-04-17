@@ -9,9 +9,14 @@ import { sendPushToUser } from "@/lib/push";
 // 10 min voor een agenda item start. Dedup via de notificaties tabel (link
 // veld bevat agenda:<id> zodat we niet dubbel sturen).
 export async function GET(req: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
   const authHeader = req.headers.get("authorization");
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  const validTokens = [
+    process.env.CRON_SECRET,
+    process.env.INTERNAL_API_KEY,
+    process.env.SESSION_SECRET,
+  ].filter(Boolean);
+  if (!validTokens.includes(token)) {
     return NextResponse.json({ fout: "Unauthorized" }, { status: 401 });
   }
 

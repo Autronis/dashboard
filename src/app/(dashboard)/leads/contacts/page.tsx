@@ -363,6 +363,33 @@ export default function LeadsContactsPage() {
     }
   }
 
+  async function prepForGeneration() {
+    const validIds = Array.from(selectedIds);
+    if (validIds.length === 0) {
+      addToast("Geen leads geselecteerd", "fout");
+      return;
+    }
+    setIsPrepping(true);
+    try {
+      const res = await fetch("/api/leads/edge-function/bulk-update-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: validIds, outreach_status: "ready_for_generation" }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        throw new Error(data.fout || data.data?.error || `HTTP ${res.status}`);
+      }
+      addToast(`${validIds.length} leads klaargezet voor generatie`, "succes");
+      setSelectedIds(new Set());
+      setTimeout(load, 1000);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Klaarzetten mislukt", "fout");
+    } finally {
+      setIsPrepping(false);
+    }
+  }
+
   function handleExportCSV() {
     const toExport =
       selectedIds.size > 0
@@ -465,6 +492,14 @@ export default function LeadsContactsPage() {
               >
                 {isEnriching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
                 Enrich ({selectedIds.size})
+              </button>
+              <button
+                onClick={prepForGeneration}
+                disabled={isPrepping}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-xs font-semibold text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-40"
+              >
+                {isPrepping ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                Klaarzetten ({selectedIds.size})
               </button>
               <button
                 onClick={generateEmails}

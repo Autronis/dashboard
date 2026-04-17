@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken, klantUren } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, or, sql, desc, ne, isNull } from "drizzle-orm";
 
@@ -260,38 +260,30 @@ export async function GET(
       .groupBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`)
       .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
 
-    // Klant-uren (Claude sessie-gebaseerde uren)
+    // Klant-uren — via raw SQL to avoid drizzle schema mismatch on hot reload
     let klantUrenLijst: { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null }[] = [];
     let klantUrenPerProject: { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number }[] = [];
     let klantUrenTotaal = 0;
     try {
-      klantUrenLijst = await db
-        .select({
-          id: klantUren.id,
-          projectId: klantUren.projectId,
-          projectNaam: projecten.naam,
-          datum: klantUren.datum,
-          duurMinuten: klantUren.duurMinuten,
-          omschrijving: klantUren.omschrijving,
-          bron: klantUren.bron,
-        })
-        .from(klantUren)
-        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
-        .where(eq(klantUren.klantId, Number(id)))
-        .orderBy(desc(klantUren.datum))
-        .limit(50);
+      const urenRaw = await db.all<{ id: number; project_id: number | null; project_naam: string | null; datum: string; duur_minuten: number; omschrijving: string | null; bron: string | null }>(
+        sql`SELECT ku.id, ku.project_id, p.naam as project_naam, ku.datum, ku.duur_minuten, ku.omschrijving, ku.bron
+            FROM klant_uren ku LEFT JOIN projecten p ON ku.project_id = p.id
+            WHERE ku.klant_id = ${Number(id)} ORDER BY ku.datum DESC LIMIT 50`
+      );
+      klantUrenLijst = urenRaw.map(r => ({
+        id: r.id, projectId: r.project_id, projectNaam: r.project_naam,
+        datum: r.datum, duurMinuten: r.duur_minuten, omschrijving: r.omschrijving, bron: r.bron,
+      }));
 
-      klantUrenPerProject = await db
-        .select({
-          projectId: klantUren.projectId,
-          projectNaam: projecten.naam,
-          totaalMinuten: sql<number>`sum(${klantUren.duurMinuten})`,
-          aantalSessies: sql<number>`count(*)`,
-        })
-        .from(klantUren)
-        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
-        .where(eq(klantUren.klantId, Number(id)))
-        .groupBy(klantUren.projectId);
+      const perProjRaw = await db.all<{ project_id: number | null; project_naam: string | null; totaal_minuten: number; aantal_sessies: number }>(
+        sql`SELECT ku.project_id, p.naam as project_naam, sum(ku.duur_minuten) as totaal_minuten, count(*) as aantal_sessies
+            FROM klant_uren ku LEFT JOIN projecten p ON ku.project_id = p.id
+            WHERE ku.klant_id = ${Number(id)} GROUP BY ku.project_id`
+      );
+      klantUrenPerProject = perProjRaw.map(r => ({
+        projectId: r.project_id, projectNaam: r.project_naam,
+        totaalMinuten: r.totaal_minuten, aantalSessies: r.aantal_sessies,
+      }));
 
       klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
     } catch (e) {

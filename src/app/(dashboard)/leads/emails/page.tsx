@@ -23,6 +23,7 @@ import {
   RotateCcw,
   ArrowDownAZ,
   ArrowUpAZ,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -54,7 +55,9 @@ const STATUS_CONFIG: Record<
   string,
   { label: string; bg: string; text: string; icon: typeof CheckCircle }
 > = {
+  ready_for_generation: { label: "Klaar voor generatie", bg: "bg-purple-500/15", text: "text-purple-400", icon: Sparkles },
   generating: { label: "Bezig...", bg: "bg-blue-500/15", text: "text-blue-400", icon: Loader2 },
+  generation_failed: { label: "Generatie mislukt", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
   generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400", icon: Eye },
   approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: CheckCircle },
   failed: { label: "Gefaald", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },

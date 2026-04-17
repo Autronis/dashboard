@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { TabInfo } from "../_components/TabInfo";
 
 interface Lead {
   id: string;
@@ -248,7 +249,7 @@ export function EnrichmentTab() {
             Enrichment
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1">
-            Start enrichment runs voor leads zonder contactgegevens.
+            Vul ontbrekende emails, telefoons en websites aan voor leads uit LinkedIn en Google Maps.
           </p>
         </div>
         <button
@@ -259,6 +260,26 @@ export function EnrichmentTab() {
           Vernieuwen
         </button>
       </div>
+
+      <TabInfo
+        tips={[
+          {
+            icon: Play,
+            title: "Enrich kandidaten",
+            description: "Start de enrichment flow voor geselecteerde leads — zoekt email, telefoon en website via externe bronnen.",
+          },
+          {
+            icon: Eraser,
+            title: "Clean emails",
+            description: "Verwijdert ongeldige of generic emails (info@, contact@, no-reply@) uit de emails array van een lead.",
+          },
+          {
+            icon: Sparkles,
+            title: "Status tabs",
+            description: "Filter op kandidaten (pending), gevonden (email/phone/website), of mislukte enrichments om per batch te werken.",
+          },
+        ]}
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

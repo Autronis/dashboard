@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePoll } from "@/lib/use-poll";
+import { TabInfo } from "../_components/TabInfo";
 
 interface Lead {
   id: string;
@@ -425,7 +426,7 @@ export function ContactenTab() {
             Contacten
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1.5">
-            Beheer al je contacten en run enrichment of email generatie
+            Geavanceerd filteren op contactgegevens, CSV exporteren en bulk email-generatie starten.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -513,6 +514,26 @@ export function ContactenTab() {
           )}
         </div>
       </div>
+
+      <TabInfo
+        tips={[
+          {
+            icon: Filter,
+            title: "Geavanceerde filters",
+            description: "Tri-state toggles (ja/nee/reset) voor email, telefoon, website, LinkedIn en of er al een mail is gegenereerd.",
+          },
+          {
+            icon: Download,
+            title: "CSV exporteren",
+            description: "Hunter.io-compatible export van de gefilterde leads — klaar om te uploaden.",
+          },
+          {
+            icon: Mail,
+            title: "Bulk email genereren",
+            description: "Markeer leads als 'ready_for_generation', daarna pakt Syb's n8n flow ze op.",
+          },
+        ]}
+      />
 
       {/* Advanced filters paneel */}
       {showAdvanced && (

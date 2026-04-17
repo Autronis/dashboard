@@ -15,7 +15,8 @@ export async function GET(
     const klantId = Number(id);
 
     // Check klant exists
-    const [klant] = await db.select({ id: klanten.id }).from(klanten).where(eq(klanten.id, klantId));
+    const klantResult = await db.select({ id: klanten.id }).from(klanten).where(eq(klanten.id, klantId));
+    const klant = klantResult[0];
     if (!klant) {
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }

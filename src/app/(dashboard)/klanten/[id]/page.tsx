@@ -885,7 +885,7 @@ export default function KlantDetailPage() {
                   <Clock className="w-4 h-4 text-autronis-accent" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal)}</p>
+              <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal || 0)}</p>
               <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totaal gelogd</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -894,7 +894,7 @@ export default function KlantDetailPage() {
                   <Timer className="w-4 h-4 text-purple-400" />
                 </div>
               </div>
-              <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.klantUrenSessies}</p>
+              <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.klantUrenSessies || 0}</p>
               <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Sessies</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -904,7 +904,7 @@ export default function KlantDetailPage() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-emerald-400 tabular-nums">
-                {formatBedrag((kpis.klantUrenTotaal / 60) * (klant.uurtarief || 0))}
+                {formatBedrag(((kpis.klantUrenTotaal || 0) / 60) * (klant.uurtarief || 0))}
               </p>
               <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Waarde (uren x tarief)</p>
             </div>

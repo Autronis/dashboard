@@ -554,6 +554,24 @@ if (isTurso) {
   client.execute("CREATE INDEX IF NOT EXISTS idx_klant_uren_project_id ON klant_uren(project_id)").catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_klant_uren_datum ON klant_uren(datum)").catch(() => {});
 
+  // Chat sessies: uniek ID per Claude Code chat
+  client.execute(`CREATE TABLE IF NOT EXISTS chat_sessies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    context_tag TEXT NOT NULL,
+    nummer INTEGER NOT NULL,
+    chat_id TEXT NOT NULL,
+    onderwerp TEXT,
+    klant_id INTEGER REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    gestart_op TEXT DEFAULT (datetime('now')),
+    UNIQUE(gebruiker, context_tag, nummer)
+  )`).catch(() => {});
+  client.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessies_chat_id ON chat_sessies(chat_id)").catch(() => {});
+
+  // Sessie ID kolom op klant_uren
+  client.execute("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT").catch(() => {});
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
@@ -884,6 +902,24 @@ if (isTurso) {
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_klant_id ON klant_uren(klant_id)");
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_project_id ON klant_uren(project_id)");
   sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_uren_datum ON klant_uren(datum)");
+
+  // Chat sessies: uniek ID per Claude Code chat
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS chat_sessies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    context_tag TEXT NOT NULL,
+    nummer INTEGER NOT NULL,
+    chat_id TEXT NOT NULL,
+    onderwerp TEXT,
+    klant_id INTEGER REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    gestart_op TEXT DEFAULT (datetime('now')),
+    UNIQUE(gebruiker, context_tag, nummer)
+  )`);
+  sqliteDb.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_chat_sessies_chat_id ON chat_sessies(chat_id)");
+
+  // Sessie ID kolom op klant_uren
+  try { sqliteDb.exec("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT"); } catch { /* column may already exist */ }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

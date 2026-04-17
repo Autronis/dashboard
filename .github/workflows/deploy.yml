@@ -29,3 +29,10 @@ jobs:
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Discord deploy alert
+        if: always()
+        run: |
+          curl -s -X POST "https://n8n.srv1380442.hstgr.cloud/webhook/deploy-alert" \
+            -H "Content-Type: application/json" \
+            -d "{\"repo\":\"autronis-dashboard\",\"status\":\"${{ job.status }}\",\"commit\":\"${{ github.event.head_commit.message }}\",\"url\":\"https://dashboard.autronis.nl\"}" || true

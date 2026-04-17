@@ -16,6 +16,8 @@ import {
   FlaskConical,
   ArrowUpDown,
   AlertTriangle,
+  Zap,
+  Loader2,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -25,6 +27,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useKlanten } from "@/hooks/queries/use-klanten";
 import type { Klant } from "@/hooks/queries/use-klanten";
 import { useQueryClient } from "@tanstack/react-query";
+import { useBulkScan, type ScanStatus } from "../leads/_components/use-bulk-scan";
+import Link from "next/link";
 
 // Generate consistent color from name
 function getInitialsColor(naam: string): string {
@@ -129,7 +133,17 @@ function formatRelatief(datum: string | null): string {
   return `${Math.floor(dagen / 30)} maanden geleden`;
 }
 
-function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void; zoek: string }) {
+interface KlantCardProps {
+  klant: Klant;
+  onClick: () => void;
+  zoek: string;
+  scanStatus: ScanStatus | undefined;
+  scanId: number | undefined;
+  isScanning: boolean;
+  onScan: () => void;
+}
+
+function KlantCard({ klant, onClick, zoek, scanStatus, scanId, isScanning, onScan }: KlantCardProps) {
   const initialsColor = getInitialsColor(klant.bedrijfsnaam);
   const initials = getInitials(klant.bedrijfsnaam);
   const churn = isChurnRisico(klant);
@@ -243,6 +257,38 @@ function KlantCard({ klant, onClick, zoek }: { klant: Klant; onClick: () => void
             <Phone className="w-3.5 h-3.5" />
           </a>
         )}
+        {klant.website && (
+          scanStatus === "completed" && scanId ? (
+            <Link
+              href={`/sales-engine/${scanId}`}
+              onClick={(e) => e.stopPropagation()}
+              className="p-1.5 rounded-lg bg-autronis-accent/15 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/25 transition-colors"
+              title="Scan resultaten bekijken"
+            >
+              <Zap className="w-3.5 h-3.5" />
+            </Link>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onScan();
+              }}
+              disabled={isScanning}
+              className="p-1.5 rounded-lg bg-autronis-bg/50 border border-autronis-border/50 text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30 transition-colors disabled:opacity-40"
+              title={
+                scanStatus === "failed"
+                  ? "Scan mislukt — klik om opnieuw te proberen"
+                  : "Start Sales Engine scan voor deze klant"
+              }
+            >
+              {scanStatus === "pending" ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Zap className="w-3.5 h-3.5" />
+              )}
+            </button>
+          )
+        )}
         <div className="flex-1" />
         {klant.openTaken > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium tabular-nums">
@@ -308,6 +354,7 @@ export default function KlantenPage() {
   const [sorteer, setSorteer] = useState<SorteerOptie>("gezondheid");
   const [modalOpen, setModalOpen] = useState(false);
   const [bewerkKlant, setBewerkKlant] = useState<Klant | null>(null);
+  const { isScanning, scanResults, scanIds, runScan } = useBulkScan();
 
   const toggleGezondheid = useCallback((g: GezondheidFilter) => {
     setFilterGezondheid((prev) => (prev === g ? "alles" : g));
@@ -593,6 +640,19 @@ export default function KlantenPage() {
                   klant={klant}
                   onClick={() => router.push(`/klanten/${klant.id}`)}
                   zoek={zoekterm}
+                  scanStatus={scanResults[String(klant.id)]}
+                  scanId={scanIds[String(klant.id)]}
+                  isScanning={isScanning}
+                  onScan={() =>
+                    runScan([
+                      {
+                        id: String(klant.id),
+                        name: klant.bedrijfsnaam,
+                        website: klant.website,
+                        email: klant.email,
+                      },
+                    ])
+                  }
                 />
               </motion.div>
             ))}

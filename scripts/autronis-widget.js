@@ -8,7 +8,7 @@
 // 4. Voeg Scriptable widget toe aan homescreen → kies dit script
 // 5. Widget size: medium (aanbevolen) of large
 
-const API_KEY = "VULL_HIER_JE_KEY_IN";
+const API_KEY = "autronis-dashboard-2026-geheim-minimaal-32-tekens!!";
 const BASE_URL = "https://dashboard.autronis.nl";
 
 // ─── Kleuren (Autronis dark theme) ───

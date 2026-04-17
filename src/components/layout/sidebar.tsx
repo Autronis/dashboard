@@ -14,7 +14,7 @@ import {
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
-  Heart, TrendingUp, Globe, Phone, FolderOpen, Target,
+  Heart, TrendingUp, Globe, FolderOpen, Target,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
         icon: TrendingUp,
         children: [
           { label: "Klanten", icon: Users, href: "/klanten" },
+          { label: "Dashboard", icon: BarChart3, href: "/leads/dashboard" },
           { label: "Sales Engine", icon: Rocket, href: "/sales-engine" },
           // Lead-generation pipeline (lead-dashboard-v2 integratie).
           // Alle onderliggende routes zitten onder /leads/* en praten met de
@@ -70,30 +71,16 @@ const navSections: (NavLink | NavSection | "divider")[] = [
             label: "Leads",
             icon: Target,
             href: "/leads",
-            alsoMatches: [
-              "/leads/contacts",
-              "/leads/emails",
-              "/leads/enrichment",
-              "/leads/folders",
-              "/leads/website-leads",
-              "/leads/handmatig",
-              "/leads/automations",
-              "/leads/dashboard",
-              "/leads/instellingen",
-              "/leads/rebuild-prep",
-            ],
+            alsoMatches: ["/leads/handmatig", "/leads/rebuild-prep"],
           },
           { label: "Contacten", icon: Users, href: "/leads/contacts" },
           { label: "Lead Emails", icon: Mail, href: "/leads/emails" },
           { label: "Enrichment", icon: Sparkles, href: "/leads/enrichment" },
           { label: "Folders", icon: FolderOpen, href: "/leads/folders" },
           { label: "Website Leads", icon: Globe, href: "/leads/website-leads" },
-          { label: "Rebuild Prep", icon: Sparkles, href: "/leads/rebuild-prep" },
-          { label: "Handmatig bellen", icon: Phone, href: "/leads/handmatig" },
-          { label: "Lead Dashboard", icon: BarChart3, href: "/leads/dashboard" },
+          { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Automations", icon: Zap, href: "/leads/automations" },
           { label: "Lead Instellingen", icon: Settings, href: "/leads/instellingen" },
-          { label: "Follow-up", icon: UserCheck, href: "/followup" },
         ],
       },
       {

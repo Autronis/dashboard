@@ -52,66 +52,62 @@ Antwoord ALLEEN als JSON: {"bedrag":23.50,"btwBedrag":4.08,"datum":"2026-03-31",
 // POST /api/bank/bonnetje — Upload receipt photo, OCR, auto-match
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-
-    // Auth via header (x-api-key / Authorization) of form body veld "key"
+    // Auth via query param, header, of session cookie
+    const queryKey = new URL(req.url).searchParams.get("key");
     const xApiKey = req.headers.get("x-api-key");
     const authHeader = req.headers.get("authorization");
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-    const bodyKey = formData.get("key") as string | null;
 
-    const validKey = [xApiKey, bearerToken, bodyKey].some(
+    const validKey = [queryKey, xApiKey, bearerToken].some(
       (k) => k && k === process.env.SESSION_SECRET
     );
 
     if (!validKey) {
-      // Fallback: probeer API key auth of session cookie
-      if (bearerToken || bodyKey) {
-        const { requireApiKey } = await import("@/lib/auth");
-        try {
-          // Maak een fake request met Authorization header voor requireApiKey
-          const fakeReq = new Request(req.url, { headers: { authorization: `Bearer ${bearerToken || bodyKey}` } });
-          await requireApiKey(fakeReq as unknown as import("next/server").NextRequest);
-        } catch {
-          return NextResponse.json({ fout: "Niet geauthenticeerd" }, { status: 401 });
-        }
-      } else {
-        const { requireAuth } = await import("@/lib/auth");
-        await requireAuth();
-      }
+      const { requireAuth } = await import("@/lib/auth");
+      await requireAuth();
     }
-    // iOS Shortcuts stuurt foto's soms als Blob, soms als File, soms als string
-    const bonnetjeRaw = formData.get("bonnetje");
-    const file = bonnetjeRaw instanceof File ? bonnetjeRaw : null;
-    const blob = !file && bonnetjeRaw instanceof Blob ? bonnetjeRaw : null;
-    const base64Input = formData.get("base64") as string | null;
-    const mediaTypeInput = formData.get("mediaType") as string | null;
 
+    // Probeer het bonnetje uit de body te halen — ondersteunt:
+    // 1. Multipart form met "bonnetje" veld (web upload)
+    // 2. Raw image body (iOS Shortcuts met Request Body = File)
+    // 3. Form met "base64" veld
     let base64: string;
     let mediaType: string;
     let buffer: Buffer;
 
-    if (file) {
-      const arrayBuffer = await file.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
-      base64 = buffer.toString("base64");
-      mediaType = file.type || "image/jpeg";
-    } else if (blob) {
-      const arrayBuffer = await blob.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
-      base64 = buffer.toString("base64");
-      mediaType = blob.type || "image/jpeg";
-    } else if (typeof bonnetjeRaw === "string" && bonnetjeRaw.length > 100) {
-      // iOS Shortcuts kan de foto als base64 string sturen
-      base64 = bonnetjeRaw.replace(/^data:image\/\w+;base64,/, "");
-      buffer = Buffer.from(base64, "base64");
-      mediaType = "image/jpeg";
-    } else if (base64Input) {
-      base64 = base64Input;
-      mediaType = mediaTypeInput || "image/jpeg";
-      buffer = Buffer.from(base64, "base64");
+    const contentType = req.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData();
+      const bonnetjeRaw = formData.get("bonnetje");
+      const file = bonnetjeRaw instanceof File ? bonnetjeRaw : null;
+      const blob = !file && bonnetjeRaw instanceof Blob ? bonnetjeRaw : null;
+      const base64Input = formData.get("base64") as string | null;
+
+      if (file) {
+        buffer = Buffer.from(await file.arrayBuffer());
+        base64 = buffer.toString("base64");
+        mediaType = file.type || "image/jpeg";
+      } else if (blob) {
+        buffer = Buffer.from(await blob.arrayBuffer());
+        base64 = buffer.toString("base64");
+        mediaType = blob.type || "image/jpeg";
+      } else if (base64Input) {
+        base64 = base64Input;
+        buffer = Buffer.from(base64, "base64");
+        mediaType = (formData.get("mediaType") as string) || "image/jpeg";
+      } else {
+        return NextResponse.json({ fout: "Geen bonnetje meegestuurd" }, { status: 400 });
+      }
     } else {
-      return NextResponse.json({ fout: "Geen bonnetje meegestuurd" }, { status: 400 });
+      // Raw body — iOS Shortcuts stuurt de foto direct als body (Request Body = File)
+      const arrayBuffer = await req.arrayBuffer();
+      if (arrayBuffer.byteLength === 0) {
+        return NextResponse.json({ fout: "Geen bonnetje meegestuurd" }, { status: 400 });
+      }
+      buffer = Buffer.from(arrayBuffer);
+      base64 = buffer.toString("base64");
+      mediaType = contentType.startsWith("image/") ? contentType.split(";")[0] : "image/jpeg";
     }
 
     // 1. Save the receipt image to Supabase Storage

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken, klantUren } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, or, sql, desc, ne, isNull } from "drizzle-orm";
 
@@ -260,10 +260,45 @@ export async function GET(
       .groupBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`)
       .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
 
-    // Klant-uren (placeholder — queries worden later ingeschakeld)
-    const klantUrenLijst: { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null }[] = [];
-    const klantUrenPerProject: { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number }[] = [];
-    const klantUrenTotaal = 0;
+    // Klant-uren (Claude sessie-gebaseerde uren)
+    type UrenRow = { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null };
+    type PerProjectRow = { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number };
+    let klantUrenLijst: UrenRow[] = [];
+    let klantUrenPerProject: PerProjectRow[] = [];
+    let klantUrenTotaal = 0;
+    try {
+      klantUrenLijst = (await db
+        .select({
+          id: klantUren.id,
+          projectId: klantUren.projectId,
+          projectNaam: projecten.naam,
+          datum: klantUren.datum,
+          duurMinuten: klantUren.duurMinuten,
+          omschrijving: klantUren.omschrijving,
+          bron: klantUren.bron,
+        })
+        .from(klantUren)
+        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+        .where(eq(klantUren.klantId, Number(id)))
+        .orderBy(desc(klantUren.datum))
+        .limit(50)) as UrenRow[];
+
+      klantUrenPerProject = (await db
+        .select({
+          projectId: klantUren.projectId,
+          projectNaam: projecten.naam,
+          totaalMinuten: sql<number>`sum(${klantUren.duurMinuten})`,
+          aantalSessies: sql<number>`count(*)`,
+        })
+        .from(klantUren)
+        .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+        .where(eq(klantUren.klantId, Number(id)))
+        .groupBy(klantUren.projectId)) as PerProjectRow[];
+
+      klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
+    } catch (e) {
+      console.error("[klant-uren query error]", e);
+    }
 
     // Relatie status
     const nu = new Date();

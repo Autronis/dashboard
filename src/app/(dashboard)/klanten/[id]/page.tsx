@@ -295,7 +295,7 @@ export default function KlantDetailPage() {
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: "overzicht", label: "Overzicht" },
-    { key: "uren", label: "Uren", count: klantUren.length },
+    { key: "uren", label: "Tijd", count: klantUren.length },
     { key: "tijdlijn", label: "Tijdlijn", count: tijdlijn.length },
     { key: "financieel", label: "Financieel", count: facturen.length + offertes.length },
     { key: "documenten", label: "Documenten", count: documenten.length },
@@ -826,10 +826,71 @@ export default function KlantDetailPage() {
               )}
             </div>
 
+            {/* Gelogde klant-uren */}
+            {klantUren.length > 0 && (
+            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-lg font-semibold text-autronis-text-primary">
+                  Gelogde tijd
+                </h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-autronis-text-secondary">{kpis.klantUrenSessies || 0} sessies</span>
+                  <span className="text-base font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal || 0)}</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {klantUren.slice(0, 5).map((uur: KlantUurEntry, i: number) => (
+                  <motion.div
+                    key={uur.id}
+                    initial={{ opacity: 0, x: 6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: i * 0.04 }}
+                    className="bg-autronis-bg/50 rounded-xl p-4 flex items-center justify-between gap-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-base text-autronis-text-primary truncate">
+                        {uur.omschrijving || "Sessie"}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {uur.projectNaam && (
+                          <span className="text-sm text-autronis-accent">
+                            {uur.projectNaam}
+                          </span>
+                        )}
+                        <span className="text-sm text-autronis-text-secondary">
+                          {formatDatumKort(uur.datum)}
+                        </span>
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
+                          uur.bron === "claude-sessie"
+                            ? "bg-purple-500/10 text-purple-400"
+                            : "bg-slate-500/10 text-slate-400"
+                        )}>
+                          {uur.bron === "claude-sessie" ? "Claude" : "Handmatig"}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-base font-bold text-autronis-text-primary flex-shrink-0 tabular-nums">
+                      {formatUren(uur.duurMinuten)}
+                    </span>
+                  </motion.div>
+                ))}
+                {klantUren.length > 5 && (
+                  <button
+                    onClick={() => setActiveTab("uren")}
+                    className="text-sm text-autronis-accent hover:underline mt-2"
+                  >
+                    Bekijk alle {klantUren.length} registraties →
+                  </button>
+                )}
+              </div>
+            </div>
+            )}
+
             {/* Recente tijdregistraties */}
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">
-                Recente tijdregistraties
+                Screen-time
               </h2>
               {recenteTijdregistraties.length === 0 ? (
                 <p className="text-base text-autronis-text-secondary">
@@ -886,7 +947,7 @@ export default function KlantDetailPage() {
                 </div>
               </div>
               <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal || 0)}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totaal gelogd</p>
+              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale tijd</p>
             </div>
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
@@ -922,7 +983,7 @@ export default function KlantDetailPage() {
           {/* Per project breakdown */}
           {klantUrenPerProject.length > 0 && (
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Uren per project</h2>
+              <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Tijd per project</h2>
               <div className="space-y-4">
                 {klantUrenPerProject
                   .sort((a: KlantUrenPerProject, b: KlantUrenPerProject) => b.totaalMinuten - a.totaalMinuten)
@@ -955,9 +1016,9 @@ export default function KlantDetailPage() {
             </div>
           )}
 
-          {/* Sessie log */}
+          {/* Tijdregistraties */}
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
-            <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Sessie log</h2>
+            <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Tijdregistraties</h2>
             {klantUren.length === 0 ? (
               <div className="text-center py-10">
                 <Clock className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />

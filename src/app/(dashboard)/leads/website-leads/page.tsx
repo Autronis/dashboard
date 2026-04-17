@@ -16,9 +16,12 @@ import {
   ShieldAlert,
   ShieldQuestion,
   Filter,
+  Zap,
 } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useBulkScan } from "../_components/use-bulk-scan";
 
 interface WebsiteLead {
   id: string;
@@ -80,6 +83,7 @@ export default function LeadsWebsiteLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("alle");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { isScanning, scanResults, scanIds, runScan } = useBulkScan();
 
   // Search form
   const [query, setQuery] = useState("");
@@ -522,12 +526,49 @@ export default function LeadsWebsiteLeadsPage() {
                           </button>
                         );
                       })}
+                      {lead.website_url && (
+                        scanResults[lead.id] === "completed" && scanIds[lead.id] ? (
+                          <Link
+                            href={`/sales-engine/${scanIds[lead.id]}`}
+                            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-autronis-accent bg-autronis-accent/10 hover:bg-autronis-accent/20 transition-colors"
+                          >
+                            <ExternalLink className="w-2.5 h-2.5" />
+                            Scan bekijken
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() =>
+                              runScan([
+                                {
+                                  id: lead.id,
+                                  name: lead.name,
+                                  website: lead.website_url,
+                                  email: lead.email,
+                                },
+                              ])
+                            }
+                            disabled={isScanning}
+                            title="Start een Sales Engine scan voor deze lead"
+                            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/20 transition-colors disabled:opacity-40"
+                          >
+                            {scanResults[lead.id] === "pending" || isScanning ? (
+                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
+                            ) : (
+                              <Zap className="w-2.5 h-2.5" />
+                            )}
+                            {scanResults[lead.id] === "failed" ? "Opnieuw scannen" : "Scan"}
+                          </button>
+                        )
+                      )}
                       {lead.google_maps_url && (
                         <a
                           href={lead.google_maps_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-autronis-accent hover:bg-autronis-accent/10 transition-colors"
+                          className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-autronis-accent hover:bg-autronis-accent/10 transition-colors",
+                            !lead.website_url && "ml-auto"
+                          )}
                         >
                           <ExternalLink className="w-2.5 h-2.5" />
                           Google Maps

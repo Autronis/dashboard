@@ -345,6 +345,7 @@ export function OverzichtTab() {
             websiteUrl: lead.website,
             contactpersoon: lead.name,
             email: lead.email,
+            supabaseLeadId: lead.id,
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

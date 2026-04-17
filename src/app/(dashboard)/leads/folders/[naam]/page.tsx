@@ -254,6 +254,7 @@ export default function FolderDetailPage({
         name: l.name,
         website: l.website,
         email: parseEmails(l.emails)[0] ?? null,
+        supabaseLeadId: l.id,
       }));
     await runScan(selected);
     setSelectedIds(new Set());

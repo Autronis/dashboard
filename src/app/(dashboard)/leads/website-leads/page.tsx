@@ -544,6 +544,7 @@ export default function LeadsWebsiteLeadsPage() {
                                   name: lead.name,
                                   website: lead.website_url,
                                   email: lead.email,
+                                  supabaseLeadId: lead.id,
                                 },
                               ])
                             }

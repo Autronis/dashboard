@@ -110,6 +110,18 @@ export async function POST(req: NextRequest) {
       mediaType = contentType.startsWith("image/") ? contentType.split(";")[0] : "image/jpeg";
     }
 
+    // Comprimeer als de afbeelding > 4.5MB is (Claude API limiet = 5MB)
+    const MAX_SIZE = 4_500_000;
+    if (buffer.length > MAX_SIZE) {
+      const sharp = (await import("sharp")).default;
+      buffer = await sharp(buffer)
+        .resize({ width: 2000, withoutEnlargement: true })
+        .jpeg({ quality: 80 })
+        .toBuffer();
+      base64 = buffer.toString("base64");
+      mediaType = "image/jpeg";
+    }
+
     // 1. Save the receipt image to Supabase Storage
     const { uploadToStorage } = await import("@/lib/supabase");
     const ext = mediaType.includes("png") ? ".png" : ".jpg";

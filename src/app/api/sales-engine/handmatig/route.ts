@@ -11,6 +11,10 @@ interface HandmatigScanBody {
   websiteUrl: string;
   contactpersoon?: string;
   email?: string;
+  // Originele Supabase lead id (uuid string) van de lead waar de scan uit gestart is.
+  // Voor leads uit Syb's lead-dashboard is dit de gouden link — matchen op bedrijfsnaam
+  // is anders brekend bij dubbele namen.
+  supabaseLeadId?: string;
 }
 
 function validateUrl(url: string): boolean {
@@ -38,6 +42,7 @@ function validateBody(body: Record<string, unknown>): HandmatigScanBody {
     websiteUrl: (body.websiteUrl as string).trim(),
     contactpersoon: typeof body.contactpersoon === "string" ? body.contactpersoon.trim() || undefined : undefined,
     email: typeof body.email === "string" ? body.email.trim().toLowerCase() || undefined : undefined,
+    supabaseLeadId: typeof body.supabaseLeadId === "string" ? body.supabaseLeadId.trim() || undefined : undefined,
   };
 }
 
@@ -166,6 +171,7 @@ export async function POST(req: NextRequest) {
       .insert(salesEngineScans)
       .values({
         leadId: existingLead.id,
+        supabaseLeadId: body.supabaseLeadId ?? null,
         websiteUrl: body.websiteUrl,
         status: "pending",
       })

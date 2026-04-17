@@ -8,6 +8,9 @@ export interface ScannableLead {
   name: string | null;
   website: string | null;
   email: string | null;
+  // Supabase lead-id (uuid) — alleen meegeven als de lead uit Syb's lead-dashboard
+  // komt. Voor Turso-entiteiten (klanten, handmatig ingevoerde leads) laten op null.
+  supabaseLeadId?: string | null;
 }
 
 export type ScanStatus = "pending" | "completed" | "failed";
@@ -38,6 +41,7 @@ export function useBulkScan() {
             websiteUrl: lead.website,
             contactpersoon: lead.name,
             email: lead.email,
+            supabaseLeadId: lead.supabaseLeadId ?? null,
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

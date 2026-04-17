@@ -65,6 +65,20 @@ export async function DELETE(req: NextRequest) {
     }
 
     const supabase = getSupabaseLeads();
+
+    // Cascade: verwijder eerst alle emails gekoppeld aan deze google maps leads,
+    // anders blijven ze verweesd staan op /leads/emails.
+    const { error: emailsError } = await supabase
+      .from("emails")
+      .delete()
+      .in("google_maps_lead_id", ids);
+    if (emailsError) {
+      return NextResponse.json(
+        { fout: `Kon gekoppelde emails niet verwijderen: ${emailsError.message}` },
+        { status: 500 }
+      );
+    }
+
     const { error } = await supabase.from("google_maps_leads").delete().in("id", ids);
     if (error) {
       return NextResponse.json(

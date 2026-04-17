@@ -77,6 +77,20 @@ export async function DELETE(req: NextRequest) {
     }
 
     const supabase = getSupabaseLeads();
+
+    // Cascade: verwijder eerst alle emails die aan deze leads hangen, anders blijven
+    // die verweesd staan op /leads/emails (lead_id is geen harde FK in Syb's schema).
+    const { error: emailsError } = await supabase
+      .from("emails")
+      .delete()
+      .in("lead_id", ids);
+    if (emailsError) {
+      return NextResponse.json(
+        { fout: `Kon gekoppelde emails niet verwijderen: ${emailsError.message}` },
+        { status: 500 }
+      );
+    }
+
     const { error } = await supabase.from("leads").delete().in("id", ids);
 
     if (error) {

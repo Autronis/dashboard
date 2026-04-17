@@ -1456,6 +1456,7 @@ export const concurrentScans = sqliteTable("concurrent_scans", {
 export const salesEngineScans = sqliteTable("sales_engine_scans", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   leadId: integer("lead_id").references(() => leads.id),
+  supabaseLeadId: text("supabase_lead_id"),
   websiteUrl: text("website_url").notNull(),
   bedrijfsgrootte: text("bedrijfsgrootte"),
   rol: text("rol"),

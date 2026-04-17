@@ -150,6 +150,9 @@ export default function LeadsOverzichtPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResults, setScanResults] = useState<Record<string, "pending" | "completed" | "failed">>({});
+  const [scanIds, setScanIds] = useState<Record<string, number>>({});
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -320,6 +323,43 @@ export default function LeadsOverzichtPage() {
     }
   }
 
+  async function bulkScan() {
+    const selected = leads.filter((l) => selectedIds.has(l.id) && l.website?.trim());
+    if (selected.length === 0) {
+      addToast("Geen leads met website geselecteerd", "fout");
+      return;
+    }
+    setIsScanning(true);
+    let ok = 0;
+    let fail = 0;
+    for (const lead of selected) {
+      try {
+        setScanResults((prev) => ({ ...prev, [lead.id]: "pending" }));
+        const res = await fetch("/api/sales-engine/handmatig", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bedrijfsnaam: lead.name || "Onbekend",
+            websiteUrl: lead.website,
+            contactpersoon: lead.name,
+            email: lead.email,
+          }),
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setScanResults((prev) => ({ ...prev, [lead.id]: "completed" }));
+        setScanIds((prev) => ({ ...prev, [lead.id]: data.scanId }));
+        ok++;
+      } catch {
+        setScanResults((prev) => ({ ...prev, [lead.id]: "failed" }));
+        fail++;
+      }
+    }
+    setIsScanning(false);
+    setSelectedIds(new Set());
+    addToast(`${ok} scans gestart${fail > 0 ? `, ${fail} mislukt` : ""}`, ok > 0 ? "succes" : "fout");
+  }
+
   const activeFilters = [
     sourceFilter !== "alle",
     folderFilter !== "alle",
@@ -464,6 +504,14 @@ export default function LeadsOverzichtPage() {
             <span className="text-xs text-autronis-text-secondary">
               {selectedIds.size} geselecteerd
             </span>
+            <button
+              onClick={bulkScan}
+              disabled={isScanning}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors disabled:opacity-50"
+            >
+              {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              Scan ({selectedIds.size})
+            </button>
             {confirmDelete ? (
               <>
                 <button
@@ -545,6 +593,7 @@ export default function LeadsOverzichtPage() {
                 <th className="text-left px-4 py-3 font-semibold">Contact</th>
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Folder</th>
                 <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Status</th>
+                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Scan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
@@ -673,6 +722,27 @@ export default function LeadsOverzichtPage() {
                         >
                           {lead.outreach_status}
                         </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 hidden lg:table-cell">
+                      {scanResults[lead.id] === "pending" && (
+                        <span className="inline-flex items-center gap-1 text-xs text-amber-400">
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                          Bezig
+                        </span>
+                      )}
+                      {scanResults[lead.id] === "completed" && (
+                        <Link
+                          href={`/sales-engine/${scanIds[lead.id]}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
+                        >
+                          <Sparkles className="w-3 h-3" />
+                          Bekijk
+                        </Link>
+                      )}
+                      {scanResults[lead.id] === "failed" && (
+                        <span className="text-xs text-red-400">Mislukt</span>
                       )}
                     </td>
                   </tr>

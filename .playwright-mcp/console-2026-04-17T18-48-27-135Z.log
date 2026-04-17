@@ -1,0 +1,19 @@
+[   15783ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   15999ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   16274ms] [WARNING] Failed to decode downloaded font: http://localhost:3000/fonts/Inter-Bold.ttf @ http://localhost:3000/login:0
+[   16275ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008813135 @ http://localhost:3000/login:0
+[   18046ms] [WARNING] Failed to decode downloaded font: http://localhost:3000/fonts/Inter-Regular.ttf @ http://localhost:3000/login:0
+[   18046ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008813135 @ http://localhost:3000/login:0
+[   18291ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   18672ms] [WARNING] Failed to decode downloaded font: http://localhost:3000/fonts/Inter-SemiBold.ttf @ http://localhost:3000/login:0
+[   18673ms] [WARNING] OTS parsing error: invalid sfntVersion: 1008813135 @ http://localhost:3000/login:0
+[   22823ms] [LOG] [Fast Refresh] done in 4632ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   22924ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   23606ms] [LOG] [Fast Refresh] done in 783ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   23708ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   23753ms] [LOG] [Fast Refresh] done in 146ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   23855ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   23901ms] [LOG] [Fast Refresh] done in 148ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   24003ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   24053ms] [LOG] [Fast Refresh] done in 151ms @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297
+[   24155ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:2297

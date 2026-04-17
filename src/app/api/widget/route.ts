@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { agendaItems, taken, projecten, gebruikers, klantUren, klanten } from "@/lib/db/schema";
+import { agendaItems, taken, projecten, gebruikers, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte, or, isNull, sql, inArray, desc } from "drizzle-orm";
 
@@ -81,29 +81,31 @@ export async function GET(req: NextRequest) {
     weekStart.setDate(now.getDate() - daysFromMonday);
     const weekStartStr = weekStart.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
 
+    // Uren uit screen_time_entries (actieve tijd zoals op /tijd pagina)
+    // Excludeer inactief en afleiding voor "productieve" uren
     const urenRows = await db
       .select({
-        datum: klantUren.datum,
-        duurMinuten: klantUren.duurMinuten,
-        klantNaam: klanten.bedrijfsnaam,
+        startTijd: screenTimeEntries.startTijd,
+        duurSeconden: screenTimeEntries.duurSeconden,
+        categorie: screenTimeEntries.categorie,
         projectNaam: projecten.naam,
-        bron: klantUren.bron,
       })
-      .from(klantUren)
-      .leftJoin(klanten, eq(klantUren.klantId, klanten.id))
-      .leftJoin(projecten, eq(klantUren.projectId, projecten.id))
+      .from(screenTimeEntries)
+      .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
       .where(
         and(
-          eq(klantUren.gebruikerId, gebruiker.id),
-          gte(klantUren.datum, weekStartStr),
-          lte(klantUren.datum, today)
+          eq(screenTimeEntries.gebruikerId, gebruiker.id),
+          gte(sql`substr(${screenTimeEntries.startTijd}, 1, 10)`, weekStartStr),
+          lte(sql`substr(${screenTimeEntries.startTijd}, 1, 10)`, today),
+          sql`${screenTimeEntries.categorie} != 'inactief'`
         )
-      )
-      .orderBy(desc(klantUren.datum));
+      );
 
-    const totaalMinuten = urenRows.reduce((sum, r) => sum + (r.duurMinuten || 0), 0);
+    const totaalMinuten = Math.round(
+      urenRows.reduce((sum, r) => sum + (r.duurSeconden || 0), 0) / 60
+    );
 
-    // Per dag totaal (voor mini-bar-chart)
+    // Per dag totaal (voor bar-chart)
     const perDag: Record<string, number> = {};
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
@@ -112,16 +114,17 @@ export async function GET(req: NextRequest) {
       perDag[dStr] = 0;
     }
     for (const r of urenRows) {
-      if (perDag[r.datum] !== undefined) perDag[r.datum] += r.duurMinuten || 0;
+      const dag = (r.startTijd || "").slice(0, 10);
+      if (perDag[dag] !== undefined) perDag[dag] += Math.round((r.duurSeconden || 0) / 60);
     }
 
-    // Per klant totaal (top 5)
-    const perKlantMap: Record<string, number> = {};
+    // Per project/categorie totaal (top 5)
+    const perProjectMap: Record<string, number> = {};
     for (const r of urenRows) {
-      const key = r.klantNaam || "Onbekend";
-      perKlantMap[key] = (perKlantMap[key] || 0) + (r.duurMinuten || 0);
+      const key = r.projectNaam || r.categorie || "Overig";
+      perProjectMap[key] = (perProjectMap[key] || 0) + Math.round((r.duurSeconden || 0) / 60);
     }
-    const perKlant = Object.entries(perKlantMap)
+    const perKlant = Object.entries(perProjectMap)
       .map(([naam, minuten]) => ({ naam, minuten }))
       .sort((a, b) => b.minuten - a.minuten)
       .slice(0, 5);

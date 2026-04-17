@@ -81,13 +81,16 @@ export async function GET(req: NextRequest) {
     weekStart.setDate(now.getDate() - daysFromMonday);
     const weekStartStr = weekStart.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
 
-    // Uren uit screen_time_entries (actieve tijd zoals op /tijd pagina)
-    // Excludeer inactief en afleiding voor "productieve" uren
+    // Uren via 30-min sessie timespans (matcht /tijd pagina berekening)
+    // Entries worden gegroepeerd in 30-min slots; per slot tellen we (eindTijd - startTijd)
+    // van eerste tot laatste entry, exclusief inactief entries.
     const urenRows = await db
       .select({
         startTijd: screenTimeEntries.startTijd,
+        eindTijd: screenTimeEntries.eindTijd,
         duurSeconden: screenTimeEntries.duurSeconden,
         categorie: screenTimeEntries.categorie,
+        app: screenTimeEntries.app,
         projectNaam: projecten.naam,
       })
       .from(screenTimeEntries)
@@ -96,36 +99,63 @@ export async function GET(req: NextRequest) {
         and(
           eq(screenTimeEntries.gebruikerId, gebruiker.id),
           gte(sql`substr(${screenTimeEntries.startTijd}, 1, 10)`, weekStartStr),
-          lte(sql`substr(${screenTimeEntries.startTijd}, 1, 10)`, today),
-          sql`${screenTimeEntries.categorie} != 'inactief'`
+          lte(sql`substr(${screenTimeEntries.startTijd}, 1, 10)`, today)
         )
       );
 
-    const totaalMinuten = Math.round(
-      urenRows.reduce((sum, r) => sum + (r.duurSeconden || 0), 0) / 60
+    // Filter active entries zoals /tijd doet
+    const SKIP_APPS = new Set(["LockApp", "SearchHost", "ShellHost", "ShellExperienceHost", "Inactief"]);
+    const actieveEntries = urenRows.filter(
+      (r) => !SKIP_APPS.has(r.app || "") && r.categorie !== "inactief"
     );
 
-    // Per dag totaal (voor bar-chart)
-    const perDag: Record<string, number> = {};
+    // Groepeer per (datum, 30-min slot) en bereken timespan per slot
+    const SLOT_MS = 30 * 60 * 1000;
+    const perDagSec: Record<string, number> = {};
+    const perProjectSec: Record<string, number> = {};
+
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(weekStart.getDate() + i);
       const dStr = d.toLocaleDateString("en-CA", { timeZone: "Europe/Amsterdam" });
-      perDag[dStr] = 0;
-    }
-    for (const r of urenRows) {
-      const dag = (r.startTijd || "").slice(0, 10);
-      if (perDag[dag] !== undefined) perDag[dag] += Math.round((r.duurSeconden || 0) / 60);
+      perDagSec[dStr] = 0;
     }
 
-    // Per project/categorie totaal (top 5)
-    const perProjectMap: Record<string, number> = {};
-    for (const r of urenRows) {
-      const key = r.projectNaam || r.categorie || "Overig";
-      perProjectMap[key] = (perProjectMap[key] || 0) + Math.round((r.duurSeconden || 0) / 60);
+    // Slot-bucket van entries per dag
+    const slotsPerDag: Record<string, Map<number, typeof actieveEntries>> = {};
+    for (const e of actieveEntries) {
+      const dag = (e.startTijd || "").slice(0, 10);
+      if (!(dag in perDagSec)) continue;
+      const t = new Date(e.startTijd).getTime();
+      const slotKey = Math.floor(t / SLOT_MS);
+      if (!slotsPerDag[dag]) slotsPerDag[dag] = new Map();
+      const arr = slotsPerDag[dag].get(slotKey) || [];
+      arr.push(e);
+      slotsPerDag[dag].set(slotKey, arr);
     }
-    const perKlant = Object.entries(perProjectMap)
-      .map(([naam, minuten]) => ({ naam, minuten }))
+
+    // Per slot: timespan van eerste tot laatste entry
+    for (const [dag, slots] of Object.entries(slotsPerDag)) {
+      for (const slotEntries of slots.values()) {
+        const starts = slotEntries.map((e) => new Date(e.startTijd).getTime());
+        const eindes = slotEntries.map((e) => new Date(e.eindTijd).getTime());
+        const span = (Math.max(...eindes) - Math.min(...starts)) / 1000;
+        if (span > 0) perDagSec[dag] += span;
+
+        // Per project totaal (sum duur_seconden per project/categorie)
+        for (const e of slotEntries) {
+          const key = e.projectNaam || e.categorie || "Overig";
+          perProjectSec[key] = (perProjectSec[key] || 0) + (e.duurSeconden || 0);
+        }
+      }
+    }
+
+    const totaalMinuten = Math.round(
+      Object.values(perDagSec).reduce((s, v) => s + v, 0) / 60
+    );
+
+    const perKlant = Object.entries(perProjectSec)
+      .map(([naam, sec]) => ({ naam, minuten: Math.round(sec / 60) }))
       .sort((a, b) => b.minuten - a.minuten)
       .slice(0, 5);
 
@@ -137,7 +167,7 @@ export async function GET(req: NextRequest) {
       uren: {
         totaalMinuten,
         weekStart: weekStartStr,
-        perDag: Object.entries(perDag).map(([datum, minuten]) => ({ datum, minuten })),
+        perDag: Object.entries(perDagSec).map(([datum, sec]) => ({ datum, minuten: Math.round(sec / 60) })),
         perKlant,
       },
     });

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { projecten, klanten, taken, gebruikers } from "@/lib/db/schema";
+import { projecten, klanten, taken, gebruikers, screenTimeEntries } from "@/lib/db/schema";
 import { requireAuth, requireApiKey, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, sql, and, or, desc, gte, inArray } from "drizzle-orm";
-import { berekenUrenPerProject } from "@/lib/screen-time-uren";
 import { createProjectRepo } from "@/lib/github";
 
 type EigenaarCode = "sem" | "syb" | "team" | "vrij";
@@ -114,12 +113,22 @@ export async function GET(req: NextRequest) {
       laatsteActiviteiten.map((a) => [a.projectId, a.laatsteTaakUpdate])
     );
 
-    // Total hours per project from screen-time entries (productive activity).
-    // Range: alles wat ooit getrackt is — projectenlijst toont totale activiteit.
-    const urenPerProject = await berekenUrenPerProject("2020-01-01", "2099-12-31");
-    // Convert hours → minutes for compatibility with existing UI fields
+    // Total minutes per project via SQL aggregatie (ipv JS slot-merging over alle entries)
+    const PRODUCTIEF = ["development", "design", "administratie", "finance", "communicatie"];
+    const urenData = await db
+      .select({
+        projectId: screenTimeEntries.projectId,
+        totaalSeconden: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`,
+      })
+      .from(screenTimeEntries)
+      .where(and(
+        sql`${screenTimeEntries.projectId} IS NOT NULL`,
+        sql`${screenTimeEntries.categorie} IN (${sql.join(PRODUCTIEF.map(c => sql`${c}`), sql`, `)})`,
+        sql`${screenTimeEntries.categorie} != 'inactief'`,
+      ))
+      .groupBy(screenTimeEntries.projectId);
     const urenMap = new Map<number, number>(
-      [...urenPerProject.entries()].map(([id, uren]) => [id, Math.round(uren * 60)])
+      urenData.map((u) => [u.projectId!, Math.round(u.totaalSeconden / 60)])
     );
 
     // Get concatenated task titles per project (for search)

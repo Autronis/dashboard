@@ -3,7 +3,6 @@ import { db } from "@/lib/db";
 import { klanten, projecten, screenTimeEntries, facturen, offertes, notities as notitiesTabel, meetings, taken } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql, and, ne } from "drizzle-orm";
-import { berekenUrenPerKlant } from "@/lib/screen-time-uren";
 
 // GET /api/klanten — All clients with enriched KPIs, health indicators
 export async function GET(req: NextRequest) {
@@ -55,10 +54,22 @@ export async function GET(req: NextRequest) {
       .groupBy(projecten.klantId);
     const projectMap = new Map(projectStats.map((p) => [p.klantId, p]));
 
-    // Batch: total hours per klant from screen-time
-    const urenPerKlant = await berekenUrenPerKlant("2020-01-01", "2099-12-31");
+    // Batch: total minutes per klant via SQL aggregatie (was berekenUrenPerKlant met full-table scan)
+    const PRODUCTIEF = ["development", "design", "administratie", "finance", "communicatie"];
+    const urenPerKlant = await db
+      .select({
+        klantId: sql<number>`COALESCE(${screenTimeEntries.klantId}, ${projecten.klantId})`.as("resolved_klant_id"),
+        totaalSeconden: sql<number>`COALESCE(SUM(${screenTimeEntries.duurSeconden}), 0)`,
+      })
+      .from(screenTimeEntries)
+      .leftJoin(projecten, eq(screenTimeEntries.projectId, projecten.id))
+      .where(and(
+        sql`${screenTimeEntries.categorie} IN (${sql.join(PRODUCTIEF.map(c => sql`${c}`), sql`, `)})`,
+        sql`COALESCE(${screenTimeEntries.klantId}, ${projecten.klantId}) IS NOT NULL`,
+      ))
+      .groupBy(sql`resolved_klant_id`);
     const urenMap = new Map<number, number>(
-      [...urenPerKlant.entries()].map(([id, uren]) => [id, Math.round(uren * 60)])
+      urenPerKlant.map((u) => [u.klantId!, Math.round(u.totaalSeconden / 60)])
     );
 
     // Batch: factuur stats per klant (total revenue, outstanding, last invoice)

@@ -134,19 +134,28 @@ export async function POST(req: NextRequest) {
     // 2. OCR via Claude Vision
     const bonData = await analyseerBonnetje(base64, mediaType);
 
-    // 3. Try to auto-match with a Revolut transaction
+    // 3. Try to auto-match with a bank transaction
+    // Zoekt op bedrag (±15%) OF winkelnaam, zonder strikte datumfilter
+    // (OCR leest datums vaak verkeerd, en handmatige transacties hebben soms afwijkende datums)
     let matchedTransactie = null;
-    if (bonData.bedrag) {
-      // Look for transactions within ±2 days and ±10% of amount
-      const margin = bonData.bedrag * 0.1;
+    if (bonData.bedrag || bonData.winkel) {
+      const margin = (bonData.bedrag ?? 0) * 0.15;
+      const winkelLower = (bonData.winkel ?? "").toLowerCase();
+
       const conditions = [
         eq(bankTransacties.type, "af"),
-        sql`ABS(${bankTransacties.bedrag} - ${bonData.bedrag}) < ${margin}`,
-        sql`${bankTransacties.bonPad} IS NULL`, // Not already matched
+        sql`${bankTransacties.bonPad} IS NULL`,
       ];
 
-      if (bonData.datum) {
-        conditions.push(sql`ABS(julianday(${bankTransacties.datum}) - julianday(${bonData.datum})) <= 2`);
+      // Zoek op bedrag OF naam — niet allebei verplicht
+      // Bank bedragen zijn negatief voor "af" transacties, bonnetje is positief
+      const absBedrag = Math.abs(bonData.bedrag ?? 0);
+      if (bonData.bedrag && winkelLower) {
+        conditions.push(sql`(ABS(ABS(${bankTransacties.bedrag}) - ${absBedrag}) < ${margin} OR LOWER(COALESCE(${bankTransacties.merchantNaam}, '') || ' ' || COALESCE(${bankTransacties.omschrijving}, '')) LIKE ${'%' + winkelLower + '%'})`);
+      } else if (bonData.bedrag) {
+        conditions.push(sql`ABS(ABS(${bankTransacties.bedrag}) - ${absBedrag}) < ${margin}`);
+      } else {
+        conditions.push(sql`LOWER(COALESCE(${bankTransacties.merchantNaam}, '') || ' ' || COALESCE(${bankTransacties.omschrijving}, '')) LIKE ${'%' + winkelLower + '%'}`);
       }
 
       const matches = await db.select({
@@ -155,14 +164,14 @@ export async function POST(req: NextRequest) {
         omschrijving: bankTransacties.omschrijving,
         bedrag: bankTransacties.bedrag,
         merchantNaam: bankTransacties.merchantNaam,
-      }).from(bankTransacties).where(and(...conditions)).limit(3);
+      }).from(bankTransacties).where(and(...conditions)).limit(10);
 
       // Score matches
       if (matches.length > 0) {
         // Best match: closest amount + closest date + name similarity
         const scored = matches.map(m => {
           let score = 0;
-          score += 10 - Math.abs(m.bedrag - (bonData.bedrag ?? 0)) * 2; // Amount closeness
+          score += 10 - Math.abs(Math.abs(m.bedrag) - Math.abs(bonData.bedrag ?? 0)) * 2; // Amount closeness
           if (bonData.datum) {
             const dayDiff = Math.abs(new Date(m.datum).getTime() - new Date(bonData.datum).getTime()) / 86400000;
             score += 5 - dayDiff * 2;

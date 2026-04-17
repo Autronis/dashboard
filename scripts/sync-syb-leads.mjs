@@ -312,7 +312,7 @@ async function createDashboardTask({ commits, changes, typesChanged, whitelistCh
 
   const titel = `Syb pushed lead-dashboard-v2: ${commits[0].message.slice(0, 60)}`;
   const body = {
-    projectNaam: "Autronis Dashboard",
+    projectNaam: "Lead Dashboard v2",
     voltooide_taken: [],
     nieuwe_taken: [
       {

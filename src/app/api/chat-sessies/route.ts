@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { chatSessies } from "@/lib/db/schema";
 import { requireAuthOrApiKey } from "@/lib/auth";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 // GET /api/chat-sessies?gebruiker=sem — Return existing context tags for a user
 export async function GET(req: NextRequest) {
@@ -18,23 +17,12 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Aggregate: per context_tag, count sessions and get the latest onderwerp
-    const tags = await db
-      .select({
-        tag: chatSessies.contextTag,
-        aantal: sql<number>`count(*)`,
-        laatsteOnderwerp: sql<string>`(
-          SELECT cs2.onderwerp FROM chat_sessies cs2
-          WHERE cs2.gebruiker = ${gebruiker}
-            AND cs2.context_tag = ${chatSessies.contextTag}
-          ORDER BY cs2.nummer DESC
-          LIMIT 1
-        )`,
-      })
-      .from(chatSessies)
-      .where(eq(chatSessies.gebruiker, gebruiker))
-      .groupBy(chatSessies.contextTag)
-      .orderBy(desc(sql`max(${chatSessies.nummer})`));
+    const tags = await db.all<{ tag: string; aantal: number; laatsteOnderwerp: string | null }>(
+      sql`SELECT context_tag as tag, count(*) as aantal,
+          (SELECT cs2.onderwerp FROM chat_sessies cs2 WHERE cs2.gebruiker = ${gebruiker} AND cs2.context_tag = chat_sessies.context_tag ORDER BY cs2.nummer DESC LIMIT 1) as laatsteOnderwerp
+          FROM chat_sessies WHERE gebruiker = ${gebruiker}
+          GROUP BY context_tag ORDER BY max(nummer) DESC`
+    );
 
     return NextResponse.json({ tags });
   } catch (error) {
@@ -52,7 +40,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { gebruiker, contextTag, onderwerp, klantId, projectId } = body;
 
-    // Validate gebruiker
     if (!gebruiker || !["sem", "syb"].includes(gebruiker)) {
       return NextResponse.json(
         { fout: "Veld 'gebruiker' is verplicht en moet 'sem' of 'syb' zijn." },
@@ -60,7 +47,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Validate contextTag
     if (!contextTag || !/^[A-Z0-9]{1,5}$/.test(contextTag)) {
       return NextResponse.json(
         { fout: "Veld 'contextTag' is verplicht en moet 1-5 hoofdletters/cijfers zijn (A-Z0-9)." },
@@ -68,43 +54,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the current max nummer for this (gebruiker, context_tag) pair
-    const maxResult = await db
-      .select({
-        maxNummer: sql<number | null>`max(${chatSessies.nummer})`,
-      })
-      .from(chatSessies)
-      .where(
-        and(
-          eq(chatSessies.gebruiker, gebruiker),
-          eq(chatSessies.contextTag, contextTag)
-        )
-      );
+    // Get next number via raw SQL to avoid drizzle schema issues with new tables
+    const maxResult = await db.all<{ max_nr: number | null }>(
+      sql`SELECT max(nummer) as max_nr FROM chat_sessies WHERE gebruiker = ${gebruiker} AND context_tag = ${contextTag}`
+    );
 
-    const nextNummer = (maxResult[0]?.maxNummer ?? 0) + 1;
+    const nextNummer = (maxResult[0]?.max_nr ?? 0) + 1;
     const chatId = `${gebruiker.toUpperCase()}-${contextTag}-${String(nextNummer).padStart(3, "0")}`;
 
-    const [nieuw] = await db
-      .insert(chatSessies)
-      .values({
-        gebruiker,
-        contextTag,
-        nummer: nextNummer,
-        chatId,
-        onderwerp: onderwerp || null,
-        klantId: klantId ?? null,
-        projectId: projectId ?? null,
-      })
-      .returning();
+    await db.run(
+      sql`INSERT INTO chat_sessies (gebruiker, context_tag, nummer, chat_id, onderwerp, klant_id, project_id)
+          VALUES (${gebruiker}, ${contextTag}, ${nextNummer}, ${chatId}, ${onderwerp || null}, ${klantId ?? null}, ${projectId ?? null})`
+    );
+
+    // Get the inserted row
+    const inserted = await db.all<{ id: number }>(
+      sql`SELECT id FROM chat_sessies WHERE chat_id = ${chatId}`
+    );
 
     return NextResponse.json(
       {
         sessie: {
-          id: nieuw.id,
-          chatId: nieuw.chatId,
-          nummer: nieuw.nummer,
-          contextTag: nieuw.contextTag,
-          onderwerp: nieuw.onderwerp,
+          id: inserted[0]?.id ?? 0,
+          chatId,
+          nummer: nextNummer,
+          contextTag,
+          onderwerp: onderwerp || null,
         },
       },
       { status: 201 }

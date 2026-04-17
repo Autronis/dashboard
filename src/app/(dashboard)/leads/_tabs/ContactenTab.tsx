@@ -17,11 +17,13 @@ import {
   Sparkles,
   Filter,
   X,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePoll } from "@/lib/use-poll";
 import { TabInfo } from "../_components/TabInfo";
+import { useBulkScan } from "../_components/use-bulk-scan";
 
 interface Lead {
   id: string;
@@ -172,6 +174,7 @@ export function ContactenTab() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [isPrepping, setIsPrepping] = useState(false);
+  const { isScanning, runScan } = useBulkScan();
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -337,6 +340,19 @@ export function ContactenTab() {
     }
   }
 
+  async function scanSelected() {
+    const selected = leads
+      .filter((l) => selectedIds.has(l.id))
+      .map((l) => ({
+        id: l.id,
+        name: l.name,
+        website: l.website,
+        email: parseEmails(l.emails)[0] ?? null,
+      }));
+    await runScan(selected);
+    setSelectedIds(new Set());
+  }
+
   async function enrichLeads() {
     const validIds = Array.from(selectedIds);
     if (validIds.length === 0) {
@@ -486,6 +502,15 @@ export function ContactenTab() {
           </div>
           {selectedIds.size > 0 && (
             <>
+              <button
+                onClick={scanSelected}
+                disabled={isScanning}
+                title="Start een Sales Engine scan voor elke geselecteerde lead (vereist website URL)"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 border border-autronis-accent/30 text-xs font-semibold text-autronis-accent hover:bg-autronis-accent/20 transition-colors disabled:opacity-40"
+              >
+                {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+                Scan ({selectedIds.size})
+              </button>
               <button
                 onClick={enrichLeads}
                 disabled={isEnriching}

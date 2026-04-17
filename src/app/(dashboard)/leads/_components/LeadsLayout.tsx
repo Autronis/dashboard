@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Target, Users, Sparkles, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OverzichtTab } from "../_tabs/OverzichtTab";
 import { ContactenTab } from "../_tabs/ContactenTab";
@@ -8,31 +9,80 @@ import { EnrichmentTab } from "../_tabs/EnrichmentTab";
 
 type TabKey = "overzicht" | "contacten" | "enrichment";
 
-const TABS: { key: TabKey; label: string; href: string }[] = [
-  { key: "overzicht", label: "Overzicht", href: "/leads" },
-  { key: "contacten", label: "Contacten", href: "/leads/contacts" },
-  { key: "enrichment", label: "Enrichment", href: "/leads/enrichment" },
+interface TabDef {
+  key: TabKey;
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  description: string;
+}
+
+const TABS: TabDef[] = [
+  {
+    key: "overzicht",
+    label: "Overzicht",
+    href: "/leads",
+    icon: Target,
+    description: "Alle leads · scan · email · verwijder",
+  },
+  {
+    key: "contacten",
+    label: "Contacten",
+    href: "/leads/contacts",
+    icon: Users,
+    description: "Filteren · CSV export · email genereren",
+  },
+  {
+    key: "enrichment",
+    label: "Enrichment",
+    href: "/leads/enrichment",
+    icon: Sparkles,
+    description: "Missing data aanvullen · emails opschonen",
+  },
 ];
 
 export function LeadsLayout({ active }: { active: TabKey }) {
   return (
     <div className="flex flex-col">
-      <div className="sticky top-0 z-20 bg-autronis-bg/95 backdrop-blur-sm border-b border-autronis-border">
-        <div className="flex items-end gap-1 px-6 pt-4">
+      <div className="sticky top-0 z-20 bg-autronis-bg/95 backdrop-blur-md border-b border-autronis-border">
+        <div className="flex flex-wrap items-stretch gap-2 px-6 pt-4 pb-3">
           {TABS.map((tab) => {
             const isActive = active === tab.key;
+            const Icon = tab.icon;
             return (
               <Link
                 key={tab.key}
                 href={tab.href}
                 className={cn(
-                  "px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors",
+                  "group flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all",
                   isActive
-                    ? "text-autronis-accent border-autronis-accent bg-autronis-card/40"
-                    : "text-autronis-text-secondary border-transparent hover:text-autronis-text-primary hover:bg-autronis-card/20"
+                    ? "border-autronis-accent bg-autronis-accent/10 shadow-[0_0_0_1px_rgba(23,184,165,0.3)]"
+                    : "border-autronis-border bg-autronis-card/30 hover:border-autronis-accent/40 hover:bg-autronis-card/60"
                 )}
               >
-                {tab.label}
+                <div
+                  className={cn(
+                    "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                    isActive
+                      ? "bg-autronis-accent text-autronis-bg"
+                      : "bg-autronis-bg text-autronis-text-secondary group-hover:text-autronis-accent"
+                  )}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col items-start leading-tight">
+                  <span
+                    className={cn(
+                      "text-sm font-semibold",
+                      isActive ? "text-autronis-text-primary" : "text-autronis-text-primary/90"
+                    )}
+                  >
+                    {tab.label}
+                  </span>
+                  <span className="text-[11px] text-autronis-text-tertiary mt-0.5">
+                    {tab.description}
+                  </span>
+                </div>
               </Link>
             );
           })}

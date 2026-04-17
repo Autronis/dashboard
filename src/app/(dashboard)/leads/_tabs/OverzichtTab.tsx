@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { RedactText } from "@/components/leads/redact-text";
 import { usePoll } from "@/lib/use-poll";
+import { TabInfo } from "../_components/TabInfo";
 
 interface LinkedinLeadRow {
   id: string;
@@ -404,30 +405,38 @@ export function OverzichtTab() {
             Alle Leads
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1.5">
-            Overzicht van al je leads uit verschillende bronnen
+            Alle leads uit LinkedIn + Google Maps op één plek. Filter, scan of mail ze in bulk.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="/leads/rebuild-prep"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Rebuild Prep
-          </Link>
-          <Link
-            href="/leads/enrichment"
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-          >
-            <Zap className="w-3.5 h-3.5" /> Enrichment
-          </Link>
-          <Link
             href="/leads/emails"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
           >
-            <Mail className="w-3.5 h-3.5" /> Emails
+            <Mail className="w-3.5 h-3.5" /> Naar Lead Emails
           </Link>
         </div>
       </div>
+
+      <TabInfo
+        tips={[
+          {
+            icon: Target,
+            title: "Scan websites",
+            description: "Sales Engine analyseert geselecteerde websites op pijnpunten + intent signals.",
+          },
+          {
+            icon: Mail,
+            title: "Email genereren",
+            description: "Syb's edge function maakt per lead een cold mail. Vereist een website URL.",
+          },
+          {
+            icon: Trash2,
+            title: "Verwijderen",
+            description: "Verwijdert leads per bron (LinkedIn of Maps) — dubbelcheck je filter.",
+          },
+        ]}
+      />
 
       {/* Klikbare stats — Lovable look met grote tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

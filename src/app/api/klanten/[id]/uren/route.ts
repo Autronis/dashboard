@@ -85,7 +85,7 @@ export async function POST(
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }
 
-    const { projectId, datum, duurMinuten, omschrijving, bron } = body;
+    const { projectId, datum, duurMinuten, omschrijving, bron, sessieId } = body;
 
     if (!duurMinuten || duurMinuten <= 0) {
       return NextResponse.json({ fout: "duurMinuten is verplicht en moet > 0 zijn." }, { status: 400 });
@@ -112,6 +112,7 @@ export async function POST(
         duurMinuten,
         omschrijving: omschrijving || null,
         bron: bron === "handmatig" ? "handmatig" : "claude-sessie",
+        sessieId: sessieId || null,
       })
       .returning();
 

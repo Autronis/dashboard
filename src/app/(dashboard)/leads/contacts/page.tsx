@@ -137,10 +137,12 @@ const SOURCE_TABS = [
   { key: "enrichment_failed", label: "Enrichment gefaald", icon: AlertCircle },
 ];
 
-const STATUS_PRIORITY = ["error", "failed", "generating", "generated", "approved", "sent", "replied"];
+const STATUS_PRIORITY = ["error", "generation_failed", "failed", "ready_for_generation", "generating", "generated", "approved", "sent", "replied"];
 
 const EMAIL_STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
+  ready_for_generation: { label: "Klaar voor generatie", bg: "bg-purple-500/15", text: "text-purple-400" },
   generating: { label: "Bezig", bg: "bg-blue-500/15", text: "text-blue-400" },
+  generation_failed: { label: "Generatie mislukt", bg: "bg-red-500/15", text: "text-red-400" },
   generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400" },
   approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
   sent: { label: "Verstuurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
@@ -168,6 +170,7 @@ export default function LeadsContactsPage() {
   // Action busy state
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
+  const [isPrepping, setIsPrepping] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     try {

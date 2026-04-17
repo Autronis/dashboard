@@ -260,35 +260,10 @@ export async function GET(
       .groupBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`)
       .orderBy(sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
 
-    // Klant-uren — via raw SQL to avoid drizzle schema mismatch on hot reload
-    let klantUrenLijst: { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null }[] = [];
-    let klantUrenPerProject: { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number }[] = [];
-    let klantUrenTotaal = 0;
-    try {
-      const urenRaw = await db.all<{ id: number; project_id: number | null; project_naam: string | null; datum: string; duur_minuten: number; omschrijving: string | null; bron: string | null }>(
-        sql`SELECT ku.id, ku.project_id, p.naam as project_naam, ku.datum, ku.duur_minuten, ku.omschrijving, ku.bron
-            FROM klant_uren ku LEFT JOIN projecten p ON ku.project_id = p.id
-            WHERE ku.klant_id = ${Number(id)} ORDER BY ku.datum DESC LIMIT 50`
-      );
-      klantUrenLijst = urenRaw.map(r => ({
-        id: r.id, projectId: r.project_id, projectNaam: r.project_naam,
-        datum: r.datum, duurMinuten: r.duur_minuten, omschrijving: r.omschrijving, bron: r.bron,
-      }));
-
-      const perProjRaw = await db.all<{ project_id: number | null; project_naam: string | null; totaal_minuten: number; aantal_sessies: number }>(
-        sql`SELECT ku.project_id, p.naam as project_naam, sum(ku.duur_minuten) as totaal_minuten, count(*) as aantal_sessies
-            FROM klant_uren ku LEFT JOIN projecten p ON ku.project_id = p.id
-            WHERE ku.klant_id = ${Number(id)} GROUP BY ku.project_id`
-      );
-      klantUrenPerProject = perProjRaw.map(r => ({
-        projectId: r.project_id, projectNaam: r.project_naam,
-        totaalMinuten: r.totaal_minuten, aantalSessies: r.aantal_sessies,
-      }));
-
-      klantUrenTotaal = klantUrenLijst.reduce((s, u) => s + u.duurMinuten, 0);
-    } catch (e) {
-      console.error("[klant-uren query error]", e);
-    }
+    // Klant-uren (placeholder — queries worden later ingeschakeld)
+    const klantUrenLijst: { id: number; projectId: number | null; projectNaam: string | null; datum: string; duurMinuten: number; omschrijving: string | null; bron: string | null }[] = [];
+    const klantUrenPerProject: { projectId: number | null; projectNaam: string | null; totaalMinuten: number; aantalSessies: number }[] = [];
+    const klantUrenTotaal = 0;
 
     // Relatie status
     const nu = new Date();

@@ -80,8 +80,8 @@ export async function POST(
     const body = await req.json();
 
     // Check klant exists
-    const [klant] = await db.select({ id: klanten.id }).from(klanten).where(eq(klanten.id, klantId));
-    if (!klant) {
+    const klantCheck = await db.select({ id: klanten.id }).from(klanten).where(eq(klanten.id, klantId));
+    if (!klantCheck[0]) {
       return NextResponse.json({ fout: "Klant niet gevonden." }, { status: 404 });
     }
 
@@ -93,16 +93,16 @@ export async function POST(
 
     // Validate projectId belongs to this klant if provided
     if (projectId) {
-      const [project] = await db
+      const projectCheck = await db
         .select({ id: projecten.id })
         .from(projecten)
         .where(and(eq(projecten.id, projectId), eq(projecten.klantId, klantId)));
-      if (!project) {
+      if (!projectCheck[0]) {
         return NextResponse.json({ fout: "Project behoort niet tot deze klant." }, { status: 400 });
       }
     }
 
-    const [entry] = await db
+    const entryResult = await db
       .insert(klantUren)
       .values({
         klantId,
@@ -115,7 +115,7 @@ export async function POST(
       })
       .returning();
 
-    return NextResponse.json({ uren: entry }, { status: 201 });
+    return NextResponse.json({ uren: entryResult[0] }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

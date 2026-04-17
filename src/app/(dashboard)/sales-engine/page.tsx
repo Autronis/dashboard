@@ -492,6 +492,15 @@ export default function SalesEnginePage() {
     return () => clearInterval(interval);
   }, [hasPending, queryClient]);
 
+  // useMemo MUST be before any early return to satisfy React hooks rules
+  const gefilterd = useMemo(() => {
+    let result = statusFilter === "alle" ? allScans : allScans.filter((s) => s.status === statusFilter);
+    if (zoekFilter.trim()) result = result.filter((s) => s.bedrijfsnaam?.toLowerCase().includes(zoekFilter.toLowerCase()));
+    if (sorteer === "kansen") return [...result].sort((a, b) => b.aantalKansen - a.aantalKansen);
+    if (sorteer === "impact") return [...result].sort((a, b) => (impactOrder[a.hoogsteImpact ?? ""] ?? 3) - (impactOrder[b.hoogsteImpact ?? ""] ?? 3));
+    return result;
+  }, [allScans, statusFilter, zoekFilter, sorteer]);
+
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -531,15 +540,6 @@ export default function SalesEnginePage() {
     pending: allScans.filter((s) => s.status === "pending").length,
     failed: allScans.filter((s) => s.status === "failed").length,
   };
-
-  // Filtered + sorted scans
-  const gefilterd = useMemo(() => {
-    let result = statusFilter === "alle" ? allScans : allScans.filter((s) => s.status === statusFilter);
-    if (zoekFilter.trim()) result = result.filter((s) => s.bedrijfsnaam?.toLowerCase().includes(zoekFilter.toLowerCase()));
-    if (sorteer === "kansen") return [...result].sort((a, b) => b.aantalKansen - a.aantalKansen);
-    if (sorteer === "impact") return [...result].sort((a, b) => (impactOrder[a.hoogsteImpact ?? ""] ?? 3) - (impactOrder[b.hoogsteImpact ?? ""] ?? 3));
-    return result;
-  }, [allScans, statusFilter, zoekFilter, sorteer]);
 
   const sortLabels: Record<SortOption, string> = { nieuwst: "Nieuwst", kansen: "Meeste kansen", impact: "Hoogste impact" };
 

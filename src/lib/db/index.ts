@@ -538,6 +538,22 @@ if (isTurso) {
     aangemaakt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  // Klant-uren: automatische urenregistratie per Claude sessie
+  client.execute(`CREATE TABLE IF NOT EXISTS klant_uren (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant_id INTEGER NOT NULL REFERENCES klanten(id),
+    project_id INTEGER REFERENCES projecten(id),
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    datum TEXT NOT NULL,
+    duur_minuten INTEGER NOT NULL,
+    omschrijving TEXT,
+    bron TEXT DEFAULT 'claude-sessie',
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_klant_uren_klant_id ON klant_uren(klant_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_klant_uren_project_id ON klant_uren(project_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_klant_uren_datum ON klant_uren(datum)").catch(() => {});
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to

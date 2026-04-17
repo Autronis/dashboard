@@ -185,7 +185,7 @@ export async function POST(req: NextRequest) {
         matchedTransactie = scored[0];
 
         // Auto-link if score is high enough
-        if (matchedTransactie.score >= 12) {
+        if (matchedTransactie.score >= 5) {
           await db.update(bankTransacties).set({
             bonPad,
             storageUrl: storagePath,
@@ -205,7 +205,7 @@ export async function POST(req: NextRequest) {
         datum: matchedTransactie.datum,
         omschrijving: matchedTransactie.omschrijving,
         bedrag: matchedTransactie.bedrag,
-        autoGekoppeld: (matchedTransactie as { score: number }).score >= 12,
+        autoGekoppeld: (matchedTransactie as { score: number }).score >= 5,
       } : null,
       suggesties: matchedTransactie ? undefined : "Geen matching transactie gevonden. Koppel handmatig.",
     });

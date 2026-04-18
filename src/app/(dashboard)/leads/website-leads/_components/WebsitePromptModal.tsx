@@ -2,13 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, X, Copy, Check, Sparkles, RefreshCw } from "lucide-react";
+import { Loader2, X, Copy, Check, Sparkles, RefreshCw, Mail, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface WebsitePromptModalProps {
   leadId: string;
   bedrijfsnaam: string;
   onClose: () => void;
+}
+
+interface PitchMail {
+  subject: string;
+  body: string;
+  recipientEmail: string | null;
 }
 
 export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePromptModalProps) {
@@ -18,6 +24,15 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePro
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [extraContext, setExtraContext] = useState("");
+
+  // Pitch-mail state
+  const [mailLoading, setMailLoading] = useState(false);
+  const [mailError, setMailError] = useState<string | null>(null);
+  const [pitchMail, setPitchMail] = useState<PitchMail | null>(null);
+  const [editedSubject, setEditedSubject] = useState("");
+  const [editedBody, setEditedBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   async function generate(extra?: string) {
     setLoading(true);

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Rocket, Trash2, ExternalLink, Zap, X } from "lucide-react";
+import { Loader2, Rocket, Trash2, ExternalLink, Zap, X, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import type { ScanQueueItem } from "../../leads/_components/use-bulk-scan";
@@ -14,6 +13,8 @@ interface QueueListProps {
   items: ScanQueueItem[];
   onRemove: (key: string) => void;
   onClear: () => void;
+  onResetDismissed: () => void;
+  autoFillLoading: boolean;
 }
 
 type RowStatus = "idle" | "pending" | "completed" | "failed";

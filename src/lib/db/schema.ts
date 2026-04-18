@@ -1955,6 +1955,7 @@ export const upworkSavedSearches = sqliteTable("upwork_saved_searches", {
   query: text("query").notNull(),
   actief: integer("actief").default(1),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
 
 export const upworkSessions = sqliteTable("upwork_sessions", {

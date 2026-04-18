@@ -249,7 +249,8 @@ export function EnrichmentTab() {
             Enrichment
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1">
-            Vul ontbrekende emails, telefoons en websites aan voor leads uit LinkedIn en Google Maps.
+            <span className="text-autronis-text-primary font-medium">Data verrijken.</span> Leads zonder email of telefoon? Deze tab zoekt de ontbrekende gegevens automatisch op via externe bronnen.
+            Gebruik dit vóór <span className="text-autronis-accent">Contacten</span> — eerst de gaten dichten, dan pas segmenteren en exporteren.
           </p>
         </div>
         <button

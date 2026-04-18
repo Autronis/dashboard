@@ -443,7 +443,8 @@ export function ContactenTab() {
             Contacten
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1.5">
-            Geavanceerd filteren op contactgegevens, CSV exporteren en bulk email-generatie starten.
+            <span className="text-autronis-text-primary font-medium">Segmenteren.</span> Bouw een gerichte lijst met geavanceerde filters (email ja/nee, telefoon, website, folder, &hellip;).
+            Exporteer naar CSV voor outreach, of markeer leads voor bulk email-generatie. Het verschil met <span className="text-autronis-accent">Overzicht</span>: hier filter je scherp, daar zie je alles.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-2">
@@ -800,7 +801,7 @@ export function ContactenTab() {
                     </td>
                     <td className="px-4 py-4 hidden lg:table-cell">
                       {lead.folder ? (
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent">
+                        <span className="inline-block whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent max-w-[180px] truncate align-middle">
                           {lead.folder}
                         </span>
                       ) : (

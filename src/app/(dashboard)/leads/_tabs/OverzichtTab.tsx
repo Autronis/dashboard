@@ -406,7 +406,8 @@ export function OverzichtTab() {
             Alle Leads
           </h1>
           <p className="text-sm text-autronis-text-secondary mt-1.5">
-            Alle leads uit LinkedIn + Google Maps op één plek. Filter, scan of mail ze in bulk.
+            <span className="text-autronis-text-primary font-medium">Startpunt.</span> Alle leads uit LinkedIn + Google Maps in één tabel.
+            Snel scrollen, selecteren en bulk scannen, mailen of verwijderen. Geen filters, geen export — daar is de <span className="text-autronis-accent">Contacten</span> tab voor.
           </p>
         </div>
         <div className="flex items-center gap-2">

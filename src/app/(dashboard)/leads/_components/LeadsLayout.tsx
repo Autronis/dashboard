@@ -23,21 +23,21 @@ const TABS: TabDef[] = [
     label: "Overzicht",
     href: "/leads",
     icon: Target,
-    description: "Alle leads · scan · email · verwijder",
+    description: "Alles in één lijst — bulk scannen, mailen of weg",
   },
   {
     key: "contacten",
     label: "Contacten",
     href: "/leads/contacts",
     icon: Users,
-    description: "Filteren · CSV export · email genereren",
+    description: "Filter + CSV export — bouw je outreach-lijst",
   },
   {
     key: "enrichment",
     label: "Enrichment",
     href: "/leads/enrichment",
     icon: Sparkles,
-    description: "Missing data aanvullen · emails opschonen",
+    description: "Vul ontbrekende email/telefoon/website aan",
   },
 ];
 

@@ -448,6 +448,49 @@ if (isTurso) {
   )`).catch(() => {});
   client.execute("ALTER TABLE ytk_analyses ADD COLUMN links TEXT").catch(() => {});
 
+  // Insta Knowledge Pipeline tables
+  client.execute(`CREATE TABLE IF NOT EXISTS isk_sources (
+    id TEXT PRIMARY KEY,
+    type TEXT NOT NULL,
+    handle TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    discovered_via TEXT DEFAULT 'manual',
+    created_at TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS isk_items (
+    id TEXT PRIMARY KEY,
+    source_id TEXT REFERENCES isk_sources(id),
+    instagram_id TEXT UNIQUE NOT NULL,
+    type TEXT NOT NULL,
+    url TEXT NOT NULL,
+    caption TEXT,
+    author_handle TEXT,
+    media_url TEXT,
+    discovered_at TEXT DEFAULT (datetime('now')),
+    status TEXT NOT NULL DEFAULT 'pending',
+    failure_reason TEXT,
+    processed_at TEXT
+  )`).catch(() => {});
+
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_isk_items_status_discovered ON isk_items(status, discovered_at)`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS isk_analyses (
+    id TEXT PRIMARY KEY,
+    item_id TEXT NOT NULL REFERENCES isk_items(id),
+    summary TEXT NOT NULL,
+    features TEXT NOT NULL,
+    steps TEXT NOT NULL,
+    tips TEXT NOT NULL,
+    links TEXT NOT NULL,
+    relevance_score INTEGER NOT NULL,
+    relevance_reason TEXT NOT NULL,
+    raw_transcript TEXT,
+    raw_caption TEXT,
+    model_used TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   // Kilometerregistratie: add missing columns to base table
   client.execute("ALTER TABLE kilometer_registraties ADD COLUMN opgeslagen_route_id INTEGER REFERENCES opgeslagen_routes(id)").catch(() => {});
   client.execute("ALTER TABLE kilometer_registraties ADD COLUMN terugkerende_rit_id INTEGER REFERENCES terugkerende_ritten(id)").catch(() => {});

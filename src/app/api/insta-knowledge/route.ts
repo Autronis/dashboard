@@ -28,6 +28,7 @@ export async function GET() {
     url: r.url,
     caption: r.caption,
     author_handle: r.author_handle,
+    media_url: r.media_url,
     status: r.status,
     failure_reason: r.failure_reason,
     discovered_at: r.discovered_at,
@@ -40,6 +41,7 @@ export async function GET() {
       links: JSON.parse((r.links as string) || "[]"),
       relevance_score: r.relevance_score,
       relevance_reason: r.relevance_reason,
+      raw_transcript: r.raw_transcript,
     } : null,
   }));
 

@@ -18,6 +18,7 @@ interface Analysis {
   links: { url: string; label: string; type: string }[];
   relevance_score: number;
   relevance_reason: string;
+  raw_transcript: string | null;
 }
 
 interface Item {
@@ -27,6 +28,7 @@ interface Item {
   url: string;
   caption: string | null;
   author_handle: string | null;
+  media_url: string | null;
   status: ItemStatus;
   failure_reason: string | null;
   discovered_at: string;
@@ -269,6 +271,16 @@ function DetailDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
           <p className="text-autronis-text-secondary">Nog geen analyse beschikbaar.</p>
         )}
         {item.caption && <div className="mt-6 border-t border-autronis-border pt-4"><h4 className="font-semibold mb-1 text-sm text-autronis-text-secondary">Originele caption</h4><p className="text-sm text-autronis-text-primary whitespace-pre-wrap">{item.caption}</p></div>}
+        {a?.raw_transcript && (
+          <div className="mt-4 border-t border-autronis-border pt-4">
+            <h4 className="font-semibold mb-1 text-sm text-autronis-text-secondary">Audio-transcript (Whisper)</h4>
+            <p className="text-sm text-autronis-text-primary whitespace-pre-wrap">{a.raw_transcript}</p>
+          </div>
+        )}
+        <div className="mt-4 border-t border-autronis-border pt-4 text-xs text-autronis-text-secondary space-y-1">
+          <div>Media URL: {item.media_url ? <a href={item.media_url} target="_blank" rel="noreferrer" className="text-autronis-accent hover:underline break-all">{item.media_url.slice(0, 80)}…</a> : <span className="opacity-60">niet gevonden</span>}</div>
+          <div>Transcript lengte: {a?.raw_transcript ? `${a.raw_transcript.length} tekens` : "geen (geen video of transcriptie mislukt)"}</div>
+        </div>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSalesEngineScans, useSalesEngineBatch } from "@/hooks/queries/use-sales-engine";
 import { useScanQueue } from "./_components/use-scan-queue";
 import { QueueList } from "./_components/QueueList";
+import { RepliesInbox } from "./_components/RepliesInbox";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -613,6 +614,9 @@ export default function SalesEnginePage() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Inbox — replies op cold mails, bovenaan alles zodat je ze direct ziet */}
+        <RepliesInbox />
 
         {/* Full form for empty state */}
         {!hasScans && queueItems.length === 0 && <ScanFormulier prominent />}

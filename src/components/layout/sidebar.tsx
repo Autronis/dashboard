@@ -14,7 +14,7 @@ import {
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
-  Heart, TrendingUp, Globe, FolderOpen, Target,
+  Heart, TrendingUp, Globe, FolderOpen, Target, Briefcase,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -81,6 +81,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Follow-up", icon: UserCheck, href: "/followup" },
           { label: "Automations", icon: Zap, href: "/leads/automations" },
           { label: "Lead Instellingen", icon: Settings, href: "/leads/instellingen" },
+          { label: "Upwork", icon: Briefcase, href: "/upwork" },
         ],
       },
       {

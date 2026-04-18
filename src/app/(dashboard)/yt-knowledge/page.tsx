@@ -37,6 +37,7 @@ interface VideoItem {
   channel_name: string;
   status: string;
   discovered_at: string;
+  source: string;
   analysis?: AnalysisData;
 }
 
@@ -227,6 +228,9 @@ export default function YtKnowledgePage() {
     );
   });
 
+  const playlistVideos = filteredVideos.filter((v) => v.source === "playlist" || v.source === "channel");
+  const manualVideos = filteredVideos.filter((v) => v.source !== "playlist" && v.source !== "channel");
+
   // ─── Render ──────────────────────────────────────────
   return (
     <PageTransition>
@@ -383,9 +387,23 @@ export default function YtKnowledgePage() {
           </div>
         )}
 
-        <div className="space-y-3">
-          <AnimatePresence initial={false}>
-            {filteredVideos.map((video) => {
+        {(
+          [
+            { key: "playlist", label: "Van playlist", icon: Rss, items: playlistVideos },
+            { key: "manual", label: "Handmatig toegevoegd", icon: Play, items: manualVideos },
+          ] as const
+        ).map((section) => {
+          if (section.items.length === 0) return null;
+          const SectionIcon = section.icon;
+          return (
+            <div key={section.key} className="space-y-3">
+              <div className="flex items-center gap-2 pt-2">
+                <SectionIcon className="w-4 h-4 text-autronis-accent" />
+                <h2 className="text-sm font-semibold text-autronis-text-primary">{section.label}</h2>
+                <span className="text-xs text-autronis-text-secondary">({section.items.length})</span>
+              </div>
+              <AnimatePresence initial={false}>
+                {section.items.map((video) => {
               const isExpanded = expandedId === video.id;
               const sc = statusConfig[video.status] || statusConfig.pending;
               const StatusIcon = sc.icon;
@@ -579,9 +597,11 @@ export default function YtKnowledgePage() {
                   </AnimatePresence>
                 </motion.div>
               );
-            })}
-          </AnimatePresence>
-        </div>
+                })}
+              </AnimatePresence>
+            </div>
+          );
+        })}
       </div>
     </PageTransition>
   );

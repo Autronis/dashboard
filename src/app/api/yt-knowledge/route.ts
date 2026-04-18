@@ -82,9 +82,9 @@ export async function POST(request: NextRequest) {
   // Insert as pending
   const id = crypto.randomUUID();
   await tursoClient.execute({
-    sql: "INSERT INTO ytk_videos (id, youtube_id, title, url, discovered_at, status) VALUES (?, ?, '', ?, datetime('now'), 'pending')",
-    args: [id, videoId, url],
+    sql: "INSERT INTO ytk_videos (id, youtube_id, title, url, discovered_at, status, source) VALUES (?, ?, '', ?, datetime('now'), 'pending', ?)",
+    args: [id, videoId, url, source],
   });
 
-  return NextResponse.json({ id, youtube_id: videoId, status: "pending" }, { status: 201 });
+  return NextResponse.json({ id, youtube_id: videoId, status: "pending", source }, { status: 201 });
 }

@@ -1,0 +1,101 @@
+{
+  "name": "upwork-alert-ingest",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "filters": {
+          "labelIds": ["upwork-alert"],
+          "readStatus": "unread"
+        },
+        "options": { "format": "full" }
+      },
+      "name": "Gmail sem",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [300, 200],
+      "credentials": { "gmailOAuth2": { "name": "upworksem" } }
+    },
+    {
+      "parameters": {
+        "pollTimes": { "item": [{ "mode": "everyMinute" }] },
+        "filters": {
+          "labelIds": ["upwork-alert"],
+          "readStatus": "unread"
+        },
+        "options": { "format": "full" }
+      },
+      "name": "Gmail syb",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [300, 400],
+      "credentials": { "gmailOAuth2": { "name": "upworksyb" } }
+    },
+    {
+      "parameters": {
+        "functionCode": "const semItems = $items('Gmail sem') || [];\nconst sybItems = $items('Gmail syb') || [];\n\nconst normalize = (msg, account) => {\n  const headers = msg.headers || {};\n  const subject = msg.subject || headers.subject || '';\n  const bodyHtml = msg.html || msg.body || '';\n  const internalDate = msg.internalDate;\n  return {\n    account,\n    gmailMessageId: msg.id || msg.messageId || `${account}-${Date.now()}-${Math.random()}`,\n    receivedAt: internalDate ? new Date(parseInt(internalDate, 10)).toISOString() : new Date().toISOString(),\n    subject,\n    bodyHtml\n  };\n};\n\nconst results = [\n  ...semItems.map(i => ({ json: normalize(i.json, 'sem') })),\n  ...sybItems.map(i => ({ json: normalize(i.json, 'syb') }))\n];\n\nreturn results;"
+      },
+      "name": "Normalize",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DASHBOARD_URL }}/api/upwork/ingest",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.UPWORK_INGEST_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
+      },
+      "name": "POST /api/upwork/ingest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "markAsRead",
+        "messageId": "={{ $node['Normalize'].json.gmailMessageId }}"
+      },
+      "name": "Mark as read (Gmail)",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "notesInFlow": true,
+      "notes": "Let op: deze node markeert op het oorspronkelijke Gmail account — configureer credentials per account of splits deze flow in twee aparte branches voor sem en syb."
+    }
+  ],
+  "connections": {
+    "Gmail sem": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
+    "Gmail syb": { "main": [[{ "node": "Normalize", "type": "main", "index": 0 }]] },
+    "Normalize": { "main": [[{ "node": "POST /api/upwork/ingest", "type": "main", "index": 0 }]] },
+    "POST /api/upwork/ingest": { "main": [[{ "node": "Mark as read (Gmail)", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

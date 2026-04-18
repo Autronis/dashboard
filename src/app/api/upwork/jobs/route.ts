@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, inArray, isNull, like, ne, or, sql } from "drizzle-orm";
+import { and, desc, inArray, isNull, like, ne, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
@@ -39,9 +39,10 @@ export async function GET(req: NextRequest) {
   const showDismissed = url.searchParams.get("show_dismissed") === "1";
   const tiers = parseTiers(url.searchParams.get("tiers"), includeLow);
 
-  const conditions = [] as ReturnType<typeof and>[];
+  const conditions: SQL[] = [];
 
   if (account === "sem" || account === "syb") {
+    // Substring match is veilig: accounts zijn enum-constrained tot exact "sem"|"syb" — geen overlap mogelijk.
     conditions.push(like(schema.upworkJobs.seenBy, `%"${account}"%`));
   }
 
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
   // filter entirely — don't degrade to only NULL, which would hide all classified jobs.
   if (tiers.length > 0) {
     conditions.push(
-      or(inArray(schema.upworkJobs.budgetTier, tiers), isNull(schema.upworkJobs.budgetTier)),
+      or(inArray(schema.upworkJobs.budgetTier, tiers), isNull(schema.upworkJobs.budgetTier))!,
     );
   }
 

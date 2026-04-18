@@ -83,7 +83,7 @@ export default function LeadsWebsiteLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("alle");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const { isScanning, scanResults, scanIds, runScan } = useBulkScan();
+  const { runScan } = useBulkScan();
 
   // Search form
   const [query, setQuery] = useState("");
@@ -527,39 +527,24 @@ export default function LeadsWebsiteLeadsPage() {
                         );
                       })}
                       {lead.website_url && (
-                        scanResults[lead.id] === "completed" && scanIds[lead.id] ? (
-                          <Link
-                            href={`/sales-engine/${scanIds[lead.id]}`}
-                            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-autronis-accent bg-autronis-accent/10 hover:bg-autronis-accent/20 transition-colors"
-                          >
-                            <ExternalLink className="w-2.5 h-2.5" />
-                            Scan bekijken
-                          </Link>
-                        ) : (
-                          <button
-                            onClick={() =>
-                              runScan([
-                                {
-                                  id: lead.id,
-                                  name: lead.name,
-                                  website: lead.website_url,
-                                  email: lead.email,
-                                  supabaseLeadId: lead.id,
-                                },
-                              ])
-                            }
-                            disabled={isScanning}
-                            title="Start een Sales Engine scan voor deze lead"
-                            className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/20 transition-colors disabled:opacity-40"
-                          >
-                            {scanResults[lead.id] === "pending" || isScanning ? (
-                              <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            ) : (
-                              <Zap className="w-2.5 h-2.5" />
-                            )}
-                            {scanResults[lead.id] === "failed" ? "Opnieuw scannen" : "Scan"}
-                          </button>
-                        )
+                        <button
+                          onClick={() =>
+                            runScan([
+                              {
+                                id: lead.id,
+                                name: lead.name,
+                                website: lead.website_url,
+                                email: lead.email,
+                                supabaseLeadId: lead.id,
+                              },
+                            ])
+                          }
+                          title="Open de Sales Engine scan-flow met deze lead voorgeladen"
+                          className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
+                        >
+                          <Zap className="w-2.5 h-2.5" />
+                          Scan
+                        </button>
                       )}
                       {lead.google_maps_url && (
                         <a

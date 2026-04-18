@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 export interface ScannableLead {
@@ -13,53 +13,41 @@ export interface ScannableLead {
   supabaseLeadId?: string | null;
 }
 
-export type ScanStatus = "pending" | "completed" | "failed";
+function encodeBatch(leads: ScannableLead[]): string {
+  const csv = leads
+    .map((l) => `${(l.name || "Onbekend").replace(/,/g, " ")},${l.website ?? ""}`)
+    .join("\n");
+  if (typeof window !== "undefined") {
+    return window.btoa(unescape(encodeURIComponent(csv)));
+  }
+  return Buffer.from(csv, "utf-8").toString("base64");
+}
 
 export function useBulkScan() {
+  const router = useRouter();
   const { addToast } = useToast();
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResults, setScanResults] = useState<Record<string, ScanStatus>>({});
-  const [scanIds, setScanIds] = useState<Record<string, number>>({});
 
-  async function runScan(selected: ScannableLead[]): Promise<void> {
+  function runScan(selected: ScannableLead[]): void {
     const withWebsite = selected.filter((l) => l.website?.trim());
     if (withWebsite.length === 0) {
       addToast("Geen leads met website geselecteerd", "fout");
       return;
     }
-    setIsScanning(true);
-    let ok = 0;
-    let fail = 0;
-    for (const lead of withWebsite) {
-      try {
-        setScanResults((prev) => ({ ...prev, [lead.id]: "pending" }));
-        const res = await fetch("/api/sales-engine/handmatig", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bedrijfsnaam: lead.name || "Onbekend",
-            websiteUrl: lead.website,
-            contactpersoon: lead.name,
-            email: lead.email,
-            supabaseLeadId: lead.supabaseLeadId ?? null,
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setScanResults((prev) => ({ ...prev, [lead.id]: "completed" }));
-        setScanIds((prev) => ({ ...prev, [lead.id]: data.scanId }));
-        ok++;
-      } catch {
-        setScanResults((prev) => ({ ...prev, [lead.id]: "failed" }));
-        fail++;
-      }
+
+    if (withWebsite.length === 1) {
+      const l = withWebsite[0];
+      const params = new URLSearchParams();
+      params.set("bedrijfsnaam", l.name || "Onbekend");
+      params.set("website", l.website as string);
+      if (l.email) params.set("email", l.email);
+      if (l.supabaseLeadId) params.set("supabaseLeadId", l.supabaseLeadId);
+      router.push(`/sales-engine?${params.toString()}`);
+      return;
     }
-    setIsScanning(false);
-    addToast(
-      `${ok} scans gestart${fail > 0 ? `, ${fail} mislukt` : ""}`,
-      ok > 0 ? "succes" : "fout",
-    );
+
+    const batch = encodeBatch(withWebsite);
+    router.push(`/sales-engine?batch=${encodeURIComponent(batch)}`);
   }
 
-  return { isScanning, scanResults, scanIds, runScan };
+  return { runScan };
 }

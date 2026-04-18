@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSalesEngineScans, useSalesEngineBatch } from "@/hooks/queries/use-sales-engine";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -74,8 +74,8 @@ function parseCsvInput(text: string): Array<{ bedrijfsnaam: string; websiteUrl: 
   return results;
 }
 
-function BatchScanModal({ onClose }: { onClose: () => void }) {
-  const [csvText, setCsvText] = useState("");
+function BatchScanModal({ onClose, initialCsv = "" }: { onClose: () => void; initialCsv?: string }) {
+  const [csvText, setCsvText] = useState(initialCsv);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeBatchId, setActiveBatchId] = useState<string | null>(null);
@@ -275,10 +275,22 @@ function BatchScanModal({ onClose }: { onClose: () => void }) {
 }
 
 // ─── Compact Scan Form (inline at top when scans exist) ───
-function CompactScanForm({ onStarted }: { onStarted: (scanId: number) => void }) {
+function CompactScanForm({
+  onStarted,
+  initialBedrijfsnaam = "",
+  initialWebsite = "",
+  initialEmail,
+  initialSupabaseLeadId,
+}: {
+  onStarted: (scanId: number) => void;
+  initialBedrijfsnaam?: string;
+  initialWebsite?: string;
+  initialEmail?: string;
+  initialSupabaseLeadId?: string;
+}) {
   const { addToast } = useToast();
-  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [bedrijfsnaam, setBedrijfsnaam] = useState(initialBedrijfsnaam);
+  const [websiteUrl, setWebsiteUrl] = useState(initialWebsite);
   const [isScanning, setIsScanning] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -291,7 +303,12 @@ function CompactScanForm({ onStarted }: { onStarted: (scanId: number) => void })
       const res = await fetch("/api/sales-engine/handmatig", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bedrijfsnaam: bedrijfsnaam.trim(), websiteUrl: url }),
+        body: JSON.stringify({
+          bedrijfsnaam: bedrijfsnaam.trim(),
+          websiteUrl: url,
+          ...(initialEmail ? { email: initialEmail } : {}),
+          ...(initialSupabaseLeadId ? { supabaseLeadId: initialSupabaseLeadId } : {}),
+        }),
       });
       const data = await res.json();
       if (!res.ok) { addToast(data.fout || "Scan starten mislukt", "fout"); return; }
@@ -334,14 +351,26 @@ function CompactScanForm({ onStarted }: { onStarted: (scanId: number) => void })
 }
 
 // ─── Full Scan Form (empty state) ───
-function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
+function ScanFormulier({
+  prominent = false,
+  initialBedrijfsnaam = "",
+  initialWebsite = "",
+  initialEmail = "",
+  initialSupabaseLeadId,
+}: {
+  prominent?: boolean;
+  initialBedrijfsnaam?: string;
+  initialWebsite?: string;
+  initialEmail?: string;
+  initialSupabaseLeadId?: string;
+}) {
   const router = useRouter();
   const { addToast } = useToast();
-  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
-  const [websiteUrl, setWebsiteUrl] = useState("");
+  const [bedrijfsnaam, setBedrijfsnaam] = useState(initialBedrijfsnaam);
+  const [websiteUrl, setWebsiteUrl] = useState(initialWebsite);
   const [contactpersoon, setContactpersoon] = useState("");
-  const [email, setEmail] = useState("");
-  const [meerInfoOpen, setMeerInfoOpen] = useState(false);
+  const [email, setEmail] = useState(initialEmail);
+  const [meerInfoOpen, setMeerInfoOpen] = useState(!!initialEmail);
   const [isScanning, setIsScanning] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -359,6 +388,7 @@ function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
           websiteUrl: url,
           ...(contactpersoon.trim() ? { contactpersoon: contactpersoon.trim() } : {}),
           ...(email.trim() ? { email: email.trim() } : {}),
+          ...(initialSupabaseLeadId ? { supabaseLeadId: initialSupabaseLeadId } : {}),
         }),
       });
       const data = await res.json();
@@ -459,16 +489,50 @@ function KpiCard({ icon: Icon, iconKleur, label, value, sub, suffix = "", delay 
 
 type SortOption = "nieuwst" | "kansen" | "impact";
 
+function decodeBatchParam(raw: string): string {
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (typeof window !== "undefined") {
+      return decodeURIComponent(escape(window.atob(decoded)));
+    }
+    return Buffer.from(decoded, "base64").toString("utf-8");
+  } catch {
+    return "";
+  }
+}
+
 export default function SalesEnginePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+
+  const prefillBedrijfsnaam = searchParams.get("bedrijfsnaam") ?? "";
+  const prefillWebsite = searchParams.get("website") ?? "";
+  const prefillEmail = searchParams.get("email") ?? "";
+  const prefillSupabaseLeadId = searchParams.get("supabaseLeadId") ?? undefined;
+  const batchParam = searchParams.get("batch") ?? "";
+  const batchCsv = batchParam ? decodeBatchParam(batchParam) : "";
+
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [zoekFilter, setZoekFilter] = useState("");
   const [sorteer, setSorteer] = useState<SortOption>("nieuwst");
   const [sorteerOpen, setSorteerOpen] = useState(false);
-  const [showBatchModal, setShowBatchModal] = useState(false);
-  const [scanFormOpen, setScanFormOpen] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(!!batchCsv);
+  const [scanFormOpen, setScanFormOpen] = useState(!!prefillBedrijfsnaam || !!prefillWebsite);
   const sortRef = useRef<HTMLDivElement>(null);
+
+  // Open batch modal if batch param arrives after mount (e.g. client-side navigation)
+  useEffect(() => {
+    if (batchCsv) setShowBatchModal(true);
+    if (prefillBedrijfsnaam || prefillWebsite) setScanFormOpen(true);
+  }, [batchCsv, prefillBedrijfsnaam, prefillWebsite]);
+
+  // Clear prefill params from URL after consumption so reload doesn't re-open
+  const clearPrefillParams = useCallback(() => {
+    if (prefillBedrijfsnaam || prefillWebsite || prefillEmail || prefillSupabaseLeadId || batchCsv) {
+      router.replace("/sales-engine", { scroll: false });
+    }
+  }, [router, prefillBedrijfsnaam, prefillWebsite, prefillEmail, prefillSupabaseLeadId, batchCsv]);
 
   const { data, isLoading } = useSalesEngineScans(statusFilter);
 
@@ -595,14 +659,28 @@ export default function SalesEnginePage() {
               className="overflow-hidden"
             >
               <div className="bg-autronis-card border border-autronis-accent/20 rounded-xl p-4">
-                <CompactScanForm onStarted={(id) => { setScanFormOpen(false); router.push(`/sales-engine/${id}`); }} />
+                <CompactScanForm
+                  initialBedrijfsnaam={prefillBedrijfsnaam}
+                  initialWebsite={prefillWebsite}
+                  initialEmail={prefillEmail || undefined}
+                  initialSupabaseLeadId={prefillSupabaseLeadId}
+                  onStarted={(id) => { setScanFormOpen(false); router.push(`/sales-engine/${id}`); }}
+                />
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
         {/* Full form for empty state */}
-        {!hasScans && <ScanFormulier prominent />}
+        {!hasScans && (
+          <ScanFormulier
+            prominent
+            initialBedrijfsnaam={prefillBedrijfsnaam}
+            initialWebsite={prefillWebsite}
+            initialEmail={prefillEmail}
+            initialSupabaseLeadId={prefillSupabaseLeadId}
+          />
+        )}
 
         {/* KPI Cards */}
         {hasScans && (
@@ -823,7 +901,15 @@ export default function SalesEnginePage() {
 
         {/* Batch Modal */}
         <AnimatePresence>
-          {showBatchModal && <BatchScanModal onClose={() => setShowBatchModal(false)} />}
+          {showBatchModal && (
+            <BatchScanModal
+              initialCsv={batchCsv}
+              onClose={() => {
+                setShowBatchModal(false);
+                clearPrefillParams();
+              }}
+            />
+          )}
         </AnimatePresence>
       </div>
     </PageTransition>

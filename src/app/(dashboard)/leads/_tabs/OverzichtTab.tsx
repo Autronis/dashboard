@@ -151,10 +151,8 @@ export function OverzichtTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResults, setScanResults] = useState<Record<string, "pending" | "completed" | "failed">>({});
-  const [scanIds, setScanIds] = useState<Record<string, number>>({});
   const [isGeneratingEmails, setIsGeneratingEmails] = useState(false);
+  const { runScan } = useBulkScan();
 
   const load = useCallback(async (silent = false) => {
     try {

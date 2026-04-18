@@ -159,7 +159,7 @@ Registratie in `vercel.json`:
 Reset `status=pending` voor items in `failed`. UI-trigger.
 
 ### `DELETE /api/insta-knowledge/items/[id]`
-Verwijder item + bijbehorende analyse. Soft of hard, TBD bij UI-bouw.
+Hard delete van `isk_items` + cascading naar `isk_analyses`. Geen soft-delete flag; fase 1 is klein en Sem wil rommel gewoon weg. Eventuele auto-aangemaakte idee-rij in `ideeen` blijft staan (die leeft los) — link naar Instagram blijft werken ook als het item hier weg is.
 
 ## Source Adapter interface
 

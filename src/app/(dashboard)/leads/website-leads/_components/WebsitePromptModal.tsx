@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Loader2, X, Copy, Check, Sparkles, RefreshCw, Mail, Send } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface WebsitePromptModalProps {
   leadId: string;
@@ -69,6 +70,64 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePro
       },
       () => addToast("Kopiëren mislukt", "fout"),
     );
+  }
+
+  async function generatePitchMail() {
+    setMailLoading(true);
+    setMailError(null);
+    setSent(false);
+    try {
+      const res = await fetch("/api/leads/website-leads/pitch-mail", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId,
+          websitePrompt: prompt ?? undefined,
+          extraContext: extraContext || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || `HTTP ${res.status}`);
+      setPitchMail({
+        subject: data.subject,
+        body: data.body,
+        recipientEmail: data.recipientEmail,
+      });
+      setEditedSubject(data.subject);
+      setEditedBody(data.body);
+    } catch (err) {
+      setMailError(err instanceof Error ? err.message : "Mail genereren mislukt");
+    } finally {
+      setMailLoading(false);
+    }
+  }
+
+  async function sendPitchMail() {
+    if (!pitchMail?.recipientEmail || !editedSubject.trim() || !editedBody.trim()) {
+      addToast("Onderwerp, body en email-adres zijn verplicht", "fout");
+      return;
+    }
+    setSending(true);
+    try {
+      const res = await fetch("/api/leads/website-leads/pitch-mail/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leadId,
+          recipientEmail: pitchMail.recipientEmail,
+          subject: editedSubject,
+          body: editedBody,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || `HTTP ${res.status}`);
+      setSent(true);
+      addToast("Pitch-mail verstuurd (signature volgt via Syb's flow)", "succes");
+    } catch (err) {
+      addToast(err instanceof Error ? err.message : "Versturen mislukt", "fout");
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -149,6 +208,100 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePro
                     Regenereer
                   </button>
                 </div>
+              </div>
+
+              {/* Pitch-mail sectie */}
+              <div className="border-t border-autronis-border pt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-blue-400" />
+                    <h3 className="text-sm font-semibold text-autronis-text-primary">
+                      Pitch-mail naar {bedrijfsnaam}
+                    </h3>
+                  </div>
+                  {!pitchMail && (
+                    <button
+                      onClick={() => void generatePitchMail()}
+                      disabled={mailLoading}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+                    >
+                      {mailLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                      {mailLoading ? "Genereren..." : "Genereer pitch-mail"}
+                    </button>
+                  )}
+                </div>
+
+                {mailError && (
+                  <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-xs text-red-400">
+                    {mailError}
+                  </div>
+                )}
+
+                {pitchMail && (
+                  <div className="space-y-3 bg-autronis-bg rounded-xl p-4 border border-autronis-border">
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-autronis-text-secondary/70 mb-1">
+                        Naar
+                      </label>
+                      <div className="text-xs text-autronis-text-primary px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border/60">
+                        {pitchMail.recipientEmail || (
+                          <span className="text-red-400">Geen email-adres bekend — kan niet versturen</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-autronis-text-secondary/70 mb-1">
+                        Onderwerp
+                      </label>
+                      <input
+                        type="text"
+                        value={editedSubject}
+                        onChange={(e) => setEditedSubject(e.target.value)}
+                        className="w-full bg-autronis-card border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase tracking-wide text-autronis-text-secondary/70 mb-1">
+                        Body (signature komt automatisch van Syb&apos;s n8n)
+                      </label>
+                      <textarea
+                        value={editedBody}
+                        onChange={(e) => setEditedBody(e.target.value)}
+                        rows={10}
+                        className="w-full bg-autronis-card border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => void generatePitchMail()}
+                        disabled={mailLoading || sending}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-[11px] font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors disabled:opacity-50"
+                      >
+                        <RefreshCw className="w-3 h-3" />
+                        Regenereer
+                      </button>
+                      <button
+                        onClick={() => void sendPitchMail()}
+                        disabled={sending || sent || !pitchMail.recipientEmail}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                          sent
+                            ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
+                            : "bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-50",
+                        )}
+                      >
+                        {sending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : sent ? (
+                          <Check className="w-3 h-3" />
+                        ) : (
+                          <Send className="w-3 h-3" />
+                        )}
+                        {sending ? "Versturen..." : sent ? "Verstuurd" : "Verstuur via Syb's flow"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

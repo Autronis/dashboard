@@ -45,13 +45,13 @@ export async function GET(req: NextRequest) {
     conditions.push(like(schema.upworkJobs.seenBy, `%"${account}"%`));
   }
 
-  // Always include NULL tiers (unclassified jobs) alongside the selected tiers
+  // Always include NULL tiers (unclassified jobs) alongside the selected tiers.
+  // When the list is empty (e.g. ?tiers= or all values filtered out), skip the
+  // filter entirely — don't degrade to only NULL, which would hide all classified jobs.
   if (tiers.length > 0) {
     conditions.push(
       or(inArray(schema.upworkJobs.budgetTier, tiers), isNull(schema.upworkJobs.budgetTier)),
     );
-  } else {
-    conditions.push(isNull(schema.upworkJobs.budgetTier));
   }
 
   if (!showDismissed) {

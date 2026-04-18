@@ -18,6 +18,7 @@ const COST_MAP: Record<string, { input: number; output: number }> = {
   "claude-sonnet-4-20250514": { input: 300, output: 1500 },
   "claude-sonnet-4-6": { input: 300, output: 1500 },
   "claude-opus-4-6": { input: 1500, output: 7500 },
+  "claude-opus-4-7": { input: 1500, output: 7500 },
   "claude-haiku-4-5-20251001": { input: 100, output: 500 },
   // OpenAI models (for logTokenUsage calls from OpenAI routes)
   "gpt-4o-mini": { input: 15, output: 60 },

@@ -13,14 +13,33 @@ export interface ScannableLead {
   supabaseLeadId?: string | null;
 }
 
-function encodeBatch(leads: ScannableLead[]): string {
-  const csv = leads
-    .map((l) => `${(l.name || "Onbekend").replace(/,/g, " ")},${l.website ?? ""}`)
-    .join("\n");
+export interface ScanQueueItem {
+  bedrijfsnaam: string;
+  website: string;
+  email?: string;
+  supabaseLeadId?: string;
+}
+
+export function encodeQueue(items: ScanQueueItem[]): string {
+  const json = JSON.stringify(items);
   if (typeof window !== "undefined") {
-    return window.btoa(unescape(encodeURIComponent(csv)));
+    return window.btoa(unescape(encodeURIComponent(json)));
   }
-  return Buffer.from(csv, "utf-8").toString("base64");
+  return Buffer.from(json, "utf-8").toString("base64");
+}
+
+export function decodeQueue(raw: string): ScanQueueItem[] {
+  try {
+    const step1 = decodeURIComponent(raw);
+    const json =
+      typeof window !== "undefined"
+        ? decodeURIComponent(escape(window.atob(step1)))
+        : Buffer.from(step1, "base64").toString("utf-8");
+    const parsed = JSON.parse(json);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
 
 export function useBulkScan() {
@@ -33,20 +52,14 @@ export function useBulkScan() {
       addToast("Geen leads met website geselecteerd", "fout");
       return;
     }
-
-    if (withWebsite.length === 1) {
-      const l = withWebsite[0];
-      const params = new URLSearchParams();
-      params.set("bedrijfsnaam", l.name || "Onbekend");
-      params.set("website", l.website as string);
-      if (l.email) params.set("email", l.email);
-      if (l.supabaseLeadId) params.set("supabaseLeadId", l.supabaseLeadId);
-      router.push(`/sales-engine?${params.toString()}`);
-      return;
-    }
-
-    const batch = encodeBatch(withWebsite);
-    router.push(`/sales-engine?batch=${encodeURIComponent(batch)}`);
+    const items: ScanQueueItem[] = withWebsite.map((l) => ({
+      bedrijfsnaam: l.name || "Onbekend",
+      website: l.website as string,
+      ...(l.email ? { email: l.email } : {}),
+      ...(l.supabaseLeadId ? { supabaseLeadId: l.supabaseLeadId } : {}),
+    }));
+    const encoded = encodeQueue(items);
+    router.push(`/sales-engine?queue=${encodeURIComponent(encoded)}`);
   }
 
   return { runScan };

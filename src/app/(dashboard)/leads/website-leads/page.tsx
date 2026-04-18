@@ -85,6 +85,7 @@ export default function LeadsWebsiteLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("alle");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [promptModalLead, setPromptModalLead] = useState<{ id: string; name: string } | null>(null);
   const { runScan } = useBulkScan();
 
   // Search form
@@ -528,6 +529,14 @@ export default function LeadsWebsiteLeadsPage() {
                           </button>
                         );
                       })}
+                      <button
+                        onClick={() => setPromptModalLead({ id: lead.id, name: lead.name })}
+                        title="AI genereert een website-prompt voor Lovable/v0 op basis van deze lead"
+                        className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-colors"
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                        Website-prompt
+                      </button>
                       {lead.website_url && (
                         <button
                           onClick={() =>
@@ -542,7 +551,7 @@ export default function LeadsWebsiteLeadsPage() {
                             ])
                           }
                           title="Open de Sales Engine scan-flow met deze lead voorgeladen"
-                          className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
                         >
                           <Zap className="w-2.5 h-2.5" />
                           Scan
@@ -574,6 +583,14 @@ export default function LeadsWebsiteLeadsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {promptModalLead && (
+        <WebsitePromptModal
+          leadId={promptModalLead.id}
+          bedrijfsnaam={promptModalLead.name}
+          onClose={() => setPromptModalLead(null)}
+        />
       )}
     </div>
   );

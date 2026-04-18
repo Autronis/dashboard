@@ -1094,6 +1094,49 @@ if (isTurso) {
       expired INTEGER DEFAULT 0,
       bijgewerkt_op TEXT DEFAULT (datetime('now'))
     )`);
+
+    // Insta Knowledge Pipeline tables
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS isk_sources (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      handle TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      discovered_via TEXT DEFAULT 'manual',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
+
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS isk_items (
+      id TEXT PRIMARY KEY,
+      source_id TEXT REFERENCES isk_sources(id),
+      instagram_id TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL,
+      url TEXT NOT NULL,
+      caption TEXT,
+      author_handle TEXT,
+      media_url TEXT,
+      discovered_at TEXT DEFAULT (datetime('now')),
+      status TEXT NOT NULL DEFAULT 'pending',
+      failure_reason TEXT,
+      processed_at TEXT
+    )`);
+
+    sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_isk_items_status_discovered ON isk_items(status, discovered_at)`);
+
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS isk_analyses (
+      id TEXT PRIMARY KEY,
+      item_id TEXT NOT NULL REFERENCES isk_items(id),
+      summary TEXT NOT NULL,
+      features TEXT NOT NULL,
+      steps TEXT NOT NULL,
+      tips TEXT NOT NULL,
+      links TEXT NOT NULL,
+      relevance_score INTEGER NOT NULL,
+      relevance_reason TEXT NOT NULL,
+      raw_transcript TEXT,
+      raw_caption TEXT,
+      model_used TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now'))
+    )`);
   } catch {
     /* tables may already exist */
   }

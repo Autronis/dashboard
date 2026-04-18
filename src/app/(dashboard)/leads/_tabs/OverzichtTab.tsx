@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RedactText } from "@/components/leads/redact-text";
 import { usePoll } from "@/lib/use-poll";
 import { TabInfo } from "../_components/TabInfo";
+import { useBulkScan } from "../_components/use-bulk-scan";
 
 interface LinkedinLeadRow {
   id: string;
@@ -323,42 +324,17 @@ export function OverzichtTab() {
     }
   }
 
-  async function bulkScan() {
-    const selected = leads.filter((l) => selectedIds.has(l.id) && l.website?.trim());
-    if (selected.length === 0) {
-      addToast("Geen leads met website geselecteerd", "fout");
-      return;
-    }
-    setIsScanning(true);
-    let ok = 0;
-    let fail = 0;
-    for (const lead of selected) {
-      try {
-        setScanResults((prev) => ({ ...prev, [lead.id]: "pending" }));
-        const res = await fetch("/api/sales-engine/handmatig", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            bedrijfsnaam: lead.name || "Onbekend",
-            websiteUrl: lead.website,
-            contactpersoon: lead.name,
-            email: lead.email,
-            supabaseLeadId: lead.id,
-          }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setScanResults((prev) => ({ ...prev, [lead.id]: "completed" }));
-        setScanIds((prev) => ({ ...prev, [lead.id]: data.scanId }));
-        ok++;
-      } catch {
-        setScanResults((prev) => ({ ...prev, [lead.id]: "failed" }));
-        fail++;
-      }
-    }
-    setIsScanning(false);
-    setSelectedIds(new Set());
-    addToast(`${ok} scans gestart${fail > 0 ? `, ${fail} mislukt` : ""}`, ok > 0 ? "succes" : "fout");
+  function bulkScan() {
+    const selected = leads.filter((l) => selectedIds.has(l.id));
+    runScan(
+      selected.map((l) => ({
+        id: l.id,
+        name: l.name,
+        website: l.website,
+        email: l.email,
+        supabaseLeadId: l.id,
+      })),
+    );
   }
 
   async function bulkGenerateEmails() {
@@ -543,10 +519,9 @@ export function OverzichtTab() {
             </span>
             <button
               onClick={bulkScan}
-              disabled={isScanning}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors"
             >
-              {isScanning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />}
+              <Zap className="w-3 h-3" />
               Scan ({selectedIds.size})
             </button>
             <button
@@ -638,7 +613,6 @@ export function OverzichtTab() {
                 <th className="text-left px-4 py-3 font-semibold">Contact</th>
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Folder</th>
                 <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Status</th>
-                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Scan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-autronis-border/50">
@@ -767,27 +741,6 @@ export function OverzichtTab() {
                         >
                           {lead.outreach_status}
                         </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 hidden lg:table-cell">
-                      {scanResults[lead.id] === "pending" && (
-                        <span className="inline-flex items-center gap-1 text-xs text-amber-400">
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Bezig
-                        </span>
-                      )}
-                      {scanResults[lead.id] === "completed" && (
-                        <Link
-                          href={`/sales-engine/${scanIds[lead.id]}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300"
-                        >
-                          <Sparkles className="w-3 h-3" />
-                          Bekijk
-                        </Link>
-                      )}
-                      {scanResults[lead.id] === "failed" && (
-                        <span className="text-xs text-red-400">Mislukt</span>
                       )}
                     </td>
                   </tr>

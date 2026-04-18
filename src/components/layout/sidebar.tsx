@@ -15,6 +15,7 @@ import {
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
   Heart, TrendingUp, Globe, FolderOpen, Target, Briefcase,
+  Instagram,
 } from "lucide-react";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Second Brain", icon: Brain, href: "/second-brain" },
           { label: "Learning Radar", icon: Radar, href: "/radar" },
           { label: "YT Knowledge", icon: Video, href: "/yt-knowledge" },
+          { label: "Insta Knowledge", icon: Instagram, href: "/insta-knowledge" },
           { label: "Ideeën", icon: Lightbulb, href: "/ideeen" },
           { label: "Documenten", icon: FileText, href: "/documenten" },
         ],

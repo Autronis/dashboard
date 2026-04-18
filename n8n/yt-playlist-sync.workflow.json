@@ -111,6 +111,10 @@
             {
               "name": "url",
               "value": "={{ $json.url }}"
+            },
+            {
+              "name": "source",
+              "value": "playlist"
             }
           ]
         },

@@ -59,24 +59,42 @@ export function RepliesInbox() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/leads/emails/replies")
-      .then((r) => (r.ok ? r.json() : { replies: [] }))
-      .then((data) => {
+
+    async function load(silent: boolean) {
+      try {
+        const res = await fetch("/api/leads/emails/replies");
+        if (!res.ok) return;
+        const data = await res.json();
         if (cancelled) return;
-        setReplies(Array.isArray(data?.replies) ? data.replies : []);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setReplies([]);
-      })
-      .finally(() => {
-        if (cancelled) return;
-        setLoading(false);
-      });
+        const incoming = Array.isArray(data?.replies) ? data.replies : [];
+        setReplies((prev) => {
+          // Detect new replies between polls — toast on the latest if any
+          if (silent && prev.length > 0 && incoming.length > prev.length) {
+            const seen = new Set(prev.map((r) => r.emailId));
+            const fresh = incoming.find((r: Reply) => !seen.has(r.emailId));
+            if (fresh) {
+              addToast(`Nieuwe reply van ${fresh.leadName}`, "succes");
+            }
+          }
+          return incoming;
+        });
+      } catch {
+        // ignore — keep previous state
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    }
+
+    void load(false);
+    const interval = setInterval(() => {
+      void load(true);
+    }, 30000);
+
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
-  }, []);
+  }, [addToast]);
 
   function scanWebsite(reply: Reply) {
     if (!reply.website) {

@@ -1897,3 +1897,70 @@ export const slimmeTakenTemplates = sqliteTable("slimme_taken_templates", {
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
+
+// ============ UPWORK PROPOSAL ENGINE ============
+export const upworkJobs = sqliteTable("upwork_jobs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  jobId: text("job_id").notNull().unique(),
+  url: text("url").notNull(),
+  titel: text("titel"),
+  beschrijving: text("beschrijving"),
+  budgetType: text("budget_type", { enum: ["fixed", "hourly"] }),
+  budgetMin: real("budget_min"),
+  budgetMax: real("budget_max"),
+  budgetTier: text("budget_tier", { enum: ["low", "mid", "premium"] }),
+  country: text("country"),
+  postedAt: text("posted_at"),
+  durationEstimate: text("duration_estimate"),
+  experienceLevel: text("experience_level", { enum: ["entry", "intermediate", "expert"] }),
+  categoryLabels: text("category_labels"),
+  clientNaam: text("client_naam"),
+  clientVerified: integer("client_verified").default(0),
+  clientSpent: real("client_spent"),
+  clientHireRate: real("client_hire_rate"),
+  clientReviews: integer("client_reviews"),
+  clientRating: real("client_rating"),
+  screeningQs: text("screening_qs"),
+  proposalsRangeMin: integer("proposals_range_min"),
+  proposalsRangeMax: integer("proposals_range_max"),
+  seenBy: text("seen_by").notNull().default("[]"),
+  claimedBy: text("claimed_by"),
+  claimedAt: text("claimed_at"),
+  status: text("status", {
+    enum: ["new", "viewed", "claimed", "dismissed", "submitted", "ingest_partial", "session_expired", "deleted"],
+  }).notNull().default("new"),
+  fetchError: text("fetch_error"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  statusPostedIdx: index("idx_upwork_jobs_status_posted").on(table.status, table.postedAt),
+}));
+
+export const upworkEmailRaw = sqliteTable("upwork_email_raw", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  account: text("account", { enum: ["sem", "syb"] }).notNull(),
+  gmailMessageId: text("gmail_message_id").notNull().unique(),
+  receivedAt: text("received_at").notNull(),
+  subject: text("subject"),
+  bodyHtml: text("body_html"),
+  parsedJobId: text("parsed_job_id"),
+  parseError: text("parse_error"),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const upworkSavedSearches = sqliteTable("upwork_saved_searches", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  account: text("account", { enum: ["sem", "syb"] }).notNull(),
+  naam: text("naam").notNull(),
+  query: text("query").notNull(),
+  actief: integer("actief").default(1),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+});
+
+export const upworkSessions = sqliteTable("upwork_sessions", {
+  account: text("account", { enum: ["sem", "syb"] }).primaryKey(),
+  cookiesEncrypted: text("cookies_encrypted").notNull(),
+  lastVerifiedAt: text("last_verified_at"),
+  expired: integer("expired").default(0),
+  bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});

@@ -24,6 +24,9 @@ export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFill
   const { addToast } = useToast();
   const [rowStatus, setRowStatus] = useState<Record<string, RowStatus>>({});
   const [isBulkScanning, setIsBulkScanning] = useState(false);
+  const [confirmBulk, setConfirmBulk] = useState(false);
+  const BULK_CONFIRM_THRESHOLD = 20;
+  const ESTIMATED_COST_PER_SCAN_EUR = 0.05; // ruwe schatting Anthropic kosten per scan
 
   if (items.length === 0 && !autoFillLoading) {
     return (
@@ -79,7 +82,16 @@ export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFill
     }
   }
 
+  async function handleScanAllClick() {
+    if (items.length > BULK_CONFIRM_THRESHOLD) {
+      setConfirmBulk(true);
+      return;
+    }
+    await scanAll();
+  }
+
   async function scanAll() {
+    setConfirmBulk(false);
     setIsBulkScanning(true);
     let ok = 0;
     let fail = 0;
@@ -126,7 +138,7 @@ export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFill
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <button
-            onClick={scanAll}
+            onClick={() => void handleScanAllClick()}
             disabled={isBulkScanning}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
           >
@@ -215,6 +227,62 @@ export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFill
           })}
         </AnimatePresence>
       </div>
+      <AnimatePresence>
+        {confirmBulk && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setConfirmBulk(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.96, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.96, y: 10 }}
+              className="bg-autronis-card rounded-2xl border border-autronis-border max-w-md w-full p-6 space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-autronis-text-primary">
+                    {items.length} scans starten?
+                  </h3>
+                  <p className="text-sm text-autronis-text-secondary mt-1">
+                    Dit kost ongeveer{" "}
+                    <span className="font-semibold text-autronis-text-primary">
+                      €{(items.length * ESTIMATED_COST_PER_SCAN_EUR).toFixed(2)}
+                    </span>{" "}
+                    aan Anthropic credits en duurt zo&apos;n{" "}
+                    <span className="font-semibold text-autronis-text-primary">
+                      {Math.ceil((items.length * 30) / 60)} minuten
+                    </span>{" "}
+                    om af te ronden. Scan eerst een batch van 10-20 om de output te valideren.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  onClick={() => setConfirmBulk(false)}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+                >
+                  Annuleren
+                </button>
+                <button
+                  onClick={() => void scanAll()}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-sm font-semibold hover:bg-autronis-accent-hover transition-colors"
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  Ja, scan alle {items.length}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Loader2, X, Copy, Check, Sparkles, RefreshCw, Mail, Send } from "lucide-react";
+import { Loader2, X, Copy, Check, Sparkles, RefreshCw, Mail, Send, Zap, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
 interface WebsitePromptModalProps {
   leadId: string;
   bedrijfsnaam: string;
+  website?: string | null;
+  leadEmail?: string | null;
   onClose: () => void;
 }
 
@@ -18,7 +21,9 @@ interface PitchMail {
   recipientEmail: string | null;
 }
 
-export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePromptModalProps) {
+type ScanStatus = "idle" | "pending" | "completed" | "failed";
+
+export function WebsitePromptModal({ leadId, bedrijfsnaam, website, leadEmail, onClose }: WebsitePromptModalProps) {
   const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [prompt, setPrompt] = useState<string | null>(null);
@@ -34,6 +39,49 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePro
   const [editedBody, setEditedBody] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [alsoStartScan, setAlsoStartScan] = useState(false);
+
+  // Sales Engine scan state
+  const [scanStatus, setScanStatus] = useState<ScanStatus>("idle");
+  const [scanId, setScanId] = useState<number | null>(null);
+
+  function hostname(url: string): string {
+    try {
+      const withProto = url.startsWith("http") ? url : `https://${url}`;
+      return new URL(withProto).hostname.replace(/^www\./, "");
+    } catch {
+      return url;
+    }
+  }
+
+  async function startSalesEngineScan(): Promise<{ ok: boolean; scanId?: number }> {
+    if (!website?.trim()) {
+      addToast("Geen website — kan geen scan starten", "fout");
+      return { ok: false };
+    }
+    setScanStatus("pending");
+    try {
+      const res = await fetch("/api/sales-engine/handmatig", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          bedrijfsnaam,
+          websiteUrl: website,
+          ...(leadEmail ? { email: leadEmail } : {}),
+          supabaseLeadId: leadId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.fout || `HTTP ${res.status}`);
+      setScanStatus("completed");
+      setScanId(data.scanId);
+      return { ok: true, scanId: data.scanId };
+    } catch (err) {
+      setScanStatus("failed");
+      addToast(err instanceof Error ? err.message : "Scan starten mislukt", "fout");
+      return { ok: false };
+    }
+  }
 
   async function generate(extra?: string) {
     setLoading(true);
@@ -123,6 +171,14 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, onClose }: WebsitePro
       if (!res.ok) throw new Error(data.fout || `HTTP ${res.status}`);
       setSent(true);
       addToast("Pitch-mail verstuurd (signature volgt via Syb's flow)", "succes");
+
+      // Combo: ook Sales Engine scan starten als checkbox aan staat
+      if (alsoStartScan && website?.trim() && scanStatus === "idle") {
+        const scanResult = await startSalesEngineScan();
+        if (scanResult.ok) {
+          addToast("Sales Engine scan ook gestart", "succes");
+        }
+      }
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Versturen mislukt", "fout");
     } finally {

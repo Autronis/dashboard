@@ -14,6 +14,7 @@
 
 ## n8n workflows
 - `yt-playlist-sync` — dagelijks 08:00 Europe/Amsterdam, RSS poll van Autronis YouTube playlist (hardcoded ID in Set-node), POST naar `/api/yt-knowledge` + auto-trigger `/analyze` voor nieuwe videos. JSON in [n8n/yt-playlist-sync.workflow.json](n8n/yt-playlist-sync.workflow.json). Playlist-ID wijzigen = Set-node waarde aanpassen in n8n UI. Auth via `INTERNAL_API_KEY` (inline Bearer header in workflow, niet via credential-ID omdat die niet in de export staat).
+- `yt-transcript-proxy` — webhook-driven proxy om YouTube captions op te halen omdat YouTube Vercel IPs blokkeert. POST met `{videoId}` → returnt `{ok, transcript, language}`. Draait op Hostinger VPS (Vercel IP range is geblokt, Hostinger niet). Webhook path heeft random suffix (URL = secret). JSON in [n8n/yt-transcript-proxy.workflow.json](n8n/yt-transcript-proxy.workflow.json). Dashboard gebruikt `N8N_TRANSCRIPT_PROXY_URL` env var; `/analyze` valt terug op directe fetch als env niet gezet (handig voor dev op Sem's Mac). Code node gebruikt `this.helpers.httpRequest()` omdat n8n sandbox `fetch`/`axios`/`require` blokkeert.
 
 ## Tech Stack
 - **Framework**: Next.js 16.1.6 (App Router, Turbopack)

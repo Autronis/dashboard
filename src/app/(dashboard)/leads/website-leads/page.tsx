@@ -386,57 +386,67 @@ export default function LeadsWebsiteLeadsPage() {
                   expanded ? "border-autronis-accent/40" : "border-autronis-border"
                 )}
               >
-                <button
-                  onClick={() => setExpandedId(expanded ? null : lead.id)}
-                  className="w-full flex items-start gap-3 p-3 text-left hover:bg-autronis-accent/[0.03] transition-colors"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-autronis-text-primary truncate">
-                        {lead.name}
-                      </span>
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold",
-                          STATUS_COLORS[lead.status] || "bg-autronis-border text-autronis-text-secondary"
-                        )}
-                      >
-                        {STATUS_OPTIONS.find((s) => s.value === lead.status)?.label || lead.status}
-                      </span>
-                      {lead.website_confidence && CONFIDENCE_BADGE[lead.website_confidence] && (() => {
-                        const badge = CONFIDENCE_BADGE[lead.website_confidence!];
-                        const Icon = badge.icon;
-                        return (
-                          <span className={cn("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium", badge.style)}>
-                            <Icon className="w-2.5 h-2.5" />
-                            {badge.label}
+                <div className="flex items-stretch gap-2 p-3 hover:bg-autronis-accent/[0.03] transition-colors">
+                  <button
+                    onClick={() => setExpandedId(expanded ? null : lead.id)}
+                    className="flex-1 flex items-start gap-3 text-left min-w-0"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-autronis-text-primary truncate">
+                          {lead.name}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full font-semibold",
+                            STATUS_COLORS[lead.status] || "bg-autronis-border text-autronis-text-secondary"
+                          )}
+                        >
+                          {STATUS_OPTIONS.find((s) => s.value === lead.status)?.label || lead.status}
+                        </span>
+                        {lead.website_confidence && CONFIDENCE_BADGE[lead.website_confidence] && (() => {
+                          const badge = CONFIDENCE_BADGE[lead.website_confidence!];
+                          const Icon = badge.icon;
+                          return (
+                            <span className={cn("inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border font-medium", badge.style)}>
+                              <Icon className="w-2.5 h-2.5" />
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+                        {lead.rating != null && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400">
+                            <Star className="w-2.5 h-2.5 fill-amber-400" />
+                            {lead.rating} ({lead.reviews_count})
                           </span>
-                        );
-                      })()}
-                      {lead.rating != null && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-400">
-                          <Star className="w-2.5 h-2.5 fill-amber-400" />
-                          {lead.rating} ({lead.reviews_count})
-                        </span>
-                      )}
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 text-[11px] text-autronis-text-secondary mt-1">
+                        {lead.city && (
+                          <span className="inline-flex items-center gap-1">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {lead.city}
+                          </span>
+                        )}
+                        {lead.category && <span>{lead.category}</span>}
+                        {lead.phone && (
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="w-2.5 h-2.5" />
+                            {lead.phone}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 text-[11px] text-autronis-text-secondary mt-1">
-                      {lead.city && (
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-2.5 h-2.5" />
-                          {lead.city}
-                        </span>
-                      )}
-                      {lead.category && <span>{lead.category}</span>}
-                      {lead.phone && (
-                        <span className="inline-flex items-center gap-1">
-                          <Phone className="w-2.5 h-2.5" />
-                          {lead.phone}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    onClick={() => setPromptModalLead({ id: lead.id, name: lead.name })}
+                    title="AI genereert een website-prompt voor Lovable/v0 op basis van deze lead"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[11px] font-semibold hover:bg-purple-500/20 transition-colors self-center flex-shrink-0"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    Website-prompt
+                  </button>
+                </div>
 
                 {expanded && (
                   <div className="border-t border-autronis-border bg-autronis-bg/40 p-4 space-y-3">

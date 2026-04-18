@@ -572,6 +572,71 @@ if (isTurso) {
   // Sessie ID kolom op klant_uren
   client.execute("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT").catch(() => {});
 
+  // ============ UPWORK PROPOSAL ENGINE ============
+  client.execute(`CREATE TABLE IF NOT EXISTS upwork_jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    job_id TEXT NOT NULL UNIQUE,
+    url TEXT NOT NULL,
+    titel TEXT,
+    beschrijving TEXT,
+    budget_type TEXT,
+    budget_min REAL,
+    budget_max REAL,
+    budget_tier TEXT,
+    country TEXT,
+    posted_at TEXT,
+    duration_estimate TEXT,
+    experience_level TEXT,
+    category_labels TEXT,
+    client_naam TEXT,
+    client_verified INTEGER DEFAULT 0,
+    client_spent REAL,
+    client_hire_rate REAL,
+    client_reviews INTEGER,
+    client_rating REAL,
+    screening_qs TEXT,
+    proposals_range_min INTEGER,
+    proposals_range_max INTEGER,
+    seen_by TEXT NOT NULL DEFAULT '[]',
+    claimed_by TEXT,
+    claimed_at TEXT,
+    status TEXT NOT NULL DEFAULT 'new',
+    fetch_error TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_upwork_jobs_status_posted ON upwork_jobs(status, posted_at DESC)").catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS upwork_email_raw (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account TEXT NOT NULL,
+    gmail_message_id TEXT NOT NULL UNIQUE,
+    received_at TEXT NOT NULL,
+    subject TEXT,
+    body_html TEXT,
+    parsed_job_id TEXT,
+    parse_error TEXT,
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS upwork_saved_searches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    account TEXT NOT NULL,
+    naam TEXT NOT NULL,
+    query TEXT NOT NULL,
+    actief INTEGER DEFAULT 1,
+    aangemaakt_op TEXT DEFAULT (datetime('now')),
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  client.execute(`CREATE TABLE IF NOT EXISTS upwork_sessions (
+    account TEXT PRIMARY KEY,
+    cookies_encrypted TEXT NOT NULL,
+    last_verified_at TEXT,
+    expired INTEGER DEFAULT 0,
+    bijgewerkt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
@@ -920,6 +985,75 @@ if (isTurso) {
 
   // Sessie ID kolom op klant_uren
   try { sqliteDb.exec("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT"); } catch { /* column may already exist */ }
+
+  // ============ UPWORK PROPOSAL ENGINE ============
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id TEXT NOT NULL UNIQUE,
+      url TEXT NOT NULL,
+      titel TEXT,
+      beschrijving TEXT,
+      budget_type TEXT,
+      budget_min REAL,
+      budget_max REAL,
+      budget_tier TEXT,
+      country TEXT,
+      posted_at TEXT,
+      duration_estimate TEXT,
+      experience_level TEXT,
+      category_labels TEXT,
+      client_naam TEXT,
+      client_verified INTEGER DEFAULT 0,
+      client_spent REAL,
+      client_hire_rate REAL,
+      client_reviews INTEGER,
+      client_rating REAL,
+      screening_qs TEXT,
+      proposals_range_min INTEGER,
+      proposals_range_max INTEGER,
+      seen_by TEXT NOT NULL DEFAULT '[]',
+      claimed_by TEXT,
+      claimed_at TEXT,
+      status TEXT NOT NULL DEFAULT 'new',
+      fetch_error TEXT,
+      aangemaakt_op TEXT DEFAULT (datetime('now')),
+      bijgewerkt_op TEXT DEFAULT (datetime('now'))
+    )`);
+    sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_upwork_jobs_status_posted ON upwork_jobs(status, posted_at DESC)");
+
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_email_raw (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account TEXT NOT NULL,
+      gmail_message_id TEXT NOT NULL UNIQUE,
+      received_at TEXT NOT NULL,
+      subject TEXT,
+      body_html TEXT,
+      parsed_job_id TEXT,
+      parse_error TEXT,
+      aangemaakt_op TEXT DEFAULT (datetime('now'))
+    )`);
+
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_saved_searches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account TEXT NOT NULL,
+      naam TEXT NOT NULL,
+      query TEXT NOT NULL,
+      actief INTEGER DEFAULT 1,
+      aangemaakt_op TEXT DEFAULT (datetime('now')),
+      bijgewerkt_op TEXT DEFAULT (datetime('now'))
+    )`);
+
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_sessions (
+      account TEXT PRIMARY KEY,
+      cookies_encrypted TEXT NOT NULL,
+      last_verified_at TEXT,
+      expired INTEGER DEFAULT 0,
+      bijgewerkt_op TEXT DEFAULT (datetime('now'))
+    )`);
+  } catch {
+    /* tables may already exist */
+  }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

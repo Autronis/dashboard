@@ -46,12 +46,10 @@ export async function processItem(itemId: string): Promise<WorkerOutcome> {
     args: [rawItem.caption, rawItem.authorHandle, rawItem.mediaUrl ?? null, itemId],
   });
 
+  // Transcribe whenever a video is present — reels AND video-posts (IG serves
+  // some reels under /p/ URLs). Image-only posts have no mediaUrl.
   let transcript: string | undefined;
-  if (type === "reel") {
-    if (!rawItem.mediaUrl) {
-      await markFailed(itemId, "no_media_url");
-      return { ok: false, reason: "no_media_url" };
-    }
+  if (rawItem.mediaUrl) {
     try {
       transcript = await transcribeReelFromUrl(rawItem.mediaUrl);
     } catch (e) {
@@ -62,6 +60,9 @@ export async function processItem(itemId: string): Promise<WorkerOutcome> {
       await markFailed(itemId, "transcription_failed");
       return { ok: false, reason: "transcription_failed" };
     }
+  } else if (type === "reel") {
+    await markFailed(itemId, "no_media_url");
+    return { ok: false, reason: "no_media_url" };
   }
 
   let analysis;
@@ -71,6 +72,12 @@ export async function processItem(itemId: string): Promise<WorkerOutcome> {
     await markFailed(itemId, "analysis_failed");
     return { ok: false, reason: "analysis_failed" };
   }
+
+  // Clear any previous analyses for this item so retry produces one authoritative row.
+  await tursoClient.execute({
+    sql: "DELETE FROM isk_analyses WHERE item_id = ?",
+    args: [itemId],
+  });
 
   const analysisId = crypto.randomUUID();
   await tursoClient.execute({

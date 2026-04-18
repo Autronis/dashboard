@@ -73,11 +73,10 @@ export function parseInstagramPage(html: string, url: string, type: ItemType, in
     }
   }
 
+  // IG sometimes serves reels as /p/ URLs, so check video_url for both types.
   let mediaUrl: string | undefined;
-  if (type === "reel") {
-    const videoMatch = html.match(/"video_url":"([^"]+)"/);
-    if (videoMatch) mediaUrl = decodeJsonString(videoMatch[1]);
-  }
+  const videoMatch = html.match(/"video_url":"([^"]+)"/);
+  if (videoMatch) mediaUrl = decodeJsonString(videoMatch[1]);
 
   // Fallback to edge_media_to_caption when og:description parse yielded nothing useful
   if (!caption || caption.length < 5) {

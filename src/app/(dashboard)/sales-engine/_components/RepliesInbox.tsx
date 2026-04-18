@@ -142,7 +142,19 @@ export function RepliesInbox() {
     );
   }
 
-  if (replies.length === 0) return null;
+  if (replies.length === 0) {
+    return (
+      <div className="bg-[var(--card)] rounded-xl border border-autronis-border px-5 py-4 flex items-center gap-3">
+        <MailOpen className="w-4 h-4 text-autronis-text-tertiary flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-autronis-text-primary">Inbox leeg</p>
+          <p className="text-xs text-autronis-text-secondary mt-0.5">
+            Zodra iemand reageert op een cold mail uit <span className="text-autronis-accent">/leads/emails</span> verschijnt die hier — met originele mail, reply, scan-knop en AI-gegenereerd antwoord + plan.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div

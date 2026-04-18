@@ -310,7 +310,8 @@ async function createDashboardTask({ commits, changes, typesChanged, whitelistCh
   lines.push("");
   lines.push(`Vergelijking: https://github.com/${SYB_OWNER}/${SYB_REPO}/compare/${commits[commits.length - 1].sha}^...${commits[0].sha}`);
 
-  const titel = `Syb pushed lead-dashboard-v2: ${commits[0].message.slice(0, 60)}`;
+  const headSha = commits[0].sha.slice(0, 7);
+  const titel = `Syb pushed lead-dashboard-v2 [${headSha}]: ${commits[0].message.slice(0, 50)}`;
   const body = {
     projectNaam: "Lead Dashboard v2",
     voltooide_taken: [],
@@ -511,9 +512,11 @@ async function main() {
     lastSyncSummary: summary || "no-op",
   });
 
-  // Git commit & push
-  if (somethingChanged && !DRY_RUN) {
-    commitAndPush(summary);
+  // Git commit & push — ALTIJD aanroepen, ook bij no-op.
+  // Anders blijft .syb-sync-state.json lokaal stuck en wordt elke run
+  // dezelfde commit opnieuw als "nieuw" gezien -> dubbele push notifications.
+  if (!DRY_RUN) {
+    commitAndPush(summary || `state update naar ${headSha.slice(0, 7)}`);
   }
 
   log(`✓ Sync klaar (${summary || "no-op"})`);

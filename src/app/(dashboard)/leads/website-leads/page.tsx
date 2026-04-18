@@ -17,11 +17,13 @@ import {
   ShieldQuestion,
   Filter,
   Zap,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useBulkScan } from "../_components/use-bulk-scan";
+import { WebsitePromptModal } from "./_components/WebsitePromptModal";
 
 interface WebsiteLead {
   id: string;

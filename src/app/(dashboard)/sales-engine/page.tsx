@@ -465,7 +465,13 @@ export default function SalesEnginePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const { items: queueItems, remove: removeFromQueue, clear: clearQueue } = useScanQueue();
+  const {
+    items: queueItems,
+    remove: removeFromQueue,
+    clear: clearQueue,
+    resetDismissed: resetQueueDismissed,
+    autoFillLoading,
+  } = useScanQueue();
 
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [zoekFilter, setZoekFilter] = useState("");
@@ -611,8 +617,14 @@ export default function SalesEnginePage() {
         {/* Full form for empty state */}
         {!hasScans && queueItems.length === 0 && <ScanFormulier prominent />}
 
-        {/* Queue list — leads aangedragen vanuit /leads, /contacts, /website-leads, /klanten */}
-        <QueueList items={queueItems} onRemove={removeFromQueue} onClear={clearQueue} />
+        {/* Queue list — leads aangedragen vanuit /leads, /contacts, /website-leads, /klanten (+ auto-fill van alle niet-gescand) */}
+        <QueueList
+          items={queueItems}
+          onRemove={removeFromQueue}
+          onClear={clearQueue}
+          onResetDismissed={resetQueueDismissed}
+          autoFillLoading={autoFillLoading}
+        />
 
         {/* KPI Cards */}
         {hasScans && (

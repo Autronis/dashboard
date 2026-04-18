@@ -19,14 +19,39 @@ interface QueueListProps {
 
 type RowStatus = "idle" | "pending" | "completed" | "failed";
 
-export function QueueList({ items, onRemove, onClear }: QueueListProps) {
-  const router = useRouter();
+export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFillLoading }: QueueListProps) {
   const queryClient = useQueryClient();
   const { addToast } = useToast();
   const [rowStatus, setRowStatus] = useState<Record<string, RowStatus>>({});
   const [isBulkScanning, setIsBulkScanning] = useState(false);
 
-  if (items.length === 0) return null;
+  if (items.length === 0 && !autoFillLoading) {
+    return (
+      <div className="bg-[var(--card)] rounded-xl border border-autronis-border px-5 py-4 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 text-sm text-autronis-text-secondary">
+          <Rocket className="w-4 h-4 text-autronis-text-tertiary" />
+          <span>Queue is leeg — alle leads met website zijn al gescand of verwijderd.</span>
+        </div>
+        <button
+          onClick={onResetDismissed}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          title="Verwijderde items weer terugzetten"
+        >
+          <RotateCcw className="w-3 h-3" />
+          Reset queue
+        </button>
+      </div>
+    );
+  }
+
+  if (items.length === 0 && autoFillLoading) {
+    return (
+      <div className="bg-[var(--card)] rounded-xl border border-autronis-border px-5 py-6 flex items-center justify-center gap-2 text-sm text-autronis-text-secondary">
+        <Loader2 className="w-4 h-4 animate-spin text-autronis-accent" />
+        Queue wordt gevuld met alle leads met website &hellip;
+      </div>
+    );
+  }
 
   async function scanOne(item: ScanQueueItem): Promise<boolean> {
     const key = itemKey(item);

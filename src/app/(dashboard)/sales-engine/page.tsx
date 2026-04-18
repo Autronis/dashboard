@@ -336,26 +336,14 @@ function CompactScanForm({ onStarted }: { onStarted: (scanId: number) => void })
 }
 
 // ─── Full Scan Form (empty state) ───
-function ScanFormulier({
-  prominent = false,
-  initialBedrijfsnaam = "",
-  initialWebsite = "",
-  initialEmail = "",
-  initialSupabaseLeadId,
-}: {
-  prominent?: boolean;
-  initialBedrijfsnaam?: string;
-  initialWebsite?: string;
-  initialEmail?: string;
-  initialSupabaseLeadId?: string;
-}) {
+function ScanFormulier({ prominent = false }: { prominent?: boolean }) {
   const router = useRouter();
   const { addToast } = useToast();
-  const [bedrijfsnaam, setBedrijfsnaam] = useState(initialBedrijfsnaam);
-  const [websiteUrl, setWebsiteUrl] = useState(initialWebsite);
+  const [bedrijfsnaam, setBedrijfsnaam] = useState("");
+  const [websiteUrl, setWebsiteUrl] = useState("");
   const [contactpersoon, setContactpersoon] = useState("");
-  const [email, setEmail] = useState(initialEmail);
-  const [meerInfoOpen, setMeerInfoOpen] = useState(!!initialEmail);
+  const [email, setEmail] = useState("");
+  const [meerInfoOpen, setMeerInfoOpen] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -373,7 +361,6 @@ function ScanFormulier({
           websiteUrl: url,
           ...(contactpersoon.trim() ? { contactpersoon: contactpersoon.trim() } : {}),
           ...(email.trim() ? { email: email.trim() } : {}),
-          ...(initialSupabaseLeadId ? { supabaseLeadId: initialSupabaseLeadId } : {}),
         }),
       });
       const data = await res.json();
@@ -623,6 +610,9 @@ export default function SalesEnginePage() {
 
         {/* Full form for empty state */}
         {!hasScans && queueItems.length === 0 && <ScanFormulier prominent />}
+
+        {/* Queue list — leads aangedragen vanuit /leads, /contacts, /website-leads, /klanten */}
+        <QueueList items={queueItems} onRemove={removeFromQueue} onClear={clearQueue} />
 
         {/* KPI Cards */}
         {hasScans && (

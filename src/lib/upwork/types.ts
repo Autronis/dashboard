@@ -15,18 +15,18 @@ export type JobStatus =
   | "deleted";
 
 export type ParsedEmail = {
+  ok: true;
   jobId: string;
   url: string;
   titel: string;
-  budgetPreview?: {
-    type: BudgetType;
-    min?: number;
-    max?: number;
-  };
+  budgetPreviewType?: BudgetType;
+  budgetPreviewMin?: number;
+  budgetPreviewMax?: number;
   country?: string;
 };
 
 export type EmailParseError = {
+  ok: false;
   error: string;
   reason: "unknown_format" | "no_job_id" | "empty_body";
 };
@@ -34,7 +34,7 @@ export type EmailParseError = {
 export type EmailParseResult = ParsedEmail | EmailParseError;
 
 export function isParseError(r: EmailParseResult): r is EmailParseError {
-  return "error" in r;
+  return !r.ok;
 }
 
 export type IngestPayload = {

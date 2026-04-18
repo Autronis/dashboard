@@ -45,4 +45,14 @@ describe("classifyBudgetTier", () => {
   it("returns null on negative values", () => {
     expect(classifyBudgetTier("fixed", -100, undefined)).toBeNull();
   });
+
+  it("returns null on NaN values", () => {
+    expect(classifyBudgetTier("fixed", NaN, undefined)).toBeNull();
+    expect(classifyBudgetTier("hourly", NaN, 50)).toBeNull();
+  });
+
+  it("returns null on Infinity values", () => {
+    expect(classifyBudgetTier("fixed", Infinity, undefined)).toBeNull();
+    expect(classifyBudgetTier("hourly", -Infinity, undefined)).toBeNull();
+  });
 });

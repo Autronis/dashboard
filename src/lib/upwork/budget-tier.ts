@@ -7,7 +7,7 @@ export function classifyBudgetTier(
 ): BudgetTier | null {
   if (!type) return null;
   const value = min ?? max;
-  if (value === undefined || value < 0) return null;
+  if (value === undefined || !Number.isFinite(value) || value < 0) return null;
 
   if (type === "fixed") {
     if (value < 500) return "low";

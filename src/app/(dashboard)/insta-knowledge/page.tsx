@@ -163,30 +163,32 @@ export default function InstaKnowledgePage() {
           </button>
         </div>
 
-        <section className="space-y-3">
-          {loading && <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin opacity-50" /></div>}
+        <div className="space-y-2">
+          {loading && <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-autronis-text-secondary" /></div>}
           {!loading && items.length === 0 && (
-            <div className="text-center py-16 opacity-60">Nog geen items. Plak een URL om te starten.</div>
+            <div className="text-center py-16 text-autronis-text-secondary">Nog geen items. Plak een URL om te starten.</div>
           )}
           {items.map((item) => (
             <motion.div
               key={item.id}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-[var(--autronis-card)] border border-[var(--autronis-border)] rounded-2xl p-4 card-glow cursor-pointer"
+              className="bg-autronis-card rounded-xl border border-autronis-border p-4 cursor-pointer hover:border-autronis-accent/40 transition-colors"
               onClick={() => setDetail(item)}
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">
-                  {item.type === "reel" ? <Play className="w-5 h-5 opacity-70" /> : <ImageIcon className="w-5 h-5 opacity-70" />}
+                  {item.type === "reel"
+                    ? <Play className="w-5 h-5 text-autronis-accent" />
+                    : <ImageIcon className="w-5 h-5 text-autronis-accent" />}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <StatusBadge status={item.status} />
                     {item.analysis && <ScoreBadge score={item.analysis.relevance_score} />}
-                    {item.author_handle && <span className="text-sm opacity-60">@{item.author_handle}</span>}
+                    {item.author_handle && <span className="text-sm text-autronis-text-secondary">@{item.author_handle}</span>}
                   </div>
-                  <div className="font-medium truncate">
+                  <div className="font-medium text-autronis-text-primary truncate">
                     {item.analysis?.summary ? item.analysis.summary.slice(0, 120) + "…" : item.caption?.slice(0, 120) || item.instagram_id}
                   </div>
                   {item.failure_reason && (
@@ -194,16 +196,16 @@ export default function InstaKnowledgePage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <a href={item.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-[var(--autronis-border)] rounded-lg"><ExternalLink className="w-4 h-4" /></a>
+                  <a href={item.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><ExternalLink className="w-4 h-4" /></a>
                   {(item.status === "failed" || item.status === "done") && (
-                    <button onClick={() => retry(item.id)} className="p-2 hover:bg-[var(--autronis-border)] rounded-lg"><RefreshCw className="w-4 h-4" /></button>
+                    <button onClick={() => retry(item.id)} className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><RefreshCw className="w-4 h-4" /></button>
                   )}
-                  <button onClick={() => del(item.id)} className="p-2 hover:bg-red-900/40 rounded-lg"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => del(item.id)} className="p-2 hover:bg-red-500/15 rounded-lg text-autronis-text-secondary hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             </motion.div>
           ))}
-        </section>
+        </div>
 
         {detail && <DetailDrawer item={detail} onClose={() => setDetail(null)} />}
       </div>
@@ -211,33 +213,32 @@ export default function InstaKnowledgePage() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
-  return (
-    <div className="bg-[var(--autronis-card)] border border-[var(--autronis-border)] rounded-2xl p-4">
-      <div className="text-xs uppercase tracking-wider opacity-60">{label}</div>
-      <div className="text-2xl font-semibold mt-1">{value}</div>
-    </div>
-  );
-}
-
 function StatusBadge({ status }: { status: ItemStatus }) {
   const map = {
-    pending: { icon: Clock, label: "Wachtend", cls: "bg-amber-900/40 text-amber-300" },
-    processing: { icon: Loader2, label: "Bezig", cls: "bg-blue-900/40 text-blue-300 animate-pulse" },
-    done: { icon: CheckCircle2, label: "Klaar", cls: "bg-emerald-900/40 text-emerald-300" },
-    failed: { icon: XCircle, label: "Mislukt", cls: "bg-red-900/40 text-red-300" },
+    pending: { icon: Clock, label: "Wacht", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" },
+    processing: { icon: Loader2, label: "Bezig", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
+    done: { icon: CheckCircle2, label: "Verwerkt", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" },
+    failed: { icon: XCircle, label: "Mislukt", cls: "bg-red-500/15 text-red-400 border-red-500/25" },
   } as const;
   const { icon: Icon, label, cls } = map[status];
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full", cls)}>
+    <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border", cls)}>
       <Icon className={cn("w-3 h-3", status === "processing" && "animate-spin")} /> {label}
     </span>
   );
 }
 
 function ScoreBadge({ score }: { score: number }) {
-  const color = score >= 9 ? "text-emerald-300" : score >= 7 ? "text-amber-300" : "text-gray-400";
-  return <span className={cn("inline-flex items-center gap-1 text-xs", color)}><Star className="w-3 h-3" /> {score}/10</span>;
+  const cls = score >= 9
+    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+    : score >= 7
+    ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+    : "bg-autronis-border/20 text-autronis-text-secondary border-autronis-border/40";
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border", cls)}>
+      <Star className="w-3 h-3" /> {score}/10
+    </span>
+  );
 }
 
 function DetailDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
@@ -245,29 +246,29 @@ function DetailDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="bg-[var(--autronis-bg)] border border-[var(--autronis-border)] rounded-t-2xl md:rounded-2xl w-full md:max-w-3xl max-h-[90vh] overflow-auto p-6 shadow-2xl"
+        className="bg-autronis-card border border-autronis-border rounded-t-xl md:rounded-xl w-full md:max-w-3xl max-h-[90vh] overflow-auto p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">
           <div>
-            <div className="text-sm opacity-60">@{item.author_handle || "onbekend"} · {item.type}</div>
-            <h2 className="text-xl font-semibold mt-1">{a?.summary ? a.summary.slice(0, 80) : item.instagram_id}</h2>
+            <div className="text-sm text-autronis-text-secondary">@{item.author_handle || "onbekend"} · {item.type}</div>
+            <h2 className="text-xl font-semibold text-autronis-text-primary mt-1">{a?.summary ? a.summary.slice(0, 80) : item.instagram_id}</h2>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-[var(--autronis-border)] rounded-lg"><XCircle className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><XCircle className="w-5 h-5" /></button>
         </div>
         {a ? (
-          <div className="space-y-5 text-sm">
-            <div><h3 className="font-semibold mb-1">Samenvatting</h3><p className="opacity-90">{a.summary}</p></div>
-            <div><h3 className="font-semibold mb-1">Relevantie: {a.relevance_score}/10</h3><p className="opacity-80">{a.relevance_reason}</p></div>
-            {a.features.length > 0 && (<div><h3 className="font-semibold mb-2">Features</h3><ul className="space-y-1">{a.features.map((f, i) => <li key={i}><strong>{f.name}:</strong> {f.description}</li>)}</ul></div>)}
-            {a.steps.length > 0 && (<div><h3 className="font-semibold mb-2">Stappenplan</h3><ol className="space-y-2">{a.steps.map((s) => <li key={s.order}><strong>{s.order}. {s.title}</strong><div className="opacity-80">{s.description}</div>{s.code_snippet && <pre className="bg-[var(--autronis-bg)] rounded-lg p-2 mt-1 overflow-x-auto text-xs">{s.code_snippet}</pre>}</li>)}</ol></div>)}
-            {a.tips.length > 0 && (<div><h3 className="font-semibold mb-2">Tips</h3><ul className="space-y-1">{a.tips.map((t, i) => <li key={i}>{t.tip} — <em className="opacity-60">{t.context}</em></li>)}</ul></div>)}
-            {a.links.length > 0 && (<div><h3 className="font-semibold mb-2">Links</h3><ul className="space-y-1">{a.links.map((l, i) => <li key={i}><a href={l.url} target="_blank" rel="noreferrer" className="text-[var(--autronis-accent)] hover:underline">{l.label}</a> <span className="opacity-50 text-xs">({l.type})</span></li>)}</ul></div>)}
+          <div className="space-y-5 text-sm text-autronis-text-primary">
+            <div><h3 className="font-semibold mb-1 text-autronis-accent">Samenvatting</h3><p>{a.summary}</p></div>
+            <div><h3 className="font-semibold mb-1 text-autronis-accent">Relevantie: {a.relevance_score}/10</h3><p className="text-autronis-text-secondary">{a.relevance_reason}</p></div>
+            {a.features.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Features</h3><ul className="space-y-1">{a.features.map((f, i) => <li key={i}><strong>{f.name}:</strong> <span className="text-autronis-text-secondary">{f.description}</span></li>)}</ul></div>)}
+            {a.steps.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Stappenplan</h3><ol className="space-y-2">{a.steps.map((s) => <li key={s.order}><strong>{s.order}. {s.title}</strong><div className="text-autronis-text-secondary">{s.description}</div>{s.code_snippet && <pre className="bg-autronis-bg border border-autronis-border rounded-lg p-2 mt-1 overflow-x-auto text-xs">{s.code_snippet}</pre>}</li>)}</ol></div>)}
+            {a.tips.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Tips</h3><ul className="space-y-1">{a.tips.map((t, i) => <li key={i}>{t.tip} — <em className="text-autronis-text-secondary">{t.context}</em></li>)}</ul></div>)}
+            {a.links.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Links</h3><ul className="space-y-1">{a.links.map((l, i) => <li key={i}><a href={l.url} target="_blank" rel="noreferrer" className="text-autronis-accent hover:underline">{l.label}</a> <span className="text-autronis-text-secondary text-xs">({l.type})</span></li>)}</ul></div>)}
           </div>
         ) : (
-          <p className="opacity-60">Nog geen analyse beschikbaar.</p>
+          <p className="text-autronis-text-secondary">Nog geen analyse beschikbaar.</p>
         )}
-        {item.caption && <div className="mt-6 border-t border-[var(--autronis-border)] pt-4"><h4 className="font-semibold mb-1 text-sm">Originele caption</h4><p className="text-sm opacity-80 whitespace-pre-wrap">{item.caption}</p></div>}
+        {item.caption && <div className="mt-6 border-t border-autronis-border pt-4"><h4 className="font-semibold mb-1 text-sm text-autronis-text-secondary">Originele caption</h4><p className="text-sm text-autronis-text-primary whitespace-pre-wrap">{item.caption}</p></div>}
       </div>
     </div>
   );

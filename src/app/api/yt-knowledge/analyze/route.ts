@@ -164,7 +164,27 @@ async function fetchCaptionTrack(baseUrl: string): Promise<string | null> {
   return pieces.length ? pieces.join(" ") : null;
 }
 
-async function fetchTranscript(videoId: string): Promise<string | null> {
+async function fetchTranscriptViaProxy(videoId: string): Promise<string | null> {
+  const proxyUrl = process.env.N8N_TRANSCRIPT_PROXY_URL;
+  if (!proxyUrl) return null;
+  try {
+    const res = await fetch(proxyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ videoId }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) return null;
+    const data = (await res.json()) as { ok?: boolean; transcript?: string };
+    return data.ok && typeof data.transcript === "string" && data.transcript.length > 0
+      ? data.transcript
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTranscriptDirect(videoId: string): Promise<string | null> {
   let tracks =
     (await getCaptionTracksViaInnertube(videoId)) ??
     (await getCaptionTracksViaWatchPage(videoId));
@@ -179,6 +199,12 @@ async function fetchTranscript(videoId: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+async function fetchTranscript(videoId: string): Promise<string | null> {
+  const viaProxy = await fetchTranscriptViaProxy(videoId);
+  if (viaProxy) return viaProxy;
+  return await fetchTranscriptDirect(videoId);
 }
 
 export async function POST(request: NextRequest) {

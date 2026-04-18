@@ -12,6 +12,9 @@
 - **Na elke wijziging**: gewoon committen, de rest gaat automatisch
 - Nooit handmatig pushen of deployen nodig
 
+## n8n workflows
+- `yt-playlist-sync` — dagelijks 08:00 Europe/Amsterdam, RSS poll van Autronis YouTube playlist (hardcoded ID in Set-node), POST naar `/api/yt-knowledge` + auto-trigger `/analyze` voor nieuwe videos. JSON in [n8n/yt-playlist-sync.workflow.json](n8n/yt-playlist-sync.workflow.json). Playlist-ID wijzigen = Set-node waarde aanpassen in n8n UI. Auth via `INTERNAL_API_KEY` (inline Bearer header in workflow, niet via credential-ID omdat die niet in de export staat).
+
 ## Tech Stack
 - **Framework**: Next.js 16.1.6 (App Router, Turbopack)
 - **Language**: TypeScript 5

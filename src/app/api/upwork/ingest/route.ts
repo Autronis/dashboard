@@ -49,6 +49,9 @@ export async function POST(req: Request) {
   });
 
   if (isParseError(parsed)) {
+    import("@/lib/upwork/ops-alerts")
+      .then((m) => m.checkParseErrorBurst())
+      .catch(() => {});
     return NextResponse.json({ succes: true, parseError: parsed.reason });
   }
 
@@ -135,5 +138,10 @@ async function triggerDeepFetch(account: UpworkAccount, url: string, rowId: numb
         bijgewerktOp: now,
       })
       .where(eq(schema.upworkJobs.id, rowId));
+
+    if (result.reason === "session_expired") {
+      const { alertSessionExpired } = await import("@/lib/upwork/ops-alerts");
+      await alertSessionExpired(account);
+    }
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Briefcase, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import JobDetailDrawer, { type UpworkJob } from "./job-detail-drawer";
@@ -20,9 +20,10 @@ export default function UpworkClient() {
   const [loading, setLoading] = useState(true);
   const [includeLow, setIncludeLow] = useState(false);
   const [selectedJob, setSelectedJob] = useState<UpworkJob | null>(null);
+  const hasFetchedOnce = useRef(false);
 
   const fetchJobs = useCallback(async () => {
-    setLoading(true);
+    if (!hasFetchedOnce.current) setLoading(true);
     try {
       const params = new URLSearchParams();
       if (tab !== "alle") params.set("account", tab);
@@ -40,6 +41,7 @@ export default function UpworkClient() {
       setJobs([]);
     } finally {
       setLoading(false);
+      hasFetchedOnce.current = true;
     }
   }, [tab, includeLow, addToast]);
 

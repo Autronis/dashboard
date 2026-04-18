@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink, X, Check, Ban, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -52,6 +52,14 @@ const ACTION_LABELS: Record<Action, { doing: string; done: string; fail: string 
 export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
   const { addToast } = useToast();
   const [busy, setBusy] = useState<Action | null>(null);
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   async function doAction(action: Action) {
     setBusy(action);
@@ -124,7 +132,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
             {job.durationEstimate && <DetailRow label="Duur" value={job.durationEstimate} />}
             {job.clientNaam && <DetailRow label="Client" value={job.clientNaam} />}
             {job.clientRating !== null && (
-              <DetailRow label="Rating" value={`${job.clientRating.toFixed(2)} ster`} />
+              <DetailRow label="Rating" value={`${job.clientRating.toFixed(1)} ster`} />
             )}
             {job.clientSpent !== null && (
               <DetailRow label="Spent" value={`$${formatSpent(job.clientSpent)}`} />

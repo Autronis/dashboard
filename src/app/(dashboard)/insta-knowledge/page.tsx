@@ -99,44 +99,69 @@ export default function InstaKnowledgePage() {
 
   return (
     <PageTransition>
-      <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
-        <header className="flex items-center gap-3">
-          <Instagram className="w-7 h-7 text-[var(--autronis-accent)]" />
-          <h1 className="text-2xl font-semibold">Insta Knowledge</h1>
-        </header>
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
+              <Instagram className="w-6 h-6 text-autronis-accent" />
+              Insta Knowledge Pipeline
+            </h1>
+            <p className="text-sm text-autronis-text-secondary mt-1">
+              Instagram reels en posts analyseren voor Claude Code kennis
+            </p>
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="p-2 rounded-lg hover:bg-autronis-border/30 transition-colors text-autronis-text-secondary"
+          >
+            <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />
+          </button>
+        </div>
 
         <UitlegBlock id="insta-knowledge-intro" titel="Hoe werkt dit?">
           <p>Plak een Instagram reel- of post-URL hieronder. De pipeline scraped de caption (en voor reels: transcribeert de audio via Whisper), analyseert met Claude, en scored relevance 1-10. Bij score ≥ 9 verschijnt automatisch een idee in /ideeen.</p>
           <p className="mt-2 text-sm opacity-70">Fase 1: alleen handmatige submit. Auto-scraping via Apify komt in fase 2.</p>
         </UitlegBlock>
 
-        <section className="bg-[var(--autronis-card)] border border-[var(--autronis-border)] rounded-2xl p-5 card-glow">
-          <div className="flex gap-3 items-stretch">
-            <input
-              type="url"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !submitting) submit(); }}
-              placeholder="https://www.instagram.com/reel/..."
-              className="flex-1 bg-[var(--autronis-bg)] border border-[var(--autronis-border)] rounded-xl px-4 py-2.5 focus:outline-none focus:border-[var(--autronis-accent)]"
-            />
-            <button
-              onClick={submit}
-              disabled={submitting || !url.trim()}
-              className="bg-[var(--autronis-accent)] hover:bg-[var(--autronis-accent-hover)] disabled:opacity-50 text-black font-medium rounded-xl px-5 flex items-center gap-2"
-            >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Toevoegen
-            </button>
-          </div>
-        </section>
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: "Totaal", value: stats.total, icon: Instagram, color: "text-blue-400" },
+            { label: "Verwerkt", value: stats.processed, icon: CheckCircle2, color: "text-emerald-400" },
+            { label: "Mislukt", value: stats.failed, icon: XCircle, color: "text-red-400" },
+            { label: "Gem. score", value: stats.avg_score ? `${stats.avg_score}/10` : "—", icon: Star, color: "text-amber-400" },
+          ].map((s) => (
+            <div key={s.label} className="bg-autronis-card rounded-xl border border-autronis-border p-4">
+              <div className="flex items-center gap-2 text-autronis-text-secondary text-xs mb-1">
+                <s.icon className={cn("w-4 h-4", s.color)} />
+                {s.label}
+              </div>
+              <div className="text-2xl font-bold text-autronis-text-primary">{s.value}</div>
+            </div>
+          ))}
+        </div>
 
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <StatCard label="Totaal" value={stats.total} />
-          <StatCard label="Verwerkt" value={stats.processed} />
-          <StatCard label="Mislukt" value={stats.failed} />
-          <StatCard label="Gem. score" value={stats.avg_score || "—"} />
-        </section>
+        {/* Submit URL */}
+        <div className="flex gap-2">
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter" && !submitting) submit(); }}
+            placeholder="Instagram reel- of post-URL toevoegen..."
+            className="flex-1 rounded-lg border border-autronis-border bg-autronis-bg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary outline-none focus:border-autronis-accent focus:ring-2 focus:ring-autronis-accent/30 transition"
+          />
+          <button
+            onClick={submit}
+            disabled={submitting || !url.trim()}
+            className="px-4 py-2 rounded-lg bg-autronis-accent text-white text-sm font-semibold hover:bg-autronis-accent-hover transition disabled:opacity-50 flex items-center gap-2"
+          >
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            Toevoegen
+          </button>
+        </div>
 
         <section className="space-y-3">
           {loading && <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin opacity-50" /></div>}

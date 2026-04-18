@@ -85,7 +85,12 @@ export default function LeadsWebsiteLeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [websiteFilter, setWebsiteFilter] = useState<WebsiteFilter>("alle");
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [promptModalLead, setPromptModalLead] = useState<{ id: string; name: string } | null>(null);
+  const [promptModalLead, setPromptModalLead] = useState<{
+    id: string;
+    name: string;
+    website: string | null;
+    email: string | null;
+  } | null>(null);
   const { runScan } = useBulkScan();
 
   // Search form
@@ -439,7 +444,7 @@ export default function LeadsWebsiteLeadsPage() {
                     </div>
                   </button>
                   <button
-                    onClick={() => setPromptModalLead({ id: lead.id, name: lead.name })}
+                    onClick={() => setPromptModalLead({ id: lead.id, name: lead.name, website: lead.website_url, email: lead.email })}
                     title="AI genereert een website-prompt voor Lovable/v0 op basis van deze lead"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-300 text-[11px] font-semibold hover:bg-purple-500/20 transition-colors self-center flex-shrink-0"
                   >
@@ -540,7 +545,7 @@ export default function LeadsWebsiteLeadsPage() {
                         );
                       })}
                       <button
-                        onClick={() => setPromptModalLead({ id: lead.id, name: lead.name })}
+                        onClick={() => setPromptModalLead({ id: lead.id, name: lead.name, website: lead.website_url, email: lead.email })}
                         title="AI genereert een website-prompt voor Lovable/v0 op basis van deze lead"
                         className="ml-auto inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-colors"
                       >
@@ -599,6 +604,8 @@ export default function LeadsWebsiteLeadsPage() {
         <WebsitePromptModal
           leadId={promptModalLead.id}
           bedrijfsnaam={promptModalLead.name}
+          website={promptModalLead.website}
+          leadEmail={promptModalLead.email}
           onClose={() => setPromptModalLead(null)}
         />
       )}

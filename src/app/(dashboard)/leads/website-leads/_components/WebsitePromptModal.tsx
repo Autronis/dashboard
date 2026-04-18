@@ -268,6 +268,58 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, website, leadEmail, o
             </>
           )}
 
+          {/* Sales Engine scan sectie — alleen als lead een website heeft */}
+          {website?.trim() && (
+            <div className="bg-autronis-accent/5 border border-autronis-accent/30 rounded-xl p-5 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Zap className="w-5 h-5 text-autronis-accent flex-shrink-0" />
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold text-autronis-text-primary">
+                      Sales Engine scan
+                    </h3>
+                    <p className="text-[11px] text-autronis-text-secondary mt-0.5">
+                      Scrape + AI analyse van <span className="font-medium text-autronis-text-primary">{hostname(website)}</span> → automatiseringskansen + readiness score.
+                    </p>
+                  </div>
+                </div>
+                {scanStatus === "idle" && (
+                  <button
+                    onClick={() => void startSalesEngineScan()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors flex-shrink-0"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    Start scan
+                  </button>
+                )}
+                {scanStatus === "pending" && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-yellow-400 font-medium flex-shrink-0">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Bezig &hellip;
+                  </span>
+                )}
+                {scanStatus === "completed" && scanId && (
+                  <Link
+                    href={`/sales-engine/${scanId}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs font-semibold hover:bg-emerald-500/25 transition-colors flex-shrink-0"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    Scan bekijken
+                  </Link>
+                )}
+                {scanStatus === "failed" && (
+                  <button
+                    onClick={() => void startSalesEngineScan()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-xs font-semibold hover:bg-red-500/25 transition-colors flex-shrink-0"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Opnieuw
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Pitch-mail sectie — altijd zichtbaar, onafhankelijk van de website-prompt */}
           <div className="bg-blue-500/5 border border-blue-400/30 rounded-xl p-5 space-y-3">
             <div className="flex items-center justify-between gap-3">
@@ -334,34 +386,49 @@ export function WebsitePromptModal({ leadId, bedrijfsnaam, website, leadEmail, o
                     className="w-full bg-autronis-card border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-blue-500/40 resize-y"
                   />
                 </div>
-                <div className="flex items-center justify-end gap-2 pt-1">
-                  <button
-                    onClick={() => void generatePitchMail()}
-                    disabled={mailLoading || sending}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-[11px] font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors disabled:opacity-50"
-                  >
-                    <RefreshCw className="w-3 h-3" />
-                    Regenereer
-                  </button>
-                  <button
-                    onClick={() => void sendPitchMail()}
-                    disabled={sending || sent || !pitchMail.recipientEmail}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors",
-                      sent
-                        ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
-                        : "bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-50",
-                    )}
-                  >
-                    {sending ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : sent ? (
-                      <Check className="w-3 h-3" />
-                    ) : (
-                      <Send className="w-3 h-3" />
-                    )}
-                    {sending ? "Versturen..." : sent ? "Verstuurd" : "Verstuur via Syb's flow"}
-                  </button>
+                <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                  {website?.trim() && scanStatus === "idle" ? (
+                    <label className="inline-flex items-center gap-2 text-[11px] text-autronis-text-secondary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={alsoStartScan}
+                        onChange={(e) => setAlsoStartScan(e.target.checked)}
+                        className="rounded border-autronis-border accent-autronis-accent w-3.5 h-3.5"
+                      />
+                      Bij verzenden ook Sales Engine scan starten
+                    </label>
+                  ) : (
+                    <span />
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => void generatePitchMail()}
+                      disabled={mailLoading || sending}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-[11px] font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors disabled:opacity-50"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Regenereer
+                    </button>
+                    <button
+                      onClick={() => void sendPitchMail()}
+                      disabled={sending || sent || !pitchMail.recipientEmail}
+                      className={cn(
+                        "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                        sent
+                          ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-300"
+                          : "bg-blue-500 hover:bg-blue-400 text-white disabled:opacity-50",
+                      )}
+                    >
+                      {sending ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : sent ? (
+                        <Check className="w-3 h-3" />
+                      ) : (
+                        <Send className="w-3 h-3" />
+                      )}
+                      {sending ? "Versturen..." : sent ? "Verstuurd" : "Verstuur via Syb's flow"}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

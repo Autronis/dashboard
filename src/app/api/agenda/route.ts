@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { agendaItems, gebruikers } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
 
 // GET /api/agenda?van=2026-03-01&tot=2026-03-31
 export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAuthOrApiKey(req);
     const { searchParams } = new URL(req.url);
     const van = searchParams.get("van");
     const tot = searchParams.get("tot");

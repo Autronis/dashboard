@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tursoClient } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 
 export async function GET() {
   await requireAuth();
@@ -49,7 +49,7 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  await requireAuth();
+  await requireAuthOrApiKey(request);
   if (!tursoClient) return NextResponse.json({ error: "No Turso connection" }, { status: 500 });
 
   const { url } = await request.json();

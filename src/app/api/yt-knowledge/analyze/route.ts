@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tursoClient, db } from "@/lib/db";
 import { ideeen, gebruikers } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { sql, and, eq, like } from "drizzle-orm";
 
@@ -182,10 +182,11 @@ async function fetchTranscript(videoId: string): Promise<string | null> {
 }
 
 export async function POST(request: NextRequest) {
-  await requireAuth();
+  await requireAuthOrApiKey(request);
   if (!tursoClient) return NextResponse.json({ error: "No Turso" }, { status: 500 });
 
-  const { videoId: dbVideoId } = await request.json();
+  const body = await request.json();
+  const dbVideoId = body.videoId ?? body.id;
   if (!dbVideoId) return NextResponse.json({ error: "videoId is verplicht" }, { status: 400 });
 
   // Get video from DB

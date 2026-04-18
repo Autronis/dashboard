@@ -218,9 +218,9 @@ function ScoreBadge({ score }: { score: number }) {
 function DetailDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
   const a = item.analysis;
   return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="bg-[var(--autronis-card)] border border-[var(--autronis-border)] rounded-t-2xl md:rounded-2xl w-full md:max-w-3xl max-h-[90vh] overflow-auto p-6"
+        className="bg-[var(--autronis-bg)] border border-[var(--autronis-border)] rounded-t-2xl md:rounded-2xl w-full md:max-w-3xl max-h-[90vh] overflow-auto p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between mb-4">

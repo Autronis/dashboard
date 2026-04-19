@@ -366,54 +366,66 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
     }
     for (const g of gepland) vandaagTitles.add(g.titel);
 
+    // Cycle door templates heen totdat de dag vol is. Elke cycle krijgen
+    // templates een uniek suffix " · herhaling N" zodat ze niet als
+    // duplicaat worden geskipt. Stop bij de eerste cycle waar geen enkele
+    // template meer past (dag vol) of na MAX_CYCLES om oneindige loops te
+    // voorkomen.
+    const MAX_CYCLES = 5;
     let autoGevuld = 0;
-    for (const tpl of slimmeTpls) {
-      const titel = fillNaamTemplate(tpl.naam, {});
-      if (vandaagTitles.has(titel)) continue;
+    for (let cycle = 0; cycle < MAX_CYCLES; cycle++) {
+      let placedThisCycle = 0;
+      for (const tpl of slimmeTpls) {
+        const basisTitel = fillNaamTemplate(tpl.naam, {});
+        const titel = cycle === 0 ? basisTitel : `${basisTitel} · herhaling ${cycle + 1}`;
+        if (vandaagTitles.has(titel)) continue;
 
-      const duur = tpl.geschatteDuur ?? 15;
-      const slot = schuifNaarVrijSlot(
-        new Date(`${datum}T${DAG_START}:00`).getTime(),
-        duur,
-        [...claudeBlokkers, ...strikteBlokkers]
-      );
-      if (!slot) break; // dag vol
+        const duur = tpl.geschatteDuur ?? 15;
+        const slot = schuifNaarVrijSlot(
+          new Date(`${datum}T${DAG_START}:00`).getTime(),
+          duur,
+          [...claudeBlokkers, ...strikteBlokkers]
+        );
+        if (!slot) continue; // geen plek meer voor deze template vandaag
 
-      const prompt = fillPromptTemplate(tpl.prompt, {});
-      const startISO = formatSlotToIso(slot.start);
-      const eindISO = formatSlotToIso(slot.eind);
+        const prompt = fillPromptTemplate(tpl.prompt, {});
+        const startISO = formatSlotToIso(slot.start);
+        const eindISO = formatSlotToIso(slot.eind);
 
-      const [nieuw] = await db
-        .insert(taken)
-        .values({
-          projectId: null,
-          aangemaaktDoor: gebruiker.id,
-          toegewezenAan: null,
-          eigenaar: "vrij",
+        const [nieuw] = await db
+          .insert(taken)
+          .values({
+            projectId: null,
+            aangemaaktDoor: gebruiker.id,
+            toegewezenAan: null,
+            eigenaar: "vrij",
+            titel,
+            omschrijving: tpl.beschrijving,
+            cluster: tpl.cluster,
+            fase: "Slimme taken",
+            status: "open",
+            prioriteit: "normaal",
+            uitvoerder: "claude",
+            prompt,
+            geschatteDuur: duur,
+            ingeplandStart: startISO,
+            ingeplandEind: eindISO,
+          })
+          .returning();
+
+        gepland.push({
+          id: nieuw.id,
           titel,
-          omschrijving: tpl.beschrijving,
-          cluster: tpl.cluster,
-          fase: "Slimme taken",
-          status: "open",
-          prioriteit: "normaal",
-          uitvoerder: "claude",
-          prompt,
-          geschatteDuur: duur,
-          ingeplandStart: startISO,
-          ingeplandEind: eindISO,
-        })
-        .returning();
-
-      gepland.push({
-        id: nieuw.id,
-        titel,
-        start: formatTijd(slot.start),
-        eind: formatTijd(slot.eind),
-        cluster: tpl.cluster ?? undefined,
-      });
-      claudeBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
-      vandaagTitles.add(titel);
-      autoGevuld++;
+          start: formatTijd(slot.start),
+          eind: formatTijd(slot.eind),
+          cluster: tpl.cluster ?? undefined,
+        });
+        claudeBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
+        vandaagTitles.add(titel);
+        autoGevuld++;
+        placedThisCycle++;
+      }
+      if (placedThisCycle === 0) break; // dag vol, geen enkele template paste meer
     }
 
     return NextResponse.json({

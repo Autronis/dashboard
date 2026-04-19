@@ -36,6 +36,8 @@ function setupDb() {
     claimed_at TEXT,
     status TEXT NOT NULL DEFAULT 'new',
     fetch_error TEXT,
+    pitch_draft TEXT,
+    pitch_generated_at TEXT,
     aangemaakt_op TEXT DEFAULT (datetime('now')),
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`);

@@ -4,6 +4,7 @@ import { taken, projecten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, or } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
+import { classifyTaakCluster } from "@/lib/cluster";
 
 // POST /api/agenda/ai-plan — AI vult de dag met taken, gegroepeerd per cluster
 export async function POST(req: NextRequest) {
@@ -42,20 +43,32 @@ export async function POST(req: NextRequest) {
     const claudeTaken = openTaken.filter((t) => t.uitvoerder === "claude");
     const handmatigeTaken = openTaken.filter((t) => t.uitvoerder !== "claude");
 
-    // Groepeer Claude taken per cluster. Taken zonder cluster komen in
-    // een "overig" groep die we SKIPPEN — Sem heeft expliciet gezegd dat
-    // ongegroepeerde taken niet door elkaar gepland moeten worden. Hij
-    // moet eerst Auto-cluster runnen om ze te labelen.
-    const claudeClusters = new Map<string, typeof claudeTaken>();
-    const claudeZonderCluster: typeof claudeTaken = [];
-    for (const taak of claudeTaken) {
-      if (taak.cluster) {
-        const bestaand = claudeClusters.get(taak.cluster);
-        if (bestaand) bestaand.push(taak);
-        else claudeClusters.set(taak.cluster, [taak]);
-      } else {
-        claudeZonderCluster.push(taak);
+    // Auto-classify Claude taken zonder cluster via AI voordat we plannen.
+    // Voorheen skipten we ze; nu labelt Haiku ze on-the-fly zodat ze landen
+    // in de juiste cluster-blok. Als classify faalt komt de taak alsnog
+    // in een "overig" cluster terecht — we skippen niks meer.
+    const ongeclusterdeClaudeTaken = claudeTaken.filter((t) => !t.cluster);
+    if (ongeclusterdeClaudeTaken.length > 0) {
+      const classifications = await Promise.all(
+        ongeclusterdeClaudeTaken.map((t) => classifyTaakCluster(t.id))
+      );
+      for (let i = 0; i < ongeclusterdeClaudeTaken.length; i++) {
+        const cls = classifications[i];
+        if (cls) ongeclusterdeClaudeTaken[i].cluster = cls;
       }
+    }
+
+    // Groepeer Claude taken per cluster. Taken die na classify-poging nog
+    // steeds zonder cluster zijn (AI gefaald / API error) komen in "overig"
+    // zodat ze alsnog ingepland worden.
+    const claudeClusters = new Map<string, typeof claudeTaken>();
+    let autoClusterGefaald = 0;
+    for (const taak of claudeTaken) {
+      const clusterKey = taak.cluster || "overig";
+      if (!taak.cluster) autoClusterGefaald++;
+      const bestaand = claudeClusters.get(clusterKey);
+      if (bestaand) bestaand.push(taak);
+      else claudeClusters.set(clusterKey, [taak]);
     }
 
     // Maak per cluster een virtueel blok. Fake id's zijn negatief
@@ -137,10 +150,10 @@ ${clusterBlokken.map((b) => `- ID:${b.fakeId} = "Claude sessie ${b.cluster}" (${
 CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens elke Claude sessie. Plan niet-development taken (administratie, meetings, communicatie, telefoon, planning, klantcontact) GEWOON NAAST/OVERLAPPEND met de Claude sessie blokken. Claude werkt, Sem doet ondertussen admin/sales/meetings. Alleen taken die Sem ZELF achter de computer moet doen plan je op momenten dat er geen Claude blok overlapt.`
       : "";
 
-    // Informeer de AI over ongegroepeerde Claude taken (zonder cluster) —
-    // die plannen we NIET in. Sem moet eerst Auto-cluster runnen.
-    const ongegroepeerdInfo = claudeZonderCluster.length > 0
-      ? `\n\nLET OP: ${claudeZonderCluster.length} Claude taken hebben GEEN cluster en worden niet ingepland. Sem moet eerst de Auto-cluster knop draaien op /taken om ze te labelen.`
+    // Alles wordt nu ingepland (auto-classify hierboven). Alleen een debug-
+    // regel meegeven als de classify-API zelf faalde voor sommige taken.
+    const ongegroepeerdInfo = autoClusterGefaald > 0
+      ? `\n\nNB: ${autoClusterGefaald} Claude taken konden niet auto-geclassified worden en landen in een "overig" blok.`
       : "";
 
     const client = Anthropic(undefined, "/api/agenda/ai-plan");
@@ -311,7 +324,7 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       gepland,
       totaal: gepland.length,
       clusterBlokken: clusterBlokken.length,
-      ongegroepeerdGeskipt: claudeZonderCluster.length,
+      autoClusterGefaald,
       overlapGeskipt: geskiptOverlap,
     });
   } catch (error) {

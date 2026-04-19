@@ -64,7 +64,9 @@ export async function GET(req: NextRequest) {
 // POST /api/agenda
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    // requireAuthOrApiKey: zowel sessie-cookie (UI) als Bearer token (bridge).
+    // Zonder apikey-fallback kan de plan-avond bridge geen blokken posten.
+    const gebruiker = await requireAuthOrApiKey(req);
     const body = await req.json();
 
     if (!body.titel?.trim()) {

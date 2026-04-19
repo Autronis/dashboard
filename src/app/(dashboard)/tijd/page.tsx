@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, Brain, Zap, ArrowUp, ArrowDown } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSessies } from "@/hooks/queries/use-screen-time";
+import { useSessies, useWeekSessies, useMaandSessies } from "@/hooks/queries/use-screen-time";
+import type { SessiesData, WeekDagData } from "@/hooks/queries/use-screen-time";
 import { TimerStrip } from "./timer-strip";
 import { TabTijdlijn } from "./tab-tijdlijn";
 import { TabRegistraties } from "./tab-registraties";
@@ -107,6 +108,87 @@ function CircularScore({
       </div>
     </div>
   );
+}
+
+// Aggregeer per-dag stats over een periode (week/maand) tot 1 samengestelde stats-object.
+// Houdt de SessiesData["stats"] shape aan zodat de KPI cards niks hoeven te weten van periode-context.
+function aggregeerPeriodeStats(
+  dagen: WeekDagData[] | undefined,
+): SessiesData["stats"] | null {
+  if (!dagen || dagen.length === 0) return null;
+  const metData = dagen.filter((d): d is WeekDagData & { stats: SessiesData["stats"] } => d.stats !== null);
+  if (metData.length === 0) return null;
+
+  let totaalActief = 0;
+  let totaalIdle = 0;
+  let productiefSec = 0;
+  let aantalSessies = 0;
+  let focusScoreSom = 0;
+  let focusScoreDagen = 0;
+  let contextSwitches = 0;
+  let langsteFocusMinuten = 0;
+  let deepWorkMinuten = 0;
+  let deepWorkTarget = 0;
+  let deepWorkSessies = 0;
+  let aantalFocusSessies = 0;
+  let gemSessieSom = 0;
+  let gemSessieDagen = 0;
+  let afleidingMinuten = 0;
+  let totaalPauzeMinuten = 0;
+  let mogelijkOnnauwkeurig = false;
+
+  for (const dag of metData) {
+    const s = dag.stats;
+    totaalActief += s.totaalActief;
+    totaalIdle += s.totaalIdle;
+    productiefSec += (s.totaalActief * s.productiefPercentage) / 100;
+    aantalSessies += s.aantalSessies;
+    if (s.totaalActief > 0) {
+      focusScoreSom += s.focusScore;
+      focusScoreDagen += 1;
+    }
+    contextSwitches += s.contextSwitches;
+    if (s.langsteFocusMinuten > langsteFocusMinuten) langsteFocusMinuten = s.langsteFocusMinuten;
+    deepWorkMinuten += s.deepWorkMinuten;
+    deepWorkTarget += s.deepWorkTarget;
+    deepWorkSessies += s.deepWorkSessies;
+    aantalFocusSessies += s.aantalFocusSessies;
+    if (s.gemSessieLengte > 0) {
+      gemSessieSom += s.gemSessieLengte;
+      gemSessieDagen += 1;
+    }
+    afleidingMinuten += s.afleidingMinuten;
+    totaalPauzeMinuten += s.totaalPauzeMinuten;
+    if (s.mogelijkOnnauwkeurig) mogelijkOnnauwkeurig = true;
+  }
+
+  const productiefPercentage = totaalActief > 0
+    ? Math.round((productiefSec / totaalActief) * 100)
+    : 0;
+  const focusScore = focusScoreDagen > 0 ? Math.round(focusScoreSom / focusScoreDagen) : 0;
+  const gemSessieLengte = gemSessieDagen > 0 ? Math.round(gemSessieSom / gemSessieDagen) : 0;
+
+  return {
+    totaalActief,
+    totaalIdle,
+    productiefPercentage,
+    aantalSessies,
+    focusScore,
+    contextSwitches,
+    langsteFocusMinuten,
+    deepWorkMinuten,
+    deepWorkTarget,
+    deepWorkSessies,
+    aantalFocusSessies,
+    gemSessieLengte,
+    afleidingMinuten,
+    // Per-dag velden — voor periode>dag niet meaningful, laat leeg/null
+    besteFocusBlok: null,
+    pauzes: [],
+    totaalPauzeMinuten,
+    inzichten: [],
+    mogelijkOnnauwkeurig,
+  };
 }
 
 export default function TijdPage() {

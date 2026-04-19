@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, AlertTriangle, CheckCircle2, Clock, Mail, ExternalLink, Loader2, RefreshCw,
-  Settings2, FileText, History, Play, Plus, Pencil, Trash2, Zap,
+  Settings2, FileText, History, Plus, Pencil, Trash2, Zap, SearchCheck, CircleDashed, ChevronDown, Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,7 @@ interface Contact {
 }
 
 interface FollowUpData {
+  nooit: Contact[];
   danger: Contact[];
   warning: Contact[];
   ok: Contact[];
@@ -111,14 +112,27 @@ const item = {
 
 // ============ CONTACT ROW (Overzicht) ============
 
-function ContactRow({ contact }: { contact: Contact }) {
-  const urgency = contact.dagenGeleden > 30
+function ContactRow({ contact, onGecontacteerd }: { contact: Contact; onGecontacteerd: (c: Contact) => Promise<void> }) {
+  const [busy, setBusy] = useState(false);
+  const nooit = contact.dagenGeleden >= 999;
+  const urgency = nooit
+    ? { color: "text-slate-400", strip: "bg-slate-400" }
+    : contact.dagenGeleden > 30
     ? { color: "text-red-400", strip: "bg-red-400" }
     : contact.dagenGeleden > 14
     ? { color: "text-amber-400", strip: "bg-amber-400" }
     : { color: "text-emerald-400", strip: "bg-emerald-400" };
 
   const href = contact.type === "klant" ? `/klanten/${contact.id}` : `/leads`;
+
+  const handleGecontacteerd = async () => {
+    setBusy(true);
+    try {
+      await onGecontacteerd(contact);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <motion.div variants={item} className="relative overflow-hidden">
@@ -140,15 +154,23 @@ function ContactRow({ contact }: { contact: Contact }) {
         </div>
         <div className="text-right shrink-0">
           <p className={cn("text-sm font-semibold tabular-nums", urgency.color)}>
-            {contact.dagenGeleden === 999 ? "Nooit" : `${contact.dagenGeleden}d geleden`}
+            {nooit ? "Nooit" : `${contact.dagenGeleden}d geleden`}
           </p>
-          {contact.lastContact && (
+          {contact.lastContact && !nooit && (
             <p className="text-[10px] text-autronis-text-secondary">
               {new Date(contact.lastContact).toLocaleDateString("nl-NL", { day: "numeric", month: "short" })}
             </p>
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={handleGecontacteerd}
+            disabled={busy}
+            title="Markeren als gecontacteerd — logt een notitie en reset de follow-up"
+            className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+          </button>
           {contact.email && (
             <a href={`mailto:${contact.email}`} className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-accent/10 transition-colors" title={contact.email}>
               <Mail className="w-3.5 h-3.5" />
@@ -257,17 +279,32 @@ export default function FollowUpPage() {
       const json = await res.json() as CheckResult;
       setLastCheck(json);
       if (json.totaal > 0) {
-        addToast(`${json.totaal} follow-up(s) getriggerd`, "succes");
+        addToast(`${json.totaal} follow-up(s) getriggerd (dry-run — e-mails gaan via daily cron)`, "succes");
         fetchLog();
       } else {
         addToast("Geen nieuwe follow-ups gevonden", "info");
       }
     } catch {
-      addToast("Check mislukt", "fout");
+      addToast("Scan mislukt", "fout");
     } finally {
       setChecking(false);
     }
   };
+
+  const markGecontacteerd = useCallback(async (contact: Contact) => {
+    try {
+      const res = await fetch("/api/followup/gecontacteerd", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactType: contact.type, contactId: contact.id, via: "follow-up tracker" }),
+      });
+      if (!res.ok) throw new Error();
+      addToast(`${contact.naam} gemarkeerd als gecontacteerd`, "succes");
+      fetchOverzicht();
+    } catch {
+      addToast("Kon niet markeren", "fout");
+    }
+  }, [addToast, fetchOverzicht]);
 
   // ---- INITIAL LOAD ----
 
@@ -385,10 +422,11 @@ export default function FollowUpPage() {
             <button
               onClick={runCheck}
               disabled={checking}
+              title="Scan contacten tegen regels en log welke zouden triggeren. Verstuurt GEEN e-mails — die gaan via de dagelijkse cron om 09:00 NL."
               className="flex items-center gap-2 px-3 py-2 text-sm bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl transition-colors disabled:opacity-50"
             >
-              {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              Check nu
+              {checking ? <Loader2 className="w-4 h-4 animate-spin" /> : <SearchCheck className="w-4 h-4" />}
+              Scan (dry-run)
             </button>
             <button
               onClick={() => {
@@ -455,7 +493,7 @@ export default function FollowUpPage() {
         </div>
 
         {/* Tab content */}
-        {activeTab === "overzicht" && <OverzichtTab data={data} />}
+        {activeTab === "overzicht" && <OverzichtTab data={data} onGecontacteerd={markGecontacteerd} />}
         {activeTab === "regels" && (
           <RegelsTab
             regels={regels}
@@ -497,13 +535,15 @@ export default function FollowUpPage() {
 
 // ============ OVERZICHT TAB ============
 
-function OverzichtTab({ data }: { data: FollowUpData | null }) {
+function OverzichtTab({ data, onGecontacteerd }: { data: FollowUpData | null; onGecontacteerd: (c: Contact) => Promise<void> }) {
+  const [showOk, setShowOk] = useState(false);
   return (
     <div className="space-y-6">
       {/* KPI strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Dringend", value: data?.danger.length ?? 0, color: "text-red-400", icon: AlertTriangle, bg: "bg-red-500/10 border-red-500/20" },
+          { label: "Nog niet benaderd", value: data?.nooit.length ?? 0, color: "text-slate-300", icon: CircleDashed, bg: "bg-slate-500/10 border-slate-500/20" },
           { label: "Let op", value: data?.warning.length ?? 0, color: "text-amber-400", icon: Clock, bg: "bg-amber-500/10 border-amber-500/20" },
           { label: "OK", value: data?.ok.length ?? 0, color: "text-emerald-400", icon: CheckCircle2, bg: "bg-emerald-500/10 border-emerald-500/20" },
         ].map(({ label, value, color, icon: Icon, bg }) => (
@@ -519,18 +559,35 @@ function OverzichtTab({ data }: { data: FollowUpData | null }) {
       {/* Sections */}
       {(data?.danger?.length ?? 0) > 0 && (
         <Section icon={AlertTriangle} color="red" label={`Dringend — ${data!.danger.length} contact${data!.danger.length > 1 ? "en" : ""}`} sub="klanten >30d · leads >14d">
-          {data!.danger.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} />)}
+          {data!.danger.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} onGecontacteerd={onGecontacteerd} />)}
+        </Section>
+      )}
+      {(data?.nooit?.length ?? 0) > 0 && (
+        <Section icon={CircleDashed} color="slate" label={`Nog niet benaderd — ${data!.nooit.length} contact${data!.nooit.length > 1 ? "en" : ""}`} sub="geen enkele notitie, meeting of activiteit gelogd">
+          {data!.nooit.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} onGecontacteerd={onGecontacteerd} />)}
         </Section>
       )}
       {(data?.warning?.length ?? 0) > 0 && (
         <Section icon={Clock} color="amber" label={`Let op — ${data!.warning.length} contact${data!.warning.length > 1 ? "en" : ""}`}>
-          {data!.warning.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} />)}
+          {data!.warning.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} onGecontacteerd={onGecontacteerd} />)}
         </Section>
       )}
       {(data?.ok?.length ?? 0) > 0 && (
-        <Section icon={CheckCircle2} color="emerald" label={`Recent contact — ${data!.ok.length} contact${data!.ok.length > 1 ? "en" : ""}`}>
-          {data!.ok.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} />)}
-        </Section>
+        <div className="space-y-2">
+          <button
+            onClick={() => setShowOk(!showOk)}
+            className="flex items-center gap-2 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"
+          >
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            Recent contact — {data!.ok.length}
+            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform", showOk && "rotate-180")} />
+          </button>
+          {showOk && (
+            <motion.div className="space-y-2" variants={stagger} initial="hidden" animate="visible">
+              {data!.ok.map((c) => <ContactRow key={`${c.type}-${c.id}`} contact={c} onGecontacteerd={onGecontacteerd} />)}
+            </motion.div>
+          )}
+        </div>
       )}
       {data?.totaal === 0 && (
         <div className="text-center py-12 text-autronis-text-secondary">
@@ -546,8 +603,8 @@ function Section({ icon: Icon, color, label, sub, children }: {
   icon: typeof AlertTriangle; color: string; label: string; sub?: string;
   children: React.ReactNode;
 }) {
-  const colorMap: Record<string, string> = { red: "text-red-400", amber: "text-amber-400", emerald: "text-emerald-400" };
-  const iconColorMap: Record<string, string> = { red: "text-red-400", amber: "text-amber-400", emerald: "text-emerald-400" };
+  const colorMap: Record<string, string> = { red: "text-red-400", amber: "text-amber-400", emerald: "text-emerald-400", slate: "text-slate-300" };
+  const iconColorMap: Record<string, string> = { red: "text-red-400", amber: "text-amber-400", emerald: "text-emerald-400", slate: "text-slate-400" };
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
@@ -780,7 +837,6 @@ function RegelModal({ open, onClose, onSave, edit, templates }: {
             <option value="geen_contact">Geen contact</option>
             <option value="offerte_niet_beantwoord">Offerte niet beantwoord</option>
             <option value="offerte_vervalt">Offerte vervalt binnenkort</option>
-            <option value="handmatig">Handmatig</option>
           </select>
         </div>
         <div className="grid grid-cols-2 gap-4">

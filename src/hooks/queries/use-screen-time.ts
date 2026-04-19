@@ -266,6 +266,44 @@ export function useWeekSessies(startDatum: string) {
   });
 }
 
+// ============ MAAND SESSIES ============
+
+/**
+ * Fetches session stats for every day in a calendar month.
+ * startDatum must be "YYYY-MM-DD" of the first day of the month.
+ */
+export function useMaandSessies(startDatum: string) {
+  const dagen = (() => {
+    const parts = startDatum.split("-");
+    const year = Number(parts[0]);
+    const monthIdx = Number(parts[1]) - 1;
+    const aantalDagen = new Date(year, monthIdx + 1, 0).getDate();
+    return Array.from({ length: aantalDagen }, (_, i) => {
+      const d = new Date(year, monthIdx, 1 + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    });
+  })();
+
+  return useQuery({
+    queryKey: ["screen-time-maand-sessies", startDatum],
+    queryFn: async (): Promise<WeekDagData[]> => {
+      const results = await Promise.all(
+        dagen.map(async (datum) => {
+          const res = await fetch(`/api/screen-time/sessies?datum=${datum}`);
+          if (!res.ok) return { datum, sessies: [], stats: null };
+          const data: SessiesData = await res.json();
+          return { datum, sessies: data.sessies, stats: data.stats };
+        })
+      );
+      return results;
+    },
+    staleTime: 30_000,
+  });
+}
+
 // ============ SAMENVATTINGEN ============
 
 async function fetchSamenvatting(datum: string): Promise<ScreenTimeSamenvatting | null> {

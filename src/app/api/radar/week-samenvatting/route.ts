@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { eq, and, gte, desc } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = Anthropic();
+const anthropic = Anthropic(undefined, "/api/radar/week-samenvatting");
 
 // POST /api/radar/week-samenvatting
 // Genereert een Claude-samenvatting van bewaarde items van de afgelopen 7 dagen

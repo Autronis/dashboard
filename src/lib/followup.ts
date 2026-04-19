@@ -8,7 +8,7 @@ export interface ContactRow {
   contactpersoon: string | null;
   email: string | null;
   type: "klant" | "lead";
-  status?: string;
+  status?: string | null;
   lastContact: string | null;
   dagenGeleden: number;
 }

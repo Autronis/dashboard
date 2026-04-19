@@ -953,11 +953,6 @@ export default function DashboardPage() {
           <RemoteCommitsBanner />
         </motion.div>
 
-        {/* Snelle acties — shortcuts naar YouTube/Insta/scan/idee/AI/taak */}
-        <motion.div variants={sectionVariants}>
-          <SnelleActiesWidget />
-        </motion.div>
-
         {/* Taken widget */}
         {mijnTaken.length > 0 && (
           <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -1073,11 +1068,6 @@ export default function DashboardPage() {
           <DoelenWidget />
           <TeamVergelijkingWidget />
           <EfficiencyWidget />
-        </motion.div>
-
-        {/* Gewoontes — compact */}
-        <motion.div variants={sectionVariants}>
-          <HabitWidget compact />
         </motion.div>
 
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">

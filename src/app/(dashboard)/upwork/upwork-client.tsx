@@ -344,6 +344,8 @@ function JobCard({
         isPremium ? "shadow-[0_0_14px_rgba(23,184,165,0.2)]" : ""
       }`}
       onClick={() => onOpen(job)}
+      role="button"
+      tabIndex={0}
     >
       {/* Row 1 — title strip */}
       <div className="flex items-start justify-between gap-3">
@@ -441,35 +443,36 @@ function JobCard({
               Geclaimd door {job.claimedBy}
             </span>
           )}
-        </div>
-      </div>
 
-      {/* Quick actions — hover float top-right */}
-      <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-        {!job.claimedBy && (
-          <button
-            disabled={actionBusy}
-            onClick={(e) => {
-              e.stopPropagation();
-              onClaim(job);
-            }}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#17B8A5] text-black text-xs font-semibold hover:bg-[#4DC9B4] transition-colors disabled:opacity-50"
-          >
-            <Check className="w-3 h-3" />
-            Claim
-          </button>
-        )}
-        <button
-          disabled={actionBusy}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDismiss(job);
-          }}
-          title="Afwijzen"
-          className="p-1.5 rounded-lg bg-[var(--bg)]/80 border border-[var(--border)] text-[var(--text-tertiary)] hover:text-red-400 hover:border-red-500/40 transition-colors disabled:opacity-50"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+          {/* Quick actions — always visible footer, subtle until hover */}
+          <div className="flex items-center gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
+            {!job.claimedBy && (
+              <button
+                disabled={actionBusy}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClaim(job);
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#17B8A5] text-black text-xs font-semibold hover:bg-[#4DC9B4] transition-colors disabled:opacity-50"
+              >
+                <Check className="w-3 h-3" />
+                Claim
+              </button>
+            )}
+            <button
+              disabled={actionBusy}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss(job);
+              }}
+              title="Afwijzen"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-transparent border border-[var(--border)] text-[var(--text-tertiary)] hover:text-red-400 hover:border-red-400/40 text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              <X className="w-3 h-3" />
+              Dismiss
+            </button>
+          </div>
+        </div>
       </div>
     </motion.div>
   );

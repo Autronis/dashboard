@@ -1,8 +1,12 @@
 import type { Agent, TaskLogEntry } from "./types";
 
 // ============ AGENT ROSTER ============
-// Defines who the agents are (identity only).
-// All activity data (status, tasks, costs, terminal) comes from the live API.
+// Identity only — all activity data (status, tasks, costs, terminal)
+// comes from the live API.
+//
+// Elke skill bestaat als losse agent per team (sem / syb) omdat Sem en Syb
+// dezelfde skills op hun eigen machine hebben en niet per se tegelijk aan
+// dezelfde taak werken. Visueel komen ze op aparte verdiepingen uit.
 
 const noKosten = { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 };
 
@@ -20,63 +24,39 @@ function agent(
   };
 }
 
-// --- Team Sem: Management ---
-const theo = agent("theo", "Theo", "manager", "sem", "#f59e0b");
-const toby = agent("toby", "Toby", "reviewer", "sem", "#a855f7");
-const jones = agent("jones", "Jones", "architect", "sem", "#eab308");
+// ============ TEAM SEM (Verdieping 1) ============
 
-// --- Team Sem: Builders ---
-const wout = agent("wout", "Wout", "builder", "sem", "#3b82f6");
-const bas = agent("bas", "Bas", "builder", "sem", "#06b6d4");
-const gabriel = agent("gabriel", "Gabriel", "builder", "sem", "#10b981");
-const object51 = agent("object51", "Object 51", "builder", "sem", "#6366f1");
-const tijmen = agent("tijmen", "Tijmen", "builder", "sem", "#f97316");
-const pedro = agent("pedro", "Pedro", "builder", "sem", "#ec4899");
-const vincent = agent("vincent", "Vincent", "builder", "sem", "#8b5cf6");
+export const semAgents: Agent[] = [
+  // Main — Sem's Claude
+  agent("atlas",   "Atlas",   "manager",    "sem", "#23C6B7"),
+  // Skill-based agents
+  agent("wout",    "Wout",    "automation", "sem", "#3b82f6"), // n8n
+  agent("bas",     "Bas",     "assistant",  "sem", "#06b6d4"), // prompt eng
+  agent("coen",    "Coen",    "builder",    "sem", "#2563eb"), // backend
+  agent("gabriel", "Gabriel", "assistant",  "sem", "#94a3b8"), // docs/logger
+  agent("ari",     "Ari",     "assistant",  "sem", "#23C6B7"), // research
+  agent("daan",    "Daan",    "assistant",  "sem", "#fbbf24"), // interviewer
+  agent("finn",    "Finn",    "builder",    "sem", "#38bdf8"), // frontend
+  agent("leo",     "Leo",     "reviewer",   "sem", "#a78bfa"), // QA
+];
 
-// --- Team Sem: Available Pool ---
-const adam = agent("adam", "Adam", "builder", "sem", "#1e3a5f");
-const noah = agent("noah", "Noah", "builder", "sem", "#60a5fa");
-const jack = agent("jack", "Jack", "builder", "sem", "#6b7280");
-const nikkie = agent("nikkie", "Nikkie", "builder", "sem", "#a7f3d0");
-const xia = agent("xia", "Xia", "builder", "sem", "#f87171");
-const thijs = agent("thijs", "Thijs", "builder", "sem", "#1e3a5f");
-const leonard = agent("leonard", "Leonard", "builder", "sem", "#7f1d1d");
-const rijk = agent("rijk", "Rijk", "builder", "sem", "#ef4444");
-const coen = agent("coen", "Coen", "builder", "sem", "#3b82f6");
-const senna = agent("senna", "Senna", "builder", "sem", "#4a5c2a");
-
-// --- Team Sem: Support ---
-const ari = agent("ari", "Ari", "assistant", "sem", "#23C6B7");
-const rodi = agent("rodi", "Rodi", "automation", "sem", "#4ade80");
-const brent = agent("brent", "Brent", "assistant", "sem", "#f59e0b");
-
-// ============ TEAM SYB ============
+// ============ TEAM SYB (Verdieping 2) ============
 
 export const sybAgents: Agent[] = [
-  agent("autro", "AUTRO", "manager", "syb", "#ff6b35"),
-  agent("daan", "DAAN", "assistant", "syb", "#fbbf24"),
-  agent("finn", "FINN", "builder", "syb", "#38bdf8"),
-  agent("wout-syb", "WOUT", "builder", "syb", "#818cf8"),
-  agent("ari-syb", "ARI", "assistant", "syb", "#34d399"),
-  agent("bas-syb", "BAS", "builder", "syb", "#fb923c"),
-  agent("leo", "LEO", "reviewer", "syb", "#a78bfa"),
-  agent("gabriel-syb", "GABRIEL", "builder", "syb", "#94a3b8"),
+  // Main — Syb's Claude
+  agent("autro",        "Autro",   "manager",    "syb", "#ff6b35"),
+  // Dezelfde skills, op Syb's verdieping
+  agent("wout-syb",     "Wout",    "automation", "syb", "#3b82f6"),
+  agent("bas-syb",      "Bas",     "assistant",  "syb", "#06b6d4"),
+  agent("coen-syb",     "Coen",    "builder",    "syb", "#2563eb"),
+  agent("gabriel-syb",  "Gabriel", "assistant",  "syb", "#94a3b8"),
+  agent("ari-syb",      "Ari",     "assistant",  "syb", "#23C6B7"),
+  agent("daan-syb",     "Daan",    "assistant",  "syb", "#fbbf24"),
+  agent("finn-syb",     "Finn",    "builder",    "syb", "#38bdf8"),
+  agent("leo-syb",      "Leo",     "reviewer",   "syb", "#a78bfa"),
 ];
 
 // ============ EXPORTS ============
-
-export const semAgents: Agent[] = [
-  // Management
-  theo, toby, jones,
-  // Builders
-  wout, bas, gabriel, tijmen, pedro, vincent,
-  object51,
-  // Support
-  ari, rodi, brent,
-  // Available pool
-  adam, noah, jack, nikkie, xia, thijs, leonard, rijk, coen, senna,
-];
 
 export const agents: Agent[] = [...semAgents, ...sybAgents];
 

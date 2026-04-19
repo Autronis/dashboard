@@ -195,8 +195,8 @@ Reageer ALLEEN met JSON:
       if (existingTaken.length > 0) {
         // Map tasks to Ops Room plan format with agent assignment
         const agentPool = team === "syb"
-          ? ["vincent", "adam", "noah", "nikkie", "xia", "thijs", "leonard", "rijk", "coen", "senna"]
-          : ["wout", "bas", "jack", "gabriel", "tijmen", "pedro", "finn", "rodi", "coen", "brent"];
+          ? ["wout-syb", "bas-syb", "coen-syb", "gabriel-syb", "ari-syb", "daan-syb", "finn-syb", "leo-syb"]
+          : ["wout", "bas", "coen", "gabriel", "ari", "daan", "finn", "leo"];
 
         const planTaken = existingTaken.map((t, i) => ({
           id: `task-${Date.now()}-${i}`,

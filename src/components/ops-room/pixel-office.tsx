@@ -153,57 +153,46 @@ const UNIT_W = 200;
 const UNIT_H = 150;
 const GRID_X = 220;
 
-// === Management row — Sem, Theo, Toby, Jones all on one line ===
+// === Management row — CEO (Sem/Syb) links, main agent (Atlas/Autro) centraal ===
 const MGMT_Y = WALL_H + 2;
 const SEM = { x: 20, y: MGMT_Y + 16 };
 
-// Builders grid — shifted right, below management
+// Agent grid — shifted right, below management
 const BUILDER_X = 340;
 const BUILDER_START_Y = MGMT_Y + UNIT_H + 20;
 
-// Center 4 management desks above 5 builder columns
-const MGMT_OFFSET = Math.floor(UNIT_W / 2); // 100px offset to center 4 over 5
+// Layout voor 9 agents per verdieping:
+//   Rij 1 (mgmt):          Atlas/Autro (solo, centraal)
+//   Rij 2 (builders):      Wout, Bas, Coen, Finn
+//   Rij 3 (support/QA):    Ari, Gabriel, Daan, Leo
+const MAIN_X = BUILDER_X + UNIT_W + Math.floor(UNIT_W / 2); // centraal boven 4 kolommen
 
 const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  // Het Bestuur — Theo, Toby, Jones, Brent centered above builders
-  theo:  { x: BUILDER_X + MGMT_OFFSET, y: MGMT_Y },
-  toby:  { x: BUILDER_X + MGMT_OFFSET + UNIT_W, y: MGMT_Y },
-  jones: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 2, y: MGMT_Y },
-  brent: { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 3, y: MGMT_Y },
-  // Staf — left column
-  ari: { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
-  rodi: { x: 20, y: BUILDER_START_Y + UNIT_H + Math.floor(UNIT_H / 2) + 10 },
-  // Team Syb — same layout, used on V2 floor
-  autro:         { x: BUILDER_X + MGMT_OFFSET, y: MGMT_Y },
-  daan:          { x: BUILDER_X + MGMT_OFFSET + UNIT_W, y: MGMT_Y },
-  leo:           { x: BUILDER_X + MGMT_OFFSET + UNIT_W * 2, y: MGMT_Y },
-  finn:          { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
-  "wout-syb":    { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
-  "bas-syb":     { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
-  "gabriel-syb": { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
-  "ari-syb":     { x: 20, y: BUILDER_START_Y + Math.floor(UNIT_H / 2) + 10 },
-  // Builders row 2 — Team Sem (5 columns)
-  wout: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H },
-  bas: { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H },
-  gabriel: { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
-  tijmen: { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
-  pedro: { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H },
-  // Builders row 3
-  vincent: { x: BUILDER_X, y: BUILDER_START_Y + UNIT_H * 2 },
-  noah:    { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y + UNIT_H * 2 },
-  nikkie:  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
-  adam:    { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
+  // ===== TEAM SEM (V1) =====
+  atlas:   { x: MAIN_X, y: MGMT_Y },
+  wout:    { x: BUILDER_X,              y: BUILDER_START_Y + UNIT_H },
+  bas:     { x: BUILDER_X + UNIT_W,     y: BUILDER_START_Y + UNIT_H },
+  coen:    { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
+  finn:    { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
+  ari:     { x: BUILDER_X,              y: BUILDER_START_Y + UNIT_H * 2 },
+  gabriel: { x: BUILDER_X + UNIT_W,     y: BUILDER_START_Y + UNIT_H * 2 },
+  daan:    { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
+  leo:     { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
+
+  // ===== TEAM SYB (V2) — zelfde layout =====
+  autro:          { x: MAIN_X, y: MGMT_Y },
+  "wout-syb":     { x: BUILDER_X,              y: BUILDER_START_Y + UNIT_H },
+  "bas-syb":      { x: BUILDER_X + UNIT_W,     y: BUILDER_START_Y + UNIT_H },
+  "coen-syb":     { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H },
+  "finn-syb":     { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H },
+  "ari-syb":      { x: BUILDER_X,              y: BUILDER_START_Y + UNIT_H * 2 },
+  "gabriel-syb":  { x: BUILDER_X + UNIT_W,     y: BUILDER_START_Y + UNIT_H * 2 },
+  "daan-syb":     { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y + UNIT_H * 2 },
+  "leo-syb":      { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y + UNIT_H * 2 },
 };
 
-// Empty desks (row 1 above builders + row 3 col 5 — for overflow active agents)
-const EMPTY_DESKS = [
-  { x: BUILDER_X, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 2, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 3, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y },
-  { x: BUILDER_X + UNIT_W * 4, y: BUILDER_START_Y + UNIT_H * 2 },
-];
+// Geen overflow desks meer — 9 stations per verdieping is de volledige roster.
+const EMPTY_DESKS: { x: number; y: number }[] = [];
 
 const DESKS_BOTTOM = BUILDER_START_Y + UNIT_H * 3 + 10;
 
@@ -763,8 +752,12 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
     avatar: ceoAvatar, terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
   }), [ceoId, ceoNaam, ceoAvatar]);
 
-  // Management always stays at desk, builders only when active
-  const ALWAYS_AT_DESK = new Set(["theo", "toby", "jones", "ari", "rodi", "brent", "autro", "daan", "leo", "ari-syb"]);
+  // Mains + support-rollen blijven visueel aan bureau; builders verschijnen
+  // alleen wanneer ze ook daadwerkelijk actief zijn.
+  const ALWAYS_AT_DESK = new Set([
+    "atlas", "ari", "gabriel", "daan", "leo",
+    "autro", "ari-syb", "gabriel-syb", "daan-syb", "leo-syb",
+  ]);
 
   const positions = useMemo(() => {
     const map = new Map<string, { x: number; y: number; agent: Agent }>();
@@ -1095,17 +1088,18 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
 
     // === Group labels — dynamic per team ===
     const isSybFloor = ceoId === "syb";
+    const mainId = isSybFloor ? "autro" : "atlas";
+    const builderRowY = isSybFloor ? DESK_POSITIONS["wout-syb"].y : DESK_POSITIONS.wout.y;
+    const supportRowY = isSybFloor ? DESK_POSITIONS["ari-syb"].y : DESK_POSITIONS.ari.y;
     ctx.font = "bold italic 13px Inter, system-ui, sans-serif";
     ctx.letterSpacing = "3px";
     ctx.fillStyle = isSybFloor ? "#a855f7cc" : pal.labelColor;
     ctx.textAlign = "center";
     const centerX = CANVAS_W / 2;
-    ctx.fillText(isSybFloor ? "DE BAAS" : "DE GROTE BAAS", SEM.x + 14 * S, SEM.y + 12);
-    ctx.fillText(isSybFloor ? "HET TEAM" : "HET BESTUUR", BUILDER_X + MGMT_OFFSET + UNIT_W * 2 - 30, DESK_POSITIONS.theo.y + 30);
-    ctx.textAlign = "left";
-    ctx.fillText(isSybFloor ? "SUPPORT" : "DE STAF", 45, DESK_POSITIONS.ari.y + 20);
-    ctx.textAlign = "center";
-    ctx.fillText(isSybFloor ? "BUILDERS" : "DE ENGINEERS", BUILDER_X + (UNIT_W * 5) / 2 - 30, DESK_POSITIONS.wout.y - 125);
+    ctx.fillText(isSybFloor ? "SYB" : "SEM", SEM.x + 14 * S, SEM.y + 12);
+    ctx.fillText(isSybFloor ? "AUTRO" : "ATLAS", DESK_POSITIONS[mainId].x + 14 * S, DESK_POSITIONS[mainId].y + 10);
+    ctx.fillText("BUILDERS", BUILDER_X + (UNIT_W * 4) / 2, builderRowY - 12);
+    ctx.fillText("SUPPORT", BUILDER_X + (UNIT_W * 4) / 2, supportRowY - 12);
     ctx.fillText("STAND-BY", centerX, COFFEE_Y - 10);
     ctx.textAlign = "left";
     ctx.letterSpacing = "0px";

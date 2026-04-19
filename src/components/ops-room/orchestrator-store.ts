@@ -139,7 +139,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
               planAgents.forEach((a) => next.add(a));
               return { activeAgents: next, activeCommandId: cmd.id };
             });
-            addLog(set, "theo", "info", `Hervat opdracht: ${cmd.opdracht.slice(0, 50)}`);
+            addLog(set, "atlas", "info", `Hervat opdracht: ${cmd.opdracht.slice(0, 50)}`);
             get().executePlan(cmd.id);
           }
         }
@@ -172,7 +172,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       isProcessing: true,
     }));
 
-    addLog(set, "theo", "info", `Opdracht ontvangen: "${opdracht.slice(0, 60)}"`);
+    addLog(set, "atlas", "info", `Opdracht ontvangen: "${opdracht.slice(0, 60)}"`);
 
     // === DAAN INTAKE CHECK ===
     // Quick check: is this an idea or a task? Is it clear enough?
@@ -189,11 +189,11 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         if (daanMode === "idee") {
           // Brent recognized this as an idea — switch to idea sparring
-          addLog(set, "brent", "info", `Idee herkend — spar-vragen worden gesteld`);
+          addLog(set, "daan", "info", `Idee herkend — spar-vragen worden gesteld`);
           // Activate Brent in the office
           set((s) => {
             const next = new Set(s.activeAgents);
-            next.add("brent");
+            next.add("daan");
             return { activeAgents: next };
           });
           set((s) => ({
@@ -211,11 +211,11 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
         if (intakeData.needsIntake && intakeData.vragen?.length > 0) {
           // Brent needs more info — pause and ask questions
-          addLog(set, "brent", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
+          addLog(set, "daan", "info", `Opdracht onduidelijk — ${intakeData.vragen.length} vervolgvragen`);
           // Activate Brent in the office
           set((s) => {
             const next = new Set(s.activeAgents);
-            next.add("brent");
+            next.add("daan");
             return { activeAgents: next };
           });
           set((s) => ({
@@ -257,11 +257,11 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `V: ${q}\nA: ${antwoorden[i] ?? "—"}`).join("\n");
     const enrichedOpdracht = `${cmd.opdracht}\n\nExtra context:\n${qaContext}`;
 
-    addLog(set, "brent", "task_complete", "Intake afgerond, door naar planning");
+    addLog(set, "daan", "task_complete", "Intake afgerond, door naar planning");
     // Deactivate Brent
     set((s) => {
       const next = new Set(s.activeAgents);
-      next.delete("brent");
+      next.delete("daan");
       return { activeAgents: next };
     });
     await get()._planCommand(commandId, enrichedOpdracht);
@@ -281,7 +281,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       isProcessing: true,
     }));
 
-    addLog(set, "brent", "info", "Idee wordt uitgewerkt...");
+    addLog(set, "daan", "info", "Idee wordt uitgewerkt...");
 
     // Build context from Q&A
     const qaContext = (cmd.intakeVragen ?? []).map((q, i) => `${q}: ${antwoorden[i] ?? "—"}`).join("\n");
@@ -317,12 +317,12 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       if (!ideeRes.ok) throw new Error("Idee opslaan mislukt");
 
-      addLog(set, "brent", "task_complete", `Idee aangemaakt: "${synthData.naam}"`);
+      addLog(set, "daan", "task_complete", `Idee aangemaakt: "${synthData.naam}"`);
       playSuccess();
       // Deactivate Brent
       set((s) => {
         const next = new Set(s.activeAgents);
-        next.delete("brent");
+        next.delete("daan");
         return { activeAgents: next };
       });
 
@@ -337,12 +337,12 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Onbekend";
-      addLog(set, "brent", "error", `Fout: ${msg}`);
+      addLog(set, "daan", "error", `Fout: ${msg}`);
       playError();
       // Deactivate Brent
       set((s) => {
         const next = new Set(s.activeAgents);
-        next.delete("brent");
+        next.delete("daan");
         return { activeAgents: next };
       });
       set((s) => ({
@@ -361,7 +361,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     set((s) => ({
       commands: s.commands.map((c) => c.id === cmdId ? { ...c, status: "planning" as const } : c),
     }));
-    addLog(set, "jones", "info", "Plan wordt opgesteld...");
+    addLog(set, "atlas", "info", "Plan wordt opgesteld...");
 
     try {
       const res = await fetch("/api/ops-room/orchestrate", {
@@ -392,7 +392,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         isProcessing: false,
       }));
 
-      addLog(set, "jones", "task_complete", `Plan klaar: ${plan.beschrijving.slice(0, 60)}`);
+      addLog(set, "atlas", "task_complete", `Plan klaar: ${plan.beschrijving.slice(0, 60)}`);
 
       // === DETERMINE PERMISSION LEVEL ===
       const hasDbChanges = plan.taken.some((t: PlanTask) => t.bestanden.some((f: string) => f.includes("schema") || f.includes("migration")));
@@ -408,7 +408,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       // === AUTO-APPROVE LOGIC ===
       if (permLevel === "green") {
         // GREEN → direct execute, no approval needed
-        addLog(set, "theo", "info", `Auto-goedgekeurd (groen) — direct starten`);
+        addLog(set, "atlas", "info", `Auto-goedgekeurd (groen) — direct starten`);
         playApproval();
 
         set((s) => ({
@@ -444,7 +444,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
       if (permLevel === "yellow") {
         // YELLOW → notify + auto-execute after 10 seconds
-        addLog(set, "theo", "approval", `Plan wacht op goedkeuring (10s auto-approve) — ${plan.taken.length} taken`);
+        addLog(set, "atlas", "approval", `Plan wacht op goedkeuring (10s auto-approve) — ${plan.taken.length} taken`);
         playNotification();
 
         const approval: ApprovalRequest = {
@@ -455,7 +455,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
           beschrijving: `${plan.beschrijving}\n\n${plan.taken.length} taken gepland voor ${new Set(plan.taken.map((t: PlanTask) => t.agentId)).size} agents.`,
           commandId: cmdId,
           taskId: null,
-          agentId: "theo",
+          agentId: "atlas",
           status: "pending",
           feedback: null,
           aangemaakt: new Date().toISOString(),
@@ -469,7 +469,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         const timer = setTimeout(() => {
           const currentApproval = get().approvals.find((a) => a.id === approval.id);
           if (currentApproval?.status === "pending") {
-            addLog(set, "theo", "info", "Auto-goedgekeurd na 10 seconden");
+            addLog(set, "atlas", "info", "Auto-goedgekeurd na 10 seconden");
             get().approveApproval(approval.id);
 
             // Also approve in DB
@@ -494,7 +494,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       }
 
       // RED → manual approval required (as before)
-      addLog(set, "theo", "approval", `Plan wacht op HANDMATIGE goedkeuring van Sem (${plan.taken.length} taken)`);
+      addLog(set, "atlas", "approval", `Plan wacht op HANDMATIGE goedkeuring van Sem (${plan.taken.length} taken)`);
       playNotification();
 
       const approval: ApprovalRequest = {
@@ -505,7 +505,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         beschrijving: `${plan.beschrijving}\n\n${plan.taken.length} taken gepland voor ${new Set(plan.taken.map((t: PlanTask) => t.agentId)).size} agents.`,
         commandId: cmdId,
         taskId: null,
-        agentId: "theo",
+        agentId: "atlas",
         status: "pending",
         feedback: null,
         aangemaakt: new Date().toISOString(),
@@ -604,7 +604,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
     // === SERVER WORKER MODE ===
     if (state.serverWorkerMode && cmd.dbId) {
-      addLog(set, "theo", "info", "Server-worker modus: uitvoering draait server-side door");
+      addLog(set, "atlas", "info", "Server-worker modus: uitvoering draait server-side door");
       set((s) => ({
         commands: s.commands.map((c) =>
           c.id === commandId ? { ...c, status: "in_progress" as const } : c
@@ -629,16 +629,16 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
               ),
             };
           });
-          addLog(set, "theo", "info", `Worker gestart (branch: ${data.branch}). Laptop mag dicht!`);
+          addLog(set, "atlas", "info", `Worker gestart (branch: ${data.branch}). Laptop mag dicht!`);
         } else {
           const err = await res.json();
-          addLog(set, "theo", "error", `Worker starten mislukt: ${err.fout ?? "onbekend"}`);
+          addLog(set, "atlas", "error", `Worker starten mislukt: ${err.fout ?? "onbekend"}`);
           // Fallback to client-side
-          addLog(set, "theo", "info", "Fallback naar client-side uitvoering...");
+          addLog(set, "atlas", "info", "Fallback naar client-side uitvoering...");
         }
       } catch (e) {
-        addLog(set, "theo", "error", `Worker niet bereikbaar: ${e instanceof Error ? e.message : "onbekend"}`);
-        addLog(set, "theo", "info", "Fallback naar client-side uitvoering...");
+        addLog(set, "atlas", "error", `Worker niet bereikbaar: ${e instanceof Error ? e.message : "onbekend"}`);
+        addLog(set, "atlas", "info", "Fallback naar client-side uitvoering...");
       }
       // In server-worker mode we return here — SSE events update the UI
       return;
@@ -673,13 +673,13 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
         body: JSON.stringify({ actie: "create-branch", branch: branchName }),
       });
       if (branchRes.ok) {
-        addLog(set, "theo", "info", `Branch aangemaakt: ${branchName}`);
+        addLog(set, "atlas", "info", `Branch aangemaakt: ${branchName}`);
         set((s) => ({
           commands: s.commands.map((c) => c.id === commandId ? { ...c, branch: branchName } : c),
         }));
       }
     } catch {
-      addLog(set, "theo", "error", "Branch aanmaken mislukt — wordt op huidige branch geschreven");
+      addLog(set, "atlas", "error", "Branch aanmaken mislukt — wordt op huidige branch geschreven");
     }
 
     // Helper: sync task status to DB (fire-and-forget)
@@ -840,7 +840,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
           const reviewResult = reviewData.result as Record<string, unknown> | null;
           if (reviewResult) {
             const approved = reviewResult.goedgekeurd;
-            addLog(set, "toby", "review", `Review ${task.titel}: ${approved ? "✓ goedgekeurd" : "✗ changes requested"}`);
+            addLog(set, "leo", "review", `Review ${task.titel}: ${approved ? "✓ goedgekeurd" : "✗ changes requested"}`);
           }
         }).catch(() => {/* review is best-effort */});
 
@@ -938,7 +938,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
     const allDone = updatedCmd?.plan?.taken.every((t) => t.status === "completed");
 
     if (allDone) {
-      addLog(set, "theo", "task_complete", `Opdracht volledig afgerond! Agents gaan naar stand-by.`);
+      addLog(set, "atlas", "task_complete", `Opdracht volledig afgerond! Agents gaan naar stand-by.`);
       playSuccess();
       // Trigger confetti in the office
       if (typeof window !== "undefined") {
@@ -981,7 +981,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
 
           if (prRes.ok) {
             const prData = await prRes.json();
-            addLog(set, "theo", "task_complete", `PR aangemaakt: ${prData.prUrl ?? cmdBranch}`);
+            addLog(set, "atlas", "task_complete", `PR aangemaakt: ${prData.prUrl ?? cmdBranch}`);
           }
 
           // Switch back to main
@@ -992,7 +992,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
           });
 
         } catch (gitError) {
-          addLog(set, "theo", "error", `Git/PR fout: ${gitError instanceof Error ? gitError.message : "onbekend"}`);
+          addLog(set, "atlas", "error", `Git/PR fout: ${gitError instanceof Error ? gitError.message : "onbekend"}`);
         }
       }
     }
@@ -1045,7 +1045,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       }
 
       playError();
-      addLog(set, "theo", "error", "Uitvoering handmatig gestopt door Sem!");
+      addLog(set, "atlas", "error", "Uitvoering handmatig gestopt door Sem!");
       set((s) => {
         const nextControllers = new Map(s.abortControllers);
         nextControllers.delete(commandId);
@@ -1063,7 +1063,7 @@ export const useOrchestrator = create<OrchestratorState>((set, get) => ({
       // Kill ALL executions
       state.abortControllers.forEach((c) => c.abort());
       playError();
-      addLog(set, "theo", "error", "Alle uitvoeringen gestopt door Sem!");
+      addLog(set, "atlas", "error", "Alle uitvoeringen gestopt door Sem!");
       // Stop all server workers
       state.activeWorkerTokens.forEach((_, cmdId) => {
         const cmd = state.commands.find((c) => c.id === cmdId);

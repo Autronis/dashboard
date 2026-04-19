@@ -8,14 +8,16 @@ import { eq, and, sql } from "drizzle-orm";
 
 const OPS_TOKEN = process.env.OPS_INTERNAL_TOKEN || "autronis-ops-2026";
 
-// Agent names for personality
+// Agent names for personality — één entry per skill, same name for Syb variant.
 const AGENT_NAMES: Record<string, string> = {
-  wout: "Wout", bas: "Bas", gabriel: "Gabriel", tijmen: "Tijmen",
-  pedro: "Pedro", vincent: "Vincent", jones: "Jones", toby: "Toby",
-  ari: "Ari", rodi: "Rodi", adam: "Adam", noah: "Noah",
-  jack: "Jack", nikkie: "Nikkie", xia: "Xia", thijs: "Thijs",
-  leonard: "Leonard", rijk: "Rijk", coen: "Coen", senna: "Senna",
-  brent: "Brent",
+  // Team Sem
+  atlas: "Atlas",
+  wout: "Wout", bas: "Bas", coen: "Coen", gabriel: "Gabriel",
+  ari: "Ari", daan: "Daan", finn: "Finn", leo: "Leo",
+  // Team Syb — dezelfde skill-persona's
+  autro: "Autro",
+  "wout-syb": "Wout", "bas-syb": "Bas", "coen-syb": "Coen", "gabriel-syb": "Gabriel",
+  "ari-syb": "Ari", "daan-syb": "Daan", "finn-syb": "Finn", "leo-syb": "Leo",
 };
 
 // Opus: architecture, database, complex multi-file, security, orchestration

@@ -38,50 +38,42 @@ const H_TALL = 14;   // 52-56px at S=4
 
 export function getCharacterDef(agentId: string): CharacterDef {
   switch (agentId) {
-    // ===== MANAGEMENT =====
-    case "sem": return makeSem();
-    case "theo": return makeTheo();
-    case "toby": return makeTobyCat();
-    case "jones": return makeJones();
+    // ===== TEAM SEM =====
+    case "sem":      return makeSem();
+    case "atlas":    return makeAtlas();
+    case "wout":     return makeWout();
+    case "bas":      return makeBas();
+    case "coen":     return makeCoenFish();
+    case "gabriel":  return makeGabriel();
+    case "ari":      return makeAri();
+    case "daan":     return makeDaan();
+    case "finn":     return makeFinn();
+    case "leo":      return makeLeo();
 
-    // ===== BUILDERS =====
-    case "wout": return makeWout();
-    case "bas": return makeBas();
-    case "gabriel": return makeGabriel();
-    case "object51": return makeAlien();
-    case "tijmen": return makeTijmen();
-    case "pedro": return makePedro();
-    case "vincent": return makeVincent();
-    case "adam": return makeAdam();
-    case "noah": return makeNoah();
-    case "jack": return makeJack();
-    case "nikkie": return makeNikkie();
-    case "xia": return makeXia();
-    case "thijs": return makeThijs();
-    case "leonard": return makeLeonard();
-    case "rijk": return makeRijk();
-    case "coen": return makeCoenFish();
-    case "senna": return makeSenna();
-
-    // ===== SUPPORT =====
-    case "ari": return makeAri();
-    case "rodi": return makeRodi();
-    case "brent": return makeBrent();
-
-    case "syb": return makeSyb();
-
-    // ===== TEAM SYB =====
-    case "autro": return makeAutro();
-    case "daan": return makeDaan();
-    case "finn": return makeFinn();
-    case "wout-syb": return makeWoutSyb();
-    case "ari-syb": return makeAriSyb();
-    case "bas-syb": return makeBasSyb();
-    case "leo": return makeLeo();
-    case "gabriel-syb": return makeGabrielSyb();
+    // ===== TEAM SYB — zelfde skills, zelfde sprites =====
+    case "syb":          return makeSyb();
+    case "autro":        return makeAutro();
+    case "wout-syb":     return makeWout();
+    case "bas-syb":      return makeBas();
+    case "coen-syb":     return makeCoenFish();
+    case "gabriel-syb":  return makeGabriel();
+    case "ari-syb":      return makeAri();
+    case "daan-syb":     return makeDaan();
+    case "finn-syb":     return makeFinn();
+    case "leo-syb":      return makeLeo();
 
     default: return makeGeneric();
   }
+}
+
+function makeAtlas(): CharacterDef {
+  // Atlas = Sem's Claude. Navy-blauw pak, teal tie (Autronis accent), headset.
+  return makeHuman({
+    height: H_TALL, skin: "#d4a870", hair: "#1a1a2a",
+    shirt: "#0f2540", pants: "#0a1420",
+    eyeColor: "#23C6B7", stubble: true, headset: true,
+    tie: "#23C6B7",
+  });
 }
 
 // Legacy compat wrapper

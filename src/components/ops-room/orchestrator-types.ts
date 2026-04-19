@@ -75,58 +75,42 @@ export interface ApprovalRequest {
   aangemaakt: string;
 }
 
-// Agent specialization mapping
+// Agent specialization mapping — één entry per unieke skill-functie.
+// De -syb varianten zijn dezelfde persoon/skill op Syb's verdieping.
 export const AGENT_SPECIALIZATIONS: Record<string, AgentSpecialization> = {
-  // Builders
-  wout: "frontend",
-  bas: "backend",
-  gabriel: "backend",
-  tijmen: "frontend",
-  pedro: "styling",
-  vincent: "frontend",
-  // Pool builders (assigned dynamically)
-  adam: "frontend",
-  noah: "frontend",
-  jack: "backend",
-  nikkie: "styling",
-  xia: "frontend",
-  thijs: "backend",
-  leonard: "backend",
-  rijk: "styling",
-  coen: "automation",
-  senna: "ops",
-  // Management
-  jones: "architect",
-  toby: "reviewer",
-  // Special
-  object51: "experimental",
-  // Support (Team Sem)
-  ari: "research",
-  rodi: "automation",
-  brent: "interviewer",
-  // Team Syb
-  autro: "orchestrator",
-  daan: "interviewer",
-  finn: "frontend",
-  "wout-syb": "automation",
-  "ari-syb": "research",
-  "bas-syb": "prompts",
-  leo: "reviewer",
-  "gabriel-syb": "documentation",
+  // Team Sem — main + skills
+  atlas:   "orchestrator",
+  wout:    "automation",
+  bas:     "prompts",
+  coen:    "backend",
+  gabriel: "documentation",
+  ari:     "research",
+  daan:    "interviewer",
+  finn:    "frontend",
+  leo:     "reviewer",
+
+  // Team Syb — main + zelfde skills
+  autro:          "orchestrator",
+  "wout-syb":     "automation",
+  "bas-syb":      "prompts",
+  "coen-syb":     "backend",
+  "gabriel-syb":  "documentation",
+  "ari-syb":      "research",
+  "daan-syb":     "interviewer",
+  "finn-syb":     "frontend",
+  "leo-syb":      "reviewer",
 };
 
 // Agent team mapping — bepaalt welke agents bij welk team horen
 export const AGENT_TEAMS: Record<string, AgentTeam> = {
   // Team Sem (V1)
-  wout: "sem", bas: "sem", gabriel: "sem", tijmen: "sem", pedro: "sem", vincent: "sem",
-  adam: "sem", noah: "sem", jack: "sem", nikkie: "sem", xia: "sem", thijs: "sem",
-  leonard: "sem", rijk: "sem", coen: "sem", senna: "sem",
-  jones: "sem", toby: "sem", object51: "sem",
-  ari: "sem", rodi: "sem", brent: "sem",
+  atlas: "sem",
+  wout: "sem", bas: "sem", coen: "sem", gabriel: "sem",
+  ari: "sem", daan: "sem", finn: "sem", leo: "sem",
   // Team Syb (V2)
-  autro: "syb", daan: "syb", finn: "syb",
-  "wout-syb": "syb", "ari-syb": "syb", "bas-syb": "syb",
-  leo: "syb", "gabriel-syb": "syb",
+  autro: "syb",
+  "wout-syb": "syb", "bas-syb": "syb", "coen-syb": "syb", "gabriel-syb": "syb",
+  "ari-syb": "syb", "daan-syb": "syb", "finn-syb": "syb", "leo-syb": "syb",
 };
 
 export const SPECIALIZATION_LABELS: Record<AgentSpecialization, string> = {

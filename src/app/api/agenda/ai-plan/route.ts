@@ -97,7 +97,10 @@ export async function POST(req: NextRequest) {
       clusterBlokken.push({
         fakeId: -blokIndex,
         cluster,
-        duur: Math.min(30, 8 + tks.length * 2),
+        // Schaal met aantal taken maar cap op 60 min zodat grote clusters
+        // niet de hele ochtend opslokken. Was 30 min, te krap voor veel
+        // backend/research werk.
+        duur: Math.min(60, 15 + tks.length * 3),
         taakIds: tks.map((t) => t.id),
       });
     }

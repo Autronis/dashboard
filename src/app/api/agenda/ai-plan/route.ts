@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Datum is verplicht" }, { status: 400 });
     }
 
+    // Werkdag start/eind per dag-van-de-week. Werkdagen (ma-vr) 09:00-19:00,
+    // weekend (zat/zon) 10:00-19:00. Sem en Syb delen dit ritme.
+    const dagNr = new Date(`${datum}T12:00:00`).getDay(); // 0=Zo, 6=Za
+    const isWeekend = dagNr === 0 || dagNr === 6;
+    const DAG_START = isWeekend ? "10:00" : "09:00";
+    const DAG_EIND = "19:00";
+    const DAG_EIND_MS = new Date(`${datum}T${DAG_EIND}:00`).getTime();
+
     // Haal alle open/bezig taken op
     const openTaken = await db
       .select({
@@ -103,30 +111,37 @@ export async function POST(req: NextRequest) {
         titel: taken.titel,
         ingeplandStart: taken.ingeplandStart,
         ingeplandEind: taken.ingeplandEind,
+        uitvoerder: taken.uitvoerder,
       })
       .from(taken)
       .where(or(eq(taken.status, "open"), eq(taken.status, "bezig")))
       .all();
 
-    // Filter op de gevraagde dag + verzamel in een set van blocking
-    // intervals [start, eind) voor server-side anti-overlap. Taken die we in
-    // deze call zelf plannen worden NIET als blocker gebruikt bij hun eigen
-    // plan-stap (we filteren op id), maar wel bij opvolgende items.
+    // Filter op de gevraagde dag + split in twee bucket types voor overlap
+    // logica:
+    //  - strikteBlokkers: handmatige taken waar Sem zelf achter zit; blokkeren
+    //    alles wat er overheen wil.
+    //  - claudeBlokkers: Claude sessie blokken; blokkeren ALLEEN andere Claude
+    //    items. Handmatig mag gewoon overlappen (Sem is vrij terwijl Claude
+    //    werkt — admin/bellen/mailen kunnen naast een Claude sessie).
     interface BlockingInterval {
       start: number; // ms
       eind: number;  // ms
       label: string;
     }
-    const blockingIntervals: BlockingInterval[] = [];
+    const strikteBlokkers: BlockingInterval[] = [];
+    const claudeBlokkers: BlockingInterval[] = [];
     for (const t of bestaandeIngepland) {
       if (!t.ingeplandStart?.startsWith(datum)) continue;
       const s = new Date(t.ingeplandStart).getTime();
       const e = t.ingeplandEind ? new Date(t.ingeplandEind).getTime() : s + 30 * 60000;
       if (isNaN(s) || isNaN(e)) continue;
-      blockingIntervals.push({ start: s, eind: e, label: t.titel });
+      const interval = { start: s, eind: e, label: t.titel };
+      if (t.uitvoerder === "claude") claudeBlokkers.push(interval);
+      else strikteBlokkers.push(interval);
     }
     // Voor de AI: menselijk leesbare lijst van bestaande intervals
-    const alIngepland = blockingIntervals.map(
+    const alIngepland = [...strikteBlokkers, ...claudeBlokkers].map(
       (b) => `- ${b.label}: ${new Date(b.start).toTimeString().slice(0, 5)}–${new Date(b.eind).toTimeString().slice(0, 5)}`
     );
 
@@ -163,23 +178,23 @@ CRUCIAAL: Sem is VOLLEDIG VRIJ tijdens elke Claude sessie. Plan niet-development
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 2000,
-      system: `Je bent een productiviteitsplanner voor een softwarebedrijf (Autronis). Plan taken in een werkdag van 08:00 tot 17:00 met een lunchpauze van 12:00-12:30.
+      system: `Je bent een productiviteitsplanner voor een softwarebedrijf (Autronis). Plan taken in een werkdag van ${DAG_START} tot ${DAG_EIND} met een lunchpauze van 12:30-13:00.
 
 Regels:
 - Prioriteit "HOOG" taken eerst, zo vroeg mogelijk
 - Taken met een deadline vandaag of morgen hebben voorrang
 - Schat de duur in als die niet is opgegeven. Sem werkt met AI en is extreem snel: development: 15-30min, meeting: 30min, administratie: 15min, complexe feature: 30-45min. De meeste taken duren 15 min. NOOIT langer dan 45 min per taak.
-- Claude sessie blokken (negatieve ID's): ALTIJD duur gebruiken die hierboven is opgegeven (max 30 min). Plan ze VOLGORDELIJK achter elkaar, niet overlappend met elkaar. Eerste Claude sessie start 08:00.
-- Laat 5-10 min pauze tussen taken
-- Maximaal 8 uur werk, niet alles hoeft gepland als er te veel is
+- Claude sessie blokken (negatieve ID's): ALTIJD duur gebruiken die hierboven is opgegeven. Plan ze VOLGORDELIJK achter elkaar, niet overlappend met elkaar. Eerste Claude sessie start ${DAG_START}.
+- Laat 5-10 min pauze tussen Claude sessies onderling
+- VUL DE DAG VOL van ${DAG_START} tot ${DAG_EIND} — ~10 uur werk. Laat geen gaten vallen.
 - GROEPEER handmatige taken per cluster (bijv. alle "klantcontact" taken achter elkaar, alle "admin" taken achter elkaar). Cluster staat in de task lijst.
 - Zware/creatieve taken in de ochtend, lichte taken na de lunch
 - Als een taak niet inplanbaar is (bijv. wachten op iets), SKIP die taak
 - Start en eind MOETEN het format "HH:MM" hebben
-- Als er Claude sessie blokken zijn: plan meetings, admin en klantcontact taken TIJDENS die blokken (Sem is vrij). Plan development/frontend taken die Sem ZELF moet doen NA alle Claude sessies.
+- BELANGRIJK: handmatige taken MOGEN en MOETEN overlappen met Claude sessie blokken — Sem is vrij terwijl Claude werkt. Dus plan admin, klantcontact, meetings, telefoon GEWOON NAAST/TIJDENS Claude blokken. Alleen handmatige development-taken waar Sem zelf achter de computer moet zitten plan je op momenten zonder Claude blok.
 
 Antwoord ALLEEN met een JSON array, geen uitleg:
-[{"id": 123, "start": "08:00", "eind": "08:30", "duur": 30}]`,
+[{"id": 123, "start": "${DAG_START}", "eind": "09:30", "duur": 30}]`,
       messages: [{
         role: "user",
         content: `Plan deze taken in voor ${datum}:
@@ -204,19 +219,22 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
     let geskiptOverlap = 0;
 
     // Helper: shift een voorgesteld [start, eind] slot totdat 't niet meer
-    // overlapt met enige blocker. Check vanaf 08:00, max 12 iteraties.
-    // Respecteert ook de werkdag boundary (niet later dan 17:00).
+    // overlapt met de opgegeven blockers. Caller bepaalt welke blockers
+    // meegenomen worden:
+    //  - Voor Claude items: geef BEIDE buckets (claudeBlokkers + strikteBlokkers)
+    //  - Voor handmatige taken: geef alleen strikteBlokkers zodat ze over
+    //    Claude sessies heen mogen (Sem is vrij).
     function schuifNaarVrijSlot(
       startMs: number,
-      duurMinuten: number
+      duurMinuten: number,
+      blockers: BlockingInterval[]
     ): { start: number; eind: number } | null {
-      const DAG_EIND = new Date(`${datum}T17:00:00`).getTime();
       const duurMs = duurMinuten * 60000;
       let s = startMs;
       let e = s + duurMs;
-      for (let iter = 0; iter < 20; iter++) {
-        if (e > DAG_EIND) return null;
-        const botsing = blockingIntervals.find((b) => s < b.eind && e > b.start);
+      for (let iter = 0; iter < 25; iter++) {
+        if (e > DAG_EIND_MS) return null;
+        const botsing = blockers.find((b) => s < b.eind && e > b.start);
         if (!botsing) return { start: s, eind: e };
         // Schuif naar het einde van de botsende blocker + 5 min buffer
         s = botsing.eind + 5 * 60000;

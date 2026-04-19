@@ -75,6 +75,18 @@ export async function GET(req: NextRequest) {
               ? sql`${taken.eigenaar} IS NULL`
               : sql`1=0`
           )
+        )!,
+        // Slimme acties (vrij om te pakken) zijn altijd zichtbaar, ongeacht
+        // scope — de UI toont ze in een apart "Slimme acties" blok bovenaan
+        // zodat iedereen ze kan oppakken.
+        and(
+          sql`${taken.projectId} IS NULL`,
+          eq(taken.uitvoerder, "claude"),
+          eq(taken.eigenaar, "vrij"),
+          or(
+            eq(taken.fase, "Slimme taken"),
+            eq(taken.fase, "Slimme taken (recurring)")
+          )
         )!
       )!,
     ];

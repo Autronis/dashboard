@@ -592,6 +592,32 @@ export default function IdeeenPage() {
     });
   }
 
+  const [genereerStappenplanPending, setGenereerStappenplanPending] = useState(false);
+  async function handleGenereerStappenplan() {
+    if (!detailIdee) return;
+    setGenereerStappenplanPending(true);
+    try {
+      const r = await fetch(`/api/ideeen/${detailIdee.id}/genereer-stappenplan`, { method: "POST" });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.fout || "Genereren mislukt");
+      addToast("Stappenplan gegenereerd", "succes");
+      // Update detail view with fresh uitwerking
+      if (d.plan && detailIdee) {
+        const header = "## 🎯 Implementatie-plan voor Autronis";
+        const existing = detailIdee.uitwerking || "";
+        const stripped = existing.includes(header)
+          ? existing.slice(0, existing.indexOf(header)).replace(/\n+$/, "")
+          : existing;
+        const newUitwerking = stripped ? `${stripped}\n\n---\n\n${d.plan}` : d.plan;
+        setDetailIdee({ ...detailIdee, uitwerking: newUitwerking });
+      }
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Fout", "fout");
+    } finally {
+      setGenereerStappenplanPending(false);
+    }
+  }
+
   function handleRegenereerPlan() {
     if (!detailIdee) return;
     setNotionUrl(null);
@@ -1462,6 +1488,7 @@ export default function IdeeenPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {aiSorted.map((idee) => {
                 const ytMeta = idee.bron === "yt-knowledge" && idee.bronTekst ? safeParseYtMeta(idee.bronTekst) : null;
+                const instaMeta = idee.bron === "insta-knowledge" && idee.bronTekst ? safeParseInstaMeta(idee.bronTekst) : null;
                 return (
                   <div
                     key={idee.id}
@@ -1479,6 +1506,17 @@ export default function IdeeenPage() {
                             </span>
                             {ytMeta.channelName && (
                               <span className="text-[10px] text-autronis-text-secondary truncate">{ytMeta.channelName}</span>
+                            )}
+                          </div>
+                        )}
+                        {instaMeta && (
+                          <div className="flex items-center gap-1.5 mb-2">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-pink-400 bg-pink-500/10 px-2 py-0.5 rounded-full">
+                              <svg viewBox="0 0 24 24" className="w-3 h-3 fill-current"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.332.014 7.052.072 2.695.272.273 2.69.073 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.332 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                              Instagram {instaMeta.type}
+                            </span>
+                            {instaMeta.authorHandle && (
+                              <span className="text-[10px] text-autronis-text-secondary truncate">@{instaMeta.authorHandle}</span>
                             )}
                           </div>
                         )}
@@ -1524,6 +1562,16 @@ export default function IdeeenPage() {
                           className="inline-flex items-center gap-1.5 px-3 py-2 text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50 rounded-xl text-xs font-medium transition-colors"
                         >
                           <ExternalLink className="w-3.5 h-3.5" />Video
+                        </a>
+                      )}
+                      {instaMeta?.itemUrl && (
+                        <a
+                          href={instaMeta.itemUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-bg/50 rounded-xl text-xs font-medium transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />Instagram
                         </a>
                       )}
                       <div className="flex-1" />
@@ -1589,6 +1637,13 @@ export default function IdeeenPage() {
                   {startProjectMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}Start als project
                 </button>
               )}
+              <button
+                onClick={handleGenereerStappenplan}
+                disabled={genereerStappenplanPending}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {genereerStappenplanPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}Genereer stappenplan
+              </button>
               {(detailIdee.status === "actief" || detailIdee.status === "gebouwd") && (
                 <>
                   <button onClick={handleRegenereerPlan} disabled={regenereerPlanMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">

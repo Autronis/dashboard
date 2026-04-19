@@ -132,7 +132,7 @@ export async function GET() {
         prioriteit: 3,
         titel: `${verwaarloosdeLeads.length} lead${verwaarloosdeLeads.length > 1 ? "s" : ""} wacht${verwaarloosdeLeads.length === 1 ? "" : "en"} op opvolging`,
         omschrijving: `Deze leads zijn langer dan een week niet bijgewerkt: ${verwaarloosdeLeads.map((l) => l.bedrijfsnaam).join(", ")}.`,
-        actie: { label: "Ga naar CRM", link: "/crm" },
+        actie: { label: "Open leads", link: "/leads" },
       });
     }
 
@@ -302,7 +302,7 @@ export async function GET() {
         prioriteit: 2,
         titel: `Omzet ${percentage}% lager dan vorige maand`,
         omschrijving: `Je omzet deze maand (€${Math.round(huidig).toLocaleString("nl-NL")}) is een stuk lager dan vorige maand (€${Math.round(vorig).toLocaleString("nl-NL")}). Tijd om leads op te volgen?`,
-        actie: { label: "Ga naar CRM", link: "/crm" },
+        actie: { label: "Open leads", link: "/leads" },
       });
     }
 
@@ -362,7 +362,7 @@ export async function GET() {
         prioriteit: 3,
         titel: `€${Math.round(totaal).toLocaleString("nl-NL")} aan kansrijke leads`,
         omschrijving: `${waardevollLeads.map((l) => `${l.bedrijfsnaam} (€${Math.round(l.waarde ?? 0).toLocaleString("nl-NL")}, ${l.status})`).join(", ")}.`,
-        actie: { label: "Ga naar CRM", link: "/crm" },
+        actie: { label: "Open leads", link: "/leads" },
       });
     }
 

@@ -13,8 +13,46 @@ interface Props {
 }
 
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
-const HEADER_HEIGHT_PX = 36;
-const VRIJ_LANE_WIDTH_REM = 8;
+const HEADER_HEIGHT_PX = 64;
+const VRIJ_LANE_WIDTH_REM = 9;
+
+// Per-persoon identiteit voor de lane-headers. Sem=Atlas krijgt autronis-teal
+// (primaire merkkleur), Syb=Autro krijgt contrasterend warm paars, Team is
+// een gradient van beide, Vrij is neutraal grijs. Bridge v2 phase 6 zal de
+// live-dot hier hangen aan de chat-sync state (Atlas/Autro actief in
+// Claude Code); voor nu is 'ie statisch als visueel anker.
+const LANE_CHARACTER = {
+  sem: {
+    naam: "Sem",
+    rol: "Atlas",
+    initial: "S",
+    bg: "from-teal-500/25 via-teal-500/10 to-transparent",
+    ring: "ring-teal-400/50",
+    accent: "text-teal-300",
+    dot: "bg-teal-400",
+    shadow: "shadow-teal-500/20",
+  },
+  syb: {
+    naam: "Syb",
+    rol: "Autro",
+    initial: "S",
+    bg: "from-purple-500/25 via-purple-500/10 to-transparent",
+    ring: "ring-purple-400/50",
+    accent: "text-purple-300",
+    dot: "bg-purple-400",
+    shadow: "shadow-purple-500/20",
+  },
+  vrij: {
+    naam: "Vrij",
+    rol: "Nog niet gepakt",
+    initial: "?",
+    bg: "from-[var(--border)]/40 via-[var(--border)]/10 to-transparent",
+    ring: "ring-[var(--border)]",
+    accent: "text-[var(--text-secondary)]",
+    dot: "bg-[var(--text-secondary)]",
+    shadow: "shadow-black/20",
+  },
+} as const;
 
 function hourOffset(iso: string, dagStart: number): number {
   const d = new Date(iso);
@@ -22,17 +60,45 @@ function hourOffset(iso: string, dagStart: number): number {
   return (h - dagStart) * HOUR_HEIGHT_PX;
 }
 
+function LaneHeader({ kind }: { kind: keyof typeof LANE_CHARACTER }) {
+  const c = LANE_CHARACTER[kind];
+  return (
+    <div
+      className={`sticky top-0 z-10 bg-gradient-to-b ${c.bg} backdrop-blur border-b border-[var(--border)] px-3 flex items-center gap-2.5`}
+      style={{ height: `${HEADER_HEIGHT_PX}px` }}
+    >
+      <div
+        className={`relative flex items-center justify-center w-10 h-10 rounded-full ring-2 ${c.ring} ${c.shadow} shadow-lg bg-[var(--card)] font-bold text-base ${c.accent}`}
+      >
+        {c.initial}
+        {/* Live-indicator placeholder — bridge v2 phase 6 sluit 'm aan op
+            chat-sync state (Atlas/Autro actief in Claude Code). */}
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ${c.dot} ring-2 ring-[var(--bg)]`}
+          title={`${c.rol} — live indicator (placeholder, volgt bridge phase 6)`}
+        />
+      </div>
+      <div className="flex flex-col leading-tight min-w-0">
+        <span className={`text-base font-bold ${c.accent} truncate`}>{c.naam}</span>
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] truncate">
+          {c.rol}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function Lane({
+  kind,
   testId,
-  label,
   items,
   dagStart,
   totalHeight,
   onItemClick,
   widthClass,
 }: {
+  kind: keyof typeof LANE_CHARACTER;
   testId: string;
-  label: string;
   items: Item[];
   dagStart: number;
   totalHeight: number;
@@ -41,12 +107,7 @@ function Lane({
 }) {
   return (
     <div className={`relative border-r border-[var(--border)] ${widthClass}`} data-testid={testId}>
-      <div
-        className="sticky top-0 z-10 bg-[var(--bg)]/80 backdrop-blur px-3 py-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] border-b border-[var(--border)]"
-        style={{ height: `${HEADER_HEIGHT_PX}px` }}
-      >
-        {label}
-      </div>
+      <LaneHeader kind={kind} />
       <div className="relative" style={{ height: `${totalHeight}px` }}>
         {items.map((it) => (
           <div
@@ -108,8 +169,8 @@ export function SwimLaneView({
       {/* Lanes container — positioned relative for team + lunch overlays */}
       <div className="flex flex-1 relative">
         <Lane
+          kind="sem"
           testId="lane-sem"
-          label="Sem"
           items={semItems}
           dagStart={dagStart}
           totalHeight={totalHeight}
@@ -117,8 +178,8 @@ export function SwimLaneView({
           widthClass="flex-1 min-w-0"
         />
         <Lane
+          kind="syb"
           testId="lane-syb"
-          label="Syb"
           items={sybItems}
           dagStart={dagStart}
           totalHeight={totalHeight}
@@ -126,13 +187,13 @@ export function SwimLaneView({
           widthClass="flex-1 min-w-0"
         />
         <Lane
+          kind="vrij"
           testId="lane-vrij"
-          label="Vrij"
           items={vrijItems}
           dagStart={dagStart}
           totalHeight={totalHeight}
           onItemClick={onItemClick}
-          widthClass={`w-${VRIJ_LANE_WIDTH_REM * 4} min-w-[8rem]`}
+          widthClass="w-36 min-w-[9rem] shrink-0"
         />
 
         {/* Lunch overlay — spans all lanes */}
@@ -144,7 +205,7 @@ export function SwimLaneView({
           lunch
         </div>
 
-        {/* Team overlay — blocks positioned on top of sem + syb lanes (not vrij) */}
+        {/* Team blocks positioned on top of sem + syb lanes (not vrij) */}
         <div
           className="absolute pointer-events-none"
           style={{

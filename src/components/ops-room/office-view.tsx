@@ -13,32 +13,23 @@ const OFFICE_H = 720;
 // Sem's desk (CEO) — top-left corner, own space
 const SEM_DESK = { x: 40, y: 25 };
 
-// Fixed desk positions by agent ID
+// Fixed desk positions by agent ID (Sem-team + Syb-team share same layout)
 const DESK_POSITIONS: Record<string, { x: number; y: number }> = {
-  // Het Bestuur — centered above builders
-  theo:    { x: 200, y: 25 },
-  toby:    { x: 400, y: 25 },
-  jones:   { x: 600, y: 25 },
-  brent:   { x: 800, y: 25 },
+  // Main agent — centered at top
+  atlas:   { x: 500, y: 25 },
+  autro:   { x: 500, y: 25 },
 
-  // Builder row 1
-  wout:    { x: 300, y: 165 },
-  bas:     { x: 500, y: 165 },
-  gabriel: { x: 700, y: 165 },
+  // Builders
+  wout:        { x: 300, y: 165 }, "wout-syb":    { x: 300, y: 165 },
+  bas:         { x: 500, y: 165 }, "bas-syb":     { x: 500, y: 165 },
+  coen:        { x: 700, y: 165 }, "coen-syb":    { x: 700, y: 165 },
+  finn:        { x: 300, y: 305 }, "finn-syb":    { x: 300, y: 305 },
 
-  // Builder row 2
-  tijmen:  { x: 300, y: 305 },
-  pedro:   { x: 500, y: 305 },
-  vincent: { x: 700, y: 305 },
-
-  // Builder row 3
-  noah:    { x: 300, y: 445 },
-  nikkie:  { x: 500, y: 445 },
-  adam:    { x: 700, y: 445 },
-
-  // Support row
-  ari:     { x: 300, y: 585 },
-  rodi:    { x: 500, y: 585 },
+  // Support / QA
+  ari:         { x: 500, y: 305 }, "ari-syb":     { x: 500, y: 305 },
+  gabriel:     { x: 700, y: 305 }, "gabriel-syb": { x: 700, y: 305 },
+  daan:        { x: 300, y: 445 }, "daan-syb":    { x: 300, y: 445 },
+  leo:         { x: 500, y: 445 }, "leo-syb":     { x: 500, y: 445 },
 };
 
 const MEETING_ROOM = { x: 30, y: 165, w: 220, h: 180 };

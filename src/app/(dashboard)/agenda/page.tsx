@@ -180,6 +180,48 @@ export default function AgendaPage() {
       cancelled = true;
     };
   }, []);
+
+  // Bridge-gegenereerde slimme acties (v2 phase 3). Vervangt de generieke
+  // templates zodra de bridge draait; blijft leeg tot de eerste run waarna
+  // het panel primair deze lijst toont. Filter tab = voor wie.
+  interface BridgeActie {
+    id: number;
+    titel: string;
+    beschrijving: string | null;
+    cluster: string | null;
+    pijler: string | null;
+    duurMin: number | null;
+    voor: "sem" | "syb" | "team";
+    prioriteit: "laag" | "normaal" | "hoog";
+  }
+  const [slimmeActiesFilter, setSlimmeActiesFilter] = useState<"voor-mij" | "team" | "alles">("voor-mij");
+  const [bridgeActies, setBridgeActies] = useState<BridgeActie[]>([]);
+
+  useEffect(() => {
+    const voorParam =
+      slimmeActiesFilter === "voor-mij"
+        ? "sem"
+        : slimmeActiesFilter === "team"
+        ? "team"
+        : "alles";
+    fetch(`/api/slimme-acties-bridge?voor=${voorParam}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { acties: [] }))
+      .then((j: { acties?: BridgeActie[] }) => {
+        setBridgeActies(Array.isArray(j.acties) ? j.acties : []);
+      })
+      .catch(() => {
+        setBridgeActies([]);
+      });
+  }, [slimmeActiesFilter]);
+
+  async function dismissBridgeActie(id: number) {
+    setBridgeActies((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await fetch(`/api/slimme-acties-bridge/${id}`, { method: "DELETE" });
+    } catch {
+      // silent — optimistic removal, refresh via user reload if it failed
+    }
+  }
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
@@ -2687,12 +2729,12 @@ export default function AgendaPage() {
                         );
                       })}
 
-                      {/* ── Slimme acties sectie ── templates direct uit DB */}
-                      {/* Toon de slimme taken templates ALS keuzes (niet als bestaande
-                          taken). Klik = open modal voorgevuld met die template, vul
-                          velden in, taak wordt aangemaakt + gepland op de geselecteerde
-                          dag. Geen handmatige stap meer nodig om ze "te zien". */}
-                      {slimmeTemplates.length > 0 && (
+                      {/* ── Slimme acties sectie ──
+                          Bridge v2 phase 3: primair tonen we de bridge-gegenereerde
+                          concrete acties (met klant-naam, pijler, voor-tag). Als
+                          bridge nog leeg is (geen run gedaan), valt 'ie terug op de
+                          oude templates. */}
+                      {(bridgeActies.length > 0 || slimmeTemplates.length > 0) && (
                         <div className="mt-3 pt-3 border-t border-autronis-accent/20">
                           <div className="flex items-center gap-2 px-1 mb-2">
                             <Sparkles className="w-3 h-3 text-autronis-accent flex-shrink-0" />
@@ -2700,42 +2742,153 @@ export default function AgendaPage() {
                               Slimme acties
                             </span>
                             <span className="text-[10px] tabular-nums text-autronis-text-secondary/50 flex-shrink-0">
-                              {slimmeTemplates.length}
+                              {bridgeActies.length > 0 ? bridgeActies.length : slimmeTemplates.length}
                             </span>
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5 px-1">
-                            {slimmeTemplates.map((tpl) => {
-                              const k = getClusterKleur(tpl.cluster);
-                              return (
-                              <button
-                                key={tpl.id}
-                                onClick={() => { setSlimmeTakenPreSelect(tpl.slug); setSlimmeTakenOpen(true); }}
-                                className="text-left flex flex-col gap-1 px-2 py-1.5 rounded-lg border transition-colors hover:brightness-125"
-                                style={{ backgroundColor: k.bg, borderColor: k.border }}
-                                title={tpl.beschrijving || tpl.naam}
-                              >
-                                <div className="text-[11px] font-medium text-autronis-text-primary truncate" style={{ color: k.text }}>
-                                  {tpl.naam}
-                                </div>
-                                {tpl.beschrijving && (
-                                  <div className="text-[9px] text-autronis-text-secondary/70 line-clamp-2 leading-snug">
-                                    {tpl.beschrijving}
-                                  </div>
-                                )}
-                                <div className="flex items-center justify-between gap-1 mt-0.5">
-                                  <span className={cn("text-[8px] px-1 py-0.5 rounded-full font-medium", k.badge)}>
-                                    {tpl.cluster}
-                                  </span>
-                                  {tpl.geschatteDuur && (
-                                    <span className="text-[8px] text-autronis-text-secondary/60 tabular-nums">
-                                      {tpl.geschatteDuur}m
-                                    </span>
+
+                          {/* Filter-tabs: alleen zichtbaar als er bridge-acties zijn */}
+                          {bridgeActies.length > 0 && (
+                            <div className="flex gap-1 text-[10px] mb-2 px-1">
+                              {(["voor-mij", "team", "alles"] as const).map((f) => (
+                                <button
+                                  key={f}
+                                  onClick={() => setSlimmeActiesFilter(f)}
+                                  className={cn(
+                                    "px-2 py-0.5 rounded-md transition-colors uppercase tracking-wider font-semibold",
+                                    slimmeActiesFilter === f
+                                      ? "bg-autronis-accent/20 text-autronis-accent"
+                                      : "text-autronis-text-secondary/60 hover:text-autronis-text-primary"
                                   )}
-                                </div>
-                              </button>
-                              );
-                            })}
-                          </div>
+                                >
+                                  {f === "voor-mij" ? "Voor mij" : f === "team" ? "Team" : "Alles"}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Primair: bridge-acties (rijker, concreet, dismissable) */}
+                          {bridgeActies.length > 0 && (
+                            <div className="grid grid-cols-2 gap-1.5 px-1">
+                              {bridgeActies.map((a) => {
+                                const k = getClusterKleur(a.cluster || "admin");
+                                const prioRing =
+                                  a.prioriteit === "hoog"
+                                    ? "ring-1 ring-rose-500/30"
+                                    : a.prioriteit === "laag"
+                                    ? "opacity-70"
+                                    : "";
+                                return (
+                                  <div
+                                    key={a.id}
+                                    className={cn(
+                                      "group relative text-left flex flex-col gap-1 px-2 py-1.5 rounded-lg border transition-colors",
+                                      prioRing
+                                    )}
+                                    style={{ backgroundColor: k.bg, borderColor: k.border }}
+                                    title={a.beschrijving || a.titel}
+                                  >
+                                    <div
+                                      className="text-[11px] font-medium truncate pr-4"
+                                      style={{ color: k.text }}
+                                    >
+                                      {a.titel}
+                                    </div>
+                                    {a.beschrijving && (
+                                      <div className="text-[9px] text-autronis-text-secondary/70 line-clamp-2 leading-snug">
+                                        {a.beschrijving}
+                                      </div>
+                                    )}
+                                    <div className="flex items-center justify-between gap-1 mt-0.5">
+                                      <div className="flex gap-1 min-w-0">
+                                        {a.pijler && (
+                                          <span
+                                            className={cn(
+                                              "text-[8px] px-1 py-0.5 rounded-full font-medium whitespace-nowrap",
+                                              k.badge
+                                            )}
+                                          >
+                                            {a.pijler.replace("_", " ")}
+                                          </span>
+                                        )}
+                                        <span className="text-[8px] text-autronis-text-secondary/60 uppercase tracking-wider">
+                                          {a.voor === "team" ? "team" : a.voor}
+                                        </span>
+                                      </div>
+                                      {a.duurMin != null && (
+                                        <span className="text-[8px] text-autronis-text-secondary/60 tabular-nums">
+                                          {a.duurMin}m
+                                        </span>
+                                      )}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        dismissBridgeActie(a.id);
+                                      }}
+                                      className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-60 hover:opacity-100 text-autronis-text-secondary text-[10px] leading-none p-0.5 rounded transition-opacity"
+                                      title="Verwijder"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {/* Fallback: legacy templates (alleen als bridge leeg is) */}
+                          {bridgeActies.length === 0 && slimmeTemplates.length > 0 && (
+                            <>
+                              <div className="text-[9px] italic text-autronis-text-secondary/50 px-1 mb-1">
+                                Nog geen bridge-acties vannacht — legacy templates hieronder.
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5 px-1">
+                                {slimmeTemplates.map((tpl) => {
+                                  const k = getClusterKleur(tpl.cluster);
+                                  return (
+                                    <button
+                                      key={tpl.id}
+                                      onClick={() => {
+                                        setSlimmeTakenPreSelect(tpl.slug);
+                                        setSlimmeTakenOpen(true);
+                                      }}
+                                      className="text-left flex flex-col gap-1 px-2 py-1.5 rounded-lg border transition-colors hover:brightness-125"
+                                      style={{ backgroundColor: k.bg, borderColor: k.border }}
+                                      title={tpl.beschrijving || tpl.naam}
+                                    >
+                                      <div
+                                        className="text-[11px] font-medium truncate"
+                                        style={{ color: k.text }}
+                                      >
+                                        {tpl.naam}
+                                      </div>
+                                      {tpl.beschrijving && (
+                                        <div className="text-[9px] text-autronis-text-secondary/70 line-clamp-2 leading-snug">
+                                          {tpl.beschrijving}
+                                        </div>
+                                      )}
+                                      <div className="flex items-center justify-between gap-1 mt-0.5">
+                                        <span
+                                          className={cn(
+                                            "text-[8px] px-1 py-0.5 rounded-full font-medium",
+                                            k.badge
+                                          )}
+                                        >
+                                          {tpl.cluster}
+                                        </span>
+                                        {tpl.geschatteDuur && (
+                                          <span className="text-[8px] text-autronis-text-secondary/60 tabular-nums">
+                                            {tpl.geschatteDuur}m
+                                          </span>
+                                        )}
+                                      </div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>

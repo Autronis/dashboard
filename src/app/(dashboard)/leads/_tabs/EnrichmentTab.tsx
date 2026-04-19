@@ -14,6 +14,9 @@ import {
   Search,
   Play,
   Eraser,
+  Filter,
+  Download,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -51,6 +54,32 @@ const TABS: Array<{ key: string; label: string; icon: typeof Sparkles }> = [
 
 const MAX_LEADS_OPTIES = [10, 25, 50, 100, 250, 500];
 
+type TriState = "any" | "with" | "without";
+
+interface FieldFilters {
+  email: TriState;
+  phone: TriState;
+  website: TriState;
+  linkedin: TriState;
+}
+
+const EMPTY_FILTERS: FieldFilters = {
+  email: "any",
+  phone: "any",
+  website: "any",
+  linkedin: "any",
+};
+
+function hasLinkedin(l: Lead): boolean {
+  return !!l.linkedin_url?.trim();
+}
+function hasPhone(l: Lead): boolean {
+  return !!l.phone?.trim() || !!l.phone_found;
+}
+function hasWebsite(l: Lead): boolean {
+  return !!l.website?.trim() || !!l.website_found;
+}
+
 export function EnrichmentTab() {
   const { addToast } = useToast();
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -62,6 +91,8 @@ export function EnrichmentTab() {
   const [isEnriching, setIsEnriching] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [maxLeads, setMaxLeads] = useState(50);
+  const [filters, setFilters] = useState<FieldFilters>(EMPTY_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -157,14 +188,56 @@ export function EnrichmentTab() {
   }, [leads, tab]);
 
   const gefilterd = useMemo(() => {
-    if (!zoek.trim()) return tabLeads;
-    const q = zoek.toLowerCase();
-    return tabLeads.filter((l) =>
-      [l.name, l.website, l.location]
-        .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q))
-    );
-  }, [tabLeads, zoek]);
+    let result = tabLeads;
+
+    // Field filters (email / phone / website / linkedin — tri-state)
+    if (filters.email !== "any") {
+      const want = filters.email === "with";
+      result = result.filter((l) => (hasEmailValue(l) || !!l.email_found) === want);
+    }
+    if (filters.phone !== "any") {
+      const want = filters.phone === "with";
+      result = result.filter((l) => hasPhone(l) === want);
+    }
+    if (filters.website !== "any") {
+      const want = filters.website === "with";
+      result = result.filter((l) => hasWebsite(l) === want);
+    }
+    if (filters.linkedin !== "any") {
+      const want = filters.linkedin === "with";
+      result = result.filter((l) => hasLinkedin(l) === want);
+    }
+
+    if (zoek.trim()) {
+      const q = zoek.toLowerCase();
+      result = result.filter((l) =>
+        [l.name, l.website, l.location]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q))
+      );
+    }
+    return result;
+  }, [tabLeads, zoek, filters]);
+
+  const filterCounts = useMemo(() => {
+    const base = tabLeads;
+    return {
+      withEmail: base.filter((l) => hasEmailValue(l) || !!l.email_found).length,
+      withoutEmail: base.filter((l) => !hasEmailValue(l) && !l.email_found).length,
+      withPhone: base.filter((l) => hasPhone(l)).length,
+      withoutPhone: base.filter((l) => !hasPhone(l)).length,
+      withWebsite: base.filter((l) => hasWebsite(l)).length,
+      withoutWebsite: base.filter((l) => !hasWebsite(l)).length,
+      withLinkedin: base.filter((l) => hasLinkedin(l)).length,
+      withoutLinkedin: base.filter((l) => !hasLinkedin(l)).length,
+    };
+  }, [tabLeads]);
+
+  const activeFilterCount =
+    (filters.email !== "any" ? 1 : 0) +
+    (filters.phone !== "any" ? 1 : 0) +
+    (filters.website !== "any" ? 1 : 0) +
+    (filters.linkedin !== "any" ? 1 : 0);
 
   function toggleSelect(id: string) {
     setSelectedIds((curr) => {
@@ -180,8 +253,70 @@ export function EnrichmentTab() {
     setSelectedIds(new Set(ids));
   }
 
+  function selectNextN(n: number) {
+    // Skip al-geselecteerde, pak de volgende n uit gefilterd
+    const next = new Set(selectedIds);
+    let added = 0;
+    for (const l of gefilterd) {
+      if (added >= n) break;
+      if (!next.has(l.id)) {
+        next.add(l.id);
+        added += 1;
+      }
+    }
+    setSelectedIds(next);
+  }
+
   function clearSelection() {
     setSelectedIds(new Set());
+  }
+
+  function exportCSV() {
+    if (gefilterd.length === 0) {
+      addToast("Geen leads om te exporteren", "fout");
+      return;
+    }
+    const header = [
+      "name",
+      "website",
+      "phone",
+      "emails",
+      "location",
+      "source",
+      "linkedin_url",
+      "enrichment_status",
+    ];
+    const escape = (v: string | null | undefined) => {
+      if (v == null) return "";
+      const s = String(v);
+      if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    const rows = gefilterd.map((l) =>
+      [
+        l.name,
+        l.website,
+        l.phone,
+        l.emails,
+        l.location,
+        l.source,
+        l.linkedin_url,
+        l.enrichment_status,
+      ]
+        .map(escape)
+        .join(",")
+    );
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `enrichment-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast(`${gefilterd.length} leads geëxporteerd`, "succes");
   }
 
   async function triggerEnrichment() {
@@ -354,24 +489,49 @@ export function EnrichmentTab() {
 
       {/* Actiebalk */}
       <div className="rounded-xl border border-autronis-border bg-autronis-card p-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-autronis-text-secondary">Selecteer eerste</label>
-          <select
-            value={maxLeads}
-            onChange={(e) => setMaxLeads(Number(e.target.value))}
-            className="bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+              activeFilterCount > 0 || showFilters
+                ? "bg-autronis-accent/10 border-autronis-accent/40 text-autronis-accent"
+                : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
+            )}
           >
-            {MAX_LEADS_OPTIES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+            <Filter className="w-3 h-3" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="tabular-nums font-semibold">({activeFilterCount})</span>
+            )}
+          </button>
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            Export CSV
+          </button>
+          <label className="text-xs text-autronis-text-secondary ml-2">Aantal</label>
+          <input
+            type="number"
+            min={1}
+            max={5000}
+            value={maxLeads}
+            onChange={(e) => setMaxLeads(Math.max(1, Number(e.target.value) || 1))}
+            className="w-20 bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+          />
+          <button
+            onClick={() => selectNextN(maxLeads)}
+            className="px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
+          >
+            Selecteer volgende {maxLeads}
+          </button>
           <button
             onClick={() => selectFirstN(maxLeads)}
             className="px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
           >
-            Selecteer
+            Selecteer top {maxLeads}
           </button>
           {selectedIds.size > 0 && (
             <button
@@ -402,6 +562,67 @@ export function EnrichmentTab() {
           </button>
         </div>
       </div>
+
+      {/* Filter panel — uitklapbaar */}
+      {showFilters && (
+        <div className="rounded-xl border border-autronis-accent/30 bg-autronis-bg/40 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
+              <Filter className="w-3 h-3 text-autronis-accent" /> Filters
+            </h3>
+            <div className="flex items-center gap-2">
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => setFilters(EMPTY_FILTERS)}
+                  className="text-[11px] text-autronis-text-secondary hover:text-red-400 inline-flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Reset
+                </button>
+              )}
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-[11px] text-autronis-text-secondary hover:text-autronis-text-primary"
+              >
+                Sluit
+              </button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FilterRow
+              label="Email"
+              icon={Mail}
+              value={filters.email}
+              onChange={(v) => setFilters((f) => ({ ...f, email: v }))}
+              withCount={filterCounts.withEmail}
+              withoutCount={filterCounts.withoutEmail}
+            />
+            <FilterRow
+              label="Telefoon"
+              icon={Phone}
+              value={filters.phone}
+              onChange={(v) => setFilters((f) => ({ ...f, phone: v }))}
+              withCount={filterCounts.withPhone}
+              withoutCount={filterCounts.withoutPhone}
+            />
+            <FilterRow
+              label="Website"
+              icon={Globe}
+              value={filters.website}
+              onChange={(v) => setFilters((f) => ({ ...f, website: v }))}
+              withCount={filterCounts.withWebsite}
+              withoutCount={filterCounts.withoutWebsite}
+            />
+            <FilterRow
+              label="LinkedIn"
+              icon={Linkedin}
+              value={filters.linkedin}
+              onChange={(v) => setFilters((f) => ({ ...f, linkedin: v }))}
+              withCount={filterCounts.withLinkedin}
+              withoutCount={filterCounts.withoutLinkedin}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Zoek */}
       <div className="relative max-w-md">
@@ -558,6 +779,60 @@ function StatCard({
       {hint && (
         <div className="text-[10px] text-autronis-text-secondary/60 mt-0.5">{hint}</div>
       )}
+    </div>
+  );
+}
+
+function FilterRow({
+  label,
+  icon: Icon,
+  value,
+  onChange,
+  withCount,
+  withoutCount,
+}: {
+  label: string;
+  icon: typeof Mail;
+  value: TriState;
+  onChange: (v: TriState) => void;
+  withCount: number;
+  withoutCount: number;
+}) {
+  const options: Array<{ key: TriState; label: string; count?: number }> = [
+    { key: "any", label: "Alle" },
+    { key: "with", label: `Heeft ${label.toLowerCase()}`, count: withCount },
+    { key: "without", label: `Geen ${label.toLowerCase()}`, count: withoutCount },
+  ];
+  return (
+    <div>
+      <div className="flex items-center gap-1.5 text-[11px] font-medium text-autronis-text-secondary mb-2">
+        <Icon className="w-3 h-3" />
+        {label}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const active = value === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => onChange(opt.key)}
+              className={cn(
+                "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors border",
+                active
+                  ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                  : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+              )}
+            >
+              {opt.label}
+              {typeof opt.count === "number" && (
+                <span className="tabular-nums text-autronis-text-secondary/60">
+                  ({opt.count})
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -132,7 +132,7 @@ export default function LeadsEmailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [zoek, setZoek] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sortDesc, setSortDesc] = useState(true); // true = newest first
@@ -164,7 +164,17 @@ export default function LeadsEmailsPage() {
         throw new Error(body.fout || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      setEmails(data.emails ?? []);
+      const fetched = (data.emails ?? []) as EmailRecord[];
+      setEmails(fetched);
+      // Standaard alle emails uitgeklapt — gebruiker ziet meteen de content.
+      // Klik op header sluit weer. Bij silent refetch nieuwe ids toevoegen,
+      // bestaande expand-state behouden.
+      setExpandedIds((curr) => {
+        if (curr.size === 0) return new Set(fetched.map((e) => e.id));
+        const next = new Set(curr);
+        for (const e of fetched) next.add(e.id);
+        return next;
+      });
       setError(null);
     } catch (e) {
       if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
@@ -653,7 +663,7 @@ export default function LeadsEmailsPage() {
       {!loading && !error && gefilterd.length > 0 && (
         <div className="space-y-2">
           {paged.map((email) => {
-            const expanded = expandedId === email.id;
+            const expanded = expandedIds.has(email.id);
             const busy = busyId === email.id;
             return (
               <div
@@ -673,7 +683,14 @@ export default function LeadsEmailsPage() {
                     className="mt-1 rounded border-autronis-border accent-autronis-accent cursor-pointer"
                   />
                   <button
-                    onClick={() => setExpandedId(expanded ? null : email.id)}
+                    onClick={() =>
+                      setExpandedIds((curr) => {
+                        const next = new Set(curr);
+                        if (next.has(email.id)) next.delete(email.id);
+                        else next.add(email.id);
+                        return next;
+                      })
+                    }
                     className="flex items-start gap-3 flex-1 min-w-0 text-left"
                   >
                   <div className="mt-0.5 text-autronis-text-secondary">

@@ -11,37 +11,94 @@ import {
   Globe,
   Trash2,
   Mail,
+  Linkedin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePoll } from "@/lib/use-poll";
 
-interface Lead {
+interface UnifiedLead {
   id: string;
+  source: "linkedin" | "google_maps";
   name: string | null;
   phone: string | null;
   emails: string | null;
   website: string | null;
   location: string | null;
-  source: string | null;
   google_maps_url: string | null;
   enrichment_status: string | null;
   email_found: boolean | null;
   website_found: boolean | null;
 }
 
-// Leads waar automatische enrichment geen email vond — handmatig oppakken
-// door te bellen of direct een email/website toe te voegen.
+interface LinkedinRow {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  emails: string | null;
+  website: string | null;
+  location: string | null;
+  enrichment_status: string | null;
+  email_found: boolean | null;
+  website_found: boolean | null;
+}
+
+interface GmapsRow {
+  id: string;
+  name: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  location: string | null;
+  address: string | null;
+  google_maps_url: string | null;
+  enrichment_status: string | null;
+  email_found: boolean | null;
+  website_found: boolean | null;
+}
+
 const FAILED_STATUSES = new Set(["failed", "no_email_found", "no_contact_found"]);
 
-function hasEmailValue(l: Lead): boolean {
+function hasEmailValue(l: UnifiedLead): boolean {
   const e = l.emails;
   return !!(e && e.trim() && e.trim() !== "[]");
 }
 
+function unifyLinkedin(l: LinkedinRow): UnifiedLead {
+  return {
+    id: l.id,
+    source: "linkedin",
+    name: l.name,
+    phone: l.phone,
+    emails: l.emails,
+    website: l.website,
+    location: l.location,
+    google_maps_url: null,
+    enrichment_status: l.enrichment_status,
+    email_found: l.email_found,
+    website_found: l.website_found,
+  };
+}
+
+function unifyGmaps(l: GmapsRow): UnifiedLead {
+  return {
+    id: l.id,
+    source: "google_maps",
+    name: l.name,
+    phone: l.phone,
+    emails: l.email,
+    website: l.website,
+    location: l.location || l.address,
+    google_maps_url: l.google_maps_url,
+    enrichment_status: l.enrichment_status,
+    email_found: l.email_found,
+    website_found: l.website_found,
+  };
+}
+
 export default function LeadsHandmatigPage() {
   const { addToast } = useToast();
-  const [allLeads, setAllLeads] = useState<Lead[]>([]);
+  const [allLeads, setAllLeads] = useState<UnifiedLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
@@ -54,13 +111,25 @@ export default function LeadsHandmatigPage() {
   const load = useCallback(async (silent = false) => {
     try {
       if (!silent) setLoading(true);
-      const res = await fetch("/api/leads");
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.fout || `HTTP ${res.status}`);
+      const [linkedinRes, gmapsRes] = await Promise.all([
+        fetch("/api/leads"),
+        fetch("/api/leads/google-maps"),
+      ]);
+      if (!linkedinRes.ok) {
+        const body = await linkedinRes.json().catch(() => ({}));
+        throw new Error(body.fout || `LinkedIn leads HTTP ${linkedinRes.status}`);
       }
-      const data = await res.json();
-      setAllLeads(data.leads ?? []);
+      if (!gmapsRes.ok) {
+        const body = await gmapsRes.json().catch(() => ({}));
+        throw new Error(body.fout || `Google Maps leads HTTP ${gmapsRes.status}`);
+      }
+      const linkedinData = await linkedinRes.json();
+      const gmapsData = await gmapsRes.json();
+      const merged: UnifiedLead[] = [
+        ...(linkedinData.leads ?? []).map((l: LinkedinRow) => unifyLinkedin(l)),
+        ...(gmapsData.leads ?? []).map((l: GmapsRow) => unifyGmaps(l)),
+      ];
+      setAllLeads(merged);
       setError(null);
     } catch (e) {
       if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
@@ -73,11 +142,9 @@ export default function LeadsHandmatigPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: silent refetch elke 15s — geen loading flicker
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 15000);
 
-  // Filter: alleen leads waar enrichment faalde EN die geen email hebben
   const failedLeads = useMemo(() => {
     return allLeads.filter(
       (l) =>
@@ -95,7 +162,7 @@ export default function LeadsHandmatigPage() {
     );
   }, [failedLeads, zoek]);
 
-  function startEdit(lead: Lead, type: "email" | "website") {
+  function startEdit(lead: UnifiedLead, type: "email" | "website") {
     setEditingId(lead.id);
     setEditingType(type);
     setInputValue("");
@@ -106,15 +173,16 @@ export default function LeadsHandmatigPage() {
     setInputValue("");
   }
 
-  async function saveEdit(leadId: string) {
+  async function saveEdit(lead: UnifiedLead) {
     if (!inputValue.trim()) {
       addToast("Voer een waarde in", "fout");
       return;
     }
-    setBusyId(leadId);
+    setBusyId(lead.id);
     try {
+      const endpoint = lead.source === "google_maps" ? "/api/leads/google-maps" : "/api/leads";
       const updates: Record<string, unknown> = {
-        id: leadId,
+        id: lead.id,
         enrichment_status: "manual",
       };
       if (editingType === "email") {
@@ -123,7 +191,11 @@ export default function LeadsHandmatigPage() {
           setBusyId(null);
           return;
         }
-        updates.emails = inputValue.trim();
+        if (lead.source === "google_maps") {
+          updates.email = inputValue.trim();
+        } else {
+          updates.emails = inputValue.trim();
+        }
         updates.email_found = true;
       } else {
         let url = inputValue.trim();
@@ -132,7 +204,7 @@ export default function LeadsHandmatigPage() {
         updates.website_found = true;
       }
 
-      const res = await fetch("/api/leads", {
+      const res = await fetch(endpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -142,10 +214,9 @@ export default function LeadsHandmatigPage() {
         throw new Error(body.fout || `HTTP ${res.status}`);
       }
 
-      // Optimistic: remove lead from list (it's no longer "failed without email")
       setAllLeads((curr) =>
         curr.map((l) =>
-          l.id === leadId
+          l.id === lead.id
             ? {
                 ...l,
                 ...(editingType === "email"
@@ -171,19 +242,20 @@ export default function LeadsHandmatigPage() {
     }
   }
 
-  async function handleDelete(leadId: string) {
-    setBusyId(leadId);
+  async function handleDelete(lead: UnifiedLead) {
+    setBusyId(lead.id);
     try {
-      const res = await fetch("/api/leads", {
+      const endpoint = lead.source === "google_maps" ? "/api/leads/google-maps" : "/api/leads";
+      const res = await fetch(endpoint, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: [leadId] }),
+        body: JSON.stringify({ ids: [lead.id] }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.fout || `HTTP ${res.status}`);
       }
-      setAllLeads((curr) => curr.filter((l) => l.id !== leadId));
+      setAllLeads((curr) => curr.filter((l) => l.id !== lead.id));
       addToast("Lead verwijderd", "succes");
       setDeletingId(null);
     } catch (e) {
@@ -195,7 +267,6 @@ export default function LeadsHandmatigPage() {
 
   return (
     <div className="space-y-7">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
@@ -212,7 +283,6 @@ export default function LeadsHandmatigPage() {
         </span>
       </div>
 
-      {/* Zoek */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
         <input
@@ -224,7 +294,6 @@ export default function LeadsHandmatigPage() {
         />
       </div>
 
-      {/* Body */}
       {loading && allLeads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -261,6 +330,7 @@ export default function LeadsHandmatigPage() {
                 <th className="text-left px-4 py-3 font-semibold">Bedrijf</th>
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Telefoon</th>
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Locatie</th>
+                <th className="text-left px-4 py-3 font-semibold hidden sm:table-cell">Bron</th>
                 <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Status</th>
                 <th className="text-right px-4 py-3 font-semibold">Acties</th>
               </tr>
@@ -271,7 +341,7 @@ export default function LeadsHandmatigPage() {
                 const isDeleting = deletingId === lead.id;
                 const busy = busyId === lead.id;
                 return (
-                  <tr key={lead.id} className="hover:bg-autronis-accent/[0.03] transition-colors">
+                  <tr key={`${lead.source}:${lead.id}`} className="hover:bg-autronis-accent/[0.03] transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span className="font-medium text-autronis-text-primary truncate">
@@ -306,6 +376,23 @@ export default function LeadsHandmatigPage() {
                     <td className="px-4 py-3 text-xs text-autronis-text-secondary hidden md:table-cell">
                       {(lead.location || "").split(",")[0] || "—"}
                     </td>
+                    <td className="px-4 py-3 hidden sm:table-cell">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full",
+                          lead.source === "google_maps"
+                            ? "bg-autronis-accent/15 text-autronis-accent"
+                            : "bg-purple-500/15 text-purple-300"
+                        )}
+                      >
+                        {lead.source === "google_maps" ? (
+                          <MapPin className="w-2.5 h-2.5" />
+                        ) : (
+                          <Linkedin className="w-2.5 h-2.5" />
+                        )}
+                        {lead.source === "google_maps" ? "google maps" : "linkedin"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
                         {lead.enrichment_status || "failed"}
@@ -320,7 +407,7 @@ export default function LeadsHandmatigPage() {
                               value={inputValue}
                               onChange={(e) => setInputValue(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") saveEdit(lead.id);
+                                if (e.key === "Enter") saveEdit(lead);
                                 if (e.key === "Escape") cancelEdit();
                               }}
                               autoFocus
@@ -328,7 +415,7 @@ export default function LeadsHandmatigPage() {
                               className="w-48 bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
                             />
                             <button
-                              onClick={() => saveEdit(lead.id)}
+                              onClick={() => saveEdit(lead)}
                               disabled={busy}
                               className="p-1.5 rounded-md bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 transition-colors disabled:opacity-50"
                             >
@@ -347,7 +434,7 @@ export default function LeadsHandmatigPage() {
                               Verwijderen?
                             </span>
                             <button
-                              onClick={() => handleDelete(lead.id)}
+                              onClick={() => handleDelete(lead)}
                               disabled={busy}
                               className="px-2 py-1 rounded-md bg-red-500/15 text-red-400 text-[11px] font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50"
                             >

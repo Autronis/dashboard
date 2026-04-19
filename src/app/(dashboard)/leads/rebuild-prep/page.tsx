@@ -358,13 +358,44 @@ export default function LeadsRebuildPrepPage() {
 
   async function copyPrompt(r: PrepLeadResult) {
     try {
-      await navigator.clipboard.writeText(r.prompt);
+      const assets = assetsByLead[r.lead.id] ?? loadAssetsForLead(r.lead.id);
+      const fullPrompt = assets ? r.prompt + buildAssetInjection(assets) : r.prompt;
+      await navigator.clipboard.writeText(fullPrompt);
       setCopiedId(r.lead.id);
       setTimeout(() => setCopiedId((c) => (c === r.lead.id ? null : c)), 1500);
     } catch {
       addToast("Kopiëren mislukt", "fout");
     }
   }
+
+  // Round-trip van /animaties: bij terugkeer staat ?leadAssets=<id> in URL en
+  // is de asset-data in sessionStorage geschreven. We lezen hem in, tonen een
+  // toast, en cleanen de URL zodat refresh geen dubbele toast geeft.
+  useEffect(() => {
+    const leadAssetsId = searchParams.get("leadAssets");
+    if (!leadAssetsId) return;
+    const a = loadAssetsForLead(leadAssetsId);
+    if (a) {
+      setAssetsByLead((prev) => ({ ...prev, [leadAssetsId]: a }));
+      addToast(`Assets gekoppeld aan lead "${a.productNaam}"`, "succes");
+    }
+    // Strip de param uit de URL zonder history-entry
+    router.replace("/leads/rebuild-prep", { scroll: false });
+  }, [searchParams, router, addToast]);
+
+  // Bij result load: check sessionStorage voor elke lead of er al assets zijn
+  // (bv. eerder gegenereerd, nog niet gekopieerd).
+  useEffect(() => {
+    if (results.length === 0) return;
+    const found: Record<string, RebuildPrepAssets> = {};
+    for (const r of results) {
+      const a = loadAssetsForLead(r.lead.id);
+      if (a) found[r.lead.id] = a;
+    }
+    if (Object.keys(found).length > 0) {
+      setAssetsByLead((prev) => ({ ...prev, ...found }));
+    }
+  }, [results]);
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
@@ -634,6 +665,7 @@ export default function LeadsRebuildPrepPage() {
                     result={r}
                     onCopy={copyPrompt}
                     copied={copiedId === r.lead.id}
+                    assets={assetsByLead[r.lead.id] ?? null}
                   />
                 ))}
               </div>
@@ -649,12 +681,27 @@ function ResultCard({
   result,
   onCopy,
   copied,
+  assets,
 }: {
   result: PrepLeadResult;
   onCopy: (r: PrepLeadResult) => void;
   copied: boolean;
+  assets: RebuildPrepAssets | null;
 }) {
   const { lead, mode, serp, scrape, fit } = result;
+
+  // Asset Generator deeplink — alleen relevant bij scroll_stop_good.
+  const bronUrl = mode === "upgrade" ? scrape.url : serp.foundUrl;
+  const assetGeneratorHref = (() => {
+    const params = new URLSearchParams({
+      mode: "scroll-stop",
+      product: lead.name ?? "",
+      returnTo: lead.id,
+    });
+    if (bronUrl) params.set("bron", bronUrl);
+    if (lead.category) params.set("categorie", lead.category);
+    return `/animaties?${params.toString()}`;
+  })();
 
   const fitStyles =
     fit.verdict === "scroll_stop_good"
@@ -723,6 +770,12 @@ function ResultCard({
                 {statusLabel}
               </span>
             )}
+            {assets && (
+              <span className="px-2 py-0.5 rounded-md text-xs border bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/30 inline-flex items-center gap-1">
+                <Film className="w-3 h-3" />
+                Assets klaar
+              </span>
+            )}
           </div>
           <div className="text-xs text-autronis-text-muted mt-1">
             {[lead.category, lead.location || lead.address].filter(Boolean).join(" · ") || "—"}
@@ -745,6 +798,25 @@ function ResultCard({
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {fit.verdict === "scroll_stop_good" && (
+            <Link
+              href={assetGeneratorHref}
+              className={cn(
+                "px-3 py-1.5 rounded-lg border text-xs font-medium transition inline-flex items-center gap-1.5",
+                assets
+                  ? "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20"
+                  : "bg-autronis-bg border-autronis-border text-autronis-text hover:border-fuchsia-500/50 hover:text-fuchsia-300"
+              )}
+              title={
+                assets
+                  ? "Assets zijn gegenereerd. Openen om opnieuw te doen."
+                  : "Open Asset Generator met pre-filled data voor deze lead"
+              }
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              {assets ? "Assets opnieuw" : "Asset Generator"}
+            </Link>
+          )}
           <button
             onClick={() => onCopy(result)}
             className={cn(
@@ -753,6 +825,7 @@ function ResultCard({
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
                 : "bg-autronis-bg border-autronis-border text-autronis-text hover:border-autronis-accent"
             )}
+            title={assets ? "Kopieert prompt mét scroll-stop asset URLs" : "Kopieert de rebuild prompt"}
           >
             {copied ? (
               <>
@@ -762,7 +835,7 @@ function ResultCard({
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5" />
-                Copy prompt
+                Copy prompt{assets ? " + assets" : ""}
               </>
             )}
           </button>

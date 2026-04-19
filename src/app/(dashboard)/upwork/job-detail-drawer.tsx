@@ -257,7 +257,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                     <div className="flex items-center justify-between">
                       <span className="text-[var(--text-tertiary)] text-xs">Hire rate</span>
                       <span className="text-[var(--text-primary)] font-medium tabular-nums">
-                        {Math.round(job.clientHireRate * 100)}%
+                        {Math.round(job.clientHireRate)}%
                       </span>
                     </div>
                   )}

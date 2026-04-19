@@ -308,7 +308,7 @@ function JobCard({
   if (job.clientHireRate !== null) {
     pills.push({
       icon: CheckCircle,
-      text: `${Math.round(job.clientHireRate * 100)}% hire rate`,
+      text: `${Math.round(job.clientHireRate)}% hire rate`,
       kleur: "text-emerald-400",
     });
   }

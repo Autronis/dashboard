@@ -208,17 +208,48 @@ export async function GET() {
       (p) => !projectenMetActiviteit.has(p.id)
     );
 
-    if (stilleProjecten.length > 0) {
-      const lijst = stilleProjecten
-        .map((p) => `${p.naam}${p.klantNaam ? ` (${p.klantNaam})` : ""}`)
+    // Stille projecten alert uitgeschakeld — dupliceerde de 'Project updates'
+    // widget in Dagbriefing. Die toont al voortgang per project, inclusief
+    // welke stil staan. Alert hier gaf extra cognitieve ruis zonder nieuwe actie.
+    // stilleProjecten blijft wel in de response beschikbaar voor andere
+    // clients die het willen gebruiken.
+    void stilleProjecten;
+
+    // 5b. Onbetaalde facturen met overdue status — directe actie (herinnering).
+    const overdueFacturen = await db
+      .select({
+        id: facturen.id,
+        factuurnummer: facturen.factuurnummer,
+        klantNaam: klanten.bedrijfsnaam,
+        bedragInclBtw: facturen.bedragInclBtw,
+        vervaldatum: facturen.vervaldatum,
+      })
+      .from(facturen)
+      .leftJoin(klanten, eq(facturen.klantId, klanten.id))
+      .where(
+        and(
+          eq(facturen.status, "te_laat"),
+          sql`${facturen.vervaldatum} IS NOT NULL`,
+        ),
+      )
+      .limit(10);
+
+    if (overdueFacturen.length > 0) {
+      const totaal = overdueFacturen.reduce(
+        (acc, f) => acc + (f.bedragInclBtw ?? 0),
+        0,
+      );
+      const lijst = overdueFacturen
+        .slice(0, 3)
+        .map((f) => `${f.factuurnummer}${f.klantNaam ? ` (${f.klantNaam})` : ""}`)
         .join(", ");
       inzichten.push({
-        id: "projecten-stil",
-        type: "tip",
-        prioriteit: 5,
-        titel: `${stilleProjecten.length} actie${stilleProjecten.length > 1 ? "ve" : "f"} project${stilleProjecten.length > 1 ? "en" : ""} zonder activiteit deze week`,
-        omschrijving: `Geen screen-time, handmatige registratie of klant-uren gekoppeld aan: ${lijst}. Als er wél aan gewerkt is: check de koppeling. Anders: markeer als inactief.`,
-        actie: { label: "Bekijk projecten", link: "/projecten" },
+        id: "facturen-overdue",
+        type: "waarschuwing",
+        prioriteit: 2,
+        titel: `€${Math.round(totaal).toLocaleString("nl-NL")} onbetaald over ${overdueFacturen.length} fact${overdueFacturen.length > 1 ? "uren" : "uur"}`,
+        omschrijving: `Vervallen: ${lijst}${overdueFacturen.length > 3 ? " +meer" : ""}. Stuur een herinnering of bel.`,
+        actie: { label: "Open facturen", link: "/facturen" },
       });
     }
 

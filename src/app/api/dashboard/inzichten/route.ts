@@ -7,6 +7,8 @@ import {
   projecten,
   taken,
   screenTimeEntries,
+  tijdregistraties,
+  klantUren,
   bankTransacties,
   abonnementen,
   revolutVerbinding,
@@ -159,7 +161,10 @@ export async function GET() {
       });
     }
 
-    // 5. Projecten zonder tijdregistratie afgelopen week
+    // 5. Actieve projecten waar niemand mee bezig is geweest deze week
+    //    Check drie activity-bronnen parallel: screen-time, handmatige
+    //    tijdregistraties, klant-uren. Een project telt als 'actief' zodra
+    //    er in ÉÉN van de drie een entry is — anders is 't écht stil.
     const actieveProjectenLijst = await db
       .select({
         id: projecten.id,
@@ -168,37 +173,52 @@ export async function GET() {
       })
       .from(projecten)
       .leftJoin(klanten, eq(projecten.klantId, klanten.id))
-      .where(
-        and(eq(projecten.status, "actief"), eq(projecten.isActief, 1))
-      )
-;
+      .where(and(eq(projecten.status, "actief"), eq(projecten.isActief, 1)));
 
-    // Active projects with screen-time activity in the last week
-    const projectenMetUrenRaw = await db
-      .select({
-        projectId: screenTimeEntries.projectId,
-      })
-      .from(screenTimeEntries)
-      .where(and(
-        gte(screenTimeEntries.startTijd, eenWeekGeleden.toISOString()),
-        ne(screenTimeEntries.categorie, "inactief"),
-      ))
-      .groupBy(screenTimeEntries.projectId);
+    const eenWeekISO = eenWeekGeleden.toISOString();
+    const eenWeekDatum = datumISO(eenWeekGeleden);
 
-    const projectenMetUren = projectenMetUrenRaw.map((r) => r.projectId);
+    const [screenTimeProjects, tijdregProjects, klantUrenProjects] = await Promise.all([
+      db
+        .select({ projectId: screenTimeEntries.projectId })
+        .from(screenTimeEntries)
+        .where(and(
+          gte(screenTimeEntries.startTijd, eenWeekISO),
+          ne(screenTimeEntries.categorie, "inactief"),
+        ))
+        .groupBy(screenTimeEntries.projectId),
+      db
+        .select({ projectId: tijdregistraties.projectId })
+        .from(tijdregistraties)
+        .where(gte(tijdregistraties.startTijd, eenWeekISO))
+        .groupBy(tijdregistraties.projectId),
+      db
+        .select({ projectId: klantUren.projectId })
+        .from(klantUren)
+        .where(gte(klantUren.datum, eenWeekDatum))
+        .groupBy(klantUren.projectId),
+    ]);
+
+    const projectenMetActiviteit = new Set<number>();
+    for (const row of screenTimeProjects) if (row.projectId) projectenMetActiviteit.add(row.projectId);
+    for (const row of tijdregProjects) if (row.projectId) projectenMetActiviteit.add(row.projectId);
+    for (const row of klantUrenProjects) if (row.projectId) projectenMetActiviteit.add(row.projectId);
 
     const stilleProjecten = actieveProjectenLijst.filter(
-      (p) => !projectenMetUren.includes(p.id)
+      (p) => !projectenMetActiviteit.has(p.id)
     );
 
     if (stilleProjecten.length > 0) {
+      const lijst = stilleProjecten
+        .map((p) => `${p.naam}${p.klantNaam ? ` (${p.klantNaam})` : ""}`)
+        .join(", ");
       inzichten.push({
         id: "projecten-stil",
         type: "tip",
         prioriteit: 5,
-        titel: `${stilleProjecten.length} actie${stilleProjecten.length > 1 ? "ve" : "f"} project${stilleProjecten.length > 1 ? "en" : ""} zonder uren deze week`,
-        omschrijving: `Geen tijd geregistreerd voor: ${stilleProjecten.map((p) => `${p.naam} (${p.klantNaam})`).join(", ")}.`,
-        actie: { label: "Ga naar tijdregistratie", link: "/tijd" },
+        titel: `${stilleProjecten.length} actie${stilleProjecten.length > 1 ? "ve" : "f"} project${stilleProjecten.length > 1 ? "en" : ""} zonder activiteit deze week`,
+        omschrijving: `Geen screen-time, handmatige registratie of klant-uren gekoppeld aan: ${lijst}. Als er wél aan gewerkt is: check de koppeling. Anders: markeer als inactief.`,
+        actie: { label: "Bekijk projecten", link: "/projecten" },
       });
     }
 

@@ -73,10 +73,26 @@ export function parseInstagramPage(html: string, url: string, type: ItemType, in
     }
   }
 
-  // IG sometimes serves reels as /p/ URLs, so check video_url for both types.
+  // IG serves reels/video-posts under both /p/ and /reel/ URLs. The MP4 URL
+  // can appear in multiple places depending on which page-variant IG decides
+  // to render — og:video meta, inline JSON video_url, playable_url, or
+  // video_versions[].url. Try each in order.
   let mediaUrl: string | undefined;
-  const videoMatch = html.match(/"video_url":"([^"]+)"/);
-  if (videoMatch) mediaUrl = decodeJsonString(videoMatch[1]);
+  const mediaPatterns: RegExp[] = [
+    /<meta\s+property="og:video:secure_url"\s+content="([^"]+)"/,
+    /<meta\s+property="og:video"\s+content="([^"]+)"/,
+    /"video_url":"([^"]+)"/,
+    /"playable_url_quality_hd":"([^"]+)"/,
+    /"playable_url":"([^"]+)"/,
+    /"video_versions":\s*\[\s*\{[^}]*?"url":"([^"]+)"/,
+  ];
+  for (const re of mediaPatterns) {
+    const m = html.match(re);
+    if (m) {
+      mediaUrl = decodeHtmlEntities(decodeJsonString(m[1]));
+      break;
+    }
+  }
 
   // Fallback to edge_media_to_caption when og:description parse yielded nothing useful
   if (!caption || caption.length < 5) {

@@ -435,6 +435,11 @@ export default function ApiGebruikPage() {
                                 <td className="p-3">
                                   <span className="text-autronis-text-primary font-medium">
                                     {ROUTE_LABELS[r.route || ""] || r.route || "Onbekend"}
+                                    {r.route === "ai/client" && (
+                                      <span className="text-autronis-text-secondary/60 text-xs ml-1">
+                                        {r.provider === "anthropic" ? "(Claude)" : r.provider === "groq" ? "(Llama)" : `(${r.provider})`}
+                                      </span>
+                                    )}
                                   </span>
                                 </td>
                                 <td className="p-3">

@@ -5,7 +5,7 @@ import { bankTransacties } from "@/lib/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 
-const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const anthropic = Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY }, "/api/bank/transacties/analyse");
 
 interface TransactieContext {
   id: number;

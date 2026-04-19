@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { taken, projecten } from "@/lib/db/schema";
+import { taken, projecten, slimmeTakenTemplates } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, or } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { classifyTaakCluster } from "@/lib/cluster";
+import { ensureSystemTemplates, fillNaamTemplate, fillPromptTemplate } from "@/lib/slimme-taken";
+import { formatSlotToIso } from "@/lib/agenda-slot-finder";
 
 // POST /api/agenda/ai-plan — AI vult de dag met taken, gegroepeerd per cluster
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth();
+    const gebruiker = await requireAuth();
     const { datum } = await req.json();
 
     if (!datum) {
@@ -319,12 +321,79 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       });
     }
 
+    // ==== Auto-fill met slimme taken ====
+    // Als er nog vrije tijd op de dag is, pull actieve slimme taken
+    // templates in om de dag verder te vullen. Voorkom duplicaten: skip
+    // templates waarvan de (ingevulde) titel al op deze dag staat.
+    await ensureSystemTemplates();
+    const slimmeTpls = await db
+      .select()
+      .from(slimmeTakenTemplates)
+      .where(eq(slimmeTakenTemplates.isActief, 1))
+      .orderBy(slimmeTakenTemplates.naam);
+
+    const vandaagTitles = new Set<string>();
+    for (const b of bestaandeIngepland) {
+      if (b.ingeplandStart?.startsWith(datum)) vandaagTitles.add(b.titel);
+    }
+    for (const g of gepland) vandaagTitles.add(g.titel);
+
+    let autoGevuld = 0;
+    for (const tpl of slimmeTpls) {
+      const titel = fillNaamTemplate(tpl.naam, {});
+      if (vandaagTitles.has(titel)) continue;
+
+      const duur = tpl.geschatteDuur ?? 15;
+      const slot = schuifNaarVrijSlot(
+        new Date(`${datum}T08:00:00`).getTime(),
+        duur
+      );
+      if (!slot) break; // dag vol
+
+      const prompt = fillPromptTemplate(tpl.prompt, {});
+      const startISO = formatSlotToIso(slot.start);
+      const eindISO = formatSlotToIso(slot.eind);
+
+      const [nieuw] = await db
+        .insert(taken)
+        .values({
+          projectId: null,
+          aangemaaktDoor: gebruiker.id,
+          toegewezenAan: null,
+          eigenaar: "vrij",
+          titel,
+          omschrijving: tpl.beschrijving,
+          cluster: tpl.cluster,
+          fase: "Slimme taken",
+          status: "open",
+          prioriteit: "normaal",
+          uitvoerder: "claude",
+          prompt,
+          geschatteDuur: duur,
+          ingeplandStart: startISO,
+          ingeplandEind: eindISO,
+        })
+        .returning();
+
+      gepland.push({
+        id: nieuw.id,
+        titel,
+        start: formatTijd(slot.start),
+        eind: formatTijd(slot.eind),
+        cluster: tpl.cluster ?? undefined,
+      });
+      blockingIntervals.push({ start: slot.start, eind: slot.eind, label: titel });
+      vandaagTitles.add(titel);
+      autoGevuld++;
+    }
+
     return NextResponse.json({
       succes: true,
       gepland,
       totaal: gepland.length,
       clusterBlokken: clusterBlokken.length,
       autoClusterGefaald,
+      autoGevuld,
       overlapGeskipt: geskiptOverlap,
     });
   } catch (error) {

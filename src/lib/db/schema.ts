@@ -1990,3 +1990,16 @@ export const featureFlags = sqliteTable("feature_flags", {
   beschrijving: text("beschrijving"),
   aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
 });
+
+// Ops Room heartbeats — live chat activity uit Claude Code hooks op Sem/Syb
+// machines. Elke PostToolUse pingt hier naartoe; <10 min oud = zichtbaar in UI.
+export const opsHeartbeats = sqliteTable("ops_heartbeats", {
+  sessionId: text("session_id").primaryKey(),
+  gebruiker: text("gebruiker").notNull(), // "sem" | "syb"
+  chatTag: text("chat_tag"),
+  huidigeTaak: text("huidige_taak"),
+  activeSkill: text("active_skill"), // "atlas" | "autro" | "wout" | ... | null
+  laatsteTool: text("laatste_tool"), // "Edit" | "Bash" | "Read" | ...
+  project: text("project"),
+  tijdstip: text("tijdstip").notNull().default(sql`(datetime('now'))`),
+});

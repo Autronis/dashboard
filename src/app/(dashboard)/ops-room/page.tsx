@@ -31,6 +31,7 @@ import { AgentStatusGrid } from "@/components/ops-room/agent-status-grid";
 import { CostDashboard } from "@/components/ops-room/cost-dashboard";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
+import { useHeartbeats } from "@/hooks/queries/use-heartbeats";
 import { useOrchestrator } from "@/components/ops-room/orchestrator-store";
 import type { TaskLogEntry } from "@/components/ops-room";
 
@@ -43,9 +44,32 @@ export default function OpsRoomPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("office");
 
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
+  const { data: heartbeats } = useHeartbeats();
   const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
   const orchestratorLogs = useOrchestrator((s) => s.logs);
   const loadFromDb = useOrchestrator((s) => s.loadFromDb);
+
+  // Map heartbeats → per-agent activity. Een heartbeat van user=sem met
+  // activeSkill=wout zet wout-op-V1 op "working". Default (geen skill) =
+  // atlas/autro. Meerdere chats kunnen meerdere skills tegelijk activeren.
+  const heartbeatAgents = useMemo(() => {
+    const map = new Map<string, { project: string; taak: string; chatTag: string | null; status: "actief" | "idle" }>();
+    (heartbeats ?? []).forEach((hb) => {
+      const suffix = hb.user === "syb" ? "-syb" : "";
+      const skill = hb.activeSkill ?? (hb.user === "syb" ? "autro" : "atlas");
+      // Atlas/autro zijn mains — krijgen geen suffix.
+      const id = skill === "atlas" || skill === "autro" ? skill : skill + suffix;
+      // Als een agent al een "actief" heartbeat heeft, die houden we
+      if (map.get(id)?.status === "actief" && hb.status !== "actief") return;
+      map.set(id, {
+        project: hb.project ?? hb.chatTag ?? "Autronis",
+        taak: hb.huidigeTaak ?? hb.laatsteTool ?? "Aan het werk",
+        chatTag: hb.chatTag,
+        status: hb.status,
+      });
+    });
+    return map;
+  }, [heartbeats]);
 
   // Load pending/in_progress commands from DB on mount
   useEffect(() => { loadFromDb(); }, [loadFromDb]);
@@ -215,9 +239,27 @@ export default function OpsRoomPage() {
     });
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
-    return [...merged, ...extraLive];
-  }, [liveAgents, orchestratorAgents, dbActiveAgents, projectenMetTaken]);
-  const isLive = liveAgents && liveAgents.length > 0;
+
+    // Overlay heartbeats — échte live Claude Code activity.
+    // Een heartbeat wint van alle andere overlays (mock, orchestrator).
+    const withHeartbeats = [...merged, ...extraLive].map((a) => {
+      const hb = heartbeatAgents.get(a.id);
+      if (!hb) return a;
+      return {
+        ...a,
+        status: (hb.status === "actief" ? "working" : "idle") as Agent["status"],
+        huidigeTaak: {
+          id: `hb-${a.id}`,
+          beschrijving: hb.taak,
+          project: hb.project,
+          startedAt: new Date().toISOString(),
+          status: "bezig" as const,
+        },
+      };
+    });
+    return withHeartbeats;
+  }, [liveAgents, orchestratorAgents, dbActiveAgents, projectenMetTaken, heartbeatAgents]);
+  const isLive = (liveAgents && liveAgents.length > 0) || heartbeatAgents.size > 0;
 
   // Convert orchestrator logs + live API data to TaskLogEntry format
   const liveFeed: TaskLogEntry[] = useMemo(() => {

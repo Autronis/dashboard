@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Clock,
   Sparkles,
+  Send,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -90,10 +92,60 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
+// ─── Build the Upwork proposal submit URL — strip leading `~` from jobId ───
+function buildSubmitUrl(jobId: string): string {
+  const clean = jobId.startsWith("~") ? jobId.slice(1) : jobId;
+  return `https://www.upwork.com/nx/proposals/job/${clean}`;
+}
+
+// ─── Minimal markdown renderer: **bold** and `- bullet` → HTML ───
+function renderPitchMarkdown(text: string): string {
+  const escape = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+
+  const lines = text.split("\n");
+  const out: string[] = [];
+  let inList = false;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    const bulletMatch = /^\s*-\s+(.*)$/.exec(line);
+    if (bulletMatch) {
+      if (!inList) {
+        out.push('<ul class="list-disc list-outside ml-5 space-y-1 my-2">');
+        inList = true;
+      }
+      const content = escape(bulletMatch[1]).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      out.push(`<li>${content}</li>`);
+      continue;
+    }
+    if (inList) {
+      out.push("</ul>");
+      inList = false;
+    }
+    if (line.trim() === "") {
+      out.push("<br/>");
+      continue;
+    }
+    const content = escape(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    out.push(`<p class="my-1.5">${content}</p>`);
+  }
+  if (inList) out.push("</ul>");
+  return out.join("");
+}
+
 export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
   const { addToast } = useToast();
   const [busy, setBusy] = useState<Action | null>(null);
   const [activeTab, setActiveTab] = useState<DrawerTab>("details");
+  const [pitch, setPitch] = useState<string | null>(job.pitchDraft ?? null);
+  const [pitchBusy, setPitchBusy] = useState(false);
+  const [pitchGeneratedAt, setPitchGeneratedAt] = useState<string | null>(
+    job.pitchGeneratedAt ?? null,
+  );
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -144,27 +196,68 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
     }
   }, [job.url, addToast]);
 
+  const copyPitch = useCallback(async () => {
+    if (!pitch) return;
+    try {
+      await navigator.clipboard.writeText(pitch);
+      addToast("Pitch gekopieerd — plak op Upwork", "succes");
+    } catch {
+      addToast("Kon niet kopiëren", "fout");
+    }
+  }, [pitch, addToast]);
+
+  const generatePitch = useCallback(
+    async (regenerate = false) => {
+      setPitchBusy(true);
+      try {
+        const res = await fetch(`/api/upwork/jobs/${job.id}/pitch`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ regenerate }),
+        });
+        const data = (await res.json()) as {
+          succes?: boolean;
+          pitch?: string;
+          generatedAt?: string;
+          fout?: string;
+        };
+        if (!res.ok) {
+          addToast(data.fout ?? "Pitch genereren mislukt", "fout");
+          return;
+        }
+        if (typeof data.pitch === "string") setPitch(data.pitch);
+        if (typeof data.generatedAt === "string") setPitchGeneratedAt(data.generatedAt);
+      } catch {
+        addToast("Netwerkfout bij pitch genereren", "fout");
+      } finally {
+        setPitchBusy(false);
+      }
+    },
+    [job.id, addToast],
+  );
+
   const screeningQs = parseStringArray(job.screeningQs);
   const categoryLabels = parseStringArray(job.categoryLabels);
   const showStatusChip = job.status !== "new" && job.status !== "viewed";
+  const submitUrl = buildSubmitUrl(job.jobId);
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex justify-end"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
     >
       <motion.div
-        initial={{ x: 80, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 80, opacity: 0 }}
-        transition={{ type: "spring", stiffness: 320, damping: 32 }}
-        className="w-full max-w-3xl h-full bg-[var(--bg)] border-l border-[var(--border)] overflow-y-auto flex flex-col"
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 16 }}
+        transition={{ type: "spring", stiffness: 320, damping: 30 }}
+        className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--card)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-[var(--bg)]/95 backdrop-blur border-b border-[var(--border)]">
+        {/* Header — sticky top CTA bar */}
+        <div className="sticky top-0 z-10 bg-[var(--card)]/95 backdrop-blur border-b border-[var(--border)]">
           <div className="p-5 space-y-3">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -199,7 +292,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
               </button>
             </div>
 
-            {/* Primary CTA bar */}
+            {/* Primary CTA bar — three buttons, wrap on narrow */}
             <div className="flex items-center gap-2 flex-wrap">
               <a
                 href={job.url}
@@ -210,9 +303,19 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                 Open op Upwork
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
+              <a
+                href={submitUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#17B8A5] bg-transparent text-[#4DC9B4] text-sm font-semibold hover:bg-[#17B8A5]/10 transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Submit proposal
+                <ExternalLink className="w-3.5 h-3.5" />
+              </a>
               <button
                 onClick={() => void copyUrl()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:border-[#17B8A5]/40 hover:text-[var(--text-primary)] transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:border-[#17B8A5]/40 hover:text-[var(--text-primary)] transition-colors"
               >
                 <Copy className="w-3.5 h-3.5" />
                 Copy URL
@@ -221,12 +324,12 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
           </div>
         </div>
 
-        {/* Content — 2 column */}
+        {/* Content — 3-col grid on md+, stack on mobile */}
         <div className="flex-1 p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Left — client card */}
             <div className="md:col-span-1">
-              <div className="bg-[var(--card)] rounded-xl p-4 border border-[var(--border)] space-y-3">
+              <div className="bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)] space-y-3">
                 <div>
                   <p className="text-xs uppercase tracking-wider text-[var(--text-tertiary)] mb-1">Client</p>
                   <p className="font-medium text-[var(--text-primary)]">
@@ -287,7 +390,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
               </div>
 
               {/* Budget prominent */}
-              <div className="mt-3 bg-[var(--card)] rounded-xl p-4 border border-[var(--border)]">
+              <div className="mt-3 bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)]">
                 <p className="text-xs uppercase tracking-wider text-[var(--text-tertiary)] mb-1">Budget</p>
                 <p className="text-lg font-semibold text-[#4DC9B4] tabular-nums">
                   {formatBudget(job)}
@@ -341,12 +444,12 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                     {/* Meta chips */}
                     <div className="flex flex-wrap gap-2">
                       {job.experienceLevel && (
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--card)] border border-[var(--border)] text-[var(--text-secondary)]">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text-secondary)]">
                           {EXP_LABELS[job.experienceLevel]}
                         </span>
                       )}
                       {job.durationEstimate && (
-                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--card)] border border-[var(--border)] text-[var(--text-secondary)]">
+                        <span className="text-xs px-2.5 py-1 rounded-full bg-[var(--bg)] border border-[var(--border)] text-[var(--text-secondary)]">
                           {job.durationEstimate}
                         </span>
                       )}
@@ -416,7 +519,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                         ))}
                       </ol>
                     ) : (
-                      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-6 text-center text-sm text-[var(--text-tertiary)]">
+                      <div className="bg-[var(--bg)] border border-[var(--border)] rounded-xl p-6 text-center text-sm text-[var(--text-tertiary)]">
                         Geen screening vragen
                       </div>
                     )}
@@ -431,26 +534,74 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                     exit={{ opacity: 0, y: -6 }}
                     transition={{ duration: 0.15 }}
                   >
-                    <div className="bg-[var(--card)] border border-dashed border-[var(--border)] rounded-xl p-6 space-y-4">
-                      <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                        <div>
-                          <p className="text-sm font-medium text-[var(--text-primary)] mb-1">
-                            AI-gegenereerde pitch komt in Fase 2
+                    {pitch === null ? (
+                      <div className="bg-[var(--bg)] border border-dashed border-[var(--border)] rounded-xl p-8 flex flex-col items-center text-center space-y-4">
+                        <Sparkles className="w-10 h-10 text-yellow-400" />
+                        <button
+                          disabled={pitchBusy}
+                          onClick={() => void generatePitch(false)}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#17B8A5] text-black text-sm font-semibold hover:bg-[#4DC9B4] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                        >
+                          {pitchBusy ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              Genereren…
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              Genereer pitch
+                            </>
+                          )}
+                        </button>
+                        <p className="text-sm text-[var(--text-tertiary)] max-w-md leading-relaxed">
+                          Claude schrijft een proposal-draft op basis van deze job. Je reviewt + tweakt voor je &apos;m plakt op Upwork.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div
+                          className="bg-[var(--bg)] rounded-xl p-4 border border-[var(--border)] text-sm text-[var(--text-secondary)] leading-relaxed"
+                          // eslint-disable-next-line react/no-danger
+                          dangerouslySetInnerHTML={{ __html: renderPitchMarkdown(pitch) }}
+                        />
+                        {pitchGeneratedAt && (
+                          <p className="text-xs text-[var(--text-tertiary)]">
+                            Gegenereerd {formatRelativeTime(pitchGeneratedAt)}
                           </p>
-                          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-                            Voor nu: open de job op Upwork en schrijf handmatig.
-                          </p>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            onClick={() => void copyPitch()}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#17B8A5] text-black text-sm font-semibold hover:bg-[#4DC9B4] transition-colors"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            Kopieer naar klembord
+                          </button>
+                          <button
+                            disabled={pitchBusy}
+                            onClick={() => void generatePitch(true)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:border-[#17B8A5]/40 hover:text-[var(--text-primary)] disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {pitchBusy ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                            {pitchBusy ? "Regenereren…" : "Regenereer"}
+                          </button>
+                          <a
+                            href={submitUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs text-[var(--text-tertiary)] hover:text-[#4DC9B4] transition-colors ml-auto"
+                          >
+                            Open Upwork Submit
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
                         </div>
                       </div>
-                      <button
-                        disabled
-                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-tertiary)] cursor-not-allowed opacity-60"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        Genereer pitch (Fase 2)
-                      </button>
-                    </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -459,7 +610,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
         </div>
 
         {/* Sticky action footer */}
-        <div className="sticky bottom-0 bg-[var(--bg)]/95 backdrop-blur border-t border-[var(--border)] p-4">
+        <div className="sticky bottom-0 bg-[var(--card)]/95 backdrop-blur border-t border-[var(--border)] p-4">
           <div className="flex flex-wrap items-center gap-2">
             {!job.claimedBy && (
               <button
@@ -474,7 +625,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
             <button
               disabled={busy !== null}
               onClick={() => void doAction("dismiss")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Ban className="w-4 h-4" />
               {busy === "dismiss" ? ACTION_LABELS.dismiss.doing : "Dismiss"}
@@ -482,7 +633,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
             <button
               disabled={busy !== null}
               onClick={() => void doAction("refetch")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--card)] border border-[var(--border)] text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-tertiary)] hover:text-[var(--text-primary)] hover:border-[var(--border)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-auto"
             >
               <RefreshCw className={`w-4 h-4 ${busy === "refetch" ? "animate-spin" : ""}`} />
               {busy === "refetch" ? ACTION_LABELS.refetch.doing : "Re-fetch"}

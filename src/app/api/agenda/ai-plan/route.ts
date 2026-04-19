@@ -399,10 +399,16 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
         if (vandaagTitles.has(titel)) continue;
 
         const duur = tpl.geschatteDuur ?? 15;
+        const isHandmatig = tpl.uitvoerder === "handmatig";
+        // Handmatige slimme taken (LinkedIn posts, cold outreach, demo calls,
+        // engagement) mogen OVERLAPPEN met Claude sessies — Sem is tijdens
+        // Claude vrij. Maar niet met andere handmatige werk (die strikt blokt
+        // zichzelf). Claude slimme taken botsen met beide buckets.
+        const slotBlockers = isHandmatig ? strikteBlokkers : [...claudeBlokkers, ...strikteBlokkers];
         const slot = schuifNaarVrijSlot(
           new Date(`${datum}T${DAG_START}:00`).getTime(),
           duur,
-          [...claudeBlokkers, ...strikteBlokkers]
+          slotBlockers
         );
         if (!slot) continue; // geen plek meer voor deze template vandaag
 
@@ -423,8 +429,8 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
             fase: "Slimme taken",
             status: "open",
             prioriteit: "normaal",
-            uitvoerder: "claude",
-            prompt,
+            uitvoerder: isHandmatig ? "handmatig" : "claude",
+            prompt: isHandmatig ? null : prompt,
             geschatteDuur: duur,
             ingeplandStart: startISO,
             ingeplandEind: eindISO,
@@ -438,7 +444,13 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
           eind: formatTijd(slot.eind),
           cluster: tpl.cluster ?? undefined,
         });
-        claudeBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
+        // Registreer in de juiste bucket — handmatig blokt andere handmatige,
+        // claude blokt andere Claude items.
+        if (isHandmatig) {
+          strikteBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
+        } else {
+          claudeBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
+        }
         vandaagTitles.add(titel);
         autoGevuld++;
         placedThisCycle++;

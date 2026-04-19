@@ -23,6 +23,7 @@ interface SlimmeTaakTemplate {
   }> | null;
   isSysteem: boolean;
   recurringDayOfWeek: number | null;
+  uitvoerder: "claude" | "handmatig";
 }
 
 interface TemplateSuggestie {
@@ -128,6 +129,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
     prompt: string;
     velden: Array<{ key: string; label: string; placeholder?: string }>;
     recurringDayOfWeek: number | null;
+    uitvoerder: "claude" | "handmatig";
   }>({
     naam: "",
     beschrijving: "",
@@ -136,6 +138,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
     prompt: "",
     velden: [],
     recurringDayOfWeek: null,
+    uitvoerder: "claude",
   });
 
   const loadTemplates = useCallback(async () => {
@@ -194,6 +197,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
         prompt: "",
         velden: [],
         recurringDayOfWeek: null,
+        uitvoerder: "claude",
       });
     }
   }, [open, ingeplandVoor]);
@@ -476,6 +480,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       prompt: template.prompt,
       velden: template.velden ?? [],
       recurringDayOfWeek: template.recurringDayOfWeek,
+      uitvoerder: template.uitvoerder ?? "claude",
     });
     setMode("edit");
   }
@@ -870,6 +875,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                             prompt: "",
                             velden: [],
                             recurringDayOfWeek: null,
+                            uitvoerder: "claude",
                           });
                           setMode("edit");
                         }}

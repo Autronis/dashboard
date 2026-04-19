@@ -49,13 +49,19 @@ export async function POST(req: NextRequest) {
       prompt?: string;
       velden?: Array<{ key: string; label: string; placeholder?: string; type?: string }>;
       recurringDayOfWeek?: number | null;
+      uitvoerder?: "claude" | "handmatig";
     };
 
     if (!body.naam?.trim()) {
       return NextResponse.json({ fout: "naam is verplicht" }, { status: 400 });
     }
-    if (!body.prompt?.trim()) {
-      return NextResponse.json({ fout: "prompt is verplicht" }, { status: 400 });
+    const uitvoerder = body.uitvoerder === "handmatig" ? "handmatig" : "claude";
+    // Voor Claude templates is prompt verplicht — Claude moet iets
+    // uitvoerbaars hebben. Voor handmatige templates kan prompt leeg of
+    // een checklist zijn; we slaan alsnog iets op zodat de kolom NOT NULL
+    // constraint niet klapt.
+    if (uitvoerder === "claude" && !body.prompt?.trim()) {
+      return NextResponse.json({ fout: "prompt is verplicht voor Claude templates" }, { status: 400 });
     }
     const VALID_CLUSTERS = ["backend-infra", "frontend", "klantcontact", "content", "admin", "research"];
     if (!body.cluster || !VALID_CLUSTERS.includes(body.cluster)) {
@@ -95,11 +101,12 @@ export async function POST(req: NextRequest) {
         beschrijving: body.beschrijving?.trim() || null,
         cluster: body.cluster as "backend-infra" | "frontend" | "klantcontact" | "content" | "admin" | "research",
         geschatteDuur: body.geschatteDuur ?? 15,
-        prompt: body.prompt.trim(),
+        prompt: body.prompt?.trim() || "",
         velden: body.velden && body.velden.length > 0 ? JSON.stringify(body.velden) : null,
         isSysteem: 0,
         isActief: 1,
         recurringDayOfWeek: body.recurringDayOfWeek ?? null,
+        uitvoerder,
         aangemaaktDoor: gebruiker.id,
       })
       .returning();

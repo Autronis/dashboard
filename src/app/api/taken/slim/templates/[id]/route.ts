@@ -22,6 +22,7 @@ export async function PUT(
       velden?: Array<{ key: string; label: string; placeholder?: string; type?: string }>;
       recurringDayOfWeek?: number | null;
       isActief?: number;
+      uitvoerder?: "claude" | "handmatig";
     };
 
     const [bestaand] = await db
@@ -50,6 +51,9 @@ export async function PUT(
       updateData.velden = body.velden && body.velden.length > 0 ? JSON.stringify(body.velden) : null;
     }
     if (body.recurringDayOfWeek !== undefined) updateData.recurringDayOfWeek = body.recurringDayOfWeek;
+    if (body.uitvoerder !== undefined) {
+      updateData.uitvoerder = body.uitvoerder === "handmatig" ? "handmatig" : "claude";
+    }
     if (body.isActief !== undefined) {
       updateData.isActief = body.isActief;
       // Bij activeren van een suggestie: flip is_suggestie naar 0

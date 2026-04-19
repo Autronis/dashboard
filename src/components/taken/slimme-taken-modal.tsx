@@ -419,6 +419,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       addToast(`"${s.naam}" toegevoegd`, "succes");
       setSuggesties((curr) => curr.filter((_, i) => i !== idx));
       await loadTemplates();
+      window.dispatchEvent(new CustomEvent("autronis:slimme-templates-updated"));
     } catch (err) {
       addToast(err instanceof Error ? err.message : "Opslaan mislukt", "fout");
     } finally {
@@ -437,6 +438,8 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
       addToast("Template toegevoegd", "succes");
       setPersistedSuggesties((curr) => curr.filter((s) => s.dbId !== dbId));
       await loadTemplates();
+      // Triggert refetch in andere componenten (bv. agenda right panel)
+      window.dispatchEvent(new CustomEvent("autronis:slimme-templates-updated"));
       // Genereer 1 nieuwe suggestie ter vervanging (fire-and-forget)
       fetch("/api/taken/slim/templates/suggest-and-save", {
         method: "POST",

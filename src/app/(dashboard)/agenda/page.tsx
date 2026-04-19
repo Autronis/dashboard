@@ -339,14 +339,21 @@ export default function AgendaPage() {
   const [slimmeTemplates, setSlimmeTemplates] = useState<SlimmeTemplate[]>([]);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/taken/slim")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && Array.isArray(d.templates)) setSlimmeTemplates(d.templates);
-      })
-      .catch(() => {});
+    const fetchTpls = () => {
+      fetch("/api/taken/slim")
+        .then((r) => r.json())
+        .then((d) => {
+          if (!cancelled && Array.isArray(d.templates)) setSlimmeTemplates(d.templates);
+        })
+        .catch(() => {});
+    };
+    fetchTpls();
+    // Refetch wanneer modal nieuwe templates accepteert/toevoegt
+    const onUpdate = () => fetchTpls();
+    window.addEventListener("autronis:slimme-templates-updated", onUpdate);
     return () => {
       cancelled = true;
+      window.removeEventListener("autronis:slimme-templates-updated", onUpdate);
     };
   }, []);
 

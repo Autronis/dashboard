@@ -241,58 +241,12 @@ export async function GET() {
       });
     }
 
-    // 6. Omzet trend (vergelijk deze maand vs vorige maand)
+    // 6. Omzet trend-inzicht verwijderd — passieve stat, geen actie.
+    //    Voor omzet-grafiek: zie Financiele Snapshot widget op home of
+    //    /analytics voor de volledige trend.
     const eersteVandeMaand = new Date(nu.getFullYear(), nu.getMonth(), 1);
     const eersteVorigeMaand = new Date(nu.getFullYear(), nu.getMonth() - 1, 1);
     const laatsteVorigeMaand = new Date(nu.getFullYear(), nu.getMonth(), 0, 23, 59, 59);
-
-    const omzetDezeMaand = await db
-      .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)` })
-      .from(facturen)
-      .where(
-        and(
-          eq(facturen.status, "betaald"),
-          gte(facturen.betaaldOp, eersteVandeMaand.toISOString())
-        )
-      )
-      .get();
-
-    const omzetVorigeMaand = await db
-      .select({ totaal: sql<number>`COALESCE(SUM(${facturen.bedragInclBtw}), 0)` })
-      .from(facturen)
-      .where(
-        and(
-          eq(facturen.status, "betaald"),
-          gte(facturen.betaaldOp, eersteVorigeMaand.toISOString()),
-          lte(facturen.betaaldOp, laatsteVorigeMaand.toISOString())
-        )
-      )
-      .get();
-
-    const huidig = omzetDezeMaand?.totaal ?? 0;
-    const vorig = omzetVorigeMaand?.totaal ?? 0;
-
-    if (vorig > 0 && huidig > vorig * 1.2) {
-      const percentage = Math.round(((huidig - vorig) / vorig) * 100);
-      inzichten.push({
-        id: "omzet-stijging",
-        type: "succes",
-        prioriteit: 6,
-        titel: `Omzet ${percentage}% hoger dan vorige maand`,
-        omschrijving: `Je omzet deze maand (€${Math.round(huidig).toLocaleString("nl-NL")}) ligt flink hoger dan vorige maand (€${Math.round(vorig).toLocaleString("nl-NL")}).`,
-        actie: { label: "Bekijk analytics", link: "/analytics" },
-      });
-    } else if (vorig > 0 && huidig < vorig * 0.5) {
-      const percentage = Math.round(((vorig - huidig) / vorig) * 100);
-      inzichten.push({
-        id: "omzet-daling",
-        type: "waarschuwing",
-        prioriteit: 2,
-        titel: `Omzet ${percentage}% lager dan vorige maand`,
-        omschrijving: `Je omzet deze maand (€${Math.round(huidig).toLocaleString("nl-NL")}) is een stuk lager dan vorige maand (€${Math.round(vorig).toLocaleString("nl-NL")}). Tijd om leads op te volgen?`,
-        actie: { label: "Open leads", link: "/leads" },
-      });
-    }
 
     // 7. Concept facturen die al lang open staan
     const oudeConcepten = await db
@@ -336,45 +290,8 @@ export async function GET() {
         .limit(1);
 
       if (revolutActive) {
-        const uitgavenDezeMaand = await db
-          .select({ totaal: sql<number>`COALESCE(SUM(${bankTransacties.bedrag}), 0)` })
-          .from(bankTransacties)
-          .where(
-            and(
-              eq(bankTransacties.type, "af"),
-              eq(bankTransacties.bank, "revolut"),
-              gte(bankTransacties.datum, datumISO(eersteVandeMaand))
-            )
-          )
-          .get();
-
-        const uitgavenVorigeMaand = await db
-          .select({ totaal: sql<number>`COALESCE(SUM(${bankTransacties.bedrag}), 0)` })
-          .from(bankTransacties)
-          .where(
-            and(
-              eq(bankTransacties.type, "af"),
-              eq(bankTransacties.bank, "revolut"),
-              gte(bankTransacties.datum, datumISO(eersteVorigeMaand)),
-              lte(bankTransacties.datum, datumISO(laatsteVorigeMaand))
-            )
-          )
-          .get();
-
-        const uitDeze = uitgavenDezeMaand?.totaal ?? 0;
-        const uitVorige = uitgavenVorigeMaand?.totaal ?? 0;
-
-        if (uitVorige > 0 && uitDeze > uitVorige * 1.15) {
-          const pct = Math.round(((uitDeze - uitVorige) / uitVorige) * 100);
-          inzichten.push({
-            id: "revolut-uitgaven-stijging",
-            type: "waarschuwing",
-            prioriteit: 3,
-            titel: `Uitgaven ${pct}% hoger dan vorige maand`,
-            omschrijving: `Via Revolut: €${Math.round(uitDeze).toLocaleString("nl-NL")} deze maand vs €${Math.round(uitVorige).toLocaleString("nl-NL")} vorige maand.`,
-            actie: { label: "Bekijk uitgaven", link: "/financien?tab=uitgaven" },
-          });
-        }
+        // 9. Uitgaven-trend inzicht verwijderd — passieve stat.
+        //    Voor uitgaven-detail: /financien?tab=uitgaven.
 
         // 10. Nieuw gedetecteerde abonnementen (afgelopen 7 dagen)
         const nieuweAbonnementen = await db

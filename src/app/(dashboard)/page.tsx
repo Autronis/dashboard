@@ -106,11 +106,15 @@ function deadlineLabel(deadline: string): string {
   return formatDatum(deadline);
 }
 
-const inzichtConfig: Record<Inzicht["type"], { icon: typeof Lightbulb; color: string; bg: string; border: string }> = {
-  waarschuwing: { icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500/10", border: "border-red-500/20" },
-  kans: { icon: TrendingUp, color: "text-autronis-accent", bg: "bg-autronis-accent/10", border: "border-autronis-accent/20" },
-  tip: { icon: Lightbulb, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-  succes: { icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+// Alle inzichten hebben dezelfde neutrale pill-look (card-bg + subtiele border),
+// het type bepaalt enkel de icoon-kleur zodat je in één oogopslag ziet of het
+// een waarschuwing/kans/tip/succes is. Voorheen had elk type een volledig
+// gekleurde bg — dat vloekte met de rest van het dashboard.
+const inzichtConfig: Record<Inzicht["type"], { icon: typeof Lightbulb; iconColor: string }> = {
+  waarschuwing: { icon: ShieldAlert, iconColor: "text-red-400" },
+  kans: { icon: TrendingUp, iconColor: "text-autronis-accent" },
+  tip: { icon: Lightbulb, iconColor: "text-amber-400" },
+  succes: { icon: CheckCircle2, iconColor: "text-emerald-400" },
 };
 
 const prioriteitConfig: Record<string, { color: string; border: string }> = {
@@ -684,12 +688,12 @@ export default function DashboardPage() {
                   key={inzicht.id}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className={cn("flex items-center gap-2.5 rounded-xl px-4 py-2.5 border flex-shrink-0", config.bg, config.border)}
+                  className="flex items-center gap-2.5 rounded-xl px-4 py-2.5 border border-autronis-border bg-autronis-card flex-shrink-0"
                 >
-                  <Icon className={cn("w-4 h-4 flex-shrink-0", config.color)} />
-                  <span className={cn("text-xs font-semibold whitespace-nowrap", config.color)}>{inzicht.titel}</span>
+                  <Icon className={cn("w-4 h-4 flex-shrink-0", config.iconColor)} />
+                  <span className="text-xs font-semibold text-autronis-text-primary whitespace-nowrap">{inzicht.titel}</span>
                   {inzicht.actie && (
-                    <Link href={inzicht.actie.link} className={cn("text-[11px] font-medium hover:underline whitespace-nowrap flex items-center gap-0.5", config.color)}>
+                    <Link href={inzicht.actie.link} className="text-[11px] font-medium text-autronis-accent hover:text-autronis-accent-hover hover:underline whitespace-nowrap flex items-center gap-0.5">
                       {inzicht.actie.label} <ArrowRight className="w-2.5 h-2.5" />
                     </Link>
                   )}

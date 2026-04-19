@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionCard } from "@/components/leads/section-card";
 
 interface ScraperRun {
   id: string;
@@ -245,16 +247,10 @@ export default function LeadsAutomationsPage() {
 
   return (
     <div className="space-y-7">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
-          <Zap className="w-7 h-7 text-autronis-accent" />
-          Automations
-        </h1>
-        <p className="text-sm text-autronis-text-secondary mt-1.5">
-          Vind nieuwe leads via verschillende bronnen
-        </p>
-      </div>
+      <PageHeader
+        title="Automations"
+        description="Vind nieuwe leads via verschillende bronnen"
+      />
 
       {/* Actieve runs banner */}
       {activeRuns.length > 0 && (
@@ -510,11 +506,18 @@ export default function LeadsAutomationsPage() {
         </div>
 
         {/* Run history panel */}
-        <div>
-          <h2 className="text-sm font-semibold text-autronis-text-primary mb-3">
-            Recente runs
-          </h2>
-
+        <SectionCard
+          title="Recente runs"
+          icon={Radio}
+          aside={
+            runs.length > 0 ? (
+              <span className="text-xs text-autronis-text-secondary tabular-nums">
+                {runs.length} totaal
+              </span>
+            ) : undefined
+          }
+          padding="compact"
+        >
           {loading && runs.length === 0 && (
             <div className="flex items-center justify-center py-12 text-autronis-text-secondary text-sm">
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -530,7 +533,7 @@ export default function LeadsAutomationsPage() {
           )}
 
           {!loading && !error && runs.length === 0 && (
-            <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-6 text-center text-autronis-text-secondary text-sm">
+            <div className="text-center text-autronis-text-secondary text-sm py-6">
               Nog geen scraper runs.
             </div>
           )}
@@ -604,7 +607,7 @@ export default function LeadsAutomationsPage() {
               })}
             </div>
           )}
-        </div>
+        </SectionCard>
       </div>
     </div>
   );

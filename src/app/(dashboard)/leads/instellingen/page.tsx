@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useLeadsDemo } from "@/lib/leads-demo";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface WebhookConfig {
   id: string;
@@ -140,15 +141,10 @@ export default function LeadsInstellingenPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-          <SettingsIcon className="w-6 h-6 text-autronis-accent" />
-          Lead Instellingen
-        </h1>
-        <p className="text-sm text-autronis-text-secondary mt-1">
-          Configureer webhook URLs en email generator instellingen.
-        </p>
-      </div>
+      <PageHeader
+        title="Lead Instellingen"
+        description="Configureer webhook URLs en email generator instellingen."
+      />
 
       {/* Demo mode toggle */}
       <div className="rounded-xl border border-autronis-border bg-autronis-card p-5">

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePoll } from "@/lib/use-poll";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface UnifiedLead {
   id: string;
@@ -267,21 +268,15 @@ export default function LeadsHandmatigPage() {
 
   return (
     <div className="space-y-7">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
-            <PhoneCall className="w-7 h-7 text-autronis-accent" />
-            Handmatig Opvolgen
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1.5 max-w-2xl">
-            Leads waar automatische enrichment geen email kon vinden — bel ze
-            of voeg handmatig een email of website toe
-          </p>
-        </div>
-        <span className="text-sm text-autronis-text-secondary tabular-nums">
-          {gefilterd.length} leads
-        </span>
-      </div>
+      <PageHeader
+        title="Handmatig Opvolgen"
+        description="Leads waar automatische enrichment geen email kon vinden — bel ze of voeg handmatig een email of website toe"
+        actions={
+          <span className="text-sm text-autronis-text-secondary tabular-nums">
+            {gefilterd.length} leads
+          </span>
+        }
+      />
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />

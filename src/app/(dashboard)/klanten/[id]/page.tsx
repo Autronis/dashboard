@@ -55,6 +55,7 @@ import { ProjectModal } from "./project-modal";
 import { NoteModal } from "./note-modal";
 import { DocumentModal } from "./document-modal";
 import { MarkeerContactKnop } from "./markeer-contact-knop";
+import { Sparkline } from "@/components/ui/sparkline";
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   actief: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Actief" },
@@ -948,46 +949,126 @@ export default function KlantDetailPage() {
       <motion.div key="uren" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
         <div className="space-y-6">
           {/* Uren KPI cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-autronis-accent/10">
-                  <Clock className="w-4 h-4 text-autronis-accent" />
+          {(() => {
+            const claudeMin = klantUren.filter((u) => u.bron === "claude-sessie").reduce((s, u) => s + u.duurMinuten, 0);
+            const handmatigMin = klantUren.filter((u) => u.bron !== "claude-sessie").reduce((s, u) => s + u.duurMinuten, 0);
+            const totaalMin = claudeMin + handmatigMin;
+            const claudePct = totaalMin > 0 ? (claudeMin / totaalMin) * 100 : 0;
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-xl bg-autronis-accent/10">
+                      <Clock className="w-4 h-4 text-autronis-accent" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal || 0)}</p>
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale tijd · {kpis.klantUrenSessies || 0} sessies</p>
+                </div>
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-xl bg-purple-500/10">
+                      <Timer className="w-4 h-4 text-purple-400" />
+                    </div>
+                  </div>
+                  {totaalMin === 0 ? (
+                    <p className="text-2xl font-bold text-autronis-text-secondary/60">—</p>
+                  ) : (
+                    <>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-bold text-purple-400 tabular-nums">{formatUren(claudeMin)}</span>
+                        <span className="text-xs text-autronis-text-secondary tabular-nums">/ {formatUren(handmatigMin)}</span>
+                      </div>
+                      <div className="w-full bg-autronis-border rounded-full h-1.5 mt-2 overflow-hidden flex">
+                        <div className="bg-purple-400 h-full" style={{ width: `${claudePct}%` }} />
+                        <div className="bg-slate-400 h-full" style={{ width: `${100 - claudePct}%` }} />
+                      </div>
+                    </>
+                  )}
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Claude / Handmatig</p>
+                </div>
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-xl bg-emerald-500/10">
+                      <Euro className="w-4 h-4 text-emerald-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-emerald-400 tabular-nums">
+                    {formatBedrag(((kpis.klantUrenTotaal || 0) / 60) * (klant.uurtarief || 0))}
+                  </p>
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Waarde (uren × tarief)</p>
+                </div>
+                <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="p-2 rounded-xl bg-blue-500/10">
+                      <FolderKanban className="w-4 h-4 text-blue-400" />
+                    </div>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-400 tabular-nums">{klantUrenPerProject.length}</p>
+                  <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Projecten</p>
                 </div>
               </div>
-              <p className="text-2xl font-bold text-autronis-accent tabular-nums">{formatUren(kpis.klantUrenTotaal || 0)}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale tijd</p>
-            </div>
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-purple-500/10">
-                  <Timer className="w-4 h-4 text-purple-400" />
+            );
+          })()}
+
+          {/* Weekgrafiek — laatste 8 weken klantUren */}
+          {klantUren.length > 0 && (() => {
+            const weken: { label: string; iso: string; min: number }[] = [];
+            const now = new Date();
+            // ISO week (Mon = first day) — group by year-Week
+            function isoWeek(d: Date): { y: number; w: number; label: string; iso: string } {
+              const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+              const dayNum = date.getUTCDay() || 7;
+              date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+              const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+              const w = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+              const label = new Date(d.getFullYear(), d.getMonth(), d.getDate() - (d.getDay() || 7) + 1)
+                .toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
+              return { y: date.getUTCFullYear(), w, label, iso: `${date.getUTCFullYear()}-W${String(w).padStart(2, "0")}` };
+            }
+            for (let i = 7; i >= 0; i--) {
+              const d = new Date(now);
+              d.setDate(d.getDate() - i * 7);
+              const { label, iso } = isoWeek(d);
+              weken.push({ label, iso, min: 0 });
+            }
+            for (const u of klantUren) {
+              if (!u.datum) continue;
+              const d = new Date(u.datum);
+              const { iso } = isoWeek(d);
+              const wk = weken.find((w) => w.iso === iso);
+              if (wk) wk.min += u.duurMinuten;
+            }
+            const maxMin = Math.max(...weken.map((w) => w.min), 60);
+            const heeftData = weken.some((w) => w.min > 0);
+            if (!heeftData) return null;
+            return (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+                <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Tijd per week (laatste 8)</h2>
+                <div className="flex items-end justify-between gap-2 h-32">
+                  {weken.map((w) => {
+                    const pct = (w.min / maxMin) * 100;
+                    return (
+                      <div key={w.iso} className="flex-1 flex flex-col items-center gap-2">
+                        <div className="w-full flex-1 flex items-end relative group">
+                          <motion.div
+                            className="w-full bg-autronis-accent/70 hover:bg-autronis-accent rounded-t-lg transition-colors"
+                            initial={{ height: 0 }}
+                            animate={{ height: `${pct}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-autronis-bg border border-autronis-border rounded-md text-[10px] text-autronis-text-primary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                            {formatUren(w.min)}
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums">{w.label}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <p className="text-2xl font-bold text-purple-400 tabular-nums">{kpis.klantUrenSessies || 0}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Sessies</p>
-            </div>
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-emerald-500/10">
-                  <Euro className="w-4 h-4 text-emerald-400" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-emerald-400 tabular-nums">
-                {formatBedrag(((kpis.klantUrenTotaal || 0) / 60) * (klant.uurtarief || 0))}
-              </p>
-              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Waarde (uren x tarief)</p>
-            </div>
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-blue-500/10">
-                  <FolderKanban className="w-4 h-4 text-blue-400" />
-                </div>
-              </div>
-              <p className="text-2xl font-bold text-blue-400 tabular-nums">{klantUrenPerProject.length}</p>
-              <p className="text-xs text-autronis-text-secondary mt-1 uppercase tracking-wide">Projecten</p>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Per project breakdown */}
           {klantUrenPerProject.length > 0 && (
@@ -1083,6 +1164,60 @@ export default function KlantDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Screen-time per categorie (laatste 10 productieve registraties) */}
+          {recenteTijdregistraties.length > 0 && (() => {
+            const perCategorie = new Map<string, { min: number; aantal: number }>();
+            for (const r of recenteTijdregistraties) {
+              const cat = r.categorie || "overig";
+              const cur = perCategorie.get(cat) || { min: 0, aantal: 0 };
+              cur.min += r.duurMinuten;
+              cur.aantal += 1;
+              perCategorie.set(cat, cur);
+            }
+            const rijen = Array.from(perCategorie.entries()).sort((a, b) => b[1].min - a[1].min);
+            const maxMin = Math.max(...rijen.map(([, v]) => v.min), 1);
+            const catKleur: Record<string, string> = {
+              development: "bg-autronis-accent",
+              design: "bg-purple-400",
+              administratie: "bg-amber-400",
+              finance: "bg-emerald-400",
+              communicatie: "bg-blue-400",
+              overig: "bg-slate-400",
+            };
+            return (
+              <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="text-lg font-semibold text-autronis-text-primary">Screen-time per categorie</h2>
+                  <span className="text-xs text-autronis-text-secondary">laatste {recenteTijdregistraties.length} registraties</span>
+                </div>
+                <div className="space-y-3">
+                  {rijen.map(([cat, v]) => {
+                    const pct = (v.min / maxMin) * 100;
+                    return (
+                      <div key={cat} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="capitalize text-autronis-text-primary">{cat}</span>
+                          <div className="flex items-center gap-3 text-autronis-text-secondary">
+                            <span>{v.aantal} sessie{v.aantal === 1 ? "" : "s"}</span>
+                            <span className="font-bold text-autronis-text-primary tabular-nums">{formatUren(v.min)}</span>
+                          </div>
+                        </div>
+                        <div className="w-full bg-autronis-border/50 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            className={cn("h-full rounded-full", catKleur[cat] || "bg-slate-400")}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 0.5 }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </motion.div>
       )}
@@ -1189,10 +1324,15 @@ export default function KlantDetailPage() {
           {/* Financial KPIs - 6 cards */}
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center justify-between mb-2">
                 <div className="p-2 rounded-xl bg-emerald-500/10">
                   <Euro className="w-4 h-4 text-emerald-400" />
                 </div>
+                {(() => {
+                  const trendData = maandelijkseOmzet.slice(-6).map((m) => m.omzet);
+                  if (trendData.length < 2 || !trendData.some((v) => v > 0)) return null;
+                  return <Sparkline data={trendData} width={64} height={20} />;
+                })()}
               </div>
               <p className="text-xl font-bold text-emerald-400 tabular-nums">{formatBedrag(kpis.omzet)}</p>
               <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Totale omzet</p>
@@ -1241,10 +1381,30 @@ export default function KlantDetailPage() {
                   <Timer className="w-4 h-4 text-autronis-accent" />
                 </div>
               </div>
-              <p className="text-xl font-bold text-autronis-text-primary tabular-nums">
-                {kpis.gemiddeldeBetalingsDagen !== null ? `${kpis.gemiddeldeBetalingsDagen}d` : "\u2014"}
-              </p>
-              <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Betaaltermijn</p>
+              {(() => {
+                const dagen = kpis.gemiddeldeBetalingsDagen;
+                if (dagen === null) {
+                  return (
+                    <>
+                      <p className="text-xl font-bold text-autronis-text-secondary/70 tabular-nums">—</p>
+                      <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Betaaltermijn</p>
+                    </>
+                  );
+                }
+                const baseline = 30;
+                const delta = dagen - baseline;
+                const kleur = delta <= 0 ? "text-emerald-400" : delta <= 7 ? "text-amber-400" : "text-red-400";
+                const deltaLabel =
+                  delta === 0 ? "op tijd" :
+                  delta < 0 ? `${Math.abs(delta)}d voor termijn` :
+                  `${delta}d ná termijn`;
+                return (
+                  <>
+                    <p className={cn("text-xl font-bold tabular-nums", kleur)}>{dagen}d</p>
+                    <p className="text-[10px] text-autronis-text-secondary mt-1 uppercase tracking-wide">Betaaltermijn · {deltaLabel}</p>
+                  </>
+                );
+              })()}
             </div>
           </div>
 

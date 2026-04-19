@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FolderOpen,
   Plus,
@@ -15,6 +16,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Folder {
   id: string;
@@ -33,18 +36,14 @@ export default function LeadsFoldersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create state
   const [isCreating, setIsCreating] = useState(false);
   const [newName, setNewName] = useState("");
 
-  // Edit state
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
-  // Delete confirm state
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Busy state
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -140,69 +139,77 @@ export default function LeadsFoldersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <FolderOpen className="w-6 h-6 text-autronis-accent" />
-            Folders
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Beheer je lead-categorieën. Een rename of delete update automatisch de onderliggende leads.
-          </p>
-        </div>
-        {!isCreating && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Nieuwe folder
-          </button>
-        )}
-      </div>
+    <div className="space-y-7">
+      <PageHeader
+        title="Folders"
+        description="Beheer je lead-categorieën. Rename of delete update automatisch de onderliggende leads."
+        actions={
+          !isCreating ? (
+            <button
+              type="button"
+              onClick={() => setIsCreating(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nieuwe folder
+            </button>
+          ) : undefined
+        }
+      />
 
-      {/* Create row */}
-      {isCreating && (
-        <div className="rounded-xl border border-autronis-accent/40 bg-autronis-card p-3 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder="Folder naam..."
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleCreate();
-              if (e.key === "Escape") {
+      <AnimatePresence>
+        {isCreating && (
+          <motion.div
+            key="create-row"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18, ease: "easeOut" }}
+            className="rounded-2xl border border-autronis-accent/40 bg-autronis-card p-3 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              placeholder="Folder naam..."
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreate();
+                if (e.key === "Escape") {
+                  setIsCreating(false);
+                  setNewName("");
+                }
+              }}
+              autoFocus
+              className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+            />
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={busyId === "new"}
+              className="p-2 rounded-lg bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 transition-colors disabled:opacity-50"
+              title="Opslaan"
+            >
+              {busyId === "new" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setIsCreating(false);
                 setNewName("");
-              }
-            }}
-            autoFocus
-            className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-          />
-          <button
-            onClick={handleCreate}
-            disabled={busyId === "new"}
-            className="p-2 rounded-lg bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 transition-colors disabled:opacity-50"
-            title="Opslaan"
-          >
-            {busyId === "new" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => {
-              setIsCreating(false);
-              setNewName("");
-            }}
-            className="p-2 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/50 transition-colors"
-            title="Annuleren"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
+              }}
+              className="p-2 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/50 transition-colors"
+              title="Annuleren"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Body */}
       {loading && folders.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -210,33 +217,40 @@ export default function LeadsFoldersPage() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+      {error && folders.length === 0 && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
           <p className="font-medium">Kon folders niet laden</p>
           <p className="mt-1 text-red-400/80">{error}</p>
         </div>
       )}
 
-      {!loading && !error && folders.length === 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-8 text-center text-autronis-text-secondary text-sm">
-          Nog geen folders. Klik op "Nieuwe folder" om er een aan te maken.
-        </div>
+      {!loading && !error && folders.length === 0 && !isCreating && (
+        <EmptyState
+          titel="Nog geen folders"
+          beschrijving="Folders groeperen je leads per thema (industrie, regio, intake-bron). Begin met één."
+          actieLabel="Nieuwe folder"
+          onActie={() => setIsCreating(true)}
+          icoon={<FolderOpen className="h-7 w-7 text-autronis-accent" />}
+        />
       )}
 
-      {!loading && !error && folders.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {folders.map((folder) => {
+      {folders.length > 0 && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {folders.map((folder, i) => {
             const isEditing = editingId === folder.id;
             const isDeleting = deletingId === folder.id;
             const busy = busyId === folder.id;
             return (
-              <div
+              <motion.div
                 key={folder.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03, duration: 0.25 }}
                 className={cn(
-                  "rounded-xl border bg-autronis-card p-4 transition-all",
+                  "rounded-2xl border bg-autronis-card p-4 transition-all",
                   isEditing || isDeleting
                     ? "border-autronis-accent/40"
-                    : "border-autronis-border hover:border-autronis-accent/30"
+                    : "border-autronis-border hover:border-autronis-accent/30 hover:bg-autronis-card/80"
                 )}
               >
                 {isEditing ? (
@@ -256,13 +270,19 @@ export default function LeadsFoldersPage() {
                       className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1.5 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
                     />
                     <button
+                      type="button"
                       onClick={() => handleRename(folder.id)}
                       disabled={busy}
                       className="p-1.5 rounded-md bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 transition-colors disabled:opacity-50"
                     >
-                      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      {busy ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Check className="w-3.5 h-3.5" />
+                      )}
                     </button>
                     <button
+                      type="button"
                       onClick={() => {
                         setEditingId(null);
                         setEditingName("");
@@ -275,13 +295,14 @@ export default function LeadsFoldersPage() {
                 ) : isDeleting ? (
                   <div className="space-y-3">
                     <p className="text-sm text-autronis-text-primary">
-                      Folder <span className="font-semibold">"{folder.name}"</span> verwijderen?
+                      Folder <span className="font-semibold">&ldquo;{folder.name}&rdquo;</span> verwijderen?
                     </p>
                     <p className="text-[10px] text-autronis-text-secondary/70">
                       {folder.leadCountTotal} leads raken hun folder toewijzing kwijt (maar blijven bestaan).
                     </p>
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleDelete(folder.id)}
                         disabled={busy}
                         className="flex-1 px-3 py-1.5 rounded-lg bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50"
@@ -289,6 +310,7 @@ export default function LeadsFoldersPage() {
                         {busy ? <Loader2 className="w-3 h-3 animate-spin mx-auto" /> : "Verwijder"}
                       </button>
                       <button
+                        type="button"
                         onClick={() => setDeletingId(null)}
                         className="flex-1 px-3 py-1.5 rounded-lg text-xs font-medium text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/50 transition-colors"
                       >
@@ -301,15 +323,18 @@ export default function LeadsFoldersPage() {
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <Link
                         href={`/leads/folders/${encodeURIComponent(folder.name)}`}
-                        className="flex items-center gap-2 min-w-0 flex-1 hover:text-autronis-accent transition-colors"
+                        className="flex items-center gap-2 min-w-0 flex-1 group"
                       >
-                        <FolderOpen className="w-4 h-4 text-autronis-accent flex-shrink-0" />
-                        <h3 className="text-sm font-semibold text-autronis-text-primary truncate">
+                        <div className="h-8 w-8 rounded-lg bg-autronis-accent/15 flex items-center justify-center flex-shrink-0 group-hover:bg-autronis-accent/25 transition-colors">
+                          <FolderOpen className="w-4 h-4 text-autronis-accent" />
+                        </div>
+                        <h3 className="text-sm font-semibold text-autronis-text-primary group-hover:text-autronis-accent truncate transition-colors">
                           {folder.name}
                         </h3>
                       </Link>
                       <div className="flex items-center gap-0.5">
                         <button
+                          type="button"
                           onClick={() => {
                             setEditingId(folder.id);
                             setEditingName(folder.name);
@@ -320,6 +345,7 @@ export default function LeadsFoldersPage() {
                           <Pencil className="w-3 h-3" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => setDeletingId(folder.id)}
                           className="p-1.5 rounded-md text-autronis-text-secondary/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                           title="Verwijderen"
@@ -329,21 +355,22 @@ export default function LeadsFoldersPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] text-autronis-text-secondary">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-autronis-bg/60">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300 ring-1 ring-inset ring-purple-500/20">
                         <Linkedin className="w-2.5 h-2.5" />
                         {folder.leadCountLinkedin}
                       </span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-autronis-bg/60">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent ring-1 ring-inset ring-autronis-accent/20">
                         <MapPin className="w-2.5 h-2.5" />
                         {folder.leadCountGoogleMaps}
                       </span>
-                      <span className="ml-auto text-autronis-text-primary font-semibold tabular-nums">
-                        {folder.leadCountTotal} totaal
+                      <span className="ml-auto text-autronis-text-primary font-semibold tabular-nums text-xs">
+                        {folder.leadCountTotal}{" "}
+                        <span className="text-autronis-text-secondary/60 font-normal text-[10px]">totaal</span>
                       </span>
                     </div>
                   </>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>

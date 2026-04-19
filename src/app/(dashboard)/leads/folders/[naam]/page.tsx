@@ -5,21 +5,28 @@ import Link from "next/link";
 import {
   FolderOpen,
   ArrowLeft,
-  Search,
   Loader2,
   CheckCircle,
-  AlertCircle,
   Sparkles,
   Mail,
   Download,
-  Linkedin,
-  MapPin,
   ExternalLink,
   Zap,
+  Users,
+  Linkedin,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useBulkScan } from "../../_components/use-bulk-scan";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LeadsKpiTile, type LeadsKpiAccent } from "@/components/leads/kpi-tile";
+import { SectionCard } from "@/components/leads/section-card";
+import { SourceBadge } from "@/components/leads/source-badge";
+import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { BulkActionBar, type BulkAction } from "@/components/leads/bulk-action-bar";
 
 interface Lead {
   id: string;
@@ -48,7 +55,9 @@ function parseEmails(raw: string | null | undefined): string[] {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed.filter((e: string) => e?.trim());
-  } catch {}
+  } catch {
+    //
+  }
   return raw.split(",").map((e) => e.trim()).filter(Boolean);
 }
 
@@ -92,12 +101,14 @@ function exportLeadsAsCSV(leads: Lead[], filename: string) {
   URL.revokeObjectURL(url);
 }
 
-const TABS = [
-  { key: "all", label: "Alle" },
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "google_maps", label: "Google Maps" },
-  { key: "enriched", label: "Enriched" },
-  { key: "failed", label: "Failed" },
+type TabKey = "all" | "linkedin" | "google_maps" | "enriched" | "failed";
+
+const TABS: Array<{ key: TabKey; label: string; icon: typeof Users; accent: LeadsKpiAccent }> = [
+  { key: "all", label: "Alle", icon: Users, accent: "cyan" },
+  { key: "linkedin", label: "LinkedIn", icon: Linkedin, accent: "purple" },
+  { key: "google_maps", label: "Google Maps", icon: MapPin, accent: "green" },
+  { key: "enriched", label: "Enriched", icon: CheckCircle, accent: "blue" },
+  { key: "failed", label: "Failed", icon: Sparkles, accent: "red" },
 ];
 
 export default function FolderDetailPage({
@@ -111,7 +122,7 @@ export default function FolderDetailPage({
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState("all");
+  const [tab, setTab] = useState<TabKey>("all");
   const [zoek, setZoek] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isEnriching, setIsEnriching] = useState(false);
@@ -127,8 +138,6 @@ export default function FolderDetailPage({
         throw new Error(body.fout || `HTTP ${res.status}`);
       }
       const data = await res.json();
-      // Filter direct op folder naam — server-side filtering zou efficiënter zijn,
-      // maar /api/leads heeft geen folder query param dus dit is acceptabel
       const folderLeads = (data.leads ?? []).filter(
         (l: Lead) => l.folder === folderName
       );
@@ -190,6 +199,10 @@ export default function FolderDetailPage({
     } else {
       setSelectedIds(new Set(filtered.map((l) => l.id)));
     }
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
   }
 
   async function enrichSelected() {
@@ -266,105 +279,95 @@ export default function FolderDetailPage({
       addToast("Geen leads om te exporteren", "fout");
       return;
     }
-    exportLeadsAsCSV(toExport, `folder-${folderName}-${new Date().toISOString().slice(0, 10)}.csv`);
+    exportLeadsAsCSV(
+      toExport,
+      `folder-${folderName}-${new Date().toISOString().slice(0, 10)}.csv`
+    );
     addToast(`${toExport.length} leads geëxporteerd`, "succes");
   }
 
+  const bulkActions: BulkAction[] = [
+    {
+      key: "scan",
+      label: "Scan",
+      icon: Zap,
+      onClick: scanSelected,
+      tone: "cyan",
+      title: "Open de Sales Engine scan-flow met deze leads voorgeladen",
+    },
+    {
+      key: "enrich",
+      label: "Enrich",
+      icon: Sparkles,
+      onClick: enrichSelected,
+      tone: "blue",
+      busy: isEnriching,
+    },
+    {
+      key: "generate",
+      label: "Genereer",
+      icon: Mail,
+      onClick: generateSelected,
+      tone: "emerald",
+      busy: isGenerating,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header met breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <Link
-            href="/leads/folders"
-            className="inline-flex items-center gap-1 text-xs text-autronis-text-secondary hover:text-autronis-accent mb-2"
-          >
-            <ArrowLeft className="w-3 h-3" />
-            Terug naar folders
-          </Link>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <FolderOpen className="w-6 h-6 text-autronis-accent" />
-            {folderName}
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            {leads.length} leads in deze folder
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-7">
+      <div>
+        <Link
+          href="/leads/folders"
+          className="inline-flex items-center gap-1 text-xs text-autronis-text-secondary hover:text-autronis-accent mb-2"
+        >
+          <ArrowLeft className="w-3 h-3" />
+          Terug naar folders
+        </Link>
+        <PageHeader
+          title={folderName}
+          description={`${leads.length} leads in deze folder`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {TABS.map((t, i) => (
+          <LeadsKpiTile
+            key={t.key}
+            icon={t.icon}
+            label={t.label}
+            value={counts[t.key]}
+            accent={t.accent}
+            active={tab === t.key}
+            onClick={() => setTab(t.key)}
+            index={i}
+          />
+        ))}
+      </div>
+
+      <FilterBar
+        search={{
+          value: zoek,
+          onChange: setZoek,
+          placeholder: "Zoek binnen folder...",
+        }}
+        actions={
           <button
+            type="button"
             onClick={exportSelected}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
           >
             <Download className="w-3 h-3" />
             Export CSV
           </button>
-          {selectedIds.size > 0 && (
-            <>
-              <button
-                onClick={scanSelected}
-                title="Open de Sales Engine scan-flow met deze leads voorgeladen"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-accent/10 border border-autronis-accent/30 text-xs font-semibold text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
-              >
-                <Zap className="w-3 h-3" />
-                Scan ({selectedIds.size})
-              </button>
-              <button
-                onClick={enrichSelected}
-                disabled={isEnriching}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-semibold text-autronis-text-primary hover:border-autronis-accent/40 transition-colors disabled:opacity-40"
-              >
-                {isEnriching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                Enrich ({selectedIds.size})
-              </button>
-              <button
-                onClick={generateSelected}
-                disabled={isGenerating}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-40"
-              >
-                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-                Genereer ({selectedIds.size})
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+        }
+      />
 
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        {TABS.map((t) => {
-          const active = tab === t.key;
-          const count = counts[t.key as keyof typeof counts];
-          return (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              className={cn(
-                "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                active
-                  ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
-                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
-              )}
-            >
-              {t.label}
-              <span className="tabular-nums font-semibold">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        actions={bulkActions}
+        onClear={clearSelection}
+      />
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-        <input
-          type="text"
-          value={zoek}
-          onChange={(e) => setZoek(e.target.value)}
-          placeholder="Zoek binnen folder..."
-          className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-        />
-      </div>
-
-      {/* Body */}
       {loading && leads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -372,117 +375,137 @@ export default function FolderDetailPage({
         </div>
       )}
 
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+      {error && leads.length === 0 && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
           <p className="font-medium">Kon folder niet laden</p>
           <p className="mt-1 text-red-400/80">{error}</p>
         </div>
       )}
 
       {!loading && !error && filtered.length === 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-8 text-center text-autronis-text-secondary text-sm">
-          {leads.length === 0
-            ? `Geen leads in folder "${folderName}"`
-            : "Geen resultaten in deze tab"}
-        </div>
+        <SectionCard padding="none">
+          <EmptyState
+            titel={
+              leads.length === 0
+                ? `Geen leads in folder "${folderName}"`
+                : "Geen resultaten"
+            }
+            beschrijving={
+              leads.length === 0
+                ? "Koppel leads aan deze folder via Contacten of de overzicht-tab."
+                : "Pas het filter of de zoekterm aan."
+            }
+            icoon={<FolderOpen className="h-7 w-7 text-autronis-accent" />}
+          />
+        </SectionCard>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
-              <tr>
-                <th className="w-10 px-3 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size === filtered.length && filtered.length > 0}
-                    onChange={toggleAll}
-                    className="rounded border-autronis-border accent-autronis-accent"
-                  />
-                </th>
-                <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Email</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Locatie</th>
-                <th className="text-left px-3 py-2.5 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-autronis-border/50">
-              {filtered.slice(0, 200).map((lead) => {
-                const selected = selectedIds.has(lead.id);
-                const emails = parseEmails(lead.emails);
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => toggleSelect(lead.id)}
-                    className={cn(
-                      "cursor-pointer transition-colors",
-                      selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
-                    )}
-                  >
-                    <td className="px-3 py-2.5">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleSelect(lead.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-autronis-border accent-autronis-accent"
-                      />
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-medium text-autronis-text-primary truncate max-w-xs">
-                          {lead.name || "(geen naam)"}
-                        </span>
-                        {isGoogleMaps(lead.source) ? (
-                          <MapPin className="w-3 h-3 text-autronis-accent flex-shrink-0" />
-                        ) : (
-                          <Linkedin className="w-3 h-3 text-purple-300 flex-shrink-0" />
-                        )}
-                        {lead.website && (
-                          <a
-                            href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-autronis-text-secondary hover:text-autronis-accent flex-shrink-0"
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5 hidden md:table-cell text-xs text-autronis-text-secondary truncate max-w-xs">
-                      {emails[0] || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 hidden lg:table-cell text-xs text-autronis-text-secondary">
-                      {(lead.location || "").split(",")[0] || "—"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {lead.email_found ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400">
-                          <CheckCircle className="w-2.5 h-2.5" />
-                          Enriched
-                        </span>
-                      ) : lead.enrichment_status === "failed" ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400">
-                          <AlertCircle className="w-2.5 h-2.5" />
-                          Failed
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-autronis-text-secondary/50">—</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filtered.length > 200 && (
-            <div className="px-4 py-2 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
-              {filtered.length} totaal — eerste 200 getoond
+      {filtered.length > 0 && (
+        <SectionCard
+          title="Leads"
+          icon={FolderOpen}
+          padding="none"
+          aside={
+            <div className="flex items-center gap-3 text-xs text-autronis-text-secondary tabular-nums">
+              {selectedIds.size > 0 && (
+                <span className="text-autronis-accent font-medium">
+                  {selectedIds.size} geselecteerd
+                </span>
+              )}
+              <span>{filtered.length} leads</span>
             </div>
-          )}
-        </div>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
+                <tr>
+                  <th className="w-10 px-3 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === filtered.length && filtered.length > 0}
+                      onChange={toggleAll}
+                      className="rounded border-autronis-border accent-autronis-accent"
+                    />
+                  </th>
+                  <th className="text-left px-3 py-3 font-semibold">Bron</th>
+                  <th className="text-left px-3 py-3 font-semibold">Bedrijf</th>
+                  <th className="text-left px-3 py-3 font-semibold hidden md:table-cell">Email</th>
+                  <th className="text-left px-3 py-3 font-semibold hidden lg:table-cell">Locatie</th>
+                  <th className="text-left px-3 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-autronis-border/50">
+                {filtered.slice(0, 200).map((lead) => {
+                  const selected = selectedIds.has(lead.id);
+                  const emails = parseEmails(lead.emails);
+                  const sourceKind = isGoogleMaps(lead.source) ? "google_maps" : "linkedin";
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => toggleSelect(lead.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
+                      )}
+                    >
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleSelect(lead.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="rounded border-autronis-border accent-autronis-accent"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <SourceBadge source={sourceKind} compact />
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-medium text-autronis-text-primary truncate max-w-xs">
+                            {lead.name || "(geen naam)"}
+                          </span>
+                          {lead.website && (
+                            <a
+                              href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-autronis-text-secondary hover:text-autronis-accent flex-shrink-0"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 hidden md:table-cell text-xs text-autronis-text-secondary truncate max-w-xs">
+                        {emails[0] || "—"}
+                      </td>
+                      <td className="px-3 py-3 hidden lg:table-cell text-xs text-autronis-text-secondary">
+                        {(lead.location || "").split(",")[0] || "—"}
+                      </td>
+                      <td className="px-3 py-3">
+                        {lead.email_found ? (
+                          <LeadStatusBadge status="completed" label="Enriched" compact />
+                        ) : lead.enrichment_status === "failed" ? (
+                          <LeadStatusBadge status="failed" compact />
+                        ) : (
+                          <span className="text-[10px] text-autronis-text-secondary/50">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filtered.length > 200 && (
+              <div className="px-4 py-2 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
+                {filtered.length} totaal — eerste 200 getoond
+              </div>
+            )}
+          </div>
+        </SectionCard>
       )}
     </div>
   );

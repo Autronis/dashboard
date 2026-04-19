@@ -10,20 +10,22 @@ import { mintLeadsUserJwt } from "@/lib/supabase-leads";
 // request een willekeurige endpoint aan de Supabase functions kan raken.
 
 const ALLOWED_FUNCTIONS = new Set([
-  "trigger-enrichment",
+  "clean-emails",
+  "enrichment-done",
+  "log-workflow-error",
+  "process-clean-emails-batch",
   "process-enrichment-batch",
+  "send-email",
+  "set-thread-id",
+  "test-webhook",
   "timeout-pending-enrichments",
   "trigger-email-generator",
-  "trigger-scraper",
+  "trigger-enrichment",
   "trigger-google-maps-scraper",
-  "clean-emails",
-  "set-thread-id",
-  "upsert-lead",
+  "trigger-scraper",
   "upsert-google-maps-lead",
+  "upsert-lead",
   "upsert-reply",
-  "enrichment-done",
-  "send-email",
-  "test-webhook",
 ]);
 
 async function authenticate(req: NextRequest) {

@@ -172,6 +172,13 @@ export type Database = {
             referencedRelation: "leads"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_scrape_health"
+            referencedColumns: ["lead_id"]
+          },
         ]
       }
       folders: {
@@ -470,6 +477,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leads"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_scrape_health"
+            referencedColumns: ["lead_id"]
           },
         ]
       }
@@ -881,9 +895,164 @@ export type Database = {
         }
         Relationships: []
       }
+      workflow_errors: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_message: string
+          error_type: string | null
+          execution_id: string | null
+          http_status: number | null
+          id: string
+          lead_id: string | null
+          node_name: string
+          node_type: string | null
+          resolved_at: string | null
+          retry_count: number | null
+          severity: string
+          user_id: string | null
+          workflow_id: string
+          workflow_name: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_message: string
+          error_type?: string | null
+          execution_id?: string | null
+          http_status?: number | null
+          id?: string
+          lead_id?: string | null
+          node_name: string
+          node_type?: string | null
+          resolved_at?: string | null
+          retry_count?: number | null
+          severity?: string
+          user_id?: string | null
+          workflow_id: string
+          workflow_name?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_message?: string
+          error_type?: string | null
+          execution_id?: string | null
+          http_status?: number | null
+          id?: string
+          lead_id?: string | null
+          node_name?: string
+          node_type?: string | null
+          resolved_at?: string | null
+          retry_count?: number | null
+          severity?: string
+          user_id?: string | null
+          workflow_id?: string
+          workflow_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_errors_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_errors_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_scrape_health"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_error_rate_per_node: {
+        Row: {
+          affected_leads: number | null
+          errors: number | null
+          hour: string | null
+          node_name: string | null
+          severity: string | null
+        }
+        Relationships: []
+      }
+      v_errors_last_24h: {
+        Row: {
+          created_at: string | null
+          error_preview: string | null
+          error_type: string | null
+          http_status: number | null
+          id: string | null
+          lead_id: string | null
+          node_name: string | null
+          node_type: string | null
+          resolved: boolean | null
+          severity: string | null
+          user_id: string | null
+          workflow_id: string | null
+          workflow_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_preview?: never
+          error_type?: string | null
+          http_status?: number | null
+          id?: string | null
+          lead_id?: string | null
+          node_name?: string | null
+          node_type?: string | null
+          resolved?: never
+          severity?: string | null
+          user_id?: string | null
+          workflow_id?: string | null
+          workflow_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_preview?: never
+          error_type?: string | null
+          http_status?: number | null
+          id?: string | null
+          lead_id?: string | null
+          node_name?: string | null
+          node_type?: string | null
+          resolved?: never
+          severity?: string | null
+          user_id?: string | null
+          workflow_id?: string | null
+          workflow_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_errors_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workflow_errors_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "v_lead_scrape_health"
+            referencedColumns: ["lead_id"]
+          },
+        ]
+      }
+      v_lead_scrape_health: {
+        Row: {
+          health: string | null
+          lead_id: string | null
+          name: string | null
+          pages_failed: number | null
+          pages_succeeded: number | null
+          website: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {

@@ -1,8 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Instagram, Loader2, RefreshCw, Trash2, ExternalLink, Plus, CheckCircle2, XCircle, Clock, Play, Image as ImageIcon, Star } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Instagram, Loader2, RefreshCw, Trash2, ExternalLink, Plus,
+  CheckCircle2, XCircle, Clock, Play, Image as ImageIcon, Star,
+  ChevronDown, ChevronUp, Zap, BookOpen, Lightbulb,
+} from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { UitlegBlock } from "@/components/ui/uitleg-block";
 import { useToast } from "@/hooks/use-toast";
@@ -38,13 +42,46 @@ interface Item {
 
 interface Stats { total: number; processed: number; failed: number; avg_score: number; }
 
+const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+  done: { label: "Verwerkt", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25", icon: CheckCircle2 },
+  pending: { label: "Wacht", color: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25", icon: Clock },
+  processing: { label: "Bezig", color: "bg-blue-500/15 text-blue-400 border-blue-500/25", icon: Loader2 },
+  failed: { label: "Mislukt", color: "bg-red-500/15 text-red-400 border-red-500/25", icon: XCircle },
+};
+
+const categoryBadge: Record<string, string> = {
+  core: "bg-purple-500/15 text-purple-400 border-purple-500/25",
+  workflow: "bg-cyan-500/15 text-cyan-400 border-cyan-500/25",
+  integration: "bg-blue-500/15 text-blue-400 border-blue-500/25",
+  tips: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+};
+
+function scoreBadgeColor(score: number): string {
+  if (score >= 9) return "text-emerald-400 bg-emerald-500/15 border-emerald-500/25";
+  if (score >= 7) return "text-emerald-400 bg-emerald-500/15 border-emerald-500/25";
+  if (score >= 5) return "text-amber-400 bg-amber-500/15 border-amber-500/25";
+  return "text-gray-400 bg-gray-500/15 border-gray-500/25";
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso.replace(" ", "T") + "Z").getTime();
+  const s = Math.floor(diff / 1000);
+  if (s < 60) return `${s}s geleden`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m geleden`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}u geleden`;
+  const d = Math.floor(h / 24);
+  return `${d}d geleden`;
+}
+
 export default function InstaKnowledgePage() {
   const [items, setItems] = useState<Item[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, processed: 0, failed: 0, avg_score: 0 });
   const [url, setUrl] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [detail, setDetail] = useState<Item | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { addToast } = useToast();
 
   const fetchData = useCallback(async () => {
@@ -123,7 +160,7 @@ export default function InstaKnowledgePage() {
         </div>
 
         <UitlegBlock id="insta-knowledge-intro" titel="Hoe werkt dit?">
-          <p>Plak een Instagram reel- of post-URL hieronder. De pipeline scraped de caption (en voor reels: transcribeert de audio via Whisper), analyseert met Claude, en scored relevance 1-10. Bij score ≥ 9 verschijnt automatisch een idee in /ideeen.</p>
+          <p>Plak een Instagram reel- of post-URL hieronder. De pipeline scraped de caption, downloadt slides/thumbnails voor Claude vision (leest tekst op afbeeldingen), en — voor video&apos;s waarvoor IG de MP4-URL vrijgeeft — transcribeert de audio via Whisper. Claude combineert alles en scoort relevantie 1-10. Bij score ≥ 9 verschijnt automatisch een idee in /ideeen.</p>
           <p className="mt-2 text-sm opacity-70">Fase 1: alleen handmatige submit. Auto-scraping via Apify komt in fase 2.</p>
         </UitlegBlock>
 
@@ -145,7 +182,7 @@ export default function InstaKnowledgePage() {
           ))}
         </div>
 
-        {/* Submit URL */}
+        {/* Submit */}
         <div className="flex gap-2">
           <input
             type="url"
@@ -165,123 +202,204 @@ export default function InstaKnowledgePage() {
           </button>
         </div>
 
+        {/* List */}
         <div className="space-y-2">
           {loading && <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-autronis-text-secondary" /></div>}
           {!loading && items.length === 0 && (
             <div className="text-center py-16 text-autronis-text-secondary">Nog geen items. Plak een URL om te starten.</div>
           )}
-          {items.map((item) => (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-autronis-card rounded-xl border border-autronis-border p-4 cursor-pointer hover:border-autronis-accent/40 transition-colors"
-              onClick={() => setDetail(item)}
-            >
-              <div className="flex items-start gap-3">
-                <div className="mt-0.5">
-                  {item.type === "reel"
-                    ? <Play className="w-5 h-5 text-autronis-accent" />
-                    : <ImageIcon className="w-5 h-5 text-autronis-accent" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <StatusBadge status={item.status} />
-                    {item.analysis && <ScoreBadge score={item.analysis.relevance_score} />}
-                    {item.author_handle && <span className="text-sm text-autronis-text-secondary">@{item.author_handle}</span>}
-                  </div>
-                  <div className="font-medium text-autronis-text-primary truncate">
-                    {item.analysis?.summary ? item.analysis.summary.slice(0, 120) + "…" : item.caption?.slice(0, 120) || item.instagram_id}
-                  </div>
-                  {item.failure_reason && (
-                    <div className="text-sm text-red-400 mt-1">Fout: {item.failure_reason}</div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                  <a href={item.url} target="_blank" rel="noreferrer" className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><ExternalLink className="w-4 h-4" /></a>
-                  {(item.status === "failed" || item.status === "done") && (
-                    <button onClick={() => retry(item.id)} className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><RefreshCw className="w-4 h-4" /></button>
-                  )}
-                  <button onClick={() => del(item.id)} className="p-2 hover:bg-red-500/15 rounded-lg text-autronis-text-secondary hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+          <AnimatePresence initial={false}>
+            {items.map((item) => {
+              const isExpanded = expandedId === item.id;
+              const sc = statusConfig[item.status] || statusConfig.pending;
+              const StatusIcon = sc.icon;
+              const TypeIcon = item.type === "reel" ? Play : ImageIcon;
+              const title = item.analysis?.summary?.split(".")[0] || item.caption?.slice(0, 80) || item.instagram_id;
 
-        {detail && <DetailDrawer item={detail} onClose={() => setDetail(null)} />}
+              return (
+                <motion.div
+                  key={item.id}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="bg-autronis-card rounded-xl border border-autronis-border overflow-hidden"
+                >
+                  {/* Header row */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                    className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-autronis-border/10 transition-colors cursor-pointer"
+                  >
+                    <TypeIcon className="w-4 h-4 text-autronis-accent shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-autronis-text-primary truncate">{title}</span>
+                        {item.analysis && (
+                          <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border shrink-0", scoreBadgeColor(item.analysis.relevance_score))}>
+                            <Star className="w-3 h-3" /> {item.analysis.relevance_score}/10
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-autronis-text-secondary mt-0.5">
+                        {item.author_handle && <span>@{item.author_handle}</span>}
+                        {item.author_handle && <span>·</span>}
+                        <span>{item.type}</span>
+                        <span>·</span>
+                        <span>{timeAgo(item.discovered_at)}</span>
+                      </div>
+                    </div>
+                    <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border shrink-0", sc.color)}>
+                      <StatusIcon className={cn("w-3 h-3", item.status === "processing" && "animate-spin")} />
+                      {sc.label}
+                    </span>
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <a href={item.url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                      {(item.status === "failed" || item.status === "done") && (
+                        <button onClick={() => retry(item.id)} className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><RefreshCw className="w-4 h-4" /></button>
+                      )}
+                      <button onClick={() => del(item.id)} className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/15 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-autronis-text-secondary shrink-0" /> : <ChevronDown className="w-4 h-4 text-autronis-text-secondary shrink-0" />}
+                  </div>
+
+                  {/* Expanded analysis */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="px-4 pb-4 space-y-4 border-t border-autronis-border pt-3">
+                          {item.failure_reason && (
+                            <div className="text-sm text-red-400">Fout: {item.failure_reason}</div>
+                          )}
+                          {item.analysis ? (
+                            <>
+                              <div>
+                                <p className="text-sm text-autronis-text-primary leading-relaxed">{item.analysis.summary}</p>
+                                <p className="text-xs text-autronis-text-secondary mt-1">{item.analysis.relevance_reason}</p>
+                              </div>
+
+                              {item.analysis.features.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Zap className="w-3 h-3" /> Features ({item.analysis.features.length})
+                                  </h4>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {item.analysis.features.map((f, i) => (
+                                      <span
+                                        key={i}
+                                        title={f.description}
+                                        className={cn(
+                                          "px-2 py-0.5 rounded-full text-xs border cursor-default",
+                                          categoryBadge[f.category] || "bg-gray-500/15 text-gray-400 border-gray-500/25"
+                                        )}
+                                      >
+                                        {f.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {item.analysis.steps.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3" /> Stappen ({item.analysis.steps.length})
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {item.analysis.steps.map((s, i) => (
+                                      <div key={i} className="flex gap-2">
+                                        <span className="text-xs font-mono text-autronis-accent mt-0.5 shrink-0">{s.order}.</span>
+                                        <div>
+                                          <p className="text-sm text-autronis-text-primary font-medium">{s.title}</p>
+                                          <p className="text-xs text-autronis-text-secondary">{s.description}</p>
+                                          {s.code_snippet && (
+                                            <code className="mt-1 block text-xs bg-autronis-bg rounded px-2 py-1 text-autronis-accent font-mono">
+                                              {s.code_snippet}
+                                            </code>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {item.analysis.tips.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <Lightbulb className="w-3 h-3" /> Tips ({item.analysis.tips.length})
+                                  </h4>
+                                  <div className="space-y-1.5">
+                                    {item.analysis.tips.map((t, i) => (
+                                      <div key={i} className="text-sm">
+                                        <span className="text-autronis-text-primary">{t.tip}</span>
+                                        <span className="text-autronis-text-secondary text-xs ml-1">— {t.context}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {item.analysis.links.length > 0 && (
+                                <div>
+                                  <h4 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wider mb-2 flex items-center gap-1">
+                                    <ExternalLink className="w-3 h-3" /> Links ({item.analysis.links.length})
+                                  </h4>
+                                  <div className="space-y-1">
+                                    {item.analysis.links.map((l, i) => (
+                                      <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm group">
+                                        <span className="text-autronis-accent group-hover:underline">{l.label}</span>
+                                        <span className="text-xs text-autronis-text-secondary px-1.5 py-0.5 rounded bg-autronis-bg">{l.type}</span>
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {item.caption && (
+                                <details className="text-xs text-autronis-text-secondary">
+                                  <summary className="cursor-pointer hover:text-autronis-text-primary">Originele caption</summary>
+                                  <p className="mt-1 whitespace-pre-wrap text-autronis-text-primary">{item.caption}</p>
+                                </details>
+                              )}
+
+                              {item.analysis.raw_transcript && (
+                                <details className="text-xs text-autronis-text-secondary">
+                                  <summary className="cursor-pointer hover:text-autronis-text-primary">Audio-transcript ({item.analysis.raw_transcript.length} tekens)</summary>
+                                  <p className="mt-1 whitespace-pre-wrap text-autronis-text-primary">{item.analysis.raw_transcript}</p>
+                                </details>
+                              )}
+
+                              <a
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-autronis-accent hover:underline"
+                              >
+                                <ExternalLink className="w-3 h-3" />
+                                Bekijk op Instagram
+                              </a>
+                            </>
+                          ) : (
+                            <p className="text-sm text-autronis-text-secondary">Nog geen analyse beschikbaar.</p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
       </div>
     </PageTransition>
-  );
-}
-
-function StatusBadge({ status }: { status: ItemStatus }) {
-  const map = {
-    pending: { icon: Clock, label: "Wacht", cls: "bg-yellow-500/15 text-yellow-400 border-yellow-500/25" },
-    processing: { icon: Loader2, label: "Bezig", cls: "bg-blue-500/15 text-blue-400 border-blue-500/25" },
-    done: { icon: CheckCircle2, label: "Verwerkt", cls: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25" },
-    failed: { icon: XCircle, label: "Mislukt", cls: "bg-red-500/15 text-red-400 border-red-500/25" },
-  } as const;
-  const { icon: Icon, label, cls } = map[status];
-  return (
-    <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border", cls)}>
-      <Icon className={cn("w-3 h-3", status === "processing" && "animate-spin")} /> {label}
-    </span>
-  );
-}
-
-function ScoreBadge({ score }: { score: number }) {
-  const cls = score >= 9
-    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
-    : score >= 7
-    ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
-    : "bg-autronis-border/20 text-autronis-text-secondary border-autronis-border/40";
-  return (
-    <span className={cn("inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border", cls)}>
-      <Star className="w-3 h-3" /> {score}/10
-    </span>
-  );
-}
-
-function DetailDrawer({ item, onClose }: { item: Item; onClose: () => void }) {
-  const a = item.analysis;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/85 backdrop-blur-sm p-4" onClick={onClose}>
-      <div
-        className="bg-autronis-card border border-autronis-border rounded-t-xl md:rounded-xl w-full md:max-w-3xl max-h-[90vh] overflow-auto p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <div className="text-sm text-autronis-text-secondary">@{item.author_handle || "onbekend"} · {item.type}</div>
-            <h2 className="text-xl font-semibold text-autronis-text-primary mt-1">{a?.summary ? a.summary.slice(0, 80) : item.instagram_id}</h2>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-autronis-border/40 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary transition-colors"><XCircle className="w-5 h-5" /></button>
-        </div>
-        {a ? (
-          <div className="space-y-5 text-sm text-autronis-text-primary">
-            <div><h3 className="font-semibold mb-1 text-autronis-accent">Samenvatting</h3><p>{a.summary}</p></div>
-            <div><h3 className="font-semibold mb-1 text-autronis-accent">Relevantie: {a.relevance_score}/10</h3><p className="text-autronis-text-secondary">{a.relevance_reason}</p></div>
-            {a.features.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Features</h3><ul className="space-y-1">{a.features.map((f, i) => <li key={i}><strong>{f.name}:</strong> <span className="text-autronis-text-secondary">{f.description}</span></li>)}</ul></div>)}
-            {a.steps.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Stappenplan</h3><ol className="space-y-2">{a.steps.map((s) => <li key={s.order}><strong>{s.order}. {s.title}</strong><div className="text-autronis-text-secondary">{s.description}</div>{s.code_snippet && <pre className="bg-autronis-bg border border-autronis-border rounded-lg p-2 mt-1 overflow-x-auto text-xs">{s.code_snippet}</pre>}</li>)}</ol></div>)}
-            {a.tips.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Tips</h3><ul className="space-y-1">{a.tips.map((t, i) => <li key={i}>{t.tip} — <em className="text-autronis-text-secondary">{t.context}</em></li>)}</ul></div>)}
-            {a.links.length > 0 && (<div><h3 className="font-semibold mb-2 text-autronis-accent">Links</h3><ul className="space-y-1">{a.links.map((l, i) => <li key={i}><a href={l.url} target="_blank" rel="noreferrer" className="text-autronis-accent hover:underline">{l.label}</a> <span className="text-autronis-text-secondary text-xs">({l.type})</span></li>)}</ul></div>)}
-          </div>
-        ) : (
-          <p className="text-autronis-text-secondary">Nog geen analyse beschikbaar.</p>
-        )}
-        {item.caption && <div className="mt-6 border-t border-autronis-border pt-4"><h4 className="font-semibold mb-1 text-sm text-autronis-text-secondary">Originele caption</h4><p className="text-sm text-autronis-text-primary whitespace-pre-wrap">{item.caption}</p></div>}
-        {a?.raw_transcript && (
-          <div className="mt-4 border-t border-autronis-border pt-4">
-            <h4 className="font-semibold mb-1 text-sm text-autronis-text-secondary">Audio-transcript (Whisper)</h4>
-            <p className="text-sm text-autronis-text-primary whitespace-pre-wrap">{a.raw_transcript}</p>
-          </div>
-        )}
-        <div className="mt-4 border-t border-autronis-border pt-4 text-xs text-autronis-text-secondary space-y-1">
-          <div>Media URL: {item.media_url ? <a href={item.media_url} target="_blank" rel="noreferrer" className="text-autronis-accent hover:underline break-all">{item.media_url.slice(0, 80)}…</a> : <span className="opacity-60">niet gevonden</span>}</div>
-          <div>Transcript lengte: {a?.raw_transcript ? `${a.raw_transcript.length} tekens` : "geen (geen video of transcriptie mislukt)"}</div>
-        </div>
-      </div>
-    </div>
   );
 }

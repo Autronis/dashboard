@@ -47,14 +47,11 @@ export async function POST(
       return NextResponse.json({ fout: "Lead niet gevonden." }, { status: 404 });
     }
 
-    // Guard: lead al gepromoveerd?
-    const bestaand = await db
-      .select({ id: projecten.id, naam: projecten.naam })
-      .from(projecten)
-      .where(eq(projecten.leadId, leadId));
-    if (bestaand.length > 0) {
+    // Guard: lead al gepromoveerd? Projecten heeft geen leadId FK, dus
+    // dedup via lead.status = 'gewonnen' (wordt hieronder gezet).
+    if (lead.status === "gewonnen") {
       return NextResponse.json(
-        { fout: `Lead is al gepromoveerd naar project '${bestaand[0].naam}' (id ${bestaand[0].id}).`, projectId: bestaand[0].id },
+        { fout: `Lead is al gewonnen-gepromoveerd.` },
         { status: 409 }
       );
     }
@@ -95,7 +92,6 @@ export async function POST(
       .insert(projecten)
       .values({
         klantId: klant.id,
-        leadId: lead.id,
         naam: projectNaam,
         omschrijving,
         status: "actief",

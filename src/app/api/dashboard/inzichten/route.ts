@@ -136,30 +136,10 @@ export async function GET() {
       });
     }
 
-    // 4. Taken met hoge prioriteit
-    const urgenteTaken = await db
-      .select({
-        count: sql<number>`COUNT(*)`,
-      })
-      .from(taken)
-      .where(
-        and(
-          eq(taken.prioriteit, "hoog"),
-          ne(taken.status, "afgerond")
-        )
-      )
-      .get();
-
-    if (urgenteTaken && urgenteTaken.count > 0) {
-      inzichten.push({
-        id: "taken-urgent",
-        type: "waarschuwing",
-        prioriteit: 4,
-        titel: `${urgenteTaken.count} urgente ta${urgenteTaken.count > 1 ? "ken" : "ak"} open`,
-        omschrijving: `Er staan ${urgenteTaken.count} taken met hoge prioriteit open die aandacht nodig hebben.`,
-        actie: { label: "Bekijk taken", link: "/taken" },
-      });
-    }
+    // 4. Urgente taken alert uitgeschakeld — 'Mijn taken' widget toont al
+    // de volgende focus-taak met afvink-knop direct op de home. Dubbel.
+    // Als je 'm ooit wil terug: uncomment + query op taken waar prioriteit
+    // 'hoog' + status != afgerond, én tegelijk UIT de Mijn taken widget halen.
 
     // 5. Actieve projecten waar niemand mee bezig is geweest deze week
     //    Check drie activity-bronnen parallel: screen-time, handmatige
@@ -338,6 +318,7 @@ export async function GET() {
     // 8. Leads met hoge waarde in pipeline
     const waardevollLeads = await db
       .select({
+        id: leads.id,
         bedrijfsnaam: leads.bedrijfsnaam,
         waarde: leads.waarde,
         status: leads.status,
@@ -347,22 +328,24 @@ export async function GET() {
         and(
           eq(leads.isActief, 1),
           sql`${leads.status} IN ('nieuw', 'contact', 'offerte')`,
-          gte(leads.waarde, 5000)
-        )
+          gte(leads.waarde, 5000),
+        ),
       )
       .orderBy(desc(leads.waarde))
-      .limit(3)
-;
+      .limit(3);
 
     if (waardevollLeads.length > 0) {
-      const totaal = waardevollLeads.reduce((s, l) => s + (l.waarde ?? 0), 0);
+      // Actie-gericht: link direct naar TOP-lead (niet naar de lijst).
+      // Sem kan de grootste kans meteen openen en follow-up doen.
+      const top = waardevollLeads[0];
+      const rest = waardevollLeads.length - 1;
       inzichten.push({
         id: "leads-waarde",
         type: "kans",
         prioriteit: 3,
-        titel: `€${Math.round(totaal).toLocaleString("nl-NL")} aan kansrijke leads`,
-        omschrijving: `${waardevollLeads.map((l) => `${l.bedrijfsnaam} (€${Math.round(l.waarde ?? 0).toLocaleString("nl-NL")}, ${l.status})`).join(", ")}.`,
-        actie: { label: "Open leads", link: "/leads" },
+        titel: `Top prospect: ${top.bedrijfsnaam} — €${Math.round(top.waarde ?? 0).toLocaleString("nl-NL")}`,
+        omschrijving: `Status: ${top.status}. ${rest > 0 ? `+${rest} andere kansrijke lead${rest > 1 ? "s" : ""} (≥€5k).` : ""} Klik door voor contactgegevens en follow-up.`,
+        actie: { label: "Open lead", link: `/leads#lead-${top.id}` },
       });
     }
 

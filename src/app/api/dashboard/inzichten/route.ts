@@ -12,8 +12,11 @@ import {
   bankTransacties,
   abonnementen,
   revolutVerbinding,
+  upworkJobs,
+  projectIntakes,
+  meetings,
 } from "@/lib/db/schema";
-import { eq, and, ne, gte, lte, lt, sql, desc } from "drizzle-orm";
+import { eq, and, ne, gte, lte, lt, sql } from "drizzle-orm";
 
 interface Inzicht {
   id: string;
@@ -107,7 +110,11 @@ export async function GET() {
       });
     }
 
-    // 3. Leads zonder opvolging (status "nieuw" of "contact" met geen activiteit >7 dagen)
+    // 3. Leads zonder opvolging (status "nieuw" of "contact", >7 dagen stil,
+    //    én geen volgende actie al in de toekomst gepland). Zonder die laatste
+    //    filter kwamen leads terug waar we al een actie geagendeerd hadden —
+    //    vals signaal.
+    const nuISO = new Date().toISOString();
     const verwaarloosdeLeads = await db
       .select({
         id: leads.id,
@@ -120,7 +127,8 @@ export async function GET() {
         and(
           eq(leads.isActief, 1),
           sql`${leads.status} IN ('nieuw', 'contact')`,
-          lt(leads.bijgewerktOp, eenWeekGeleden.toISOString())
+          lt(leads.bijgewerktOp, eenWeekGeleden.toISOString()),
+          sql`(${leads.volgendeActieDatum} IS NULL OR ${leads.volgendeActieDatum} <= ${nuISO})`,
         )
       )
 ;
@@ -315,39 +323,9 @@ export async function GET() {
       });
     }
 
-    // 8. Leads met hoge waarde in pipeline
-    const waardevollLeads = await db
-      .select({
-        id: leads.id,
-        bedrijfsnaam: leads.bedrijfsnaam,
-        waarde: leads.waarde,
-        status: leads.status,
-      })
-      .from(leads)
-      .where(
-        and(
-          eq(leads.isActief, 1),
-          sql`${leads.status} IN ('nieuw', 'contact', 'offerte')`,
-          gte(leads.waarde, 5000),
-        ),
-      )
-      .orderBy(desc(leads.waarde))
-      .limit(3);
-
-    if (waardevollLeads.length > 0) {
-      // Actie-gericht: link direct naar TOP-lead (niet naar de lijst).
-      // Sem kan de grootste kans meteen openen en follow-up doen.
-      const top = waardevollLeads[0];
-      const rest = waardevollLeads.length - 1;
-      inzichten.push({
-        id: "leads-waarde",
-        type: "kans",
-        prioriteit: 3,
-        titel: `Top prospect: ${top.bedrijfsnaam} — €${Math.round(top.waarde ?? 0).toLocaleString("nl-NL")}`,
-        omschrijving: `Status: ${top.status}. ${rest > 0 ? `+${rest} andere kansrijke lead${rest > 1 ? "s" : ""} (≥€5k).` : ""} Klik door voor contactgegevens en follow-up.`,
-        actie: { label: "Open lead", link: `/leads#lead-${top.id}` },
-      });
-    }
+    // 8. "Top prospect"-inzicht is verwijderd — dupliceerde de ProspectRadar
+    //    widget verderop op de homepage (zelfde data, ander framing). Als je
+    //    'm terug wil, strip dan de Radar of verschil de criteria.
 
     // 9. Revolut: Uitgaven trend (deze maand vs vorige maand)
     try {
@@ -449,6 +427,120 @@ export async function GET() {
       }
     } catch {
       // Revolut insights are optional, don't break the whole endpoint
+    }
+
+    // 12. Upwork: nieuwe jobs in inbox — echte "wacht op jou"-signaal,
+    //     niet-afgehandelde scans die nog niet bekeken zijn.
+    try {
+      const [upworkNewRow] = await db
+        .select({ count: sql<number>`COUNT(*)` })
+        .from(upworkJobs)
+        .where(eq(upworkJobs.status, "new"));
+      const upworkNew = Number(upworkNewRow?.count ?? 0);
+      if (upworkNew > 0) {
+        inzichten.push({
+          id: "upwork-inbox",
+          type: "kans",
+          prioriteit: 3,
+          titel: `${upworkNew} nieuw${upworkNew === 1 ? "e" : "e"} Upwork job${upworkNew === 1 ? "" : "s"} in je inbox`,
+          omschrijving: upworkNew === 1
+            ? "Eén onbekeken job uit je saved search — claim of dismiss."
+            : `${upworkNew} onbekeken jobs wachten — snel door scannen.`,
+          actie: { label: "Open Upwork", link: "/upwork" },
+        });
+      }
+    } catch {
+      // Upwork tabel kan ontbreken in dev — non-fatal
+    }
+
+    // 13. Intake vast — project_intakes die >3 dagen niet verder zijn
+    //     gekomen (stap != klaar). Vaak wachten die op scope of beslissing.
+    try {
+      const drieDagenGeleden = new Date();
+      drieDagenGeleden.setDate(drieDagenGeleden.getDate() - 3);
+      const stalledIntakes = await db
+        .select({
+          id: projectIntakes.id,
+          stap: projectIntakes.stap,
+          klantConcept: projectIntakes.klantConcept,
+          projectId: projectIntakes.projectId,
+        })
+        .from(projectIntakes)
+        .where(
+          and(
+            ne(projectIntakes.stap, "klaar"),
+            lt(projectIntakes.bijgewerktOp, drieDagenGeleden.toISOString()),
+          ),
+        )
+        .limit(5);
+
+      if (stalledIntakes.length > 0) {
+        const first = stalledIntakes[0];
+        const rest = stalledIntakes.length - 1;
+        inzichten.push({
+          id: "intake-vast",
+          type: "waarschuwing",
+          prioriteit: 3,
+          titel: `${stalledIntakes.length} intake${stalledIntakes.length > 1 ? "s" : ""} vast — geen voortgang in 3+ dagen`,
+          omschrijving: `Eerste: "${first.klantConcept?.slice(0, 60) ?? "(zonder concept)"}" (stap: ${first.stap}).${rest > 0 ? ` +${rest} meer.` : ""}`,
+          actie: { label: "Open intakes", link: "/projecten" },
+        });
+      }
+    } catch {
+      // Non-fatal
+    }
+
+    // 14. Meetings met ongeleegde actiepunten — meetings.status='klaar'
+    //     waar actiepunten JSON minimaal 1 item heeft. Geen check of die al
+    //     tot taken zijn omgezet (zou JSON-join vereisen); user vinkt ze af
+    //     op /meetings detail.
+    try {
+      const meetingsMetActiepunten = await db
+        .select({
+          id: meetings.id,
+          titel: meetings.titel,
+          actiepunten: meetings.actiepunten,
+        })
+        .from(meetings)
+        .where(
+          and(
+            eq(meetings.status, "klaar"),
+            sql`COALESCE(json_array_length(${meetings.actiepunten}), 0) > 0`,
+          ),
+        )
+        .orderBy(sql`${meetings.datum} DESC`)
+        .limit(10);
+
+      // Filter: alleen meetings van afgelopen 14d (oudere worden toch niet meer verwerkt)
+      const twee_weken = new Date();
+      twee_weken.setDate(twee_weken.getDate() - 14);
+      const recentMeetings = meetingsMetActiepunten.filter((m) => {
+        const meetingRow = m as typeof meetingsMetActiepunten[number] & { datum?: string };
+        return !meetingRow.datum || meetingRow.datum >= twee_weken.toISOString();
+      });
+
+      let totaalActiepunten = 0;
+      for (const m of recentMeetings) {
+        try {
+          const parsed = JSON.parse(m.actiepunten ?? "[]");
+          if (Array.isArray(parsed)) totaalActiepunten += parsed.length;
+        } catch {
+          // malformed JSON, skip
+        }
+      }
+
+      if (recentMeetings.length > 0 && totaalActiepunten > 0) {
+        inzichten.push({
+          id: "meeting-actiepunten",
+          type: "tip",
+          prioriteit: 4,
+          titel: `${totaalActiepunten} actiepunt${totaalActiepunten === 1 ? "" : "en"} uit ${recentMeetings.length} meeting${recentMeetings.length === 1 ? "" : "s"}`,
+          omschrijving: `Meest recent: "${recentMeetings[0].titel}". Doorloop ze en maak taken aan.`,
+          actie: { label: "Open meetings", link: "/meetings" },
+        });
+      }
+    } catch {
+      // Non-fatal (json_array_length is SQLite 3.38+, zou altijd moeten werken)
     }
 
     // Sorteer op prioriteit

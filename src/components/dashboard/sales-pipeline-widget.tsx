@@ -11,15 +11,13 @@ interface PipelineStats {
   outreachVerstuurd: number;
   repliesOntvangen: number;
   dealsGesloten: number;
-  maandTarget: { scans: number; deals: number };
+  weekTarget?: { scans: number; outreach: number; replies: number; deals: number };
+  maandTarget: { scans: number; outreach?: number; replies?: number; deals: number };
 }
 
-// Doelen uit go-to-market plan (maand 3 target):
-// 200 prospects/scans per maand → ~50/week
-// 200 outreach per maand → ~50/week
-// 20 replies per maand → ~5/week
-// 2-3 deals per maand → ~0.6/week
-const WEEKLY_TARGETS = {
+// Fallback als de API (nog) geen weekTarget teruggeeft — na rolling deploy
+// of bij cached responses. De canonieke waardes komen uit de API.
+const FALLBACK_WEEK_TARGETS = {
   scans: 50,
   outreach: 50,
   replies: 5,
@@ -39,6 +37,8 @@ export function SalesPipelineWidget() {
     staleTime: 5 * 60 * 1000,
     retry: false,
   });
+
+  const targets = data?.weekTarget ?? FALLBACK_WEEK_TARGETS;
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow h-full">
@@ -63,7 +63,7 @@ export function SalesPipelineWidget() {
         <Row
           label="Scans"
           value={data?.scansDezeWeek ?? 0}
-          target={WEEKLY_TARGETS.scans}
+          target={targets.scans}
           loading={isLoading}
           actionHref="/sales-engine"
           actionLabel="Scan"
@@ -71,7 +71,7 @@ export function SalesPipelineWidget() {
         <Row
           label="Outreach"
           value={data?.outreachVerstuurd ?? 0}
-          target={WEEKLY_TARGETS.outreach}
+          target={targets.outreach}
           loading={isLoading}
           actionHref="/leads/emails"
           actionLabel="Mails"
@@ -79,13 +79,13 @@ export function SalesPipelineWidget() {
         <Row
           label="Replies"
           value={data?.repliesOntvangen ?? 0}
-          target={WEEKLY_TARGETS.replies}
+          target={targets.replies}
           loading={isLoading}
         />
         <Row
           label="Deals"
           value={data?.dealsGesloten ?? 0}
-          target={WEEKLY_TARGETS.deals}
+          target={targets.deals}
           loading={isLoading}
           accent
         />

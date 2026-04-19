@@ -57,11 +57,6 @@ import { CheckBurst } from "@/components/ui/confetti-dynamic";
 import type { TijdCategorie } from "@/types";
 import { DocumentWidget } from "@/components/documenten/document-widget";
 import { TeamLiveWidget } from "@/components/team/team-live-widget";
-import { HabitWidget } from "@/components/gewoontes/habit-widget";
-import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ideeen";
-import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
-import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
-import { KilometerWidget } from "./components/KilometerWidget";
 import { FinancieleSnapshotWidget } from "@/components/dashboard/financiele-snapshot-widget";
 import { ProspectRadarWidget } from "@/components/dashboard/prospect-radar-widget";
 import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
@@ -448,199 +443,6 @@ function DailyBriefing() {
   );
 }
 
-// ============ IDEE VAN DE DAG ============
-
-function IdeeVanDeDag() {
-  const { data: ideeen = [] } = useIdeeen();
-  const genereer = useGenereerIdeeen();
-  const { addToast } = useToast();
-
-  const vandaag = new Date().toISOString().slice(0, 10);
-  const aiIdeeenVandaag = ideeen.filter((i: Idee) => i.isAiSuggestie === 1 && i.aangemaaktOp?.slice(0, 10) === vandaag);
-  const dagIndex = Math.floor(Date.now() / 86400000);
-  const beste = aiIdeeenVandaag.length > 0
-    ? aiIdeeenVandaag.reduce((a: Idee, b: Idee) => ((a.aiScore ?? 0) >= (b.aiScore ?? 0) ? a : b))
-    : ideeen.length > 0 ? ideeen[dagIndex % ideeen.length] : null;
-
-  const handleGenereer = () => {
-    genereer.mutate(undefined, {
-      onSuccess: () => addToast("Nieuwe ideeen gegenereerd", "succes"),
-      onError: () => addToast("Kon ideeen niet genereren", "fout"),
-    });
-  };
-
-  if (!beste) {
-    return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow card-gradient flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-amber-500/10 rounded-xl"><Lightbulb className="w-5 h-5 text-amber-400" /></div>
-          <div>
-            <p className="text-sm font-semibold text-autronis-text-primary">Idee van de dag</p>
-            <p className="text-xs text-autronis-text-secondary">Nog geen AI-ideeen vandaag</p>
-          </div>
-        </div>
-        <button onClick={handleGenereer} disabled={genereer.isPending} className="inline-flex items-center gap-2 px-4 py-2 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 btn-press">
-          {genereer.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          Genereer
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-autronis-card border border-amber-500/20 rounded-2xl p-5 card-glow card-gradient">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3 min-w-0">
-          <div className="p-2 bg-amber-500/10 rounded-xl flex-shrink-0 mt-0.5"><Lightbulb className="w-5 h-5 text-amber-400" /></div>
-          <div className="min-w-0">
-            <p className="text-xs text-amber-400 font-semibold uppercase tracking-wide mb-1">Idee van de dag</p>
-            <p className="text-base font-semibold text-autronis-text-primary truncate">{beste.naam}</p>
-            {beste.omschrijving && <p className="text-sm text-autronis-text-secondary mt-1 line-clamp-2">{beste.omschrijving}</p>}
-            <div className="flex items-center gap-2 mt-2">
-              {beste.aiScore != null && (
-                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 tabular-nums">Score: {beste.aiScore}/10</span>
-              )}
-              {beste.doelgroep && (
-                <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", beste.doelgroep === "klant" ? "bg-blue-500/15 text-blue-400" : "bg-autronis-accent/15 text-autronis-accent")}>
-                  {beste.doelgroep === "klant" ? "Klant" : "Persoonlijk"}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-        <Link href="/ideeen" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-autronis-accent hover:text-autronis-accent-hover transition-colors flex-shrink-0">
-          Bekijken <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ============ LEARNING RADAR WIDGET ============
-
-const categorieBadgeKleur: Record<string, string> = {
-  tools: "bg-blue-500/15 text-blue-400",
-  ai_tools: "bg-purple-500/15 text-purple-400",
-  api_updates: "bg-purple-500/15 text-purple-400",
-  trends: "bg-orange-500/15 text-orange-400",
-  kansen: "bg-emerald-500/15 text-emerald-400",
-  must_reads: "bg-red-500/15 text-red-400",
-  automation: "bg-cyan-500/15 text-cyan-400",
-};
-
-const categorieLabels: Record<string, string> = {
-  tools: "Tools",
-  ai_tools: "AI Tools",
-  api_updates: "API Updates",
-  trends: "Trends",
-  kansen: "Kansen",
-  must_reads: "Must-reads",
-  automation: "Automation",
-};
-
-function RadarWidget() {
-  const { data, isLoading } = useRadarItems({ minScore: 7 });
-  const items = data?.items ?? [];
-  const topItems = items.slice(0, 5);
-
-  if (isLoading) {
-    return (
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Radar className="w-4 h-4 text-autronis-accent" />
-          <h2 className="text-sm font-semibold text-autronis-text-primary">Learning Radar</h2>
-        </div>
-        <div className="space-y-2">
-          {[1, 2, 3].map((i) => <div key={i} className="bg-autronis-bg/50 rounded-xl p-3 animate-pulse h-12" />)}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Radar className="w-4 h-4 text-autronis-accent" />
-          <h2 className="text-sm font-semibold text-autronis-text-primary">Learning Radar</h2>
-          <span className="text-xs text-autronis-text-secondary">({items.length})</span>
-        </div>
-        <Link href="/radar" className="text-xs text-autronis-accent hover:text-autronis-accent-hover transition-colors flex items-center gap-1">
-          Alles <ArrowRight className="w-3 h-3" />
-        </Link>
-      </div>
-      {topItems.length === 0 ? (
-        <p className="text-sm text-autronis-text-secondary">Nog geen items met hoge score.</p>
-      ) : (
-        <div className="space-y-2">
-          {topItems.map((item) => {
-            const eersteBullet = item.aiSamenvatting
-              ? item.aiSamenvatting.split("\n").find((l) => l.trim().startsWith("-") || l.trim().startsWith("•"))?.replace(/^[-•]\s*/, "").trim()
-              : null;
-            return (
-              <a key={item.id} href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-2.5 bg-autronis-bg/50 rounded-xl p-3 hover:bg-autronis-bg/80 transition-colors group">
-                <span className={cn("inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums flex-shrink-0 mt-0.5", item.score != null && item.score >= 8 ? "bg-emerald-500/15 text-emerald-400" : "bg-yellow-500/15 text-yellow-400")}>
-                  {item.score}/10
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent transition-colors line-clamp-1">{item.titel}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {item.categorie && (
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full inline-flex", categorieBadgeKleur[item.categorie] ?? "bg-autronis-border text-autronis-text-secondary")}>
-                        {categorieLabels[item.categorie] ?? item.categorie}
-                      </span>
-                    )}
-                  </div>
-                  {eersteBullet && (
-                    <p className="text-[11px] text-autronis-text-secondary mt-1 line-clamp-1">{eersteBullet}</p>
-                  )}
-                </div>
-                <ExternalLink className="w-3 h-3 text-autronis-text-secondary/30 group-hover:text-autronis-accent transition-colors flex-shrink-0 mt-0.5" />
-              </a>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============ SECOND BRAIN WIDGET ============
-
-function SecondBrainWidget() {
-  const { data: items } = useRecentSecondBrain(4);
-  const typeIcons: Record<string, typeof FileText> = {
-    tekst: FileText, url: Link2, afbeelding: ImageIcon, pdf: FileDown, code: Code,
-  };
-
-  if (!items || items.length === 0) return null;
-
-  return (
-    <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Brain className="w-4 h-4 text-autronis-accent" />
-          <h2 className="text-sm font-semibold text-autronis-text-primary">Second Brain</h2>
-        </div>
-        <Link href="/second-brain" className="text-xs text-autronis-accent hover:text-autronis-accent-hover flex items-center gap-1">
-          Alles <ArrowRight className="w-3 h-3" />
-        </Link>
-      </div>
-      <div className="space-y-1.5">
-        {items.map((item) => {
-          const TypeIcon = typeIcons[item.type] ?? FileText;
-          return (
-            <Link key={item.id} href="/second-brain" className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-autronis-bg/50 transition-colors group">
-              <TypeIcon className="w-3.5 h-3.5 text-autronis-text-secondary/60 flex-shrink-0" />
-              <span className="text-xs text-autronis-text-primary truncate group-hover:text-autronis-accent transition-colors">{item.titel}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 // ============ MAIN PAGE ============
 
 export default function DashboardPage() {
@@ -667,13 +469,6 @@ export default function DashboardPage() {
   // Belasting deadline alerts
   const [urgentDeadlines, setUrgentDeadlines] = useState<Array<{ omschrijving: string; datum: string; dagenOver: number }>>([]);
 
-  // Concurrent updates
-  const [concurrentData, setConcurrentData] = useState<{
-    wijzigingenDezeWeek: number;
-    highlights: Array<{ concurrentNaam: string; tekst: string; type: string }>;
-    laatsteScan: string | null;
-  } | null>(null);
-
   // Timer collapsed state
   const [timerCollapsed, setTimerCollapsed] = useState(true);
 
@@ -698,8 +493,6 @@ export default function DashboardPage() {
         setUrgentDeadlines(urgent);
       })
       .catch(() => addToast("Kon deadlines niet laden", "fout"));
-
-    fetch("/api/dashboard/concurrenten").then((r) => r.json()).then(setConcurrentData).catch(() => {});
   }, []);
 
   // Timer tick
@@ -880,49 +673,6 @@ export default function DashboardPage() {
           </Link>
         </motion.div>
 
-        {/* Uren splitsing — Autronis (intern) vs Klant (declarabel) */}
-        {kpis.urenDezeWeek.eigen > 0 && (() => {
-          const totaalMin = kpis.urenDezeWeek.eigen;
-          const autronisMin = kpis.urenDezeWeek.autronis;
-          const klantMin = kpis.urenDezeWeek.klant;
-          const autronisPct = totaalMin > 0 ? Math.round((autronisMin / totaalMin) * 100) : 0;
-          const klantPct = 100 - autronisPct;
-          return (
-            <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-4">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-3.5 h-3.5 text-autronis-text-secondary" />
-                  <span className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide">Uren deze week — splitsing</span>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] tabular-nums">
-                  <span className="text-blue-400 font-semibold">Klant {formatUren(Math.round(klantMin))}</span>
-                  <span className="text-autronis-text-secondary">·</span>
-                  <span className="text-autronis-accent font-semibold">Autronis {formatUren(Math.round(autronisMin))}</span>
-                </div>
-              </div>
-              <div className="flex h-2 rounded-full overflow-hidden bg-autronis-bg">
-                {klantPct > 0 && (
-                  <div
-                    className="bg-blue-400/80 transition-all"
-                    style={{ width: `${klantPct}%` }}
-                    title={`Klant: ${klantPct}%`}
-                  />
-                )}
-                {autronisPct > 0 && (
-                  <div
-                    className="bg-autronis-accent/80 transition-all"
-                    style={{ width: `${autronisPct}%` }}
-                    title={`Autronis: ${autronisPct}%`}
-                  />
-                )}
-              </div>
-              <p className="text-[10px] text-autronis-text-secondary/60 mt-1.5">
-                Declarabel: {klantPct}% · Intern: {autronisPct}%
-              </p>
-            </motion.div>
-          );
-        })()}
-
         {/* Inzichten alert bar — prominent under KPIs */}
         {inzichten.length > 0 && (
           <motion.div variants={sectionVariants} className="flex gap-2 overflow-x-auto -mx-1 px-1 pb-1">
@@ -1086,14 +836,6 @@ export default function DashboardPage() {
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">
           {/* Left column */}
           <div className="space-y-5 min-w-0 overflow-hidden">
-            {/* Idee van de dag (Learning Radar verwijderd — bracht te weinig functie) */}
-            <div>
-              <IdeeVanDeDag />
-            </div>
-
-            {/* Kilometer widget */}
-            <KilometerWidget />
-
             {/* Open intakes — projecten in de pijplijn */}
             <OpenIntakesWidget />
           </div>
@@ -1154,37 +896,6 @@ export default function DashboardPage() {
 
             {/* Documenten */}
             <DocumentWidget />
-
-            {/* Second Brain */}
-            <SecondBrainWidget />
-
-            {/* Concurrent updates */}
-            {concurrentData && concurrentData.highlights.length > 0 && (
-              <section className="rounded-2xl border border-autronis-border bg-autronis-card p-5">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="flex items-center gap-2 font-semibold text-sm">
-                    <Eye className="h-4 w-4 text-autronis-accent" />
-                    Concurrent updates
-                  </h3>
-                  <span className="rounded-full bg-autronis-accent/15 px-2.5 py-0.5 text-xs font-semibold text-autronis-accent">
-                    {concurrentData.wijzigingenDezeWeek} nieuw
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {concurrentData.highlights.map((h, i) => (
-                    <div key={i} className="flex items-start gap-2.5 text-sm">
-                      <span className={cn("mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full", h.type === "kans" ? "bg-emerald-400" : "bg-autronis-accent")} />
-                      <span className="text-autronis-text-secondary">
-                        <strong className="text-autronis-text-primary">{h.concurrentNaam}</strong>{" "}{h.tekst}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <Link href="/concurrenten" className="mt-3 block text-xs text-autronis-accent hover:underline">
-                  Bekijk alle concurrenten &rarr;
-                </Link>
-              </section>
-            )}
           </div>
         </motion.div>
 

@@ -1488,7 +1488,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           {/* Nu-indicator met smooth position transitie */}
           {isVandaag && nuTop >= 0 && nuTop <= uren.length * UUR_HOOGTE && (
             <div
-              className="absolute left-10 sm:left-14 right-0 flex items-center z-10 pointer-events-none transition-[top] duration-[60000ms] ease-linear"
+              className="absolute left-10 sm:left-14 right-0 flex items-center z-[30] pointer-events-none transition-[top] duration-[60000ms] ease-linear"
               style={{ top: `${nuTop}px` }}
             >
               <div className="w-3 h-3 rounded-full bg-red-500 -ml-1.5 shadow-lg shadow-red-500/40 animate-pulse" />

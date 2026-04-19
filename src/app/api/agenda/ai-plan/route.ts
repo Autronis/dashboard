@@ -132,10 +132,18 @@ export async function POST(req: NextRequest) {
       eind: number;  // ms
       label: string;
     }
+    // Handmatige taken die de AI gaat re-plannen mogen niet als strikte
+    // blocker tellen tegen zichzelf — anders self-blockt elke handmatige
+    // taak op z'n eigen huidige tijd, en verschuift de AI 'm naar een
+    // ander slot ipv 'm te kunnen overlappen met Claude blokken (waar Sem
+    // vrij is). Daarom skippen we alle openstaande handmatige in de
+    // bestaande blocker-set.
+    const handmatigeIds = new Set(handmatigeTaken.map((t) => t.id));
     const strikteBlokkers: BlockingInterval[] = [];
     const claudeBlokkers: BlockingInterval[] = [];
     for (const t of bestaandeIngepland) {
       if (!t.ingeplandStart?.startsWith(datum)) continue;
+      if (t.uitvoerder !== "claude" && handmatigeIds.has(t.id)) continue;
       const s = new Date(t.ingeplandStart).getTime();
       const e = t.ingeplandEind ? new Date(t.ingeplandEind).getTime() : s + 30 * 60000;
       if (isNaN(s) || isNaN(e)) continue;

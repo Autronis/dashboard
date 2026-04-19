@@ -80,6 +80,21 @@ function getProjectKleur(projectNaam: string | null) {
   return PROJECT_PALET[hashStr(projectNaam) % PROJECT_PALET.length];
 }
 
+// Cluster kleur — voor slimme acties cards en cluster badges. Zes vaste
+// clusters (zie src/lib/cluster.ts), elk z'n eigen subtle accent zodat
+// Sem in 1 oogopslag ziet welk type werk een suggestie is.
+const CLUSTER_KLEUR: Record<string, { bg: string; text: string; border: string; badge: string }> = {
+  "backend-infra": { bg: "rgba(168,85,247,0.08)", text: "#c4a8ff", border: "rgba(168,85,247,0.35)", badge: "bg-purple-500/20 text-purple-300" },
+  "frontend":      { bg: "rgba(34,211,238,0.08)", text: "#7dd3fc", border: "rgba(34,211,238,0.35)", badge: "bg-cyan-500/20 text-cyan-300" },
+  "klantcontact":  { bg: "rgba(16,185,129,0.08)", text: "#86efac", border: "rgba(16,185,129,0.35)", badge: "bg-emerald-500/20 text-emerald-300" },
+  "content":       { bg: "rgba(245,158,11,0.08)", text: "#fcd34d", border: "rgba(245,158,11,0.35)", badge: "bg-amber-500/20 text-amber-300" },
+  "admin":         { bg: "rgba(148,163,184,0.08)", text: "#cbd5e1", border: "rgba(148,163,184,0.35)", badge: "bg-slate-500/25 text-slate-300" },
+  "research":      { bg: "rgba(23,184,165,0.08)", text: "#5eead4", border: "rgba(23,184,165,0.35)", badge: "bg-teal-500/20 text-teal-300" },
+};
+function getClusterKleur(cluster: string | null | undefined) {
+  return CLUSTER_KLEUR[cluster ?? ""] ?? { bg: "rgba(148,163,184,0.05)", text: "#94a3b8", border: "rgba(148,163,184,0.25)", badge: "bg-slate-500/20 text-slate-400" };
+}
+
 // Categorize external events by content
 function getExternEventColor(event: ExternEvent): { bg: string; text: string; border: string } {
   const titel = event.titel.toLowerCase();
@@ -1323,7 +1338,7 @@ export default function AgendaPage() {
       </div>
      </div>
 
-      <div className="max-w-[1400px] mx-auto grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-[1fr_300px]">
+      <div className="max-w-[1600px] mx-auto grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-[1fr_460px]">
         {/* Kalender */}
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 lg:p-5">
           {/* Navigatie */}
@@ -2453,26 +2468,27 @@ export default function AgendaPage() {
                               {slimmeTemplates.length}
                             </span>
                           </div>
-                          <div className="space-y-1 px-1">
-                            {slimmeTemplates.map((tpl) => (
+                          <div className="grid grid-cols-2 gap-1.5 px-1">
+                            {slimmeTemplates.map((tpl) => {
+                              const k = getClusterKleur(tpl.cluster);
+                              return (
                               <button
                                 key={tpl.id}
                                 onClick={() => { setSlimmeTakenPreSelect(tpl.slug); setSlimmeTakenOpen(true); }}
-                                className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg border border-autronis-accent/20 bg-autronis-accent/5 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors group"
+                                className="text-left flex flex-col gap-1 px-2 py-1.5 rounded-lg border transition-colors hover:brightness-125"
+                                style={{ backgroundColor: k.bg, borderColor: k.border }}
                                 title={tpl.beschrijving || tpl.naam}
                               >
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-[11px] font-medium text-autronis-text-primary truncate">
-                                    {tpl.naam}
-                                  </div>
-                                  {tpl.beschrijving && (
-                                    <div className="text-[9px] text-autronis-text-secondary/70 truncate">
-                                      {tpl.beschrijving}
-                                    </div>
-                                  )}
+                                <div className="text-[11px] font-medium text-autronis-text-primary truncate" style={{ color: k.text }}>
+                                  {tpl.naam}
                                 </div>
-                                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                  <span className="text-[8px] px-1 py-0.5 rounded-full bg-autronis-accent/20 text-autronis-accent">
+                                {tpl.beschrijving && (
+                                  <div className="text-[9px] text-autronis-text-secondary/70 line-clamp-2 leading-snug">
+                                    {tpl.beschrijving}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-1 mt-0.5">
+                                  <span className={cn("text-[8px] px-1 py-0.5 rounded-full font-medium", k.badge)}>
                                     {tpl.cluster}
                                   </span>
                                   {tpl.geschatteDuur && (
@@ -2482,7 +2498,8 @@ export default function AgendaPage() {
                                   )}
                                 </div>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -2666,26 +2683,27 @@ export default function AgendaPage() {
                               {slimmeTemplates.length}
                             </span>
                           </div>
-                          <div className="space-y-1 px-1">
-                            {slimmeTemplates.map((tpl) => (
+                          <div className="grid grid-cols-2 gap-1.5 px-1">
+                            {slimmeTemplates.map((tpl) => {
+                              const k = getClusterKleur(tpl.cluster);
+                              return (
                               <button
                                 key={tpl.id}
                                 onClick={() => { setSlimmeTakenPreSelect(tpl.slug); setSlimmeTakenOpen(true); }}
-                                className="w-full text-left flex items-start gap-2 px-2 py-1.5 rounded-lg border border-autronis-accent/20 bg-autronis-accent/5 hover:bg-autronis-accent/15 hover:border-autronis-accent/40 transition-colors group"
+                                className="text-left flex flex-col gap-1 px-2 py-1.5 rounded-lg border transition-colors hover:brightness-125"
+                                style={{ backgroundColor: k.bg, borderColor: k.border }}
                                 title={tpl.beschrijving || tpl.naam}
                               >
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-[11px] font-medium text-autronis-text-primary truncate">
-                                    {tpl.naam}
-                                  </div>
-                                  {tpl.beschrijving && (
-                                    <div className="text-[9px] text-autronis-text-secondary/70 truncate">
-                                      {tpl.beschrijving}
-                                    </div>
-                                  )}
+                                <div className="text-[11px] font-medium text-autronis-text-primary truncate" style={{ color: k.text }}>
+                                  {tpl.naam}
                                 </div>
-                                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
-                                  <span className="text-[8px] px-1 py-0.5 rounded-full bg-autronis-accent/20 text-autronis-accent">
+                                {tpl.beschrijving && (
+                                  <div className="text-[9px] text-autronis-text-secondary/70 line-clamp-2 leading-snug">
+                                    {tpl.beschrijving}
+                                  </div>
+                                )}
+                                <div className="flex items-center justify-between gap-1 mt-0.5">
+                                  <span className={cn("text-[8px] px-1 py-0.5 rounded-full font-medium", k.badge)}>
                                     {tpl.cluster}
                                   </span>
                                   {tpl.geschatteDuur && (
@@ -2695,7 +2713,8 @@ export default function AgendaPage() {
                                   )}
                                 </div>
                               </button>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

@@ -68,7 +68,6 @@ import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
 import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 import { SnelleActiesWidget } from "@/components/dashboard/snelle-acties-widget";
 import { SalesPipelineWidget } from "@/components/dashboard/sales-pipeline-widget";
-import { ContentVandaagWidget } from "@/components/dashboard/content-vandaag-widget";
 
 // ============ HELPERS ============
 
@@ -955,12 +954,14 @@ export default function DashboardPage() {
           <RemoteCommitsBanner />
         </motion.div>
 
-        {/* 3-kolom focus strip — Mijn taken + Sales pipeline + Content vandaag.
-            Sluit aan op go-to-market mindset: wat moet ik vandaag doen,
-            waar sta ik in de funnel, welke post moet ik maken. */}
+        {/* 3-kolom focus strip — Sales pipeline + Nu uitvoeren + Mijn taken.
+            Sluit aan op go-to-market mindset: waar sta ik in de funnel,
+            welke actie start ik nu, wat staat er op m'n lijst. */}
         <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <SalesPipelineWidget />
-          <ContentVandaagWidget />
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow h-full">
+            <SnelleActiesWidget compact variant="actie" />
+          </div>
 
           {mijnTaken.length > 0 && (
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -1099,10 +1100,8 @@ export default function DashboardPage() {
 
           {/* Right column */}
           <div className="space-y-4 min-w-0">
-            {/* Actie shortcuts — vervangt oude 'Snelle navigatie' die alleen
-                links bood. Deze knoppen triggeren concrete acties (scan,
-                rebuild, idee uitvoeren, AI) ipv navigatie naar overzichtspages. */}
-            <SnelleActiesWidget compact variant="actie" />
+            {/* Actie shortcuts verplaatst naar 3-kolom focus strip bovenaan —
+                was dubbel. */}
 
             {/* Deadlines */}
             {deadlines.length > 0 && (

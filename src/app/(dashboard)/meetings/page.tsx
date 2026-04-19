@@ -536,6 +536,14 @@ function MeetingListItem({ meeting, onSelect, onDelete, onHide }: {
             {meeting.klantNaam && (
               <span className="px-2 py-0.5 rounded-full text-xs bg-autronis-accent/10 text-autronis-accent">
                 {meeting.klantNaam}
+                {meeting.projectNaam && (
+                  <span className="text-autronis-accent/60"> · {meeting.projectNaam}</span>
+                )}
+              </span>
+            )}
+            {!meeting.klantNaam && meeting.projectNaam && (
+              <span className="px-2 py-0.5 rounded-full text-xs bg-autronis-accent/10 text-autronis-accent">
+                {meeting.projectNaam}
               </span>
             )}
             {meeting.deelnemers.length > 0 && (
@@ -1463,6 +1471,7 @@ export default function MeetingsPage() {
                   <p className="text-xs text-autronis-text-secondary">
                     {formatDatum(nextMeeting.datum)} om {formatTijd(nextMeeting.datum)}
                     {nextMeeting.klantNaam && ` · ${nextMeeting.klantNaam}`}
+                    {nextMeeting.projectNaam && ` · ${nextMeeting.projectNaam}`}
                     {nextMeeting.deelnemers.length > 0 && ` · ${nextMeeting.deelnemers.length} deelnemers`}
                   </p>
                 </div>

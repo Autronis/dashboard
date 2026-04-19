@@ -697,6 +697,7 @@ if (isTurso) {
   )`).catch(() => {});
   client.execute(`CREATE INDEX IF NOT EXISTS idx_agenda_eigenaar_datum ON agenda_items(eigenaar, start_datum)`).catch(() => {});
   client.execute(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2') ON CONFLICT(naam) DO NOTHING`).catch(() => {});
+  client.execute(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_syb_lane', 0, 'Toont Syb (Autro) lane naast Sem. Zet aan zodra Syb actief aansluit op de bridge.') ON CONFLICT(naam) DO NOTHING`).catch(() => {});
 
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
@@ -1172,6 +1173,7 @@ if (isTurso) {
   )`);
   sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_agenda_eigenaar_datum ON agenda_items(eigenaar, start_datum)`);
   try { sqliteDb.exec(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2')`); } catch { /* seed row already exists */ }
+  try { sqliteDb.exec(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_syb_lane', 0, 'Toont Syb (Autro) lane naast Sem. Zet aan zodra Syb actief aansluit op de bridge.')`); } catch { /* seed row already exists */ }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

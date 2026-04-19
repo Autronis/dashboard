@@ -341,14 +341,19 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
   // Bridge v2 swim lanes — gated on feature flag `agenda_lanes_v2`. Server
   // returns enabled flags per user. Null = still loading, fall through to
-  // legacy render until we know.
+  // legacy render until we know. Daarnaast `agenda_syb_lane` als subflag:
+  // standaard solo-modus (Syb verborgen) tot Autro-chat actief aansluit.
   const [lanesV2, setLanesV2] = useState<boolean | null>(null);
+  const [sybLaneVisible, setSybLaneVisible] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetch("/api/feature-flags", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { flags: {} }))
       .then((j: { flags?: Record<string, boolean> }) => {
-        if (!cancelled) setLanesV2(!!j.flags?.agenda_lanes_v2);
+        if (!cancelled) {
+          setLanesV2(!!j.flags?.agenda_lanes_v2);
+          setSybLaneVisible(!!j.flags?.agenda_syb_lane);
+        }
       })
       .catch(() => {
         if (!cancelled) setLanesV2(false);
@@ -662,6 +667,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
         <SwimLaneView
           datum={datumStr}
           items={laneItems}
+          sybLaneVisible={sybLaneVisible}
           onItemClick={(id) => {
             const found = items.find((i) => "id" in i && i.id === id);
             if (found) onItemClick?.(found as AgendaItem);

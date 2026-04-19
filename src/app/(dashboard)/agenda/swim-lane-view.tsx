@@ -10,6 +10,10 @@ interface Props {
   dagStart?: number; // hour, default 8
   dagEind?: number; //  hour, default 19
   onItemClick?: (id: number) => void;
+  // Syb-lane is opt-in via feature flag `agenda_syb_lane`. Zolang Syb
+  // niet actief bridge-plant (geen eigen Autro-Mac in bedrijf) is solo
+  // mode schoner: alleen Sem-lane + Vrij. Default false.
+  sybLaneVisible?: boolean;
 }
 
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
@@ -129,14 +133,21 @@ export function SwimLaneView({
   dagStart = 8,
   dagEind = 19,
   onItemClick,
+  sybLaneVisible = false,
 }: Props) {
   void datum; // reserved for later phases (project-focus day marker rendering)
   const totalHeight = (dagEind - dagStart) * HOUR_HEIGHT_PX;
 
-  const semItems = items.filter((i) => i.eigenaar === "sem");
-  const sybItems = items.filter((i) => i.eigenaar === "syb");
+  // In solo-modus (Syb niet actief) vouwen we syb-items + team-items samen
+  // onder Sem. Team-items houden wel hun paarse ring zodat ze visueel
+  // herkenbaar blijven als gedeeld werk zodra Autro weer aansluit.
+  const semItems = sybLaneVisible
+    ? items.filter((i) => i.eigenaar === "sem")
+    : items.filter((i) => i.eigenaar === "sem" || i.eigenaar === "syb");
+  const sybItems = sybLaneVisible ? items.filter((i) => i.eigenaar === "syb") : [];
   const vrijItems = items.filter((i) => i.eigenaar === "vrij");
-  const teamItems = items.filter((i) => i.eigenaar === "team");
+  const teamItems = sybLaneVisible ? items.filter((i) => i.eigenaar === "team") : [];
+  const soloTeamItems = sybLaneVisible ? [] : items.filter((i) => i.eigenaar === "team");
 
   const hours: number[] = [];
   for (let h = dagStart; h <= dagEind; h++) hours.push(h);
@@ -171,21 +182,23 @@ export function SwimLaneView({
         <Lane
           kind="sem"
           testId="lane-sem"
-          items={semItems}
+          items={[...semItems, ...soloTeamItems]}
           dagStart={dagStart}
           totalHeight={totalHeight}
           onItemClick={onItemClick}
           widthClass="flex-1 min-w-0"
         />
-        <Lane
-          kind="syb"
-          testId="lane-syb"
-          items={sybItems}
-          dagStart={dagStart}
-          totalHeight={totalHeight}
-          onItemClick={onItemClick}
-          widthClass="flex-1 min-w-0"
-        />
+        {sybLaneVisible && (
+          <Lane
+            kind="syb"
+            testId="lane-syb"
+            items={sybItems}
+            dagStart={dagStart}
+            totalHeight={totalHeight}
+            onItemClick={onItemClick}
+            widthClass="flex-1 min-w-0"
+          />
+        )}
         <Lane
           kind="vrij"
           testId="lane-vrij"

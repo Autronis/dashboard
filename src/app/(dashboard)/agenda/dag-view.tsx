@@ -331,12 +331,12 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { done: eventDone, toggle: toggleEventDone } = useEventDoneState();
 
-  // Claude sessies zijn standaard ingeklapt — alleen header zichtbaar zodat ze niet
-  // overlappen met events in dezelfde tijdspanne. Klik op header = uitklappen, dan
-  // verschijnt de fase/taken lijst bovenop andere events (z-index elevated).
-  const [expandedSessies, setExpandedSessies] = useState<Set<number>>(new Set());
+  // Claude sessies zijn standaard UITGEKLAPT zodat Sem direct alle fases/taken
+  // ziet. Set bevat expliciet INGEKLAPTE sessies — leeg betekent alles open.
+  // Klik op header = toggle.
+  const [collapsedSessies, setCollapsedSessies] = useState<Set<number>>(new Set());
   const toggleSessie = useCallback((key: number) => {
-    setExpandedSessies((prev) => {
+    setCollapsedSessies((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
@@ -929,7 +929,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               // projectnaam en click-to-detail).
               if (group.length < 2) return null;
               const sessieKey = group[0].id; // stabiele key op basis van eerste taak
-              const expanded = expandedSessies.has(sessieKey);
+              const expanded = !collapsedSessies.has(sessieKey);
 
               const startDate = new Date(Math.min(...group.map((t) => new Date(t.ingeplandStart!).getTime())));
               const eindDate = new Date(Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())));

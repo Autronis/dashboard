@@ -249,7 +249,9 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
     }
 
     // Plan de cluster blokken — elk blok pakt alle taken uit diens cluster
-    // en geeft ze dezelfde start/eind
+    // en geeft ze dezelfde start/eind. Claude blokken botsen met andere
+    // Claude blokken EN met strikte handmatige taken, maar niet met lopende
+    // handmatige taken die ze mogen overlappen.
     for (const blok of clusterBlokken) {
       const planItem = planning.find((item) => item.id === blok.fakeId);
       if (!planItem) continue;
@@ -258,8 +260,10 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       const voorgesteldStart = new Date(`${datum}T${planItem.start}:00`).getTime();
       if (isNaN(voorgesteldStart)) continue;
 
-      // Check tegen bestaande blockers + al-geplande items uit deze call
-      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, planItem.duur);
+      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, planItem.duur, [
+        ...claudeBlokkers,
+        ...strikteBlokkers,
+      ]);
       if (!vrijSlot) {
         geskiptOverlap++;
         continue; // geen plek op de dag, skip dit cluster blok
@@ -288,15 +292,18 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
           cluster: blok.cluster,
         });
       }
-      // Registreer dit blok als blocker voor volgende items
-      blockingIntervals.push({
+      // Registreer dit blok als Claude-blocker — blokt andere Claude items
+      // maar NIET handmatige taken (die mogen overheen).
+      claudeBlokkers.push({
         start: vrijSlot.start,
         eind: vrijSlot.eind,
         label: `Claude sessie ${blok.cluster}`,
       });
     }
 
-    // Plan handmatige taken individueel — zelfde anti-overlap logica
+    // Plan handmatige taken individueel — alleen tegen strikte blockers,
+    // zodat ze vrij over Claude sessies mogen lopen (Sem is vrij tijdens
+    // Claude werk).
     for (const item of planning) {
       if (item.id < 0) continue; // Skip cluster blokken (al verwerkt)
       const taak = handmatigeTaken.find((t) => t.id === item.id);
@@ -306,7 +313,7 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
       const voorgesteldStart = new Date(`${datum}T${item.start}:00`).getTime();
       if (isNaN(voorgesteldStart)) continue;
 
-      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, item.duur);
+      const vrijSlot = schuifNaarVrijSlot(voorgesteldStart, item.duur, strikteBlokkers);
       if (!vrijSlot) {
         geskiptOverlap++;
         continue;
@@ -331,8 +338,7 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
         eind: formatTijd(vrijSlot.eind),
         cluster: taak.cluster ?? undefined,
       });
-      // Registreer als blocker voor volgende items
-      blockingIntervals.push({
+      strikteBlokkers.push({
         start: vrijSlot.start,
         eind: vrijSlot.eind,
         label: taak.titel,
@@ -340,9 +346,10 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
     }
 
     // ==== Auto-fill met slimme taken ====
-    // Als er nog vrije tijd op de dag is, pull actieve slimme taken
-    // templates in om de dag verder te vullen. Voorkom duplicaten: skip
-    // templates waarvan de (ingevulde) titel al op deze dag staat.
+    // Alle slimme taken zijn Claude-uitvoerbaar, dus gebruiken de
+    // claudeBlokkers+strikteBlokkers combinatie om naast handmatig/claude
+    // werk geplaatst te worden (niet op elkaar). Vullen de dag van
+    // DAG_START tot DAG_EIND.
     await ensureSystemTemplates();
     const slimmeTpls = await db
       .select()
@@ -363,8 +370,9 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
 
       const duur = tpl.geschatteDuur ?? 15;
       const slot = schuifNaarVrijSlot(
-        new Date(`${datum}T08:00:00`).getTime(),
-        duur
+        new Date(`${datum}T${DAG_START}:00`).getTime(),
+        duur,
+        [...claudeBlokkers, ...strikteBlokkers]
       );
       if (!slot) break; // dag vol
 
@@ -400,7 +408,7 @@ ${alIngepland.length > 0 ? `\nAl ingepland op deze dag (vermijd conflicten):\n${
         eind: formatTijd(slot.eind),
         cluster: tpl.cluster ?? undefined,
       });
-      blockingIntervals.push({ start: slot.start, eind: slot.eind, label: titel });
+      claudeBlokkers.push({ start: slot.start, eind: slot.eind, label: titel });
       vandaagTitles.add(titel);
       autoGevuld++;
     }

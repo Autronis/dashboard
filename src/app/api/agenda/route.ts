@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { agendaItems, gebruikers, projecten } from "@/lib/db/schema";
+import { agendaItems, gebruikers, projecten, taken } from "@/lib/db/schema";
 import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
@@ -43,10 +43,20 @@ export async function GET(req: NextRequest) {
         gemaaktDoor: sql<GemaaktDoor>`COALESCE(${agendaItems.gemaaktDoor}, 'user')`,
         projectId: agendaItems.projectId,
         projectNaam: projecten.naam,
+        pijler: agendaItems.pijler,
+        taakId: agendaItems.taakId,
+        taakTitel: taken.titel,
+        taakFase: taken.fase,
+        taakStatus: taken.status,
+        taakPrioriteit: taken.prioriteit,
+        taakUitvoerder: taken.uitvoerder,
+        taakPrompt: taken.prompt,
+        taakCluster: taken.cluster,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))
       .leftJoin(projecten, eq(agendaItems.projectId, projecten.id))
+      .leftJoin(taken, eq(agendaItems.taakId, taken.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(agendaItems.startDatum);
 
@@ -97,6 +107,8 @@ export async function POST(req: NextRequest) {
     }
 
     const projectId = typeof body.projectId === "number" ? body.projectId : null;
+    const taakId = typeof body.taakId === "number" ? body.taakId : null;
+    const pijler = typeof body.pijler === "string" ? body.pijler : null;
 
     const [nieuw] = await db
       .insert(agendaItems)
@@ -112,6 +124,8 @@ export async function POST(req: NextRequest) {
         eigenaar,
         gemaaktDoor,
         projectId,
+        taakId,
+        pijler,
       })
       .returning();
 

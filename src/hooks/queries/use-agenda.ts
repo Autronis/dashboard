@@ -15,6 +15,15 @@ export interface AgendaItem {
   gemaaktDoor?: "user" | "bridge" | "fallback-haiku" | "ai-plan-button";
   projectId?: number | null;
   projectNaam?: string | null;
+  pijler?: string | null;
+  taakId?: number | null;
+  taakTitel?: string | null;
+  taakFase?: string | null;
+  taakStatus?: "open" | "bezig" | "afgerond" | null;
+  taakPrioriteit?: "laag" | "normaal" | "hoog" | null;
+  taakUitvoerder?: "claude" | "handmatig" | null;
+  taakPrompt?: string | null;
+  taakCluster?: string | null;
 }
 
 function datumStr(jaar: number, maand: number, dag: number) {

@@ -345,6 +345,16 @@ export const agendaItems = sqliteTable("agenda_items", {
   eigenaar: text("eigenaar", { enum: ["sem", "syb", "team", "vrij"] }).notNull().default("vrij"),
   gemaaktDoor: text("gemaakt_door", { enum: ["user", "bridge", "fallback-haiku", "ai-plan-button"] }).notNull().default("user"),
   projectId: integer("project_id").references(() => projecten.id),
+  // Koppeling naar een concrete taak zodat agenda-UI fase/status/prompt kan
+  // tonen en de gebruiker rechtstreeks "Markeer afgerond" of "Copy prompt"
+  // kan doen vanuit het blok. Forward ref — cirkel via lazy any-cast.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  taakId: integer("taak_id").references((): any => taken.id),
+  // GTM-pijler die dit blok afdekt (sales_engine/content/netwerk/inbound/
+  // delivery/intern/admin). Bridge zet dit wanneer een blok een ritme-slot
+  // invult — UI kan dan een pijler-badge tonen en analytics kan per pijler
+  // uren aggregeren.
+  pijler: text("pijler"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),

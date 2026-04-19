@@ -46,6 +46,7 @@ import { DagView } from "./dag-view";
 import { JaarView } from "./jaar-view";
 import { PlanTaakModal } from "./plan-taak-modal";
 import { TaakDetailPanel } from "@/components/taken/taak-detail-panel";
+import { AgendaItemContext } from "./agenda-item-context";
 import Link from "next/link";
 
 const typeConfig: Record<string, { icon: typeof Calendar; color: string; bg: string; borderColor: string; label: string }> = {
@@ -3267,6 +3268,18 @@ export default function AgendaPage() {
                 </button>
               </div>
             </div>
+
+            {selectedItem && (
+              <AgendaItemContext
+                item={selectedItem}
+                onAfgerond={() => {
+                  queryClient.invalidateQueries({ queryKey: ["agenda"] });
+                  queryClient.invalidateQueries({ queryKey: ["agenda-taken"] });
+                  queryClient.invalidateQueries({ queryKey: ["taken"] });
+                  addToast("Taak afgerond", "succes");
+                }}
+              />
+            )}
 
             <div className="space-y-4">
               <div className="space-y-1.5">

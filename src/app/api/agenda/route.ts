@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { agendaItems, gebruikers } from "@/lib/db/schema";
 import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
+
+const VALID_EIGENAAR = ["sem", "syb", "team", "vrij"] as const;
+type Eigenaar = (typeof VALID_EIGENAAR)[number];
+
+const VALID_GEMAAKT_DOOR = ["user", "bridge", "fallback-haiku", "ai-plan-button"] as const;
+type GemaaktDoor = (typeof VALID_GEMAAKT_DOOR)[number];
 
 // GET /api/agenda?van=2026-03-01&tot=2026-03-31
 export async function GET(req: NextRequest) {
@@ -17,6 +23,9 @@ export async function GET(req: NextRequest) {
     if (van) conditions.push(gte(agendaItems.startDatum, van));
     if (tot) conditions.push(lte(agendaItems.startDatum, tot + "T23:59:59"));
 
+    // Rows inserted before migration have NULL for eigenaar/gemaakt_door
+    // (auto-migrate adds columns nullable without defaults). Coalesce in SQL
+    // so consumers always see a valid enum value.
     const items = await db
       .select({
         id: agendaItems.id,
@@ -30,6 +39,8 @@ export async function GET(req: NextRequest) {
         heleDag: agendaItems.heleDag,
         herinneringMinuten: agendaItems.herinneringMinuten,
         googleEventId: agendaItems.googleEventId,
+        eigenaar: sql<Eigenaar>`COALESCE(${agendaItems.eigenaar}, 'vrij')`,
+        gemaaktDoor: sql<GemaaktDoor>`COALESCE(${agendaItems.gemaaktDoor}, 'user')`,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))
@@ -60,6 +71,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Startdatum is verplicht." }, { status: 400 });
     }
 
+    const eigenaar: Eigenaar = body.eigenaar ?? "vrij";
+    if (!VALID_EIGENAAR.includes(eigenaar)) {
+      return NextResponse.json(
+        {
+          fout: `Ongeldige eigenaar '${eigenaar}'. Verwacht één van: ${VALID_EIGENAAR.join(", ")}.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const gemaaktDoor: GemaaktDoor = body.gemaaktDoor ?? "user";
+    if (!VALID_GEMAAKT_DOOR.includes(gemaaktDoor)) {
+      return NextResponse.json(
+        {
+          fout: `Ongeldige gemaaktDoor '${gemaaktDoor}'. Verwacht één van: ${VALID_GEMAAKT_DOOR.join(", ")}.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const [nieuw] = await db
       .insert(agendaItems)
       .values({
@@ -71,6 +102,8 @@ export async function POST(req: NextRequest) {
         eindDatum: body.eindDatum || null,
         heleDag: body.heleDag ? 1 : 0,
         herinneringMinuten: body.herinneringMinuten ?? null,
+        eigenaar,
+        gemaaktDoor,
       })
       .returning();
 

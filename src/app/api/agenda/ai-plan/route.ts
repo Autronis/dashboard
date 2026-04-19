@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         projectMap: taken.projectMap,
         projectNaam: projecten.naam,
         cluster: taken.cluster,
+        fase: taken.fase,
       })
       .from(taken)
       .leftJoin(projecten, eq(taken.projectId, projecten.id))
@@ -49,8 +50,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Geen open taken om in te plannen" }, { status: 400 });
     }
 
+    // Slimme taken (fase === "Slimme taken"*) worden NIET meegenomen in de
+    // cluster-grouping. Ze krijgen dezelfde ingeplandStart als hun cluster-
+    // mates zou de UI ze chainen in een Claude sessie-blok met label
+    // "Slimme taken" — wat Sem expliciet niet wil. In plaats daarvan worden
+    // ze alléén via de auto-fill stap gepland, waar ze elk een uniek slot
+    // krijgen en dus als losse taken in de dag verschijnen.
+    const isSlimmeTaak = (t: { fase: string | null }) =>
+      t.fase === "Slimme taken" || t.fase === "Slimme taken (recurring)";
+
     // Split in Claude taken en handmatige taken
-    const claudeTaken = openTaken.filter((t) => t.uitvoerder === "claude");
+    const claudeTaken = openTaken.filter((t) => t.uitvoerder === "claude" && !isSlimmeTaak(t));
     const handmatigeTaken = openTaken.filter((t) => t.uitvoerder !== "claude");
 
     // Auto-classify Claude taken zonder cluster via AI voordat we plannen.

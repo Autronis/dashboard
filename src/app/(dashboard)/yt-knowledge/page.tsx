@@ -121,8 +121,8 @@ export default function YtKnowledgePage() {
   const [showChannels, setShowChannels] = useState(false);
   const [newChannelUrl, setNewChannelUrl] = useState("");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/yt-knowledge");
@@ -134,19 +134,20 @@ export default function YtKnowledgePage() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Auto-refresh when there are processing videos
+  // Auto-refresh when there are processing videos — silent so we don't flash the page loader.
+  // Depend on the boolean, not `videos`, otherwise every fetch resets the interval.
+  const hasProcessing = videos.some((v) => v.status === "processing" || v.status === "pending");
   useEffect(() => {
-    const hasProcessing = videos.some((v) => v.status === "processing" || v.status === "pending");
     if (!hasProcessing) return;
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(() => fetchData(true), 5000);
     return () => clearInterval(interval);
-  }, [videos, fetchData]);
+  }, [hasProcessing, fetchData]);
 
   const handleAddVideo = async () => {
     if (!analyzeUrl.trim()) return;

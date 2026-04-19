@@ -1,9 +1,9 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSalesEngineScanDetail, type AIAnalyse, type ScrapeResultaat, type ScanKans } from "@/hooks/queries/use-sales-engine";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDatum } from "@/lib/utils";
@@ -34,10 +34,17 @@ import {
   Copy,
   Check,
   Sparkles,
+  Wand2,
+  Film,
 } from "lucide-react";
 import Link from "next/link";
 import { buildUpgradePrompt, buildFreshPrompt, type SiteScrape, type SerpCheck } from "@/lib/lead-rebuild-prep";
 import { classifyFit } from "@/lib/lead-rebuild-fit";
+import {
+  type RebuildPrepAssets,
+  loadAssetsForLead,
+  buildAssetInjection,
+} from "@/lib/rebuild-prep-assets";
 import type { ScanDetail } from "@/hooks/queries/use-sales-engine";
 
 const statusConfig: Record<string, { label: string; kleur: string; icon: typeof Clock }> = {
@@ -376,12 +383,43 @@ function WebsiteRebuildCard({
   scrapeResultaat: ScrapeResultaat;
   bedrijfsnaam: string;
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  // We namespacen sessionStorage keys per sales-engine scan als `se-<scanId>`
+  // om botsing met rebuild-prep (UUID-based) te vermijden.
+  const roundTripLeadId = `se-${scan.id}`;
+  const [assets, setAssets] = useState<RebuildPrepAssets | null>(null);
 
   const hasWebsite = !!scan.websiteUrl;
   const category = scrapeResultaat.googlePlaces?.categorieen?.[0] ?? null;
   const fit = classifyFit(category, bedrijfsnaam);
+
+  // Laadt bestaande assets (uit eerdere round-trip binnen deze sessie) en
+  // ruimt de ?leadAssets URL param op als we net terugkeerden van /animaties.
+  useEffect(() => {
+    const existing = loadAssetsForLead(roundTripLeadId);
+    if (existing) setAssets(existing);
+
+    const returned = searchParams.get("leadAssets");
+    if (returned === roundTripLeadId) {
+      const justLoaded = loadAssetsForLead(roundTripLeadId);
+      if (justLoaded) setAssets(justLoaded);
+      router.replace(`/sales-engine/${scan.id}`, { scroll: false });
+    }
+  }, [roundTripLeadId, searchParams, router, scan.id]);
+
+  const assetGeneratorHref = (() => {
+    const params = new URLSearchParams({
+      mode: "scroll-stop",
+      product: bedrijfsnaam,
+      returnTo: roundTripLeadId,
+    });
+    if (scan.websiteUrl) params.set("bron", scan.websiteUrl);
+    if (category) params.set("categorie", category);
+    return `/animaties?${params.toString()}`;
+  })();
 
   let prompt: string;
   if (hasWebsite) {
@@ -422,7 +460,8 @@ function WebsiteRebuildCard({
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(prompt);
+      const fullPrompt = assets ? prompt + buildAssetInjection(assets) : prompt;
+      await navigator.clipboard.writeText(fullPrompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -444,12 +483,30 @@ function WebsiteRebuildCard({
       transition={{ duration: 0.35, delay: 0.1 }}
       className="bg-[var(--accent)]/5 border border-[var(--accent)]/20 rounded-xl p-5"
     >
-      <div className="flex items-start justify-between mb-3">
+      <div className="flex items-start justify-between mb-3 gap-3 flex-wrap">
         <h2 className="font-semibold text-lg flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-[var(--accent)]" />
           Website Rebuild Voorstel
         </h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {fit.verdict === "scroll_stop_good" && (
+            <Link
+              href={assetGeneratorHref}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+                assets
+                  ? "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20"
+                  : "bg-[var(--card)] border-[var(--border)] text-[var(--text-primary)] hover:border-fuchsia-500/50 hover:text-fuchsia-300"
+              }`}
+              title={
+                assets
+                  ? "Assets gegenereerd. Openen om opnieuw te doen."
+                  : "Open Asset Generator voor deze scan"
+              }
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              {assets ? "Assets opnieuw" : "Asset Generator"}
+            </Link>
+          )}
           <button
             onClick={handleCopy}
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
@@ -457,9 +514,10 @@ function WebsiteRebuildCard({
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
                 : "bg-[var(--card)] border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)]/40"
             }`}
+            title={assets ? "Kopieert prompt mét scroll-stop asset URLs" : "Kopieert de rebuild prompt"}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? "Gekopieerd" : "Kopieer prompt"}
+            {copied ? "Gekopieerd" : `Kopieer prompt${assets ? " + assets" : ""}`}
           </button>
           <a
             href="https://claude.ai/new"
@@ -473,7 +531,7 @@ function WebsiteRebuildCard({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 mb-3">
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <span className={`px-2 py-0.5 rounded-md text-xs border ${
           hasWebsite
             ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
@@ -484,6 +542,12 @@ function WebsiteRebuildCard({
         <span className={`px-2 py-0.5 rounded-md text-xs border ${fitStyles}`}>
           {fit.label}
         </span>
+        {assets && (
+          <span className="px-2 py-0.5 rounded-md text-xs border bg-fuchsia-500/10 text-fuchsia-300 border-fuchsia-500/30 inline-flex items-center gap-1">
+            <Film className="w-3 h-3" />
+            Assets klaar
+          </span>
+        )}
       </div>
 
       <div className="relative">

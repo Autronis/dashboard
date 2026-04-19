@@ -21,6 +21,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { PrepLeadResult } from "@/lib/lead-rebuild-prep";
+import {
+  type RebuildPrepAssets,
+  loadAssetsForLead,
+  buildAssetInjection,
+} from "@/lib/rebuild-prep-assets";
 
 interface LinkedinLeadRow {
   id: string;
@@ -63,54 +68,6 @@ interface UnifiedLead {
 const BATCH_LIMIT = 20;
 
 type SiteFilter = "alle" | "met_site" | "zonder_site";
-
-// Shape saved in sessionStorage by /animaties when returning from asset-gen for a lead.
-// Key: `rebuild-prep-assets-<leadId>`
-export interface RebuildPrepAssets {
-  leadId: string;
-  productNaam: string;
-  effect?: string | null;
-  stijl?: string | null;
-  promptA?: string | null;
-  promptB?: string | null;
-  promptVideo?: string | null;
-  imageA?: string | null;
-  imageB?: string | null;
-  videoUrl?: string | null;
-  savedAt: string;
-}
-
-function buildAssetInjection(assets: RebuildPrepAssets): string {
-  const lines: string[] = [];
-  lines.push("");
-  lines.push("");
-  lines.push("## Scroll-stop assets — beschikbaar");
-  lines.push("");
-  lines.push("Deze zijn via de Asset Generator gegenereerd voor deze lead. Integreer de video als scroll-driven hero (forward/backward op scroll).");
-  lines.push("");
-  if (assets.productNaam) lines.push(`- **Object**: ${assets.productNaam}`);
-  if (assets.effect) lines.push(`- **Effect**: ${assets.effect}`);
-  if (assets.stijl) lines.push(`- **Visuele stijl**: ${assets.stijl}`);
-  if (assets.imageA) lines.push(`- **Thumbnail A (assembled)**: ${assets.imageA}`);
-  if (assets.imageB) lines.push(`- **Thumbnail B (exploded)**: ${assets.imageB}`);
-  if (assets.videoUrl) lines.push(`- **Video URL**: ${assets.videoUrl}`);
-  lines.push("");
-  lines.push("Gebruik de video URL direct in een `<video>` tag of — voor scroll-scrubbed effect — via canvas + FFmpeg frame extraction (zie website-builder-3d patroon). Thumbnails A/B zijn start- en eindframe.");
-  return lines.join("\n");
-}
-
-function loadAssetsForLead(leadId: string): RebuildPrepAssets | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = sessionStorage.getItem(`rebuild-prep-assets-${leadId}`);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as RebuildPrepAssets;
-    if (!parsed || parsed.leadId !== leadId) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
 
 export default function LeadsRebuildPrepPage() {
   const { addToast } = useToast();

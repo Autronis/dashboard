@@ -279,6 +279,14 @@ export function EnrichmentTab() {
     setSelectedIds(new Set());
   }
 
+  function toggleAll() {
+    if (gefilterd.every((l) => selectedIds.has(l.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(gefilterd.map((l) => l.id)));
+    }
+  }
+
   function exportCSV() {
     if (gefilterd.length === 0) {
       addToast("Geen leads om te exporteren", "fout");
@@ -578,6 +586,14 @@ export function EnrichmentTab() {
               >
                 Top {maxLeads}
               </button>
+              <button
+                type="button"
+                onClick={toggleAll}
+                title="Selecteer alle gefilterde leads"
+                className="px-3 py-2 rounded-xl bg-autronis-accent/10 border border-autronis-accent/30 text-xs font-semibold text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
+              >
+                Alles ({gefilterd.length})
+              </button>
             </div>
           </>
         }
@@ -699,7 +715,18 @@ export function EnrichmentTab() {
             <table className="w-full text-sm">
               <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
                 <tr>
-                  <th className="w-10 px-3 py-2.5"></th>
+                  <th className="w-10 px-3 py-2.5">
+                    <input
+                      type="checkbox"
+                      checked={
+                        gefilterd.length > 0 &&
+                        gefilterd.every((l) => selectedIds.has(l.id))
+                      }
+                      onChange={toggleAll}
+                      title="Selecteer alle gefilterde leads"
+                      className="rounded border-autronis-border accent-autronis-accent"
+                    />
+                  </th>
                   <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Source</th>
                   <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Enrichment</th>

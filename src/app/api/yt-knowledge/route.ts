@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { tursoClient } from "@/lib/db";
-import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
+import { requireAuthOrApiKey } from "@/lib/auth";
 
-export async function GET() {
-  await requireAuth();
+export async function GET(request: NextRequest) {
+  await requireAuthOrApiKey(request);
   if (!tursoClient) return NextResponse.json({ error: "No Turso connection" }, { status: 500 });
 
   const [videosResult, statsResult, channelsResult] = await Promise.all([

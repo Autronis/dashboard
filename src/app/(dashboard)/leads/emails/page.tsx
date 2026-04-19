@@ -1010,8 +1010,19 @@ export default function LeadsEmailsPage() {
                     </div>
 
                     {/* Meta */}
-                    <div className="flex items-center gap-3 text-[10px] text-autronis-text-secondary/50 pt-1">
+                    <div className="flex flex-wrap items-center gap-3 text-[10px] text-autronis-text-secondary/50 pt-1">
                       <span>Aangemaakt: {new Date(email.created_at).toLocaleString("nl-NL")}</span>
+                      {email.emailed_at && (
+                        <span className="text-emerald-400/70">
+                          Verstuurd: {new Date(email.emailed_at).toLocaleString("nl-NL")}
+                        </span>
+                      )}
+                      {!email.emailed_at &&
+                        (email.email_status === "sent" || email.email_status === "replied") && (
+                          <span className="text-amber-400/70">
+                            Verstuurd (geen timestamp)
+                          </span>
+                        )}
                     </div>
                   </div>
                 )}

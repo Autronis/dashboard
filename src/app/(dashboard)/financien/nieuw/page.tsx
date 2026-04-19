@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Trash2, Eye, PenLine } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -73,6 +73,8 @@ function FactuurPreview({
 
 export default function NieuweFactuurPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const presetKlantId = searchParams.get("klantId");
   const { addToast } = useToast();
 
   const [klanten, setKlanten] = useState<Klant[]>([]);
@@ -80,7 +82,7 @@ export default function NieuweFactuurPage() {
   const [laden, setLaden] = useState(false);
   const [mobileView, setMobileView] = useState<"formulier" | "preview">("formulier");
 
-  const [klantId, setKlantId] = useState<string>("");
+  const [klantId, setKlantId] = useState<string>(presetKlantId ?? "");
   const [projectId, setProjectId] = useState<string>("");
   const [factuurdatum, setFactuurdatum] = useState(new Date().toISOString().slice(0, 10));
   const [betalingstermijn, setBetalingstermijn] = useState(30);

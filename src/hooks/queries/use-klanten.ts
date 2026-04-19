@@ -24,6 +24,7 @@ export interface Klant {
   totaleOmzet: number;
   openstaand: number;
   aantalOpenFacturen: number;
+  omzetTrend6m: number[];
   effectiefUurtarief: number;
   gezondheid: "groen" | "oranje" | "rood";
   gezondheidReden: string;

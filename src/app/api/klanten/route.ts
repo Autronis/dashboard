@@ -92,6 +92,37 @@ export async function GET(req: NextRequest) {
       .groupBy(facturen.klantId);
     const factuurMap = new Map(factuurStats.map((f) => [f.klantId, f]));
 
+    // Batch: revenue per maand laatste 6 maanden per klant (voor sparkline)
+    const omzetPerMaand = await db
+      .select({
+        klantId: facturen.klantId,
+        maand: sql<string>`strftime('%Y-%m', ${facturen.factuurdatum})`,
+        omzet: sql<number>`coalesce(sum(${facturen.bedragInclBtw}), 0)`,
+      })
+      .from(facturen)
+      .where(and(
+        eq(facturen.isActief, 1),
+        eq(facturen.status, "betaald"),
+        sql`${facturen.factuurdatum} >= date('now', '-6 months')`
+      ))
+      .groupBy(facturen.klantId, sql`strftime('%Y-%m', ${facturen.factuurdatum})`);
+
+    // Build 6-month aligned arrays per klant (oldest → newest, missing months = 0)
+    const nuVoorTrend = new Date();
+    const trendMaanden: string[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(nuVoorTrend.getFullYear(), nuVoorTrend.getMonth() - i, 1);
+      trendMaanden.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    const omzetMap = new Map<number, number[]>();
+    for (const row of omzetPerMaand) {
+      if (row.klantId === null) continue;
+      const arr = omzetMap.get(row.klantId) ?? trendMaanden.map(() => 0);
+      const idx = trendMaanden.indexOf(row.maand);
+      if (idx >= 0) arr[idx] = Math.round(row.omzet);
+      omzetMap.set(row.klantId, arr);
+    }
+
     // Batch: open offertes per klant
     const offerteStats = await db
       .select({
@@ -255,6 +286,7 @@ export async function GET(req: NextRequest) {
         totaleOmzet,
         openstaand,
         aantalOpenFacturen,
+        omzetTrend6m: omzetMap.get(klant.id) ?? trendMaanden.map(() => 0),
         effectiefUurtarief: Math.round(effectiefUurtarief * 100) / 100,
         gezondheid,
         gezondheidReden,

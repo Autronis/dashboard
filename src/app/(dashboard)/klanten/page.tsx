@@ -33,6 +33,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useBulkScan } from "../leads/_components/use-bulk-scan";
 import Link from "next/link";
 import { MarkeerContactKnop } from "./[id]/markeer-contact-knop";
+import { Sparkline } from "@/components/ui/sparkline";
+import { Receipt } from "lucide-react";
 
 // Generate consistent color from name
 function getInitialsColor(naam: string): string {
@@ -280,6 +282,14 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
         <div onClick={(e) => e.stopPropagation()}>
           <MarkeerContactKnop klantId={klant.id} compact />
         </div>
+        <Link
+          href={`/financien/nieuw?klantId=${klant.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="p-1.5 rounded-lg bg-autronis-bg/50 border border-autronis-border/50 text-autronis-text-secondary hover:text-emerald-400 hover:border-emerald-400/30 transition-colors"
+          title="Nieuwe factuur voor deze klant"
+        >
+          <Receipt className="w-3.5 h-3.5" />
+        </Link>
         <div className="flex-1" />
         {klant.openTaken > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium tabular-nums">
@@ -315,8 +325,8 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
       {/* Divider */}
       <div className="h-px bg-autronis-border mt-auto mb-3" />
 
-      {/* Footer KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      {/* Footer KPIs — omzet cell heeft 6-mnd sparkline naast bedrag */}
+      <div className="grid grid-cols-3 gap-2 items-end">
         <div>
           <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Projecten</p>
           <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{klant.aantalProjecten}</p>
@@ -326,7 +336,14 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
           <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatUren(klant.totaalMinuten)}</p>
         </div>
         <div>
-          <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet</p>
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet · 6m</p>
+            {(() => {
+              const trend = klant.omzetTrend6m ?? [];
+              const heeftData = trend.length >= 2 && trend.some((v) => v > 0);
+              return heeftData ? <Sparkline data={trend} width={48} height={16} /> : null;
+            })()}
+          </div>
           <p className={cn("text-sm font-bold tabular-nums", getLifetimeValueColor(klant.totaleOmzet))}>{formatBedrag(klant.totaleOmzet)}</p>
         </div>
       </div>

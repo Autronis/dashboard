@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic } from "@/lib/ai/tracked-anthropic";
 import { requireAuth } from "@/lib/auth";
 import { getSupabaseLeads } from "@/lib/supabase-leads";
 
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = TrackedAnthropic({ apiKey }, "/api/leads/website-leads/pitch-mail");
 
     const facts: string[] = [];
     if (lead.name) facts.push(`Bedrijfsnaam: ${lead.name}`);

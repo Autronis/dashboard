@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic } from "@/lib/ai/tracked-anthropic";
 import { db } from "@/lib/db";
 import { salesEngineScans, salesEngineKansen } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = TrackedAnthropic({ apiKey }, "/api/sales-engine/reply-plan");
 
     const systemPrompt = `Je bent een B2B sales expert voor Autronis — een bureau dat bedrijven helpt met AI-automatiseringen en moderne websites. Je schrijft persoonlijke, menselijke antwoord-mails op inkomende replies van cold outreach.
 

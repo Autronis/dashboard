@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
-import Anthropic from "@anthropic-ai/sdk";
+import { TrackedAnthropic } from "@/lib/ai/tracked-anthropic";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
@@ -96,7 +96,7 @@ export async function POST(
     );
   }
 
-  const anthropic = new Anthropic({ apiKey });
+  const anthropic = TrackedAnthropic({ apiKey }, "/api/upwork/jobs/[id]/pitch");
 
   // Build prompt
   const screeningQs = parseStringArray(job.screeningQs);

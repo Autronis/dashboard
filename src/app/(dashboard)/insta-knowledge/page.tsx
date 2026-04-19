@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Instagram, Loader2, RefreshCw, Trash2, ExternalLink, Plus,
   CheckCircle2, XCircle, Clock, Play, Image as ImageIcon, Star,
-  ChevronDown, ChevronUp, Zap, BookOpen, Lightbulb,
+  ChevronDown, ChevronUp, Zap, BookOpen, Lightbulb, Sparkles,
 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { UitlegBlock } from "@/components/ui/uitleg-block";
@@ -134,6 +134,14 @@ export default function InstaKnowledgePage() {
     if (!confirm("Item verwijderen?")) return;
     const r = await fetch(`/api/insta-knowledge/items/${id}`, { method: "DELETE" });
     if (r.ok) { addToast("Verwijderd", "succes"); fetchData(); }
+  };
+
+  const promote = async (id: string) => {
+    const r = await fetch(`/api/insta-knowledge/items/${id}/promote`, { method: "POST" });
+    const d = await r.json();
+    if (!r.ok) { addToast(d.fout || "Promotie mislukt", "fout"); return; }
+    if (d.created) addToast("Omgezet naar idee", "succes");
+    else addToast("Bestond al als idee", "succes");
   };
 
   return (
@@ -377,15 +385,24 @@ export default function InstaKnowledgePage() {
                                 </details>
                               )}
 
-                              <a
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-xs text-autronis-accent hover:underline"
-                              >
-                                <ExternalLink className="w-3 h-3" />
-                                Bekijk op Instagram
-                              </a>
+                              <div className="flex items-center gap-2 pt-2">
+                                <button
+                                  onClick={() => promote(item.id)}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 rounded-lg text-xs font-medium transition-colors"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  Naar idee
+                                </button>
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-autronis-accent hover:underline"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  Bekijk op Instagram
+                                </a>
+                              </div>
                             </>
                           ) : (
                             <p className="text-sm text-autronis-text-secondary">Nog geen analyse beschikbaar.</p>

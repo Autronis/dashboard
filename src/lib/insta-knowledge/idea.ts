@@ -11,13 +11,11 @@ interface ItemContext {
   type: "reel" | "post";
 }
 
-export async function createIdeaIfRelevant(
+export async function createIdeaFromItem(
   item: ItemContext,
   analysis: AnalysisResult,
   analysisId: string
 ): Promise<{ created: boolean; ideaId?: number }> {
-  if (analysis.relevance_score < 9) return { created: false };
-
   const existing = await db
     .select({ id: ideeen.id })
     .from(ideeen)
@@ -28,7 +26,7 @@ export async function createIdeaIfRelevant(
       )
     )
     .get();
-  if (existing) return { created: false };
+  if (existing) return { created: false, ideaId: existing.id };
 
   const defaultUser = await db.select().from(gebruikers).limit(1).get();
   const userId = defaultUser?.id ?? 1;
@@ -79,4 +77,14 @@ export async function createIdeaIfRelevant(
   }).returning({ id: ideeen.id }).get();
 
   return { created: true, ideaId: inserted?.id };
+}
+
+/** Auto-create only when relevance_score >= 9. Wrapper around createIdeaFromItem. */
+export async function createIdeaIfRelevant(
+  item: ItemContext,
+  analysis: AnalysisResult,
+  analysisId: string
+): Promise<{ created: boolean; ideaId?: number }> {
+  if (analysis.relevance_score < 9) return { created: false };
+  return createIdeaFromItem(item, analysis, analysisId);
 }

@@ -186,6 +186,26 @@ function safeParseYtMeta(text: string | null): YtMeta | null {
   }
 }
 
+interface InstaMeta {
+  instagramId: string;
+  itemUrl: string;
+  authorHandle: string;
+  type: "reel" | "post";
+  analysisId?: string;
+  relevanceScore?: number;
+}
+
+function safeParseInstaMeta(text: string | null): InstaMeta | null {
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as InstaMeta;
+    if (parsed && typeof parsed.instagramId === "string") return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // ============ MAIN PAGE ============
 
 export default function IdeeenPage() {

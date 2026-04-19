@@ -6,6 +6,9 @@ import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Clock, Coffee, Check
 import { motion, AnimatePresence } from "framer-motion";
 import { DndContext, DragOverlay, useDraggable, useDroppable, PointerSensor, useSensor, useSensors, type DragEndEvent, type DragStartEvent } from "@dnd-kit/core";
 import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks/queries/use-agenda";
+import { SwimLaneView } from "./swim-lane-view";
+import type { AgendaBlokProps } from "./agenda-blok";
+import { UitlegBlock } from "@/components/ui/uitleg-block";
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
@@ -335,6 +338,25 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
   // ziet. Set bevat expliciet INGEKLAPTE sessies — leeg betekent alles open.
   // Klik op header = toggle.
   const [collapsedSessies, setCollapsedSessies] = useState<Set<number>>(new Set());
+
+  // Bridge v2 swim lanes — gated on feature flag `agenda_lanes_v2`. Server
+  // returns enabled flags per user. Null = still loading, fall through to
+  // legacy render until we know.
+  const [lanesV2, setLanesV2] = useState<boolean | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/feature-flags", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { flags: {} }))
+      .then((j: { flags?: Record<string, boolean> }) => {
+        if (!cancelled) setLanesV2(!!j.flags?.agenda_lanes_v2);
+      })
+      .catch(() => {
+        if (!cancelled) setLanesV2(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const toggleSessie = useCallback((key: number) => {
     setCollapsedSessies((prev) => {
       const next = new Set(prev);
@@ -589,6 +611,65 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
   const nuMin = nu.getHours() * 60 + nu.getMinutes();
   const nuTop = ((nuMin - startUur * 60) / 60) * UUR_HOOGTE;
+
+  if (lanesV2) {
+    const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
+    const laneItems: AgendaBlokProps[] = items
+      .filter((it): it is AgendaItem => "eigenaar" in it || !("bron" in it || "linkHref" in it))
+      .filter((it) => it.startDatum?.startsWith(datumStr) && !it.heleDag)
+      .map((it) => {
+        const ag = it as AgendaItem;
+        return {
+          id: ag.id,
+          titel: ag.titel,
+          omschrijving: ag.omschrijving,
+          type: (ag.type === "afspraak" || ag.type === "deadline" || ag.type === "belasting" || ag.type === "herinnering"
+            ? ag.type
+            : "afspraak") as AgendaBlokProps["type"],
+          startDatum: ag.startDatum,
+          eindDatum: ag.eindDatum,
+          eigenaar: ag.eigenaar ?? "vrij",
+          gemaaktDoor: ag.gemaaktDoor,
+        };
+      });
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <button onClick={() => onNavigeer(-1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+          <h2 className={cn("text-sm sm:text-base font-semibold capitalize text-center", isVandaag ? "text-autronis-accent" : "text-autronis-text-primary")}>
+            {dagLabel}
+          </h2>
+          <button onClick={() => onNavigeer(1)} className="p-1.5 sm:p-2 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg transition-colors">
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
+          </button>
+        </div>
+
+        <UitlegBlock id="agenda-lanes-v2-uitleg" titel="Agenda in swim lanes" accent="accent">
+          <p>
+            Links de Sem-lane, rechts Syb. Team-afspraken (zoals klant-meetings of intake-calls) spannen
+            beide lanes. De smalle Vrij-lane helemaal rechts toont werk dat nog niet is opgepakt — sleep
+            het naar je eigen lane om het zelf te pakken.
+          </p>
+          <p>
+            Het gekleurde randje links van elk blok laat in één oogopslag zien aan welke klant of welk
+            project je werkt. Lunch (12:30–13:30) is grijs en loopt door over alle lanes heen.
+          </p>
+        </UitlegBlock>
+
+        <SwimLaneView
+          datum={datumStr}
+          items={laneItems}
+          onItemClick={(id) => {
+            const found = items.find((i) => "id" in i && i.id === id);
+            if (found) onItemClick?.(found as AgendaItem);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>

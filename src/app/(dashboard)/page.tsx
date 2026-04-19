@@ -664,7 +664,7 @@ export default function DashboardPage() {
             <KPICard label="Omzet deze maand" value={kpis.omzetDezeMaand} format={(n) => n === 0 ? "\u2014" : formatBedrag(n)} icon={<Euro className="w-5 h-5" />} color="emerald" index={0} className={kpis.omzetDezeMaand === 0 ? "opacity-50" : ""} trend={kpis.omzetVorigeMaand > 0 ? { value: omzetTrend } : undefined} />
           </Link>
           <Link href="/tijdregistratie" className="block">
-            <KPICard label="Uren deze week" value={kpis.urenDezeWeek.eigen} format={(n) => n === 0 ? "\u2014" : formatUren(Math.round(n))} icon={<Clock className="w-5 h-5" />} color="blue" index={1} className={kpis.urenDezeWeek.eigen === 0 ? "opacity-50" : ""} trend={kpis.urenVorigeWeek > 0 ? { value: urenTrend } : undefined} />
+            <KPICard label="Uren deze week" value={kpis.urenDezeWeek.eigen} format={(n) => n === 0 ? "\u2014" : formatUren(Math.round(n))} icon={<Clock className="w-5 h-5" />} color="blue" index={1} className={kpis.urenDezeWeek.eigen === 0 ? "opacity-50" : ""} trend={kpis.urenDezeWeek.eigen > 0 && kpis.urenVorigeWeek > 0 ? { value: urenTrend } : undefined} />
           </Link>
           <Link href="/projecten" className="block">
             <KPICard label="Actieve projecten" value={kpis.actieveProjecten} format={(n) => n === 0 ? "\u2014" : String(n)} icon={<FolderKanban className="w-5 h-5" />} color="purple" index={2} className={kpis.actieveProjecten === 0 ? "opacity-50" : ""} />
@@ -711,11 +711,8 @@ export default function DashboardPage() {
         {/* 3-kolom focus strip — Sales pipeline + Nu uitvoeren + Mijn taken.
             Sluit aan op go-to-market mindset: waar sta ik in de funnel,
             welke actie start ik nu, wat staat er op m'n lijst. */}
-        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SalesPipelineWidget />
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow h-full">
-            <SnelleActiesWidget compact variant="actie" />
-          </div>
 
           {mijnTaken.length > 0 && (
           <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">

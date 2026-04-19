@@ -198,18 +198,40 @@ export default function TijdPage() {
 
   const { van, tot } = berekenVanTot(datum, periode);
 
-  const { data: sessiesData, isLoading: sessiesLoading } = useSessies(van);
+  // Dag-view: één fetch. Week/maand: N-dagen parallel + client-side aggregatie zodat KPI cards
+  // niet alleen "vandaag" tonen bij een week/maand selectie.
+  const { data: sessiesData, isLoading: sessiesLoading } = useSessies(
+    periode === "dag" ? van : "",
+  );
+  const { data: weekData, isLoading: weekLoading } = useWeekSessies(
+    periode === "week" ? van : "",
+  );
+  const { data: maandData, isLoading: maandLoading } = useMaandSessies(
+    periode === "maand" ? van : "",
+  );
 
-  // Fetch yesterday's stats for trend comparison
+  // Fetch yesterday's stats for trend comparison (alleen zinvol in dag-view)
   const gisteren = (() => {
     const d = new Date(van);
     d.setDate(d.getDate() - 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   })();
-  const { data: gisterenData } = useSessies(gisteren);
+  const { data: gisterenData } = useSessies(periode === "dag" ? gisteren : "");
 
-  const stats = sessiesData?.stats ?? null;
-  const gisterenStats = gisterenData?.stats ?? null;
+  const stats = useMemo<SessiesData["stats"] | null>(() => {
+    if (periode === "week") return aggregeerPeriodeStats(weekData);
+    if (periode === "maand") return aggregeerPeriodeStats(maandData);
+    return sessiesData?.stats ?? null;
+  }, [periode, weekData, maandData, sessiesData]);
+
+  const statsLoading = periode === "week"
+    ? weekLoading
+    : periode === "maand"
+      ? maandLoading
+      : sessiesLoading;
+
+  // Trend vs gisteren alleen relevant in dag-view
+  const gisterenStats = periode === "dag" ? (gisterenData?.stats ?? null) : null;
 
   const handleNavigeer = useCallback(
     (richting: -1 | 1) => {
@@ -260,7 +282,8 @@ export default function TijdPage() {
           const uur = new Date().getHours();
           const dagFase: "ochtend" | "middag" | "laat" = uur < 12 ? "ochtend" : uur < 17 ? "middag" : "laat";
 
-          const inzicht: { tekst: string; type: "neutraal" | "waarschuwing" | "goed" } | null = stats ? (() => {
+          // Het inzicht-banner is geformuleerd in "vandaag"-termen — alleen tonen in dag-view.
+          const inzicht: { tekst: string; type: "neutraal" | "waarschuwing" | "goed" } | null = (stats && periode === "dag") ? (() => {
             // Goed bezig
             if (dwPct >= 75 && prodPct >= 70) return { tekst: `Sterke dag — ${formatTijd((stats.deepWorkMinuten ?? 0) * 60)} deep work, ${prodPct}% productief`, type: "goed" as const };
             if (dwPct >= 75) return { tekst: `Deep work target gehaald (${dwPct}%) — goed geconcentreerd vandaag`, type: "goed" as const };
@@ -309,7 +332,7 @@ export default function TijdPage() {
           return (
             <>
               {/* Focus advies — reflective, time-aware */}
-              {!sessiesLoading && inzicht && (
+              {!statsLoading && inzicht && (
                 <div className={`rounded-2xl px-4 py-3.5 border ${
                   inzicht.type === "waarschuwing" ? "bg-amber-500/6 border-amber-500/15" :
                   inzicht.type === "goed" ? "bg-emerald-500/6 border-emerald-500/15" :
@@ -354,7 +377,7 @@ export default function TijdPage() {
                       </span>
                     </div>
                   </div>
-                  {sessiesLoading ? (
+                  {statsLoading ? (
                     <Skeleton className="h-7 w-20" />
                   ) : (
                     <p className="text-xl font-bold text-autronis-text-primary tabular-nums">
@@ -381,7 +404,7 @@ export default function TijdPage() {
                       </span>
                     )}
                   </div>
-                  {sessiesLoading ? (
+                  {statsLoading ? (
                     <Skeleton className="h-7 w-14" />
                   ) : (
                     <p className={`text-xl font-bold tabular-nums ${prodColor}`}>
@@ -404,7 +427,7 @@ export default function TijdPage() {
                     </div>
                     <span className={`text-[10px] font-bold tabular-nums ${dwStatusColor}`}>{dwPct}%</span>
                   </div>
-                  {sessiesLoading ? (
+                  {statsLoading ? (
                     <Skeleton className="h-7 w-20" />
                   ) : (
                     <div>
@@ -435,7 +458,7 @@ export default function TijdPage() {
                       </span>
                     )}
                   </div>
-                  {sessiesLoading ? (
+                  {statsLoading ? (
                     <Skeleton className="h-14 w-14 rounded-full" />
                   ) : (
                     <div className="flex items-center gap-3">

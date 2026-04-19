@@ -155,25 +155,27 @@ export default function OpsRoomPage() {
       }
     }
 
+    // Helper: heartbeat overlay op een agent — wint van alles.
+    const applyHeartbeat = (a: Agent): Agent => {
+      const hb = heartbeatAgents.get(a.id);
+      if (!hb) return a;
+      return {
+        ...a,
+        status: (hb.status === "actief" ? "working" : "idle") as Agent["status"],
+        huidigeTaak: {
+          id: `hb-${a.id}`,
+          beschrijving: hb.taak,
+          project: hb.project,
+          startedAt: new Date().toISOString(),
+          status: "bezig" as const,
+        },
+      };
+    };
+
     if (!liveAgents || liveAgents.length === 0) {
-      // Geen live data — pas auto-assignments toe op mock agents
-      return mockAgents.map((mock) => {
-        const auto = autoAssignments.get(mock.id);
-        if (auto) {
-          return {
-            ...mock,
-            status: "working" as const,
-            huidigeTaak: {
-              id: `auto-${mock.id}`,
-              beschrijving: auto.titel,
-              project: auto.project,
-              startedAt: new Date().toISOString(),
-              status: "bezig" as const,
-            },
-          };
-        }
-        return mock;
-      });
+      // Geen live data — val terug op alleen heartbeats (echte chats).
+      // Geen mock auto-assign meer: als een agent geen heartbeat heeft blijft 'ie idle.
+      return mockAgents.map((mock) => applyHeartbeat(mock));
     }
 
     const liveMap = new Map(liveAgents.map((a) => [a.id, a]));
@@ -240,24 +242,8 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
 
-    // Overlay heartbeats — échte live Claude Code activity.
-    // Een heartbeat wint van alle andere overlays (mock, orchestrator).
-    const withHeartbeats = [...merged, ...extraLive].map((a) => {
-      const hb = heartbeatAgents.get(a.id);
-      if (!hb) return a;
-      return {
-        ...a,
-        status: (hb.status === "actief" ? "working" : "idle") as Agent["status"],
-        huidigeTaak: {
-          id: `hb-${a.id}`,
-          beschrijving: hb.taak,
-          project: hb.project,
-          startedAt: new Date().toISOString(),
-          status: "bezig" as const,
-        },
-      };
-    });
-    return withHeartbeats;
+    // Overlay heartbeats — échte live Claude Code activity wint van alles.
+    return [...merged, ...extraLive].map(applyHeartbeat);
   }, [liveAgents, orchestratorAgents, dbActiveAgents, projectenMetTaken, heartbeatAgents]);
   const isLive = (liveAgents && liveAgents.length > 0) || heartbeatAgents.size > 0;
 

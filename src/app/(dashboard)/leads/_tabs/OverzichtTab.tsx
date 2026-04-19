@@ -18,6 +18,7 @@ import {
   X,
   Sparkles,
   FolderOpen,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -532,6 +533,14 @@ export function OverzichtTab() {
               {isGeneratingEmails ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
               Email ({selectedIds.size})
             </button>
+            <Link
+              href={`/leads/rebuild-prep?preselect=${encodeURIComponent(Array.from(selectedIds).join(","))}`}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-fuchsia-500/10 text-fuchsia-300 text-xs font-medium hover:bg-fuchsia-500/20 transition-colors"
+              title="Open Rebuild Prep batch-tool met deze selectie"
+            >
+              <Wand2 className="w-3 h-3" />
+              Rebuild Prep ({selectedIds.size})
+            </Link>
             {confirmDelete ? (
               <>
                 <button

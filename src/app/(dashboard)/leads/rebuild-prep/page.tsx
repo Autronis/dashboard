@@ -340,6 +340,25 @@ export default function LeadsRebuildPrepPage() {
     router.replace("/leads/rebuild-prep", { scroll: false });
   }, [searchParams, router, addToast]);
 
+  // Preselect via ?preselect=id1,id2,... — vanuit de /leads Overzicht bulk
+  // action. We wachten tot de leads geladen zijn en matchen dan op id.
+  const preselectApplied = useRef(false);
+  useEffect(() => {
+    if (preselectApplied.current) return;
+    if (leads.length === 0) return;
+    const raw = searchParams.get("preselect");
+    if (!raw) return;
+    const wanted = new Set(raw.split(",").map((s) => s.trim()).filter(Boolean));
+    if (wanted.size === 0) return;
+    const matched = leads.filter((l) => wanted.has(l.id)).map((l) => l.id);
+    if (matched.length > 0) {
+      setSelectedIds(new Set(matched));
+      addToast(`${matched.length} leads voorgeselecteerd`, "succes");
+    }
+    preselectApplied.current = true;
+    router.replace("/leads/rebuild-prep", { scroll: false });
+  }, [leads, searchParams, router, addToast]);
+
   // Bij result load: check sessionStorage voor elke lead of er al assets zijn
   // (bv. eerder gegenereerd, nog niet gekopieerd).
   useEffect(() => {

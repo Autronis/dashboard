@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Wand2, Link, Package, Copy, Check, Zap, ExternalLink, Image, Clapperboard,
   Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
   Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff, BookmarkPlus,
   Star, Search, FolderOpen, Tag, CheckSquare, Grid3X3, LayoutList,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, ArrowLeft,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -230,12 +231,31 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function AnimatiesPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Round-trip context vanuit /leads/rebuild-prep. Als returnTo is gezet,
+  // tonen we een sticky banner + "Koppel & terug" knop die de assets opslaat.
+  const returnToLeadId = useMemo(() => searchParams.get("returnTo"), [searchParams]);
+  const returnToProduct = useMemo(() => searchParams.get("product"), [searchParams]);
+  const returnToBron = useMemo(() => searchParams.get("bron"), [searchParams]);
+  const prefilledRef = useRef(false);
+
   // ── Shared state
   const [mode, setMode] = useState<Mode>(() => {
     if (typeof window === "undefined") return "scroll-stop";
+    // Als returnTo via URL zegt scroll-stop, forceer die mode boven localStorage
     return (localStorage.getItem("animatie-mode") as Mode) || "scroll-stop";
   });
   useEffect(() => { localStorage.setItem("animatie-mode", mode); }, [mode]);
+
+  // Mode overschrijven als de rebuild-prep deeplink een specifieke mode vraagt
+  useEffect(() => {
+    const urlMode = searchParams.get("mode") as Mode | null;
+    if (urlMode && (urlMode === "scroll-stop" || urlMode === "logo-animatie")) {
+      setMode(urlMode);
+    }
+  }, [searchParams]);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const confettiRef = useRef<HTMLCanvasElement>(null);
@@ -313,6 +333,16 @@ export default function AnimatiesPage() {
     else localStorage.removeItem("scrollstop-prompts");
   }, [prompts]);
   useEffect(() => { localStorage.setItem("scrollstop-tab", activeTab); }, [activeTab]);
+
+  // Pre-fill input vanuit rebuild-prep deeplink (eenmalig). We overschrijven
+  // alleen als de input nu leeg is — nooit actieve user-input kapotmaken.
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    if (!returnToLeadId) return;
+    prefilledRef.current = true;
+    setInputType("product");
+    setInput((prev) => (prev.trim() ? prev : (returnToProduct ?? "")));
+  }, [returnToLeadId, returnToProduct]);
 
   // ── Kie.ai image tweaks
   const [kieCleanBg, setKieCleanBg] = useState(true);
@@ -1196,6 +1226,72 @@ export default function AnimatiesPage() {
   return (
     <div className="flex flex-col h-full min-h-screen p-3 sm:p-6 relative bg-autronis-bg text-autronis-text-primary">
       <canvas ref={confettiRef} className="fixed inset-0 pointer-events-none z-50" />
+
+      {/* Rebuild-prep round-trip banner */}
+      {returnToLeadId && (
+        <div className="mb-4 rounded-xl border border-fuchsia-500/30 bg-fuchsia-500/5 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Wand2 className="w-4 h-4 text-fuchsia-300 shrink-0" />
+            <div className="text-sm min-w-0">
+              <div className="text-fuchsia-100 font-medium truncate">
+                Asset Generator voor: {returnToProduct || "lead"}
+              </div>
+              <div className="text-xs text-fuchsia-200/70 truncate">
+                Gegenereerde assets komen terug in je rebuild-prep prompt.
+                {returnToBron && <> Bron: {returnToBron}</>}
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  const promptsLocal = (() => {
+                    try {
+                      const raw = localStorage.getItem("scrollstop-prompts");
+                      return raw ? JSON.parse(raw) : null;
+                    } catch { return null; }
+                  })();
+                  const payload = {
+                    leadId: returnToLeadId,
+                    productNaam: input || returnToProduct || "",
+                    effect: eindEffect,
+                    stijl: stijl,
+                    promptA: promptsLocal?.promptA ?? null,
+                    promptB: promptsLocal?.promptB ?? null,
+                    promptVideo: promptsLocal?.promptC ?? null,
+                    imageA: kieStartFrame || null,
+                    imageB: kieEndFrame || null,
+                    videoUrl: kieVideoUrl || null,
+                    savedAt: new Date().toISOString(),
+                  };
+                  sessionStorage.setItem(
+                    `rebuild-prep-assets-${returnToLeadId}`,
+                    JSON.stringify(payload)
+                  );
+                  router.push(`/leads/rebuild-prep?leadAssets=${returnToLeadId}`);
+                } catch (err) {
+                  console.error("[animaties] koppel-en-terug faalde", err);
+                }
+              }}
+              className="px-3 py-1.5 rounded-lg bg-fuchsia-500 text-black text-xs font-semibold hover:bg-fuchsia-400 transition inline-flex items-center gap-1.5"
+              title="Sla alle huidige prompts + URLs op als assets voor deze lead en ga terug."
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Koppel &amp; terug
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push(`/leads/rebuild-prep`)}
+              className="px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary text-xs transition"
+              title="Terug zonder assets te koppelen."
+            >
+              Annuleer
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="mb-5">

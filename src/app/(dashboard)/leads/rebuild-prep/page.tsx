@@ -26,6 +26,8 @@ import {
   loadAssetsForLead,
   buildAssetInjection,
 } from "@/lib/rebuild-prep-assets";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionCard } from "@/components/leads/section-card";
 
 interface LinkedinLeadRow {
   id: string;
@@ -375,32 +377,23 @@ export default function LeadsRebuildPrepPage() {
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <Link
-          href="/leads"
-          className="inline-flex items-center gap-1.5 text-sm text-autronis-text-muted hover:text-autronis-text mb-3"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Terug naar Leads
-        </Link>
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-3xl font-semibold text-autronis-text flex items-center gap-2">
-              <Sparkles className="w-7 h-7 text-autronis-accent" />
-              Lead Rebuild Prep
-            </h1>
-            <p className="text-autronis-text-muted mt-1 max-w-2xl">
-              Batch-tool voor alle leads. Leads <b>zonder</b> website krijgen
-              een SERP-check + &quot;from scratch&quot; prompt. Leads <b>mét</b>{" "}
-              website worden gescraped voor een upgrade-pitch. &quot;Prep alle&quot;
-              verwerkt alles in chunks van {BATCH_LIMIT}.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+      <Link
+        href="/leads"
+        className="inline-flex items-center gap-1.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary mb-3 transition-colors"
+      >
+        <ChevronLeft className="w-4 h-4" />
+        Terug naar Leads
+      </Link>
+
+      <PageHeader
+        title="Lead Rebuild Prep"
+        description={`Batch-tool voor alle leads. Zonder website → SERP-check + "from scratch" prompt. Met website → scrape voor upgrade-pitch. "Prep alle" werkt in chunks van ${BATCH_LIMIT}.`}
+        actions={
+          <>
             <button
               onClick={selectFirstVisible}
               disabled={gefilterd.length === 0}
-              className="px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text hover:border-autronis-accent transition disabled:opacity-50"
+              className="px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text-primary hover:border-autronis-accent transition disabled:opacity-50"
             >
               Selecteer eerste {Math.min(BATCH_LIMIT, gefilterd.length)}
             </button>
@@ -438,19 +431,19 @@ export default function LeadsRebuildPrepPage() {
                 </>
               )}
             </button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="mb-4 flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[220px] max-w-md">
-          <Search className="w-4 h-4 text-autronis-text-muted absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-autronis-text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={zoek}
             onChange={(e) => setZoek(e.target.value)}
             placeholder="Zoek op naam, locatie of categorie..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text placeholder:text-autronis-text-muted focus:border-autronis-accent outline-none"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary focus:border-autronis-accent outline-none"
           />
         </div>
         <div className="flex items-center gap-1.5 p-1 rounded-lg bg-autronis-card border border-autronis-border">
@@ -468,20 +461,20 @@ export default function LeadsRebuildPrepPage() {
                 "px-3 py-1.5 rounded-md text-xs font-medium transition",
                 siteFilter === f.key
                   ? "bg-autronis-accent text-black"
-                  : "text-autronis-text-muted hover:text-autronis-text"
+                  : "text-autronis-text-secondary hover:text-autronis-text-primary"
               )}
             >
               {f.label}
             </button>
           ))}
         </div>
-        <div className="text-sm text-autronis-text-muted">
+        <div className="text-sm text-autronis-text-secondary">
           {gefilterd.length} zichtbaar · {selectedIds.size} geselecteerd
         </div>
         {selectedIds.size > 0 && (
           <button
             onClick={clearSelection}
-            className="text-sm text-autronis-text-muted hover:text-autronis-text"
+            className="text-sm text-autronis-text-secondary hover:text-autronis-text-primary"
           >
             Wissen
           </button>
@@ -498,7 +491,7 @@ export default function LeadsRebuildPrepPage() {
       {batchPrepping && (
         <div className="mb-4 p-4 rounded-xl bg-autronis-card border border-autronis-accent/30">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm text-autronis-text">
+            <div className="text-sm text-autronis-text-primary">
               Chunk {batchProgress.chunk}/{batchProgress.totalChunks} — {batchProgress.done} van {batchProgress.total} leads verwerkt
               {batchSkipped > 0 && <span className="text-amber-400 ml-2">({batchSkipped} overgeslagen)</span>}
             </div>
@@ -524,11 +517,20 @@ export default function LeadsRebuildPrepPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-2xl bg-autronis-card border border-autronis-border overflow-hidden mb-8">
+          <SectionCard
+            title="Leads"
+            padding="none"
+            className="mb-8"
+            aside={
+              <span className="text-xs text-autronis-text-secondary tabular-nums">
+                {gefilterd.length} zichtbaar · {selectedIds.size} geselecteerd
+              </span>
+            }
+          >
             <div className="max-h-[50vh] overflow-y-auto">
               <table className="w-full text-sm">
                 <thead className="sticky top-0 bg-autronis-card border-b border-autronis-border">
-                  <tr className="text-left text-autronis-text-muted">
+                  <tr className="text-left text-autronis-text-secondary">
                     <th className="py-3 px-4 w-10"></th>
                     <th className="py-3 px-4">Naam</th>
                     <th className="py-3 px-4 w-28">Mode</th>
@@ -542,7 +544,7 @@ export default function LeadsRebuildPrepPage() {
                     <tr>
                       <td
                         colSpan={6}
-                        className="py-12 text-center text-autronis-text-muted"
+                        className="py-12 text-center text-autronis-text-secondary"
                       >
                         Geen leads gevonden.
                       </td>
@@ -571,7 +573,7 @@ export default function LeadsRebuildPrepPage() {
                               className="accent-autronis-accent"
                             />
                           </td>
-                          <td className="py-2.5 px-4 text-autronis-text font-medium">
+                          <td className="py-2.5 px-4 text-autronis-text-primary font-medium">
                             <div>{lead.name || "(geen naam)"}</div>
                             {hasSite && lead.website && (
                               <a
@@ -579,7 +581,7 @@ export default function LeadsRebuildPrepPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="text-[11px] text-autronis-text-muted hover:text-autronis-accent inline-flex items-center gap-1 mt-0.5"
+                                className="text-[11px] text-autronis-text-secondary hover:text-autronis-accent inline-flex items-center gap-1 mt-0.5"
                               >
                                 <Globe className="w-3 h-3" />
                                 {lead.website.replace(/^https?:\/\//, "").replace(/\/$/, "")}
@@ -599,10 +601,10 @@ export default function LeadsRebuildPrepPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-2.5 px-4 text-autronis-text-muted">
+                          <td className="py-2.5 px-4 text-autronis-text-secondary">
                             {lead.categoryLabel || "—"}
                           </td>
-                          <td className="py-2.5 px-4 text-autronis-text-muted">
+                          <td className="py-2.5 px-4 text-autronis-text-secondary">
                             {lead.location || lead.address || "—"}
                           </td>
                           <td className="py-2.5 px-4">
@@ -612,7 +614,7 @@ export default function LeadsRebuildPrepPage() {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="inline-flex items-center gap-1 text-autronis-text-muted hover:text-autronis-accent text-xs"
+                                className="inline-flex items-center gap-1 text-autronis-text-secondary hover:text-autronis-accent text-xs"
                               >
                                 <MapPin className="w-3.5 h-3.5" />
                                 {lead.source === "linkedin" ? "LinkedIn" : "Maps"}
@@ -626,14 +628,14 @@ export default function LeadsRebuildPrepPage() {
                 </tbody>
               </table>
             </div>
-          </div>
+          </SectionCard>
 
           {results.length > 0 && (
-            <div>
-              <h2 className="text-xl font-semibold text-autronis-text mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-autronis-accent" />
-                Prep resultaten ({results.length})
-              </h2>
+            <SectionCard
+              title={`Prep resultaten (${results.length})`}
+              icon={Sparkles}
+              padding="default"
+            >
               <div className="space-y-3">
                 {results.map((r) => (
                   <ResultCard
@@ -645,7 +647,7 @@ export default function LeadsRebuildPrepPage() {
                   />
                 ))}
               </div>
-            </div>
+            </SectionCard>
           )}
         </>
       )}
@@ -726,7 +728,7 @@ function ResultCard({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-autronis-text font-semibold">
+            <span className="text-autronis-text-primary font-semibold">
               {lead.name || "(geen naam)"}
             </span>
             <span
@@ -753,7 +755,7 @@ function ResultCard({
               </span>
             )}
           </div>
-          <div className="text-xs text-autronis-text-muted mt-1">
+          <div className="text-xs text-autronis-text-secondary mt-1">
             {[lead.category, lead.location || lead.address].filter(Boolean).join(" · ") || "—"}
           </div>
           {linkUrl && (
@@ -768,7 +770,7 @@ function ResultCard({
             </a>
           )}
           {footerNote && (
-            <div className="text-xs text-autronis-text-muted mt-1 italic">
+            <div className="text-xs text-autronis-text-secondary mt-1 italic">
               {footerNote}
             </div>
           )}
@@ -781,7 +783,7 @@ function ResultCard({
                 "px-3 py-1.5 rounded-lg border text-xs font-medium transition inline-flex items-center gap-1.5",
                 assets
                   ? "bg-fuchsia-500/10 border-fuchsia-500/30 text-fuchsia-300 hover:bg-fuchsia-500/20"
-                  : "bg-autronis-bg border-autronis-border text-autronis-text hover:border-fuchsia-500/50 hover:text-fuchsia-300"
+                  : "bg-autronis-bg border-autronis-border text-autronis-text-primary hover:border-fuchsia-500/50 hover:text-fuchsia-300"
               )}
               title={
                 assets

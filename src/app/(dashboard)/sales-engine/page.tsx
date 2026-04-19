@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSalesEngineScans, useSalesEngineBatch } from "@/hooks/queries/use-sales-engine";
+import { pipelineValueVoorImpact } from "@/lib/sales-engine/config";
 import { useScanQueue } from "./_components/use-scan-queue";
 import { QueueList } from "./_components/QueueList";
 import { RepliesInbox } from "./_components/RepliesInbox";
@@ -539,11 +540,10 @@ export default function SalesEnginePage() {
 
   const totaalKansen = allScans.reduce((sum, s) => sum + s.aantalKansen, 0);
   const gemiddeldeKansen = completedScans.length > 0 ? Math.round((totaalKansen / completedScans.length) * 10) / 10 : 0;
-  const pipelineWaarde = completedScans.reduce((sum, s) => {
-    if (s.hoogsteImpact === "hoog") return sum + 4000;
-    if (s.hoogsteImpact === "midden") return sum + 1500;
-    return sum + 500;
-  }, 0);
+  const pipelineWaarde = completedScans.reduce(
+    (sum, s) => sum + pipelineValueVoorImpact(s.hoogsteImpact),
+    0
+  );
 
   // Filter counts for badge
   const filterCounts: Record<string, number> = {
@@ -800,10 +800,10 @@ export default function SalesEnginePage() {
                                   onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
-                                    router.push(`/outreach?scanId=${scan.id}`);
+                                    router.push(`/leads/emails?scanId=${scan.id}`);
                                   }}
                                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition-colors"
-                                  title="Start outreach"
+                                  title="Bekijk outreach voor deze scan"
                                 >
                                   <Send className="w-3 h-3" />
                                   Outreach

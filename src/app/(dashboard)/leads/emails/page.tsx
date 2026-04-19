@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Mail,
   Loader2,
@@ -25,6 +27,9 @@ import {
   ArrowUpAZ,
   Sparkles,
   CheckSquare,
+  Rocket,
+  X,
+  Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -127,13 +132,25 @@ const STATUS_TABS: Array<{ key: string; label: string }> = [
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
+interface ScanContext {
+  scanId: number;
+  bedrijfsnaam: string | null;
+  supabaseLeadId: string | null;
+}
+
 export default function LeadsEmailsPage() {
   const { addToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const scanIdParam = searchParams.get("scanId");
   const [emails, setEmails] = useState<EmailRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("alle");
   const [zoek, setZoek] = useState("");
+  const [scanContext, setScanContext] = useState<ScanContext | null>(null);
+  const [scanContextError, setScanContextError] = useState<string | null>(null);
+  const [generatingEmail, setGeneratingEmail] = useState(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -193,6 +210,75 @@ export default function LeadsEmailsPage() {
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 10000);
 
+  // Wanneer ?scanId aanwezig is: haal scan-details op (bedrijfsnaam + supabaseLeadId)
+  // zodat we de email-lijst kunnen filteren op de bij deze scan horende lead.
+  useEffect(() => {
+    if (!scanIdParam) {
+      setScanContext(null);
+      setScanContextError(null);
+      return;
+    }
+    const scanId = Number(scanIdParam);
+    if (!Number.isFinite(scanId)) {
+      setScanContextError("Ongeldig scanId");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/sales-engine/${scanId}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.fout || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setScanContext({
+          scanId,
+          bedrijfsnaam: data.scan?.bedrijfsnaam ?? null,
+          supabaseLeadId: data.scan?.supabaseLeadId ?? null,
+        });
+        setScanContextError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setScanContextError(e instanceof Error ? e.message : "Kon scan niet laden");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [scanIdParam]);
+
+  function clearScanFilter() {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("scanId");
+    const qs = sp.toString();
+    router.replace(qs ? `/leads/emails?${qs}` : "/leads/emails");
+  }
+
+  async function generateCustomMailForScan() {
+    if (!scanContext?.supabaseLeadId) return;
+    setGeneratingEmail(true);
+    try {
+      const res = await fetch("/api/leads/edge-function/trigger-email-generator", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadIds: [scanContext.supabaseLeadId] }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.fout || body.error || `HTTP ${res.status}`);
+      }
+      addToast("Email generatie gestart — refresh over een minuut", "succes");
+      // Geef de edge function even tijd en haal dan opnieuw op
+      setTimeout(() => void load(true), 4000);
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Generatie mislukt", "fout");
+    } finally {
+      setGeneratingEmail(false);
+    }
+  }
+
   const stats = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const e of emails) {
@@ -212,6 +298,10 @@ export default function LeadsEmailsPage() {
 
   const gefilterd = useMemo(() => {
     let result = sorted;
+    if (scanContext?.supabaseLeadId) {
+      const lid = scanContext.supabaseLeadId;
+      result = result.filter((e) => e.lead_id === lid || e.google_maps_lead_id === lid);
+    }
     if (statusFilter !== "alle") {
       result = result.filter((e) => e.email_status === statusFilter);
     }
@@ -224,7 +314,7 @@ export default function LeadsEmailsPage() {
       );
     }
     return result;
-  }, [sorted, statusFilter, zoek]);
+  }, [sorted, statusFilter, zoek, scanContext]);
 
   // Reset naar pagina 1 wanneer filter/zoek/sort verandert
   useEffect(() => {
@@ -494,8 +584,58 @@ export default function LeadsEmailsPage() {
     [gefilterd]
   );
 
+  const scanHasEmails = scanContext ? gefilterd.length > 0 : false;
+  const canGenerateForScan = !!scanContext?.supabaseLeadId && !scanHasEmails;
+
   return (
     <div className="space-y-6">
+      {/* Scan-context banner (wanneer we vanuit /sales-engine komen met ?scanId=X) */}
+      {scanIdParam && (
+        <div className="rounded-2xl border border-autronis-accent/30 bg-autronis-accent/[0.06] p-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <Rocket className="w-4 h-4 text-autronis-accent flex-shrink-0" />
+            <span className="text-sm text-autronis-text-primary">
+              Outreach voor{" "}
+              <span className="font-semibold text-autronis-accent">
+                {scanContext?.bedrijfsnaam || "scan"}
+              </span>
+              <span className="text-autronis-text-secondary"> — scan #{scanIdParam}</span>
+            </span>
+            {scanContextError && (
+              <span className="text-xs text-red-400 ml-2">({scanContextError})</span>
+            )}
+            {!scanContext && !scanContextError && (
+              <Loader2 className="w-3 h-3 animate-spin text-autronis-text-secondary" />
+            )}
+          </div>
+          <Link
+            href={`/sales-engine/${scanIdParam}`}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          >
+            <ChevronRight className="w-3 h-3" />
+            Naar scan
+          </Link>
+          {canGenerateForScan && (
+            <button
+              onClick={generateCustomMailForScan}
+              disabled={generatingEmail}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+            >
+              {generatingEmail ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+              Genereer cold mail
+            </button>
+          )}
+          <button
+            onClick={clearScanFilter}
+            className="inline-flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-autronis-text-secondary/80 hover:text-autronis-text-primary hover:bg-autronis-card transition-colors"
+            title="Toon alle emails"
+          >
+            <X className="w-3 h-3" />
+            Wis filter
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

@@ -40,6 +40,7 @@ import {
 import Link from "next/link";
 import { buildUpgradePrompt, buildFreshPrompt, type SiteScrape, type SerpCheck } from "@/lib/lead-rebuild-prep";
 import { classifyFit } from "@/lib/lead-rebuild-fit";
+import { SALES_ENGINE_UURTARIEF, investeringVoorUren } from "@/lib/sales-engine/config";
 import {
   type RebuildPrepAssets,
   loadAssetsForLead,
@@ -576,8 +577,6 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
   const { addToast } = useToast();
   const router = useRouter();
 
-  const STANDAARD_UURTARIEF = 95;
-
   if (isLoading) {
     return (
       <div className="p-6 space-y-4">
@@ -640,8 +639,8 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
     urenPerWeek: parseUrenPerWeek(k.geschatteTijdsbesparing),
   }));
   const totaalUrenPerWeek = kansenMetUren.reduce((sum, k) => sum + k.urenPerWeek, 0);
-  const jaarlijkseBesparing = totaalUrenPerWeek * 52 * STANDAARD_UURTARIEF;
-  const geschatteInvestering = totaalUrenPerWeek > 8 ? 5000 : totaalUrenPerWeek > 3 ? 3000 : 1500;
+  const jaarlijkseBesparing = totaalUrenPerWeek * 52 * SALES_ENGINE_UURTARIEF;
+  const geschatteInvestering = investeringVoorUren(totaalUrenPerWeek);
   const terugverdientijdMaanden = jaarlijkseBesparing > 0
     ? Math.ceil((geschatteInvestering / jaarlijkseBesparing) * 12)
     : 0;
@@ -780,7 +779,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                     <span className="text-[var(--text-secondary)] truncate mr-4">{kans.titel}</span>
                     <span className="font-medium tabular-nums whitespace-nowrap">
                       {kans.urenPerWeek > 0
-                        ? `€${Math.round(kans.urenPerWeek * 52 * STANDAARD_UURTARIEF).toLocaleString("nl-NL")}/jr`
+                        ? `€${Math.round(kans.urenPerWeek * 52 * SALES_ENGINE_UURTARIEF).toLocaleString("nl-NL")}/jr`
                         : "—"
                       }
                     </span>
@@ -957,7 +956,7 @@ export default function ScanDetailPage({ params }: { params: Promise<{ id: strin
                 const categorie = categorieConfig[kans.categorie];
                 const impact = impactConfig[kans.impact];
                 const urenPerWeek = parseUrenPerWeek(kans.geschatteTijdsbesparing);
-                const jaarBesparing = urenPerWeek * 52 * STANDAARD_UURTARIEF;
+                const jaarBesparing = urenPerWeek * 52 * SALES_ENGINE_UURTARIEF;
 
                 return (
                   <motion.div

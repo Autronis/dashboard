@@ -5,13 +5,12 @@ import { requireAuth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { PresentatiePDF, type PresentatieData } from "@/lib/sales-engine/presentatie-template";
+import { SALES_ENGINE_UURTARIEF, investeringVoorUren } from "@/lib/sales-engine/config";
 
 // Never cache — template can change and we always want the latest render.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-const STANDAARD_UURTARIEF = 75;
 
 function parseUrenPerWeek(text: string | null): number {
   if (!text) return 0;
@@ -47,8 +46,8 @@ export async function GET(
 
     const kansenMetUren = kansen.map((k) => ({ ...k, urenPerWeek: parseUrenPerWeek(k.geschatteTijdsbesparing) }));
     const totaalUrenPerWeek = kansenMetUren.reduce((sum, k) => sum + k.urenPerWeek, 0);
-    const jaarlijkseBesparing = totaalUrenPerWeek * 52 * STANDAARD_UURTARIEF;
-    const geschatteInvestering = totaalUrenPerWeek > 8 ? 5000 : totaalUrenPerWeek > 3 ? 3000 : 1500;
+    const jaarlijkseBesparing = totaalUrenPerWeek * 52 * SALES_ENGINE_UURTARIEF;
+    const geschatteInvestering = investeringVoorUren(totaalUrenPerWeek);
     const terugverdientijdMaanden = jaarlijkseBesparing > 0
       ? Math.ceil((geschatteInvestering / jaarlijkseBesparing) * 12)
       : 0;

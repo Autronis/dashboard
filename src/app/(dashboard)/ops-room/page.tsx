@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo } from "react";
 import dynamic from "next/dynamic";
-import { useQuery } from "@tanstack/react-query";
 import { Radio, LayoutGrid, List, Building2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -11,6 +10,7 @@ import {
   AgentDetail,
   TaskFeed,
   IsometricGrid,
+  Leaderboard,
   agents as mockAgents,
   taskLog,
 } from "@/components/ops-room";
@@ -19,20 +19,9 @@ const PixelOffice = dynamic(
   () => import("@/components/ops-room/pixel-office").then((m) => ({ default: m.PixelOffice })),
   { ssr: false }
 );
-import { CommandBar } from "@/components/ops-room/command-bar";
-import { CommandInput } from "@/components/ops-room/command-input";
-import { ApprovalPanel } from "@/components/ops-room/approval-panel";
-import { LogPanel } from "@/components/ops-room/log-panel";
-import { ProjectPanel } from "@/components/ops-room/project-panel";
-import { Leaderboard } from "@/components/ops-room/leaderboard";
-import { MissionControl } from "@/components/ops-room/mission-control";
-import { ExecutionFeed } from "@/components/ops-room/execution-feed";
-import { AgentStatusGrid } from "@/components/ops-room/agent-status-grid";
-import { CostDashboard } from "@/components/ops-room/cost-dashboard";
 import type { Agent } from "@/components/ops-room";
 import { useOpsRoom } from "@/hooks/queries/use-ops-room";
 import { useHeartbeats } from "@/hooks/queries/use-heartbeats";
-import { useOrchestrator } from "@/components/ops-room/orchestrator-store";
 import type { TaskLogEntry } from "@/components/ops-room";
 
 type ViewMode = "office" | "grid" | "list";
@@ -45,21 +34,16 @@ export default function OpsRoomPage() {
 
   const { data: liveAgents, isLoading, isError } = useOpsRoom();
   const { data: heartbeats } = useHeartbeats();
-  const orchestratorAgents = useOrchestrator((s) => s.activeAgents);
-  const orchestratorLogs = useOrchestrator((s) => s.logs);
-  const loadFromDb = useOrchestrator((s) => s.loadFromDb);
 
   // Map heartbeats → per-agent activity. Een heartbeat van user=sem met
   // activeSkill=wout zet wout-op-V1 op "working". Default (geen skill) =
-  // atlas/autro. Meerdere chats kunnen meerdere skills tegelijk activeren.
+  // atlas/autro.
   const heartbeatAgents = useMemo(() => {
     const map = new Map<string, { project: string; taak: string; chatTag: string | null; status: "actief" | "idle" }>();
     (heartbeats ?? []).forEach((hb) => {
       const suffix = hb.user === "syb" ? "-syb" : "";
       const skill = hb.activeSkill ?? (hb.user === "syb" ? "autro" : "atlas");
-      // Atlas/autro zijn mains — krijgen geen suffix.
       const id = skill === "atlas" || skill === "autro" ? skill : skill + suffix;
-      // Als een agent al een "actief" heartbeat heeft, die houden we
       if (map.get(id)?.status === "actief" && hb.status !== "actief") return;
       map.set(id, {
         project: hb.project ?? hb.chatTag ?? "Autronis",
@@ -71,91 +55,7 @@ export default function OpsRoomPage() {
     return map;
   }, [heartbeats]);
 
-  // Load pending/in_progress commands from DB on mount
-  useEffect(() => { loadFromDb(); }, [loadFromDb]);
-
-  // Poll DB for active commands → extract working agent IDs (survives refresh)
-  const { data: dbCommands } = useQuery({
-    queryKey: ["orchestrator-commands-agents"],
-    queryFn: async () => {
-      const res = await fetch("/api/ops-room/orchestrate", {
-        headers: { "x-ops-token": "autronis-ops-2026" },
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return (data.commands ?? []) as { opdracht: string; status: string; plan: { taken: { agentId: string | null; titel: string }[] } | null }[];
-    },
-    refetchInterval: 5000,
-  });
-  const dbActiveAgents = useMemo(() => {
-    const map = new Map<string, { titel: string; opdracht: string }>();
-    (dbCommands ?? []).forEach((cmd) => {
-      if ((cmd.status === "approved" || cmd.status === "in_progress") && cmd.plan) {
-        cmd.plan.taken.forEach((t) => {
-          if (t.agentId) map.set(t.agentId, { titel: t.titel, opdracht: cmd.opdracht });
-        });
-      }
-    });
-    return map;
-  }, [dbCommands]);
-
-  // Fetch taken met status "bezig" → die projecten zijn actief en krijgen builders
-  const { data: projectenMetTaken } = useQuery({
-    queryKey: ["ops-projecten-taken"],
-    queryFn: async () => {
-      const res = await fetch("/api/taken");
-      if (!res.ok) return [];
-      const data = await res.json();
-      const taken = (data.taken ?? []) as { id: number; titel: string; status: string; projectNaam: string | null }[];
-      // Alleen taken met status "bezig" — dat zijn projecten waar actief aan gewerkt wordt
-      const perProject = new Map<string, { titel: string; count: number }>();
-      for (const t of taken) {
-        if (t.status === "bezig" && t.projectNaam) {
-          const existing = perProject.get(t.projectNaam);
-          if (existing) {
-            existing.count++;
-          } else {
-            perProject.set(t.projectNaam, { titel: t.titel, count: 1 });
-          }
-        }
-      }
-      return Array.from(perProject.entries()).map(([project, info]) => ({ project, titel: info.titel, count: info.count }));
-    },
-    refetchInterval: 30_000,
-  });
-
-  // Merge: mock roster as base, overlay live data
-  // Idle builders worden automatisch toegewezen aan projecten met open taken
   const agents = useMemo(() => {
-    // Bouw auto-assignment map: wijs idle builders toe aan projecten met open taken
-    const autoAssignments = new Map<string, { project: string; titel: string }>();
-    if (projectenMetTaken && projectenMetTaken.length > 0) {
-      const builderIds = mockAgents
-        .filter((a) => a.rol === "builder")
-        .map((a) => a.id);
-      // Set van agents die al actief zijn (via orchestrator, DB, of live)
-      const alreadyActive = new Set<string>();
-      if (liveAgents) {
-        for (const a of liveAgents) {
-          if (a.status === "working") alreadyActive.add(a.id);
-        }
-      }
-      for (const id of orchestratorAgents.keys()) alreadyActive.add(id);
-      for (const id of dbActiveAgents.keys()) alreadyActive.add(id);
-
-      const idleBuilders = builderIds.filter((id) => !alreadyActive.has(id));
-      let builderIdx = 0;
-      for (const pmt of projectenMetTaken) {
-        // Wijs builders toe proportioneel aan aantal taken (min 1, max 3 per project)
-        const amount = Math.min(3, Math.max(1, Math.ceil(pmt.count / 2)));
-        for (let i = 0; i < amount && builderIdx < idleBuilders.length; i++) {
-          autoAssignments.set(idleBuilders[builderIdx], { project: pmt.project, titel: pmt.titel });
-          builderIdx++;
-        }
-      }
-    }
-
-    // Helper: heartbeat overlay op een agent — wint van alles.
     const applyHeartbeat = (a: Agent): Agent => {
       const hb = heartbeatAgents.get(a.id);
       if (!hb) return a;
@@ -173,8 +73,6 @@ export default function OpsRoomPage() {
     };
 
     if (!liveAgents || liveAgents.length === 0) {
-      // Geen live data — val terug op alleen heartbeats (echte chats).
-      // Geen mock auto-assign meer: als een agent geen heartbeat heeft blijft 'ie idle.
       return mockAgents.map((mock) => applyHeartbeat(mock));
     }
 
@@ -183,45 +81,6 @@ export default function OpsRoomPage() {
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
       if (!live) {
-        // Alle 9 per team blijven in hun default idle state. Geen mock
-        // auto-assign meer — activity komt van orchestrator of (later) live chats.
-        const alwaysActive = new Set([
-          "atlas", "wout", "bas", "coen", "gabriel", "ari", "daan", "finn", "leo",
-          "autro", "wout-syb", "bas-syb", "coen-syb", "gabriel-syb",
-          "ari-syb", "daan-syb", "finn-syb", "leo-syb",
-        ]);
-        if (alwaysActive.has(mock.id)) return mock;
-        // Check if orchestrator or DB has this agent active
-        if (orchestratorAgents.has(mock.id) || dbActiveAgents.has(mock.id)) {
-          const dbTask = dbActiveAgents.get(mock.id);
-          return {
-            ...mock,
-            status: "working" as const,
-            huidigeTaak: dbTask ? {
-              id: `db-${mock.id}`,
-              beschrijving: dbTask.titel,
-              project: dbTask.opdracht.slice(0, 40),
-              startedAt: new Date().toISOString(),
-              status: "bezig" as const,
-            } : mock.huidigeTaak,
-          };
-        }
-        // Auto-assign aan project met open taken
-        const auto = autoAssignments.get(mock.id);
-        if (auto) {
-          return {
-            ...mock,
-            status: "working" as const,
-            huidigeTaak: {
-              id: `auto-${mock.id}`,
-              beschrijving: auto.titel,
-              project: auto.project,
-              startedAt: new Date().toISOString(),
-              status: "bezig" as const,
-            },
-          };
-        }
-        // No activity → standby
         return {
           ...mock,
           status: "idle" as const,
@@ -242,29 +101,12 @@ export default function OpsRoomPage() {
     const mockIds = new Set(mockAgents.map((a) => a.id));
     const extraLive = liveAgents.filter((a) => !mockIds.has(a.id) && !a.id.startsWith("builder-") && !a.id.startsWith("test"));
 
-    // Overlay heartbeats — échte live Claude Code activity wint van alles.
     return [...merged, ...extraLive].map(applyHeartbeat);
-  }, [liveAgents, orchestratorAgents, dbActiveAgents, projectenMetTaken, heartbeatAgents]);
+  }, [liveAgents, heartbeatAgents]);
   const isLive = (liveAgents && liveAgents.length > 0) || heartbeatAgents.size > 0;
 
-  // Convert orchestrator logs + live API data to TaskLogEntry format
   const liveFeed: TaskLogEntry[] = useMemo(() => {
     const entries: TaskLogEntry[] = [];
-    orchestratorLogs.forEach((log) => {
-      const agent = agents.find((a) => a.id === log.agentId);
-      const status = log.type === "error" ? "fout" as const
-        : log.type === "task_complete" ? "afgerond" as const
-        : "bezig" as const;
-      entries.push({
-        id: log.id,
-        agentId: log.agentId,
-        agentNaam: agent?.naam ?? log.agentId,
-        status,
-        beschrijving: log.message,
-        project: agent?.huidigeTaak?.project ?? "Ops Room",
-        tijdstip: log.timestamp,
-      });
-    });
     if (liveAgents) {
       liveAgents.forEach((a) => {
         if (a.huidigeTaak && a.status === "working") {
@@ -282,7 +124,7 @@ export default function OpsRoomPage() {
     }
     entries.sort((a, b) => new Date(b.tijdstip).getTime() - new Date(a.tijdstip).getTime());
     return entries.length > 0 ? entries : taskLog;
-  }, [orchestratorLogs, liveAgents, agents]);
+  }, [liveAgents]);
 
   const handleSelectAgent = useCallback((agent: Agent) => {
     setSelectedAgent((prev) => (prev?.id === agent.id ? null : agent));
@@ -310,10 +152,8 @@ export default function OpsRoomPage() {
   return (
     <PageTransition>
       <div className="space-y-3">
-        {/* ===== STICKY HEADER + COMMAND BAR ===== */}
         <div className="sticky top-0 z-20 bg-autronis-bg space-y-2 py-2 -mt-2">
           <div className="flex items-center justify-between gap-4">
-            {/* Left: title + command input */}
             <div className="flex items-center gap-3 flex-1">
               <div className="flex items-center gap-2 shrink-0">
                 <Radio className="w-4 h-4 text-autronis-accent" />
@@ -326,13 +166,9 @@ export default function OpsRoomPage() {
                 )}
                 {isLoading && <Loader2 className="w-3 h-3 text-autronis-text-tertiary animate-spin" />}
               </div>
-              <div className="flex-1 max-w-lg">
-                <CommandInput />
-              </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Floor switcher */}
               <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
                 {(["v1", "v2", "both"] as FloorMode[]).map((f) => (
                   <button
@@ -350,7 +186,6 @@ export default function OpsRoomPage() {
                 ))}
               </div>
 
-              {/* View toggle */}
               <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-autronis-card border border-autronis-border/50">
                 {viewOptions.map(({ mode, icon: Icon, label }) => (
                   <button
@@ -370,8 +205,6 @@ export default function OpsRoomPage() {
               </div>
             </div>
           </div>
-
-          <CommandBar agents={agents} isLive={isLive} />
         </div>
 
         {isError && (
@@ -380,10 +213,8 @@ export default function OpsRoomPage() {
           </div>
         )}
 
-        {/* ===== MAIN VIEW ===== */}
         {viewMode === "office" ? (
           <>
-            {/* Office view with floor switching */}
             {(floor === "v1" || floor === "both") && (
               <div>
                 {floor === "both" && (
@@ -409,28 +240,11 @@ export default function OpsRoomPage() {
                 />
               </div>
             )}
-            {/* Mission Control + Approval */}
-            <MissionControl agents={agents} />
-            <ApprovalPanel />
 
-            {/* 3-column control grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              {/* Left: Projects + Costs + Ranking */}
-              <div className="space-y-4">
-                <ProjectPanel agents={agents} />
-                <CostDashboard agents={agents} />
-                <Leaderboard agents={agents} />
-              </div>
-
-              {/* Center: Live Execution Feed */}
-              <ExecutionFeed />
-
-              {/* Right: Agent Status + Activity */}
-              <div className="space-y-4">
-                <AgentStatusGrid agents={agents} onSelect={handleSelectAgent} />
-                <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-4">
+              <Leaderboard agents={agents} />
+              <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
+                <TaskFeed entries={liveFeed} isDemo={!isLive} onAgentClick={handleAgentClickFromFeed} />
               </div>
             </div>
             {selectedAgent && (
@@ -483,7 +297,7 @@ export default function OpsRoomPage() {
                 />
               ) : (
                 <div className="rounded-xl border border-autronis-border/50 bg-autronis-card p-4">
-                  <TaskFeed entries={liveFeed} isDemo={!isLive && orchestratorLogs.length === 0} onAgentClick={handleAgentClickFromFeed} />
+                  <TaskFeed entries={liveFeed} isDemo={!isLive} onAgentClick={handleAgentClickFromFeed} />
                 </div>
               )}
             </div>

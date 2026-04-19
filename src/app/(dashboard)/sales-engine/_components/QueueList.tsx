@@ -183,10 +183,16 @@ export function QueueList({ items, onRemove, onClear, onResetDismissed, autoFill
                     {item.bedrijfsnaam}
                   </div>
                   <div className="flex items-center gap-3 mt-0.5 text-xs text-autronis-text-secondary">
-                    <span className="flex items-center gap-1 truncate">
+                    <a
+                      href={item.website.startsWith("http") ? item.website : `https://${item.website}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex items-center gap-1 truncate hover:text-autronis-accent transition-colors"
+                    >
                       <ExternalLink className="w-3 h-3 flex-shrink-0" />
                       {hostnameOf(item.website)}
-                    </span>
+                    </a>
                     {item.email && <span className="truncate hidden md:inline">{item.email}</span>}
                   </div>
                 </div>

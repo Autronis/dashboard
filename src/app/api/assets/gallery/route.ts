@@ -3,10 +3,45 @@ import { db } from "@/lib/db";
 import { assetGallery } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, desc, and, like, sql } from "drizzle-orm";
+import { put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 
 const isTurso = !!process.env.TURSO_DATABASE_URL;
+
+// External AI image/video providers (Kie.ai, fal.media, OpenAI image API, ...)
+// return temporary URLs that expire within hours/days. Persist them to Vercel
+// Blob immediately so the gallery never points at a 404 later. See
+// memory: feedback_kie_temp_urls_expire.md
+const PERSISTENT_BLOB_HOSTS = ["public.blob.vercel-storage.com", "blob.vercel-storage.com"];
+function isAlreadyPersistent(url: string): boolean {
+  try { return PERSISTENT_BLOB_HOSTS.some((h) => new URL(url).hostname.endsWith(h)); }
+  catch { return false; }
+}
+async function persistAssetToBlob(
+  url: string,
+  kind: "image" | "video",
+  productNaam: string,
+): Promise<string> {
+  if (isAlreadyPersistent(url)) return url;
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return url;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return url;
+    const buf = Buffer.from(await res.arrayBuffer());
+    const ext = kind === "video" ? "mp4" : "png";
+    const ct = res.headers.get("content-type") ?? (kind === "video" ? "video/mp4" : "image/png");
+    const slug = productNaam.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || kind;
+    const blob = await put(`asset-gallery/${slug}-${Date.now()}.${ext}`, buf, {
+      access: "public",
+      contentType: ct,
+      addRandomSuffix: true,
+    });
+    return blob.url;
+  } catch {
+    return url;
+  }
+}
 
 // On local (better-sqlite3): use raw SQL to avoid column order mismatch from ALTER TABLE
 // On Turso: use Drizzle ORM (no column order issues with libsql)
@@ -131,7 +166,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "type en productNaam zijn verplicht" }, { status: 400 });
     }
 
-    // Download image locally if URL provided (only on local, not Turso/Vercel)
+    // Persist external (expiring) AI provider URLs to Vercel Blob before storing.
+    if (body.afbeeldingUrl) {
+      body.afbeeldingUrl = await persistAssetToBlob(body.afbeeldingUrl, "image", body.productNaam);
+    }
+    if (body.videoUrl) {
+      body.videoUrl = await persistAssetToBlob(body.videoUrl, "video", body.productNaam);
+    }
+
+    // Local-only: keep an extra on-disk copy for offline dev convenience.
     let lokaalPad: string | undefined;
     if (body.afbeeldingUrl && !isTurso) {
       try {

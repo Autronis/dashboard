@@ -906,15 +906,16 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
               new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime()
             );
 
-            // Groepeer Claude taken die overlappen of aansluiten (max 15 min gap)
+            // Groepeer Claude taken alleen als ze EXACT dezelfde ingeplandStart
+            // hebben. Eén cluster blok = alle taken in dezelfde cluster sessie
+            // krijgen identieke start/eind van AI plan, dus die chainen samen.
+            // Slimme taken (auto-fill) en losse claude taken hebben unieke
+            // tijden en blijven dus apart, ook als ze achter elkaar liggen —
+            // dat voorkomt dat alles in één mega-blok eindigt.
             const sessies: typeof sorted[] = [];
             let current = [sorted[0]];
             for (let i = 1; i < sorted.length; i++) {
-              const prevEnd = Math.max(
-                ...current.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime())
-              );
-              const curStart = new Date(sorted[i].ingeplandStart!).getTime();
-              if (curStart - prevEnd <= 15 * 60000) {
+              if (sorted[i].ingeplandStart === current[0].ingeplandStart) {
                 current.push(sorted[i]);
               } else {
                 sessies.push(current);

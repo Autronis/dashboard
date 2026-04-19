@@ -323,18 +323,32 @@ function drawDesk(
     ctx.rect(x - 4, labelY2 - 4, maxW + 20, 56);
     ctx.clip();
 
+    // Per-agent label override — skill-specifiek. Fallback naar rol.
+    const AGENT_LABELS: Record<string, { label: string; color: string }> = {
+      atlas:   { label: "Main",            color: "#23C6B7" },
+      autro:   { label: "Main",            color: "#ff6b35" },
+      wout:    { label: "n8n / Automation", color: "#4ade80" },
+      bas:     { label: "Prompts",         color: "#06b6d4" },
+      coen:    { label: "Backend",         color: "#2563eb" },
+      finn:    { label: "Frontend",        color: "#38bdf8" },
+      gabriel: { label: "Documentatie",    color: "#94a3b8" },
+      ari:     { label: "Research",        color: "#23C6B7" },
+      daan:    { label: "Intake",          color: "#fbbf24" },
+      leo:     { label: "QA / Review",     color: "#a78bfa" },
+    };
     const rolLabels: Record<string, { label: string; color: string }> = {
       manager: { label: "Manager", color: "#f59e0b" },
       builder: { label: "Builder", color: "#3b82f6" },
       reviewer: { label: "Reviewer", color: "#a855f7" },
       architect: { label: "Architect", color: "#f59e0b" },
-      assistant: { label: "Research & Docs", color: "#23C6B7" },
+      assistant: { label: "Support", color: "#23C6B7" },
       automation: { label: "Automation", color: "#4ade80" },
     };
-    const isSem = agent.id === "sem";
+    const isSem = agent.id === "sem" || agent.id === "syb";
+    const baseId = agent.id.replace(/-syb$/, "");
     const rol = isSem
       ? { label: "CEO", color: "#f59e0b" }
-      : (rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
+      : (AGENT_LABELS[baseId] ?? rolLabels[agent.rol ?? "builder"] ?? rolLabels.builder);
 
     // Role icon (custom drawn)
     drawRoleIcon(ctx, agent.rol ?? "builder", agent.id, labelX, labelY2 - 2, 16);
@@ -752,11 +766,11 @@ export function PixelOffice({ agents, selectedId, onSelect, ceo }: PixelOfficePr
     avatar: ceoAvatar, terminal: [], kosten: { tokensVandaag: 0, kostenVandaag: 0, tokensHuidigeTaak: 0 },
   }), [ceoId, ceoNaam, ceoAvatar]);
 
-  // Mains + support-rollen blijven visueel aan bureau; builders verschijnen
-  // alleen wanneer ze ook daadwerkelijk actief zijn.
+  // Alle 9 stations per team altijd zichtbaar aan bureau — roster is vast.
   const ALWAYS_AT_DESK = new Set([
-    "atlas", "ari", "gabriel", "daan", "leo",
-    "autro", "ari-syb", "gabriel-syb", "daan-syb", "leo-syb",
+    "atlas", "wout", "bas", "coen", "gabriel", "ari", "daan", "finn", "leo",
+    "autro", "wout-syb", "bas-syb", "coen-syb", "gabriel-syb",
+    "ari-syb", "daan-syb", "finn-syb", "leo-syb",
   ]);
 
   const positions = useMemo(() => {

@@ -157,10 +157,12 @@ export default function OpsRoomPage() {
     const merged = mockAgents.map((mock) => {
       const live = liveMap.get(mock.id);
       if (!live) {
-        // No live data — mains + support-rollen blijven visueel actief aan bureau
+        // Alle 9 per team blijven in hun default idle state. Geen mock
+        // auto-assign meer — activity komt van orchestrator of (later) live chats.
         const alwaysActive = new Set([
-          "atlas", "ari", "gabriel", "daan", "leo",
-          "autro", "ari-syb", "gabriel-syb", "daan-syb", "leo-syb",
+          "atlas", "wout", "bas", "coen", "gabriel", "ari", "daan", "finn", "leo",
+          "autro", "wout-syb", "bas-syb", "coen-syb", "gabriel-syb",
+          "ari-syb", "daan-syb", "finn-syb", "leo-syb",
         ]);
         if (alwaysActive.has(mock.id)) return mock;
         // Check if orchestrator or DB has this agent active

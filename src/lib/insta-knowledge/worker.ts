@@ -4,6 +4,7 @@ import { manualAdapter } from "./adapters/manual";
 import { transcribeReelFromUrl, MediaTooLargeError } from "./transcribe";
 import { analyzeInstaContent, INSTA_MODEL } from "./analyze";
 import { createIdeaIfRelevant } from "./idea";
+import { fetchImagesAsBase64 } from "./vision";
 import type { WorkerOutcome } from "./types";
 
 async function markFailed(itemId: string, reason: string): Promise<void> {
@@ -65,9 +66,15 @@ export async function processItem(itemId: string): Promise<WorkerOutcome> {
     return { ok: false, reason: "no_media_url" };
   }
 
+  // Fetch available images (carousel slides OR video thumbnail) so Claude
+  // can read overlay text / slide content as additional context.
+  const images = rawItem.imageUrls?.length
+    ? await fetchImagesAsBase64(rawItem.imageUrls)
+    : [];
+
   let analysis;
   try {
-    analysis = await analyzeInstaContent({ caption: rawItem.caption, transcript });
+    analysis = await analyzeInstaContent({ caption: rawItem.caption, transcript, images });
   } catch {
     await markFailed(itemId, "analysis_failed");
     return { ok: false, reason: "analysis_failed" };

@@ -1930,6 +1930,8 @@ export const upworkJobs = sqliteTable("upwork_jobs", {
     enum: ["new", "viewed", "claimed", "dismissed", "submitted", "ingest_partial", "session_expired", "deleted"],
   }).notNull().default("new"),
   fetchError: text("fetch_error"),
+  pitchDraft: text("pitch_draft"),
+  pitchGeneratedAt: text("pitch_generated_at"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 }, (table) => ({

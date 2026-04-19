@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, projecten, klanten, gebruikers } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, or, inArray, sql, like, desc, asc } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
 import { inferClusterOwner } from "@/lib/cluster";
@@ -9,7 +9,7 @@ import { inferClusterOwner } from "@/lib/cluster";
 // GET /api/taken — alle taken met filters, gegroepeerd per project/fase
 export async function GET(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const prioriteit = searchParams.get("prioriteit");

@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { taken, slimmeTakenTemplates } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, inArray } from "drizzle-orm";
 import { fillPromptTemplate, fillNaamTemplate, ensureSystemTemplates } from "@/lib/slimme-taken";
 import { findVrijSlot, getBlockingIntervalsVoorDag, formatSlotToIso } from "@/lib/agenda-slot-finder";
 
 // GET /api/taken/slim — lijst van beschikbare slimme taken templates (uit DB)
 // Returnt ook AI-voorgestelde templates apart als `suggesties`.
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    await requireAuth();
+    await requireAuthOrApiKey(req);
 
     // Sync DB met de lib: deprecate oude slugs + upsert system templates.
     // Idempotent, runt bij elke GET zodat een code-update direct zichtbaar is.

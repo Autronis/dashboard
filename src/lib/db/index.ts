@@ -686,6 +686,18 @@ if (isTurso) {
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
 
+  // Feature flags table — generic on/off toggles per feature
+  client.execute(`CREATE TABLE IF NOT EXISTS feature_flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL UNIQUE,
+    actief INTEGER NOT NULL DEFAULT 0,
+    alleen_voor_gebruiker_id INTEGER REFERENCES gebruikers(id),
+    beschrijving TEXT,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_agenda_eigenaar_datum ON agenda_items(eigenaar, start_datum)`).catch(() => {});
+  client.execute(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2') ON CONFLICT(naam) DO NOTHING`).catch(() => {});
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
@@ -1148,6 +1160,18 @@ if (isTurso) {
   } catch {
     /* tables may already exist */
   }
+
+  // Feature flags table — generic on/off toggles per feature
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS feature_flags (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    naam TEXT NOT NULL UNIQUE,
+    actief INTEGER NOT NULL DEFAULT 0,
+    alleen_voor_gebruiker_id INTEGER REFERENCES gebruikers(id),
+    beschrijving TEXT,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_agenda_eigenaar_datum ON agenda_items(eigenaar, start_datum)`);
+  try { sqliteDb.exec(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2')`); } catch { /* seed row already exists */ }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

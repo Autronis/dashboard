@@ -337,10 +337,13 @@ export const agendaItems = sqliteTable("agenda_items", {
   herinneringMinuten: integer("herinnering_minuten"),
   herinneringVerstuurdOp: text("herinnering_verstuurd_op"),
   googleEventId: text("google_event_id"),
+  eigenaar: text("eigenaar", { enum: ["sem", "syb", "team", "vrij"] }).notNull().default("vrij"),
+  gemaaktDoor: text("gemaakt_door", { enum: ["user", "bridge", "fallback-haiku", "ai-plan-button"] }).notNull().default("user"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),
   idxGebruikerId: index("idx_agenda_gebruiker").on(table.gebruikerId),
+  idxEigenaarDatum: index("idx_agenda_eigenaar_datum").on(table.eigenaar, table.startDatum),
 }));
 
 // ============ EXTERNE KALENDERS ============
@@ -1971,4 +1974,14 @@ export const upworkSessions = sqliteTable("upwork_sessions", {
   lastVerifiedAt: text("last_verified_at"),
   expired: integer("expired").default(0),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
+});
+
+// ============ FEATURE FLAGS ============
+export const featureFlags = sqliteTable("feature_flags", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  naam: text("naam").notNull().unique(),
+  actief: integer("actief").notNull().default(0),
+  alleenVoorGebruikerId: integer("alleen_voor_gebruiker_id").references(() => gebruikers.id),
+  beschrijving: text("beschrijving"),
+  aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
 });

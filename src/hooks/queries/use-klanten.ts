@@ -23,6 +23,7 @@ export interface Klant {
   totaalMinuten: number;
   totaleOmzet: number;
   openstaand: number;
+  aantalOpenFacturen: number;
   effectiefUurtarief: number;
   gezondheid: "groen" | "oranje" | "rood";
   gezondheidReden: string;
@@ -41,6 +42,9 @@ export interface KlantenKpis {
   actieveKlanten: number;
   totaleOmzet: number;
   totaalOpenstaand: number;
+  totaalOpenFacturen: number;
+  klantenMetOpenstaand: number;
+  klantenZonderContact14: number;
   gezondheid: { groen: number; oranje: number; rood: number };
 }
 

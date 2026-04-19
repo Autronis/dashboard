@@ -18,6 +18,9 @@ import {
   AlertTriangle,
   Zap,
   Loader2,
+  CheckCircle2,
+  X,
+  Wrench,
 } from "lucide-react";
 import { cn, formatUren, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -61,6 +64,11 @@ function getInitials(naam: string): string {
 
 function isChurnRisico(klant: Klant): boolean {
   return (klant.dagenSindsContact ?? 0) > 30 && klant.actieveProjecten === 0;
+}
+
+function isIntern(klant: Klant): boolean {
+  const naam = klant.bedrijfsnaam.toLowerCase();
+  return naam.includes("(intern)") || naam === "autronis" || naam.startsWith("autronis intern");
 }
 
 function getLifetimeValueColor(omzet: number): string {
@@ -139,9 +147,11 @@ interface KlantCardProps {
   onClick: () => void;
   zoek: string;
   onScan: () => void;
+  onTagClick: (tag: string) => void;
+  activeTag?: string | null;
 }
 
-function KlantCard({ klant, onClick, zoek, onScan }: KlantCardProps) {
+function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: KlantCardProps) {
   const initialsColor = getInitialsColor(klant.bedrijfsnaam);
   const initials = getInitials(klant.bedrijfsnaam);
   const churn = isChurnRisico(klant);
@@ -278,17 +288,27 @@ function KlantCard({ klant, onClick, zoek, onScan }: KlantCardProps) {
         )}
       </div>
 
-      {/* Tags */}
+      {/* Tags — click to filter */}
       {klant.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {klant.tags.map((tag) => (
-            <span
-              key={tag}
-              className="text-[10px] px-2 py-0.5 rounded-full bg-autronis-bg/80 text-autronis-text-secondary border border-autronis-border/50"
-            >
-              {tag}
-            </span>
-          ))}
+          {klant.tags.map((tag) => {
+            const actief = activeTag === tag;
+            return (
+              <button
+                key={tag}
+                onClick={(e) => { e.stopPropagation(); onTagClick(tag); }}
+                className={cn(
+                  "text-[10px] px-2 py-0.5 rounded-full border transition-colors",
+                  actief
+                    ? "bg-autronis-accent/15 text-autronis-accent border-autronis-accent/40"
+                    : "bg-autronis-bg/80 text-autronis-text-secondary border-autronis-border/50 hover:text-autronis-text-primary hover:border-autronis-border"
+                )}
+                title={actief ? `Filter wissen — "${tag}"` : `Filter op "${tag}"`}
+              >
+                {tag}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -333,6 +353,8 @@ export default function KlantenPage() {
   const [filterType, setFilterType] = useState<TypeFilter>("alles");
   const [filterGezondheid, setFilterGezondheid] = useState<GezondheidFilter>("alles");
   const [sorteer, setSorteer] = useState<SorteerOptie>("gezondheid");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [toonIntern, setToonIntern] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [bewerkKlant, setBewerkKlant] = useState<Klant | null>(null);
   const { runScan } = useBulkScan();
@@ -341,47 +363,74 @@ export default function KlantenPage() {
     setFilterGezondheid((prev) => (prev === g ? "alles" : g));
   }, []);
 
-  const gefilterdeKlanten = useMemo(() => {
+  const toggleTag = useCallback((tag: string) => {
+    setActiveTag((prev) => (prev === tag ? null : tag));
+  }, []);
+
+  const matchesFilters = useCallback((k: Klant) => {
     const zoek = zoekterm.toLowerCase().trim();
-    return klanten
-      .filter((k) => {
-        if (filterStatus === "alles") {
-          // hide inactive by default
-          if (!k.isActief) return false;
-        } else if (filterStatus === "inactief") {
-          if (k.isActief) return false;
-        } else {
-          if (!k.isActief) return false;
-          if (k.relatieStatus !== filterStatus) return false;
-        }
-        if (filterGezondheid !== "alles" && k.gezondheid !== filterGezondheid) return false;
-        if (filterType !== "alles" && (k.type || "klant") !== filterType) return false;
-        if (zoek) {
-          return (
-            k.bedrijfsnaam.toLowerCase().includes(zoek) ||
-            (k.contactpersoon?.toLowerCase().includes(zoek) ?? false) ||
-            (k.email?.toLowerCase().includes(zoek) ?? false) ||
-            (k.branche?.toLowerCase().includes(zoek) ?? false)
-          );
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        if (sorteer === "omzet") return b.totaleOmzet - a.totaleOmzet;
-        if (sorteer === "contact") {
-          const ad = a.dagenSindsContact ?? 9999;
-          const bd = b.dagenSindsContact ?? 9999;
-          return bd - ad; // most overdue first
-        }
-        if (sorteer === "naam") return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
-        // default: gezondheid
-        const healthOrder = { rood: 0, oranje: 1, groen: 2 };
-        const aH = healthOrder[a.gezondheid] ?? 2;
-        const bH = healthOrder[b.gezondheid] ?? 2;
-        if (aH !== bH) return aH - bH;
-        return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
-      });
-  }, [klanten, zoekterm, filterStatus, filterGezondheid, filterType, sorteer]);
+    if (filterStatus === "alles") {
+      if (!k.isActief) return false;
+    } else if (filterStatus === "inactief") {
+      if (k.isActief) return false;
+    } else {
+      if (!k.isActief) return false;
+      if (k.relatieStatus !== filterStatus) return false;
+    }
+    if (filterGezondheid !== "alles" && k.gezondheid !== filterGezondheid) return false;
+    if (filterType !== "alles" && (k.type || "klant") !== filterType) return false;
+    if (activeTag && !k.tags.includes(activeTag)) return false;
+    if (zoek) {
+      return (
+        k.bedrijfsnaam.toLowerCase().includes(zoek) ||
+        (k.contactpersoon?.toLowerCase().includes(zoek) ?? false) ||
+        (k.email?.toLowerCase().includes(zoek) ?? false) ||
+        (k.branche?.toLowerCase().includes(zoek) ?? false) ||
+        k.tags.some((t) => t.toLowerCase().includes(zoek))
+      );
+    }
+    return true;
+  }, [zoekterm, filterStatus, filterGezondheid, filterType, activeTag]);
+
+  const sorteren = useCallback((a: Klant, b: Klant) => {
+    if (sorteer === "omzet") return b.totaleOmzet - a.totaleOmzet;
+    if (sorteer === "contact") {
+      const ad = a.dagenSindsContact ?? -1;
+      const bd = b.dagenSindsContact ?? -1;
+      return bd - ad; // most overdue first (null = unknown → onderaan)
+    }
+    if (sorteer === "naam") return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
+    const healthOrder = { rood: 0, oranje: 1, groen: 2 };
+    const aH = healthOrder[a.gezondheid] ?? 2;
+    const bH = healthOrder[b.gezondheid] ?? 2;
+    if (aH !== bH) return aH - bH;
+    return a.bedrijfsnaam.localeCompare(b.bedrijfsnaam, "nl");
+  }, [sorteer]);
+
+  const { externeKlanten, interneKlanten, demoKlanten } = useMemo(() => {
+    const externe: Klant[] = [];
+    const interne: Klant[] = [];
+    const demo: Klant[] = [];
+    for (const k of klanten) {
+      if (!matchesFilters(k)) continue;
+      if (k.isDemo) demo.push(k);
+      else if (isIntern(k)) interne.push(k);
+      else externe.push(k);
+    }
+    externe.sort(sorteren);
+    interne.sort(sorteren);
+    demo.sort(sorteren);
+    return { externeKlanten: externe, interneKlanten: interne, demoKlanten: demo };
+  }, [klanten, matchesFilters, sorteren]);
+
+  const filterActief = filterStatus !== "alles" || filterType !== "alles" || filterGezondheid !== "alles" || activeTag !== null || zoekterm.trim() !== "";
+  const resetFilters = () => {
+    setZoekterm("");
+    setFilterStatus("alles");
+    setFilterType("alles");
+    setFilterGezondheid("alles");
+    setActiveTag(null);
+  };
 
   return (
     <PageTransition>
@@ -425,16 +474,29 @@ export default function KlantenPage() {
 
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 rounded-xl bg-amber-500/10">
-                  <FileText className="w-4 h-4 text-amber-400" />
+                <div className={cn("p-2 rounded-xl", kpis.totaalOpenstaand > 0 ? "bg-amber-500/10" : "bg-emerald-500/10")}>
+                  {kpis.totaalOpenstaand > 0
+                    ? <FileText className="w-4 h-4 text-amber-400" />
+                    : <CheckCircle2 className="w-4 h-4 text-emerald-400" />}
                 </div>
               </div>
-              <AnimatedNumber
-                value={kpis.totaalOpenstaand}
-                format={(n) => formatBedrag(Math.round(n))}
-                className={cn("text-2xl font-bold tabular-nums", kpis.totaalOpenstaand > 0 ? "text-amber-400" : "text-autronis-text-primary")}
-              />
-              <p className="text-xs text-autronis-text-secondary mt-1">Openstaand</p>
+              {kpis.totaalOpenstaand > 0 ? (
+                <>
+                  <AnimatedNumber
+                    value={kpis.totaalOpenstaand}
+                    format={(n) => formatBedrag(Math.round(n))}
+                    className="text-2xl font-bold text-amber-400 tabular-nums"
+                  />
+                  <p className="text-xs text-autronis-text-secondary mt-1">
+                    Openstaand · {kpis.totaalOpenFacturen} factu{kpis.totaalOpenFacturen === 1 ? "ur" : "ren"} bij {kpis.klantenMetOpenstaand} klant{kpis.klantenMetOpenstaand === 1 ? "" : "en"}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-emerald-400">Alles betaald</p>
+                  <p className="text-xs text-autronis-text-secondary mt-1">Geen openstaande facturen</p>
+                </>
+              )}
             </div>
 
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -512,81 +574,111 @@ export default function KlantenPage() {
           </button>
         </div>
 
-        {/* Type + Status filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Type filter */}
-          {(["alles", "klant", "facturatie"] as TypeFilter[]).map((t) => {
-            const typeLabels: Record<TypeFilter, string> = { alles: "Alle types", klant: "Klanten", facturatie: "Facturatie" };
-            const typeCounts: Record<TypeFilter, number> = {
-              alles: klanten.filter((k) => k.isActief).length,
-              klant: klanten.filter((k) => k.isActief && (k.type || "klant") === "klant").length,
-              facturatie: klanten.filter((k) => k.isActief && k.type === "facturatie").length,
-            };
-            return (
-              <button
-                key={t}
-                onClick={() => setFilterType(t)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-                  filterType === t
-                    ? t === "facturatie"
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
-                      : "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
-                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
-                )}
-              >
-                {typeLabels[t]}
-                <span className="opacity-60">{typeCounts[t]}</span>
-              </button>
-            );
-          })}
-          <div className="w-px h-5 bg-autronis-border mx-1" />
-          {/* Status filter */}
-          {(["alles", "actief", "stil", "aandacht_nodig", "inactief"] as StatusFilter[]).map((status) => {
-            const labels: Record<StatusFilter, string> = {
-              alles: "Alle",
-              actief: "Actief",
-              stil: "Stil",
-              aandacht_nodig: "Aandacht nodig",
-              inactief: "Inactief",
-            };
-            const counts: Record<StatusFilter, number> = {
-              alles: klanten.length,
-              actief: klanten.filter((k) => k.isActief && k.relatieStatus === "actief").length,
-              stil: klanten.filter((k) => k.isActief && k.relatieStatus === "stil").length,
-              aandacht_nodig: klanten.filter((k) => k.isActief && k.relatieStatus === "aandacht_nodig").length,
-              inactief: klanten.filter((k) => !k.isActief).length,
-            };
-            const dotColors: Record<StatusFilter, string> = {
-              alles: "",
-              actief: "bg-emerald-400",
-              stil: "bg-amber-400",
-              aandacht_nodig: "bg-red-400 animate-pulse",
-              inactief: "bg-slate-400",
-            };
-            return (
-              <button
-                key={status}
-                onClick={() => setFilterStatus(status)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
-                  filterStatus === status
-                    ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
-                    : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
-                )}
-              >
-                {status !== "alles" && <span className={cn("w-1.5 h-1.5 rounded-full", dotColors[status])} />}
-                {labels[status]}
-                <span className="opacity-60">{counts[status]}</span>
-              </button>
-            );
-          })}
-        </div>
+        {/* Filter chips — type + status, chips met 0 matches verborgen */}
+        {(() => {
+          const typeLabels: Record<TypeFilter, string> = { alles: "Alle types", klant: "Klanten", facturatie: "Facturatie" };
+          const typeCounts: Record<TypeFilter, number> = {
+            alles: klanten.filter((k) => k.isActief).length,
+            klant: klanten.filter((k) => k.isActief && (k.type || "klant") === "klant").length,
+            facturatie: klanten.filter((k) => k.isActief && k.type === "facturatie").length,
+          };
+          const statusLabels: Record<StatusFilter, string> = {
+            alles: "Alle",
+            actief: "Actief",
+            stil: "Stil",
+            aandacht_nodig: "Aandacht nodig",
+            inactief: "Inactief",
+          };
+          const statusCounts: Record<StatusFilter, number> = {
+            alles: klanten.length,
+            actief: klanten.filter((k) => k.isActief && k.relatieStatus === "actief").length,
+            stil: klanten.filter((k) => k.isActief && k.relatieStatus === "stil").length,
+            aandacht_nodig: klanten.filter((k) => k.isActief && k.relatieStatus === "aandacht_nodig").length,
+            inactief: klanten.filter((k) => !k.isActief).length,
+          };
+          const dotColors: Record<StatusFilter, string> = {
+            alles: "",
+            actief: "bg-emerald-400",
+            stil: "bg-amber-400",
+            aandacht_nodig: "bg-red-400 animate-pulse",
+            inactief: "bg-slate-400",
+          };
 
-        {/* Card grid — responsive: 1 col mobile, 2 col tablet, 3 col desktop */}
-        {laden ? (
+          const typeChips = (["alles", "klant", "facturatie"] as TypeFilter[]).filter(
+            (t) => t === "alles" || t === filterType || typeCounts[t] > 0
+          );
+          const statusChips = (["alles", "actief", "stil", "aandacht_nodig", "inactief"] as StatusFilter[]).filter(
+            (s) => s === "alles" || s === filterStatus || statusCounts[s] > 0
+          );
+
+          const geenExtraChips = typeChips.length <= 1 && statusChips.length <= 1 && !activeTag;
+          if (geenExtraChips && !filterActief) return null;
+
+          return (
+            <div className="flex items-center gap-2 flex-wrap">
+              {typeChips.length > 1 && typeChips.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setFilterType(t)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                    filterType === t
+                      ? t === "facturatie"
+                        ? "bg-amber-500/15 border-amber-500/40 text-amber-400"
+                        : "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                      : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                  )}
+                >
+                  {typeLabels[t]}
+                  <span className="opacity-60">{typeCounts[t]}</span>
+                </button>
+              ))}
+              {typeChips.length > 1 && statusChips.length > 1 && <div className="w-px h-5 bg-autronis-border mx-1" />}
+              {statusChips.length > 1 && statusChips.map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                    filterStatus === status
+                      ? "bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                      : "bg-autronis-card border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary"
+                  )}
+                >
+                  {status !== "alles" && <span className={cn("w-1.5 h-1.5 rounded-full", dotColors[status])} />}
+                  {statusLabels[status]}
+                  <span className="opacity-60">{statusCounts[status]}</span>
+                </button>
+              ))}
+              {activeTag && (
+                <>
+                  <div className="w-px h-5 bg-autronis-border mx-1" />
+                  <button
+                    onClick={() => setActiveTag(null)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border bg-autronis-accent/15 border-autronis-accent/40 text-autronis-accent"
+                    title="Tag-filter wissen"
+                  >
+                    Tag: {activeTag}
+                    <X className="w-3 h-3 opacity-70" />
+                  </button>
+                </>
+              )}
+              {filterActief && (
+                <button
+                  onClick={resetFilters}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-autronis-text-secondary hover:text-autronis-text-primary ml-auto"
+                >
+                  <X className="w-3 h-3" /> Reset filters
+                </button>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Loading skeleton */}
+        {laden && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, i) => (
+            {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="bg-autronis-card border border-autronis-border rounded-2xl p-6 h-56 animate-pulse">
                 <div className="flex gap-3 mb-4">
                   <div className="w-10 h-10 rounded-xl bg-autronis-border" />
@@ -598,21 +690,17 @@ export default function KlantenPage() {
               </div>
             ))}
           </div>
-        ) : gefilterdeKlanten.length === 0 ? (
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
-            <Building2 className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
-            <p className="text-autronis-text-secondary text-sm">
-              {zoekterm ? "Geen klanten gevonden met deze zoekterm" : "Nog geen klanten. Voeg je eerste klant toe."}
-            </p>
-          </div>
-        ) : (
+        )}
+
+        {/* Externe klanten — hoofdlijst */}
+        {!laden && externeKlanten.length > 0 && (
           <motion.div
             className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
             variants={{ visible: { transition: { staggerChildren: 0.05 } } }}
             initial="hidden"
             animate="visible"
           >
-            {gefilterdeKlanten.map((klant) => (
+            {externeKlanten.map((klant) => (
               <motion.div
                 key={klant.id}
                 variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0, transition: { duration: 0.3 } } }}
@@ -621,6 +709,8 @@ export default function KlantenPage() {
                   klant={klant}
                   onClick={() => router.push(`/klanten/${klant.id}`)}
                   zoek={zoekterm}
+                  onTagClick={toggleTag}
+                  activeTag={activeTag}
                   onScan={() =>
                     runScan([
                       {
@@ -635,6 +725,94 @@ export default function KlantenPage() {
               </motion.div>
             ))}
           </motion.div>
+        )}
+
+        {/* Lege staat */}
+        {!laden && externeKlanten.length === 0 && interneKlanten.length === 0 && demoKlanten.length === 0 && (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-12 text-center">
+            <Building2 className="w-10 h-10 text-autronis-text-secondary/30 mx-auto mb-3" />
+            <p className="text-autronis-text-secondary text-sm">
+              {filterActief ? "Geen klanten gevonden met deze filters" : "Nog geen klanten. Voeg je eerste klant toe."}
+            </p>
+            {filterActief && (
+              <button
+                onClick={resetFilters}
+                className="mt-4 text-xs text-autronis-accent hover:underline"
+              >
+                Reset filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Intern (Autronis zelf) — aparte sectie, inklapbaar */}
+        {!laden && interneKlanten.length > 0 && (
+          <div>
+            <button
+              onClick={() => setToonIntern((v) => !v)}
+              className="flex items-center gap-2 text-xs uppercase tracking-wide text-autronis-text-secondary/80 hover:text-autronis-text-primary mb-3 transition-colors"
+            >
+              <Wrench className="w-3.5 h-3.5" />
+              Intern ({interneKlanten.length})
+              <span className="text-autronis-text-secondary/50">· {toonIntern ? "verberg" : "toon"}</span>
+            </button>
+            {toonIntern && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 opacity-90">
+                {interneKlanten.map((klant) => (
+                  <KlantCard
+                    key={klant.id}
+                    klant={klant}
+                    onClick={() => router.push(`/klanten/${klant.id}`)}
+                    zoek={zoekterm}
+                    onTagClick={toggleTag}
+                    activeTag={activeTag}
+                    onScan={() =>
+                      runScan([
+                        {
+                          id: String(klant.id),
+                          name: klant.bedrijfsnaam,
+                          website: klant.website,
+                          email: klant.email,
+                        },
+                      ])
+                    }
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Demo-klanten — aparte sectie als toggle aan staat */}
+        {!laden && toonDemo && demoKlanten.length > 0 && (
+          <div>
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-purple-400/80 mb-3">
+              <FlaskConical className="w-3.5 h-3.5" />
+              Demo ({demoKlanten.length})
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 opacity-80">
+              {demoKlanten.map((klant) => (
+                <KlantCard
+                  key={klant.id}
+                  klant={klant}
+                  onClick={() => router.push(`/klanten/${klant.id}`)}
+                  zoek={zoekterm}
+                  onTagClick={toggleTag}
+                  activeTag={activeTag}
+                  onScan={() =>
+                    runScan([
+                      {
+                        id: String(klant.id),
+                        name: klant.bedrijfsnaam,
+                        website: klant.website,
+                        email: klant.email,
+                      },
+                    ])
+                  }
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Klant Modal */}

@@ -32,12 +32,15 @@ export function AnimatedNumber({
 
   useEffect(() => {
     motionValue.set(value);
-  }, [motionValue, value]);
+    // Spring "change" does not fire when value stays at 0 on mount, so without
+    // this call the span stays empty for zero-values.
+    updateDisplay(value);
+  }, [motionValue, value, updateDisplay]);
 
   useEffect(() => {
     const unsubscribe = spring.on("change", updateDisplay);
     return unsubscribe;
   }, [spring, updateDisplay]);
 
-  return <motion.span ref={ref} className={className} />;
+  return <motion.span ref={ref} className={className}>{format(Math.round(value))}</motion.span>;
 }

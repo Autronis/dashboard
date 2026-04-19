@@ -9,15 +9,11 @@ import {
   Globe,
   MapPin,
   ExternalLink,
-  Search,
   Users,
   Target,
   Zap,
   Linkedin,
   Trash2,
-  X,
-  Sparkles,
-  FolderOpen,
   Wand2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +22,14 @@ import { RedactText } from "@/components/leads/redact-text";
 import { usePoll } from "@/lib/use-poll";
 import { TabInfo } from "../_components/TabInfo";
 import { useBulkScan } from "../_components/use-bulk-scan";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { LeadsKpiTile } from "@/components/leads/kpi-tile";
+import { SourceBadge } from "@/components/leads/source-badge";
+import { FolderChip } from "@/components/leads/folder-chip";
+import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { BulkActionBar, type BulkAction } from "@/components/leads/bulk-action-bar";
+import { SectionCard } from "@/components/leads/section-card";
 
 interface LinkedinLeadRow {
   id: string;
@@ -133,7 +137,7 @@ function unifyGmapsLead(lead: GoogleMapsLeadRow): UnifiedLead {
   };
 }
 
-const SOURCE_FILTERS = [
+const SOURCE_FILTERS: Array<{ key: string; label: string; icon?: typeof Linkedin }> = [
   { key: "alle", label: "Alle" },
   { key: "linkedin", label: "LinkedIn", icon: Linkedin },
   { key: "google_maps", label: "Google Maps", icon: MapPin },
@@ -183,7 +187,6 @@ export function OverzichtTab() {
         (l: GoogleMapsLeadRow) => unifyGmapsLead(l)
       );
 
-      // Merge en sorteer op created_at desc
       const merged = [...linkedinLeads, ...gmapsLeads].sort((a, b) =>
         (b.created_at || "").localeCompare(a.created_at || "")
       );
@@ -200,7 +203,6 @@ export function OverzichtTab() {
     load();
   }, [load]);
 
-  // Realtime-ish: silent refetch elke 12s zolang tab actief is — geen loading flicker
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 12000);
 
@@ -223,19 +225,15 @@ export function OverzichtTab() {
   const gefilterd = useMemo(() => {
     let result = leads;
 
-    // Source filter
     if (sourceFilter === "linkedin") result = result.filter((l) => l.source === "linkedin");
     else if (sourceFilter === "google_maps") result = result.filter((l) => l.source === "google_maps");
 
-    // Folder filter
     if (folderFilter !== "alle") result = result.filter((l) => l.folder === folderFilter);
 
-    // Stat toggle filter (klikbare KPI cards)
     if (statToggle === "with_email") result = result.filter((l) => l.emails.length > 0);
     else if (statToggle === "with_phone") result = result.filter((l) => !!l.phone?.trim());
     else if (statToggle === "with_website") result = result.filter((l) => !!l.website?.trim());
 
-    // Search
     if (zoek.trim()) {
       const q = zoek.toLowerCase();
       result = result.filter((l) =>
@@ -272,11 +270,15 @@ export function OverzichtTab() {
     setZoek("");
   }
 
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  }
+
   async function bulkDelete() {
     if (selectedIds.size === 0) return;
     setIsDeleting(true);
     try {
-      // Splits ids op source — beide tabellen hebben aparte DELETE endpoints
       const linkedinIds: string[] = [];
       const gmapsIds: string[] = [];
       for (const id of selectedIds) {
@@ -372,28 +374,47 @@ export function OverzichtTab() {
     !!zoek.trim(),
   ].filter(Boolean).length;
 
+  const bulkActions: BulkAction[] = [
+    {
+      key: "scan",
+      label: "Scan",
+      icon: Zap,
+      onClick: bulkScan,
+      tone: "cyan",
+    },
+    {
+      key: "email",
+      label: "Email",
+      icon: Mail,
+      onClick: bulkGenerateEmails,
+      tone: "blue",
+      busy: isGeneratingEmails,
+    },
+    {
+      key: "rebuild",
+      label: "Rebuild Prep",
+      icon: Wand2,
+      href: `/leads/rebuild-prep?preselect=${encodeURIComponent(Array.from(selectedIds).join(","))}`,
+      onClick: () => {},
+      tone: "fuchsia",
+      title: "Open Rebuild Prep batch-tool met deze selectie",
+    },
+  ];
+
   return (
     <div className="space-y-7">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
-            <Target className="w-7 h-7 text-autronis-accent" />
-            Alle Leads
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1.5">
-            <span className="text-autronis-text-primary font-medium">Startpunt.</span> Alle leads uit LinkedIn + Google Maps in één tabel.
-            Snel scrollen, selecteren en bulk scannen, mailen of verwijderen. Geen filters, geen export — daar is de <span className="text-autronis-accent">Contacten</span> tab voor.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Alle Leads"
+        description="Startpunt — LinkedIn + Google Maps in één tabel. Selecteer en bulk-scan, -mail of -verwijder."
+        actions={
           <Link
             href="/leads/emails"
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors"
           >
             <Mail className="w-3.5 h-3.5" /> Naar Lead Emails
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       <TabInfo
         tips={[
@@ -415,163 +436,111 @@ export function OverzichtTab() {
         ]}
       />
 
-      {/* Klikbare stats — Lovable look met grote tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <ClickableStat
+        <LeadsKpiTile
           label="Totaal leads"
-          waarde={stats.total}
+          value={stats.total}
           icon={Users}
           accent="cyan"
           active={statToggle === "all"}
           onClick={() => setStatToggle("all")}
           sub={`${stats.total} leads`}
+          index={0}
         />
-        <ClickableStat
+        <LeadsKpiTile
           label="Met email"
-          waarde={stats.metEmail}
+          value={stats.metEmail}
           icon={Mail}
           accent="blue"
           active={statToggle === "with_email"}
           onClick={() => setStatToggle(statToggle === "with_email" ? "all" : "with_email")}
           sub={`${stats.metEmail} met email`}
+          index={1}
         />
-        <ClickableStat
+        <LeadsKpiTile
           label="Met website"
-          waarde={stats.metWebsite}
+          value={stats.metWebsite}
           icon={Globe}
           accent="green"
           active={statToggle === "with_website"}
           onClick={() => setStatToggle(statToggle === "with_website" ? "all" : "with_website")}
           sub={`${stats.metWebsite} met website`}
+          index={2}
         />
-        <ClickableStat
+        <LeadsKpiTile
           label="Met telefoon"
-          waarde={stats.metTel}
+          value={stats.metTel}
           icon={Phone}
           accent="purple"
           active={statToggle === "with_phone"}
           onClick={() => setStatToggle(statToggle === "with_phone" ? "all" : "with_phone")}
           sub={`${stats.metTel} met telefoon`}
+          index={3}
         />
       </div>
 
-      {/* Filters: source + folder */}
-      <div className="flex flex-wrap items-center gap-2">
-        {SOURCE_FILTERS.map((f) => {
-          const active = sourceFilter === f.key;
-          const Icon = f.icon;
-          return (
-            <button
-              key={f.key}
-              onClick={() => setSourceFilter(f.key)}
-              className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                active
-                  ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
-                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
-              )}
-            >
-              {Icon && <Icon className="w-3 h-3" />}
-              {f.label}
-            </button>
-          );
-        })}
-        {folders.length > 0 && (
-          <select
-            value={folderFilter}
-            onChange={(e) => setFolderFilter(e.target.value)}
-            className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-          >
-            <option value="alle">Alle folders ({folders.length})</option>
-            {folders.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-          </select>
-        )}
-        {activeFilters > 0 && (
-          <button
-            onClick={clearFilters}
-            className="inline-flex items-center gap-1 px-2 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-          >
-            <X className="w-3 h-3" />
-            Wis filters ({activeFilters})
-          </button>
-        )}
-      </div>
-
-      {/* Zoek + bulk delete */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-          <input
-            type="text"
-            value={zoek}
-            onChange={(e) => setZoek(e.target.value)}
-            placeholder="Zoek op naam, website, locatie..."
-            className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-          />
-        </div>
-        {selectedIds.size > 0 && (
+      <FilterBar
+        search={{
+          value: zoek,
+          onChange: setZoek,
+          placeholder: "Zoek op naam, website, locatie...",
+        }}
+        filters={
           <>
-            <span className="text-xs text-autronis-text-secondary">
-              {selectedIds.size} geselecteerd
-            </span>
-            <button
-              onClick={bulkScan}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/20 transition-colors"
-            >
-              <Zap className="w-3 h-3" />
-              Scan ({selectedIds.size})
-            </button>
-            <button
-              onClick={bulkGenerateEmails}
-              disabled={isGeneratingEmails}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-            >
-              {isGeneratingEmails ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-              Email ({selectedIds.size})
-            </button>
-            <Link
-              href={`/leads/rebuild-prep?preselect=${encodeURIComponent(Array.from(selectedIds).join(","))}`}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-fuchsia-500/10 text-fuchsia-300 text-xs font-medium hover:bg-fuchsia-500/20 transition-colors"
-              title="Open Rebuild Prep batch-tool met deze selectie"
-            >
-              <Wand2 className="w-3 h-3" />
-              Rebuild Prep ({selectedIds.size})
-            </Link>
-            {confirmDelete ? (
-              <>
+            {SOURCE_FILTERS.map((f) => {
+              const active = sourceFilter === f.key;
+              const Icon = f.icon;
+              return (
                 <button
-                  onClick={bulkDelete}
-                  disabled={isDeleting}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/15 text-red-400 text-xs font-semibold hover:bg-red-500/25 transition-colors disabled:opacity-50"
+                  key={f.key}
+                  onClick={() => setSourceFilter(f.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
+                    active
+                      ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
+                      : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+                  )}
                 >
-                  {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                  Bevestig delete
+                  {Icon && <Icon className="w-3 h-3" />}
+                  {f.label}
                 </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="px-3 py-2 rounded-lg text-xs text-autronis-text-secondary hover:text-autronis-text-primary"
-                >
-                  Annuleer
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/10 text-red-400 text-xs font-medium hover:bg-red-500/20 transition-colors"
+              );
+            })}
+            {folders.length > 0 && (
+              <select
+                value={folderFilter}
+                onChange={(e) => setFolderFilter(e.target.value)}
+                className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
               >
-                <Trash2 className="w-3 h-3" />
-                Verwijder ({selectedIds.size})
-              </button>
+                <option value="alle">Alle folders ({folders.length})</option>
+                {folders.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
             )}
           </>
-        )}
-      </div>
+        }
+        activeCount={activeFilters}
+        onClear={clearFilters}
+      />
 
-      {/* Body */}
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        actions={bulkActions}
+        onDelete={confirmDelete ? bulkDelete : () => setConfirmDelete(true)}
+        deleteBusy={isDeleting}
+        onClear={clearSelection}
+        prefix={
+          confirmDelete && (
+            <span className="text-xs text-red-300 px-1 animate-pulse">
+              Klik nogmaals om te bevestigen
+            </span>
+          )
+        }
+      />
+
       {loading && leads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -598,13 +567,15 @@ export function OverzichtTab() {
       )}
 
       {!loading && !error && gefilterd.length > 0 && (
-        <div className="rounded-2xl border border-autronis-border bg-autronis-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-autronis-border flex items-center justify-between">
-            <h2 className="text-base font-semibold text-autronis-text-primary">Leads</h2>
+        <SectionCard
+          title="Leads"
+          padding="none"
+          aside={
             <span className="text-xs text-autronis-text-secondary tabular-nums">
               {gefilterd.length} resultaten
             </span>
-          </div>
+          }
+        >
           <table className="w-full text-sm">
             <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
               <tr>
@@ -647,21 +618,7 @@ export function OverzichtTab() {
                       />
                     </td>
                     <td className="px-4 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full",
-                          lead.source === "google_maps"
-                            ? "bg-autronis-accent/15 text-autronis-accent"
-                            : "bg-purple-500/15 text-purple-300"
-                        )}
-                      >
-                        {lead.source === "google_maps" ? (
-                          <MapPin className="w-3 h-3" />
-                        ) : (
-                          <Linkedin className="w-3 h-3" />
-                        )}
-                        {lead.source === "google_maps" ? "Locatie" : "Bedrijf"}
-                      </span>
+                      <SourceBadge source={lead.source} />
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2 min-w-0">
@@ -721,36 +678,13 @@ export function OverzichtTab() {
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden md:table-cell">
-                      {lead.folder ? (
-                        <Link
-                          href={`/leads/folders/${encodeURIComponent(lead.folder)}`}
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent hover:bg-autronis-accent/20 max-w-[180px] truncate"
-                          title={lead.folder}
-                        >
-                          <FolderOpen className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">{lead.folder}</span>
-                        </Link>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-autronis-border/30 text-autronis-text-secondary/60">
-                          <FolderOpen className="w-3 h-3" />
-                          geen
-                        </span>
-                      )}
+                      <FolderChip
+                        folder={lead.folder}
+                        onClick={(e) => e.stopPropagation()}
+                      />
                     </td>
                     <td className="px-4 py-3 hidden lg:table-cell">
-                      {lead.outreach_status && (
-                        <span
-                          className={cn(
-                            "text-xs px-2 py-0.5 rounded-full",
-                            lead.outreach_status === "pending" && "bg-gray-500/10 text-gray-400",
-                            lead.outreach_status === "sent" && "bg-emerald-500/10 text-emerald-400",
-                            lead.outreach_status === "failed" && "bg-red-500/10 text-red-400"
-                          )}
-                        >
-                          {lead.outreach_status}
-                        </span>
-                      )}
+                      <LeadStatusBadge status={lead.outreach_status} compact />
                     </td>
                   </tr>
                 );
@@ -762,87 +696,8 @@ export function OverzichtTab() {
               {gefilterd.length} leads totaal — eerste 200 getoond
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
     </div>
-  );
-}
-
-type StatAccent = "cyan" | "blue" | "green" | "purple";
-
-const STAT_ACCENT: Record<
-  StatAccent,
-  { iconBg: string; iconColor: string; valueColor: string; activeBorder: string }
-> = {
-  cyan: {
-    iconBg: "bg-autronis-accent/15",
-    iconColor: "text-autronis-accent",
-    valueColor: "text-autronis-accent",
-    activeBorder: "border-autronis-accent/60",
-  },
-  blue: {
-    iconBg: "bg-blue-500/15",
-    iconColor: "text-blue-400",
-    valueColor: "text-blue-400",
-    activeBorder: "border-blue-500/60",
-  },
-  green: {
-    iconBg: "bg-emerald-500/15",
-    iconColor: "text-emerald-400",
-    valueColor: "text-emerald-400",
-    activeBorder: "border-emerald-500/60",
-  },
-  purple: {
-    iconBg: "bg-purple-500/15",
-    iconColor: "text-purple-400",
-    valueColor: "text-purple-400",
-    activeBorder: "border-purple-500/60",
-  },
-};
-
-function ClickableStat({
-  label,
-  waarde,
-  icon: Icon,
-  accent,
-  sub,
-  active,
-  onClick,
-}: {
-  label: string;
-  waarde: number;
-  icon: typeof Users;
-  accent: StatAccent;
-  sub?: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const cfg = STAT_ACCENT[accent];
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "rounded-2xl border bg-autronis-card p-6 text-left transition-all hover:border-autronis-accent/30",
-        active ? cfg.activeBorder : "border-autronis-border"
-      )}
-    >
-      <div
-        className={cn(
-          "h-10 w-10 rounded-xl flex items-center justify-center mb-4",
-          cfg.iconBg
-        )}
-      >
-        <Icon className={cn("w-5 h-5", cfg.iconColor)} />
-      </div>
-      <div className={cn("text-4xl font-bold tabular-nums leading-none", cfg.valueColor)}>
-        {waarde.toLocaleString("nl-NL")}
-      </div>
-      <div className="text-xs uppercase tracking-wider text-autronis-text-secondary mt-2.5 font-medium">
-        {label}
-      </div>
-      {sub && (
-        <div className="text-[11px] text-autronis-text-secondary/60 mt-1">{sub}</div>
-      )}
-    </button>
   );
 }

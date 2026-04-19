@@ -17,7 +17,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 import { usePoll } from "@/lib/use-poll";
+import { PageHeader } from "@/components/ui/page-header";
+import { LeadsKpiTile } from "@/components/leads/kpi-tile";
+import { SectionCard } from "@/components/leads/section-card";
 
 interface Lead {
   id: string;
@@ -108,7 +112,6 @@ export default function LeadsDashboardPage() {
     load();
   }, [load]);
 
-  // Realtime-ish: silent refetch elke 15s — geen loading flicker
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 15000);
 
@@ -127,14 +130,12 @@ export default function LeadsDashboardPage() {
     const enrichmentPending = leads.filter((l) => l.enrichment_status === "pending").length;
     const enrichmentFailed = leads.filter((l) => l.enrichment_status === "failed").length;
 
-    // Email funnel
     const emailTotal = emails.length;
     const emailGenerated = emails.filter((e) => e.email_status === "generated").length;
     const emailApproved = emails.filter((e) => e.email_status === "approved").length;
     const emailSent = emails.filter((e) => e.email_status === "sent").length;
     const emailReplied = emails.filter((e) => e.email_status === "replied").length;
 
-    // Folders
     const folderCounts = new Map<string, number>();
     for (const l of leads) {
       if (l.folder) folderCounts.set(l.folder, (folderCounts.get(l.folder) || 0) + 1);
@@ -143,13 +144,6 @@ export default function LeadsDashboardPage() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 10);
 
-    // Conversion rates
-    const enrichmentHitRate = enrichmentDone > 0
-      ? Math.round(((enrichmentDone - enrichmentFailed) / enrichmentDone) * 100)
-      : 0;
-    const emailApprovalRate = emailGenerated + emailApproved + emailSent > 0
-      ? Math.round(((emailApproved + emailSent) / (emailGenerated + emailApproved + emailSent)) * 100)
-      : 0;
     const replyRate = emailSent > 0 ? Math.round((emailReplied / emailSent) * 100) : 0;
 
     return {
@@ -167,19 +161,15 @@ export default function LeadsDashboardPage() {
       emailApproved,
       emailSent,
       emailReplied,
-      enrichmentHitRate,
-      emailApprovalRate,
       replyRate,
       topFolders,
     };
   }, [leads, emails]);
 
-  // Recent Activity feed — laatste 10 events uit emails table
   const recentActivity = useMemo<ActivityEvent[]>(() => {
     const events: ActivityEvent[] = [];
     for (const e of emails) {
       const naam = e.lead_name || e.recipient_email || "(onbekend)";
-      // Reply ontvangen
       if (e.reply_received_at && e.email_status === "replied") {
         events.push({
           id: `${e.id}:reply`,
@@ -188,7 +178,6 @@ export default function LeadsDashboardPage() {
           timestamp: e.reply_received_at,
         });
       }
-      // Sent of failed → updated_at als signaal
       if (e.email_status === "sent") {
         events.push({
           id: `${e.id}:sent`,
@@ -204,7 +193,6 @@ export default function LeadsDashboardPage() {
           timestamp: e.updated_at,
         });
       }
-      // Generated → created_at
       if (e.email_status === "generated" || e.email_status === "approved") {
         events.push({
           id: `${e.id}:gen`,
@@ -219,7 +207,6 @@ export default function LeadsDashboardPage() {
       .slice(0, 10);
   }, [emails]);
 
-  // Alleen initial loading toont de spinner — daarna polled load() achtergrond
   if (loading && leads.length === 0 && emails.length === 0) {
     return (
       <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
@@ -238,101 +225,100 @@ export default function LeadsDashboardPage() {
     );
   }
 
-  // Berekening voor "Bezig" tile: emails in generating/sending/approved (in pipeline)
   const bezig = stats.emailGenerated + stats.emailApproved;
-  const replyRateDisplay = stats.emailSent > 0 ? `${stats.replyRate}%` : "0%";
   const replyRateNegative = stats.replyRate === 0 && stats.emailSent > 0;
+  const formatReplyRate = (n: number) => (stats.emailSent > 0 ? `${n}%` : "0%");
 
   return (
     <div className="space-y-7">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
-          <BarChart3 className="w-7 h-7 text-autronis-accent" />
-          Dashboard
-        </h1>
-        <p className="text-sm text-autronis-text-secondary mt-1.5">
-          Overzicht van je outreach statistieken en recente activiteit
-        </p>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Overzicht van je outreach statistieken en recente activiteit"
+      />
 
-      {/* 8 KPI tiles in 2x4 grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiTile
+        <LeadsKpiTile
           icon={Users}
           label="Totaal leads"
           value={stats.total}
           accent="cyan"
           sub={`${stats.linkedin} bedrijf · ${stats.gmaps} locatie`}
+          index={0}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={Send}
           label="Emails verzonden"
           value={stats.emailSent}
           accent="blue"
           sub={`${stats.emailApproved} klaar om te versturen`}
+          index={1}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={MessageSquare}
           label="Replies"
           value={stats.emailReplied}
           accent="green"
           sub={stats.emailReplied === 0 ? "Nog geen replies" : `${stats.emailReplied} ontvangen`}
+          index={2}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={AlertCircle}
           label="Mislukt"
           value={stats.enrichmentFailed}
           accent="red"
           sub={stats.enrichmentFailed === 0 ? "Geen fouten" : "Enrichment failures"}
+          index={3}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={Mail}
           label="Totaal emails"
           value={stats.emailTotal}
           accent="cyan"
+          index={4}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={Sparkles}
           label="Gegenereerd"
           value={stats.emailGenerated}
           accent="purple"
           sub="Klaar om te versturen"
+          index={5}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={Loader2}
           label="Bezig"
           value={bezig}
-          accent="yellow"
+          accent="amber"
           sub="Wordt gegenereerd"
+          index={6}
         />
-        <KpiTile
+        <LeadsKpiTile
           icon={TrendingUp}
           label="Reply rate"
-          value={replyRateDisplay}
+          value={stats.replyRate}
           accent={replyRateNegative ? "red" : "cyan"}
+          format={formatReplyRate}
           sub={`${stats.emailReplied} van ${stats.emailSent} verzonden`}
+          index={7}
         />
       </div>
 
-      {/* Recent Activity feed */}
-      <div className="rounded-2xl border border-autronis-border bg-autronis-card p-6">
-        <h2 className="text-base font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-autronis-accent" />
-          Recente Activiteit
-        </h2>
+      <SectionCard title="Recente activiteit" icon={Activity}>
         {recentActivity.length === 0 ? (
-          <p className="text-xs text-autronis-text-secondary/60 py-2">
+          <p className="text-sm text-autronis-text-secondary/70 py-2">
             Nog geen activiteit. Verstuur eerst een paar emails.
           </p>
         ) : (
           <div className="space-y-1">
-            {recentActivity.map((event) => {
+            {recentActivity.map((event, i) => {
               const cfg = ACTIVITY_ICONS[event.kind];
               const Icon = cfg.icon;
               return (
-                <div
+                <motion.div
                   key={event.id}
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03, duration: 0.22 }}
                   className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-autronis-accent/[0.04] transition-colors"
                 >
                   <div
@@ -349,130 +335,61 @@ export default function LeadsDashboardPage() {
                   <span className="text-xs text-autronis-text-secondary/60 tabular-nums flex-shrink-0">
                     {tijdGeleden(event.timestamp)}
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>
         )}
-      </div>
+      </SectionCard>
 
-      {/* Top folders — compact card */}
       {stats.topFolders.length > 0 && (
-        <div className="rounded-2xl border border-autronis-border bg-autronis-card p-6">
-          <h2 className="text-base font-semibold text-autronis-text-primary mb-4 flex items-center gap-2">
-            <FolderOpen className="w-4 h-4 text-autronis-accent" />
-            Top folders
-          </h2>
+        <SectionCard
+          title="Top folders"
+          icon={FolderOpen}
+          aside={
+            <span className="text-xs text-autronis-text-secondary/70 tabular-nums">
+              {stats.topFolders.length} actief
+            </span>
+          }
+        >
           <div className="space-y-2.5">
-            {stats.topFolders.map(([name, count]) => {
+            {stats.topFolders.map(([name, count], i) => {
               const pct = Math.round((count / Math.max(1, stats.total)) * 100);
               return (
-                <div key={name} className="flex items-center gap-3">
+                <motion.div
+                  key={name}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: i * 0.04, duration: 0.25 }}
+                  className="flex items-center gap-3"
+                >
                   <span className="text-xs text-autronis-text-primary min-w-[120px] truncate font-medium">
                     {name}
                   </span>
                   <div className="flex-1 h-1.5 bg-autronis-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-autronis-accent rounded-full transition-all"
-                      style={{ width: `${pct}%` }}
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ delay: 0.2 + i * 0.04, duration: 0.6, ease: "easeOut" }}
+                      className="h-full bg-autronis-accent rounded-full"
                     />
                   </div>
-                  <span className="text-xs tabular-nums text-autronis-text-secondary min-w-[60px] text-right">
+                  <span className="text-xs tabular-nums text-autronis-text-secondary min-w-[70px] text-right">
                     {count} <span className="text-autronis-text-secondary/60">({pct}%)</span>
                   </span>
-                </div>
+                </motion.div>
               );
             })}
           </div>
+        </SectionCard>
+      )}
+
+      {stats.enrichmentPending > 0 && (
+        <div className="flex items-center gap-2 text-xs text-autronis-text-secondary/70 px-1">
+          <Loader2 className="w-3 h-3 animate-spin" />
+          {stats.enrichmentPending} enrichment jobs actief
         </div>
       )}
     </div>
   );
 }
-
-type KpiAccent = "cyan" | "blue" | "green" | "red" | "purple" | "yellow";
-
-const KPI_ACCENT: Record<
-  KpiAccent,
-  { iconBg: string; iconColor: string; valueColor: string; border: string }
-> = {
-  cyan: {
-    iconBg: "bg-autronis-accent/15",
-    iconColor: "text-autronis-accent",
-    valueColor: "text-autronis-accent",
-    border: "border-autronis-border",
-  },
-  blue: {
-    iconBg: "bg-blue-500/15",
-    iconColor: "text-blue-400",
-    valueColor: "text-blue-400",
-    border: "border-autronis-border",
-  },
-  green: {
-    iconBg: "bg-emerald-500/15",
-    iconColor: "text-emerald-400",
-    valueColor: "text-emerald-400",
-    border: "border-autronis-border",
-  },
-  red: {
-    iconBg: "bg-red-500/15",
-    iconColor: "text-red-400",
-    valueColor: "text-red-400",
-    border: "border-red-500/20",
-  },
-  purple: {
-    iconBg: "bg-purple-500/15",
-    iconColor: "text-purple-400",
-    valueColor: "text-purple-400",
-    border: "border-autronis-border",
-  },
-  yellow: {
-    iconBg: "bg-amber-500/15",
-    iconColor: "text-amber-400",
-    valueColor: "text-amber-400",
-    border: "border-autronis-border",
-  },
-};
-
-function KpiTile({
-  icon: Icon,
-  label,
-  value,
-  accent,
-  sub,
-}: {
-  icon: typeof Users;
-  label: string;
-  value: number | string;
-  accent: KpiAccent;
-  sub?: string;
-}) {
-  const cfg = KPI_ACCENT[accent];
-  return (
-    <div
-      className={cn(
-        "rounded-2xl border bg-autronis-card p-6 transition-colors hover:border-autronis-accent/30",
-        cfg.border
-      )}
-    >
-      <div
-        className={cn(
-          "h-10 w-10 rounded-xl flex items-center justify-center mb-4",
-          cfg.iconBg
-        )}
-      >
-        <Icon className={cn("w-5 h-5", cfg.iconColor)} />
-      </div>
-      <div className={cn("text-4xl font-bold tabular-nums leading-none", cfg.valueColor)}>
-        {typeof value === "number" ? value.toLocaleString("nl-NL") : value}
-      </div>
-      <div className="text-xs uppercase tracking-wider text-autronis-text-secondary mt-2.5 font-medium">
-        {label}
-      </div>
-      {sub && (
-        <div className="text-[11px] text-autronis-text-secondary/60 mt-1">{sub}</div>
-      )}
-    </div>
-  );
-}
-

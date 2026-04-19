@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
         klantId: facturen.klantId,
         totaleOmzet: sql<number>`coalesce(sum(case when ${facturen.status} = 'betaald' then ${facturen.bedragInclBtw} else 0 end), 0)`,
         openstaand: sql<number>`coalesce(sum(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.bedragInclBtw} else 0 end), 0)`,
+        aantalOpen: sql<number>`coalesce(sum(case when ${facturen.status} in ('verzonden', 'te_laat') then 1 else 0 end), 0)`,
         oudsteOpenVervaldatum: sql<string>`min(case when ${facturen.status} in ('verzonden', 'te_laat') then ${facturen.vervaldatum} else null end)`,
         laatsteFactuurDatum: sql<string>`max(${facturen.factuurdatum})`,
         laatsteFactuurBedrag: sql<number>`(
@@ -172,6 +173,7 @@ export async function GET(req: NextRequest) {
       const fStats = factuurMap.get(klant.id);
       const totaleOmzet = fStats?.totaleOmzet || 0;
       const openstaand = fStats?.openstaand || 0;
+      const aantalOpenFacturen = fStats?.aantalOpen || 0;
 
       // Determine health: green/orange/red
       let gezondheid: "groen" | "oranje" | "rood" = "groen";
@@ -252,6 +254,7 @@ export async function GET(req: NextRequest) {
         totaalMinuten,
         totaleOmzet,
         openstaand,
+        aantalOpenFacturen,
         effectiefUurtarief: Math.round(effectiefUurtarief * 100) / 100,
         gezondheid,
         gezondheidReden,
@@ -271,6 +274,9 @@ export async function GET(req: NextRequest) {
     const echteKlanten = klantenMetKPIs.filter((k) => !k.isDemo);
     const totaleOmzetAlleKlanten = echteKlanten.reduce((s, k) => s + k.totaleOmzet, 0);
     const totaalOpenstaand = echteKlanten.reduce((s, k) => s + k.openstaand, 0);
+    const totaalOpenFacturen = echteKlanten.reduce((s, k) => s + k.aantalOpenFacturen, 0);
+    const klantenMetOpenstaand = echteKlanten.filter((k) => k.openstaand > 0).length;
+    const klantenZonderContact14 = echteKlanten.filter((k) => k.isActief && k.dagenSindsContact !== null && k.dagenSindsContact > 14).length;
     const actieveKlanten = echteKlanten.filter((k) => k.isActief).length;
     const gezondheidsVerdeling = {
       groen: echteKlanten.filter((k) => k.gezondheid === "groen" && k.isActief).length,
@@ -284,6 +290,9 @@ export async function GET(req: NextRequest) {
         actieveKlanten,
         totaleOmzet: totaleOmzetAlleKlanten,
         totaalOpenstaand,
+        totaalOpenFacturen,
+        klantenMetOpenstaand,
+        klantenZonderContact14,
         gezondheid: gezondheidsVerdeling,
       },
     }, {

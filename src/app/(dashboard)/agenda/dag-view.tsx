@@ -1431,7 +1431,15 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
 
             const startDate = new Date(taak.ingeplandStart);
             const startMinuten = startDate.getHours() * 60 + startDate.getMinutes();
-            const duurMin = taak.geschatteDuur || 60;
+            // Gebruik de echte slot duur (ingeplandEind - ingeplandStart) als
+            // die bestaat; valt terug op geschatteDuur bij taken zonder eind.
+            // Voorheen altijd geschatteDuur → als geschatteDuur uit sync was
+            // met de echte slot, toonde de card een andere hoogte dan de tijd
+            // aangaf (visueel overlap met naburige taken).
+            const echteDuurMin = taak.ingeplandEind
+              ? Math.max(5, Math.round((new Date(taak.ingeplandEind).getTime() - startDate.getTime()) / 60000))
+              : (taak.geschatteDuur || 60);
+            const duurMin = echteDuurMin;
 
             const top = ((startMinuten - startUur * 60) / 60) * UUR_HOOGTE;
             const height = Math.max(28, (duurMin / 60) * UUR_HOOGTE);

@@ -118,11 +118,9 @@ const AUTO_CATEGORISATIE: Array<{
   { test: (_app, url) => /docs\.google\.com\/spreadsheet|sheets\.google/i.test(url), categorie: "administratie" },
   { test: (app) => /excel|numbers/i.test(app), categorie: "administratie" },
 
-  // ── YOUTUBE educational → development (BEFORE afleiding) ──
-  { test: (_app, url) => /youtube\.com.*(?:claude|code|programming|tutorial|dev|react|next|rust|agent|cursor|api|typescript|javascript|python|automation|n8n|make)/i.test(url), categorie: "development" },
-  { test: (_app, _url, titel) => /YouTube.*(Claude|Code|Agent|Team|Programming|Tutorial|Developer|Coding|API|Build|Setup|Cursor|n8n)/i.test(titel), categorie: "development" },
-
   // ── AFLEIDING ──
+  // YouTube is afleiding by default. If a specific channel/video is actually
+  // educational work, add a user rule in `screenTimeRegels` with higher prio.
   { test: (_app, url) => /youtube\.com/i.test(url), categorie: "afleiding" },
   { test: (_app, _url, titel) => /YouTube/i.test(titel), categorie: "afleiding" },
   { test: (_app, url) => /reddit\.com(?!.*(?:programming|webdev|react|rust|automation))/i.test(url), categorie: "afleiding" },

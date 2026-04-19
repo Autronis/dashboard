@@ -510,9 +510,15 @@ function WeekHeatmap({
   const [tooltip, setTooltip] = useState<{ uur: number; dagIdx: number; cell: HeatmapCell } | null>(null);
   const heatmap = useMemo(() => buildHeatmap(weekData), [weekData]);
 
-  // Day totals
+  // Day totals — slot-span excluding afleiding-dominant slots, matching
+  // berekenActieveUren (canonical "Uren deze week" calc on the homepage).
   const dagTotalen = weekData.map((dag) =>
-    dag.sessies.filter((s) => !s.isIdle).reduce((sum, s) => sum + s.duurSeconden, 0)
+    dag.sessies
+      .filter((s) => !s.isIdle && s.categorie !== "afleiding")
+      .reduce((sum, s) => {
+        const span = (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000;
+        return sum + Math.max(0, span);
+      }, 0)
   );
   const maxDagTotaal = Math.max(...dagTotalen, 1);
 

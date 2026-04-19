@@ -12,7 +12,7 @@ import {
   Megaphone, Video, Flame, Brain, Zap, FolderKanban,
   Rocket, ChevronDown, Mail, Radio, Sunrise, Calculator,
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
-  AlertTriangle,
+  AlertTriangle, PhoneCall,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
   PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
   Heart, TrendingUp, Globe, FolderOpen, Target, Briefcase,
@@ -69,12 +69,8 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           // Lead-generation pipeline (lead-dashboard-v2 integratie).
           // Alle onderliggende routes zitten onder /leads/* en praten met de
           // externe Supabase via /api/leads/* server routes.
-          {
-            label: "Leads",
-            icon: Target,
-            href: "/leads",
-            alsoMatches: ["/leads/handmatig"],
-          },
+          { label: "Leads", icon: Target, href: "/leads" },
+          { label: "Handmatig", icon: PhoneCall, href: "/leads/handmatig" },
           { label: "Rebuild Prep", icon: Wand2, href: "/leads/rebuild-prep" },
           { label: "Contacten", icon: Users, href: "/leads/contacts" },
           { label: "Lead Emails", icon: Mail, href: "/leads/emails" },

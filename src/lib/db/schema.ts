@@ -1884,6 +1884,11 @@ export const slimmeTakenTemplates = sqliteTable("slimme_taken_templates", {
   cluster: text("cluster", {
     enum: ["backend-infra", "frontend", "klantcontact", "content", "admin", "research"],
   }).notNull(),
+  // Wie voert deze slimme taak uit. Claude (research/analyse/scrape) of
+  // handmatig (Sem zelf: LinkedIn posts, cold outreach, demo calls, etc).
+  // Handmatige templates hoeven geen uitvoerbare prompt te hebben; het prompt
+  // veld is dan meer een checklist of instructie voor Sem.
+  uitvoerder: text("uitvoerder", { enum: ["claude", "handmatig"] }).default("claude"),
   geschatteDuur: integer("geschatte_duur").default(15),
   prompt: text("prompt").notNull(),
   velden: text("velden"), // JSON array

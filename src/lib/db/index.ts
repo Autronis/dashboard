@@ -150,6 +150,10 @@ if (isTurso) {
     .catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_slimme_taken_recurring ON slimme_taken_templates(recurring_day_of_week)")
     .catch(() => {});
+  // Uitvoerder: claude = heeft prompt die Claude uitvoert, handmatig = Sem
+  // doet de taak zelf (LinkedIn posts, cold outreach, demo calls, etc).
+  client.execute("ALTER TABLE slimme_taken_templates ADD COLUMN uitvoerder TEXT DEFAULT 'claude'")
+    .catch(() => { /* column may already exist */ });
 
   // Globale toggle: Google Calendar sync on/off. Default uit (0) zodat Sem's
   // agenda niet vol loopt met elke taak/deadline die hij aanmaakt.

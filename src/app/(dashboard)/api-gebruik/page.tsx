@@ -94,7 +94,6 @@ const ROUTE_LABELS: Record<string, string> = {
   "/api/uitgaven/scan": "Uitgaven Scan",
   "/api/taken/auto-cluster": "Taken Auto-Cluster",
   "/api/meetings/analyse": "Meeting Analyse",
-  "/api/site-rebuild/optimize-instructies": "Site Rebuild Optimalisatie",
   "/api/administratie/upload": "Administratie Upload",
   "administratie-upload": "Administratie Upload",
   "gmail-sync": "Gmail Synchronisatie",

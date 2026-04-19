@@ -67,6 +67,7 @@ import { TeamVergelijkingWidget } from "@/components/dashboard/team-vergelijking
 import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
 import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
 import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
+import { SnelleActiesWidget } from "@/components/dashboard/snelle-acties-widget";
 
 // ============ HELPERS ============
 
@@ -384,31 +385,8 @@ function DailyBriefing() {
             )}
           </div>
 
-          <div className="bg-autronis-bg/50 rounded-lg p-3">
-            <h3 className="text-xs font-semibold text-autronis-text-primary mb-2 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-autronis-accent" />
-              Prioriteit taken
-            </h3>
-            {briefing.takenPrioriteit.length === 0 ? (
-              <p className="text-sm text-autronis-text-secondary">Geen openstaande taken</p>
-            ) : (
-              <div className="space-y-2">
-                {briefing.takenPrioriteit.slice(0, 3).map((taak) => {
-                  const cfg = briefingPrioConfig[taak.prioriteit] || briefingPrioConfig.normaal;
-                  return (
-                    <Link key={taak.id} href="/taken" className="flex items-center gap-3 group hover:bg-autronis-bg/50 rounded-lg p-1.5 -mx-1.5 transition-colors">
-                      <span className={cn("text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0", cfg.color, cfg.bg)}>{taak.prioriteit}</span>
-                      <span className="text-base text-autronis-text-primary truncate min-w-0 flex-1 group-hover:text-autronis-accent transition-colors">{taak.titel}</span>
-                      {(taak.projectNaam || taak.fase) && <span className="text-xs text-autronis-text-secondary flex-shrink-0 hidden lg:inline max-w-[120px] truncate">{taak.projectNaam ?? taak.fase}</span>}
-                    </Link>
-                  );
-                })}
-                {briefing.takenPrioriteit.length > 3 && (
-                  <Link href="/taken" className="text-xs text-autronis-accent hover:underline">+{briefing.takenPrioriteit.length - 3} meer taken &rarr;</Link>
-                )}
-              </div>
-            )}
-          </div>
+          {/* Prioriteit taken verwijderd — dupliceerde de 'Mijn taken' widget.
+              Voor taken-overzicht: scroll naar beneden naar 'Mijn taken'. */}
         </div>
 
         {/* Right: Project updates + Quick wins */}
@@ -975,6 +953,11 @@ export default function DashboardPage() {
           <RemoteCommitsBanner />
         </motion.div>
 
+        {/* Snelle acties — shortcuts naar YouTube/Insta/scan/idee/AI/taak */}
+        <motion.div variants={sectionVariants}>
+          <SnelleActiesWidget />
+        </motion.div>
+
         {/* Taken widget */}
         {mijnTaken.length > 0 && (
           <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
@@ -1100,10 +1083,9 @@ export default function DashboardPage() {
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">
           {/* Left column */}
           <div className="space-y-5 min-w-0 overflow-hidden">
-            {/* Idee van de dag + Learning Radar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Idee van de dag (Learning Radar verwijderd — bracht te weinig functie) */}
+            <div>
               <IdeeVanDeDag />
-              <RadarWidget />
             </div>
 
             {/* Kilometer widget */}

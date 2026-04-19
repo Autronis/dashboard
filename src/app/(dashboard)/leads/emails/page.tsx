@@ -14,8 +14,6 @@ import {
   AlertTriangle,
   MessageSquare,
   Send,
-  Briefcase,
-  MapPin,
   Copy,
   Check,
   Trash2,
@@ -35,6 +33,9 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import OutreachSection from "@/components/leads/outreach-section";
 import { usePoll } from "@/lib/use-poll";
+import { PageHeader } from "@/components/ui/page-header";
+import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { SourceBadge as SharedSourceBadge } from "@/components/leads/source-badge";
 
 interface EmailRecord {
   id: string;
@@ -58,65 +59,16 @@ interface EmailRecord {
   emailed_at: string | null;
 }
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; bg: string; text: string; icon: typeof CheckCircle }
-> = {
-  ready_for_generation: { label: "Klaar voor generatie", bg: "bg-purple-500/15", text: "text-purple-400", icon: Sparkles },
-  generating: { label: "Bezig...", bg: "bg-blue-500/15", text: "text-blue-400", icon: Loader2 },
-  generation_failed: { label: "Generatie mislukt", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
-  generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400", icon: Eye },
-  approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: CheckCircle },
-  failed: { label: "Gefaald", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
-  sent: { label: "Verstuurd", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: CheckCircle2 },
-  error: { label: "Verzendfout", bg: "bg-red-500/15", text: "text-red-400", icon: AlertTriangle },
-  sending: { label: "Verzenden...", bg: "bg-blue-500/15", text: "text-blue-400", icon: Loader2 },
-  replied: { label: "Beantwoord", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: MessageSquare },
-  verification_pending: { label: "Verificatie pending", bg: "bg-amber-500/15", text: "text-amber-400", icon: Loader2 },
-  verification_risky: { label: "Risky", bg: "bg-orange-500/15", text: "text-orange-400", icon: AlertTriangle },
-  verification_failed: { label: "Verificatie mislukt", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
-};
+// Lokale badges zijn vervangen door shared <LeadStatusBadge> en <SharedSourceBadge>
+// uit src/components/leads/. Alle statussen die deze pagina gebruikt zijn gedekt
+// in de shared variant; spin-animatie voor generating/sending/verification_pending
+// gebeurt daar automatisch.
+const StatusBadge = ({ status }: { status: string | null }) => (
+  <LeadStatusBadge status={status} compact />
+);
 
-function StatusBadge({ status }: { status: string | null }) {
-  if (!status) return null;
-  const c = STATUS_CONFIG[status] || {
-    label: status,
-    bg: "bg-autronis-border",
-    text: "text-autronis-text-secondary",
-    icon: AlertTriangle,
-  };
-  const Icon = c.icon;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full",
-        c.bg,
-        c.text
-      )}
-    >
-      <Icon className={cn("w-3 h-3", status === "generating" || status === "sending" ? "animate-spin" : "")} />
-      {c.label}
-    </span>
-  );
-}
-
-function SourceBadge({ source }: { source: string | null }) {
-  if (!source) return null;
-  const isLinkedin = source === "linkedin";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded",
-        isLinkedin
-          ? "bg-purple-500/10 text-purple-300"
-          : "bg-autronis-accent/10 text-autronis-accent"
-      )}
-    >
-      {isLinkedin ? <Briefcase className="w-2.5 h-2.5" /> : <MapPin className="w-2.5 h-2.5" />}
-      {isLinkedin ? "Bedrijf" : "Locatie"}
-    </span>
-  );
-}
+const SourceBadge = ({ source }: { source: string | null }) =>
+  source ? <SharedSourceBadge source={source} compact /> : null;
 
 const STATUS_TABS: Array<{ key: string; label: string }> = [
   { key: "alle", label: "Alle" },
@@ -636,25 +588,19 @@ export default function LeadsEmailsPage() {
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <Mail className="w-6 h-6 text-autronis-accent" />
-            Lead Emails
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            Cold emails review, goedkeuren en versturen.
-          </p>
-        </div>
-        <button
-          onClick={() => load()}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-        >
-          <Loader2 className={cn("w-3.5 h-3.5", loading && emails.length === 0 && "animate-spin")} />
-          Vernieuwen
-        </button>
-      </div>
+      <PageHeader
+        title="Lead Emails"
+        description="Cold emails review, goedkeuren en versturen."
+        actions={
+          <button
+            onClick={() => load()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          >
+            <Loader2 className={cn("w-3.5 h-3.5", loading && emails.length === 0 && "animate-spin")} />
+            Vernieuwen
+          </button>
+        }
+      />
 
       {/* Status tabs */}
       <div className="flex flex-wrap items-center gap-2">

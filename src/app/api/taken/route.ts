@@ -78,7 +78,14 @@ export async function GET(req: NextRequest) {
         )!
       )!,
     ];
-    if (status && status !== "alle") conditions.push(eq(taken.status, status as "open" | "bezig" | "afgerond"));
+    if (status && status !== "alle") {
+      const statussen = status.split(",").map(s => s.trim()).filter(Boolean);
+      if (statussen.length === 1) {
+        conditions.push(eq(taken.status, statussen[0] as "open" | "bezig" | "afgerond"));
+      } else if (statussen.length > 1) {
+        conditions.push(inArray(taken.status, statussen as ("open" | "bezig" | "afgerond")[]));
+      }
+    }
     if (prioriteit && prioriteit !== "alle") conditions.push(eq(taken.prioriteit, prioriteit as "laag" | "normaal" | "hoog"));
     if (toegewezenAan === "geen") conditions.push(sql`${taken.toegewezenAan} IS NULL`);
     else if (toegewezenAan) conditions.push(eq(taken.toegewezenAan, Number(toegewezenAan)));

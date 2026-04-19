@@ -24,6 +24,7 @@ import {
   ArrowDownAZ,
   ArrowUpAZ,
   Sparkles,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -562,36 +563,47 @@ export default function LeadsEmailsPage() {
 
       {/* Bulk action bar — toon altijd, knoppen disabled als selectie leeg */}
       <div className="rounded-xl border border-autronis-border bg-autronis-card p-3 flex flex-wrap items-center gap-2">
-        {/* Select-all checkbox voor de huidige pagina */}
-        <label className="inline-flex items-center gap-1.5 text-xs text-autronis-text-secondary cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={paged.length > 0 && paged.every((e) => selectedIds.has(e.id))}
-            ref={(el) => {
-              if (el) {
-                const allSelected = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
-                const someSelected = paged.some((e) => selectedIds.has(e.id));
-                el.indeterminate = !allSelected && someSelected;
+        {/* Select pagina / alle — altijd zichtbaar */}
+        <button
+          onClick={() => {
+            const allSelected = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
+            setSelectedIds((curr) => {
+              const next = new Set(curr);
+              if (allSelected) {
+                for (const e of paged) next.delete(e.id);
+              } else {
+                for (const e of paged) next.add(e.id);
               }
-            }}
-            onChange={() => {
-              const allSelected = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
-              setSelectedIds((curr) => {
-                const next = new Set(curr);
-                if (allSelected) {
-                  for (const e of paged) next.delete(e.id);
-                } else {
-                  for (const e of paged) next.add(e.id);
-                }
-                return next;
-              });
-            }}
-            className="rounded border-autronis-border accent-autronis-accent cursor-pointer"
-          />
-          Selecteer pagina
-        </label>
+              return next;
+            });
+          }}
+          disabled={paged.length === 0}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors disabled:opacity-40"
+        >
+          <CheckSquare className="w-3 h-3" />
+          {paged.length > 0 && paged.every((e) => selectedIds.has(e.id))
+            ? `Deselecteer pagina (${paged.length})`
+            : `Selecteer pagina (${paged.length})`}
+        </button>
+        <button
+          onClick={() => {
+            const allSelected = gefilterd.length > 0 && gefilterd.every((e) => selectedIds.has(e.id));
+            if (allSelected) {
+              setSelectedIds(new Set());
+            } else {
+              setSelectedIds(new Set(gefilterd.map((e) => e.id)));
+            }
+          }}
+          disabled={gefilterd.length === 0}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-accent/10 border border-autronis-accent/40 text-autronis-accent text-xs font-semibold hover:bg-autronis-accent/20 transition-colors disabled:opacity-40"
+        >
+          <CheckSquare className="w-3 h-3" />
+          {gefilterd.length > 0 && gefilterd.every((e) => selectedIds.has(e.id))
+            ? `Deselecteer alles (${gefilterd.length})`
+            : `Selecteer alles (${gefilterd.length})`}
+        </button>
         <span className="text-xs text-autronis-text-secondary mr-2 ml-1">
-          {selectedIds.size > 0 ? `${selectedIds.size} geselecteerd` : "Bulk acties:"}
+          {selectedIds.size > 0 ? `· ${selectedIds.size} geselecteerd` : ""}
         </span>
         {selectedIds.size > 0 ? (
           <>

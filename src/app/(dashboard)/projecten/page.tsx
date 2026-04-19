@@ -656,6 +656,22 @@ export default function ProjectenPage() {
     });
   }, [filtered]);
 
+  // Split in "verdient aandacht" (achter/risico) en "gezond" groepen — zo kan de
+  // gebruiker in één oogopslag de zwakke plekken pakken zonder dat de sortering
+  // subtiel is. Pas split tonen als er *beide* categorieen zijn (1 groep = geen
+  // divider nodig).
+  const { aandachtProjecten, gezondeProjecten } = useMemo(() => {
+    const aandacht: Project[] = [];
+    const gezond: Project[] = [];
+    for (const p of sorted) {
+      const h = getProjectHealth(p).status;
+      if (h === "achter" || h === "risico") aandacht.push(p);
+      else gezond.push(p);
+    }
+    return { aandachtProjecten: aandacht, gezondeProjecten: gezond };
+  }, [sorted]);
+  const toonGroepen = aandachtProjecten.length > 0 && gezondeProjecten.length > 0;
+
   const tabCounts = useMemo(() => {
     const base = zoek
       ? projecten.filter((p) => matchesZoek(p, zoek.toLowerCase()))
@@ -716,10 +732,10 @@ export default function ProjectenPage() {
           }
         />
 
-        {/* KPIs */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* KPIs — "Totaal" weggehaald omdat die vaak gelijk is aan "Actief" en
+            dus geen extra info gaf. 3 KPIs passen beter in de balk. */}
+        <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Totaal", to: kpis.totaal, suffix: "", icon: FolderKanban, color: "text-autronis-text-primary", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
             { label: "Actief", to: kpis.actief, suffix: "", icon: Loader2, color: "text-blue-400", iconBg: "bg-blue-500/10 text-blue-400" },
             { label: "Taken open", to: kpis.takenOpen, suffix: "", icon: ListTodo, color: "text-amber-400", iconBg: "bg-amber-500/10 text-amber-400" },
             { label: "Totale uren", to: Math.round(kpis.totaleUren / 60), suffix: "u", icon: Clock, color: "text-autronis-accent", iconBg: "bg-autronis-accent/10 text-autronis-accent" },
@@ -811,6 +827,60 @@ export default function ProjectenPage() {
             {sorted.map((project) => (
               <ProjectRow key={project.id} project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} zoek={zoek} />
             ))}
+          </motion.div>
+        ) : toonGroepen ? (
+          <motion.div
+            key={`grid-groepen-${activeTab}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <h2 className="text-sm font-semibold text-autronis-text-primary">Verdient aandacht</h2>
+                <span className="text-xs text-autronis-text-secondary">({aandachtProjecten.length})</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {aandachtProjecten.map((project, i) => (
+                    <motion.div
+                      key={project.id}
+                      layout
+                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4), layout: { duration: 0.22 } }}
+                    >
+                      <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} onDelete={handleDelete} zoek={zoek} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <h2 className="text-sm font-semibold text-autronis-text-primary">Op schema</h2>
+                <span className="text-xs text-autronis-text-secondary">({gezondeProjecten.length})</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {gezondeProjecten.map((project, i) => (
+                    <motion.div
+                      key={project.id}
+                      layout
+                      initial={{ opacity: 0, y: 16, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4), layout: { duration: 0.22 } }}
+                    >
+                      <ProjectCard project={project} onStartTimer={handleStartTimer} onOpenVSCode={handleOpenVSCode} onDelete={handleDelete} zoek={zoek} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
           </motion.div>
         ) : (
           <motion.div

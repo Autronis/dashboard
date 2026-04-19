@@ -79,7 +79,10 @@ export async function berekenActieveUren(
     dagMap.get(dag)!.push(e);
   }
 
-  // Finance and meeting get a 2x weight — matches sessies/route.ts line 350
+  // Slot-dominant logic — mirrors sessies/route.ts. ≥5 min productive in a slot
+  // always wins over afleiding/overig, so "coding with YT background" counts as work.
+  const PRODUCTIEF_SLOT = new Set(["development", "design", "administratie", "finance", "communicatie", "meeting"]);
+  const MIN_PRODUCTIEF_SEC = 5 * 60;
   const CAT_WEIGHT: Record<string, number> = { finance: 2, meeting: 2 };
 
   let totaalSeconden = 0;
@@ -105,9 +108,14 @@ export async function berekenActieveUren(
         const c = e.categorie ?? "overig";
         catSec[c] = (catSec[c] || 0) + e.duurSeconden;
       }
-      const dominantCat = Object.entries(catSec)
-        .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
-        .sort(([, a], [, b]) => b - a)[0][0];
+      const topProd = Object.entries(catSec)
+        .filter(([c]) => PRODUCTIEF_SLOT.has(c))
+        .sort(([, a], [, b]) => b - a)[0];
+      const dominantCat = (topProd && topProd[1] >= MIN_PRODUCTIEF_SEC)
+        ? topProd[0]
+        : Object.entries(catSec)
+            .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
+            .sort(([, a], [, b]) => b - a)[0][0];
 
       // Skip afleiding slots from the deep-work total (matches /tijd line 497)
       if (dominantCat === "afleiding") continue;

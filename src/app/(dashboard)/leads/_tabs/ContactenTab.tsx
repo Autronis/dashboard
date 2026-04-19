@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Users,
-  Search,
   Mail,
-  Phone,
-  Globe,
   Loader2,
   ExternalLink,
   MapPin,
@@ -18,12 +16,22 @@ import {
   Filter,
   X,
   Zap,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { usePoll } from "@/lib/use-poll";
 import { TabInfo } from "../_components/TabInfo";
 import { useBulkScan } from "../_components/use-bulk-scan";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LeadsKpiTile, type LeadsKpiAccent } from "@/components/leads/kpi-tile";
+import { SectionCard } from "@/components/leads/section-card";
+import { SourceBadge } from "@/components/leads/source-badge";
+import { FolderChip } from "@/components/leads/folder-chip";
+import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { BulkActionBar, type BulkAction } from "@/components/leads/bulk-action-bar";
 
 interface Lead {
   id: string;
@@ -106,8 +114,8 @@ function exportLeadsAsCSV(leads: Lead[]) {
   const rows = leads.map((l) => {
     const emails = parseEmails(l.emails);
     return [
-      "", // first_name (niet beschikbaar)
-      "", // last_name
+      "",
+      "",
       emails[0] || "",
       l.name || "",
       l.website || "",
@@ -132,27 +140,32 @@ function exportLeadsAsCSV(leads: Lead[]) {
   URL.revokeObjectURL(url);
 }
 
-const SOURCE_TABS = [
-  { key: "all", label: "Alle", icon: Users },
-  { key: "linkedin", label: "LinkedIn", icon: Linkedin },
-  { key: "google_maps", label: "Google Maps", icon: MapPin },
-  { key: "enrichment_success", label: "Enrichment OK", icon: CheckCircle },
-  { key: "enrichment_failed", label: "Enrichment gefaald", icon: AlertCircle },
+type SourceKey = "all" | "linkedin" | "google_maps" | "enrichment_success" | "enrichment_failed";
+
+const SOURCE_FILTERS: Array<{
+  key: SourceKey;
+  label: string;
+  icon: typeof Users;
+  accent: LeadsKpiAccent;
+}> = [
+  { key: "all", label: "Alle", icon: Users, accent: "cyan" },
+  { key: "linkedin", label: "LinkedIn", icon: Linkedin, accent: "purple" },
+  { key: "google_maps", label: "Google Maps", icon: MapPin, accent: "green" },
+  { key: "enrichment_success", label: "Enrichment OK", icon: CheckCircle, accent: "blue" },
+  { key: "enrichment_failed", label: "Enrichment gefaald", icon: AlertCircle, accent: "red" },
 ];
 
-const STATUS_PRIORITY = ["error", "generation_failed", "failed", "ready_for_generation", "generating", "generated", "approved", "sent", "replied"];
-
-const EMAIL_STATUS_BADGE: Record<string, { label: string; bg: string; text: string }> = {
-  ready_for_generation: { label: "Klaar voor generatie", bg: "bg-purple-500/15", text: "text-purple-400" },
-  generating: { label: "Bezig", bg: "bg-blue-500/15", text: "text-blue-400" },
-  generation_failed: { label: "Generatie mislukt", bg: "bg-red-500/15", text: "text-red-400" },
-  generated: { label: "Te reviewen", bg: "bg-yellow-500/15", text: "text-yellow-400" },
-  approved: { label: "Goedgekeurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
-  sent: { label: "Verstuurd", bg: "bg-emerald-500/15", text: "text-emerald-400" },
-  failed: { label: "Gefaald", bg: "bg-red-500/15", text: "text-red-400" },
-  error: { label: "Error", bg: "bg-red-500/15", text: "text-red-400" },
-  replied: { label: "Reply", bg: "bg-autronis-accent/15", text: "text-autronis-accent" },
-};
+const STATUS_PRIORITY = [
+  "error",
+  "generation_failed",
+  "failed",
+  "ready_for_generation",
+  "generating",
+  "generated",
+  "approved",
+  "sent",
+  "replied",
+];
 
 export function ContactenTab() {
   const { addToast } = useToast();
@@ -161,19 +174,19 @@ export function ContactenTab() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // UI state
   const [search, setSearch] = useState("");
   const [folderFilter, setFolderFilter] = useState<string>("all");
-  const [sourceTab, setSourceTab] = useState<string>("all");
+  const [sourceTab, setSourceTab] = useState<SourceKey>("all");
   const [filters, setFilters] = useState<AdvancedFilters>(DEFAULT_FILTERS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [maxLeads, setMaxLeads] = useState(10);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Action busy state
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [isPrepping, setIsPrepping] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const { runScan } = useBulkScan();
 
   const load = useCallback(async (silent = false) => {
@@ -205,7 +218,6 @@ export function ContactenTab() {
     load();
   }, [load]);
 
-  // Realtime-ish: silent refetch elke 12s — geen loading flicker
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 12000);
 
@@ -217,7 +229,6 @@ export function ContactenTab() {
     return Array.from(set).sort();
   }, [leads]);
 
-  // lead_id → highest-priority email status
   const leadEmailStatusMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const e of emails) {
@@ -234,10 +245,20 @@ export function ContactenTab() {
     return map;
   }, [emails]);
 
+  const tabCounts = useMemo(
+    () => ({
+      all: leads.length,
+      linkedin: leads.filter((l) => isLinkedin(l.source)).length,
+      google_maps: leads.filter((l) => isGoogleMaps(l.source)).length,
+      enrichment_success: leads.filter((l) => l.enrichment_status === "success").length,
+      enrichment_failed: leads.filter((l) => l.enrichment_status === "failed").length,
+    }),
+    [leads]
+  );
+
   const filtered = useMemo(() => {
     let result = leads;
 
-    // Source tab
     if (sourceTab === "linkedin") result = result.filter((l) => isLinkedin(l.source));
     else if (sourceTab === "google_maps") result = result.filter((l) => isGoogleMaps(l.source));
     else if (sourceTab === "enrichment_success")
@@ -245,10 +266,8 @@ export function ContactenTab() {
     else if (sourceTab === "enrichment_failed")
       result = result.filter((l) => l.enrichment_status === "failed");
 
-    // Folder
     if (folderFilter !== "all") result = result.filter((l) => l.folder === folderFilter);
 
-    // Advanced filters
     if (filters.hasEmail === true) result = result.filter((l) => hasEmailValue(l));
     if (filters.hasEmail === false) result = result.filter((l) => !hasEmailValue(l));
     if (filters.hasPhone === true) result = result.filter((l) => !!l.phone);
@@ -260,7 +279,6 @@ export function ContactenTab() {
     if (filters.emailGenerated === true) result = result.filter((l) => !!l.generated_email);
     if (filters.emailGenerated === false) result = result.filter((l) => !l.generated_email);
 
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -305,6 +323,11 @@ export function ContactenTab() {
     setSearch("");
   }
 
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setConfirmDelete(false);
+  }
+
   const activeFilterCount =
     Object.values(filters).filter((v) => v !== null).length +
     (folderFilter !== "all" ? 1 : 0) +
@@ -332,7 +355,7 @@ export function ContactenTab() {
       }
       addToast(`Email generatie gestart voor ${validIds.length} leads`, "succes");
       setSelectedIds(new Set());
-      setTimeout(load, 2000);
+      setTimeout(() => load(), 2000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Email generatie mislukt", "fout");
     } finally {
@@ -372,7 +395,7 @@ export function ContactenTab() {
       }
       addToast(`Enrichment gestart voor ${validIds.length} leads`, "succes");
       setSelectedIds(new Set());
-      setTimeout(load, 2000);
+      setTimeout(() => load(), 2000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Enrichment mislukt", "fout");
     } finally {
@@ -399,11 +422,68 @@ export function ContactenTab() {
       }
       addToast(`${validIds.length} leads klaargezet voor generatie`, "succes");
       setSelectedIds(new Set());
-      setTimeout(load, 1000);
+      setTimeout(() => load(), 1000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Klaarzetten mislukt", "fout");
     } finally {
       setIsPrepping(false);
+    }
+  }
+
+  async function bulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      addToast("Klik nog een keer op Verwijder om te bevestigen", "info");
+      setTimeout(() => setConfirmDelete(false), 4000);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      const linkedinIds: string[] = [];
+      const gmapsIds: string[] = [];
+      for (const id of selectedIds) {
+        const lead = leads.find((l) => l.id === id);
+        if (!lead) continue;
+        if (isGoogleMaps(lead.source)) gmapsIds.push(id);
+        else linkedinIds.push(id);
+      }
+
+      const requests: Promise<Response>[] = [];
+      if (linkedinIds.length > 0) {
+        requests.push(
+          fetch("/api/leads", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: linkedinIds }),
+          })
+        );
+      }
+      if (gmapsIds.length > 0) {
+        requests.push(
+          fetch("/api/leads/google-maps", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: gmapsIds }),
+          })
+        );
+      }
+
+      const responses = await Promise.all(requests);
+      for (const res of responses) {
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.fout || `HTTP ${res.status}`);
+        }
+      }
+
+      setLeads((curr) => curr.filter((l) => !selectedIds.has(l.id)));
+      addToast(`${selectedIds.size} leads verwijderd`, "succes");
+      clearSelection();
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : "Verwijderen mislukt", "fout");
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -420,125 +500,47 @@ export function ContactenTab() {
     addToast(`${toExport.length} leads geëxporteerd (Hunter.io compatibel)`, "succes");
   }
 
-  // Counts per tab
-  const tabCounts = useMemo(
-    () => ({
-      all: leads.length,
-      linkedin: leads.filter((l) => isLinkedin(l.source)).length,
-      google_maps: leads.filter((l) => isGoogleMaps(l.source)).length,
-      enrichment_success: leads.filter((l) => l.enrichment_status === "success").length,
-      enrichment_failed: leads.filter((l) => l.enrichment_status === "failed").length,
-    }),
-    [leads]
-  );
+  const bulkActions: BulkAction[] = [
+    {
+      key: "scan",
+      label: "Scan",
+      icon: Zap,
+      onClick: scanSelected,
+      tone: "cyan",
+      title: "Open de Sales Engine scan-flow met deze leads voorgeladen",
+    },
+    {
+      key: "enrich",
+      label: "Enrich",
+      icon: Sparkles,
+      onClick: enrichLeads,
+      tone: "blue",
+      busy: isEnriching,
+    },
+    {
+      key: "prep",
+      label: "Klaarzetten",
+      icon: Sparkles,
+      onClick: prepForGeneration,
+      tone: "purple",
+      busy: isPrepping,
+    },
+    {
+      key: "generate",
+      label: "Genereer",
+      icon: Mail,
+      onClick: generateEmails,
+      tone: "emerald",
+      busy: isGenerating,
+    },
+  ];
 
   return (
     <div className="space-y-7">
-      {/* Header + actiebalk */}
-      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-autronis-text-primary flex items-center gap-3">
-            <Users className="w-7 h-7 text-autronis-accent" />
-            Contacten
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1.5">
-            <span className="text-autronis-text-primary font-medium">Segmenteren.</span> Bouw een gerichte lijst met geavanceerde filters (email ja/nee, telefoon, website, folder, &hellip;).
-            Exporteer naar CSV voor outreach, of markeer leads voor bulk email-generatie. Het verschil met <span className="text-autronis-accent">Overzicht</span>: hier filter je scherp, daar zie je alles.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          {folders.length > 0 && (
-            <select
-              value={folderFilter}
-              onChange={(e) => setFolderFilter(e.target.value)}
-              className="bg-autronis-card border border-autronis-border rounded-lg px-2 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-            >
-              <option value="all">Alle folders</option>
-              {folders.map((f) => (
-                <option key={f} value={f}>
-                  {f}
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            onClick={() => setShowAdvanced((v) => !v)}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-              showAdvanced || activeFilterCount > 0
-                ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
-                : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
-            )}
-          >
-            <Filter className="w-3 h-3" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-autronis-accent text-autronis-bg text-[9px] font-bold">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={handleExportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-          >
-            <Download className="w-3 h-3" />
-            Export CSV
-          </button>
-          <div className="flex items-center gap-1">
-            <input
-              type="number"
-              min={1}
-              max={filtered.length}
-              value={maxLeads}
-              onChange={(e) => setMaxLeads(parseInt(e.target.value) || 1)}
-              className="w-16 bg-autronis-card border border-autronis-border rounded-lg px-2 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-            />
-            <button
-              onClick={selectTop}
-              className="px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/30 transition-colors"
-            >
-              Top {Math.min(maxLeads, filtered.length)}
-            </button>
-          </div>
-          {selectedIds.size > 0 && (
-            <>
-              <button
-                onClick={scanSelected}
-                title="Open de Sales Engine scan-flow met deze leads voorgeladen"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent/10 border border-autronis-accent/30 text-xs font-semibold text-autronis-accent hover:bg-autronis-accent/20 transition-colors"
-              >
-                <Zap className="w-3 h-3" />
-                Scan ({selectedIds.size})
-              </button>
-              <button
-                onClick={enrichLeads}
-                disabled={isEnriching}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-card border border-autronis-border text-xs font-semibold text-autronis-text-primary hover:border-autronis-accent/40 transition-colors disabled:opacity-40"
-              >
-                {isEnriching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                Enrich ({selectedIds.size})
-              </button>
-              <button
-                onClick={prepForGeneration}
-                disabled={isPrepping}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-500/30 text-xs font-semibold text-purple-400 hover:bg-purple-500/30 transition-colors disabled:opacity-40"
-              >
-                {isPrepping ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                Klaarzetten ({selectedIds.size})
-              </button>
-              <button
-                onClick={generateEmails}
-                disabled={isGenerating}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-40"
-              >
-                {isGenerating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
-                Genereer ({selectedIds.size})
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Contacten"
+        description="Segmenteren. Bouw een gerichte lijst met geavanceerde filters, exporteer naar CSV of start bulk email-generatie. Scherp filteren hier, overzicht blijft in Overzicht."
+      />
 
       <TabInfo
         tips={[
@@ -560,15 +562,110 @@ export function ContactenTab() {
         ]}
       />
 
-      {/* Advanced filters paneel */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        {SOURCE_FILTERS.map((f, i) => (
+          <LeadsKpiTile
+            key={f.key}
+            icon={f.icon}
+            label={f.label}
+            value={tabCounts[f.key]}
+            accent={f.accent}
+            active={sourceTab === f.key}
+            onClick={() => setSourceTab(f.key)}
+            index={i}
+          />
+        ))}
+      </div>
+
+      <FilterBar
+        search={{
+          value: search,
+          onChange: setSearch,
+          placeholder: "Zoek op naam, email, locatie, beschrijving, website...",
+        }}
+        filters={
+          <>
+            {folders.length > 0 && (
+              <select
+                value={folderFilter}
+                onChange={(e) => setFolderFilter(e.target.value)}
+                className="bg-autronis-card border border-autronis-border rounded-xl px-3 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+              >
+                <option value="all">Alle folders</option>
+                {folders.map((fld) => (
+                  <option key={fld} value={fld}>
+                    {fld}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors",
+                showAdvanced || activeFilterCount > 0
+                  ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
+                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
+              )}
+            >
+              <Filter className="w-3 h-3" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.5 rounded-full bg-autronis-accent text-autronis-bg text-[9px] font-bold">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </>
+        }
+        activeCount={activeFilterCount}
+        onClear={clearFilters}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                max={Math.max(1, filtered.length)}
+                value={maxLeads}
+                onChange={(e) => setMaxLeads(parseInt(e.target.value) || 1)}
+                className="w-16 bg-autronis-card border border-autronis-border rounded-xl px-2 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+              />
+              <button
+                type="button"
+                onClick={selectTop}
+                className="px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/30 transition-colors"
+              >
+                Top {Math.min(maxLeads, filtered.length)}
+              </button>
+            </div>
+          </>
+        }
+      />
+
       {showAdvanced && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card p-4 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="rounded-2xl border border-autronis-border bg-autronis-card p-4 space-y-3"
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-autronis-text-primary uppercase tracking-wide">
               Geavanceerde filters
             </h3>
             {activeFilterCount > 0 && (
               <button
+                type="button"
                 onClick={clearFilters}
                 className="inline-flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300"
               >
@@ -590,6 +687,7 @@ export function ContactenTab() {
                 <span className="text-xs text-autronis-text-secondary flex-1">{f.label}</span>
                 <div className="inline-flex items-center bg-autronis-bg border border-autronis-border rounded-lg p-0.5 text-[10px]">
                   <button
+                    type="button"
                     onClick={() =>
                       setFilters({ ...filters, [f.key]: filters[f.key] === true ? null : true })
                     }
@@ -603,6 +701,7 @@ export function ContactenTab() {
                     Ja
                   </button>
                   <button
+                    type="button"
                     onClick={() =>
                       setFilters({ ...filters, [f.key]: filters[f.key] === false ? null : false })
                     }
@@ -617,47 +716,25 @@ export function ContactenTab() {
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Source tabs */}
-      <div className="flex flex-wrap items-center gap-2">
-        {SOURCE_TABS.map((t) => {
-          const Icon = t.icon;
-          const active = sourceTab === t.key;
-          const count = tabCounts[t.key as keyof typeof tabCounts];
-          return (
-            <button
-              key={t.key}
-              onClick={() => setSourceTab(t.key)}
-              className={cn(
-                "inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium transition-colors",
-                active
-                  ? "bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/40"
-                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
-              )}
-            >
-              <Icon className="w-3 h-3" />
-              {t.label}
-              <span className="tabular-nums font-semibold">{count}</span>
-            </button>
-          );
-        })}
-      </div>
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        actions={bulkActions}
+        onDelete={bulkDelete}
+        deleteBusy={isDeleting}
+        onClear={clearSelection}
+        prefix={
+          confirmDelete ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-300">
+              <Trash2 className="w-3 h-3" />
+              Nog één klik om te bevestigen
+            </span>
+          ) : undefined
+        }
+      />
 
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Zoek op naam, email, locatie, beschrijving, website..."
-          className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-        />
-      </div>
-
-      {/* Body */}
       {loading && leads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -665,23 +742,28 @@ export function ContactenTab() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+      {error && leads.length === 0 && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
           <p className="font-medium">Kon contacten niet laden</p>
           <p className="mt-1 text-red-400/80">{error}</p>
         </div>
       )}
 
-      {!loading && !error && filtered.length === 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-8 text-center text-autronis-text-secondary text-sm">
-          Geen contacten voor deze filters
-        </div>
+      {!loading && !error && filtered.length === 0 && leads.length > 0 && (
+        <SectionCard padding="none">
+          <EmptyState
+            titel="Geen contacten"
+            beschrijving="Geen contacten matchen deze filters. Pas source, folder of geavanceerde filters aan."
+          />
+        </SectionCard>
       )}
 
-      {!loading && !error && filtered.length > 0 && (
-        <div className="rounded-2xl border border-autronis-border bg-autronis-card overflow-hidden">
-          <div className="px-6 py-4 border-b border-autronis-border flex items-center justify-between">
-            <h2 className="text-base font-semibold text-autronis-text-primary">Contacten</h2>
+      {filtered.length > 0 && (
+        <SectionCard
+          title="Contacten"
+          icon={Users}
+          padding="none"
+          aside={
             <div className="flex items-center gap-3 text-xs text-autronis-text-secondary tabular-nums">
               {selectedIds.size > 0 && (
                 <span className="text-autronis-accent font-medium">
@@ -690,146 +772,119 @@ export function ContactenTab() {
               )}
               <span>{filtered.length} resultaten</span>
             </div>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
-              <tr>
-                <th className="w-10 px-4 py-3">
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.size === filtered.length && filtered.length > 0}
-                    onChange={toggleAll}
-                    className="rounded border-autronis-border accent-autronis-accent"
-                  />
-                </th>
-                <th className="text-left px-4 py-3 font-semibold">Bron</th>
-                <th className="text-left px-4 py-3 font-semibold">Naam</th>
-                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Email</th>
-                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Locatie</th>
-                <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Folder</th>
-                <th className="text-left px-4 py-3 font-semibold">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-autronis-border/50">
-              {filtered.slice(0, 200).map((lead) => {
-                const selected = selectedIds.has(lead.id);
-                const emails = parseEmails(lead.emails);
-                const emailStatus = leadEmailStatusMap.get(lead.id);
-                const badge = emailStatus ? EMAIL_STATUS_BADGE[emailStatus] : null;
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => toggleSelect(lead.id)}
-                    className={cn(
-                      "cursor-pointer transition-colors",
-                      selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
-                    )}
-                  >
-                    <td className="px-4 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selected}
-                        onChange={() => toggleSelect(lead.id)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="rounded border-autronis-border accent-autronis-accent"
-                      />
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full",
-                          isGoogleMaps(lead.source)
-                            ? "bg-autronis-accent/15 text-autronis-accent"
-                            : "bg-purple-500/15 text-purple-300"
-                        )}
-                      >
-                        {isGoogleMaps(lead.source) ? (
-                          <MapPin className="w-3 h-3" />
-                        ) : (
-                          <Linkedin className="w-3 h-3" />
-                        )}
-                        {isGoogleMaps(lead.source) ? "Locatie" : "Bedrijf"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-semibold text-sm text-autronis-text-primary truncate max-w-xs">
-                          {lead.name || "(geen naam)"}
-                        </span>
-                        {lead.website && (
-                          <a
-                            href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-autronis-text-secondary/60 hover:text-autronis-accent flex-shrink-0"
-                            title={lead.website}
-                          >
-                            <ExternalLink className="w-3 h-3" />
-                          </a>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 hidden md:table-cell">
-                      {emails.length > 0 ? (
-                        <a
-                          href={`mailto:${emails[0]}`}
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-autronis-bg/40 text-[10px] uppercase text-autronis-text-secondary/70 tracking-wider">
+                <tr>
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.size === filtered.length && filtered.length > 0}
+                      onChange={toggleAll}
+                      className="rounded border-autronis-border accent-autronis-accent"
+                    />
+                  </th>
+                  <th className="text-left px-4 py-3 font-semibold">Bron</th>
+                  <th className="text-left px-4 py-3 font-semibold">Naam</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden md:table-cell">Email</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Locatie</th>
+                  <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell">Folder</th>
+                  <th className="text-left px-4 py-3 font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-autronis-border/50">
+                {filtered.slice(0, 200).map((lead) => {
+                  const selected = selectedIds.has(lead.id);
+                  const leadEmails = parseEmails(lead.emails);
+                  const emailStatus = leadEmailStatusMap.get(lead.id);
+                  const sourceKind = isGoogleMaps(lead.source) ? "google_maps" : "linkedin";
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => toggleSelect(lead.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        selected ? "bg-autronis-accent/10" : "hover:bg-autronis-accent/[0.03]"
+                      )}
+                    >
+                      <td className="px-4 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleSelect(lead.id)}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 text-xs text-autronis-text-primary hover:text-autronis-accent truncate max-w-xs"
-                        >
-                          <Mail className="w-3 h-3 text-blue-400 flex-shrink-0" />
-                          {emails[0]}
-                          {emails.length > 1 && (
-                            <span className="text-autronis-text-secondary/50">+{emails.length - 1}</span>
+                          className="rounded border-autronis-border accent-autronis-accent"
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        <SourceBadge source={sourceKind} />
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-semibold text-sm text-autronis-text-primary truncate max-w-xs">
+                            {lead.name || "(geen naam)"}
+                          </span>
+                          {lead.website && (
+                            <a
+                              href={lead.website.startsWith("http") ? lead.website : `https://${lead.website}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-autronis-text-secondary/60 hover:text-autronis-accent flex-shrink-0"
+                              title={lead.website}
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
                           )}
-                        </a>
-                      ) : (
-                        <span className="text-xs text-autronis-text-secondary/30">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      {lead.location ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-autronis-text-secondary">
-                          <MapPin className="w-3 h-3 text-autronis-text-secondary/50" />
-                          {(lead.location || "").split(",")[0]}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-autronis-text-secondary/30">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      {lead.folder ? (
-                        <span className="inline-block whitespace-nowrap text-[11px] font-medium px-2 py-0.5 rounded-full bg-autronis-accent/10 text-autronis-accent max-w-[180px] truncate align-middle">
-                          {lead.folder}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-autronis-text-secondary/30">—</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4">
-                      {badge && (
-                        <span
-                          className={cn(
-                            "inline-flex items-center text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider",
-                            badge.bg,
-                            badge.text
-                          )}
-                        >
-                          {badge.label}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filtered.length > 200 && (
-            <div className="px-6 py-3 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
-              {filtered.length} contacten totaal — eerste 200 getoond
-            </div>
-          )}
-        </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        {leadEmails.length > 0 ? (
+                          <a
+                            href={`mailto:${leadEmails[0]}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 text-xs text-autronis-text-primary hover:text-autronis-accent truncate max-w-xs"
+                          >
+                            <Mail className="w-3 h-3 text-blue-400 flex-shrink-0" />
+                            {leadEmails[0]}
+                            {leadEmails.length > 1 && (
+                              <span className="text-autronis-text-secondary/50">+{leadEmails.length - 1}</span>
+                            )}
+                          </a>
+                        ) : (
+                          <span className="text-xs text-autronis-text-secondary/30">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        {lead.location ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs text-autronis-text-secondary">
+                            <MapPin className="w-3 h-3 text-autronis-text-secondary/50" />
+                            {(lead.location || "").split(",")[0]}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-autronis-text-secondary/30">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <FolderChip folder={lead.folder} />
+                      </td>
+                      <td className="px-4 py-4">
+                        {emailStatus && <LeadStatusBadge status={emailStatus} compact />}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filtered.length > 200 && (
+              <div className="px-6 py-3 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
+                {filtered.length} contacten totaal — eerste 200 getoond
+              </div>
+            )}
+          </div>
+        </SectionCard>
       )}
     </div>
   );

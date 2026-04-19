@@ -9,7 +9,7 @@ import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 8;
+const CACHE_VERSION = 9;
 
 // Focus log entry — wat de Claude chat heeft gemeld
 interface FocusLogEntry {
@@ -377,12 +377,20 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Finance and meeting get a 2x weight — they represent intentional focused work
-      // even when an IDE has more passive background seconds in the same slot
+      // Slot-dominant: if ≥5 min productive work happened, pick top productive cat.
+      // Means "combo" slots (coding with YT in background) count as work, not afleiding.
+      // Only pure-idle / pure-afleiding slots stay afleiding.
+      const PRODUCTIEF_SLOT = new Set(["development", "design", "administratie", "finance", "communicatie", "meeting"]);
+      const MIN_PRODUCTIEF_SEC = 5 * 60;
       const CAT_WEIGHT: Record<string, number> = { finance: 2, meeting: 2 };
-      const cat = Object.entries(catSec)
-        .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
-        .sort(([, a], [, b]) => b - a)[0][0];
+      const topProd = Object.entries(catSec)
+        .filter(([c]) => PRODUCTIEF_SLOT.has(c))
+        .sort(([, a], [, b]) => b - a)[0];
+      const cat = (topProd && topProd[1] >= MIN_PRODUCTIEF_SEC)
+        ? topProd[0]
+        : Object.entries(catSec)
+            .map(([c, sec]) => [c, sec * (CAT_WEIGHT[c] ?? 1)] as [string, number])
+            .sort(([, a], [, b]) => b - a)[0][0];
       const topApps = Object.entries(appSec).filter(([a]) => a !== "Inactief").sort(([, a], [, b]) => b - a).slice(0, 4);
       const dominantApp = topApps[0]?.[0] ?? "";
 

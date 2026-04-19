@@ -59,6 +59,10 @@
     {
       "path": "/api/cron/slimme-acties-cleanup",
       "schedule": "15 4 * * *"
+    },
+    {
+      "path": "/api/cron/screen-time-health",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

@@ -54,6 +54,43 @@ export function splitOgDescription(raw: string): { caption: string; author: stri
  * Extract caption, author handle, and media URL from an Instagram page HTML.
  * Works on public reels/posts. Returns empty strings when a value cannot be parsed.
  */
+/**
+ * Collect all image URLs available on the IG page — carousel slides first,
+ * then og:image as fallback (video thumbnail or single-post image).
+ * Returns a de-duplicated list, capped at 10.
+ */
+export function extractImageUrls(html: string): string[] {
+  const urls = new Set<string>();
+
+  // Carousel slides — look inside edge_sidecar_to_children edges
+  const sidecar = html.match(/"edge_sidecar_to_children":\s*\{[\s\S]*?"edges":\s*\[([\s\S]*?)\]\s*,\s*"__typename"/);
+  if (sidecar) {
+    const displayRe = /"display_url":"([^"]+)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = displayRe.exec(sidecar[1])) !== null) {
+      urls.add(decodeHtmlEntities(decodeJsonString(m[1])));
+    }
+  }
+
+  // Alternate pattern used on newer IG pages
+  if (urls.size === 0) {
+    const imgVersionsRe = /"image_versions2":\s*\{\s*"candidates":\s*\[\s*\{\s*"[^"]*":\s*[^,]*,\s*"url":"([^"]+)"/g;
+    let m: RegExpExecArray | null;
+    while ((m = imgVersionsRe.exec(html)) !== null) {
+      urls.add(decodeHtmlEntities(decodeJsonString(m[1])));
+      if (urls.size >= 10) break;
+    }
+  }
+
+  // Fallback: og:image (always present — single-post image or video thumbnail)
+  if (urls.size === 0) {
+    const og = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/);
+    if (og) urls.add(decodeHtmlEntities(og[1]));
+  }
+
+  return Array.from(urls).slice(0, 10);
+}
+
 export function parseInstagramPage(html: string, url: string, type: ItemType, instagramId: string): RawItem {
   let caption = "";
   let authorHandle = "";
@@ -100,7 +137,9 @@ export function parseInstagramPage(html: string, url: string, type: ItemType, in
     if (edgeMatch) caption = decodeJsonString(edgeMatch[1]);
   }
 
-  return { instagramId, type, url, caption, authorHandle, mediaUrl };
+  const imageUrls = extractImageUrls(html);
+
+  return { instagramId, type, url, caption, authorHandle, mediaUrl, imageUrls };
 }
 
 export async function fetchInstagramPage(url: string): Promise<string> {

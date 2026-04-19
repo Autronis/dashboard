@@ -65,6 +65,9 @@ const STATUS_CONFIG: Record<
   error: { label: "Verzendfout", bg: "bg-red-500/15", text: "text-red-400", icon: AlertTriangle },
   sending: { label: "Verzenden...", bg: "bg-blue-500/15", text: "text-blue-400", icon: Loader2 },
   replied: { label: "Beantwoord", bg: "bg-emerald-500/15", text: "text-emerald-400", icon: MessageSquare },
+  verification_pending: { label: "Verificatie pending", bg: "bg-amber-500/15", text: "text-amber-400", icon: Loader2 },
+  verification_risky: { label: "Risky", bg: "bg-orange-500/15", text: "text-orange-400", icon: AlertTriangle },
+  verification_failed: { label: "Verificatie mislukt", bg: "bg-red-500/15", text: "text-red-400", icon: XCircle },
 };
 
 function StatusBadge({ status }: { status: string | null }) {
@@ -114,8 +117,13 @@ const STATUS_TABS: Array<{ key: string; label: string }> = [
   { key: "approved", label: "Goedgekeurd" },
   { key: "sent", label: "Verstuurd" },
   { key: "replied", label: "Beantwoord" },
+  { key: "verification_risky", label: "Risky" },
+  { key: "verification_failed", label: "Verificatie mislukt" },
+  { key: "verification_pending", label: "Verificatie pending" },
   { key: "failed", label: "Gefaald" },
 ];
+
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200] as const;
 
 export default function LeadsEmailsPage() {
   const { addToast } = useToast();
@@ -130,6 +138,10 @@ export default function LeadsEmailsPage() {
   const [sortDesc, setSortDesc] = useState(true); // true = newest first
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState<string | null>(null);
+
+  // Paginering
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(25);
 
   // Inline edit state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -201,6 +213,18 @@ export default function LeadsEmailsPage() {
     }
     return result;
   }, [sorted, statusFilter, zoek]);
+
+  // Reset naar pagina 1 wanneer filter/zoek/sort verandert
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, zoek, sortDesc, pageSize]);
+
+  const totalPages = Math.max(1, Math.ceil(gefilterd.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const paged = useMemo(
+    () => gefilterd.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [gefilterd, currentPage, pageSize]
+  );
 
   async function handleStatusChange(id: string, newStatus: string) {
     setBusyId(id);
@@ -628,7 +652,7 @@ export default function LeadsEmailsPage() {
       {/* Email lijst */}
       {!loading && !error && gefilterd.length > 0 && (
         <div className="space-y-2">
-          {gefilterd.slice(0, 100).map((email) => {
+          {paged.map((email) => {
             const expanded = expandedId === email.id;
             const busy = busyId === email.id;
             return (
@@ -895,6 +919,18 @@ export default function LeadsEmailsPage() {
                         </button>
                       )}
 
+                      {email.email_status === "verification_risky" && editingId !== email.id && (
+                        <button
+                          onClick={() => handleStatusChange(email.id, "approved")}
+                          disabled={busy}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500/15 text-orange-400 text-xs font-semibold hover:bg-orange-500/25 transition-colors disabled:opacity-50"
+                          title="Reacher vond dit adres risky — override en versturen"
+                        >
+                          {busy ? <Loader2 className="w-3 h-3 animate-spin" /> : <AlertTriangle className="w-3 h-3" />}
+                          Toch versturen
+                        </button>
+                      )}
+
                       {(email.email_status === "failed" || email.email_status === "error") && editingId !== email.id && (
                         <button
                           onClick={() => handleStatusChange(email.id, "generating")}
@@ -927,11 +963,44 @@ export default function LeadsEmailsPage() {
               </div>
             );
           })}
-          {gefilterd.length > 100 && (
-            <div className="rounded-xl border border-autronis-border bg-autronis-card/40 px-4 py-2 text-xs text-autronis-text-secondary text-center">
-              {gefilterd.length} emails totaal — eerste 100 getoond. Filter of zoek om scope te verkleinen.
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-autronis-border bg-autronis-card/40 px-4 py-2 text-xs text-autronis-text-secondary">
+            <div className="flex items-center gap-2">
+              <span>Per pagina:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(parseInt(e.target.value, 10))}
+                className="bg-autronis-card border border-autronis-border rounded-md px-2 py-1 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+              >
+                {PAGE_SIZE_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              <span className="text-autronis-text-secondary/60">
+                · {gefilterd.length} emails totaal
+              </span>
             </div>
-          )}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage <= 1}
+                className="px-2 py-1 rounded-md bg-autronis-card border border-autronis-border text-xs hover:border-autronis-accent/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Vorige
+              </button>
+              <span className="tabular-nums">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= totalPages}
+                className="px-2 py-1 rounded-md bg-autronis-card border border-autronis-border text-xs hover:border-autronis-accent/40 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Volgende
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

@@ -8,6 +8,12 @@ export interface RawItem {
   caption: string;
   authorHandle: string;
   mediaUrl?: string;
+  imageUrls?: string[];
+}
+
+export interface ImageContent {
+  mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+  data: string; // base64-encoded
 }
 
 export interface AnalysisFeature {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Loader2,
   Sparkles,
@@ -14,6 +15,8 @@ import {
   ChevronLeft,
   Globe,
   Wrench,
+  Wand2,
+  Film,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -61,8 +64,58 @@ const BATCH_LIMIT = 20;
 
 type SiteFilter = "alle" | "met_site" | "zonder_site";
 
+// Shape saved in sessionStorage by /animaties when returning from asset-gen for a lead.
+// Key: `rebuild-prep-assets-<leadId>`
+export interface RebuildPrepAssets {
+  leadId: string;
+  productNaam: string;
+  effect?: string | null;
+  stijl?: string | null;
+  promptA?: string | null;
+  promptB?: string | null;
+  promptVideo?: string | null;
+  imageA?: string | null;
+  imageB?: string | null;
+  videoUrl?: string | null;
+  savedAt: string;
+}
+
+function buildAssetInjection(assets: RebuildPrepAssets): string {
+  const lines: string[] = [];
+  lines.push("");
+  lines.push("");
+  lines.push("## Scroll-stop assets — beschikbaar");
+  lines.push("");
+  lines.push("Deze zijn via de Asset Generator gegenereerd voor deze lead. Integreer de video als scroll-driven hero (forward/backward op scroll).");
+  lines.push("");
+  if (assets.productNaam) lines.push(`- **Object**: ${assets.productNaam}`);
+  if (assets.effect) lines.push(`- **Effect**: ${assets.effect}`);
+  if (assets.stijl) lines.push(`- **Visuele stijl**: ${assets.stijl}`);
+  if (assets.imageA) lines.push(`- **Thumbnail A (assembled)**: ${assets.imageA}`);
+  if (assets.imageB) lines.push(`- **Thumbnail B (exploded)**: ${assets.imageB}`);
+  if (assets.videoUrl) lines.push(`- **Video URL**: ${assets.videoUrl}`);
+  lines.push("");
+  lines.push("Gebruik de video URL direct in een `<video>` tag of — voor scroll-scrubbed effect — via canvas + FFmpeg frame extraction (zie website-builder-3d patroon). Thumbnails A/B zijn start- en eindframe.");
+  return lines.join("\n");
+}
+
+function loadAssetsForLead(leadId: string): RebuildPrepAssets | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(`rebuild-prep-assets-${leadId}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RebuildPrepAssets;
+    if (!parsed || parsed.leadId !== leadId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export default function LeadsRebuildPrepPage() {
   const { addToast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [leads, setLeads] = useState<UnifiedLead[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +128,9 @@ export default function LeadsRebuildPrepPage() {
   const [batchPrepping, setBatchPrepping] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ done: 0, total: 0, chunk: 0, totalChunks: 0 });
   const [batchSkipped, setBatchSkipped] = useState(0);
+  // Per-lead assets die via de Asset Generator (/animaties) voor deze lead zijn
+  // teruggebracht via sessionStorage (key: rebuild-prep-assets-<leadId>).
+  const [assetsByLead, setAssetsByLead] = useState<Record<string, RebuildPrepAssets>>({});
   const batchAbortRef = useRef(false);
 
   const load = useCallback(async () => {

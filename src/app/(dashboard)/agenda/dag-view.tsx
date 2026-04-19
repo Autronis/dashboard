@@ -1231,9 +1231,11 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
                   className={cn(
                     "absolute rounded-xl border-l-[3px] border-purple-500 overflow-hidden transition-all",
                     expanded ? "z-[20] shadow-2xl" : "z-[3]",
-                    // Half-width links als er iets naast zit (zowel collapsed als expanded),
-                    // anders volle breedte.
-                    heeftOverlap ? "left-12 sm:left-16 right-[50.5%]" : "left-12 sm:left-16 right-1.5 sm:right-3"
+                    // Altijd half-width links zodat handmatige taken en events
+                    // vrijblijvend de rechter helft kunnen claimen — Sem is
+                    // tijdens Claude sessies vrij, dus die helft moet beschikbaar
+                    // blijven ook zonder huidige overlap.
+                    "left-12 sm:left-16 right-[50.5%]"
                   )}
                   style={{
                     top: `${blockTop}px`,

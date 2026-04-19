@@ -619,6 +619,20 @@ if (isTurso) {
   // Sessie ID kolom op klant_uren
   client.execute("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT").catch(() => {});
 
+  // Klant contactmomenten: atomic touch events (mail/bel/meeting/etc) — resets dagenSindsContact
+  client.execute(`CREATE TABLE IF NOT EXISTS klant_contactmomenten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant_id INTEGER NOT NULL REFERENCES klanten(id),
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    kanaal TEXT NOT NULL,
+    richting TEXT DEFAULT 'uitgaand',
+    notitie TEXT,
+    contact_datum TEXT NOT NULL DEFAULT (datetime('now')),
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_klant_contact_klant_id ON klant_contactmomenten(klant_id)").catch(() => {});
+  client.execute("CREATE INDEX IF NOT EXISTS idx_klant_contact_datum ON klant_contactmomenten(contact_datum)").catch(() => {});
+
   // ============ UPWORK PROPOSAL ENGINE ============
   client.execute(`CREATE TABLE IF NOT EXISTS upwork_jobs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -715,6 +729,33 @@ if (isTurso) {
   )`).catch(() => {});
   client.execute(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_verloopt ON slimme_acties_bridge(verloopt_op)`).catch(() => {});
   client.execute(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_voor ON slimme_acties_bridge(voor)`).catch(() => {});
+
+  // GTM ritme slots (v2 phase 5) — vaste tijden die de bridge respecteert.
+  client.execute(`CREATE TABLE IF NOT EXISTS gtm_ritme_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    pijler TEXT NOT NULL,
+    label TEXT NOT NULL,
+    start_tijd TEXT NOT NULL,
+    eind_tijd TEXT NOT NULL,
+    dagen_van_week TEXT NOT NULL,
+    actief INTEGER NOT NULL DEFAULT 1,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`).catch(() => {});
+
+  // Seed defaults op basis van go-to-market-plan.html ritme.
+  client.execute(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief)
+    SELECT 'sem', 'sales_engine', 'Sales Engine batch (10 scans + outreach)', '09:00', '10:30', '["ma","di","wo","do","vr"]', 1
+    WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='sem' AND pijler='sales_engine')`).catch(() => {});
+  client.execute(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief)
+    SELECT 'sem', 'content', 'Content batching weekend', '10:00', '11:00', '["za"]', 1
+    WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='sem' AND pijler='content')`).catch(() => {});
+  client.execute(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief)
+    SELECT 'team', 'netwerk', 'LinkedIn engagement window', '16:30', '17:00', '["ma","di","wo","do","vr"]', 1
+    WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='team' AND pijler='netwerk')`).catch(() => {});
+  client.execute(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief)
+    SELECT 'syb', 'inbound', 'ICP filter Lead Dashboard v2', '09:00', '10:00', '["ma","do"]', 1
+    WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='syb' AND pijler='inbound')`).catch(() => {});
 
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
@@ -1065,6 +1106,20 @@ if (isTurso) {
   // Sessie ID kolom op klant_uren
   try { sqliteDb.exec("ALTER TABLE klant_uren ADD COLUMN sessie_id TEXT"); } catch { /* column may already exist */ }
 
+  // Klant contactmomenten: atomic touch events — resets dagenSindsContact
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS klant_contactmomenten (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    klant_id INTEGER NOT NULL REFERENCES klanten(id),
+    gebruiker_id INTEGER REFERENCES gebruikers(id),
+    kanaal TEXT NOT NULL,
+    richting TEXT DEFAULT 'uitgaand',
+    notitie TEXT,
+    contact_datum TEXT NOT NULL DEFAULT (datetime('now')),
+    aangemaakt_op TEXT DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_contact_klant_id ON klant_contactmomenten(klant_id)");
+  sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_klant_contact_datum ON klant_contactmomenten(contact_datum)");
+
   // ============ UPWORK PROPOSAL ENGINE ============
   try {
     sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_jobs (
@@ -1207,6 +1262,22 @@ if (isTurso) {
   )`);
   sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_verloopt ON slimme_acties_bridge(verloopt_op)`);
   sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_voor ON slimme_acties_bridge(voor)`);
+
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS gtm_ritme_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    pijler TEXT NOT NULL,
+    label TEXT NOT NULL,
+    start_tijd TEXT NOT NULL,
+    eind_tijd TEXT NOT NULL,
+    dagen_van_week TEXT NOT NULL,
+    actief INTEGER NOT NULL DEFAULT 1,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'sem', 'sales_engine', 'Sales Engine batch (10 scans + outreach)', '09:00', '10:30', '["ma","di","wo","do","vr"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='sem' AND pijler='sales_engine')`); } catch { /* seed present */ }
+  try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'sem', 'content', 'Content batching weekend', '10:00', '11:00', '["za"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='sem' AND pijler='content')`); } catch {}
+  try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'team', 'netwerk', 'LinkedIn engagement window', '16:30', '17:00', '["ma","di","wo","do","vr"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='team' AND pijler='netwerk')`); } catch {}
+  try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'syb', 'inbound', 'ICP filter Lead Dashboard v2', '09:00', '10:00', '["ma","do"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='syb' AND pijler='inbound')`); } catch {}
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

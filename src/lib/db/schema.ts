@@ -344,6 +344,7 @@ export const agendaItems = sqliteTable("agenda_items", {
   googleEventId: text("google_event_id"),
   eigenaar: text("eigenaar", { enum: ["sem", "syb", "team", "vrij"] }).notNull().default("vrij"),
   gemaaktDoor: text("gemaakt_door", { enum: ["user", "bridge", "fallback-haiku", "ai-plan-button"] }).notNull().default("user"),
+  projectId: integer("project_id").references(() => projecten.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),
@@ -471,6 +472,24 @@ export const klantUren = sqliteTable("klant_uren", {
   idxKlantId: index("idx_klant_uren_klant_id").on(table.klantId),
   idxProjectId: index("idx_klant_uren_project_id").on(table.projectId),
   idxDatum: index("idx_klant_uren_datum").on(table.datum),
+}));
+
+// ============ KLANT CONTACTMOMENTEN (atomic touch events: mail/bel/meeting/…) ============
+// Resets dagenSindsContact and appears in tijdlijn. Use for quick "ik heb ze
+// net gemaild" logging — for richer meetings use `meetings` table, for
+// interne notities use `notities`.
+export const klantContactmomenten = sqliteTable("klant_contactmomenten", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  klantId: integer("klant_id").references(() => klanten.id).notNull(),
+  gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
+  kanaal: text("kanaal", { enum: ["email", "telefoon", "meeting", "linkedin", "whatsapp", "anders"] }).notNull(),
+  richting: text("richting", { enum: ["uitgaand", "inkomend"] }).default("uitgaand"),
+  notitie: text("notitie"),
+  contactDatum: text("contact_datum").default(sql`(datetime('now'))`).notNull(),
+  aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxKlantId: index("idx_klant_contact_klant_id").on(table.klantId),
+  idxDatum: index("idx_klant_contact_datum").on(table.contactDatum),
 }));
 
 // ============ CHAT SESSIES (uniek ID per Claude Code chat) ============
@@ -2025,3 +2044,20 @@ export const slimmeActiesBridge = sqliteTable("slimme_acties_bridge", {
   idxVerlooptOp: index("idx_slimme_acties_bridge_verloopt").on(table.verlooptOp),
   idxVoor: index("idx_slimme_acties_bridge_voor").on(table.voor),
 }));
+
+// ============ GTM RITME SLOTS ============
+// Vaste dagelijkse/wekelijkse slots die de bridge respecteert als "protected
+// time" voor de GTM-pijlers uit go-to-market-plan.html. Defaults worden
+// geseed door db/index.ts bij eerste boot; kunnen via UI of direct SQL
+// worden bewerkt als ritme verandert.
+export const gtmRitmeSlots = sqliteTable("gtm_ritme_slots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruiker: text("gebruiker", { enum: ["sem", "syb", "team"] }).notNull(),
+  pijler: text("pijler").notNull(),
+  label: text("label").notNull(),
+  startTijd: text("start_tijd").notNull(),
+  eindTijd: text("eind_tijd").notNull(),
+  dagenVanWeek: text("dagen_van_week").notNull(),
+  actief: integer("actief").notNull().default(1),
+  aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
+});

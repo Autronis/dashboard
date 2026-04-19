@@ -464,7 +464,7 @@ export default function KlantDetailPage() {
             <div>
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-autronis-text-secondary/70">Laatste contact</p>
-                <MarkeerContactKnop klantId={Number(id)} compact />
+                <MarkeerContactKnop klantId={Number(id)} compact align="right" />
               </div>
               <p className={cn(
                 "text-sm font-medium mt-0.5",

@@ -9,7 +9,7 @@ import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 9;
+const CACHE_VERSION = 10;
 
 // Focus log entry — wat de Claude chat heeft gemeld
 interface FocusLogEntry {
@@ -195,8 +195,14 @@ export async function GET(req: NextRequest) {
       ? parseInt(searchParams.get("gebruikerId")!)
       : gebruiker.id;
 
-    // Fetch entries for this day
-    const entries = await db
+    // Fetch entries for this NL-local day. We widen the UTC range by ±1 day
+    // (entries near midnight NL fall on a different UTC date) and then filter
+    // precisely in JS via nlDatum(). Matches berekenActieveUren's pattern.
+    const vanExp = new Date(datum); vanExp.setDate(vanExp.getDate() - 1);
+    const totExp = new Date(datum); totExp.setDate(totExp.getDate() + 1);
+    const vanUtc = vanExp.toISOString().slice(0, 10);
+    const totUtc = totExp.toISOString().slice(0, 10);
+    const allEntries = await db
       .select({
         app: screenTimeEntries.app,
         vensterTitel: screenTimeEntries.vensterTitel,
@@ -214,10 +220,13 @@ export async function GET(req: NextRequest) {
       .leftJoin(klanten, eq(screenTimeEntries.klantId, klanten.id))
       .where(and(
         eq(screenTimeEntries.gebruikerId, gebruikerId),
-        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) = ${datum}`,
+        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanUtc}`,
+        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totUtc}`,
       ))
       .orderBy(asc(screenTimeEntries.startTijd))
       .all();
+    const NL_TZ_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
+    const entries = allEntries.filter((e) => NL_TZ_FMT.format(new Date(e.startTijd)) === datum);
 
     // Infer locatie for entries that don't have one (pre-feature data)
     // Step 1: detect platform from app names for entries without locatie

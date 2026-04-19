@@ -20,10 +20,12 @@ const kanaalOpties: Array<{ value: Kanaal; label: string; icon: typeof Mail; col
 interface Props {
   klantId: number;
   compact?: boolean;
+  /** "left" laat de popover naar rechts uithangen; "right" naar links. Default "left". */
+  align?: "left" | "right";
   onLogged?: () => void;
 }
 
-export function MarkeerContactKnop({ klantId, compact = false, onLogged }: Props) {
+export function MarkeerContactKnop({ klantId, compact = false, align = "left", onLogged }: Props) {
   const [open, setOpen] = useState(false);
   const [notitie, setNotitie] = useState("");
   const [geselecteerdKanaal, setGeselecteerdKanaal] = useState<Kanaal | null>(null);
@@ -115,7 +117,10 @@ export function MarkeerContactKnop({ klantId, compact = false, onLogged }: Props
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-1.5 z-40 w-64 bg-autronis-card border border-autronis-border rounded-xl shadow-xl shadow-black/40 p-2"
+          className={cn(
+            "absolute top-full mt-1.5 z-50 w-64 bg-autronis-card border border-autronis-border rounded-xl shadow-xl shadow-black/40 p-2",
+            align === "left" ? "left-0" : "right-0"
+          )}
         >
           {geselecteerdKanaal === null ? (
             <>

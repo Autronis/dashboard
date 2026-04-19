@@ -165,7 +165,7 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
       whileHover={{ y: -2, scale: 1.003 }}
       transition={{ duration: 0.18 }}
       className={cn(
-        "bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 cursor-pointer flex flex-col group relative overflow-hidden",
+        "bg-autronis-card border border-autronis-border rounded-2xl p-5 lg:p-6 cursor-pointer flex flex-col group relative",
         "hover:border-autronis-accent/40 hover:shadow-lg hover:shadow-autronis-accent/5 transition-colors",
         !klant.isActief && "opacity-60",
         klant.isDemo && "border-dashed border-autronis-border/60"
@@ -326,7 +326,7 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
       <div className="h-px bg-autronis-border mt-auto mb-3" />
 
       {/* Footer KPIs — omzet cell heeft 6-mnd sparkline naast bedrag */}
-      <div className="grid grid-cols-3 gap-2 items-end">
+      <div className="grid grid-cols-3 gap-2">
         <div>
           <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Projecten</p>
           <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{klant.aantalProjecten}</p>
@@ -336,15 +336,15 @@ function KlantCard({ klant, onClick, zoek, onScan, onTagClick, activeTag }: Klan
           <p className="text-sm font-bold text-autronis-text-primary tabular-nums">{formatUren(klant.totaalMinuten)}</p>
         </div>
         <div>
-          <div className="flex items-center justify-between gap-1">
-            <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet · 6m</p>
+          <p className="text-[10px] text-autronis-text-secondary/60 mb-0.5">Omzet</p>
+          <div className="flex items-center justify-between gap-1.5">
+            <p className={cn("text-sm font-bold tabular-nums", getLifetimeValueColor(klant.totaleOmzet))}>{formatBedrag(klant.totaleOmzet)}</p>
             {(() => {
               const trend = klant.omzetTrend6m ?? [];
               const heeftData = trend.length >= 2 && trend.some((v) => v > 0);
-              return heeftData ? <Sparkline data={trend} width={48} height={16} /> : null;
+              return heeftData ? <Sparkline data={trend} width={40} height={14} className="flex-shrink-0" /> : null;
             })()}
           </div>
-          <p className={cn("text-sm font-bold tabular-nums", getLifetimeValueColor(klant.totaleOmzet))}>{formatBedrag(klant.totaleOmzet)}</p>
         </div>
       </div>
     </motion.div>

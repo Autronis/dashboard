@@ -16,7 +16,6 @@ import {
   Filter,
   X,
   Zap,
-  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -181,12 +180,10 @@ export function ContactenTab() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [maxLeads, setMaxLeads] = useState(10);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEnriching, setIsEnriching] = useState(false);
   const [isPrepping, setIsPrepping] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const { runScan } = useBulkScan();
 
   const load = useCallback(async (silent = false) => {
@@ -325,7 +322,6 @@ export function ContactenTab() {
 
   function clearSelection() {
     setSelectedIds(new Set());
-    setConfirmDelete(false);
   }
 
   const activeFilterCount =
@@ -427,63 +423,6 @@ export function ContactenTab() {
       addToast(e instanceof Error ? e.message : "Klaarzetten mislukt", "fout");
     } finally {
       setIsPrepping(false);
-    }
-  }
-
-  async function bulkDelete() {
-    if (selectedIds.size === 0) return;
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      addToast("Klik nog een keer op Verwijder om te bevestigen", "info");
-      setTimeout(() => setConfirmDelete(false), 4000);
-      return;
-    }
-    setIsDeleting(true);
-    try {
-      const linkedinIds: string[] = [];
-      const gmapsIds: string[] = [];
-      for (const id of selectedIds) {
-        const lead = leads.find((l) => l.id === id);
-        if (!lead) continue;
-        if (isGoogleMaps(lead.source)) gmapsIds.push(id);
-        else linkedinIds.push(id);
-      }
-
-      const requests: Promise<Response>[] = [];
-      if (linkedinIds.length > 0) {
-        requests.push(
-          fetch("/api/leads", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: linkedinIds }),
-          })
-        );
-      }
-      if (gmapsIds.length > 0) {
-        requests.push(
-          fetch("/api/leads/google-maps", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: gmapsIds }),
-          })
-        );
-      }
-
-      const responses = await Promise.all(requests);
-      for (const res of responses) {
-        if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(body.fout || `HTTP ${res.status}`);
-        }
-      }
-
-      setLeads((curr) => curr.filter((l) => !selectedIds.has(l.id)));
-      addToast(`${selectedIds.size} leads verwijderd`, "succes");
-      clearSelection();
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Verwijderen mislukt", "fout");
-    } finally {
-      setIsDeleting(false);
     }
   }
 
@@ -722,17 +661,7 @@ export function ContactenTab() {
       <BulkActionBar
         selectedCount={selectedIds.size}
         actions={bulkActions}
-        onDelete={bulkDelete}
-        deleteBusy={isDeleting}
         onClear={clearSelection}
-        prefix={
-          confirmDelete ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-300">
-              <Trash2 className="w-3 h-3" />
-              Nog één klik om te bevestigen
-            </span>
-          ) : undefined
-        }
       />
 
       {loading && leads.length === 0 && (

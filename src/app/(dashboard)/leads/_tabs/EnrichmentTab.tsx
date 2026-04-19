@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { motion } from "framer-motion";
 import {
   Sparkles,
   Loader2,
@@ -9,18 +10,26 @@ import {
   Mail,
   Phone,
   Globe,
-  MapPin,
   Linkedin,
-  Search,
   Play,
   Eraser,
   Filter,
   Download,
   X,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { usePoll } from "@/lib/use-poll";
 import { TabInfo } from "../_components/TabInfo";
+import { PageHeader } from "@/components/ui/page-header";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LeadsKpiTile } from "@/components/leads/kpi-tile";
+import { SectionCard } from "@/components/leads/section-card";
+import { SourceBadge } from "@/components/leads/source-badge";
+import { LeadStatusBadge } from "@/components/leads/lead-status-badge";
+import { BulkActionBar, type BulkAction } from "@/components/leads/bulk-action-bar";
 
 interface Lead {
   id: string;
@@ -51,8 +60,6 @@ const TABS: Array<{ key: string; label: string; icon: typeof Sparkles }> = [
   { key: "failed", label: "Gefaald", icon: AlertCircle },
   { key: "pending", label: "Pending", icon: Loader2 },
 ];
-
-const MAX_LEADS_OPTIES = [10, 25, 50, 100, 250, 500];
 
 type TriState = "any" | "with" | "without";
 
@@ -94,9 +101,9 @@ export function EnrichmentTab() {
   const [filters, setFilters] = useState<FieldFilters>(EMPTY_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await fetch("/api/leads");
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -106,15 +113,18 @@ export function EnrichmentTab() {
       setLeads(data.leads ?? []);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Onbekende fout");
+      if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const pollLoad = useCallback(() => load(true), [load]);
+  usePoll(pollLoad, 15000);
 
   const stats = useMemo(() => {
     const emailFound = leads.filter((l) => l.email_found).length;
@@ -190,7 +200,6 @@ export function EnrichmentTab() {
   const gefilterd = useMemo(() => {
     let result = tabLeads;
 
-    // Field filters (email / phone / website / linkedin — tri-state)
     if (filters.email !== "any") {
       const want = filters.email === "with";
       result = result.filter((l) => (hasEmailValue(l) || !!l.email_found) === want);
@@ -254,7 +263,6 @@ export function EnrichmentTab() {
   }
 
   function selectNextN(n: number) {
-    // Skip al-geselecteerde, pak de volgende n uit gefilterd
     const next = new Set(selectedIds);
     let added = 0;
     for (const l of gefilterd) {
@@ -340,7 +348,7 @@ export function EnrichmentTab() {
         "succes"
       );
       clearSelection();
-      setTimeout(load, 2000); // verse status na 2 sec
+      setTimeout(() => load(), 2000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Enrichment mislukt", "fout");
     } finally {
@@ -366,7 +374,7 @@ export function EnrichmentTab() {
       }
       addToast("Emails opgeschoond", "succes");
       clearSelection();
-      setTimeout(load, 2000);
+      setTimeout(() => load(), 2000);
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Clean mislukt", "fout");
     } finally {
@@ -374,28 +382,41 @@ export function EnrichmentTab() {
     }
   }
 
+  const bulkActions: BulkAction[] = [
+    {
+      key: "clean",
+      label: "Clean emails",
+      icon: Eraser,
+      onClick: cleanEmails,
+      tone: "neutral",
+      busy: isCleaning,
+    },
+    {
+      key: "enrich",
+      label: "Enrich",
+      icon: Play,
+      onClick: triggerEnrichment,
+      tone: "cyan",
+      busy: isEnriching,
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-autronis-text-primary flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-autronis-accent" />
-            Enrichment
-          </h1>
-          <p className="text-sm text-autronis-text-secondary mt-1">
-            <span className="text-autronis-text-primary font-medium">Data verrijken.</span> Leads zonder email of telefoon? Deze tab zoekt de ontbrekende gegevens automatisch op via externe bronnen.
-            Gebruik dit vóór <span className="text-autronis-accent">Contacten</span> — eerst de gaten dichten, dan pas segmenteren en exporteren.
-          </p>
-        </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
-        >
-          <Loader2 className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-          Vernieuwen
-        </button>
-      </div>
+    <div className="space-y-7">
+      <PageHeader
+        title="Enrichment"
+        description="Data verrijken. Vind ontbrekende email/telefoon/website via externe bronnen. Dit vóór Contacten — eerst gaten dichten, dan segmenteren."
+        actions={
+          <button
+            type="button"
+            onClick={() => load()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 hover:text-autronis-text-primary transition-colors"
+          >
+            <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+            Vernieuwen
+          </button>
+        }
+      />
 
       <TabInfo
         tips={[
@@ -417,36 +438,42 @@ export function EnrichmentTab() {
         ]}
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <LeadsKpiTile
           icon={Sparkles}
           label="Kandidaten"
-          waarde={stats.candidates}
-          hint={`${stats.totalCompleted} voltooid`}
+          value={stats.candidates}
+          accent="purple"
+          sub={`${stats.totalCompleted} voltooid`}
+          index={0}
         />
-        <StatCard
+        <LeadsKpiTile
           icon={Mail}
           label="Email gevonden"
-          waarde={stats.emailFound}
-          hint={`${stats.emailHitRate}% hit rate`}
-          accent
+          value={stats.emailFound}
+          accent="cyan"
+          sub={`${stats.emailHitRate}% hit rate`}
+          index={1}
         />
-        <StatCard
+        <LeadsKpiTile
           icon={Phone}
           label="Telefoon gevonden"
-          waarde={stats.phoneFound}
-          hint={`${stats.phoneHitRate}% hit rate`}
+          value={stats.phoneFound}
+          accent="green"
+          sub={`${stats.phoneHitRate}% hit rate`}
+          index={2}
         />
-        <StatCard
+        <LeadsKpiTile
           icon={AlertCircle}
           label="Gefaald"
-          waarde={stats.failed}
-          hint={`${stats.pending} pending`}
+          value={stats.failed}
+          accent="red"
+          sub={`${stats.pending} pending`}
+          index={3}
         />
       </div>
 
-      {/* Tabs */}
+      {/* Status tabs — filter pills */}
       <div className="flex flex-wrap items-center gap-2">
         {TABS.map((t) => {
           const Icon = t.icon;
@@ -468,6 +495,7 @@ export function EnrichmentTab() {
           return (
             <button
               key={t.key}
+              type="button"
               onClick={() => {
                 setTab(t.key);
                 clearSelection();
@@ -479,7 +507,7 @@ export function EnrichmentTab() {
                   : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/30"
               )}
             >
-              <Icon className="w-3 h-3" />
+              <Icon className={cn("w-3 h-3", t.key === "pending" && "animate-spin")} />
               {t.label}
               <span className="tabular-nums font-semibold">{count}</span>
             </button>
@@ -487,85 +515,81 @@ export function EnrichmentTab() {
         })}
       </div>
 
-      {/* Actiebalk */}
-      <div className="rounded-xl border border-autronis-border bg-autronis-card p-4 flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowFilters((v) => !v)}
-            className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
-              activeFilterCount > 0 || showFilters
-                ? "bg-autronis-accent/10 border-autronis-accent/40 text-autronis-accent"
-                : "bg-autronis-bg border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
-            )}
-          >
-            <Filter className="w-3 h-3" />
-            Filters
-            {activeFilterCount > 0 && (
-              <span className="tabular-nums font-semibold">({activeFilterCount})</span>
-            )}
-          </button>
-          <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
-          >
-            <Download className="w-3 h-3" />
-            Export CSV
-          </button>
-          <label className="text-xs text-autronis-text-secondary ml-2">Aantal</label>
-          <input
-            type="number"
-            min={1}
-            max={5000}
-            value={maxLeads}
-            onChange={(e) => setMaxLeads(Math.max(1, Number(e.target.value) || 1))}
-            className="w-20 bg-autronis-bg border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-          />
-          <button
-            onClick={() => selectNextN(maxLeads)}
-            className="px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
-          >
-            Selecteer volgende {maxLeads}
-          </button>
-          <button
-            onClick={() => selectFirstN(maxLeads)}
-            className="px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
-          >
-            Selecteer top {maxLeads}
-          </button>
-          {selectedIds.size > 0 && (
+      <FilterBar
+        search={{
+          value: zoek,
+          onChange: setZoek,
+          placeholder: "Zoek op naam, website, locatie...",
+        }}
+        filters={
+          <>
             <button
-              onClick={clearSelection}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-autronis-text-secondary/60 hover:text-autronis-text-primary transition-colors"
+              type="button"
+              onClick={() => setShowFilters((v) => !v)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-colors",
+                activeFilterCount > 0 || showFilters
+                  ? "bg-autronis-accent/10 text-autronis-accent border border-autronis-accent/40"
+                  : "bg-autronis-card border border-autronis-border text-autronis-text-secondary hover:border-autronis-accent/40"
+              )}
             >
-              Wis ({selectedIds.size})
+              <Filter className="w-3 h-3" />
+              Filters
+              {activeFilterCount > 0 && (
+                <span className="tabular-nums font-semibold">({activeFilterCount})</span>
+              )}
             </button>
-          )}
-        </div>
+          </>
+        }
+        activeCount={activeFilterCount}
+        onClear={() => setFilters(EMPTY_FILTERS)}
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={exportCSV}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              Export CSV
+            </button>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={1}
+                max={5000}
+                value={maxLeads}
+                onChange={(e) => setMaxLeads(Math.max(1, Number(e.target.value) || 1))}
+                className="w-20 bg-autronis-card border border-autronis-border rounded-xl px-2 py-2 text-xs text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+              />
+              <button
+                type="button"
+                onClick={() => selectNextN(maxLeads)}
+                title="Voeg de volgende N toe aan selectie"
+                className="px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
+              >
+                + volgende {maxLeads}
+              </button>
+              <button
+                type="button"
+                onClick={() => selectFirstN(maxLeads)}
+                title="Vervang selectie met top N"
+                className="px-3 py-2 rounded-xl bg-autronis-card border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors"
+              >
+                Top {maxLeads}
+              </button>
+            </div>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2 sm:ml-auto">
-          <button
-            onClick={cleanEmails}
-            disabled={isCleaning || selectedIds.size === 0}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-autronis-bg border border-autronis-border text-xs font-medium text-autronis-text-secondary hover:border-autronis-accent/40 transition-colors disabled:opacity-40"
-          >
-            {isCleaning ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eraser className="w-3 h-3" />}
-            Clean emails
-          </button>
-          <button
-            onClick={triggerEnrichment}
-            disabled={isEnriching || selectedIds.size === 0}
-            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-40"
-          >
-            {isEnriching ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-            Enrich {selectedIds.size > 0 && `(${selectedIds.size})`}
-          </button>
-        </div>
-      </div>
-
-      {/* Filter panel — uitklapbaar */}
       {showFilters && (
-        <div className="rounded-xl border border-autronis-accent/30 bg-autronis-bg/40 p-4 space-y-4">
+        <motion.div
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.2 }}
+          className="rounded-2xl border border-autronis-accent/30 bg-autronis-bg/40 p-4 space-y-4"
+        >
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-autronis-text-primary flex items-center gap-1.5">
               <Filter className="w-3 h-3 text-autronis-accent" /> Filters
@@ -573,6 +597,7 @@ export function EnrichmentTab() {
             <div className="flex items-center gap-2">
               {activeFilterCount > 0 && (
                 <button
+                  type="button"
                   onClick={() => setFilters(EMPTY_FILTERS)}
                   className="text-[11px] text-autronis-text-secondary hover:text-red-400 inline-flex items-center gap-1"
                 >
@@ -580,6 +605,7 @@ export function EnrichmentTab() {
                 </button>
               )}
               <button
+                type="button"
                 onClick={() => setShowFilters(false)}
                 className="text-[11px] text-autronis-text-secondary hover:text-autronis-text-primary"
               >
@@ -621,22 +647,15 @@ export function EnrichmentTab() {
               withoutCount={filterCounts.withoutLinkedin}
             />
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Zoek */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-autronis-text-secondary/50" />
-        <input
-          type="text"
-          value={zoek}
-          onChange={(e) => setZoek(e.target.value)}
-          placeholder="Zoek op naam, website, locatie..."
-          className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-10 pr-3 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
-        />
-      </div>
+      <BulkActionBar
+        selectedCount={selectedIds.size}
+        actions={bulkActions}
+        onClear={clearSelection}
+      />
 
-      {/* Body */}
       {loading && leads.length === 0 && (
         <div className="flex items-center justify-center py-20 text-autronis-text-secondary">
           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -644,140 +663,124 @@ export function EnrichmentTab() {
         </div>
       )}
 
-      {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+      {error && leads.length === 0 && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
           <p className="font-medium">Kon leads niet laden</p>
           <p className="mt-1 text-red-400/80">{error}</p>
         </div>
       )}
 
-      {!loading && !error && gefilterd.length === 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card/50 p-8 text-center text-autronis-text-secondary text-sm">
-          Geen leads in deze tab
-        </div>
+      {!loading && !error && gefilterd.length === 0 && leads.length > 0 && (
+        <SectionCard padding="none">
+          <EmptyState
+            titel="Geen leads in deze tab"
+            beschrijving="Schakel van tab of pas filters aan om meer leads te zien."
+          />
+        </SectionCard>
       )}
 
-      {!loading && !error && gefilterd.length > 0 && (
-        <div className="rounded-xl border border-autronis-border bg-autronis-card overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
-              <tr>
-                <th className="w-10 px-3 py-2.5"></th>
-                <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Source</th>
-                <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Enrichment</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-autronis-border/50">
-              {gefilterd.slice(0, 200).map((lead) => {
-                const selected = selectedIds.has(lead.id);
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => toggleSelect(lead.id)}
-                    className={cn(
-                      "cursor-pointer transition-colors",
-                      selected
-                        ? "bg-autronis-accent/10"
-                        : "hover:bg-autronis-accent/[0.03]"
-                    )}
-                  >
-                    <td className="px-3 py-2.5">
-                      <div
-                        className={cn(
-                          "w-4 h-4 rounded border flex items-center justify-center",
-                          selected
-                            ? "bg-autronis-accent border-autronis-accent"
-                            : "border-autronis-border"
-                        )}
-                      >
-                        {selected && <CheckCircle className="w-3 h-3 text-autronis-bg" />}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="font-medium text-autronis-text-primary truncate max-w-xs">
-                        {lead.name || "(geen naam)"}
-                      </div>
-                      {lead.location && (
-                        <div className="text-[10px] text-autronis-text-secondary/60 truncate max-w-xs">
-                          {lead.location}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 hidden md:table-cell">
-                      <SourceBadge source={lead.source} />
-                    </td>
-                    <td className="px-3 py-2.5 hidden lg:table-cell">
-                      <div className="flex items-center gap-1.5">
-                        {lead.email_found && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
-                            <Mail className="w-2.5 h-2.5" />
-                          </span>
-                        )}
-                        {lead.phone_found && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
-                            <Phone className="w-2.5 h-2.5" />
-                          </span>
-                        )}
-                        {lead.website_found && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
-                            <Globe className="w-2.5 h-2.5" />
-                          </span>
-                        )}
-                        {lead.enrichment_status === "failed" && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
-                            <AlertCircle className="w-2.5 h-2.5" />
-                            failed
-                          </span>
-                        )}
-                        {lead.enrichment_status === "pending" && (
-                          <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
-                            <Loader2 className="w-2.5 h-2.5 animate-spin" />
-                            pending
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {gefilterd.length > 200 && (
-            <div className="px-4 py-2 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
-              {gefilterd.length} leads totaal — eerste 200 getoond
+      {gefilterd.length > 0 && (
+        <SectionCard
+          title="Leads"
+          icon={Sparkles}
+          padding="none"
+          aside={
+            <div className="flex items-center gap-3 text-xs text-autronis-text-secondary tabular-nums">
+              {selectedIds.size > 0 && (
+                <span className="text-autronis-accent font-medium">
+                  {selectedIds.size} geselecteerd
+                </span>
+              )}
+              <span>{gefilterd.length} leads</span>
             </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatCard({
-  icon: Icon,
-  label,
-  waarde,
-  hint,
-  accent,
-}: {
-  icon: typeof Mail;
-  label: string;
-  waarde: number;
-  hint?: string;
-  accent?: boolean;
-}) {
-  return (
-    <div className="rounded-xl border border-autronis-border bg-autronis-card p-4">
-      <div className="flex items-center gap-2 text-autronis-text-secondary text-xs mb-1.5">
-        <Icon className={cn("w-3.5 h-3.5", accent && "text-autronis-accent")} />
-        {label}
-      </div>
-      <div className="text-2xl font-bold text-autronis-text-primary tabular-nums">
-        {waarde.toLocaleString("nl-NL")}
-      </div>
-      {hint && (
-        <div className="text-[10px] text-autronis-text-secondary/60 mt-0.5">{hint}</div>
+          }
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-autronis-bg/40 text-xs uppercase text-autronis-text-secondary/70 tracking-wider">
+                <tr>
+                  <th className="w-10 px-3 py-2.5"></th>
+                  <th className="text-left px-3 py-2.5 font-medium">Bedrijf</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden md:table-cell">Source</th>
+                  <th className="text-left px-3 py-2.5 font-medium hidden lg:table-cell">Enrichment</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-autronis-border/50">
+                {gefilterd.slice(0, 200).map((lead) => {
+                  const selected = selectedIds.has(lead.id);
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => toggleSelect(lead.id)}
+                      className={cn(
+                        "cursor-pointer transition-colors",
+                        selected
+                          ? "bg-autronis-accent/10"
+                          : "hover:bg-autronis-accent/[0.03]"
+                      )}
+                    >
+                      <td className="px-3 py-2.5">
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded border flex items-center justify-center",
+                            selected
+                              ? "bg-autronis-accent border-autronis-accent"
+                              : "border-autronis-border"
+                          )}
+                        >
+                          {selected && <CheckCircle className="w-3 h-3 text-autronis-bg" />}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        <div className="font-medium text-autronis-text-primary truncate max-w-xs">
+                          {lead.name || "(geen naam)"}
+                        </div>
+                        {lead.location && (
+                          <div className="text-[10px] text-autronis-text-secondary/60 truncate max-w-xs">
+                            {lead.location}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5 hidden md:table-cell">
+                        <SourceBadge source={lead.source} compact />
+                      </td>
+                      <td className="px-3 py-2.5 hidden lg:table-cell">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {lead.email_found && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+                              <Mail className="w-2.5 h-2.5" />
+                            </span>
+                          )}
+                          {lead.phone_found && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+                              <Phone className="w-2.5 h-2.5" />
+                            </span>
+                          )}
+                          {lead.website_found && (
+                            <span className="inline-flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">
+                              <Globe className="w-2.5 h-2.5" />
+                            </span>
+                          )}
+                          {lead.enrichment_status === "failed" && (
+                            <LeadStatusBadge status="failed" compact />
+                          )}
+                          {lead.enrichment_status === "pending" && (
+                            <LeadStatusBadge status="pending" compact />
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {gefilterd.length > 200 && (
+              <div className="px-4 py-2 text-xs text-autronis-text-secondary bg-autronis-bg/40 border-t border-autronis-border text-center">
+                {gefilterd.length} leads totaal — eerste 200 getoond
+              </div>
+            )}
+          </div>
+        </SectionCard>
       )}
     </div>
   );
@@ -815,6 +818,7 @@ function FilterRow({
           return (
             <button
               key={opt.key}
+              type="button"
               onClick={() => onChange(opt.key)}
               className={cn(
                 "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors border",
@@ -834,23 +838,5 @@ function FilterRow({
         })}
       </div>
     </div>
-  );
-}
-
-function SourceBadge({ source }: { source: string | null }) {
-  if (!source) return null;
-  const isGmaps = source === "google maps" || source === "google_maps";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium",
-        isGmaps
-          ? "bg-autronis-accent/10 text-autronis-accent"
-          : "bg-purple-500/10 text-purple-300"
-      )}
-    >
-      {isGmaps ? <MapPin className="w-2.5 h-2.5" /> : <Linkedin className="w-2.5 h-2.5" />}
-      {isGmaps ? "Google Maps" : "LinkedIn"}
-    </span>
   );
 }

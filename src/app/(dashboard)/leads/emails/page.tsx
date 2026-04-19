@@ -49,6 +49,7 @@ interface EmailRecord {
   updated_at: string;
   missing_info: string[] | null;
   lead_name: string | null;
+  emailed_at: string | null;
 }
 
 const STATUS_CONFIG: Record<
@@ -561,7 +562,35 @@ export default function LeadsEmailsPage() {
 
       {/* Bulk action bar — toon altijd, knoppen disabled als selectie leeg */}
       <div className="rounded-xl border border-autronis-border bg-autronis-card p-3 flex flex-wrap items-center gap-2">
-        <span className="text-xs text-autronis-text-secondary mr-2">
+        {/* Select-all checkbox voor de huidige pagina */}
+        <label className="inline-flex items-center gap-1.5 text-xs text-autronis-text-secondary cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={paged.length > 0 && paged.every((e) => selectedIds.has(e.id))}
+            ref={(el) => {
+              if (el) {
+                const allSelected = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
+                const someSelected = paged.some((e) => selectedIds.has(e.id));
+                el.indeterminate = !allSelected && someSelected;
+              }
+            }}
+            onChange={() => {
+              const allSelected = paged.length > 0 && paged.every((e) => selectedIds.has(e.id));
+              setSelectedIds((curr) => {
+                const next = new Set(curr);
+                if (allSelected) {
+                  for (const e of paged) next.delete(e.id);
+                } else {
+                  for (const e of paged) next.add(e.id);
+                }
+                return next;
+              });
+            }}
+            className="rounded border-autronis-border accent-autronis-accent cursor-pointer"
+          />
+          Selecteer pagina
+        </label>
+        <span className="text-xs text-autronis-text-secondary mr-2 ml-1">
           {selectedIds.size > 0 ? `${selectedIds.size} geselecteerd` : "Bulk acties:"}
         </span>
         {selectedIds.size > 0 ? (
@@ -573,6 +602,15 @@ export default function LeadsEmailsPage() {
             >
               {bulkBusy === "approve-sel" ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
               Goedkeuren
+            </button>
+            <button
+              onClick={() => bulkStatus(Array.from(selectedIds), "generated", "reset-sel")}
+              disabled={!!bulkBusy}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/15 text-yellow-400 text-xs font-semibold hover:bg-yellow-500/25 transition-colors disabled:opacity-40"
+              title="Reset geselecteerde emails naar 'Te reviewen'"
+            >
+              {bulkBusy === "reset-sel" ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              Reset naar review
             </button>
             <button
               onClick={() => bulkStatus(Array.from(selectedIds), "failed", "reject-sel")}

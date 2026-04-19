@@ -114,6 +114,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Webhook ok: zet leads.emailed_at = now zodat UI de verstuur-timestamp kan tonen.
+    // n8n zou dit eigenlijk bij succesvolle delivery moeten terugsturen, maar in
+    // de huidige flow komt er geen callback — dus we zetten 'm optimistisch bij
+    // de dispatch naar n8n. Bij hard fail hierna blijft de timestamp staan maar
+    // status gaat via stuck-recovery of handmatig terug naar approved.
+    const now = new Date().toISOString();
+    const leadIds = validPayload
+      .map((p) => p.lead_id)
+      .filter((id): id is string => typeof id === "string" && id.length > 0);
+    if (leadIds.length > 0) {
+      await supabase
+        .from("leads")
+        .update({ emailed_at: now, outreach_status: "emailed" })
+        .in("id", leadIds);
+    }
+
     return NextResponse.json({
       ok: true,
       verstuurd: validPayload.length,

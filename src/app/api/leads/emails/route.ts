@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       lead_id: string | null;
       google_maps_lead_id: string | null;
       recipient_email: string | null;
-      leads?: { name: string | null; emails: string | null } | null;
+      leads?: { name: string | null; emails: string | null; emailed_at: string | null } | null;
       google_maps_leads?: { name: string | null; email: string | null } | null;
     };
 
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
       const { data, error } = await supabase
         .from("emails")
         .select(
-          "*, leads:lead_id(name, emails), google_maps_leads:google_maps_lead_id(name, email)"
+          "*, leads:lead_id(name, emails, emailed_at), google_maps_leads:google_maps_lead_id(name, email)"
         )
         .order("created_at", { ascending: false })
         .range(from, to);
@@ -58,17 +58,19 @@ export async function GET(req: NextRequest) {
       if (page > 50) break; // safety
     }
 
-    // Flatten joined fields → lead_name + recipient_email fallback
+    // Flatten joined fields → lead_name + recipient_email + emailed_at (van lead)
     const mapped = allRows.map((e) => {
       const recipientEmail =
         e.recipient_email || e.leads?.emails || e.google_maps_leads?.email || null;
       const leadName = e.leads?.name || e.google_maps_leads?.name || null;
+      const emailedAt = e.leads?.emailed_at ?? null;
       // Strip joined sub-objects om payload klein te houden
       const { leads: _l, google_maps_leads: _g, ...rest } = e;
       return {
         ...rest,
         recipient_email: recipientEmail,
         lead_name: leadName,
+        emailed_at: emailedAt,
       };
     });
 

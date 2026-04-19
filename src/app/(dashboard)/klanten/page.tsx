@@ -29,6 +29,7 @@ import type { Klant } from "@/hooks/queries/use-klanten";
 import { useQueryClient } from "@tanstack/react-query";
 import { useBulkScan } from "../leads/_components/use-bulk-scan";
 import Link from "next/link";
+import { MarkeerContactKnop } from "./[id]/markeer-contact-knop";
 
 // Generate consistent color from name
 function getInitialsColor(naam: string): string {
@@ -266,6 +267,9 @@ function KlantCard({ klant, onClick, zoek, onScan }: KlantCardProps) {
             <Zap className="w-3.5 h-3.5" />
           </button>
         )}
+        <div onClick={(e) => e.stopPropagation()}>
+          <MarkeerContactKnop klantId={klant.id} compact />
+        </div>
         <div className="flex-1" />
         {klant.openTaken > 0 && (
           <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 font-medium tabular-nums">

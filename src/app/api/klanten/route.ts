@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, screenTimeEntries, facturen, offertes, notities as notitiesTabel, meetings, taken } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, facturen, offertes, notities as notitiesTabel, meetings, taken, klantContactmomenten } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, sql, and, ne } from "drizzle-orm";
 
@@ -137,6 +137,21 @@ export async function GET(req: NextRequest) {
       .groupBy(meetings.klantId);
     const meetingMap = new Map(laatsteMeetings.map((m) => [m.klantId, m.laatsteMeeting]));
 
+    // Batch: last contactmoment per klant (atomic touch events)
+    let contactMomentMap = new Map<number, string>();
+    try {
+      const laatsteContactmomenten = await db
+        .select({
+          klantId: klantContactmomenten.klantId,
+          laatsteContact: sql<string>`max(${klantContactmomenten.contactDatum})`,
+        })
+        .from(klantContactmomenten)
+        .groupBy(klantContactmomenten.klantId);
+      contactMomentMap = new Map(laatsteContactmomenten.map((c) => [c.klantId, c.laatsteContact]));
+    } catch (e) {
+      console.error("[klanten list: contactmoment map]", e);
+    }
+
     // Batch: open taken per klant (via projecten)
     const openTakenStats = await db
       .select({
@@ -175,11 +190,12 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Check last contact (notitie, tijdregistratie, or meeting)
+      // Check last contact (notitie, tijdregistratie, meeting, or contactmoment)
       const laatsteNotitie = notitieMap.get(klant.id);
       const laatsteReg = tijdMap.get(klant.id);
       const laatsteMeeting = meetingMap.get(klant.id);
-      const laatsteContact = [laatsteNotitie, laatsteReg, laatsteMeeting]
+      const laatsteContactmoment = contactMomentMap.get(klant.id);
+      const laatsteContact = [laatsteNotitie, laatsteReg, laatsteMeeting, laatsteContactmoment]
         .filter(Boolean)
         .sort()
         .reverse()[0] || null;

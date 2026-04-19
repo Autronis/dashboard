@@ -87,12 +87,24 @@ interface MeetingItem {
 
 interface TijdlijnItem {
   id: string;
-  type: "factuur" | "offerte" | "meeting" | "notitie" | "tijdregistratie";
+  type: "factuur" | "offerte" | "meeting" | "notitie" | "tijdregistratie" | "contactmoment";
   datum: string;
   titel: string;
   details: string | null;
   status?: string;
   bedrag?: number | null;
+  kanaal?: string;
+  richting?: string;
+}
+
+interface Contactmoment {
+  id: number;
+  kanaal: string;
+  richting: string | null;
+  notitie: string | null;
+  contactDatum: string;
+  aangemaaktOp: string | null;
+  gebruikerNaam: string | null;
 }
 
 interface OpenTaak {
@@ -167,6 +179,7 @@ interface KlantData {
   maandelijkseOmzet: MaandOmzet[];
   klantUren: KlantUurEntry[];
   klantUrenPerProject: KlantUrenPerProject[];
+  contactmomenten?: Contactmoment[];
   kpis: KlantKpis;
 }
 
@@ -193,4 +206,4 @@ export function useKlantDetail(id: number) {
   });
 }
 
-export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis, OpenTaak, NextAction, MaandOmzet, KlantUurEntry, KlantUrenPerProject };
+export type { KlantData, Klant, Project, Notitie, DocumentItem, Tijdregistratie, FactuurItem, OfferteItem, MeetingItem, TijdlijnItem, KlantKpis, OpenTaak, NextAction, MaandOmzet, KlantUurEntry, KlantUrenPerProject, Contactmoment };

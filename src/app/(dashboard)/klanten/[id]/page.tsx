@@ -40,6 +40,8 @@ import {
   CheckCircle2,
   ArrowRight,
   BarChart3,
+  Send,
+  Handshake,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
@@ -52,6 +54,7 @@ import { KlantModal } from "../klant-modal";
 import { ProjectModal } from "./project-modal";
 import { NoteModal } from "./note-modal";
 import { DocumentModal } from "./document-modal";
+import { MarkeerContactKnop } from "./markeer-contact-knop";
 
 const statusConfig: Record<string, { bg: string; text: string; label: string }> = {
   actief: { bg: "bg-emerald-500/15", text: "text-emerald-400", label: "Actief" },
@@ -98,6 +101,7 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
   meeting: { icon: CalendarDays, color: "text-purple-400", bg: "bg-purple-500/10" },
   notitie: { icon: MessageSquare, color: "text-amber-400", bg: "bg-amber-500/10" },
   tijdregistratie: { icon: Clock, color: "text-autronis-accent", bg: "bg-autronis-accent/10" },
+  contactmoment: { icon: Handshake, color: "text-cyan-400", bg: "bg-cyan-500/10" },
 };
 
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
@@ -116,7 +120,7 @@ const nextActionIcons: Record<string, typeof Receipt> = {
 };
 
 type Tab = "overzicht" | "uren" | "tijdlijn" | "financieel" | "documenten";
-type TijdlijnFilter = "alles" | "factuur" | "meeting" | "notitie" | "tijdregistratie" | "offerte";
+type TijdlijnFilter = "alles" | "factuur" | "meeting" | "notitie" | "tijdregistratie" | "offerte" | "contactmoment";
 
 function PortalLinkButton({ klantId }: { klantId: number }) {
   const { addToast } = useToast();
@@ -457,10 +461,15 @@ export default function KlantDetailPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-xs text-autronis-text-secondary/70">Laatste contact</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-autronis-text-secondary/70">Laatste contact</p>
+                <MarkeerContactKnop klantId={Number(id)} compact />
+              </div>
               <p className={cn(
                 "text-sm font-medium mt-0.5",
-                dagenSindsContact !== null && dagenSindsContact > 14 ? "text-amber-400" : "text-autronis-text-primary"
+                dagenSindsContact !== null && dagenSindsContact > 30 ? "text-red-400"
+                  : dagenSindsContact !== null && dagenSindsContact > 14 ? "text-amber-400"
+                  : "text-autronis-text-primary"
               )}>
                 {dagenSindsContact !== null
                   ? dagenSindsContact === 0 ? "Vandaag"
@@ -1085,7 +1094,7 @@ export default function KlantDetailPage() {
           <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
             <h2 className="text-lg font-semibold text-autronis-text-primary">Interactie-tijdlijn</h2>
             <div className="flex items-center gap-1.5 flex-wrap">
-              {(["alles", "factuur", "meeting", "notitie", "tijdregistratie", "offerte"] as TijdlijnFilter[]).map((f) => {
+              {(["alles", "contactmoment", "factuur", "meeting", "notitie", "tijdregistratie", "offerte"] as TijdlijnFilter[]).map((f) => {
                 const filterLabels: Record<TijdlijnFilter, string> = {
                   alles: "Alles",
                   factuur: "Facturen",
@@ -1093,6 +1102,7 @@ export default function KlantDetailPage() {
                   notitie: "Notities",
                   tijdregistratie: "Uren",
                   offerte: "Offertes",
+                  contactmoment: "Contact",
                 };
                 const filterColors: Record<TijdlijnFilter, string> = {
                   alles: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
@@ -1101,6 +1111,7 @@ export default function KlantDetailPage() {
                   notitie: "text-amber-400 border-amber-400/40 bg-amber-500/10",
                   tijdregistratie: "text-autronis-accent border-autronis-accent/40 bg-autronis-accent/10",
                   offerte: "text-blue-400 border-blue-400/40 bg-blue-500/10",
+                  contactmoment: "text-cyan-400 border-cyan-400/40 bg-cyan-500/10",
                 };
                 return (
                   <button

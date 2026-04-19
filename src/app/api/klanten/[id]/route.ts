@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken, klantUren } from "@/lib/db/schema";
+import { klanten, projecten, screenTimeEntries, notities, documenten, facturen, offertes, meetings, taken, klantUren, klantContactmomenten, gebruikers } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, or, sql, desc, ne, isNull } from "drizzle-orm";
 
@@ -134,15 +134,46 @@ export async function GET(
       .where(eq(meetings.klantId, Number(id)))
       .orderBy(desc(meetings.datum));
 
+    // Contactmomenten for this klant (atomic touch events)
+    type ContactRow = {
+      id: number;
+      kanaal: string;
+      richting: string | null;
+      notitie: string | null;
+      contactDatum: string;
+      gebruikerNaam: string | null;
+    };
+    let contactmomentenLijst: ContactRow[] = [];
+    try {
+      contactmomentenLijst = (await db
+        .select({
+          id: klantContactmomenten.id,
+          kanaal: klantContactmomenten.kanaal,
+          richting: klantContactmomenten.richting,
+          notitie: klantContactmomenten.notitie,
+          contactDatum: klantContactmomenten.contactDatum,
+          gebruikerNaam: gebruikers.naam,
+        })
+        .from(klantContactmomenten)
+        .leftJoin(gebruikers, eq(klantContactmomenten.gebruikerId, gebruikers.id))
+        .where(eq(klantContactmomenten.klantId, Number(id)))
+        .orderBy(desc(klantContactmomenten.contactDatum))
+        .limit(50)) as ContactRow[];
+    } catch (e) {
+      console.error("[klant-contactmomenten query error]", e);
+    }
+
     // Build timeline from all interactions
     interface TijdlijnItem {
       id: string;
-      type: "factuur" | "offerte" | "meeting" | "notitie" | "tijdregistratie";
+      type: "factuur" | "offerte" | "meeting" | "notitie" | "tijdregistratie" | "contactmoment";
       datum: string;
       titel: string;
       details: string | null;
       status?: string;
       bedrag?: number | null;
+      kanaal?: string;
+      richting?: string;
     }
 
     const tijdlijn: TijdlijnItem[] = [];
@@ -188,6 +219,28 @@ export async function GET(
         datum: n.aangemaaktOp || "",
         titel: n.type === "belangrijk" ? "Belangrijke notitie" : n.type === "afspraak" ? "Afspraak" : "Notitie",
         details: n.inhoud.substring(0, 100) + (n.inhoud.length > 100 ? "..." : ""),
+      });
+    }
+
+    const kanaalLabels: Record<string, string> = {
+      email: "E-mail",
+      telefoon: "Gebeld",
+      meeting: "Meeting",
+      linkedin: "LinkedIn",
+      whatsapp: "WhatsApp",
+      anders: "Contact",
+    };
+    for (const c of contactmomentenLijst) {
+      const label = kanaalLabels[c.kanaal] ?? "Contact";
+      const richtingLabel = c.richting === "inkomend" ? " (inkomend)" : "";
+      tijdlijn.push({
+        id: `contact-${c.id}`,
+        type: "contactmoment",
+        datum: c.contactDatum,
+        titel: `${label}${richtingLabel}`,
+        details: c.notitie ? c.notitie.substring(0, 140) + (c.notitie.length > 140 ? "..." : "") : null,
+        kanaal: c.kanaal,
+        richting: c.richting ?? undefined,
       });
     }
 
@@ -306,6 +359,7 @@ export async function GET(
       ...notitiesLijst.map(n => n.aangemaaktOp),
       ...recenteTijd.map(t => t.startTijd),
       ...meetingsLijst.map(m => m.datum),
+      ...contactmomentenLijst.map(c => c.contactDatum),
     ].filter(Boolean).sort().reverse();
     const laatsteContact = alleDatums[0] || null;
 
@@ -426,6 +480,7 @@ export async function GET(
       maandelijkseOmzet,
       klantUren: klantUrenLijst,
       klantUrenPerProject,
+      contactmomenten: contactmomentenLijst,
       kpis: {
         aantalProjecten: projectenMetUren.length,
         totaalMinuten: totaalUren?.totaal || 0,

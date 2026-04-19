@@ -148,7 +148,14 @@ export async function POST(req: NextRequest) {
     // ander slot ipv 'm te kunnen overlappen met Claude blokken (waar Sem
     // vrij is). Daarom skippen we alle openstaande handmatige in de
     // bestaande blocker-set.
-    const handmatigeIds = new Set(handmatigeTaken.map((t) => t.id));
+    //
+    // UITZONDERING: handmatige SLIMME taken (fase "Slimme taken") worden
+    // NIET door de AI herplanned — ze worden alleen door auto-fill
+    // aangemaakt met een vast slot. Die moeten WEL als blocker meetellen
+    // zodat een tweede AI Plan run er niet overheen plaatst.
+    const handmatigeIds = new Set(
+      handmatigeTaken.filter((t) => !isSlimmeTaak(t)).map((t) => t.id)
+    );
     const strikteBlokkers: BlockingInterval[] = [];
     const claudeBlokkers: BlockingInterval[] = [];
     for (const t of bestaandeIngepland) {

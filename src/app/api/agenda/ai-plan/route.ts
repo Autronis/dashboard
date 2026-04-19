@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { taken, projecten, slimmeTakenTemplates } from "@/lib/db/schema";
+import { taken, projecten, slimmeTakenTemplates, agendaItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, or } from "drizzle-orm";
+import { eq, or, and, gte, lte } from "drizzle-orm";
 import { TrackedAnthropic as Anthropic } from "@/lib/ai/tracked-anthropic";
 import { classifyTaakCluster } from "@/lib/cluster";
 import { ensureSystemTemplates, fillNaamTemplate, fillPromptTemplate } from "@/lib/slimme-taken";
 import { formatSlotToIso } from "@/lib/agenda-slot-finder";
 
-// POST /api/agenda/ai-plan — AI vult de dag met taken, gegroepeerd per cluster
+// POST /api/agenda/ai-plan — AI vult de dag met taken, gegroepeerd per cluster.
+//
+// Bridge v2 phase 4: deze route is nu **fallback**. Als de nightly bridge
+// (Atlas/Autro op 20:30/20:45) al blokken voor deze datum heeft geplaatst
+// (gemaaktDoor='bridge'), weigeren we met 409 tenzij ?force=true mee komt.
+// Zo voorkomen we dat een per-ongeluk klik op de AI-plan knop de goede
+// bridge-planning overschrijft.
 export async function POST(req: NextRequest) {
   try {
     const gebruiker = await requireAuth();
@@ -16,6 +22,32 @@ export async function POST(req: NextRequest) {
 
     if (!datum) {
       return NextResponse.json({ fout: "Datum is verplicht" }, { status: 400 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const force = searchParams.get("force") === "true";
+    if (!force) {
+      const dagStart = `${datum}T00:00:00`;
+      const dagEind = `${datum}T23:59:59`;
+      const bridgeRows = await db
+        .select({ id: agendaItems.id })
+        .from(agendaItems)
+        .where(
+          and(
+            eq(agendaItems.gemaaktDoor, "bridge"),
+            gte(agendaItems.startDatum, dagStart),
+            lte(agendaItems.startDatum, dagEind)
+          )
+        );
+      if (bridgeRows.length > 0) {
+        return NextResponse.json(
+          {
+            fout: `Bridge heeft al ${bridgeRows.length} blokken gepland voor ${datum}. Verwijder die handmatig, of roep opnieuw aan met ?force=true om de Haiku-fallback alsnog te draaien.`,
+            bridgeBlokken: bridgeRows.length,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     // Werkdag start/eind per dag-van-de-week. Werkdagen (ma-vr) 09:00-19:00,

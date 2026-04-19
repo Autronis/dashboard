@@ -163,7 +163,7 @@ export default function YtKnowledgePage() {
       if (!addRes.ok) throw new Error("Kon video niet toevoegen");
       const added = await addRes.json();
       setAnalyzeUrl("");
-      fetchData();
+      fetchData(true);
 
       // 2. Trigger analysis in background
       if (added.status === "pending") {
@@ -176,7 +176,7 @@ export default function YtKnowledgePage() {
             const err = await r.json().catch(() => ({}));
             setError(`Analyse mislukt: ${err.error || "onbekend"} ${err.detail || ""}`);
           }
-          fetchData();
+          fetchData(true);
         });
       }
     } catch {
@@ -200,7 +200,7 @@ export default function YtKnowledgePage() {
         return;
       }
       setNewChannelUrl("");
-      fetchData();
+      fetchData(true);
     } catch {
       setError("Kanaal toevoegen mislukt");
     }
@@ -213,7 +213,7 @@ export default function YtKnowledgePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      fetchData();
+      fetchData(true);
     } catch {
       setError("Kanaal verwijderen mislukt");
     }
@@ -248,7 +248,7 @@ export default function YtKnowledgePage() {
             </p>
           </div>
           <button
-            onClick={fetchData}
+            onClick={() => fetchData()}
             disabled={loading}
             className="p-2 rounded-lg hover:bg-autronis-border/30 transition-colors text-autronis-text-secondary"
           >
@@ -452,9 +452,9 @@ export default function YtKnowledgePage() {
                               const err = await r.json().catch(() => ({}));
                               setError(`Analyse mislukt: ${err.error || "onbekend"} ${err.detail || ""}`);
                             }
-                            fetchData();
+                            fetchData(true);
                           });
-                          fetchData();
+                          fetchData(true);
                         }}
                         className="px-2 py-1 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition"
                       >

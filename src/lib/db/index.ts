@@ -757,6 +757,40 @@ if (isTurso) {
     SELECT 'syb', 'inbound', 'ICP filter Lead Dashboard v2', '09:00', '10:00', '["ma","do"]', 1
     WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='syb' AND pijler='inbound')`).catch(() => {});
 
+  // Werkuren slots — standaard werkvensters per dag per gebruiker.
+  // dag: 0=ma, 1=di, ..., 5=za, 6=zo. Zaterdag wordt per-week afgestemd
+  // (geen defaults). Meerdere rijen voor dagen met avondsessie.
+  client.execute(`CREATE TABLE IF NOT EXISTS werkuren_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    dag INTEGER NOT NULL,
+    start_tijd TEXT NOT NULL,
+    eind_tijd TEXT NOT NULL,
+    notitie TEXT,
+    actief INTEGER NOT NULL DEFAULT 1,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`).catch(() => {});
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_werkuren_gebruiker_dag ON werkuren_slots(gebruiker, dag)`).catch(() => {});
+
+  // Seed Sem's default werkuren.
+  const semWerkuren = [
+    [0, '09:00', '19:00', 'ma'],
+    [1, '09:00', '18:00', 'di ochtend'],
+    [1, '20:00', '22:00', 'di avond'],
+    [2, '09:00', '19:00', 'wo'],
+    [3, '09:00', '18:00', 'do ochtend'],
+    [3, '20:00', '22:00', 'do avond'],
+    [4, '09:00', '15:30', 'vr ochtend'],
+    [4, '20:30', '22:00', 'vr avond'],
+    [6, '10:00', '15:30', 'zo dag'],
+    [6, '20:30', '21:30', 'zo avond'],
+  ];
+  for (const [dag, start, eind, notitie] of semWerkuren) {
+    client.execute(`INSERT INTO werkuren_slots (gebruiker, dag, start_tijd, eind_tijd, notitie, actief)
+      SELECT 'sem', ${dag}, '${start}', '${eind}', '${notitie}', 1
+      WHERE NOT EXISTS (SELECT 1 FROM werkuren_slots WHERE gebruiker='sem' AND dag=${dag} AND start_tijd='${start}')`).catch(() => {});
+  }
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
@@ -1278,6 +1312,36 @@ if (isTurso) {
   try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'sem', 'content', 'Content batching weekend', '10:00', '11:00', '["za"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='sem' AND pijler='content')`); } catch {}
   try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'team', 'netwerk', 'LinkedIn engagement window', '16:30', '17:00', '["ma","di","wo","do","vr"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='team' AND pijler='netwerk')`); } catch {}
   try { sqliteDb.exec(`INSERT INTO gtm_ritme_slots (gebruiker, pijler, label, start_tijd, eind_tijd, dagen_van_week, actief) SELECT 'syb', 'inbound', 'ICP filter Lead Dashboard v2', '09:00', '10:00', '["ma","do"]', 1 WHERE NOT EXISTS (SELECT 1 FROM gtm_ritme_slots WHERE gebruiker='syb' AND pijler='inbound')`); } catch {}
+
+  // Werkuren slots (better-sqlite3 pad).
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS werkuren_slots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    gebruiker TEXT NOT NULL,
+    dag INTEGER NOT NULL,
+    start_tijd TEXT NOT NULL,
+    eind_tijd TEXT NOT NULL,
+    notitie TEXT,
+    actief INTEGER NOT NULL DEFAULT 1,
+    aangemaakt_op TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_werkuren_gebruiker_dag ON werkuren_slots(gebruiker, dag)`);
+  const semSeedsSqlite: Array<[number, string, string, string]> = [
+    [0, '09:00', '19:00', 'ma'],
+    [1, '09:00', '18:00', 'di ochtend'],
+    [1, '20:00', '22:00', 'di avond'],
+    [2, '09:00', '19:00', 'wo'],
+    [3, '09:00', '18:00', 'do ochtend'],
+    [3, '20:00', '22:00', 'do avond'],
+    [4, '09:00', '15:30', 'vr ochtend'],
+    [4, '20:30', '22:00', 'vr avond'],
+    [6, '10:00', '15:30', 'zo dag'],
+    [6, '20:30', '21:30', 'zo avond'],
+  ];
+  for (const [dag, start, eind, notitie] of semSeedsSqlite) {
+    try {
+      sqliteDb.exec(`INSERT INTO werkuren_slots (gebruiker, dag, start_tijd, eind_tijd, notitie, actief) SELECT 'sem', ${dag}, '${start}', '${eind}', '${notitie}', 1 WHERE NOT EXISTS (SELECT 1 FROM werkuren_slots WHERE gebruiker='sem' AND dag=${dag} AND start_tijd='${start}')`);
+    } catch {}
+  }
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

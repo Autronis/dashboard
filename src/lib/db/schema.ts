@@ -2061,3 +2061,26 @@ export const gtmRitmeSlots = sqliteTable("gtm_ritme_slots", {
   actief: integer("actief").notNull().default(1),
   aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
 });
+
+// ============ WERKUREN SLOTS ============
+// Standaard werkvensters per dag per gebruiker. Één dag kan meerdere slots
+// hebben (bv. ochtend- + avondsessie). De bridge leest deze slots als de
+// beschikbare tijd waarbinnen hij blokken mag plannen. Default is "standaard
+// maar overlegbaar de dag ervoor" — tijdelijke afwijkingen hoeven niet in deze
+// tabel; Atlas/Autro stemmen die af via Discord/chat-requests.
+//
+// `dag` is 0-6 (0=maandag, 6=zondag) om querying per weekdag snel te maken.
+// `notitie` is vrije tekst (bv. "ochtendsessie", "avondsessie", "bedenken"
+// voor zaterdag-als-overleg-vooraf-bepaald).
+export const werkurenSlots = sqliteTable("werkuren_slots", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  gebruiker: text("gebruiker", { enum: ["sem", "syb"] }).notNull(),
+  dag: integer("dag").notNull(),
+  startTijd: text("start_tijd").notNull(),
+  eindTijd: text("eind_tijd").notNull(),
+  notitie: text("notitie"),
+  actief: integer("actief").notNull().default(1),
+  aangemaaktOp: text("aangemaakt_op").notNull().default(sql`(datetime('now'))`),
+}, (table) => ({
+  idxGebruikerDag: index("idx_werkuren_gebruiker_dag").on(table.gebruiker, table.dag),
+}));

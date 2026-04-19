@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Handshake, Mail, Phone, CalendarDays, Linkedin, MessageCircle, MoreHorizontal, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+
+const POPOVER_WIDTH = 256;
+const POPOVER_GAP = 6;
 
 type Kanaal = "email" | "telefoon" | "meeting" | "linkedin" | "whatsapp" | "anders";
 
@@ -20,7 +24,7 @@ const kanaalOpties: Array<{ value: Kanaal; label: string; icon: typeof Mail; col
 interface Props {
   klantId: number;
   compact?: boolean;
-  /** "left" laat de popover naar rechts uithangen; "right" naar links. Default "left". */
+  /** "left" laat de popover naar rechts uithangen vanaf de knop; "right" naar links. Default "left". */
   align?: "left" | "right";
   onLogged?: () => void;
 }
@@ -29,25 +33,50 @@ export function MarkeerContactKnop({ klantId, compact = false, align = "left", o
   const [open, setOpen] = useState(false);
   const [notitie, setNotitie] = useState("");
   const [geselecteerdKanaal, setGeselecteerdKanaal] = useState<Kanaal | null>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const { addToast } = useToast();
 
+  function reset() {
+    setOpen(false);
+    setGeselecteerdKanaal(null);
+    setNotitie("");
+  }
+
+  // Position popover via fixed coords (escapes parent stacking-contexts).
+  useLayoutEffect(() => {
+    if (!open) return;
+    function place() {
+      const btn = buttonRef.current;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      let left = align === "right" ? rect.right - POPOVER_WIDTH : rect.left;
+      const top = rect.bottom + POPOVER_GAP;
+      if (left < 8) left = 8;
+      if (left + POPOVER_WIDTH > window.innerWidth - 8) left = window.innerWidth - POPOVER_WIDTH - 8;
+      setPos({ top, left });
+    }
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, align]);
+
   useEffect(() => {
     if (!open) return;
     function onClickOutside(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setGeselecteerdKanaal(null);
-        setNotitie("");
-      }
+      const target = e.target as Node;
+      if (popoverRef.current?.contains(target)) return;
+      if (buttonRef.current?.contains(target)) return;
+      reset();
     }
     function onEsc(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setGeselecteerdKanaal(null);
-        setNotitie("");
-      }
+      if (e.key === "Escape") reset();
     }
     document.addEventListener("mousedown", onClickOutside);
     document.addEventListener("keydown", onEsc);
@@ -74,9 +103,7 @@ export function MarkeerContactKnop({ klantId, compact = false, align = "left", o
       queryClient.invalidateQueries({ queryKey: ["klant", klantId] });
       queryClient.invalidateQueries({ queryKey: ["klanten"] });
       addToast("Contact gelogd", "succes");
-      setOpen(false);
-      setGeselecteerdKanaal(null);
-      setNotitie("");
+      reset();
       onLogged?.();
     },
     onError: (e: Error) => {
@@ -93,34 +120,13 @@ export function MarkeerContactKnop({ klantId, compact = false, align = "left", o
     mutation.mutate({ kanaal: geselecteerdKanaal, notitieText: notitie });
   }
 
-  return (
-    <div className="relative inline-block" ref={popoverRef}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        disabled={mutation.isPending}
-        className={cn(
-          "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors border",
-          compact
-            ? "px-2 py-1 text-[11px] bg-autronis-bg/40 border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30"
-            : "px-3 py-1.5 text-xs bg-autronis-accent/10 border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/15",
-          mutation.isPending && "opacity-60 cursor-wait"
-        )}
-        title="Log contactmoment (reset laatste-contact teller)"
-      >
-        {mutation.isPending ? (
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-        ) : (
-          <Handshake className={cn("w-3.5 h-3.5", compact ? "" : "")} />
-        )}
-        {compact ? "Contact" : "Markeer contact"}
-      </button>
-
-      {open && (
+  const popover = open && pos && typeof document !== "undefined"
+    ? createPortal(
         <div
-          className={cn(
-            "absolute top-full mt-1.5 z-50 w-64 bg-autronis-card border border-autronis-border rounded-xl shadow-xl shadow-black/40 p-2",
-            align === "left" ? "left-0" : "right-0"
-          )}
+          ref={popoverRef}
+          className="fixed z-[60] w-64 bg-autronis-card border border-autronis-border rounded-xl shadow-xl shadow-black/40 p-2"
+          style={{ top: pos.top, left: pos.left }}
+          onClick={(e) => e.stopPropagation()}
         >
           {geselecteerdKanaal === null ? (
             <>
@@ -184,8 +190,34 @@ export function MarkeerContactKnop({ klantId, compact = false, align = "left", o
               </button>
             </div>
           )}
-        </div>
-      )}
-    </div>
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        disabled={mutation.isPending}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-lg font-medium transition-colors border",
+          compact
+            ? "px-2 py-1 text-[11px] bg-autronis-bg/40 border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/30"
+            : "px-3 py-1.5 text-xs bg-autronis-accent/10 border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/15",
+          mutation.isPending && "opacity-60 cursor-wait"
+        )}
+        title="Log contactmoment (reset laatste-contact teller)"
+      >
+        {mutation.isPending ? (
+          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Handshake className="w-3.5 h-3.5" />
+        )}
+        {compact ? "Contact" : "Markeer contact"}
+      </button>
+      {popover}
+    </>
   );
 }

@@ -59,6 +59,8 @@ export type UpworkJob = {
   claimedAt: string | null;
   status: string;
   fetchError: string | null;
+  pitchDraft: string | null;
+  pitchGeneratedAt: string | null;
 };
 
 type Tab = "sem" | "syb" | "alle";

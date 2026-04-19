@@ -3,7 +3,19 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Clock, CheckSquare, TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
+import {
+  CheckSquare,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Activity,
+  Users,
+  Briefcase,
+  PlayCircle,
+  Euro,
+  Calendar,
+  Gauge,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -12,6 +24,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface TopProject {
   naam: string;
   uren: number;
+  klantId: number | null;
+  klantNaam: string | null;
+  takenAfgerond: number;
 }
 
 interface UserOverzicht {
@@ -24,6 +39,12 @@ interface UserOverzicht {
   klantUren: number;
   topProjecten: TopProject[];
   takenAfgerondDezeWeek: number;
+  takenInProgress: number;
+  aantalKlantenDezeWeek: number;
+  aantalProjectenDezeWeek: number;
+  productiefsteDag: { dagNaam: string; datum: string; uren: number } | null;
+  gemiddeldePerWerkdag: number;
+  billableEUR: number;
 }
 
 interface OverzichtData {
@@ -43,17 +64,37 @@ function getInitials(naam: string): string {
     .slice(0, 2);
 }
 
+function formatEUR(v: number): string {
+  return new Intl.NumberFormat("nl-NL", {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(v);
+}
+
 const AVATAR_COLORS: Record<number, string> = {
   1: "from-teal-500 to-teal-700",
   2: "from-blue-500 to-blue-700",
 };
 
-// Avatar photos komen nu uit de database (gebruikers.avatar_url)
-// Fallback op hardcoded mapping voor backwards-compat tot alle users een avatar_url hebben
 const AVATAR_PHOTOS_FALLBACK: Record<number, string> = {
   1: "/foto-sem.jpg",
   2: "/foto-syb.jpg",
 };
+
+// Stabiele kleur per klant-id — consistent over refreshes
+const KLANT_ACCENTS = [
+  { bg: "bg-orange-500/15", text: "text-orange-400", ring: "ring-orange-500/30" },
+  { bg: "bg-purple-500/15", text: "text-purple-400", ring: "ring-purple-500/30" },
+  { bg: "bg-blue-500/15", text: "text-blue-400", ring: "ring-blue-500/30" },
+  { bg: "bg-pink-500/15", text: "text-pink-400", ring: "ring-pink-500/30" },
+  { bg: "bg-amber-500/15", text: "text-amber-400", ring: "ring-amber-500/30" },
+  { bg: "bg-emerald-500/15", text: "text-emerald-400", ring: "ring-emerald-500/30" },
+];
+function klantAccent(klantId: number | null) {
+  if (klantId === null) return null;
+  return KLANT_ACCENTS[klantId % KLANT_ACCENTS.length];
+}
 
 // ============ SKELETON ============
 
@@ -115,14 +156,94 @@ function UrenBar({ autronisUren, klantUren }: { autronisUren: number; klantUren:
       <div className="flex justify-between text-xs text-autronis-text-secondary">
         <span className="flex items-center gap-1">
           <span className="inline-block w-2 h-2 rounded-sm bg-[#17B8A5]" />
-          Autronis {autronisUren}u
+          Autronis {autronisUren}u ({autPct}%)
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block w-2 h-2 rounded-sm bg-orange-400" />
-          Klant {klantUren}u
+          Klant {klantUren}u ({klantPct}%)
         </span>
       </div>
     </div>
+  );
+}
+
+// ============ MINI STAT ============
+
+function MiniStat({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  return (
+    <div className="rounded-xl bg-[#0E1719]/60 border border-[#2A3538] px-3 py-2.5">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-autronis-text-secondary">
+        <Icon className="w-3 h-3" />
+        {label}
+      </div>
+      <div className="text-lg font-bold text-autronis-text-primary tabular-nums mt-0.5">
+        {value}
+      </div>
+      {sub && (
+        <div className="text-[10px] text-autronis-text-secondary/70 -mt-0.5">{sub}</div>
+      )}
+    </div>
+  );
+}
+
+// ============ PROJECT ROW ============
+
+function ProjectRow({ project, totaalUren }: { project: TopProject; totaalUren: number }) {
+  const pct = totaalUren > 0 ? Math.round((project.uren / totaalUren) * 100) : 0;
+  const accent = klantAccent(project.klantId);
+  return (
+    <li className="space-y-1">
+      <div className="flex justify-between items-center gap-2 text-sm">
+        <div className="min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="text-autronis-text-primary truncate">{project.naam}</span>
+          {project.klantNaam ? (
+            <span
+              className={cn(
+                "inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full ring-1",
+                accent?.bg ?? "bg-orange-500/15",
+                accent?.text ?? "text-orange-400",
+                accent?.ring ?? "ring-orange-500/30"
+              )}
+              title={`Klant: ${project.klantNaam}`}
+            >
+              {project.klantNaam}
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#17B8A5]/10 text-[#17B8A5]/80 ring-1 ring-[#17B8A5]/20"
+              title="Intern Autronis project"
+            >
+              Autronis
+            </span>
+          )}
+          {project.takenAfgerond > 0 && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-autronis-text-secondary/70">
+              <CheckSquare className="w-2.5 h-2.5" />
+              {project.takenAfgerond}
+            </span>
+          )}
+        </div>
+        <span className="text-autronis-text-secondary tabular-nums flex-shrink-0">
+          {project.uren}u
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-[#2A3538] overflow-hidden">
+        <div
+          className="h-full bg-[#17B8A5]/60 rounded-full transition-all duration-700"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </li>
   );
 }
 
@@ -181,8 +302,10 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
 
       {/* ---- UREN DEZE WEEK ---- */}
       <div className="p-6 pb-5 space-y-1">
-        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">Deep work deze week</p>
-        <div className="flex items-end gap-2">
+        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">
+          Deep work deze week
+        </p>
+        <div className="flex items-end gap-2 flex-wrap">
           <span className="text-4xl font-bold text-autronis-text-primary tabular-nums">
             {user.urenDezeWeek}u
           </span>
@@ -198,7 +321,8 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
               ) : (
                 <TrendingDown className="w-3.5 h-3.5" />
               )}
-              {urenDelta > 0 ? "+" : ""}{urenDelta}u vs vorige week
+              {urenDelta > 0 ? "+" : ""}
+              {urenDelta}u vs vorige week
             </span>
           )}
           {urenDelta === 0 && user.urenVorigeWeek > 0 && (
@@ -207,7 +331,43 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
               Gelijk aan vorige week
             </span>
           )}
+          {user.gemiddeldePerWerkdag > 0 && (
+            <span className="flex items-center gap-0.5 text-xs text-autronis-text-secondary mb-1 ml-auto">
+              <Gauge className="w-3 h-3" />
+              ⌀ {user.gemiddeldePerWerkdag}u/dag
+            </span>
+          )}
         </div>
+      </div>
+
+      <div className="border-t border-[#2A3538]" />
+
+      {/* ---- MINI STATS STRIP ---- */}
+      <div className="p-6 pb-5 grid grid-cols-2 md:grid-cols-4 gap-2">
+        <MiniStat
+          icon={Users}
+          label="Klanten"
+          value={String(user.aantalKlantenDezeWeek)}
+          sub="actief deze week"
+        />
+        <MiniStat
+          icon={Briefcase}
+          label="Projecten"
+          value={String(user.aantalProjectenDezeWeek)}
+          sub="gewerkt aan"
+        />
+        <MiniStat
+          icon={PlayCircle}
+          label="In progress"
+          value={String(user.takenInProgress)}
+          sub="open taken"
+        />
+        <MiniStat
+          icon={Euro}
+          label="Billable"
+          value={user.billableEUR > 0 ? formatEUR(user.billableEUR) : "—"}
+          sub="deze week"
+        />
       </div>
 
       <div className="border-t border-[#2A3538]" />
@@ -220,49 +380,61 @@ function UserCard({ user, index }: { user: UserOverzicht; index: number }) {
 
       <div className="border-t border-[#2A3538]" />
 
-      {/* ---- TOP 3 PROJECTEN ---- */}
+      {/* ---- TOP PROJECTEN ---- */}
       <div className="p-6 pb-5 space-y-3">
-        <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">Top projecten</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium text-autronis-text-secondary uppercase tracking-wider">
+            Top projecten
+          </p>
+          {user.topProjecten.length > 0 && (
+            <p className="text-[10px] text-autronis-text-secondary/60">
+              top {user.topProjecten.length} van {user.aantalProjectenDezeWeek}
+            </p>
+          )}
+        </div>
         {user.topProjecten.length === 0 ? (
           <p className="text-sm text-autronis-text-secondary italic">Geen uren geregistreerd</p>
         ) : (
           <ul className="space-y-2">
-            {user.topProjecten.map((p, i) => {
-              const totaal = user.urenDezeWeek;
-              const pct = totaal > 0 ? Math.round((p.uren / totaal) * 100) : 0;
-              return (
-                <li key={i} className="space-y-1">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-autronis-text-primary truncate max-w-[180px]">{p.naam}</span>
-                    <span className="text-autronis-text-secondary tabular-nums ml-2 flex-shrink-0">{p.uren}u</span>
-                  </div>
-                  <div className="h-1 rounded-full bg-[#2A3538] overflow-hidden">
-                    <div
-                      className="h-full bg-[#17B8A5]/60 rounded-full transition-all duration-700"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </li>
-              );
-            })}
+            {user.topProjecten.map((p, i) => (
+              <ProjectRow key={i} project={p} totaalUren={user.urenDezeWeek} />
+            ))}
           </ul>
         )}
       </div>
 
       <div className="border-t border-[#2A3538]" />
 
-      {/* ---- TAKEN ---- */}
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-[#17B8A5]/10 flex items-center justify-center flex-shrink-0">
-          <CheckSquare className="w-4 h-4 text-[#17B8A5]" />
+      {/* ---- PRODUCTIEFSTE DAG + TAKEN ---- */}
+      <div className="p-6 flex flex-wrap items-center gap-6">
+        <div className="flex items-center gap-3 flex-1 min-w-[180px]">
+          <div className="w-9 h-9 rounded-xl bg-[#17B8A5]/10 flex items-center justify-center flex-shrink-0">
+            <CheckSquare className="w-4 h-4 text-[#17B8A5]" />
+          </div>
+          <div>
+            <p className="text-xs text-autronis-text-secondary">Taken afgerond deze week</p>
+            <p className="text-lg font-bold text-autronis-text-primary tabular-nums">
+              {user.takenAfgerondDezeWeek}
+              <span className="text-sm font-normal text-autronis-text-secondary ml-1">taken</span>
+            </p>
+          </div>
         </div>
-        <div>
-          <p className="text-xs text-autronis-text-secondary">Taken afgerond deze week</p>
-          <p className="text-lg font-bold text-autronis-text-primary tabular-nums">
-            {user.takenAfgerondDezeWeek}
-            <span className="text-sm font-normal text-autronis-text-secondary ml-1">taken</span>
-          </p>
-        </div>
+        {user.productiefsteDag && (
+          <div className="flex items-center gap-3 flex-1 min-w-[180px]">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-4 h-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-autronis-text-secondary">Productiefste dag</p>
+              <p className="text-lg font-bold text-autronis-text-primary tabular-nums capitalize">
+                {user.productiefsteDag.dagNaam}
+                <span className="text-sm font-normal text-autronis-text-secondary ml-1">
+                  {user.productiefsteDag.uren}u
+                </span>
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -283,10 +455,10 @@ export function OverzichtTab() {
         setError(null);
         const res = await fetch("/api/team/overzicht");
         if (!res.ok) {
-          const d = await res.json().catch(() => ({})) as { fout?: string };
+          const d = (await res.json().catch(() => ({}))) as { fout?: string };
           throw new Error(d.fout ?? "Kon overzicht niet laden");
         }
-        const json = await res.json() as OverzichtData;
+        const json = (await res.json()) as OverzichtData;
         if (!cancelled) setData(json);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Onbekende fout");
@@ -295,7 +467,9 @@ export function OverzichtTab() {
       }
     }
     void fetchData();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) {
@@ -326,12 +500,37 @@ export function OverzichtTab() {
     );
   }
 
+  // Aggregate team totals
+  const teamTotaal = data.users.reduce((sum, u) => sum + u.urenDezeWeek, 0);
+  const teamBillable = data.users.reduce((sum, u) => sum + u.billableEUR, 0);
+  const teamTaken = data.users.reduce((sum, u) => sum + u.takenAfgerondDezeWeek, 0);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-autronis-text-secondary">
           Week van {data.maandag} t/m {data.zondag}
         </p>
+        <div className="flex items-center gap-4 text-xs text-autronis-text-secondary">
+          <span>
+            Team:{" "}
+            <span className="font-semibold text-autronis-text-primary tabular-nums">
+              {Math.round(teamTotaal * 10) / 10}u
+            </span>
+          </span>
+          <span>
+            Billable:{" "}
+            <span className="font-semibold text-emerald-400 tabular-nums">
+              {teamBillable > 0 ? formatEUR(teamBillable) : "—"}
+            </span>
+          </span>
+          <span>
+            Taken af:{" "}
+            <span className="font-semibold text-autronis-text-primary tabular-nums">
+              {teamTaken}
+            </span>
+          </span>
+        </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {data.users.map((user, i) => (

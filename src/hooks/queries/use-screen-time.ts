@@ -358,6 +358,7 @@ export interface PeriodeSamenvatting {
 }
 
 export function useGenereerPeriodeSamenvatting() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (params: { datum: string; type: "week" | "maand" }): Promise<PeriodeSamenvatting> => {
       const res = await fetch("/api/screen-time/samenvatting/periode", {
@@ -372,5 +373,29 @@ export function useGenereerPeriodeSamenvatting() {
       const data = await res.json();
       return data.samenvatting;
     },
+    onSuccess: (_data, params) => {
+      queryClient.invalidateQueries({
+        queryKey: ["screen-time-periode-samenvatting", params.type, params.datum],
+      });
+    },
+  });
+}
+
+// Haalt gecachete week/maand samenvatting op uit screen_time_samenvattingen.
+// Returns null als er nog geen samenvatting voor deze periode is gegenereerd.
+export function usePeriodeSamenvatting(datum: string, type: "week" | "maand", enabled = true) {
+  return useQuery({
+    queryKey: ["screen-time-periode-samenvatting", type, datum],
+    queryFn: async (): Promise<PeriodeSamenvatting | null> => {
+      const res = await fetch(
+        `/api/screen-time/samenvatting/periode?datum=${encodeURIComponent(datum)}&type=${type}`
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Kon periode samenvatting niet laden");
+      const data = await res.json();
+      return data.samenvatting ?? null;
+    },
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }

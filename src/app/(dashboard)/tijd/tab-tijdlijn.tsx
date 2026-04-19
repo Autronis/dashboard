@@ -31,6 +31,7 @@ import {
   useSamenvatting,
   useGenereerSamenvatting,
   useGenereerPeriodeSamenvatting,
+  usePeriodeSamenvatting,
 } from "@/hooks/queries/use-screen-time";
 import type { PeriodeSamenvatting, FocusInzicht, BesteFocusBlok } from "@/hooks/queries/use-screen-time";
 import type { WeekDagData, SessiesData } from "@/hooks/queries/use-screen-time";
@@ -682,6 +683,24 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
   const { data: weekData, isLoading: weekLoading } = useWeekSessies(weekStart);
   const { data: samenvatting, isLoading: samenvattingLoading } = useSamenvatting(datum);
   const genereer = useGenereerSamenvatting();
+
+  // Haal gecachete week-samenvatting op zodat we 'm niet steeds opnieuw hoeven te genereren
+  const { data: cachedPeriodeRapport } = usePeriodeSamenvatting(
+    weekStart,
+    "week",
+    view === "week"
+  );
+
+  // Auto-hydrate periodeRapport met cached versie bij view switch — gebruiker
+  // kan alsnog "Opnieuw" klikken om een verse AI-run te doen
+  useEffect(() => {
+    if (view !== "week") return;
+    if (cachedPeriodeRapport && !periodeRapport) {
+      setPeriodeRapport(cachedPeriodeRapport);
+      setPeriodeDetailOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, cachedPeriodeRapport]);
 
   // Fetch handmatige registraties for the same day and merge into sessies
   const { van: regVan, tot: regTot } = berekenVanTot(new Date(datum), "dag");

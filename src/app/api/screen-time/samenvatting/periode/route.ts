@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { screenTimeEntries, projecten, agendaItems } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth";
-import { eq, and, gte, lte, asc, sql } from "drizzle-orm";
+import { screenTimeEntries, projecten, agendaItems, screenTimeSamenvattingen } from "@/lib/db/schema";
+import { requireAuthOrApiKey } from "@/lib/auth";
+import { eq, and, gte, lte, asc } from "drizzle-orm";
 import { aiComplete } from "@/lib/ai/client";
 
 function getWeekRange(datum: string): { van: string; tot: string; label: string } {
@@ -29,9 +29,65 @@ function getMaandRange(datum: string): { van: string; tot: string; label: string
   };
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    const gebruiker = await requireAuthOrApiKey(req);
+    const { searchParams } = new URL(req.url);
+    const datum = searchParams.get("datum");
+    const type = searchParams.get("type");
+
+    if (!datum || !type) {
+      return NextResponse.json({ fout: "datum + type vereist" }, { status: 400 });
+    }
+    if (type !== "week" && type !== "maand") {
+      return NextResponse.json({ fout: "type moet 'week' of 'maand' zijn" }, { status: 400 });
+    }
+
+    // Normaliseer datum naar startdatum van de periode zodat lookups consistent zijn
+    const range = type === "week" ? getWeekRange(datum) : getMaandRange(datum);
+
+    const rec = await db
+      .select()
+      .from(screenTimeSamenvattingen)
+      .where(
+        and(
+          eq(screenTimeSamenvattingen.gebruikerId, gebruiker.id),
+          eq(screenTimeSamenvattingen.datum, range.van),
+          eq(screenTimeSamenvattingen.type, type)
+        )
+      )
+      .get();
+
+    if (!rec) {
+      return NextResponse.json({ gevonden: false }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      gevonden: true,
+      samenvatting: {
+        type: rec.type,
+        periode: range.label,
+        van: range.van,
+        tot: range.tot,
+        samenvattingKort: rec.samenvattingKort,
+        samenvattingDetail: rec.samenvattingDetail,
+        totaalSeconden: rec.totaalSeconden ?? 0,
+        productiefPercentage: rec.productiefPercentage ?? 0,
+        topProject: rec.topProject,
+        aangemaaktOp: rec.aangemaaktOp,
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const gebruiker = await requireAuth();
+    const gebruiker = await requireAuthOrApiKey(req);
     const body = await req.json();
     const { datum, type } = body as { datum: string; type: "week" | "maand" };
 
@@ -194,6 +250,40 @@ Schrijf een ${type === "week" ? "week" : "maand"}rapportage op basis van de sche
       parsed = { kort: "Samenvatting niet beschikbaar", detail: "" };
     }
 
+    const topProject = Object.entries(perProject).sort(([, a], [, b]) => b - a)[0]?.[0] ?? null;
+
+    // Persisteer in screen_time_samenvattingen (upsert op (gebruiker, datum, type))
+    try {
+      await db
+        .insert(screenTimeSamenvattingen)
+        .values({
+          gebruikerId: gebruiker.id,
+          datum: range.van,
+          type,
+          samenvattingKort: parsed.kort,
+          samenvattingDetail: parsed.detail,
+          totaalSeconden,
+          productiefPercentage,
+          topProject,
+        })
+        .onConflictDoUpdate({
+          target: [
+            screenTimeSamenvattingen.gebruikerId,
+            screenTimeSamenvattingen.datum,
+            screenTimeSamenvattingen.type,
+          ],
+          set: {
+            samenvattingKort: parsed.kort,
+            samenvattingDetail: parsed.detail,
+            totaalSeconden,
+            productiefPercentage,
+            topProject,
+          },
+        });
+    } catch {
+      // Niet fatal — toon het rapport alsnog zodat de user z'n werk niet kwijtraakt
+    }
+
     return NextResponse.json({
       samenvatting: {
         type,
@@ -205,7 +295,7 @@ Schrijf een ${type === "week" ? "week" : "maand"}rapportage op basis van de sche
         totaalSeconden,
         productiefPercentage,
         aantalDagen,
-        topProject: Object.entries(perProject).sort(([, a], [, b]) => b - a)[0]?.[0] ?? null,
+        topProject,
       },
     });
   } catch (error) {

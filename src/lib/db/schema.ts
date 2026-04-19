@@ -1123,6 +1123,7 @@ export const screenTimeSamenvattingen = sqliteTable("screen_time_samenvattingen"
   id: integer("id").primaryKey({ autoIncrement: true }),
   gebruikerId: integer("gebruiker_id").references(() => gebruikers.id),
   datum: text("datum").notNull(),
+  type: text("type").notNull().default("dag"), // dag | week | maand
   samenvattingKort: text("samenvatting_kort"),
   samenvattingDetail: text("samenvatting_detail"),
   totaalSeconden: integer("totaal_seconden"),
@@ -1130,7 +1131,7 @@ export const screenTimeSamenvattingen = sqliteTable("screen_time_samenvattingen"
   topProject: text("top_project"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
-  uniekGebruikerDatum: uniqueIndex("uniek_gebruiker_datum").on(table.gebruikerId, table.datum),
+  uniekGebruikerDatumType: uniqueIndex("uniek_gebruiker_datum_type").on(table.gebruikerId, table.datum, table.type),
 }));
 
 // ============ FOCUS LOGS ============

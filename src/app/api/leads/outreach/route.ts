@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/leads/outreach
-// Body: { id: string, dag_limiet?: number }
+// Body: { id: string, dag_limiet?, aantal_inboxes?, auto_verdelen?, per_inbox_limiet? }
 export async function PATCH(req: NextRequest) {
   try {
     await authenticate(req);
@@ -67,14 +67,25 @@ export async function PATCH(req: NextRequest) {
     const body = (await req.json()) as {
       id?: string;
       dag_limiet?: number;
+      aantal_inboxes?: number;
+      auto_verdelen?: boolean;
+      per_inbox_limiet?: number;
     };
 
     if (!body.id) {
       return NextResponse.json({ fout: "id is verplicht" }, { status: 400 });
     }
 
-    const updates: { dag_limiet?: number } = {};
+    const updates: {
+      dag_limiet?: number;
+      aantal_inboxes?: number;
+      auto_verdelen?: boolean;
+      per_inbox_limiet?: number;
+    } = {};
     if (body.dag_limiet !== undefined) updates.dag_limiet = body.dag_limiet;
+    if (body.aantal_inboxes !== undefined) updates.aantal_inboxes = body.aantal_inboxes;
+    if (body.auto_verdelen !== undefined) updates.auto_verdelen = body.auto_verdelen;
+    if (body.per_inbox_limiet !== undefined) updates.per_inbox_limiet = body.per_inbox_limiet;
 
     if (Object.keys(updates).length === 0) {
       return NextResponse.json({ fout: "geen velden om te updaten" }, { status: 400 });

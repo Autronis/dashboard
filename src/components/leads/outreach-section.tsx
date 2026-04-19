@@ -8,7 +8,8 @@ import {
   MessageSquare,
   Settings,
   Loader2,
-  Save,
+  Sparkles,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,9 @@ interface OutreachSettings {
   emails_verstuurd_vandaag: number | null;
   laatst_gereset: string | null;
   warmup_gestart_op: string | null;
+  aantal_inboxes: number;
+  auto_verdelen: boolean;
+  per_inbox_limiet: number | null;
 }
 
 interface OutreachData {
@@ -29,6 +33,14 @@ interface OutreachData {
 }
 
 const KPI = [
+  {
+    key: "ready_for_generation",
+    label: "Wacht op generatie",
+    icon: Sparkles,
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/30",
+  },
   {
     key: "ready_for_review",
     label: "Wacht op review",
@@ -68,9 +80,13 @@ export default function OutreachSection() {
   const [data, setData] = useState<OutreachData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [editingLimit, setEditingLimit] = useState(false);
-  const [limitDraft, setLimitDraft] = useState<number>(5);
+  const [showSettings, setShowSettings] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [draftLimit, setDraftLimit] = useState(5);
+  const [draftInboxes, setDraftInboxes] = useState(1);
+  const [draftAutoVerdelen, setDraftAutoVerdelen] = useState(true);
+  const [draftPerInbox, setDraftPerInbox] = useState(0);
 
   const load = useCallback(async (silent = false) => {
     try {
@@ -82,38 +98,55 @@ export default function OutreachSection() {
       }
       const json = (await res.json()) as OutreachData;
       setData(json);
-      if (json.settings?.dag_limiet && !editingLimit) setLimitDraft(json.settings.dag_limiet);
       setError(null);
     } catch (e) {
       if (!silent) setError(e instanceof Error ? e.message : "Onbekende fout");
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [editingLimit]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
-  // Realtime-ish: silent refetch elke 15s — geen loading flicker
   const pollLoad = useCallback(() => load(true), [load]);
   usePoll(pollLoad, 15000);
 
-  async function saveLimit() {
+  function openSettings() {
+    const s = data?.settings;
+    setDraftLimit(s?.dag_limiet ?? 5);
+    setDraftInboxes(s?.aantal_inboxes ?? 1);
+    setDraftAutoVerdelen(s?.auto_verdelen ?? true);
+    setDraftPerInbox(s?.per_inbox_limiet ?? 0);
+    setShowSettings(true);
+  }
+
+  const computedPerInbox = draftAutoVerdelen
+    ? Math.floor(draftLimit / Math.max(1, draftInboxes))
+    : draftPerInbox;
+
+  async function saveSettings() {
     if (!data?.settings) return;
     setSaving(true);
     try {
       const res = await fetch("/api/leads/outreach", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: data.settings.id, dag_limiet: limitDraft }),
+        body: JSON.stringify({
+          id: data.settings.id,
+          dag_limiet: draftLimit,
+          aantal_inboxes: draftInboxes,
+          auto_verdelen: draftAutoVerdelen,
+          per_inbox_limiet: computedPerInbox,
+        }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.fout || `HTTP ${res.status}`);
       }
-      addToast("Dag limiet bijgewerkt", "succes");
-      setEditingLimit(false);
+      addToast("Limieten bijgewerkt", "succes");
+      setShowSettings(false);
       await load();
     } catch (e) {
       addToast(e instanceof Error ? e.message : "Opslaan mislukt", "fout");
@@ -144,6 +177,8 @@ export default function OutreachSection() {
   const verstuurdVandaag = data?.settings?.emails_verstuurd_vandaag ?? 0;
   const dagLimiet = data?.settings?.dag_limiet ?? 0;
   const limietPct = dagLimiet > 0 ? Math.min(100, (verstuurdVandaag / dagLimiet) * 100) : 0;
+  const limietBereikt = dagLimiet > 0 && verstuurdVandaag >= dagLimiet;
+  const approvedCount = counts.approved ?? 0;
 
   return (
     <div className="rounded-2xl border border-autronis-border bg-autronis-card p-5 space-y-4">
@@ -152,45 +187,33 @@ export default function OutreachSection() {
           <Send className="w-4 h-4 text-autronis-accent" />
           Outreach pipeline
         </h2>
-        {data?.settings && !editingLimit && (
+        {data?.settings && (
           <button
-            onClick={() => setEditingLimit(true)}
+            onClick={openSettings}
             className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-accent/[0.05] transition-colors"
-            title="Pas dag limiet aan"
+            title="Limieten instellen"
           >
             <Settings className="w-3 h-3" />
             Limiet: <span className="font-semibold tabular-nums">{dagLimiet}</span>/dag
+            {data.settings.aantal_inboxes > 1 && (
+              <span className="text-autronis-text-secondary/60">
+                · {data.settings.aantal_inboxes} inboxes
+              </span>
+            )}
           </button>
         )}
-        {editingLimit && (
-          <div className="flex items-center gap-1.5">
-            <input
-              type="number"
-              min={0}
-              max={500}
-              value={limitDraft}
-              onChange={(e) => setLimitDraft(parseInt(e.target.value || "0", 10))}
-              className="w-16 bg-autronis-bg border border-autronis-accent/40 rounded-lg px-2 py-1 text-[11px] text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
-            />
-            <button
-              onClick={saveLimit}
-              disabled={saving}
-              className="p-1 rounded-md text-autronis-accent hover:bg-autronis-accent/10 disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-            </button>
-            <button
-              onClick={() => {
-                setEditingLimit(false);
-                setLimitDraft(data?.settings?.dag_limiet ?? 5);
-              }}
-              className="text-[11px] text-autronis-text-secondary hover:text-autronis-text-primary px-1.5"
-            >
-              ×
-            </button>
-          </div>
-        )}
       </div>
+
+      {/* Queue warning — approved wacht op verzending maar daglimiet bereikt */}
+      {approvedCount > 0 && limietBereikt && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-orange-500/10 border border-orange-500/30">
+          <AlertTriangle className="w-4 h-4 text-orange-400 flex-shrink-0" />
+          <span className="text-xs text-orange-400">
+            <span className="font-semibold tabular-nums">{approvedCount}</span> mails
+            wachten op verzending — daglimiet bereikt
+          </span>
+        </div>
+      )}
 
       {/* Send progress vandaag */}
       {data?.settings && dagLimiet > 0 && (
@@ -214,7 +237,7 @@ export default function OutreachSection() {
       )}
 
       {/* KPI grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
         {KPI.map((kpi) => {
           const Icon = kpi.icon;
           const value = counts[kpi.key] ?? 0;
@@ -235,9 +258,106 @@ export default function OutreachSection() {
         })}
       </div>
 
+      {/* Settings panel — uitklapbaar */}
+      {showSettings && (
+        <div className="rounded-xl border border-autronis-accent/30 bg-autronis-bg/40 p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-autronis-text-primary">
+              Limieten instellen
+            </h3>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="text-[11px] text-autronis-text-secondary hover:text-autronis-text-primary"
+            >
+              Annuleren
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-[11px] font-medium text-autronis-text-secondary mb-1 block">
+                Totaal dag limiet
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={5000}
+                value={draftLimit}
+                onChange={(e) => setDraftLimit(parseInt(e.target.value || "1", 10))}
+                className="w-full bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+              />
+              <p className="text-[10px] text-autronis-text-secondary/60 mt-1">
+                Mails per dag over alle inboxes.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-medium text-autronis-text-secondary mb-1 block">
+                Aantal inboxes
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={draftInboxes}
+                onChange={(e) => setDraftInboxes(parseInt(e.target.value || "1", 10))}
+                className="w-full bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50"
+              />
+              <p className="text-[10px] text-autronis-text-secondary/60 mt-1">
+                Verzendende domeinen.
+              </p>
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer text-xs text-autronis-text-primary">
+            <input
+              type="checkbox"
+              checked={draftAutoVerdelen}
+              onChange={(e) => setDraftAutoVerdelen(e.target.checked)}
+              className="rounded border-autronis-border accent-autronis-accent"
+            />
+            Automatisch verdelen over inboxes
+          </label>
+
+          <div>
+            <label className="text-[11px] font-medium text-autronis-text-secondary mb-1 block">
+              Per inbox limiet
+              {draftAutoVerdelen && (
+                <span className="text-[10px] text-autronis-text-secondary/60 ml-2">
+                  (berekend: {computedPerInbox})
+                </span>
+              )}
+            </label>
+            <input
+              type="number"
+              min={1}
+              max={1000}
+              value={computedPerInbox}
+              onChange={(e) => setDraftPerInbox(parseInt(e.target.value || "1", 10))}
+              disabled={draftAutoVerdelen}
+              className="w-full bg-autronis-card border border-autronis-border rounded-lg px-2 py-1.5 text-xs text-autronis-text-primary focus:outline-none focus:ring-1 focus:ring-autronis-accent/50 disabled:opacity-60"
+            />
+            <p className="text-[10px] text-autronis-text-secondary/60 mt-1">
+              {draftAutoVerdelen
+                ? `${draftLimit} ÷ ${draftInboxes} = ${computedPerInbox} per inbox`
+                : "Handmatig per-inbox limiet"}
+            </p>
+          </div>
+
+          <button
+            onClick={saveSettings}
+            disabled={saving}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-autronis-accent text-autronis-bg text-xs font-semibold hover:bg-autronis-accent-hover transition-colors disabled:opacity-50"
+          >
+            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
+            Opslaan
+          </button>
+        </div>
+      )}
+
       {data?.settingsError && (
         <p className="text-[10px] text-amber-400/80">
-          ⚠️ Outreach settings ontbreken in Supabase ({data.settingsError}). Limiet niet beheerbaar.
+          Outreach settings ontbreken in Supabase ({data.settingsError}). Limieten niet beheerbaar.
         </p>
       )}
     </div>

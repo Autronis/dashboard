@@ -115,8 +115,9 @@ export async function POST(
     await db.insert(leadActiviteiten).values({
       leadId: lead.id,
       gebruikerId: gebruiker.id,
-      type: "notitie",
-      inhoud: `Gepromoveerd naar project '${projectNaam}' (id ${project.id}). Klant: ${klant.bedrijfsnaam} (id ${klant.id}).`,
+      type: "notitie_toegevoegd",
+      titel: `Gepromoveerd naar project '${projectNaam}'`,
+      omschrijving: `Project id ${project.id} aangemaakt. Klant: ${klant.bedrijfsnaam} (id ${klant.id}).`,
     });
 
     return NextResponse.json(

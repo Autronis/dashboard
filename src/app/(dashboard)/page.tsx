@@ -387,8 +387,9 @@ function DailyBriefing() {
             )}
           </div>
 
-          {/* Prioriteit taken verwijderd — dupliceerde de 'Mijn taken' widget.
-              Voor taken-overzicht: scroll naar beneden naar 'Mijn taken'. */}
+          {/* Input-shortcuts — kennis/idee/taak droppen vanaf hier.
+              Past in de lege ruimte onder Agenda, houdt alle focus op 'dropping'. */}
+          <SnelleActiesWidget compact variant="input" />
         </div>
 
         {/* Right: Project updates + Quick wins */}
@@ -1096,21 +1097,10 @@ export default function DashboardPage() {
 
           {/* Right column */}
           <div className="space-y-4 min-w-0">
-            {/* Dynamic snelle navigatie */}
-            <div className="bg-autronis-card border border-autronis-border rounded-2xl p-3.5 card-glow">
-              <h3 className="text-xs font-semibold text-autronis-text-secondary uppercase tracking-wide mb-2">Snelle navigatie</h3>
-              <div className="grid grid-cols-2 gap-2">
-                {topNavLinks.map(({ href, label, icon }) => {
-                  const NavIcon = navIcons[icon] ?? Flame;
-                  return (
-                    <Link key={href} href={href} onClick={() => trackNavVisit(href)} className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg bg-autronis-bg/50 hover:bg-autronis-bg transition-colors group">
-                      <NavIcon className="w-3.5 h-3.5 text-autronis-text-secondary/70 group-hover:text-autronis-accent transition-colors" />
-                      <span className="text-xs font-medium text-autronis-text-primary group-hover:text-autronis-accent">{label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Actie shortcuts — vervangt oude 'Snelle navigatie' die alleen
+                links bood. Deze knoppen triggeren concrete acties (scan,
+                rebuild, idee uitvoeren, AI) ipv navigatie naar overzichtspages. */}
+            <SnelleActiesWidget compact variant="actie" />
 
             {/* Deadlines */}
             {deadlines.length > 0 && (

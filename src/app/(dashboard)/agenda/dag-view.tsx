@@ -1415,26 +1415,18 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
             return dagTaken.map((taak) => {
             if (!taak.ingeplandStart) return null;
 
-            // Skip Claude taken die onderdeel zijn van een sessie-blok (2+ overlappend/aansluitend)
+            // Skip Claude taken die onderdeel zijn van een sessie-blok. De
+            // sessie-blok mapper (zoekt 2+ taken met IDENTIEKE ingeplandStart)
+            // rendert ze al als gegroepeerd blok. Hier moeten we dezelfde
+            // regel gebruiken: anders vallen slimme taken (die elk een uniek
+            // slot hebben met ~5 min gap) in een 15-min-gap chain en worden
+            // zowel hier geskipt (als "in sessie") als daar (want < 2 taken
+            // per start) → verdwenen.
             if (taak.uitvoerder === "claude") {
-              const allClaude = dagTaken.filter((t) => t.uitvoerder === "claude" && t.ingeplandStart);
-              if (allClaude.length >= 2) {
-                const sorted = [...allClaude].sort((a, b) => new Date(a.ingeplandStart!).getTime() - new Date(b.ingeplandStart!).getTime());
-                let inSessie = false;
-                let group = [sorted[0]];
-                for (let i = 1; i < sorted.length; i++) {
-                  const prevEnd = Math.max(...group.map((t) => new Date(t.ingeplandEind || t.ingeplandStart!).getTime()));
-                  const curStart = new Date(sorted[i].ingeplandStart!).getTime();
-                  if (curStart - prevEnd <= 15 * 60000) {
-                    group.push(sorted[i]);
-                  } else {
-                    if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
-                    group = [sorted[i]];
-                  }
-                }
-                if (group.length >= 2 && group.some((g) => g.id === taak.id)) inSessie = true;
-                if (inSessie) return null;
-              }
+              const samenMetZelfdeStart = dagTaken.filter(
+                (t) => t.uitvoerder === "claude" && t.ingeplandStart === taak.ingeplandStart
+              );
+              if (samenMetZelfdeStart.length >= 2) return null;
             }
 
             const startDate = new Date(taak.ingeplandStart);

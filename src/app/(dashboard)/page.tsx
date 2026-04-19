@@ -62,9 +62,8 @@ import { useIdeeen, useGenereerIdeeen, type Idee } from "@/hooks/queries/use-ide
 import { useRadarItems, type RadarItem } from "@/hooks/queries/use-radar";
 import { useRecentSecondBrain } from "@/hooks/queries/use-second-brain";
 import { KilometerWidget } from "./components/KilometerWidget";
-import { DoelenWidget } from "@/components/dashboard/doelen-widget";
-import { TeamVergelijkingWidget } from "@/components/dashboard/team-vergelijking-widget";
-import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
+import { FinancieleSnapshotWidget } from "@/components/dashboard/financiele-snapshot-widget";
+import { ProspectRadarWidget } from "@/components/dashboard/prospect-radar-widget";
 import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
 import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 import { SnelleActiesWidget } from "@/components/dashboard/snelle-acties-widget";
@@ -1073,11 +1072,14 @@ export default function DashboardPage() {
           <DailyBriefing />
         </motion.div>
 
-        {/* Doelen + Team vergelijking + Efficiency — compact 3-grid */}
+        {/* Business health — financieel + team live + prospect radar.
+            Vervangt lege Doelen/TeamVergelijking/Efficiency widgets met
+            actie-gerichte info per kolom: geld binnen, wie werkt aan wat,
+            welke leads vragen aandacht. */}
         <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <DoelenWidget />
-          <TeamVergelijkingWidget />
-          <EfficiencyWidget />
+          <FinancieleSnapshotWidget />
+          <TeamLiveWidget />
+          <ProspectRadarWidget />
         </motion.div>
 
         <motion.div variants={sectionVariants} className="grid grid-cols-1 lg:grid-cols-[7fr_3fr] gap-5 min-w-0">

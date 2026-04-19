@@ -11,6 +11,8 @@ export interface AgendaItem {
   eindDatum: string | null;
   heleDag: number | null;
   herinneringMinuten: number | null;
+  eigenaar?: "sem" | "syb" | "team" | "vrij";
+  gemaaktDoor?: "user" | "bridge" | "fallback-haiku" | "ai-plan-button";
 }
 
 function datumStr(jaar: number, maand: number, dag: number) {

@@ -74,6 +74,10 @@ export const projecten = sqliteTable("projecten", {
   scopeData: text("scope_data"),
   // Public URL naar gegenereerde scope PDF (Vercel Blob)
   scopePdfUrl: text("scope_pdf_url"),
+  // Herkomst-lead. Gezet wanneer dit project ontstaan is uit een gewonnen
+  // lead via /api/leads/[id]/start-project. Sales-artefacten (scans, outreach,
+  // pitch-mail) blijven op leadId en zijn zo via het project te joinen.
+  leadId: integer("lead_id").references((): any => leads.id),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
@@ -81,6 +85,7 @@ export const projecten = sqliteTable("projecten", {
   idxKlantId: index("idx_projecten_klant_id").on(table.klantId),
   idxEigenaar: index("idx_projecten_eigenaar").on(table.eigenaar),
   idxStatusActief: index("idx_projecten_status_actief").on(table.status, table.isActief),
+  idxLeadId: index("idx_projecten_lead_id").on(table.leadId),
 }));
 
 // ============ PROJECT INTAKES ============

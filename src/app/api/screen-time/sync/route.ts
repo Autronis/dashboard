@@ -6,16 +6,6 @@ import { eq, and, desc, sql } from "drizzle-orm";
 
 // ─── Server-side idle detection constants ───
 const MAX_ENTRY_DURATION_SECONDS = 300; // 5 min cap per entry
-const NACHT_START_UUR = 22; // 22:00
-const NACHT_EIND_UUR = 8;  // 08:00
-
-function isNachtUur(tijdStr: string): boolean {
-  const uur = parseInt(
-    new Intl.DateTimeFormat("nl-NL", { timeZone: "Europe/Amsterdam", hour: "numeric", hour12: false }).format(new Date(tijdStr)),
-    10
-  );
-  return uur >= NACHT_START_UUR || uur < NACHT_EIND_UUR;
-}
 
 /** Split een entry die langer is dan MAX_ENTRY_DURATION_SECONDS in chunks */
 function splitEntry(entry: {
@@ -265,9 +255,6 @@ export async function POST(req: NextRequest) {
         let klantId: number | null = null;
         let matchedByRule = false;
 
-        // Nachturen (22:00-08:00) → overig categorie
-        const isNacht = isNachtUur(chunk.startTijd);
-
         // 1. Try user-defined rules first (highest priority)
         for (const regel of regels) {
           const matchTarget =
@@ -298,11 +285,6 @@ export async function POST(req: NextRequest) {
           if (autoCategorie) {
             categorie = autoCategorie;
           }
-        }
-
-        // Override categorie for night hours
-        if (isNacht) {
-          categorie = "overig";
         }
 
         // Project detection from window title (if no project assigned by rules)

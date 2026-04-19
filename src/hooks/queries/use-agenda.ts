@@ -13,6 +13,8 @@ export interface AgendaItem {
   herinneringMinuten: number | null;
   eigenaar?: "sem" | "syb" | "team" | "vrij";
   gemaaktDoor?: "user" | "bridge" | "fallback-haiku" | "ai-plan-button";
+  projectId?: number | null;
+  projectNaam?: string | null;
 }
 
 function datumStr(jaar: number, maand: number, dag: number) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { agendaItems, gebruikers } from "@/lib/db/schema";
+import { agendaItems, gebruikers, projecten } from "@/lib/db/schema";
 import { requireAuth, requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { pushEventToGoogle } from "@/lib/google-calendar";
@@ -41,9 +41,12 @@ export async function GET(req: NextRequest) {
         googleEventId: agendaItems.googleEventId,
         eigenaar: sql<Eigenaar>`COALESCE(${agendaItems.eigenaar}, 'vrij')`,
         gemaaktDoor: sql<GemaaktDoor>`COALESCE(${agendaItems.gemaaktDoor}, 'user')`,
+        projectId: agendaItems.projectId,
+        projectNaam: projecten.naam,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))
+      .leftJoin(projecten, eq(agendaItems.projectId, projecten.id))
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(agendaItems.startDatum);
 
@@ -91,6 +94,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const projectId = typeof body.projectId === "number" ? body.projectId : null;
+
     const [nieuw] = await db
       .insert(agendaItems)
       .values({
@@ -104,6 +109,7 @@ export async function POST(req: NextRequest) {
         herinneringMinuten: body.herinneringMinuten ?? null,
         eigenaar,
         gemaaktDoor,
+        projectId,
       })
       .returning();
 

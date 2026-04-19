@@ -9,6 +9,7 @@ import type { AgendaItem, ExternEvent, DeadlineEvent, AgendaTaak } from "@/hooks
 import { SwimLaneView } from "./swim-lane-view";
 import type { AgendaBlokProps } from "./agenda-blok";
 import { UitlegBlock } from "@/components/ui/uitleg-block";
+import { klantKleur } from "@/lib/klant-kleuren";
 
 type AnyEvent = AgendaItem | ExternEvent | DeadlineEvent;
 
@@ -635,6 +636,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           eindDatum: ag.eindDatum,
           eigenaar: ag.eigenaar ?? "vrij",
           gemaaktDoor: ag.gemaaktDoor,
+          projectNaam: ag.projectNaam,
+          projectKleur: klantKleur(ag.projectId),
         };
       });
 

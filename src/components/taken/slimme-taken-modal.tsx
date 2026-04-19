@@ -331,8 +331,12 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
   }
 
   async function handleFormSubmit(isEdit: boolean) {
-    if (!formData.naam.trim() || !formData.prompt.trim()) {
-      addToast("Naam en prompt zijn verplicht", "fout");
+    if (!formData.naam.trim()) {
+      addToast("Naam is verplicht", "fout");
+      return;
+    }
+    if (formData.uitvoerder === "claude" && !formData.prompt.trim()) {
+      addToast("Prompt is verplicht voor Claude templates", "fout");
       return;
     }
     setSubmitting(true);
@@ -352,6 +356,7 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
           prompt: formData.prompt,
           velden: formData.velden,
           recurringDayOfWeek: formData.recurringDayOfWeek,
+          uitvoerder: formData.uitvoerder,
         }),
       });
       const data = await res.json();
@@ -1003,6 +1008,37 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                 {!loading && mode === "edit" && (
                   <div className="space-y-4">
                     <div>
+                      <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Uitvoerder</label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, uitvoerder: "claude" })}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition ${
+                            formData.uitvoerder === "claude"
+                              ? "bg-purple-500/20 text-purple-200 border-purple-500/40"
+                              : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:border-autronis-text-secondary/40"
+                          }`}
+                        >
+                          Claude (research/analyse)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({ ...formData, uitvoerder: "handmatig" })}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition ${
+                            formData.uitvoerder === "handmatig"
+                              ? "bg-emerald-500/20 text-emerald-200 border-emerald-500/40"
+                              : "bg-autronis-bg text-autronis-text-secondary border-autronis-border hover:border-autronis-text-secondary/40"
+                          }`}
+                        >
+                          Handmatig (Sem zelf)
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-autronis-text-secondary/60 mt-1">
+                        Handmatige taken (LinkedIn posts, cold outreach, demo calls) worden niet door Claude uitgevoerd.
+                      </p>
+                    </div>
+
+                    <div>
                       <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Naam *</label>
                       <input
                         type="text"
@@ -1053,12 +1089,18 @@ export function SlimmeTakenModal({ open, onClose, onCreated, ingeplandVoor, preS
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">Prompt *</label>
+                      <label className="block text-xs font-medium text-autronis-text-secondary mb-1.5">
+                        {formData.uitvoerder === "claude" ? "Prompt *" : "Instructies / checklist (optioneel)"}
+                      </label>
                       <textarea
                         value={formData.prompt}
                         onChange={(e) => setFormData({ ...formData, prompt: e.target.value })}
                         rows={8}
-                        placeholder="De letterlijke opdracht voor Claude. Gebruik {veld} placeholders die de UI invult."
+                        placeholder={
+                          formData.uitvoerder === "claude"
+                            ? "De letterlijke opdracht voor Claude. Gebruik {veld} placeholders die de UI invult."
+                            : "Optionele checklist of context voor jezelf. Bv. stappen, doelen, hoe het eruit moet zien."
+                        }
                         className="w-full bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-xs text-autronis-text-primary font-mono focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 resize-none"
                       />
                     </div>

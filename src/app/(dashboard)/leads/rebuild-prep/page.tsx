@@ -796,17 +796,21 @@ function ResultCard({
           <button
             onClick={() => onCopy(result)}
             className={cn(
-              "px-3 py-1.5 rounded-lg border text-xs font-medium transition inline-flex items-center gap-1.5",
+              "px-3 py-1.5 rounded-lg border text-xs font-semibold transition inline-flex items-center gap-1.5",
               copied
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                : "bg-autronis-bg border-autronis-border text-autronis-text hover:border-autronis-accent"
+                : "bg-autronis-accent text-black hover:bg-autronis-accent-hover border-transparent"
             )}
-            title={assets ? "Kopieert prompt mét scroll-stop asset URLs" : "Kopieert de rebuild prompt"}
+            title={
+              assets
+                ? "Kopieert prompt mét scroll-stop asset URLs. Plak in een verse Claude Code chat — ATLAS zet auto de chat-tag."
+                : "Kopieert de rebuild prompt. Plak in een verse Claude Code chat — ATLAS zet auto de chat-tag."
+            }
           >
             {copied ? (
               <>
                 <Check className="w-3.5 h-3.5" />
-                Gekopieerd
+                Gekopieerd — plak in Claude Code
               </>
             ) : (
               <>
@@ -815,15 +819,6 @@ function ResultCard({
               </>
             )}
           </button>
-          <a
-            href="https://claude.ai/new"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-3 py-1.5 rounded-lg bg-autronis-accent text-black text-xs font-semibold hover:bg-autronis-accent-hover transition inline-flex items-center gap-1.5"
-          >
-            claude.ai
-            <ExternalLink className="w-3 h-3" />
-          </a>
         </div>
       </div>
     </div>

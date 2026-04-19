@@ -65,7 +65,7 @@ export function buildAssetInjection(assets: RebuildPrepAssets): string {
   );
   lines.push("");
   lines.push(
-    "⚠️ Kie.ai / Fal.ai URLs zijn tijdelijk (expiren na enkele uren). Download video + thumbnails naar Vercel Blob als je ze langer nodig hebt.",
+    "URLs zijn gepersisteerd naar Vercel Blob bij save — blijvend beschikbaar, geen expiry.",
   );
   return lines.join("\n");
 }

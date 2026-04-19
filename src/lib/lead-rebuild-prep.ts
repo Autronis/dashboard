@@ -58,6 +58,22 @@ export type PrepLeadResult = {
 };
 
 
+function chatSetupBlock(name: string): string {
+  // Atlas chat-observability hook: zodra deze prompt in een verse Claude Code
+  // chat komt, pak dit op als eerste actie. De tag + taak komen in de statusline
+  // en chats-active/<sid>.json zodat cross-chat zichtbaar is waar we mee bezig zijn.
+  const safeName = name.replace(/"/g, "'").trim() || "onbekende klant";
+  return `## Voor je begint (Atlas chat-setup)
+
+Roep eenmalig Skill(chats) aan voor deze sessie:
+- \`set-tag\` → "${safeName} demo site"
+- \`set-taak\` → "landing page bouwen"
+
+Dit update de statusline + maakt de chat vindbaar via \`/chats active\` vanuit andere sessies. Daarna meteen door met de opdracht hieronder.
+
+`;
+}
+
 const DESIGN_SYSTEM_BLOCK = `## Design system (verplicht)
 
 - Jet-black achtergrond \`#0a0a0b\` met subtiele ambient glows
@@ -98,7 +114,7 @@ export function buildFreshPrompt(input: {
           ? `SERP-check faalde (${serp.note}). Ga uit van geen bestaande site.`
           : `SERP-check overgeslagen.`;
 
-  return `Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
+  return `${chatSetupBlock(name)}Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
 
 Jouw opdracht: bouw een jaw-dropping **dark premium landing page** voor een nieuwe lead uit onze database, klaar om aan de klant te laten zien als pitch.
 
@@ -114,11 +130,11 @@ ${DESIGN_SYSTEM_BLOCK}
 
 ## Wat ik van je wil
 
-Lever **één Next.js 15 + Tailwind landing page** (artifact). Gebruik alleen Tailwind utility classes.
+Lever **één Next.js 15 + Tailwind landing page** (artifact of als bestanden in het project). Gebruik alleen Tailwind utility classes.
 
 **Geen bestaande content beschikbaar** — dit is een cold lead. Verzin GEEN features, specs, testimonials of claims die je niet kan onderbouwen vanuit de categorie + locatie. Gebruik honest placeholders ("Coming soon", "Jouw USP hier", "Testimonial plek") waar data ontbreekt. De pitch is: "dit is hoe jullie site eruit kan zien" — niet "dit is jullie nieuwe site".
 
-Gebruik Claude artifacts zodat ik 'm live kan previewen en daarna kan itereren ("maak 'm bolder", "voeg pricing toe", "meer animatie", etc).`;
+Iteratie na eerste versie: "maak 'm bolder", "voeg pricing toe", "meer animatie", etc.`;
 }
 
 export function buildUpgradePrompt(input: {
@@ -139,7 +155,7 @@ ${scrape.markdown}`
 URL: ${scrape.url || "(onbekend)"}
 ${scrape.error ? `Scrape faalde: ${scrape.error}. Ga open de URL zelf in een browser voor context.` : "Scrape overgeslagen."}`;
 
-  return `Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
+  return `${chatSetupBlock(name)}Je bent senior frontend designer bij Autronis, een studio die premium landing pages bouwt voor product- en tech-bedrijven.
 
 Jouw opdracht: **upgrade** de bestaande website van een lead tot een jaw-dropping **dark premium landing page**, klaar om als pitch te laten zien ("zo kan jullie site eruit zien").
 
@@ -156,13 +172,13 @@ ${sourceBlock}
 
 ## Wat ik van je wil
 
-Lever **één Next.js 15 + Tailwind landing page** (artifact). Gebruik alleen Tailwind utility classes.
+Lever **één Next.js 15 + Tailwind landing page** (artifact of als bestanden in het project). Gebruik alleen Tailwind utility classes.
 
 **Gebruik ECHTE copy uit de bron hierboven** — productnamen, services, USPs, testimonials. Herschrijf voor punch en ritme, maar verzin GEEN features, specs of claims die er niet staan. Als content ontbreekt: honest placeholder ("Coming soon", "tbd") of laat de sectie weg.
 
 Dit is een upgrade-pitch: maak duidelijk zichtbaar welke secties sterker worden (bolder hero, premium proof-bar, modernere features grid). De klant moet "wow dit is veel beter dan wat we nu hebben" denken zodra ze 'm zien.
 
-Gebruik Claude artifacts zodat ik 'm live kan previewen en daarna kan itereren ("maak 'm bolder", "voeg pricing toe", "meer animatie", etc).`;
+Iteratie na eerste versie: "maak 'm bolder", "voeg pricing toe", "meer animatie", etc.`;
 }
 
 function normalizeUrl(raw: string): string {

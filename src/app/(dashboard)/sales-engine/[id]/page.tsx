@@ -509,25 +509,20 @@ function WebsiteRebuildCard({
           )}
           <button
             onClick={handleCopy}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition ${
               copied
                 ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"
-                : "bg-[var(--card)] border-[var(--border)] text-[var(--text-primary)] hover:border-[var(--accent)]/40"
+                : "bg-[var(--accent)] text-black hover:opacity-90 border-transparent"
             }`}
-            title={assets ? "Kopieert prompt mét scroll-stop asset URLs" : "Kopieert de rebuild prompt"}
+            title={
+              assets
+                ? "Kopieert prompt mét scroll-stop asset URLs. Plak in een verse Claude Code chat — ATLAS zet auto de chat-tag."
+                : "Kopieert de rebuild prompt. Plak in een verse Claude Code chat — ATLAS zet auto de chat-tag."
+            }
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-            {copied ? "Gekopieerd" : `Kopieer prompt${assets ? " + assets" : ""}`}
+            {copied ? "Gekopieerd — plak in Claude Code" : `Kopieer prompt${assets ? " + assets" : ""}`}
           </button>
-          <a
-            href="https://claude.ai/new"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[var(--accent)] text-black text-xs font-semibold hover:opacity-90 transition"
-          >
-            claude.ai
-            <ExternalLink className="w-3 h-3" />
-          </a>
         </div>
       </div>
 

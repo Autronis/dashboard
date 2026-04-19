@@ -1,5 +1,5 @@
-import { LeadsLayout } from "../_components/LeadsLayout";
+import { ContactenTab } from "../_tabs/ContactenTab";
 
 export default function LeadsContactsPage() {
-  return <LeadsLayout active="contacten" />;
+  return <ContactenTab />;
 }

@@ -1,5 +1,5 @@
-import { LeadsLayout } from "../_components/LeadsLayout";
+import { EnrichmentTab } from "../_tabs/EnrichmentTab";
 
 export default function LeadsEnrichmentPage() {
-  return <LeadsLayout active="enrichment" />;
+  return <EnrichmentTab />;
 }

@@ -699,6 +699,23 @@ if (isTurso) {
   client.execute(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2') ON CONFLICT(naam) DO NOTHING`).catch(() => {});
   client.execute(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_syb_lane', 0, 'Toont Syb (Autro) lane naast Sem. Zet aan zodra Syb actief aansluit op de bridge.') ON CONFLICT(naam) DO NOTHING`).catch(() => {});
 
+  // Slimme acties door bridge (v2 phase 3) — vervangt generieke templates.
+  client.execute(`CREATE TABLE IF NOT EXISTS slimme_acties_bridge (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titel TEXT NOT NULL,
+    beschrijving TEXT,
+    cluster TEXT,
+    pijler TEXT,
+    duur_min INTEGER,
+    voor TEXT NOT NULL DEFAULT 'team',
+    prioriteit TEXT NOT NULL DEFAULT 'normaal',
+    bron_taak_id INTEGER REFERENCES taken(id),
+    gecreeerd_op TEXT NOT NULL DEFAULT (datetime('now')),
+    verloopt_op TEXT NOT NULL
+  )`).catch(() => {});
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_verloopt ON slimme_acties_bridge(verloopt_op)`).catch(() => {});
+  client.execute(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_voor ON slimme_acties_bridge(voor)`).catch(() => {});
+
   // Schema drift detector — runs after the explicit migrations above and
   // catches any columns that schema.ts adds but nobody remembered to add
   // an ALTER for. Fire-and-forget so startup isn't blocked; errors go to
@@ -1174,6 +1191,22 @@ if (isTurso) {
   sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_agenda_eigenaar_datum ON agenda_items(eigenaar, start_datum)`);
   try { sqliteDb.exec(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_lanes_v2', 0, 'Rendert agenda als swim lanes (sem/syb/vrij) — bridge v2')`); } catch { /* seed row already exists */ }
   try { sqliteDb.exec(`INSERT INTO feature_flags (naam, actief, beschrijving) VALUES ('agenda_syb_lane', 0, 'Toont Syb (Autro) lane naast Sem. Zet aan zodra Syb actief aansluit op de bridge.')`); } catch { /* seed row already exists */ }
+
+  sqliteDb.exec(`CREATE TABLE IF NOT EXISTS slimme_acties_bridge (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    titel TEXT NOT NULL,
+    beschrijving TEXT,
+    cluster TEXT,
+    pijler TEXT,
+    duur_min INTEGER,
+    voor TEXT NOT NULL DEFAULT 'team',
+    prioriteit TEXT NOT NULL DEFAULT 'normaal',
+    bron_taak_id INTEGER REFERENCES taken(id),
+    gecreeerd_op TEXT NOT NULL DEFAULT (datetime('now')),
+    verloopt_op TEXT NOT NULL
+  )`);
+  sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_verloopt ON slimme_acties_bridge(verloopt_op)`);
+  sqliteDb.exec(`CREATE INDEX IF NOT EXISTS idx_slimme_acties_bridge_voor ON slimme_acties_bridge(voor)`);
 
   sqlite = sqliteDb;
   db = drizzleSqlite(sqliteDb, { schema });

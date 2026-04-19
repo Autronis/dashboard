@@ -2003,3 +2003,25 @@ export const opsHeartbeats = sqliteTable("ops_heartbeats", {
   project: text("project"),
   tijdstip: text("tijdstip").notNull().default(sql`(datetime('now'))`),
 });
+
+// ============ SLIMME ACTIES (bridge-generated) ============
+// Concrete, context-bewuste acties die de nightly bridge produceert ter
+// vervanging van de generieke `slimmeTakenTemplates`. Auto-cleanup via
+// verlooptOp (default = start_of_tomorrow + 48h). bronTaakId optional:
+// koppelt aan een bestaande taak als de actie een follow-up is.
+export const slimmeActiesBridge = sqliteTable("slimme_acties_bridge", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  titel: text("titel").notNull(),
+  beschrijving: text("beschrijving"),
+  cluster: text("cluster"),
+  pijler: text("pijler"),
+  duurMin: integer("duur_min"),
+  voor: text("voor", { enum: ["sem", "syb", "team"] }).notNull().default("team"),
+  prioriteit: text("prioriteit", { enum: ["laag", "normaal", "hoog"] }).notNull().default("normaal"),
+  bronTaakId: integer("bron_taak_id").references(() => taken.id),
+  gecreeerdOp: text("gecreeerd_op").notNull().default(sql`(datetime('now'))`),
+  verlooptOp: text("verloopt_op").notNull(),
+}, (table) => ({
+  idxVerlooptOp: index("idx_slimme_acties_bridge_verloopt").on(table.verlooptOp),
+  idxVoor: index("idx_slimme_acties_bridge_voor").on(table.voor),
+}));

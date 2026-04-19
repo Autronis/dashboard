@@ -1045,20 +1045,23 @@ export default function KlantDetailPage() {
             return (
               <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
                 <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Tijd per week (laatste 8)</h2>
-                <div className="flex items-end justify-between gap-2 h-32">
+                <div className="flex items-stretch justify-between gap-2 h-36">
                   {weken.map((w) => {
-                    const pct = (w.min / maxMin) * 100;
+                    const pct = w.min === 0 ? 0 : Math.max(4, (w.min / maxMin) * 100);
                     return (
-                      <div key={w.iso} className="flex-1 flex flex-col items-center gap-2">
+                      <div key={w.iso} className="flex-1 flex flex-col items-center gap-2 h-full">
                         <div className="w-full flex-1 flex items-end relative group">
                           <motion.div
-                            className="w-full bg-autronis-accent/70 hover:bg-autronis-accent rounded-t-lg transition-colors"
+                            className={cn(
+                              "w-full rounded-t-lg transition-colors",
+                              w.min > 0 ? "bg-autronis-accent/70 hover:bg-autronis-accent" : "bg-autronis-border/40"
+                            )}
                             initial={{ height: 0 }}
                             animate={{ height: `${pct}%` }}
                             transition={{ duration: 0.5 }}
                           />
                           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-autronis-bg border border-autronis-border rounded-md text-[10px] text-autronis-text-primary opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {formatUren(w.min)}
+                            {w.min === 0 ? "—" : formatUren(w.min)}
                           </div>
                         </div>
                         <span className="text-[10px] text-autronis-text-secondary/70 tabular-nums">{w.label}</span>
@@ -1412,21 +1415,23 @@ export default function KlantDetailPage() {
           {maandelijkseOmzet.length > 0 && (
             <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-7">
               <h2 className="text-lg font-semibold text-autronis-text-primary mb-5">Omzet per maand</h2>
-              <div className="flex items-end gap-2 h-40">
+              <div className="flex items-stretch gap-2 h-44">
                 {(() => {
                   const maxOmzet = Math.max(...maandelijkseOmzet.map(m => m.omzet), 1);
                   return maandelijkseOmzet.map((m) => {
-                    const height = Math.max((m.omzet / maxOmzet) * 100, 4);
+                    const height = m.omzet === 0 ? 0 : Math.max(4, (m.omzet / maxOmzet) * 100);
                     const maandLabel = m.maand.substring(5);
                     return (
-                      <div key={m.maand} className="flex-1 flex flex-col items-center gap-1 group">
-                        <span className="text-[10px] text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                      <div key={m.maand} className="flex-1 flex flex-col items-center gap-1 h-full group">
+                        <span className="text-[10px] text-autronis-text-secondary opacity-0 group-hover:opacity-100 transition-opacity tabular-nums h-3">
                           {formatBedrag(m.omzet)}
                         </span>
-                        <div
-                          className="w-full bg-autronis-accent/80 rounded-t-lg hover:bg-autronis-accent transition-colors"
-                          style={{ height: `${height}%` }}
-                        />
+                        <div className="w-full flex-1 flex items-end">
+                          <div
+                            className="w-full bg-autronis-accent/80 rounded-t-lg hover:bg-autronis-accent transition-colors"
+                            style={{ height: `${height}%` }}
+                          />
+                        </div>
                         <span className="text-[10px] text-autronis-text-secondary/60">{maandLabel}</span>
                       </div>
                     );

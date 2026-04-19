@@ -9,7 +9,7 @@ import { logTokenUsage } from "@/lib/ai/tracked-anthropic";
 const cache = new Map<string, { beschrijvingen: string[]; ts: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 // Cache version — bump to invalidate all cached descriptions
-const CACHE_VERSION = 7;
+const CACHE_VERSION = 8;
 
 // Focus log entry — wat de Claude chat heeft gemeld
 interface FocusLogEntry {
@@ -66,10 +66,16 @@ async function generateBeschrijvingen(sessies: Sessie[], focusLogsList: FocusLog
       ? ` ChatFocus: ${sessieFocus.join(" | ")}`
       : "";
 
-    return `${i + 1}. [${dur}m] Apps: ${appStr}. Titels: ${titels || "geen titels"}.${focusStr}`;
+    return `${i + 1}. [${dur}m cat=${s.categorie}] Apps: ${appStr}. Titels: ${titels || "geen titels"}.${focusStr}`;
   }).join("\n");
 
   const prompt = `Beschrijf elke sessie in 12-20 woorden. Baseer je op de venstertitels EN de ChatFocus regels (1-zin samenvattingen die de user naar Claude stuurde — het zijn de LETTERLIJKE onderwerpen die besproken werden in die tijdvenster).
+
+BELANGRIJK — CATEGORIE LEIDT DE FRAMING:
+- Bij elke sessie staat cat=<categorie>. Die is al bepaald op basis van seconden per app.
+- Bij cat=afleiding → begin met "Afleiding:" of "YouTube:" of concrete video-titel, noem Code/Chrome werk alleen kort als bijzaak ("terwijl VS Code open stond"). NOOIT "Gewerkt aan X" als hoofdzin.
+- Bij cat=overig → framing neutraal: "Wisselende activiteit", "Browsergebruik", "Diverse tabs".
+- Bij cat=development/design/etc → normale werk-framing ("Gewerkt aan X").
 
 GOUDEN REGEL — CHATFOCUS HEEFT VOORRANG:
 - Als er ChatFocus regels aanwezig zijn, MOET je die als primaire informatie gebruiken. Dat is de WERKELIJKE activiteit van de user, accurater dan welke window title ook.

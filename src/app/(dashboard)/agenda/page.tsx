@@ -163,6 +163,23 @@ export default function AgendaPage() {
   const vandaag = new Date();
   const [jaar, setJaar] = useState(vandaag.getFullYear());
   const [maand, setMaand] = useState(vandaag.getMonth());
+
+  // Bridge v2 swim lanes — gated on feature flag `agenda_lanes_v2`. Wanneer
+  // aan staat verbreden we de agenda naar volle breedte en zetten de "Te
+  // plannen" sidebar er onder (lanes + klant-accent-rand is breed werk).
+  const [lanesV2, setLanesV2] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/feature-flags", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { flags: {} }))
+      .then((j: { flags?: Record<string, boolean> }) => {
+        if (!cancelled) setLanesV2(!!j.flags?.agenda_lanes_v2);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
@@ -1338,7 +1355,10 @@ export default function AgendaPage() {
       </div>
      </div>
 
-      <div className="max-w-[1600px] mx-auto grid gap-3 sm:gap-4 grid-cols-1 lg:grid-cols-[1fr_460px]">
+      <div className={cn(
+        "mx-auto grid gap-3 sm:gap-4 grid-cols-1",
+        lanesV2 ? "max-w-[1800px]" : "max-w-[1600px] lg:grid-cols-[1fr_460px]"
+      )}>
         {/* Kalender */}
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 lg:p-5">
           {/* Navigatie */}

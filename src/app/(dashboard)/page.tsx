@@ -68,6 +68,8 @@ import { EfficiencyWidget } from "@/components/dashboard/efficiency-widget";
 import { OpenIntakesWidget } from "@/components/dashboard/open-intakes-widget";
 import { RemoteCommitsBanner } from "@/components/dashboard/remote-commits-banner";
 import { SnelleActiesWidget } from "@/components/dashboard/snelle-acties-widget";
+import { SalesPipelineWidget } from "@/components/dashboard/sales-pipeline-widget";
+import { ContentVandaagWidget } from "@/components/dashboard/content-vandaag-widget";
 
 // ============ HELPERS ============
 
@@ -953,9 +955,15 @@ export default function DashboardPage() {
           <RemoteCommitsBanner />
         </motion.div>
 
-        {/* Taken widget */}
-        {mijnTaken.length > 0 && (
-          <motion.div variants={sectionVariants} className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+        {/* 3-kolom focus strip — Mijn taken + Sales pipeline + Content vandaag.
+            Sluit aan op go-to-market mindset: wat moet ik vandaag doen,
+            waar sta ik in de funnel, welke post moet ik maken. */}
+        <motion.div variants={sectionVariants} className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          <SalesPipelineWidget />
+          <ContentVandaagWidget />
+
+          {mijnTaken.length > 0 && (
+          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-autronis-text-primary flex items-center gap-2">
                 <ListChecks className="w-4 h-4 text-autronis-accent" />
@@ -1055,8 +1063,9 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-          </motion.div>
-        )}
+          </div>
+          )}
+        </motion.div>
 
         {/* Daily briefing — direct na taken zodat je je dag start kan zien */}
         <motion.div variants={sectionVariants}>

@@ -67,10 +67,12 @@ interface RawEntry {
   projectNaam: string | null;
 }
 
-// Merge overlappende intervallen en tel de unieke "wall-clock" tijd.
-// [{0,5},{3,10},{12,15}] → [{0,10},{12,15}] → 10+3 = 13 seconden.
-// Dit is de bruto actieve-tijd-definitie (Sem's model): "tijd waarin je ergens
-// achter je Mac was", niet netto-duur met overlap van parallel actieve apps.
+// Merge overlappende intervallen + kleine gaps (≤ GAP_TOLERANCE_SEC) tot één
+// range. Sem's mental model: "tijd achter m'n Mac", waarbij 30sec-3min pauzes
+// tussen entries (toetsenbord idle, app-switch delay) niet als aparte blokken
+// gezien worden. 10 min tolerance matcht zijn visuele heatmap-intuïtie.
+const GAP_TOLERANCE_SEC = 600; // 10 minuten
+
 function mergeIntervalsSeconden(ranges: Array<[number, number]>): number {
   if (ranges.length === 0) return 0;
   const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
@@ -78,7 +80,7 @@ function mergeIntervalsSeconden(ranges: Array<[number, number]>): number {
   let [curStart, curEnd] = sorted[0];
   for (let i = 1; i < sorted.length; i++) {
     const [s, e] = sorted[i];
-    if (s <= curEnd) {
+    if (s - curEnd <= GAP_TOLERANCE_SEC) {
       curEnd = Math.max(curEnd, e);
     } else {
       total += curEnd - curStart;

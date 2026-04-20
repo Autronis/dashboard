@@ -14,7 +14,7 @@ import {
   UserCheck, Activity, CalendarDays, Wand2, ShieldAlert, Settings,
   AlertTriangle, PhoneCall,
   Receipt, CreditCard, ChevronRight, Layers, PenLine, Library,
-  PlusCircle, Compass, Sparkles, UtensilsCrossed, FolderArchive,
+  PlusCircle, Sparkles, UtensilsCrossed, FolderArchive,
   Heart, TrendingUp, Globe, FolderOpen, Target, Briefcase,
   Instagram,
 } from "lucide-react";
@@ -108,7 +108,6 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Video Studio", icon: Video, href: "/content/videos/studio", alsoMatches: ["/content/videos"] },
           { label: "Banners", icon: Layers, href: "/content/banners" },
           { label: "Animaties", icon: Wand2, href: "/animaties" },
-          { label: "Case Studies", icon: Compass, href: "/case-studies" },
         ],
       },
       {

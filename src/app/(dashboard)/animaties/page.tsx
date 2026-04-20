@@ -7,7 +7,7 @@ import {
   Layers, Upload, X, RotateCcw, Globe, Code2, ChevronDown, ChevronUp, Play,
   Loader2, Sparkles, Trash2, RefreshCw, FileText, Eye, EyeOff, BookmarkPlus,
   Star, Search, FolderOpen, Tag, CheckSquare, Grid3X3, LayoutList,
-  ChevronLeft, ChevronRight, ArrowLeft,
+  ChevronLeft, ChevronRight, ArrowLeft, Link2,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -136,7 +136,7 @@ const VIDEO_TRANSITIE_PRESETS = [
 
 // ─── Gallery Card ────────────────────────────────────────────────────────────
 
-function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProjectChange, onPreview, projects }: {
+function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProjectChange, onPreview, onLinkPost, projects }: {
   item: GalleryItem;
   selected: boolean;
   onSelect: (id: number) => void;
@@ -145,9 +145,13 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
   onLoad: (item: GalleryItem) => void;
   onProjectChange: (id: number, projectId: number | null) => void;
   onPreview: (item: GalleryItem) => void;
+  onLinkPost: (item: GalleryItem) => void;
   projects: ProjectOption[];
 }) {
   const tags = item.tags ? item.tags.split(",").map(t => t.trim()).filter(Boolean) : [];
+  const linkedPostIds = tags
+    .filter((t) => /^post:\d+$/.test(t))
+    .map((t) => Number(t.slice(5)));
 
   return (
     <div className={`group bg-autronis-card border rounded-xl overflow-hidden transition-all ${selected ? "border-autronis-accent ring-1 ring-autronis-accent/30" : "border-autronis-border hover:border-autronis-accent/30"}`}>
@@ -189,6 +193,15 @@ function GalleryCard({ item, selected, onSelect, onFav, onDelete, onLoad, onProj
             {item.isFavoriet ? <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" /> : null}
           </div>
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            {item.videoUrl && (
+              <button
+                onClick={() => onLinkPost(item)}
+                title={linkedPostIds.length > 0 ? `Gekoppeld aan ${linkedPostIds.length} post(s)` : "Koppel aan content-post"}
+                className={`p-1 ${linkedPostIds.length > 0 ? "text-autronis-accent" : "text-autronis-text-tertiary hover:text-autronis-accent"}`}
+              >
+                <Link2 className="w-3.5 h-3.5" />
+              </button>
+            )}
             <button onClick={() => onLoad(item)} title="Laad in generator" className="p-1 text-autronis-text-tertiary hover:text-autronis-accent">
               <RotateCcw className="w-3.5 h-3.5" />
             </button>

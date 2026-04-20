@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "upwork:login": "tsx scripts/upwork-login.ts",
-    "upwork:refetch": "tsx scripts/upwork-refetch.ts"
+    "upwork:refetch": "tsx scripts/upwork-refetch.ts",
+    "upwork:test-url": "tsx scripts/upwork-test-url.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

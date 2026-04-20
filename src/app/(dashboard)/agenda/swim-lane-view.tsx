@@ -20,21 +20,6 @@ interface Props {
 
 type AvatarMap = Record<string, { naam: string; avatarUrl: string | null }>;
 
-// ui-avatars.com fallback: genereert een PNG met initials + backgroundkleur
-// wanneer de gebruikers-tabel nog geen avatar-upload heeft. Voorkomt dat de
-// lane-header maandenlang een lege cirkel met "S" toont tot iemand uploadt.
-function avatarFallback(naam: string, kleur: string): string {
-  const params = new URLSearchParams({
-    name: naam,
-    background: kleur.replace("#", ""),
-    color: "fff",
-    size: "128",
-    bold: "true",
-    format: "png",
-  });
-  return `https://ui-avatars.com/api/?${params.toString()}`;
-}
-
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
 const HEADER_HEIGHT_PX = 64;
 const VRIJ_LANE_WIDTH_REM = 9;
@@ -83,17 +68,13 @@ function hourOffset(iso: string, dagStart: number): number {
   return (h - dagStart) * HOUR_HEIGHT_PX;
 }
 
-const LANE_KLEUR: Record<string, string> = {
-  sem: "#14b8a6",
-  syb: "#8b5cf6",
-  vrij: "#64748b",
-};
-
 function LaneHeader({ kind, avatars }: { kind: keyof typeof LANE_CHARACTER; avatars: AvatarMap }) {
   const c = LANE_CHARACTER[kind];
-  const rawUrl = kind === "sem" || kind === "syb" ? avatars[kind]?.avatarUrl ?? null : null;
+  // /api/team/avatars levert al een fallback-URL naar /foto-sem.jpg of
+  // /foto-syb.jpg als de DB-value null is. Hier alleen nog de 'vrij' lane
+  // die geen foto heeft.
+  const avatarUrl = kind === "sem" || kind === "syb" ? avatars[kind]?.avatarUrl ?? null : null;
   const naam = kind === "sem" || kind === "syb" ? avatars[kind]?.naam ?? c.naam : c.naam;
-  const avatarUrl = rawUrl || (kind !== "vrij" ? avatarFallback(naam, LANE_KLEUR[kind] ?? "#2a3538") : null);
 
   return (
     <div

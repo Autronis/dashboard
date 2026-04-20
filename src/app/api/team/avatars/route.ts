@@ -19,10 +19,22 @@ export async function GET(req: NextRequest) {
       .from(gebruikers)
       .where(inArray(gebruikers.id, [1, 2]));
 
+    // Fallback naar de bestaande /public avatar-files zodat de agenda UI
+    // dezelfde foto's toont als team-tab / header / kapitaalrekening-zone.
+    // gebruikers.avatarUrl (uploadable) wint als die gezet is.
+    const FALLBACK: Record<string, string> = {
+      sem: "/foto-sem.jpg",
+      syb: "/foto-syb.jpg",
+    };
     const avatars: Record<string, { naam: string; avatarUrl: string | null }> = {};
     for (const row of rows) {
       const key = row.id === 1 ? "sem" : row.id === 2 ? "syb" : null;
-      if (key) avatars[key] = { naam: row.naam, avatarUrl: row.avatarUrl };
+      if (key) {
+        avatars[key] = {
+          naam: row.naam,
+          avatarUrl: row.avatarUrl || FALLBACK[key],
+        };
+      }
     }
     return NextResponse.json({ avatars });
   } catch (error) {

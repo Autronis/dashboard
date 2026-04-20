@@ -220,8 +220,10 @@ export default function TijdPage() {
     const dd = String(d.getDate()).padStart(2, "0");
     return `${y}-${m}-${dd}`;
   })();
+  // Ook voor dag-view: één aggregatie-call zodat KPI cards + banner consistent
+  // zijn met week/maand-view (alle 3 gebruiken dezelfde aggregate.ts helper).
   const { data: periodeStatsData, isLoading: periodeStatsLoading } = usePeriodeStats(
-    periode !== "dag" ? { van, tot: totInclusief } : undefined,
+    { van, tot: totInclusief },
   );
 
   // Fetch yesterday's stats for trend comparison (alleen zinvol in dag-view)
@@ -235,6 +237,17 @@ export default function TijdPage() {
   const stats = useMemo<SessiesData["stats"] | null>(() => {
     if (periode === "week") return bouwPeriodeStats(periodeStatsData, weekData);
     if (periode === "maand") return bouwPeriodeStats(periodeStatsData, maandData);
+    // Dag-view: merge periode-aggregate (core totalen) met dag-sessies
+    // (focus-metrics zoals flow score, beste blok, pauzes). Zo matcht KPI
+    // card "Actieve tijd" met wat aggregate.ts zegt, ipv de oudere
+    // sessies-endpoint slot-span.
+    if (periodeStatsData && sessiesData?.stats) {
+      return bouwPeriodeStats(periodeStatsData, [{
+        datum: van,
+        sessies: sessiesData.sessies ?? [],
+        stats: sessiesData.stats,
+      }]);
+    }
     return sessiesData?.stats ?? null;
   }, [periode, periodeStatsData, weekData, maandData, sessiesData]);
 
@@ -242,7 +255,7 @@ export default function TijdPage() {
     ? (weekLoading || periodeStatsLoading)
     : periode === "maand"
       ? (maandLoading || periodeStatsLoading)
-      : sessiesLoading;
+      : (sessiesLoading || periodeStatsLoading);
 
   // Trend vs gisteren alleen relevant in dag-view
   const gisterenStats = periode === "dag" ? (gisterenData?.stats ?? null) : null;

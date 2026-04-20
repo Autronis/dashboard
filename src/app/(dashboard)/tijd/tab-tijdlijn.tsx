@@ -882,12 +882,13 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
               {samenvatting.samenvattingKort}
             </p>
           ) : alleSessies.length > 0 ? (() => {
-            // Auto-generate local summary from session data
+            // Auto-generate local summary from session data. Gebruik duurSeconden
+            // ipv slot-span (eindTijd-startTijd) — slot-span overschat structureel.
             const descriptions = alleSessies
               .filter(s => s.beschrijving && s.beschrijving !== s.app)
               .map(s => s.beschrijving)
               .slice(0, 3);
-            const totalMin = Math.round(alleSessies.reduce((sum, s) => sum + (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000, 0) / 60);
+            const totalMin = Math.round(alleSessies.reduce((sum, s) => sum + (s.duurSeconden ?? 0), 0) / 60);
             const hours = Math.floor(totalMin / 60);
             const mins = totalMin % 60;
             const timeStr = hours > 0 ? `${hours}u${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;

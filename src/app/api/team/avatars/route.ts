@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { gebruikers } from "@/lib/db/schema";
 import { requireAuthOrApiKey } from "@/lib/auth";
-import { inArray } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 
 // GET /api/team/avatars
 // Returnt compact avatar-info voor Sem + Syb zodat de agenda swim-lane headers
@@ -25,6 +25,34 @@ export async function GET(req: NextRequest) {
       if (key) avatars[key] = { naam: row.naam, avatarUrl: row.avatarUrl };
     }
     return NextResponse.json({ avatars });
+  } catch (error) {
+    return NextResponse.json(
+      { fout: error instanceof Error ? error.message : "Onbekende fout" },
+      { status: error instanceof Error && error.message === "Niet geauthenticeerd" ? 401 : 500 }
+    );
+  }
+}
+
+// PUT /api/team/avatars
+// Body: { user: "sem" | "syb", avatarUrl: "https://..." }
+// Setter voor avatar-URL — kan met API-key auth vanuit CLI of vanuit een
+// profielpagina/modal.
+export async function PUT(req: NextRequest) {
+  try {
+    await requireAuthOrApiKey(req);
+    const body = await req.json();
+    if (body.user !== "sem" && body.user !== "syb") {
+      return NextResponse.json({ fout: "user moet 'sem' of 'syb' zijn" }, { status: 400 });
+    }
+    if (typeof body.avatarUrl !== "string" || !body.avatarUrl.startsWith("http")) {
+      return NextResponse.json({ fout: "avatarUrl moet een geldige http(s) URL zijn" }, { status: 400 });
+    }
+    const id = body.user === "sem" ? 1 : 2;
+    await db
+      .update(gebruikers)
+      .set({ avatarUrl: body.avatarUrl })
+      .where(eq(gebruikers.id, id));
+    return NextResponse.json({ succes: true, user: body.user, avatarUrl: body.avatarUrl });
   } catch (error) {
     return NextResponse.json(
       { fout: error instanceof Error ? error.message : "Onbekende fout" },

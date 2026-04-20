@@ -888,64 +888,10 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
 
   return (
     <div className="space-y-4">
-      {/* 1. AI Samenvatting row */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Compact AI summary — auto-generated fallback if no AI summary yet */}
-        <div className="flex-1 flex items-center gap-2 min-w-0">
-          <Sparkles className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          {samenvattingLoading ? (
-            <Skeleton className="h-4 w-48 rounded" />
-          ) : samenvatting?.samenvattingKort ? (
-            <p className="text-xs text-autronis-text-secondary truncate">
-              {samenvatting.samenvattingKort}
-            </p>
-          ) : alleSessies.length > 0 ? (() => {
-            // Auto-generate local summary from session data. Gebruik duurSeconden
-            // ipv slot-span (eindTijd-startTijd) — slot-span overschat structureel.
-            const descriptions = alleSessies
-              .filter(s => s.beschrijving && s.beschrijving !== s.app)
-              .map(s => s.beschrijving)
-              .slice(0, 3);
-            const totalMin = Math.round(alleSessies.reduce((sum, s) => sum + (s.duurSeconden ?? 0), 0) / 60);
-            const hours = Math.floor(totalMin / 60);
-            const mins = totalMin % 60;
-            const timeStr = hours > 0 ? `${hours}u${mins > 0 ? ` ${mins}m` : ""}` : `${mins}m`;
-            const text = descriptions.length > 0
-              ? `${timeStr} actief: ${descriptions.join(", ")}`
-              : `${timeStr} actief over ${alleSessies.length} sessies`;
-            return <p className="text-xs text-autronis-text-secondary truncate">{text}</p>;
-          })() : (
-            <p className="text-xs text-autronis-text-secondary opacity-50">Geen activiteit</p>
-          )}
-          {samenvatting?.samenvattingDetail && (
-            <button
-              onClick={() => setDetailOpen(!detailOpen)}
-              className="text-[10px] text-autronis-text-secondary hover:text-autronis-text-primary shrink-0 transition-colors"
-            >
-              {detailOpen ? (
-                <ChevronUp className="w-3.5 h-3.5" />
-              ) : (
-                <ChevronDown className="w-3.5 h-3.5" />
-              )}
-            </button>
-          )}
-        </div>
-
-        <button
-          onClick={() => genereer.mutate(datum)}
-          disabled={genereer.isPending}
-          className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-autronis-accent bg-autronis-accent/10 rounded-lg hover:bg-autronis-accent/20 transition-colors disabled:opacity-50 shrink-0"
-        >
-          {genereer.isPending ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3 h-3" />
-          )}
-          {samenvatting ? "Opnieuw" : "Genereer"}
-        </button>
-
-        {/* Week/maand rapportage knop */}
-        {view === "week" && (
+      {/* Weekrapportage-knop (alleen in week-view) — AI dag-samenvatting
+          banner is verwijderd; week/maand rapport blijft opvraagbaar. */}
+      {view === "week" && (
+        <div className="flex items-center justify-end">
           <button
             onClick={() => {
               genereerPeriode.mutate(
@@ -954,7 +900,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
               );
             }}
             disabled={genereerPeriode.isPending}
-            className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-yellow-400 bg-yellow-400/10 rounded-lg hover:bg-yellow-400/20 transition-colors disabled:opacity-50 shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-yellow-400 bg-yellow-400/10 rounded-lg hover:bg-yellow-400/20 transition-colors disabled:opacity-50"
           >
             {genereerPeriode.isPending ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -963,15 +909,6 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
             )}
             Weekrapportage
           </button>
-        )}
-      </div>
-
-      {/* Expandable detail */}
-      {detailOpen && samenvatting?.samenvattingDetail && (
-        <div className="bg-autronis-card border border-autronis-border rounded-xl p-4">
-          <p className="text-xs text-autronis-text-secondary leading-relaxed whitespace-pre-wrap">
-            {samenvatting.samenvattingDetail}
-          </p>
         </div>
       )}
 

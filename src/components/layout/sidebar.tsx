@@ -82,6 +82,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Errors", icon: AlertTriangle, href: "/leads/errors" },
           { label: "Lead Instellingen", icon: Settings, href: "/leads/instellingen" },
           { label: "Upwork", icon: Briefcase, href: "/upwork" },
+          { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
         ],
       },
       {
@@ -95,6 +96,7 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Facturen", icon: Receipt, href: "/facturen", alsoMatches: ["/financien/nieuw", "/financien/"] },
           { label: "Offertes", icon: FileText, href: "/offertes" },
           { label: "Contracten", icon: FileText, href: "/offertes/contracten" },
+          { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
         ],
       },
       {
@@ -132,10 +134,14 @@ const navSections: (NavLink | NavSection | "divider")[] = [
           { label: "Doelen", icon: Crosshair, href: "/doelen" },
           { label: "Gewoontes", icon: Flame, href: "/gewoontes" },
           { label: "Dagritme", icon: Sunrise, href: "/dagritme" },
-          { label: "Concurrenten", icon: Eye, href: "/concurrenten" },
           { label: "Mail Assistent", icon: Mail, href: "/mail" },
           { label: "Contract Analyzer", icon: ShieldAlert, href: "/contract-analyse" },
-          { label: "Prijscalculator", icon: Calculator, href: "/prijscalculator" },
+        ],
+      },
+      {
+        label: "Persoonlijk",
+        icon: Heart,
+        children: [
           { label: "Mealplanner", icon: UtensilsCrossed, href: "/mealplan" },
         ],
       },

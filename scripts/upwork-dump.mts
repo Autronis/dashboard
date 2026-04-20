@@ -56,11 +56,19 @@ if (!chromePath) {
   process.exit(1);
 }
 
+const headless = process.env.HEADFUL !== "1" && process.env.HEADFUL !== "true";
+console.log(`Mode: ${headless ? "headless" : "HEADFUL (zichtbare Chrome)"}`);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const browser: any = await puppeteer.launch({
-  headless: true,
+  headless,
   executablePath: chromePath,
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  args: [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-blink-features=AutomationControlled",
+    "--disable-features=IsolateOrigins,site-per-process",
+  ],
 });
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const page: any = await browser.newPage();
@@ -75,9 +83,20 @@ console.log(`Navigeer naar ${url} ...`);
 const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
 console.log(`HTTP ${resp?.status()}  final URL: ${page.url()}`);
 
+// Poll voor Cloudflare challenge — wacht max 25s tot title wijzigt van "Just a moment"
+for (let i = 0; i < 25; i++) {
+  const t: string = await page.title();
+  if (!t.toLowerCase().includes("just a moment")) {
+    if (i > 0) console.log(`CF challenge opgelost na ${i}s`);
+    break;
+  }
+  if (i === 0) console.log("Cloudflare challenge actief, wachten...");
+  await new Promise((r) => setTimeout(r, 1000));
+}
+
 await page.waitForSelector("h1, body", { timeout: 10_000 }).catch(() => {});
-// Extra wait for hydration + possible CF challenge resolution
-await new Promise((r) => setTimeout(r, 5000));
+// Extra wait for hydration
+await new Promise((r) => setTimeout(r, 3000));
 
 const html: string = await page.content();
 writeFileSync("/tmp/upwork-dump.html", html);

@@ -193,7 +193,10 @@ export function SwimLaneView({
   const showNowLine = isVandaagDatum && nowHour >= dagStart && nowHour <= computedDagEind;
   const nowTop = (nowHour - dagStart) * HOUR_HEIGHT_PX;
 
-  const totalHeight = (computedDagEind - dagStart) * HOUR_HEIGHT_PX;
+  // Voeg ~half uur tail-room onderaan zodat de laatste uur-label én blokken die
+  // precies op dagEind eindigen (bv. 21:30-22:00 avondsessie) niet tegen de
+  // onderrand worden geknipt.
+  const totalHeight = (computedDagEind - dagStart) * HOUR_HEIGHT_PX + 48;
 
   // In solo-modus (Syb niet actief) vouwen we syb-items + team-items samen
   // onder Sem. Team-items houden wel hun paarse ring zodat ze visueel

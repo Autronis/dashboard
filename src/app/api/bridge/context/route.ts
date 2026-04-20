@@ -21,8 +21,11 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const user = searchParams.get("user"); // sem | syb — filtert klanten/projecten; leads zijn gedeelde pipeline
 
-    // Leads in actieve pipeline-stadia. Gewonnen/verloren negeren — bridge hoeft
-    // geen closed deals te zien. `waarde` mee voor prioritering in de prompt.
+    // Leads in actief pitch-bare stadia: nieuw + contact. Leads in `offerte`
+    // worden NIET in de pipeline getoond — die wachten op reactie van de
+    // prospect. De bridge mag ze niet opnieuw pitchen; dat is dubbel werk.
+    // Zodra de prospect reageert zet Sem lead terug naar `contact` (of direct
+    // `gewonnen`/`verloren`). Gewonnen/verloren negeren uberhaupt.
     const leadsActief = await db
       .select({
         id: leads.id,
@@ -34,9 +37,9 @@ export async function GET(req: NextRequest) {
         volgendeActieDatum: leads.volgendeActieDatum,
       })
       .from(leads)
-      .where(and(eq(leads.isActief, 1), inArray(leads.status, ["nieuw", "contact", "offerte"])))
+      .where(and(eq(leads.isActief, 1), inArray(leads.status, ["nieuw", "contact"])))
       .orderBy(
-        sql`CASE ${leads.status} WHEN 'offerte' THEN 0 WHEN 'contact' THEN 1 WHEN 'nieuw' THEN 2 END`,
+        sql`CASE ${leads.status} WHEN 'contact' THEN 0 WHEN 'nieuw' THEN 1 END`,
         desc(leads.bijgewerktOp)
       )
       .limit(20);

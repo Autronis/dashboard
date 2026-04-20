@@ -16,9 +16,57 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Rocket, TrendingUp, CheckCircle, AlertCircle, Clock, ExternalLink,
   Search, ChevronDown, ChevronUp, Target, BarChart3, Loader2, Upload, X,
-  FileSpreadsheet, Euro, Plus, ArrowUpDown, Zap, ChevronRight, Send,
+  FileSpreadsheet, Euro, Plus, ArrowUpDown, Zap, ChevronRight, Send, Check,
 } from "lucide-react";
 import Link from "next/link";
+
+/**
+ * "Markeer verstuurd" button per completed scan. Zoekt de lead op bedrijfsnaam
+ * en zet lead.status → offerte via PUT /api/klant-leads/{id}. Atlas' bridge-
+ * context filter (`/api/bridge/context`) negeert offerte-status-leads zodat
+ * Atlas ze niet opnieuw als pitch inplant. Na klik: knop flipt naar
+ * "Verstuurd ✓" voor feedback; Sem kan refresh als 'ie de state wil resetten.
+ */
+function MarkeerVerstuurdKnop({ bedrijfsnaam }: { bedrijfsnaam: string }) {
+  const [state, setState] = useState<"idle" | "bezig" | "klaar" | "niet-gevonden">("idle");
+  async function handle(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!bedrijfsnaam.trim() || state === "bezig" || state === "klaar") return;
+    setState("bezig");
+    try {
+      const res = await fetch(`/api/klant-leads?zoek=${encodeURIComponent(bedrijfsnaam)}`);
+      const data = res.ok ? (await res.json() as { leads?: Array<{ id: number; bedrijfsnaam: string; status: string }> }) : null;
+      const lead = data?.leads?.find((l) => l.bedrijfsnaam.toLowerCase().includes(bedrijfsnaam.toLowerCase()));
+      if (!lead) { setState("niet-gevonden"); setTimeout(() => setState("idle"), 1800); return; }
+      await fetch(`/api/klant-leads/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "offerte", volgendeActie: "Wacht op reactie" }),
+      });
+      setState("klaar");
+    } catch {
+      setState("idle");
+    }
+  }
+  const label = state === "bezig" ? "..." : state === "klaar" ? "Verstuurd ✓" : state === "niet-gevonden" ? "Geen lead" : "Verstuurd";
+  return (
+    <button
+      onClick={handle}
+      disabled={state === "bezig" || state === "klaar"}
+      className={cn(
+        "flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors",
+        state === "klaar" ? "bg-green-500/15 text-green-300"
+          : state === "niet-gevonden" ? "bg-autronis-bg text-autronis-text-secondary"
+          : "bg-fuchsia-500/15 text-fuchsia-300 hover:bg-fuchsia-500/25"
+      )}
+      title="Markeer voorstel verstuurd — Atlas pakt deze lead niet opnieuw"
+    >
+      <Check className="w-3 h-3" />
+      {label}
+    </button>
+  );
+}
 
 const statusConfig: Record<string, { label: string; kleur: string; icon: typeof Clock }> = {
   pending: { label: "Bezig", kleur: "text-yellow-400 bg-yellow-400/10", icon: Clock },
@@ -796,18 +844,21 @@ export default function SalesEnginePage() {
                             {/* Quick actions — hover reveal */}
                             <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                               {scan.status === "completed" && scan.aantalKansen > 0 && (
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    router.push(`/leads/emails?scanId=${scan.id}`);
-                                  }}
-                                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition-colors"
-                                  title="Bekijk outreach voor deze scan"
-                                >
-                                  <Send className="w-3 h-3" />
-                                  Outreach
-                                </button>
+                                <>
+                                  <MarkeerVerstuurdKnop bedrijfsnaam={scan.bedrijfsnaam || ""} />
+                                  <button
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      router.push(`/leads/emails?scanId=${scan.id}`);
+                                    }}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-accent/15 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/25 transition-colors"
+                                    title="Bekijk outreach voor deze scan"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                    Outreach
+                                  </button>
+                                </>
                               )}
                               <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-autronis-bg text-autronis-text-secondary text-xs hover:bg-autronis-border/50 transition-colors">
                                 Details <ChevronRight className="w-3 h-3" />

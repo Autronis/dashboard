@@ -5,8 +5,8 @@ import { Clock, Monitor, Users, Shield, TrendingUp, ChevronLeft, ChevronRight, B
 import { PageTransition } from "@/components/ui/page-transition";
 import { PageHeader } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSessies, useWeekSessies, useMaandSessies } from "@/hooks/queries/use-screen-time";
-import type { SessiesData, WeekDagData } from "@/hooks/queries/use-screen-time";
+import { useSessies, useWeekSessies, useMaandSessies, usePeriodeStats } from "@/hooks/queries/use-screen-time";
+import type { SessiesData, WeekDagData, PeriodeStatsData } from "@/hooks/queries/use-screen-time";
 import { TimerStrip } from "./timer-strip";
 import { TabTijdlijn } from "./tab-tijdlijn";
 import { TabRegistraties } from "./tab-registraties";
@@ -110,38 +110,42 @@ function CircularScore({
   );
 }
 
-// Aggregeer per-dag stats over een periode (week/maand) tot 1 samengestelde stats-object.
-// Houdt de SessiesData["stats"] shape aan zodat de KPI cards niks hoeven te weten van periode-context.
-function aggregeerPeriodeStats(
+// Bouwt het SessiesData["stats"] shape voor week/maand-view.
+//
+// Core truth (totaalActief, productiefPercentage, deepWorkMinuten) komt uit
+// /api/screen-time/stats/periode — single source of truth, gedeeld met het
+// Discord weekrapport. Geen slot-dubbeltelling, geen stale cache.
+//
+// Secondaire focus-metrics (focusScore, contextSwitches, gemSessieLengte,
+// langsteFocusMinuten, aantalFocusSessies, afleidingMinuten, pauzes) komen
+// uit de per-dag sessies-endpoints die toch al voor de heatmap geladen
+// worden — samengevoegd in dezelfde call.
+function bouwPeriodeStats(
+  periodeStats: PeriodeStatsData | undefined,
   dagen: WeekDagData[] | undefined,
 ): SessiesData["stats"] | null {
-  if (!dagen || dagen.length === 0) return null;
-  const metData = dagen.filter((d): d is WeekDagData & { stats: SessiesData["stats"] } => d.stats !== null);
-  if (metData.length === 0) return null;
+  if (!periodeStats) return null;
 
-  let totaalActief = 0;
+  const metData = (dagen ?? []).filter(
+    (d): d is WeekDagData & { stats: SessiesData["stats"] } => d.stats !== null,
+  );
+
   let totaalIdle = 0;
-  let productiefSec = 0;
   let aantalSessies = 0;
   let focusScoreSom = 0;
   let focusScoreDagen = 0;
   let contextSwitches = 0;
   let langsteFocusMinuten = 0;
-  let deepWorkMinuten = 0;
-  let deepWorkTarget = 0;
   let deepWorkSessies = 0;
   let aantalFocusSessies = 0;
   let gemSessieSom = 0;
   let gemSessieDagen = 0;
-  let afleidingMinuten = 0;
   let totaalPauzeMinuten = 0;
   let mogelijkOnnauwkeurig = false;
 
   for (const dag of metData) {
     const s = dag.stats;
-    totaalActief += s.totaalActief;
     totaalIdle += s.totaalIdle;
-    productiefSec += (s.totaalActief * s.productiefPercentage) / 100;
     aantalSessies += s.aantalSessies;
     if (s.totaalActief > 0) {
       focusScoreSom += s.focusScore;
@@ -149,40 +153,34 @@ function aggregeerPeriodeStats(
     }
     contextSwitches += s.contextSwitches;
     if (s.langsteFocusMinuten > langsteFocusMinuten) langsteFocusMinuten = s.langsteFocusMinuten;
-    deepWorkMinuten += s.deepWorkMinuten;
-    deepWorkTarget += s.deepWorkTarget;
     deepWorkSessies += s.deepWorkSessies;
     aantalFocusSessies += s.aantalFocusSessies;
     if (s.gemSessieLengte > 0) {
       gemSessieSom += s.gemSessieLengte;
       gemSessieDagen += 1;
     }
-    afleidingMinuten += s.afleidingMinuten;
     totaalPauzeMinuten += s.totaalPauzeMinuten;
     if (s.mogelijkOnnauwkeurig) mogelijkOnnauwkeurig = true;
   }
 
-  const productiefPercentage = totaalActief > 0
-    ? Math.round((productiefSec / totaalActief) * 100)
-    : 0;
   const focusScore = focusScoreDagen > 0 ? Math.round(focusScoreSom / focusScoreDagen) : 0;
   const gemSessieLengte = gemSessieDagen > 0 ? Math.round(gemSessieSom / gemSessieDagen) : 0;
+  const afleidingMinuten = Math.round(periodeStats.afleidingSeconden / 60);
 
   return {
-    totaalActief,
+    totaalActief: periodeStats.totaalActiefSeconden,
     totaalIdle,
-    productiefPercentage,
+    productiefPercentage: periodeStats.productiefPercentage,
     aantalSessies,
     focusScore,
     contextSwitches,
     langsteFocusMinuten,
-    deepWorkMinuten,
-    deepWorkTarget,
+    deepWorkMinuten: periodeStats.deepWorkMinuten,
+    deepWorkTarget: periodeStats.deepWorkTarget,
     deepWorkSessies,
     aantalFocusSessies,
     gemSessieLengte,
     afleidingMinuten,
-    // Per-dag velden — voor periode>dag niet meaningful, laat leeg/null
     besteFocusBlok: null,
     pauzes: [],
     totaalPauzeMinuten,
@@ -198,8 +196,9 @@ export default function TijdPage() {
 
   const { van, tot } = berekenVanTot(datum, periode);
 
-  // Dag-view: één fetch. Week/maand: N-dagen parallel + client-side aggregatie zodat KPI cards
-  // niet alleen "vandaag" tonen bij een week/maand selectie.
+  // Dag-view: één fetch. Week/maand: N-dagen parallel (voor heatmap + secundaire
+  // focus-metrics) plus één aggregatie-call voor de CORE totalen (totaalActief,
+  // productief%, deepWork) — single source of truth, matcht Discord weekrapport.
   const { data: sessiesData, isLoading: sessiesLoading } = useSessies(
     periode === "dag" ? van : "",
   );
@@ -208,6 +207,21 @@ export default function TijdPage() {
   );
   const { data: maandData, isLoading: maandLoading } = useMaandSessies(
     periode === "maand" ? van : "",
+  );
+
+  // Inclusieve tot-datum voor de aggregatie endpoint (berekenVanTot geeft
+  // exclusieve tot = van + 7 / eerste van volgende maand).
+  const totInclusief = (() => {
+    if (periode === "dag") return van;
+    const d = new Date(tot);
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  })();
+  const { data: periodeStatsData, isLoading: periodeStatsLoading } = usePeriodeStats(
+    periode !== "dag" ? { van, tot: totInclusief } : undefined,
   );
 
   // Fetch yesterday's stats for trend comparison (alleen zinvol in dag-view)
@@ -219,15 +233,15 @@ export default function TijdPage() {
   const { data: gisterenData } = useSessies(periode === "dag" ? gisteren : "");
 
   const stats = useMemo<SessiesData["stats"] | null>(() => {
-    if (periode === "week") return aggregeerPeriodeStats(weekData);
-    if (periode === "maand") return aggregeerPeriodeStats(maandData);
+    if (periode === "week") return bouwPeriodeStats(periodeStatsData, weekData);
+    if (periode === "maand") return bouwPeriodeStats(periodeStatsData, maandData);
     return sessiesData?.stats ?? null;
-  }, [periode, weekData, maandData, sessiesData]);
+  }, [periode, periodeStatsData, weekData, maandData, sessiesData]);
 
   const statsLoading = periode === "week"
-    ? weekLoading
+    ? (weekLoading || periodeStatsLoading)
     : periode === "maand"
-      ? maandLoading
+      ? (maandLoading || periodeStatsLoading)
       : sessiesLoading;
 
   // Trend vs gisteren alleen relevant in dag-view

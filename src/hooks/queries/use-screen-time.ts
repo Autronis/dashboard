@@ -312,6 +312,48 @@ export function useMaandSessies(startDatum: string) {
   });
 }
 
+// ============ PERIODE STATS (week/maand totalen) ============
+// Single source of truth voor totaalActief / productief% / deepWork voor
+// periode-view. Achterliggend aggregeert /api/screen-time/stats/periode de
+// raw screen_time_entries via src/lib/screen-time/aggregate.ts zonder
+// slot-dubbeltelling — dezelfde logica als Discord weekrapport.
+
+export interface PeriodeStatsData {
+  van: string;
+  tot: string;
+  dagen: number;
+  totaalActiefSeconden: number;
+  productiefSeconden: number;
+  productiefPercentage: number;
+  deepWorkMinuten: number;
+  deepWorkTarget: number;
+  afleidingSeconden: number;
+  topProject: string | null;
+  perDag: Array<{
+    datum: string;
+    totaalActiefSeconden: number;
+    productiefSeconden: number;
+    afleidingSeconden: number;
+    deepWorkMinuten: number;
+    productiefPercentage: number;
+  }>;
+}
+
+export function usePeriodeStats(range: { van: string; tot: string } | undefined) {
+  const van = range?.van ?? "";
+  const tot = range?.tot ?? "";
+  return useQuery({
+    queryKey: ["screen-time-periode-stats", van, tot],
+    queryFn: async (): Promise<PeriodeStatsData> => {
+      const res = await fetch(`/api/screen-time/stats/periode?van=${van}&tot=${tot}`);
+      if (!res.ok) throw new Error("Kon periode stats niet laden");
+      return res.json();
+    },
+    staleTime: 30_000,
+    enabled: Boolean(van && tot),
+  });
+}
+
 // ============ SAMENVATTINGEN ============
 
 async function fetchSamenvatting(datum: string): Promise<ScreenTimeSamenvatting | null> {

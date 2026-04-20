@@ -4,6 +4,7 @@ import { screenTimeEntries, projecten, agendaItems, screenTimeSamenvattingen } f
 import { requireAuthOrApiKey } from "@/lib/auth";
 import { eq, and, gte, lte, asc } from "drizzle-orm";
 import { aiComplete } from "@/lib/ai/client";
+import { aggregeerPeriode } from "@/lib/screen-time/aggregate";
 
 function getWeekRange(datum: string): { van: string; tot: string; label: string } {
   const d = new Date(datum);
@@ -62,6 +63,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ gevonden: false }, { status: 404 });
     }
 
+    // Refresh totalen uit live data — AI-tekst (samenvattingKort/Detail) blijft
+    // gecached maar de cijfers matchen nu de /tijd KPI cards en Discord
+    // weekrapport. Voorkomt dat een oude stale rij 40u toont terwijl de rest
+    // van het dashboard 47u laat zien.
+    const agg = await aggregeerPeriode({
+      gebruikerId: gebruiker.id,
+      van: range.van,
+      tot: range.tot,
+    });
+
     return NextResponse.json({
       gevonden: true,
       samenvatting: {
@@ -71,9 +82,9 @@ export async function GET(req: NextRequest) {
         tot: range.tot,
         samenvattingKort: rec.samenvattingKort,
         samenvattingDetail: rec.samenvattingDetail,
-        totaalSeconden: rec.totaalSeconden ?? 0,
-        productiefPercentage: rec.productiefPercentage ?? 0,
-        topProject: rec.topProject,
+        totaalSeconden: agg.totaalActiefSeconden,
+        productiefPercentage: agg.productiefPercentage,
+        topProject: agg.topProject ?? rec.topProject,
         aangemaaktOp: rec.aangemaaktOp,
       },
     });
@@ -123,50 +134,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ fout: "Geen data voor deze periode" }, { status: 404 });
     }
 
-    // Aggregate per dag
+    // Single source of truth voor totalen via gedeelde aggregate helper —
+    // dezelfde logica als /api/screen-time/stats/periode en de dashboard
+    // KPI cards. Raw screen_time_entries, 16u cap per dag, geen slot dubbel.
+    const agg = await aggregeerPeriode({
+      gebruikerId: gebruiker.id,
+      van: range.van,
+      tot: range.tot,
+    });
+    const totaalSeconden = agg.totaalActiefSeconden;
+    const productiefPercentage = agg.productiefPercentage;
+    const aantalDagen = agg.dagen;
     const perDag: Record<string, { seconden: number; productief: number }> = {};
+    for (const d of agg.perDag) {
+      perDag[d.datum] = { seconden: d.totaalActiefSeconden, productief: d.productiefSeconden };
+    }
+
+    // perApp / perProject blijven uit raw entries (nodig voor AI prompt).
     const perApp: Record<string, { seconden: number; categorie: string; project: string | null }> = {};
     const perProject: Record<string, number> = {};
-    let totaalSeconden = 0;
-    let productiefSeconden = 0;
-
     for (const e of entries) {
       if (e.categorie === "inactief") continue;
-
-      const dag = e.startTijd.substring(0, 10);
-      if (!perDag[dag]) perDag[dag] = { seconden: 0, productief: 0 };
-      perDag[dag].seconden += e.duurSeconden;
-
       const key = `${e.app}|${e.projectNaam || ""}`;
       if (!perApp[key]) perApp[key] = { seconden: 0, categorie: e.categorie ?? "overig", project: e.projectNaam };
       perApp[key].seconden += e.duurSeconden;
-
       if (e.projectNaam) {
         perProject[e.projectNaam] = (perProject[e.projectNaam] || 0) + e.duurSeconden;
       }
-
-      totaalSeconden += e.duurSeconden;
-      if (e.categorie && ["development", "design", "administratie"].includes(e.categorie)) {
-        productiefSeconden += e.duurSeconden;
-        if (perDag[dag]) perDag[dag].productief += e.duurSeconden;
-      }
     }
-
-    // Cap per-dag seconden at 16 hours each to filter idle tracking noise
-    const MAX_DAG_SECONDEN = 57600;
-    for (const dag of Object.keys(perDag)) {
-      const dagData = perDag[dag];
-      if (dagData && dagData.seconden > MAX_DAG_SECONDEN) {
-        const ratio = MAX_DAG_SECONDEN / dagData.seconden;
-        totaalSeconden -= dagData.seconden - MAX_DAG_SECONDEN;
-        productiefSeconden -= dagData.productief - Math.round(dagData.productief * ratio);
-        dagData.productief = Math.round(dagData.productief * ratio);
-        dagData.seconden = MAX_DAG_SECONDEN;
-      }
-    }
-
-    const productiefPercentage = totaalSeconden > 0 ? Math.round((productiefSeconden / totaalSeconden) * 100) : 0;
-    const aantalDagen = Object.keys(perDag).length;
 
     // Agenda items in period
     const agenda = await db

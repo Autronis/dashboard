@@ -1,6 +1,12 @@
 /* eslint-disable no-console */
-import "dotenv/config";
+import { config } from "dotenv";
 import puppeteer from "puppeteer-core";
+
+// Next.js projects use .env.local as the primary env file; dotenv/config
+// only loads plain `.env`, which is absent here — without this the script
+// falls back to an empty local SQLite DB and crashes on the first query.
+config({ path: ".env.local" });
+config({ path: ".env" });
 import { eq } from "drizzle-orm";
 import * as schema from "../src/lib/db/schema";
 import { encryptCookies } from "../src/lib/upwork/cookie-crypto";

@@ -1045,7 +1045,7 @@ export default function SecondBrainPage() {
                               </button>
                               <button
                                 type="button"
-                                onClick={() => { window.location.href = `/content?bron=second-brain&id=${item.id}`; }}
+                                onClick={() => { window.location.href = `/content/kennisbank?bron=second-brain&id=${item.id}`; }}
                                 className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs text-autronis-text-secondary hover:text-purple-400 hover:bg-purple-400/8 transition-colors"
                               >
                                 <PenTool className="w-3.5 h-3.5" />

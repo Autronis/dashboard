@@ -35,6 +35,7 @@ import {
   LayoutGrid,
   List,
   Archive,
+  Library,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -1643,6 +1644,13 @@ export default function IdeeenPage() {
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-purple-500/15 text-purple-400 hover:bg-purple-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {genereerStappenplanPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}Genereer stappenplan
+              </button>
+              <button
+                onClick={() => router.push(`/content/kennisbank?bron=idee&id=${detailIdee.id}`)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-accent/15 text-autronis-accent hover:bg-autronis-accent/25 rounded-xl text-sm font-medium transition-colors"
+                title="Maak een kennisbank-inzicht van dit idee, pre-filled in de modal"
+              >
+                <Library className="w-4 h-4" />Naar kennisbank
               </button>
               {(detailIdee.status === "actief" || detailIdee.status === "gebouwd") && (
                 <>

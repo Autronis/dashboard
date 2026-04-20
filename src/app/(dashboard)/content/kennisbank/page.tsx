@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { useContentProfiel, useUpdateProfiel, useContentInzichten, useCreateInzicht, useDeleteInzicht } from "@/hooks/queries/use-content";
@@ -73,6 +74,8 @@ export default function KennisbankPage() {
   const createInzicht = useCreateInzicht();
   const deleteInzicht = useDeleteInzicht();
   const { addToast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [titel, setTitel] = useState("");
@@ -80,6 +83,53 @@ export default function KennisbankPage() {
   const [categorie, setCategorie] = useState<InzichtCategorie>("projectervaring");
   const [klantId, setKlantId] = useState<number | undefined>(undefined);
   const [bezig, setBezig] = useState(false);
+
+  // Import-from-source: prefill inzicht modal with ?bron=&id= query params.
+  // Used by second-brain "Content" button and ideeen "Naar kennisbank" button.
+  useEffect(() => {
+    const bron = searchParams.get("bron");
+    const id = searchParams.get("id");
+    if (!bron || !id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        if (bron === "second-brain") {
+          const res = await fetch(`/api/second-brain/${id}`);
+          if (!res.ok) return;
+          const { item } = (await res.json()) as {
+            item: { titel: string | null; inhoud: string | null; aiSamenvatting: string | null };
+          };
+          if (cancelled) return;
+          const fallbackTitel = item.titel
+            ?? (item.aiSamenvatting ? item.aiSamenvatting.slice(0, 80) : "")
+            ?? "";
+          setTitel(fallbackTitel);
+          setInhoud(item.inhoud ?? item.aiSamenvatting ?? "");
+          setCategorie("learning");
+          setModalOpen(true);
+        } else if (bron === "idee") {
+          const res = await fetch(`/api/ideeen/${id}`);
+          if (!res.ok) return;
+          const { idee } = (await res.json()) as {
+            idee: { naam: string; omschrijving: string | null; uitwerking: string | null };
+          };
+          if (cancelled) return;
+          setTitel(idee.naam);
+          setInhoud(idee.uitwerking ?? idee.omschrijving ?? "");
+          setCategorie("projectervaring");
+          setModalOpen(true);
+        }
+        // Clear query params so a refresh doesn't re-prefill.
+        router.replace("/content/kennisbank");
+      } catch {
+        // Silent — user can still add inzicht manually.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, router]);
 
   function resetForm() {
     setTitel("");

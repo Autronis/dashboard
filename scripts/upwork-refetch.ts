@@ -1,6 +1,12 @@
 /* eslint-disable no-console */
-import "dotenv/config";
+import { config } from "dotenv";
 import { and, eq, inArray, or, isNull } from "drizzle-orm";
+
+// Next.js projects use .env.local as the primary env file. `dotenv/config`
+// only loads `.env`, which in this repo is absent — explicit path needed so
+// TURSO_DATABASE_URL / UPWORK_COOKIE_SECRET resolve when run standalone.
+config({ path: ".env.local" });
+config({ path: ".env" });
 import * as schema from "../src/lib/db/schema";
 import { deepFetchJob } from "../src/lib/upwork/deep-fetch";
 import { classifyBudgetTier } from "../src/lib/upwork/budget-tier";

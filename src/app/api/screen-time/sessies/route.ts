@@ -481,17 +481,19 @@ export async function GET(req: NextRequest) {
     const DEEP_WORK_GAP_MAX_MIN = 15; // Max gap between sessions to still count as one deep work block
     const DEEP_WORK_INTERRUPT_MAX_MIN = 5; // Short non-productive interruptions (≤5 min) don't break the block
 
-    // Session durations in minutes (using time span, not raw duurSeconden)
-    const sessieDuurMin = sessies.map(s => Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 60000));
+    // Session durations — use gelogde duurSeconden (som van entry-durations in slot), NIET time-span.
+    // De desktop-agent logt niks tijdens idle (>2 min geen input → continue), dus duurSeconden bevat
+    // alleen daadwerkelijk actieve tijd. Time-span zou de idle-gap meetellen; dat is precies wat Sem
+    // NIET wil zien: 5 min werken → 23 min afk → 2 min werken telt dan als 30 min in plaats van 7.
+    const sessieDuurMin = sessies.map(s => s.duurSeconden / 60);
 
-    const totaalActief = sessies.reduce((s, sess) =>
-      s + Math.max(0, (new Date(sess.eindTijd).getTime() - new Date(sess.startTijd).getTime()) / 1000), 0);
+    const totaalActief = sessies.reduce((s, sess) => s + sess.duurSeconden, 0);
     const totaalIdle = idle.reduce((s, e) => s + e.duurSeconden, 0);
 
-    // Productief = alles behalve afleiding en inactief
+    // Productief = alles behalve afleiding, inactief en overig
     const productiefSec = sessies
       .filter(s => !["afleiding", "inactief", "overig"].includes(s.categorie))
-      .reduce((sum, s) => sum + Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000), 0);
+      .reduce((sum, s) => sum + s.duurSeconden, 0);
     const productiefPercentage = totaalActief > 0 ? Math.min(100, Math.round((productiefSec / totaalActief) * 100)) : 0;
 
     // Deep work: merge consecutive productive sessions with gaps ≤10 min into blocks
@@ -566,10 +568,10 @@ export async function GET(req: NextRequest) {
     // Don't forget the last block
     if (currentBlock && currentBlock.actieveMin >= DEEP_WORK_BLOCK_MIN) deepWorkBlocks.push(currentBlock);
 
-    // Deep work = total activity minus distraction time
+    // Deep work = total activity minus distraction time (actieve seconden, geen time-span)
     const afleidingSecDW = sessies
       .filter(s => s.categorie === "afleiding")
-      .reduce((sum, s) => sum + Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000), 0);
+      .reduce((sum, s) => sum + s.duurSeconden, 0);
     const deepWorkMinuten = Math.max(0, Math.round((totaalActief - afleidingSecDW) / 60));
     const deepWorkTarget = 4 * 60; // 4 hours target per day
 
@@ -591,11 +593,12 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Longest focus block (from merged deep work blocks)
+    // Longest focus block — ranglijst op actieveMin (daadwerkelijk gewerkte minuten),
+    // niet op duurMin (time-span) anders wint een blok dat grotendeels idle was.
     const langsteBlok = deepWorkBlocks.length > 0
-      ? deepWorkBlocks.reduce((best, b) => b.duurMin > best.duurMin ? b : best, deepWorkBlocks[0])
+      ? deepWorkBlocks.reduce((best, b) => b.actieveMin > best.actieveMin ? b : best, deepWorkBlocks[0])
       : null;
-    const langsteFocusMinuten = langsteBlok ? Math.round(langsteBlok.duurMin) : 0;
+    const langsteFocusMinuten = langsteBlok ? Math.round(langsteBlok.actieveMin) : 0;
     // Pick the beschrijving from the longest individual session within the block
     const besteBeschrijving = (() => {
       if (!langsteBlok || langsteBlok.beschrijvingen.length === 0) return "Focus blok";
@@ -609,7 +612,7 @@ export async function GET(req: NextRequest) {
       beschrijving: besteBeschrijving,
       startTijd: langsteBlok.startTijd,
       eindTijd: langsteBlok.eindTijd,
-      duurMin: Math.round(langsteBlok.duurMin),
+      duurMin: Math.round(langsteBlok.actieveMin),
     } : null;
 
     // Pauzes: gaps between sessions > 5 min
@@ -631,7 +634,7 @@ export async function GET(req: NextRequest) {
     const switchPenalty = Math.max(0, 1 - (contextSwitches / Math.max(sessies.length, 1)));
     const afleidingSec = sessies
       .filter(s => s.categorie === "afleiding")
-      .reduce((sum, s) => sum + Math.max(0, (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000), 0);
+      .reduce((sum, s) => sum + s.duurSeconden, 0);
     const afleidingPenalty = totaalActief > 0 ? Math.max(0, 1 - (afleidingSec / totaalActief) * 3) : 1;
     const focusScore = sessies.length > 0
       ? Math.round((deepWorkRatio * 35 + sessieLengteScore * 25 + switchPenalty * 20 + afleidingPenalty * 20))

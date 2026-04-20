@@ -154,21 +154,22 @@ export async function aggregeerPeriode(
   for (const [datum, bucket] of [...perDagMap.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     // Totaal via wall-clock merge (geen overlap dubbeltelling, 10-min gap tol).
     let dagTotaal = mergeIntervalsSeconden(bucket.totaal);
-    // Sub-categorieën: netto duurSeconden som, gecapped op dagTotaal zodat
-    // afleiding + inactief + productief ≤ totaal invariant blijft gelden.
-    let dagProductief = Math.min(bucket.productief, dagTotaal);
+    // Afleiding/inactief: netto duurSeconden som, gecapped op dagTotaal.
     let dagAfleiding = Math.min(bucket.afleiding, dagTotaal);
     let dagInactief = Math.min(bucket.inactief, dagTotaal);
     if (dagTotaal > MAX_DAG_SECONDEN) {
       const ratio = MAX_DAG_SECONDEN / dagTotaal;
-      dagProductief = Math.round(dagProductief * ratio);
       dagAfleiding = Math.round(dagAfleiding * ratio);
       dagInactief = Math.round(dagInactief * ratio);
       dagTotaal = MAX_DAG_SECONDEN;
     }
 
-    // Deep work per dag: totaal - afleiding - inactief, nooit meer dan totaal
-    const dagDeepWorkSec = Math.max(0, dagTotaal - dagAfleiding - dagInactief);
+    // Sem's model:
+    // - productief = actieve tijd - afleidingsblokken (wat niet afleiding is = productief)
+    // - deep work = zelfde als productief (geen aparte >15min filter)
+    // - productief % = productief / totaal
+    const dagProductief = Math.max(0, dagTotaal - dagAfleiding);
+    const dagDeepWorkSec = dagProductief;
     const dagDeepWorkMin = Math.round(dagDeepWorkSec / 60);
     const dagProductiefPct = dagTotaal > 0 ? Math.round((dagProductief / dagTotaal) * 100) : 0;
 

@@ -11,7 +11,8 @@
     "remotion:render": "remotion render src/remotion/index.ts AutronisVideo",
     "test": "vitest run",
     "test:watch": "vitest",
-    "upwork:login": "tsx scripts/upwork-login.ts"
+    "upwork:login": "tsx scripts/upwork-login.ts",
+    "upwork:refetch": "tsx scripts/upwork-refetch.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",

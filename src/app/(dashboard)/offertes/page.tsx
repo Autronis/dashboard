@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -201,7 +201,7 @@ function dagenSindsVerzonden(datum: string): number {
 // ─── Skeleton ───
 function OffertesSkeleton() {
   return (
-    <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
+    <div className="max-w-7xl mx-auto p-4 lg:p-8 pb-32 space-y-8">
       <div className="flex justify-between items-center">
         <Skeleton className="h-9 w-40" />
         <Skeleton className="h-11 w-40 rounded-xl" />
@@ -218,11 +218,31 @@ type ActiveTab = "offertes" | "contracten";
 
 export default function OffertesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { addToast } = useToast();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<ActiveTab>("offertes");
-  const [statusFilter, setStatusFilter] = useState<string>("alle");
-  const [zoek, setZoek] = useState("");
+
+  const activeTab = (searchParams.get("tab") === "contracten" ? "contracten" : "offertes") as ActiveTab;
+  const statusFilter = searchParams.get("status") ?? "alle";
+  const [zoekLokaal, setZoekLokaal] = useState(searchParams.get("q") ?? "");
+  const zoek = zoekLokaal;
+
+  const updateParams = useCallback((patch: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "" || v === "alle" || (k === "tab" && v === "offertes")) params.delete(k);
+      else params.set(k, v);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/offertes?${qs}` : "/offertes", { scroll: false });
+  }, [router, searchParams]);
+
+  const setActiveTab = (tab: ActiveTab) => updateParams({ tab });
+  const setStatusFilter = (status: string) => updateParams({ status });
+  const setZoek = (q: string) => {
+    setZoekLokaal(q);
+    updateParams({ q });
+  };
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
   const [sortKolom, setSortKolom] = useState<SortKolom>("datum");
@@ -368,7 +388,7 @@ export default function OffertesPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-6">
+      <div className="max-w-7xl mx-auto p-4 lg:p-8 pb-32 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h1 className="text-3xl font-bold text-autronis-text-primary">Offertes & Contracten</h1>
@@ -651,10 +671,10 @@ export default function OffertesPage() {
 
                                 <td className="py-3.5 px-4 max-sm:hidden">
                                   {isOverdue ? (
-                                    <div className="flex items-center gap-1.5">
-                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                                      <span className="text-xs font-medium text-amber-400">{daysOverdue}d verlopen</span>
-                                    </div>
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                                      <span className="text-xs font-semibold text-rose-300">{daysOverdue}d verlopen</span>
+                                    </span>
                                   ) : (
                                     <span className="text-sm text-autronis-text-secondary">{offerte.geldigTot ? formatDatumKort(offerte.geldigTot) : "\u2014"}</span>
                                   )}

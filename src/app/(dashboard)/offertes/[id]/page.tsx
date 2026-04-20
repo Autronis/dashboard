@@ -114,6 +114,7 @@ export default function OfferteDetailPage() {
   const [notFound, setNotFound] = useState(false);
   const [verstuurLaden, setVerstuurLaden] = useState(false);
   const [converteerLaden, setConverteerLaden] = useState(false);
+  const [converteerDialogOpen, setConverteerDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const fetchData = useCallback(async () => {
@@ -219,7 +220,7 @@ export default function OfferteDetailPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-4xl mx-auto p-4 lg:p-8 space-y-8">
+      <div className="max-w-4xl mx-auto p-4 lg:p-8 pb-32 space-y-8">
         {/* Breadcrumb */}
         <Breadcrumb
           items={[
@@ -282,7 +283,7 @@ export default function OfferteDetailPage() {
             )}
             {offerte.status === "geaccepteerd" && (
               <button
-                onClick={handleConverteer}
+                onClick={() => setConverteerDialogOpen(true)}
                 disabled={converteerLaden}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 disabled:opacity-50"
               >
@@ -346,6 +347,19 @@ export default function OfferteDetailPage() {
           bericht={`Weet je zeker dat je offerte ${offerte.offertenummer} wilt verwijderen?`}
           bevestigTekst="Verwijderen"
           variant="danger"
+        />
+
+        {/* Converteer dialog */}
+        <ConfirmDialog
+          open={converteerDialogOpen}
+          onClose={() => setConverteerDialogOpen(false)}
+          onBevestig={() => {
+            setConverteerDialogOpen(false);
+            handleConverteer();
+          }}
+          titel="Converteer naar factuur?"
+          bericht={`Dit maakt een nieuwe conceptfactuur aan op basis van offerte ${offerte.offertenummer} voor ${offerte.klantNaam}. De offerte blijft ongewijzigd.`}
+          bevestigTekst="Factuur aanmaken"
         />
       </div>
     </PageTransition>

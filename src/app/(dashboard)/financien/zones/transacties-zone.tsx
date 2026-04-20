@@ -58,8 +58,18 @@ const PERIODE_LABELS: Record<Periode, string> = {
   alles: "Alles",
 };
 
-export function TransactiesZone() {
-  const [type, setType] = useState<Type>("af");
+interface TransactiesZoneProps {
+  type?: Type;
+  onTypeChange?: (type: Type) => void;
+}
+
+export function TransactiesZone({ type: typeProp, onTypeChange }: TransactiesZoneProps = {}) {
+  const [internalType, setInternalType] = useState<Type>("af");
+  const type = typeProp ?? internalType;
+  const setType = (t: Type) => {
+    if (onTypeChange) onTypeChange(t);
+    else setInternalType(t);
+  };
   const [periode, setPeriode] = useState<Periode>("maand");
   const [categorieFilter, setCategorieFilter] = useState<string | null>(null);
   const [quickFilter, setQuickFilter] = useState<QuickFilter>("alle");
@@ -240,14 +250,19 @@ export function TransactiesZone() {
           const Icon = qf.icon;
           const isActive = quickFilter === qf.key;
           const count = quickCounts[qf.key];
+          const isWarning = qf.key === "zonder-bon" && count > 0;
           return (
             <button
               key={qf.key}
               onClick={() => setQuickFilter(qf.key)}
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition border",
-                isActive
+                isActive && isWarning
+                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+                  : isActive
                   ? "bg-autronis-accent/15 text-autronis-accent border-autronis-accent/30"
+                  : isWarning
+                  ? "bg-amber-500/5 text-amber-400 border-amber-500/20 hover:bg-amber-500/10 hover:border-amber-500/30"
                   : "bg-autronis-card text-autronis-text-secondary border-autronis-border hover:text-autronis-text-primary hover:border-autronis-accent/20"
               )}
             >

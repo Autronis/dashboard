@@ -45,8 +45,10 @@ export async function GET(req: NextRequest) {
       productiefSeconden: data.productiefSeconden,
       productiefPercentage: data.productiefPercentage,
       deepWorkMinuten: data.deepWorkMinuten,
+      deepWorkSeconden: data.deepWorkSeconden,
       deepWorkTarget,
       afleidingSeconden: data.afleidingSeconden,
+      inactiefSeconden: data.inactiefSeconden,
       topProject: data.topProject,
       perDag: data.perDag,
     });

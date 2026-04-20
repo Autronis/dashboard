@@ -326,14 +326,18 @@ export interface PeriodeStatsData {
   productiefSeconden: number;
   productiefPercentage: number;
   deepWorkMinuten: number;
+  deepWorkSeconden: number;
   deepWorkTarget: number;
   afleidingSeconden: number;
+  inactiefSeconden: number;
   topProject: string | null;
   perDag: Array<{
     datum: string;
     totaalActiefSeconden: number;
     productiefSeconden: number;
     afleidingSeconden: number;
+    inactiefSeconden: number;
+    deepWorkSeconden: number;
     deepWorkMinuten: number;
     productiefPercentage: number;
   }>;

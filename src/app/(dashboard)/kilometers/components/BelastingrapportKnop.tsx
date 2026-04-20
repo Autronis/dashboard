@@ -13,14 +13,17 @@ export function BelastingrapportKnop({ jaar }: BelastingrapportKnopProps) {
   const [loading, setLoading] = useState(false);
 
   async function handleDownload() {
+    if (loading) return;
     setLoading(true);
+    addToast(`Belastingrapport ${jaar} wordt gegenereerd...`, "info");
     try {
       const res = await fetch(`/api/kilometers/belastingrapport?jaar=${jaar}`);
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.fout || "Kon rapport niet genereren");
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.fout || `Server gaf ${res.status} terug`);
       }
       const blob = await res.blob();
+      if (blob.size === 0) throw new Error("Lege PDF ontvangen — probeer opnieuw");
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

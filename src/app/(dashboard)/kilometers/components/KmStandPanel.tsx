@@ -185,28 +185,30 @@ export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
       {/* Foto km-stand */}
       {kmStandId && (
         <div className="mt-4 pt-4 border-t border-autronis-border">
-          <div className="flex items-center gap-2 mb-2">
-            <Image className="w-3.5 h-3.5 text-autronis-accent" />
-            <span className="text-xs text-autronis-text-secondary">Foto km-stand (belastingbewijs)</span>
-          </div>
           {foto ? (
-            <div className="flex items-center gap-3">
-              <a href={foto.bestandspad} target="_blank" rel="noopener noreferrer">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={foto.bestandspad}
-                  alt="Km-stand foto"
-                  className="w-16 h-16 object-cover rounded-xl border border-autronis-border hover:opacity-80 transition-opacity"
-                />
-              </a>
-              <button
-                onClick={handleFotoVerwijderen}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-400 border border-red-400/30 hover:bg-red-400/10 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Verwijderen
-              </button>
-            </div>
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <Image className="w-3.5 h-3.5 text-autronis-accent" />
+                <span className="text-xs text-autronis-text-secondary">Foto km-stand (belastingbewijs)</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <a href={foto.bestandspad} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={foto.bestandspad}
+                    alt="Km-stand foto"
+                    className="w-16 h-16 object-cover rounded-xl border border-autronis-border hover:opacity-80 transition-opacity"
+                  />
+                </a>
+                <button
+                  onClick={handleFotoVerwijderen}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-rose-400 border border-rose-400/30 hover:bg-rose-500/10 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Verwijderen
+                </button>
+              </div>
+            </>
           ) : (
             <>
               <input
@@ -226,7 +228,7 @@ export function KmStandPanel({ maand, jaar, zakelijkeKm }: KmStandPanelProps) {
                 )}
               >
                 <Camera className="w-4 h-4" />
-                {uploadMutation.isPending ? "Uploaden..." : "Foto toevoegen"}
+                {uploadMutation.isPending ? "Uploaden..." : "Foto km-stand toevoegen (belastingbewijs)"}
               </button>
             </>
           )}

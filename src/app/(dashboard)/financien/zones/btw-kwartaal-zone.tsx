@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useBtwKwartaal, type BtwKwartaal } from "@/hooks/queries/use-btw-kwartaal";
-import { CheckCircle2, AlertCircle, Circle, Download, ChevronDown } from "lucide-react";
+import { CheckCircle2, AlertCircle, Circle, Download, ChevronDown, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -95,9 +95,39 @@ export function BtwKwartaalZone() {
     );
   }
 
+  const urgent = data.kwartalen.find((k) => {
+    if (k.status !== "huidig" && k.status !== "klaar") return false;
+    const deadline = getBtwDeadline(k.eindDatum);
+    const days = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    return days >= 0 && days <= 14;
+  });
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" id="btw">
       <h2 className="text-lg font-semibold text-autronis-text-primary">BTW {jaar}</h2>
+      {urgent && (() => {
+        const deadline = getBtwDeadline(urgent.eindDatum);
+        const days = Math.ceil((deadline.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        return (
+          <div className="flex items-start gap-3 bg-orange-500/10 border border-orange-500/30 rounded-2xl px-5 py-4">
+            <Clock className="w-5 h-5 text-orange-400 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-orange-400">
+                {urgent.label} aangifte over {days} {days === 1 ? "dag" : "dagen"}
+              </p>
+              <p className="text-xs text-autronis-text-secondary mt-0.5">
+                Deadline: {formatDeadline(deadline)}. {urgent.itemsTeVerwerken > 0 ? `Nog ${urgent.itemsTeVerwerken} items te verwerken.` : "Alle items verwerkt — klaar om in te dienen."}
+              </p>
+            </div>
+            <button
+              onClick={() => setOpenKwartaal(urgent.kwartaal)}
+              className="shrink-0 px-3 py-1.5 bg-orange-500/20 text-orange-300 rounded-lg text-xs font-medium hover:bg-orange-500/30 transition"
+            >
+              Bekijk
+            </button>
+          </div>
+        );
+      })()}
       <div className="bg-autronis-card border border-autronis-border rounded-2xl overflow-hidden">
         {data.kwartalen.map((k) => {
           const isOpen = openKwartaal === k.kwartaal;

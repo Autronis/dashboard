@@ -13,6 +13,7 @@ export function RegelsInfoBlock() {
       titel="Wat telt als zakelijke kilometer?"
       subtitel="Klik voor de regels — €0,23/km aftrek"
       accent="blue"
+      defaultOpen={false}
     >
               {/* Algemeen principe */}
               <div className="bg-autronis-bg/30 rounded-xl p-4 space-y-2">

@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import { useKapitaalrekening, type PartnerSaldo } from "@/hooks/queries/use-kapitaalrekening";
-import { ArrowRight, Wallet, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, Wallet, AlertCircle, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UitlegBlock } from "@/components/ui/uitleg-block";
+import { useToast } from "@/hooks/use-toast";
 
 function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", {
@@ -76,6 +78,57 @@ function PartnerCard({
   );
 }
 
+function VerrekeningCard({
+  verrekening,
+}: {
+  verrekening: { van: "sem" | "syb" | null; naar: "sem" | "syb" | null; bedrag: number };
+}) {
+  const { addToast } = useToast();
+  const [copied, setCopied] = useState(false);
+
+  const copyBedrag = async () => {
+    const amount = verrekening.bedrag.toFixed(2);
+    try {
+      await navigator.clipboard.writeText(amount);
+      setCopied(true);
+      addToast(`€${amount} gekopieerd — plak in Revolut overboeking`, "succes");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      addToast("Kopiëren mislukt", "fout");
+    }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-autronis-text-primary capitalize">{verrekening.van}</span>
+          <ArrowRight className="w-4 h-4 text-autronis-accent" />
+          <span className="text-sm font-semibold text-autronis-text-primary capitalize">{verrekening.naar}</span>
+        </div>
+        <div className="flex-1" />
+        <div className="flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-xs text-autronis-text-secondary">Te verrekenen</p>
+            <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatEuro(verrekening.bedrag)}</p>
+          </div>
+          <button
+            onClick={copyBedrag}
+            className="flex items-center gap-1.5 px-3 py-2 bg-autronis-accent/15 text-autronis-accent rounded-lg text-xs font-medium hover:bg-autronis-accent/25 transition"
+            title="Kopieer bedrag voor Revolut overboeking"
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? "Gekopieerd" : "Kopieer bedrag"}
+          </button>
+        </div>
+      </div>
+      <p className="text-[11px] text-autronis-text-secondary/80 mt-2">
+        Als <span className="capitalize">{verrekening.van}</span> dit bedrag aan <span className="capitalize">{verrekening.naar}</span> overmaakt, hebben beide partners hetzelfde kapitaalsaldo.
+      </p>
+    </div>
+  );
+}
+
 export function KapitaalrekeningZone() {
   const jaar = new Date().getFullYear();
   const { data, isLoading } = useKapitaalrekening(jaar);
@@ -143,25 +196,7 @@ export function KapitaalrekeningZone() {
         <PartnerCard naam="Syb" kleur="blue" fotoSrc="/foto-syb.jpg" saldo={syb} />
       </div>
 
-      {heeftVerrekening && (
-        <div className="bg-gradient-to-br from-autronis-accent/10 via-autronis-card to-autronis-card border border-autronis-accent/30 rounded-2xl p-5">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold text-autronis-text-primary capitalize">{verrekening.van}</span>
-              <ArrowRight className="w-4 h-4 text-autronis-accent" />
-              <span className="text-sm font-semibold text-autronis-text-primary capitalize">{verrekening.naar}</span>
-            </div>
-            <div className="flex-1" />
-            <div className="text-right">
-              <p className="text-xs text-autronis-text-secondary">Te verrekenen</p>
-              <p className="text-xl font-bold text-autronis-accent tabular-nums">{formatEuro(verrekening.bedrag)}</p>
-            </div>
-          </div>
-          <p className="text-[11px] text-autronis-text-secondary/80 mt-2">
-            Als <span className="capitalize">{verrekening.van}</span> dit bedrag aan <span className="capitalize">{verrekening.naar}</span> overmaakt, hebben beide partners hetzelfde kapitaalsaldo.
-          </p>
-        </div>
-      )}
+      {heeftVerrekening && <VerrekeningCard verrekening={verrekening} />}
 
       {ongetagdEigen > 0 && (
         <div className="flex items-start gap-2 bg-amber-500/5 border border-amber-500/20 rounded-xl px-4 py-3">

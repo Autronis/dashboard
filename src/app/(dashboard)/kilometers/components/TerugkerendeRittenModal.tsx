@@ -267,7 +267,9 @@ export function TerugkerendeRittenModal({ open, onClose }: TerugkerendeRittenMod
                     </button>
                     <button
                       onClick={() => setDeleteId(rit.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-autronis-text-secondary hover:text-red-400"
+                      title="Verwijder"
+                      aria-label="Verwijder terugkerende rit"
+                      className="p-1.5 rounded-lg text-rose-400/60 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

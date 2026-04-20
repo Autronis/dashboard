@@ -669,6 +669,9 @@ if (isTurso) {
     bijgewerkt_op TEXT DEFAULT (datetime('now'))
   )`).catch(() => {});
   client.execute("CREATE INDEX IF NOT EXISTS idx_upwork_jobs_status_posted ON upwork_jobs(status, posted_at DESC)").catch(() => {});
+  client.execute("ALTER TABLE upwork_jobs ADD COLUMN submitted_by TEXT").catch(() => {});
+  client.execute("ALTER TABLE upwork_jobs ADD COLUMN submitted_at TEXT").catch(() => {});
+  client.execute("ALTER TABLE upwork_jobs ADD COLUMN submitted_url TEXT").catch(() => {});
 
   client.execute(`CREATE TABLE IF NOT EXISTS upwork_email_raw (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1191,6 +1194,13 @@ if (isTurso) {
       bijgewerkt_op TEXT DEFAULT (datetime('now'))
     )`);
     sqliteDb.exec("CREATE INDEX IF NOT EXISTS idx_upwork_jobs_status_posted ON upwork_jobs(status, posted_at DESC)");
+
+    const upworkCols = sqliteDb.prepare("PRAGMA table_info(upwork_jobs)").all() as { name: string }[];
+    if (!upworkCols.some((c) => c.name === "submitted_by")) {
+      sqliteDb.exec("ALTER TABLE upwork_jobs ADD COLUMN submitted_by TEXT");
+      sqliteDb.exec("ALTER TABLE upwork_jobs ADD COLUMN submitted_at TEXT");
+      sqliteDb.exec("ALTER TABLE upwork_jobs ADD COLUMN submitted_url TEXT");
+    }
 
     sqliteDb.exec(`CREATE TABLE IF NOT EXISTS upwork_email_raw (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -8,9 +8,8 @@ function formatEuro(n: number): string {
   return new Intl.NumberFormat("nl-NL", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
-// Pure SVG sparkline component (no external lib)
 function Sparkline({ data, color }: { data: number[]; color: string }) {
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) return <div className="h-[30px] mt-2" />;
 
   const width = 120;
   const height = 30;
@@ -46,12 +45,38 @@ function Sparkline({ data, color }: { data: number[]; color: string }) {
   );
 }
 
-export function StatusZone() {
+function KwartaalProgress({ label, color }: { label: string; color: string }) {
+  const now = new Date();
+  const q = Math.floor(now.getMonth() / 3);
+  const start = new Date(now.getFullYear(), q * 3, 1);
+  const end = new Date(now.getFullYear(), q * 3 + 3, 0);
+  const total = end.getTime() - start.getTime();
+  const done = Math.max(0, Math.min(total, now.getTime() - start.getTime()));
+  const pct = Math.round((done / total) * 100);
+
+  return (
+    <div className="mt-2 h-[30px] flex flex-col justify-end">
+      <div className="flex items-center justify-between text-[10px] text-autronis-text-secondary/70 mb-1">
+        <span>{label}</span>
+        <span className="tabular-nums">{pct}%</span>
+      </div>
+      <div className="h-1 bg-autronis-border/40 rounded-full overflow-hidden">
+        <div className={cn("h-full rounded-full", color)} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+interface StatusZoneProps {
+  onTypeSelect?: (type: "af" | "bij") => void;
+}
+
+export function StatusZone({ onTypeSelect }: StatusZoneProps = {}) {
   const { data, isLoading } = useFinancienDashboard();
 
   if (isLoading || !data) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 xl:gap-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className={cn("h-28 xl:h-32 bg-autronis-card border border-autronis-border rounded-2xl animate-pulse", i === 4 && "col-span-2 md:col-span-1")} />
         ))}
@@ -64,10 +89,22 @@ export function StatusZone() {
   const nettoPositief = data.netto >= 0;
   const nettoUp = (data.nettoDelta ?? 0) >= 0;
 
+  const scrollTo = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const handleType = (t: "af" | "bij") => {
+    onTypeSelect?.(t);
+    scrollTo("transacties");
+  };
+
+  const cardBase = "border rounded-2xl p-4 xl:p-5 card-glow text-left w-full transition hover:border-autronis-accent/30";
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 xl:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 xl:gap-4">
       {/* Card 1: Inkomsten */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
+      <button onClick={() => handleType("bij")} className={cn(cardBase, "bg-autronis-card border-autronis-border")}>
         <div className="flex items-center gap-2 mb-2">
           <TrendingUp className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Inkomsten</span>
@@ -79,10 +116,10 @@ export function StatusZone() {
           </p>
         )}
         <Sparkline data={data.inkomstenSparkline} color="#10b981" />
-      </div>
+      </button>
 
       {/* Card 2: Uitgaven */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
+      <button onClick={() => handleType("af")} className={cn(cardBase, "bg-autronis-card border-autronis-border")}>
         <div className="flex items-center gap-2 mb-2">
           <TrendingDown className="w-4 h-4 text-orange-400 flex-shrink-0" />
           <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">Uitgaven</span>
@@ -94,12 +131,13 @@ export function StatusZone() {
           </p>
         )}
         <Sparkline data={data.uitgavenSparkline} color="#fb923c" />
-      </div>
+      </button>
 
       {/* Card 3: Netto */}
-      <div
+      <button
+        onClick={() => handleType("af")}
         className={cn(
-          "border rounded-2xl p-4 xl:p-5 card-glow",
+          cardBase,
           nettoPositief
             ? "bg-emerald-500/5 border-emerald-500/20"
             : "bg-red-500/5 border-red-500/20"
@@ -117,27 +155,30 @@ export function StatusZone() {
             {nettoUp ? "+" : ""}{data.nettoDelta}% vs vorige maand
           </p>
         )}
-      </div>
+        <div className="h-[30px] mt-2" />
+      </button>
 
       {/* Card 4: BTW terug te vragen */}
-      <div className="bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
+      <button onClick={() => scrollTo("btw")} className={cn(cardBase, "bg-autronis-card border-autronis-border")}>
         <div className="flex items-center gap-2 mb-2">
           <Receipt className="w-4 h-4 text-autronis-accent flex-shrink-0" />
           <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW terug</span>
         </div>
         <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwTerugTeVragen)}</p>
-        <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
-      </div>
+        <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal}</p>
+        <KwartaalProgress label={data.huidigKwartaal} color="bg-autronis-accent/60" />
+      </button>
 
       {/* Card 5: BTW af te dragen */}
-      <div className="col-span-2 md:col-span-1 bg-autronis-card border border-autronis-border rounded-2xl p-4 xl:p-5 card-glow">
+      <button onClick={() => scrollTo("btw")} className={cn(cardBase, "col-span-2 md:col-span-1 bg-autronis-card border-autronis-border")}>
         <div className="flex items-center gap-2 mb-2">
           <AlertCircle className="w-4 h-4 text-orange-400 flex-shrink-0" />
           <span className="text-[10px] xl:text-xs text-autronis-text-secondary uppercase tracking-wide truncate">BTW af te dragen</span>
         </div>
         <p className="text-xl xl:text-3xl font-bold text-autronis-text-primary tabular-nums">{formatEuro(data.btwAfTeDragen)}</p>
-        <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal} accumulerend</p>
-      </div>
+        <p className="text-xs text-autronis-text-secondary mt-1">{data.huidigKwartaal}</p>
+        <KwartaalProgress label={data.huidigKwartaal} color="bg-orange-400/60" />
+      </button>
     </div>
   );
 }

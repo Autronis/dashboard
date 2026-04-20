@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Car, Plus, ChevronLeft, ChevronRight, Download, MapPin, Pencil, Trash2,
   BookmarkPlus, Bookmark, BarChart3, TrendingUp, TrendingDown, X, ChevronDown,
-  ChevronUp, Copy, Search, Star, ArrowUpDown, Info, Repeat,
+  ChevronUp, Copy, Search, Star, ArrowUpDown, Info, Repeat, AlertCircle,
 } from "lucide-react";
 import { cn, formatBedrag, formatDatumKort } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -219,13 +220,13 @@ function SnelRitForm({
         placeholder="Van"
         value={van}
         onChange={(e) => setVan(e.target.value)}
-        className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent transition-colors"
+        className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/70 focus:outline-none focus:border-autronis-accent transition-colors"
       />
       <input
         placeholder="Naar"
         value={naar}
         onChange={(e) => setNaar(e.target.value)}
-        className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent transition-colors"
+        className="flex-1 min-w-[100px] px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/70 focus:outline-none focus:border-autronis-accent transition-colors"
       />
       <input
         type="number"
@@ -234,7 +235,7 @@ function SnelRitForm({
         onChange={(e) => setKm(e.target.value)}
         min="0.1"
         step="0.1"
-        className="w-24 px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent transition-colors"
+        className="w-24 px-3 py-2 rounded-lg bg-autronis-bg border border-autronis-border text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/70 focus:outline-none focus:border-autronis-accent transition-colors"
       />
       <select
         value={klantId}
@@ -277,7 +278,16 @@ export default function KilometersPage() {
   // Panel state
   const [showJaar, setShowJaar] = useState(false);
   const [showSnelForm, setShowSnelForm] = useState(false);
-  const [showTerugkerend, setShowTerugkerend] = useState(false);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const showTerugkerend = searchParams.get("modal") === "terugkerend";
+  const setShowTerugkerend = useCallback((open: boolean) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (open) params.set("modal", "terugkerend");
+    else params.delete("modal");
+    const qs = params.toString();
+    router.replace(qs ? `/kilometers?${qs}` : "/kilometers", { scroll: false });
+  }, [router, searchParams]);
   const [showKmStand, setShowKmStand] = useState(false);
 
   // Month navigation
@@ -795,9 +805,10 @@ export default function KilometersPage() {
 
                 {/* Missing months hint */}
                 {missingMonths.length > 0 && (
-                  <div className="bg-yellow-500/5 border border-yellow-500/20 rounded-xl px-4 py-3">
-                    <p className="text-xs text-yellow-400">
-                      Geen ritten in: <strong>{missingMonths.join(", ")}</strong> — vergeten?
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex items-start gap-2.5">
+                    <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-300">
+                      Geen ritten in: <strong className="text-amber-200">{missingMonths.join(", ")}</strong> — vergeten?
                     </p>
                   </div>
                 )}
@@ -1357,19 +1368,24 @@ export default function KilometersPage() {
                                 <button
                                   onClick={() => dupliceerRit(rit)}
                                   title="Dupliceer rit"
-                                  className="p-1.5 text-autronis-text-secondary/0 group-hover/row:text-autronis-text-secondary hover:!text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-all"
+                                  aria-label="Dupliceer rit"
+                                  className="p-1.5 text-autronis-text-secondary/50 hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"
                                 >
                                   <Copy className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => openEditModal(rit)}
+                                  title="Bewerk rit"
+                                  aria-label="Bewerk rit"
                                   className="p-1.5 text-autronis-text-secondary hover:text-autronis-accent rounded-lg hover:bg-autronis-accent/10 transition-colors"
                                 >
                                   <Pencil className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   onClick={() => { setDeleteId(rit.id); setDeleteDialogOpen(true); }}
-                                  className="p-1.5 text-autronis-text-secondary hover:text-red-400 rounded-lg hover:bg-red-500/10 transition-colors"
+                                  title="Verwijder rit"
+                                  aria-label="Verwijder rit"
+                                  className="p-1.5 text-rose-400/60 hover:text-rose-300 rounded-lg hover:bg-rose-500/10 transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1457,7 +1473,7 @@ export default function KilometersPage() {
                             placeholder="Zoek route..."
                             value={routeFilter}
                             onChange={(e) => setRouteFilter(e.target.value)}
-                            className="w-full pl-8 pr-3 py-2 text-sm bg-autronis-bg border border-autronis-border rounded-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:border-autronis-accent transition-colors"
+                            className="w-full pl-8 pr-3 py-2 text-sm bg-autronis-bg border border-autronis-border rounded-lg text-autronis-text-primary placeholder:text-autronis-text-secondary/70 focus:outline-none focus:border-autronis-accent transition-colors"
                           />
                         </div>
                       )}
@@ -1660,7 +1676,7 @@ export default function KilometersPage() {
                         value={saveRouteNaam}
                         onChange={(e) => setSaveRouteNaam(e.target.value)}
                         placeholder="Naam voor deze route..."
-                        className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+                        className="flex-1 bg-autronis-bg border border-autronis-border rounded-lg px-3 py-2 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/70 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
                       />
                       <button
                         onClick={handleSaveRoute}

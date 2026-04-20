@@ -327,13 +327,39 @@ pub fn run() {
                     let mut interval = tokio::time::interval(
                         std::time::Duration::from_secs(track_interval)
                     );
+                    // Skip missed ticks instead of burst-firing them. tokio::time::interval
+                    // uses monotonic time which pauses during macOS system sleep; default
+                    // Burst behavior would then fire 100+ ticks instantly after wake.
+                    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
                     // Warmup: only start recording after 2 min of continuous activity
                     let mut active_streak_secs: u64 = 0;
                     let warmup_threshold: u64 = 120; // 2 minutes
                     let mut warmed_up = false;
 
+                    // Wall-clock delta detectie: als er veel meer tijd verstreken is dan
+                    // track_interval sinds de vorige tick, heeft het systeem geslapen of
+                    // is de loop gepauzeerd (macOS dark wake). Dan reset de warmup zodat
+                    // de agent niet meteen gaat loggen met een stale HIDIdleTime van <2m.
+                    let mut last_tick_wall: Option<std::time::SystemTime> = None;
+                    let sleep_gap_threshold = std::time::Duration::from_secs(track_interval * 3 + 30);
+
                     loop {
                         interval.tick().await;
+
+                        let now = std::time::SystemTime::now();
+                        let slept = match last_tick_wall {
+                            Some(prev) => now.duration_since(prev).map(|d| d > sleep_gap_threshold).unwrap_or(false),
+                            None => false,
+                        };
+                        last_tick_wall = Some(now);
+
+                        if slept {
+                            eprintln!("[tracking] System sleep/wake gedetecteerd — reset warmup, skip tick");
+                            active_streak_secs = 0;
+                            warmed_up = false;
+                            continue;
+                        }
 
                         let is_tracking = *state.tracking.lock().unwrap();
                         if !is_tracking {

@@ -111,10 +111,12 @@ export async function aggregeerPeriode(
     inactief: Array<[number, number]>;
   }>();
   const perProject = new Map<string, number>();
+  const NL_TZ_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
 
   for (const e of rijen) {
-    const dag = e.startTijd.substring(0, 10);
-    const startMs = new Date(e.startTijd).getTime();
+    const startDate = new Date(e.startTijd);
+    const dag = NL_TZ_FMT.format(startDate); // NL-local YYYY-MM-DD
+    const startMs = startDate.getTime();
     const endMs = e.eindTijd
       ? new Date(e.eindTijd).getTime()
       : startMs + (e.duurSeconden ?? 0) * 1000;
@@ -241,17 +243,13 @@ async function fetchEntries(opties: AggregatieOpties): Promise<RawEntry[]> {
     .orderBy(asc(screenTimeEntries.startTijd))
     .all();
 
-  // Filter JS-side op exacte NL-local datum-range
+  // Filter JS-side op exacte NL-local datum-range, en voeg NL-datum als eigen
+  // veld toe zodat per-dag bucketing correct op NL loopt. startTijd/eindTijd
+  // blijven originele UTC strings — parseable als epoch timestamps.
   const NL_TZ_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
   return rows
     .filter((r) => {
       const nlDatum = NL_TZ_FMT.format(new Date(r.startTijd));
       return nlDatum >= opties.van && nlDatum <= opties.tot;
-    })
-    .map((r) => ({
-      ...r,
-      // Override startTijd zodat per-dag bucketing JS-side op NL-datum loopt,
-      // niet op UTC datum uit de raw string.
-      startTijd: `${NL_TZ_FMT.format(new Date(r.startTijd))}T${r.startTijd.slice(11)}`,
-    }));
+    });
 }

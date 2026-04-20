@@ -231,6 +231,7 @@ export function useSessies(datum: string, gebruikerId?: number) {
     queryKey: ["screen-time-sessies", datum, gebruikerId],
     queryFn: () => fetchSessies(datum, gebruikerId),
     staleTime: 30_000,
+    enabled: Boolean(datum),
   });
 }
 
@@ -243,11 +244,14 @@ export interface WeekDagData {
 }
 
 export function useWeekSessies(startDatum: string) {
-  const dagen = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(startDatum);
-    d.setDate(d.getDate() + i);
-    return d.toISOString().split("T")[0];
-  });
+  // Alleen dagen berekenen als startDatum geldig is — anders gooit new Date("") "Invalid time value".
+  const dagen = startDatum
+    ? Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(startDatum);
+        d.setDate(d.getDate() + i);
+        return d.toISOString().split("T")[0];
+      })
+    : [];
 
   return useQuery({
     queryKey: ["screen-time-week-sessies", startDatum],
@@ -263,6 +267,7 @@ export function useWeekSessies(startDatum: string) {
       return results;
     },
     staleTime: 30_000,
+    enabled: Boolean(startDatum),
   });
 }
 
@@ -274,9 +279,11 @@ export function useWeekSessies(startDatum: string) {
  */
 export function useMaandSessies(startDatum: string) {
   const dagen = (() => {
+    if (!startDatum) return [];
     const parts = startDatum.split("-");
     const year = Number(parts[0]);
     const monthIdx = Number(parts[1]) - 1;
+    if (!Number.isFinite(year) || !Number.isFinite(monthIdx) || year < 1000) return [];
     const aantalDagen = new Date(year, monthIdx + 1, 0).getDate();
     return Array.from({ length: aantalDagen }, (_, i) => {
       const d = new Date(year, monthIdx, 1 + i);
@@ -301,6 +308,7 @@ export function useMaandSessies(startDatum: string) {
       return results;
     },
     staleTime: 30_000,
+    enabled: Boolean(startDatum),
   });
 }
 

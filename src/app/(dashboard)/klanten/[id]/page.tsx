@@ -358,6 +358,14 @@ export default function KlantDetailPage() {
               </p>
             </div>
           </div>
+          <Link
+            href={`/mail?klantId=${id}`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent rounded-xl text-sm font-semibold transition-colors"
+            title="Analyseer een mail van deze klant met de AI Mail Assistent"
+          >
+            <Mail className="w-4 h-4" />
+            AI Mail
+          </Link>
           <button
             onClick={() => setKlantModalOpen(true)}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-autronis-accent/20 btn-press"

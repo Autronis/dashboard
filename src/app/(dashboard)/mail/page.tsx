@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import {
   Mail,
-  Upload,
   Loader2,
   Copy,
   Check,
@@ -12,6 +13,8 @@ import {
   RefreshCw,
   User,
   FileText,
+  Building2,
+  Save,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -31,6 +34,8 @@ type Toon = "professioneel" | "vriendelijk" | "kort" | "formeel";
 export default function MailPage() {
   const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const searchParams = useSearchParams();
+  const klantIdParam = searchParams.get("klantId");
 
   const DRAFT_KEY = "mail-assistent-draft";
 
@@ -52,6 +57,34 @@ export default function MailPage() {
   const [reply, setReply] = useState<MailReply | null>(draft?.reply ?? null);
   const [antwoord, setAntwoord] = useState(draft?.antwoord ?? "");
   const [gekopieerd, setGekopieerd] = useState(false);
+  const [klant, setKlant] = useState<{ id: number; bedrijfsnaam: string } | null>(null);
+  const [klantOpslaanBezig, setKlantOpslaanBezig] = useState(false);
+  const [klantOpgeslagen, setKlantOpgeslagen] = useState(false);
+
+  // Als de Assistent is geopend vanuit /klanten/[id], laad de klant-naam zodat
+  // de analyse als contactmoment aan de klant gekoppeld kan worden.
+  useEffect(() => {
+    if (!klantIdParam) {
+      setKlant(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/klanten/${klantIdParam}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { klant?: { id: number; bedrijfsnaam: string } };
+        if (!cancelled && data.klant) {
+          setKlant({ id: data.klant.id, bedrijfsnaam: data.klant.bedrijfsnaam });
+        }
+      } catch {
+        // Klant niet laadbaar — Assistent werkt ook zonder klant-context.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [klantIdParam]);
 
   // Persist reply to localStorage
   useEffect(() => {
@@ -132,6 +165,41 @@ export default function MailPage() {
     setTimeout(() => setGekopieerd(false), 2000);
   }
 
+  async function handleSaveToKlant() {
+    if (!klant || !reply) return;
+    setKlantOpslaanBezig(true);
+    try {
+      const delen = [
+        reply.afzender ? `Afzender: ${reply.afzender}` : null,
+        reply.onderwerp ? `Onderwerp: ${reply.onderwerp}` : null,
+        reply.samenvatting ? `\nSamenvatting:\n${reply.samenvatting}` : null,
+        antwoord ? `\nConcept antwoord:\n${antwoord}` : null,
+      ].filter(Boolean);
+      const notitie = `[AI Mail Assistent]\n\n${delen.join("\n")}`;
+
+      const res = await fetch(`/api/klanten/${klant.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kanaal: "email",
+          richting: "inkomend",
+          notitie,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { fout?: string };
+        throw new Error(data.fout ?? "Opslaan mislukt");
+      }
+      setKlantOpgeslagen(true);
+      addToast(`Analyse opgeslagen bij ${klant.bedrijfsnaam}`, "succes");
+      setTimeout(() => setKlantOpgeslagen(false), 3000);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : "Opslaan mislukt", "fout");
+    } finally {
+      setKlantOpslaanBezig(false);
+    }
+  }
+
   const toonOpties: { value: Toon; label: string }[] = [
     { value: "professioneel", label: "Professioneel" },
     { value: "vriendelijk", label: "Vriendelijk" },
@@ -154,6 +222,15 @@ export default function MailPage() {
           <p className="text-sm text-autronis-text-secondary mt-1">
             Upload een screenshot van een mail en ontvang direct een concept-antwoord.
           </p>
+          {klant && (
+            <Link
+              href={`/klanten/${klant.id}`}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent text-xs font-medium hover:bg-autronis-accent/15 transition-colors"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Voor klant: {klant.bedrijfsnaam}
+            </Link>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -311,6 +388,23 @@ export default function MailPage() {
                           {gekopieerd ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                           {gekopieerd ? "Gekopieerd" : "Kopieer"}
                         </button>
+                        {klant && (
+                          <button
+                            onClick={handleSaveToKlant}
+                            disabled={klantOpslaanBezig || klantOpgeslagen}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-autronis-accent/10 hover:bg-autronis-accent/20 text-autronis-accent rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                            title={`Log als email-contactmoment bij ${klant.bedrijfsnaam}`}
+                          >
+                            {klantOpslaanBezig ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : klantOpgeslagen ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Save className="w-3.5 h-3.5" />
+                            )}
+                            {klantOpgeslagen ? "Opgeslagen" : "Bij klant"}
+                          </button>
+                        )}
                         <button
                           onClick={() => { clearDraft(); addToast("Antwoord afgevinkt", "succes"); }}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-lg text-xs font-medium transition-colors"

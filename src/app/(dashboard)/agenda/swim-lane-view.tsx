@@ -20,6 +20,37 @@ interface Props {
 
 type AvatarMap = Record<string, { naam: string; avatarUrl: string | null }>;
 
+interface ParallelActiviteit {
+  titel: string;
+  duurMin?: number;
+  pijler?: string;
+  cluster?: string;
+}
+
+// Pijler → border-accent kleur. Sluit aan bij slimme-taken-lijst styling.
+const PIJLER_KLEUR: Record<string, string> = {
+  sales_engine: "#22c55e",   // groen
+  content: "#f59e0b",         // amber
+  inbound: "#14b8a6",         // teal
+  netwerk: "#8b5cf6",         // violet
+  delivery: "#06b6d4",        // cyan
+  intern: "#a855f7",          // purple
+  admin: "#64748b",           // slate
+};
+
+function parseParallel(raw: string | null | undefined): ParallelActiviteit | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed === "object" && parsed !== null && "titel" in parsed && typeof (parsed as ParallelActiviteit).titel === "string") {
+      return parsed as ParallelActiviteit;
+    }
+  } catch {
+    // Niet-JSON → legacy string-formaat: wrap als titel zonder metadata.
+  }
+  return { titel: raw };
+}
+
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
 const HEADER_HEIGHT_PX = 64;
 const VRIJ_LANE_WIDTH_REM = 9;
@@ -137,14 +168,14 @@ function Lane({
       <LaneHeader kind={kind} avatars={avatars} />
       <div className="relative" style={{ height: `${totalHeight}px` }}>
         {items.map((it) => {
-          const hasParallel = !!it.parallelActiviteit;
+          const parallel = parseParallel(it.parallelActiviteit);
           const top = hourOffset(it.startDatum, dagStart);
           const heightMins = it.eindDatum
             ? Math.max(15, Math.round((new Date(it.eindDatum).getTime() - new Date(it.startDatum).getTime()) / 60000))
             : 30;
-          const blockHeight = Math.max(32, Math.round(heightMins * 1.6));
+          const blockHeight = Math.max(24, Math.round(heightMins * 1.6));
 
-          if (!hasParallel) {
+          if (!parallel) {
             return (
               <div
                 key={it.id}
@@ -156,9 +187,10 @@ function Lane({
             );
           }
 
-          // Claude-taak met parallel werk → split in twee halve-breedte
-          // blokken. Links = Claude (het echte agendaItem), rechts = parallel
-          // activiteit-kaart (visueel, klik opent zelfde modal).
+          // Claude-taak + parallel → split in twee halve-breedte blokken.
+          // Links: echte Claude-blok. Rechts: parallel actie als mini-taak-kaart
+          // met pijler-kleur accent (zelfde look & feel als slimme-taken lijst).
+          const pijlerKleur = parallel.pijler ? PIJLER_KLEUR[parallel.pijler] ?? "#a855f7" : "#a855f7";
           return (
             <div
               key={it.id}
@@ -171,15 +203,28 @@ function Lane({
               <button
                 type="button"
                 onClick={onItemClick ? () => onItemClick(it.id) : undefined}
-                className="relative flex-1 min-w-0 text-left rounded-md border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors pl-2.5 pr-1.5 pt-4 pb-1.5 overflow-hidden"
-                style={{ height: `${blockHeight}px`, borderLeft: "3px solid #a855f7" }}
+                className="relative flex-1 min-w-0 text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors pl-2 pr-1.5 pt-3.5 pb-1.5 overflow-hidden"
+                style={{ height: `${blockHeight}px`, borderLeft: `4px solid ${pijlerKleur}` }}
                 data-testid="parallel-blok"
               >
-                <span className="absolute top-1 left-2 text-[9px] uppercase tracking-wider font-semibold text-purple-300 leading-none">
-                  ⋔ Parallel
+                <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] leading-none">
+                  ⋔ parallel
                 </span>
-                <div className="text-[11px] text-autronis-text-primary leading-snug line-clamp-3">
-                  {it.parallelActiviteit}
+                {parallel.duurMin && (
+                  <span className="absolute top-0.5 right-1.5 text-[9px] tabular-nums text-[var(--text-secondary)] leading-none">
+                    {parallel.duurMin}m
+                  </span>
+                )}
+                {parallel.pijler && (
+                  <div
+                    className="text-[10px] uppercase tracking-wider font-semibold truncate leading-tight"
+                    style={{ color: pijlerKleur }}
+                  >
+                    {parallel.pijler}
+                  </div>
+                )}
+                <div className="text-[11px] font-medium text-[var(--text)] leading-snug line-clamp-2">
+                  {parallel.titel}
                 </div>
               </button>
             </div>

@@ -63,7 +63,31 @@ interface RawEntry {
   categorie: string | null;
   duurSeconden: number;
   startTijd: string;
+  eindTijd: string | null;
   projectNaam: string | null;
+}
+
+// Merge overlappende intervallen en tel de unieke "wall-clock" tijd.
+// [{0,5},{3,10},{12,15}] → [{0,10},{12,15}] → 10+3 = 13 seconden.
+// Dit is de bruto actieve-tijd-definitie (Sem's model): "tijd waarin je ergens
+// achter je Mac was", niet netto-duur met overlap van parallel actieve apps.
+function mergeIntervalsSeconden(ranges: Array<[number, number]>): number {
+  if (ranges.length === 0) return 0;
+  const sorted = [...ranges].sort((a, b) => a[0] - b[0]);
+  let total = 0;
+  let [curStart, curEnd] = sorted[0];
+  for (let i = 1; i < sorted.length; i++) {
+    const [s, e] = sorted[i];
+    if (s <= curEnd) {
+      curEnd = Math.max(curEnd, e);
+    } else {
+      total += curEnd - curStart;
+      curStart = s;
+      curEnd = e;
+    }
+  }
+  total += curEnd - curStart;
+  return total;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -77,34 +101,39 @@ export async function aggregeerPeriode(
     ? await rijenFetcher(opties)
     : await fetchEntries(opties);
 
-  // Per-dag buckets. totaal = ALLES (incl inactief), productief/afleiding/inactief apart.
+  // Per-dag buckets met interval-lijsten (niet direct sommen) zodat we
+  // later kunnen mergen. Overlap tussen parallelle entries (bijv. twee apps
+  // tegelijk) wordt zo niet dubbel geteld.
   const perDagMap = new Map<string, {
-    totaal: number;
-    productief: number;
-    afleiding: number;
-    inactief: number;
+    totaal: Array<[number, number]>;
+    productief: Array<[number, number]>;
+    afleiding: Array<[number, number]>;
+    inactief: Array<[number, number]>;
   }>();
   const perProject = new Map<string, number>();
 
   for (const e of rijen) {
     const dag = e.startTijd.substring(0, 10);
-    const bucket = perDagMap.get(dag) ?? { totaal: 0, productief: 0, afleiding: 0, inactief: 0 };
-    bucket.totaal += e.duurSeconden;
-    if (e.categorie && PRODUCTIEF_CATEGORIEEN.has(e.categorie)) {
-      bucket.productief += e.duurSeconden;
-    }
-    if (e.categorie === "afleiding") {
-      bucket.afleiding += e.duurSeconden;
-    }
-    if (e.categorie === "inactief") {
-      bucket.inactief += e.duurSeconden;
-    }
+    const startMs = new Date(e.startTijd).getTime();
+    const endMs = e.eindTijd
+      ? new Date(e.eindTijd).getTime()
+      : startMs + (e.duurSeconden ?? 0) * 1000;
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) continue;
+    const range: [number, number] = [Math.floor(startMs / 1000), Math.floor(endMs / 1000)];
+
+    const bucket = perDagMap.get(dag) ?? {
+      totaal: [], productief: [], afleiding: [], inactief: [],
+    };
+    bucket.totaal.push(range);
+    if (e.categorie && PRODUCTIEF_CATEGORIEEN.has(e.categorie)) bucket.productief.push(range);
+    if (e.categorie === "afleiding") bucket.afleiding.push(range);
+    if (e.categorie === "inactief") bucket.inactief.push(range);
     perDagMap.set(dag, bucket);
 
-    // Project-totaal telt geen "inactief" — anders schreeuwt het top-project
-    // met idle minuten die aan niks te koppelen zijn.
+    // Project-totaal: houd duurSeconden aan (merging per project is overkill
+    // voor top-N ranking; bij benadering prima).
     if (e.projectNaam && e.categorie !== "inactief") {
-      perProject.set(e.projectNaam, (perProject.get(e.projectNaam) ?? 0) + e.duurSeconden);
+      perProject.set(e.projectNaam, (perProject.get(e.projectNaam) ?? 0) + (e.duurSeconden ?? 0));
     }
   }
 
@@ -118,10 +147,11 @@ export async function aggregeerPeriode(
   let deepWorkSec = 0;
 
   for (const [datum, bucket] of [...perDagMap.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    let dagTotaal = bucket.totaal;
-    let dagProductief = bucket.productief;
-    let dagAfleiding = bucket.afleiding;
-    let dagInactief = bucket.inactief;
+    // Merge intervallen per categorie → bruto wall-clock seconden (geen overlap dubbeltelling).
+    let dagTotaal = mergeIntervalsSeconden(bucket.totaal);
+    let dagProductief = mergeIntervalsSeconden(bucket.productief);
+    let dagAfleiding = mergeIntervalsSeconden(bucket.afleiding);
+    let dagInactief = mergeIntervalsSeconden(bucket.inactief);
     if (dagTotaal > MAX_DAG_SECONDEN) {
       const ratio = MAX_DAG_SECONDEN / dagTotaal;
       dagProductief = Math.round(dagProductief * ratio);
@@ -196,6 +226,7 @@ async function fetchEntries(opties: AggregatieOpties): Promise<RawEntry[]> {
       categorie: screenTimeEntries.categorie,
       duurSeconden: screenTimeEntries.duurSeconden,
       startTijd: screenTimeEntries.startTijd,
+      eindTijd: screenTimeEntries.eindTijd,
       projectNaam: projecten.naam,
     })
     .from(screenTimeEntries)

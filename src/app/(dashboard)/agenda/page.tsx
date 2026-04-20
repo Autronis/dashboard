@@ -1082,7 +1082,7 @@ export default function AgendaPage() {
   return (
     <PageTransition>
     <div className="p-3 sm:p-4 lg:p-5 xl:p-6 space-y-3 sm:space-y-4">
-     <div className="max-w-[1400px] mx-auto space-y-3">
+     <div className={cn("mx-auto space-y-3", lanesV2 ? "max-w-none" : "max-w-[1400px]")}>
       <PageHeader
         title="Agenda"
         compact
@@ -1400,7 +1400,7 @@ export default function AgendaPage() {
 
       <div className={cn(
         "mx-auto grid gap-3 sm:gap-4 grid-cols-1",
-        lanesV2 ? "max-w-[2200px]" : "max-w-[1600px] lg:grid-cols-[1fr_460px]"
+        lanesV2 ? "w-full" : "max-w-[1600px] lg:grid-cols-[1fr_460px]"
       )}>
         {/* Kalender */}
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 lg:p-5">

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { screenTimeEntries } from "@/lib/db/schema";
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Single source of truth voor periode-stats (week/maand) op de /tijd pagina,
@@ -179,10 +179,19 @@ export async function aggregeerPeriode(
 }
 
 // Raw entries ophalen uit de database. Left join op projecten voor topProject.
+// We widen UTC range met ±1 dag en filteren JS-side op NL-local datum,
+// want entries rond middernacht NL vallen op een andere UTC datum.
+// Zelfde pattern als /api/screen-time/sessies (regel 198-229).
 async function fetchEntries(opties: AggregatieOpties): Promise<RawEntry[]> {
   const { projecten } = await import("@/lib/db/schema");
 
-  return db
+  // Widen UTC range ±1 dag
+  const vanExp = new Date(opties.van); vanExp.setDate(vanExp.getDate() - 1);
+  const totExp = new Date(opties.tot); totExp.setDate(totExp.getDate() + 1);
+  const vanUtc = vanExp.toISOString().slice(0, 10);
+  const totUtc = totExp.toISOString().slice(0, 10);
+
+  const rows = await db
     .select({
       categorie: screenTimeEntries.categorie,
       duurSeconden: screenTimeEntries.duurSeconden,
@@ -194,10 +203,24 @@ async function fetchEntries(opties: AggregatieOpties): Promise<RawEntry[]> {
     .where(
       and(
         eq(screenTimeEntries.gebruikerId, opties.gebruikerId),
-        gte(screenTimeEntries.startTijd, `${opties.van}T00:00:00`),
-        lte(screenTimeEntries.startTijd, `${opties.tot}T23:59:59`),
+        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) >= ${vanUtc}`,
+        sql`SUBSTR(${screenTimeEntries.startTijd}, 1, 10) <= ${totUtc}`,
       ),
     )
     .orderBy(asc(screenTimeEntries.startTijd))
     .all();
+
+  // Filter JS-side op exacte NL-local datum-range
+  const NL_TZ_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
+  return rows
+    .filter((r) => {
+      const nlDatum = NL_TZ_FMT.format(new Date(r.startTijd));
+      return nlDatum >= opties.van && nlDatum <= opties.tot;
+    })
+    .map((r) => ({
+      ...r,
+      // Override startTijd zodat per-dag bucketing JS-side op NL-datum loopt,
+      // niet op UTC datum uit de raw string.
+      startTijd: `${NL_TZ_FMT.format(new Date(r.startTijd))}T${r.startTijd.slice(11)}`,
+    }));
 }

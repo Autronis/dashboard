@@ -11,6 +11,7 @@ import {
   FileText,
   ArrowRight,
   Search,
+  Instagram,
 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { PageHeader } from "@/components/ui/page-header";
@@ -83,26 +84,33 @@ export default function KennisPage() {
 
   const kpis = data;
 
+  const openCommandPalette = () => {
+    window.dispatchEvent(new Event("autronis:open-command-palette"));
+  };
+
   return (
     <PageTransition>
-      <div className="max-w-7xl mx-auto p-4 lg:p-8 space-y-8">
+      <div className="max-w-7xl mx-auto p-4 lg:p-8 pb-32 space-y-8">
         <PageHeader
           title="Kennis"
           description="Alles wat je weet, hebt opgeslagen of wilt onthouden"
         />
 
-        {/* Global search */}
-        <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5">
+        {/* Global search — klikbaar */}
+        <button
+          onClick={openCommandPalette}
+          className="w-full text-left bg-autronis-card border border-autronis-border rounded-2xl p-5 hover:border-autronis-accent/40 transition-colors"
+        >
           <div className="flex items-center gap-3">
             <Search className="w-5 h-5 text-autronis-accent" />
             <div className="flex-1">
               <p className="text-sm font-medium text-autronis-text-primary">Zoek in alle kennis</p>
               <p className="text-xs text-autronis-text-secondary mt-0.5">
-                Druk <kbd className="px-1.5 py-0.5 rounded bg-autronis-bg text-[10px] font-mono">⌘K</kbd> voor snelzoeken door Wiki, Second Brain, ideeën en meer
+                Klik hier of druk <kbd className="px-1.5 py-0.5 rounded bg-autronis-bg text-[10px] font-mono">⌘K</kbd> om te zoeken in Wiki, Second Brain, ideeën en meer
               </p>
             </div>
           </div>
-        </div>
+        </button>
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -132,7 +140,7 @@ export default function KennisPage() {
           />
         </div>
 
-        {/* Quick link cards */}
+        {/* Quick link cards — intent + content-types consistent */}
         <div>
           <h2 className="text-lg font-semibold text-autronis-text-primary mb-4">Modules</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -140,21 +148,21 @@ export default function KennisPage() {
               href="/wiki"
               icon={BookOpen}
               title="Wiki"
-              description="Gestructureerde kennisbank — processen, templates, strategie, geleerde lessen"
+              description="Vastgestelde kennis — processen, templates, strategie, geleerde lessen"
               accent="blue"
             />
             <ModuleCard
               href="/second-brain"
               icon={Brain}
               title="Second Brain"
-              description="Quick notes, URL clips, snippets, dingen die je later wilt opzoeken"
+              description="Inbox voor snelle capture — losse notities, URL clips, snippets"
               accent="purple"
             />
             <ModuleCard
               href="/radar"
               icon={Radar}
               title="Learning Radar"
-              description="RSS feeds, must-reads, kennis bijhouden"
+              description="Passieve ontdekking — RSS feeds, AI-scored must-reads"
               accent="orange"
               badge={kpis && kpis.radarMustReads > 0 ? `${kpis.radarMustReads} must-reads` : undefined}
             />
@@ -162,21 +170,28 @@ export default function KennisPage() {
               href="/yt-knowledge"
               icon={Video}
               title="YT Knowledge"
-              description="YouTube video samenvattingen en transcripten"
+              description="YouTube video's — transcripten, AI-samenvattingen, takeaways"
               accent="red"
+            />
+            <ModuleCard
+              href="/insta-knowledge"
+              icon={Instagram}
+              title="Instagram Knowledge"
+              description="Instagram posts en reels — scrape, Whisper-transcript, AI-analyse"
+              accent="pink"
             />
             <ModuleCard
               href="/ideeen"
               icon={Lightbulb}
               title="Ideeën"
-              description="Backlog met AI scoring en pipeline"
+              description="Idee-pipeline — AI-scoring op impact, effort en potentie"
               accent="yellow"
             />
             <ModuleCard
               href="/documenten"
               icon={FileText}
               title="Documenten"
-              description="Bestanden, contracten, Notion sync"
+              description="Bestanden en Notion sync — contracten, facturen, gedeelde docs"
               accent="teal"
             />
           </div>
@@ -243,7 +258,7 @@ function ModuleCard({
   icon: typeof BookOpen;
   title: string;
   description: string;
-  accent: "teal" | "purple" | "blue" | "orange" | "red" | "yellow";
+  accent: "teal" | "purple" | "blue" | "orange" | "red" | "yellow" | "pink";
   badge?: string;
 }) {
   const accentClasses = {
@@ -253,6 +268,7 @@ function ModuleCard({
     orange: "text-orange-400 group-hover:bg-orange-500/10",
     red: "text-red-400 group-hover:bg-red-500/10",
     yellow: "text-yellow-400 group-hover:bg-yellow-500/10",
+    pink: "text-pink-400 group-hover:bg-pink-500/10",
   }[accent];
 
   return (

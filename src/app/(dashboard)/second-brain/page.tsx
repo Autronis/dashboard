@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect, useMemo, type DragEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Brain,
@@ -90,12 +91,30 @@ function extractDomain(url: string): string {
 export default function SecondBrainPage() {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"feed" | "zoeken" | "video">("feed");
-  const [typeFilter, setTypeFilter] = useState("alle");
-  const [tagFilter, setTagFilter] = useState("");
-  const [zoek, setZoek] = useState("");
-  const [favoriet, setFavoriet] = useState(false);
+  const urlTab = searchParams.get("tab");
+  const activeTab = (urlTab === "zoeken" || urlTab === "video" ? urlTab : "feed") as "feed" | "zoeken" | "video";
+  const typeFilter = searchParams.get("type") ?? "alle";
+  const tagFilter = searchParams.get("tag") ?? "";
+  const [zoek, setZoek] = useState(searchParams.get("q") ?? "");
+  const favoriet = searchParams.get("fav") === "1";
+
+  const updateParams = useCallback((patch: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    for (const [k, v] of Object.entries(patch)) {
+      if (v === null || v === "" || v === "alle" || (k === "tab" && v === "feed") || (k === "fav" && v !== "1")) params.delete(k);
+      else params.set(k, v);
+    }
+    const qs = params.toString();
+    router.replace(qs ? `/second-brain?${qs}` : "/second-brain", { scroll: false });
+  }, [router, searchParams]);
+
+  const setActiveTab = (t: "feed" | "zoeken" | "video") => updateParams({ tab: t });
+  const setTypeFilter = (t: string) => updateParams({ type: t });
+  const setTagFilter = (t: string) => updateParams({ tag: t });
+  const setFavoriet = (f: boolean) => updateParams({ fav: f ? "1" : null });
   const [selectedItem, setSelectedItem] = useState<OptimisticItem | null>(null);
   const [nieuwInput, setNieuwInput] = useState("");
   const [detectedType, setDetectedType] = useState<TypeKey | null>(null);
@@ -402,7 +421,7 @@ export default function SecondBrainPage() {
 
   return (
     <PageTransition>
-      <div className="p-6 md:p-8 space-y-6 max-w-5xl mx-auto">
+      <div className="p-6 md:p-8 pb-32 space-y-6 max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-autronis-accent/10">

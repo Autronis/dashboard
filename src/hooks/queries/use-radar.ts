@@ -92,6 +92,8 @@ export function useRadarItems(filters?: RadarItemFilters) {
     queryKey: ["radar-items", filters],
     queryFn: () => fetchItems(filters),
     staleTime: 30_000,
+    refetchInterval: 4 * 60 * 60 * 1000,
+    refetchOnWindowFocus: true,
   });
 }
 

@@ -621,7 +621,9 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onParallelClick
 
   if (lanesV2) {
     const datumStr = `${datum.getFullYear()}-${String(datum.getMonth() + 1).padStart(2, "0")}-${String(datum.getDate()).padStart(2, "0")}`;
-    const laneItems: AgendaBlokProps[] = items
+
+    // Lokale agenda items (AgendaItem met eigenaar) — gewone flow.
+    const localLaneItems: AgendaBlokProps[] = items
       .filter((it): it is AgendaItem => "eigenaar" in it || !("bron" in it || "linkHref" in it))
       .filter((it) => it.startDatum?.startsWith(datumStr) && !it.heleDag)
       .map((it) => {
@@ -644,6 +646,28 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onParallelClick
           taakFase: ag.taakFase,
         };
       });
+
+    // Externe events (Google / iCloud / Outlook) → render in team-lane zodat
+    // Sem + Syb beide zien dat er een gedeelde meeting is. Negative id range
+    // voorkomt clash met echte agendaItems; click-through doet niks (externe
+    // events zijn niet bewerkbaar via ons dashboard).
+    const externeLaneItems: AgendaBlokProps[] = items
+      .filter((it): it is ExternEvent => "bron" in it)
+      .filter((it) => it.startDatum?.startsWith(datumStr) && !it.heleDag)
+      .map((it, idx) => ({
+        id: -(idx + 1),
+        titel: it.titel,
+        omschrijving: it.omschrijving,
+        type: "afspraak" as AgendaBlokProps["type"],
+        startDatum: it.startDatum,
+        eindDatum: it.eindDatum,
+        eigenaar: "team" as const,
+        gemaaktDoor: "user" as const,
+        projectNaam: it.bronNaam ?? null,
+        projectKleur: it.kleur || "#64748b",
+      }));
+
+    const laneItems = [...localLaneItems, ...externeLaneItems];
 
     return (
       <div className="space-y-4">

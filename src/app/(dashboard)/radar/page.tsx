@@ -1382,8 +1382,14 @@ export default function RadarPage() {
               )}
             >
               {tab.label}
+              {tab.key === "feed" && mustReadsCount > 0 && (
+                <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300">{mustReadsCount}</span>
+              )}
               {tab.key === "bewaard" && bewaardCount > 0 && (
                 <span className="ml-1.5 text-xs opacity-60">{bewaardCount}</span>
+              )}
+              {tab.key === "bronnen" && bronnenActief > 0 && (
+                <span className="ml-1.5 text-xs opacity-60">{bronnenActief}</span>
               )}
             </button>
           ))}

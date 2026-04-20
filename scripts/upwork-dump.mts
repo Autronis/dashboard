@@ -56,28 +56,39 @@ if (!chromePath) {
   process.exit(1);
 }
 
+const cdpUrl = process.env.CDP_URL;
 const headless = process.env.HEADFUL !== "1" && process.env.HEADFUL !== "true";
-console.log(`Mode: ${headless ? "headless" : "HEADFUL (zichtbare Chrome)"}`);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const browser: any = await puppeteer.launch({
-  headless,
-  executablePath: chromePath,
-  args: [
-    "--no-sandbox",
-    "--disable-setuid-sandbox",
-    "--disable-blink-features=AutomationControlled",
-    "--disable-features=IsolateOrigins,site-per-process",
-  ],
-});
+let browser: any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const page: any = await browser.newPage();
+let page: any;
+let usedCdp = false;
 
-await page.setUserAgent(
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-);
-await page.setViewport({ width: 1440, height: 900 });
-await page.setCookie(...cookies);
+if (cdpUrl) {
+  console.log(`Mode: CDP-connect (${cdpUrl}) — hergebruikt jouw Chrome session`);
+  browser = await puppeteer.connect({ browserURL: cdpUrl });
+  page = await browser.newPage();
+  usedCdp = true;
+} else {
+  console.log(`Mode: ${headless ? "headless" : "HEADFUL (zichtbare Chrome)"}`);
+  browser = await puppeteer.launch({
+    headless,
+    executablePath: chromePath,
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+      "--disable-features=IsolateOrigins,site-per-process",
+    ],
+  });
+  page = await browser.newPage();
+  await page.setUserAgent(
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  );
+  await page.setViewport({ width: 1440, height: 900 });
+  await page.setCookie(...cookies);
+}
 
 console.log(`Navigeer naar ${url} ...`);
 const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
@@ -169,5 +180,11 @@ attrs.dataQa.forEach((v) => console.log(`  ${v}`));
 console.log(`\n=== data-cy (${attrs.dataCy.length}) ===`);
 attrs.dataCy.forEach((v) => console.log(`  ${v}`));
 
-await browser.close();
+// Bij CDP-connect: page closen maar NIET de browser (dat is Sem's normale Chrome)
+if (usedCdp) {
+  await page.close().catch(() => {});
+  browser.disconnect();
+} else {
+  await browser.close();
+}
 process.exit(0);

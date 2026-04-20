@@ -755,7 +755,25 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
       .sort((a, b) => new Date(a.startTijd).getTime() - new Date(b.startTijd).getTime());
   }, [sessiesData, handmatigeSessies]);
 
-  const stats = sessiesData?.stats;
+  // Dag-view totaalActief moet matchen met de KPI card in page.tsx (= aggregate).
+  // Fetch dezelfde periode-aggregate voor dag=datum en overschrijf stats.totaalActief.
+  // Secundaire velden (focusScore, aantalSessies, langsteFocus) blijven uit dag-stats.
+  const { data: dagPeriodeStats } = usePeriodeStats(
+    view === "dag" && datum ? { van: datum, tot: datum } : undefined
+  );
+  const stats = useMemo(() => {
+    const s = sessiesData?.stats;
+    if (!s) return s;
+    if (view === "dag" && dagPeriodeStats) {
+      return {
+        ...s,
+        totaalActief: dagPeriodeStats.totaalActiefSeconden,
+        productiefPercentage: dagPeriodeStats.productiefPercentage,
+        deepWorkMinuten: Math.round(dagPeriodeStats.deepWorkSeconden / 60),
+      };
+    }
+    return s;
+  }, [sessiesData, dagPeriodeStats, view]);
   const selectedSessie = selectedIdx !== null ? alleSessies[selectedIdx] ?? null : null;
 
   // Fetch projecten for dropdown

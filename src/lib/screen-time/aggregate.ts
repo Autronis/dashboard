@@ -103,14 +103,15 @@ export async function aggregeerPeriode(
     ? await rijenFetcher(opties)
     : await fetchEntries(opties);
 
-  // Per-dag buckets met interval-lijsten (niet direct sommen) zodat we
-  // later kunnen mergen. Overlap tussen parallelle entries (bijv. twee apps
-  // tegelijk) wordt zo niet dubbel geteld.
+  // Per-dag buckets. Totaal = interval-ranges (gemerged met gap-tolerance zodat
+  // wall-clock "actieve tijd" matcht met visuele heatmap). Afleiding/inactief/
+  // productief = duurSeconden som (netto) — anders bloem gap-tolerance ze op en
+  // verdubbelt bijv "Chrome 1min + gap 5min + Chrome 1min" tot 7min afleiding.
   const perDagMap = new Map<string, {
     totaal: Array<[number, number]>;
-    productief: Array<[number, number]>;
-    afleiding: Array<[number, number]>;
-    inactief: Array<[number, number]>;
+    productief: number;
+    afleiding: number;
+    inactief: number;
   }>();
   const perProject = new Map<string, number>();
   const NL_TZ_FMT = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Amsterdam" });
@@ -126,18 +127,18 @@ export async function aggregeerPeriode(
     const range: [number, number] = [Math.floor(startMs / 1000), Math.floor(endMs / 1000)];
 
     const bucket = perDagMap.get(dag) ?? {
-      totaal: [], productief: [], afleiding: [], inactief: [],
+      totaal: [], productief: 0, afleiding: 0, inactief: 0,
     };
     bucket.totaal.push(range);
-    if (e.categorie && PRODUCTIEF_CATEGORIEEN.has(e.categorie)) bucket.productief.push(range);
-    if (e.categorie === "afleiding") bucket.afleiding.push(range);
-    if (e.categorie === "inactief") bucket.inactief.push(range);
+    const sec = e.duurSeconden ?? 0;
+    if (e.categorie && PRODUCTIEF_CATEGORIEEN.has(e.categorie)) bucket.productief += sec;
+    if (e.categorie === "afleiding") bucket.afleiding += sec;
+    if (e.categorie === "inactief") bucket.inactief += sec;
     perDagMap.set(dag, bucket);
 
-    // Project-totaal: houd duurSeconden aan (merging per project is overkill
-    // voor top-N ranking; bij benadering prima).
+    // Project-totaal: duurSeconden som (merging per project overkill voor ranking).
     if (e.projectNaam && e.categorie !== "inactief") {
-      perProject.set(e.projectNaam, (perProject.get(e.projectNaam) ?? 0) + (e.duurSeconden ?? 0));
+      perProject.set(e.projectNaam, (perProject.get(e.projectNaam) ?? 0) + sec);
     }
   }
 
@@ -151,11 +152,13 @@ export async function aggregeerPeriode(
   let deepWorkSec = 0;
 
   for (const [datum, bucket] of [...perDagMap.entries()].sort(([a], [b]) => a.localeCompare(b))) {
-    // Merge intervallen per categorie → bruto wall-clock seconden (geen overlap dubbeltelling).
+    // Totaal via wall-clock merge (geen overlap dubbeltelling, 10-min gap tol).
     let dagTotaal = mergeIntervalsSeconden(bucket.totaal);
-    let dagProductief = mergeIntervalsSeconden(bucket.productief);
-    let dagAfleiding = mergeIntervalsSeconden(bucket.afleiding);
-    let dagInactief = mergeIntervalsSeconden(bucket.inactief);
+    // Sub-categorieën: netto duurSeconden som, gecapped op dagTotaal zodat
+    // afleiding + inactief + productief ≤ totaal invariant blijft gelden.
+    let dagProductief = Math.min(bucket.productief, dagTotaal);
+    let dagAfleiding = Math.min(bucket.afleiding, dagTotaal);
+    let dagInactief = Math.min(bucket.inactief, dagTotaal);
     if (dagTotaal > MAX_DAG_SECONDEN) {
       const ratio = MAX_DAG_SECONDEN / dagTotaal;
       dagProductief = Math.round(dagProductief * ratio);

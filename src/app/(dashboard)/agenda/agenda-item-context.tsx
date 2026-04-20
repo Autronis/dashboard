@@ -13,6 +13,23 @@ interface Stap {
   duurMin: number;
 }
 
+interface ParallelActiviteit {
+  titel: string;
+  duurMin?: number;
+  pijler?: string;
+  cluster?: string;
+}
+
+const PIJLER_BG: Record<string, { bg: string; text: string }> = {
+  sales_engine: { bg: "bg-green-500/15 border-green-500/30", text: "text-green-300" },
+  content: { bg: "bg-amber-500/15 border-amber-500/30", text: "text-amber-300" },
+  inbound: { bg: "bg-teal-500/15 border-teal-500/30", text: "text-teal-300" },
+  netwerk: { bg: "bg-violet-500/15 border-violet-500/30", text: "text-violet-300" },
+  delivery: { bg: "bg-cyan-500/15 border-cyan-500/30", text: "text-cyan-300" },
+  intern: { bg: "bg-purple-500/15 border-purple-500/30", text: "text-purple-300" },
+  admin: { bg: "bg-slate-500/15 border-slate-500/30", text: "text-slate-300" },
+};
+
 interface Props {
   item: AgendaItem;
   onAfgerond?: () => void;
@@ -95,6 +112,19 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
   }, [item.stappenplan]);
 
   const stappenTotaal = stappen.reduce((sum, s) => sum + s.duurMin, 0);
+
+  const parallel = useMemo<ParallelActiviteit | null>(() => {
+    if (!item.parallelActiviteit) return null;
+    try {
+      const parsed = JSON.parse(item.parallelActiviteit) as unknown;
+      if (typeof parsed === "object" && parsed !== null && "titel" in parsed && typeof (parsed as ParallelActiviteit).titel === "string") {
+        return parsed as ParallelActiviteit;
+      }
+    } catch {
+      // Legacy string-formaat
+    }
+    return { titel: item.parallelActiviteit };
+  }, [item.parallelActiviteit]);
 
   async function markeerAfgerond() {
     if (!item.taakId) return;
@@ -306,14 +336,32 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
       )}
 
       {/* Parallel-activiteit voor Claude-taken: wat Sem parallel kan doen */}
-      {item.parallelActiviteit && (
-        <div className="rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
-          <div className="text-[10px] uppercase tracking-wider text-purple-300 mb-1 inline-flex items-center gap-1">
+      {parallel && (
+        <div className="rounded-lg border border-autronis-border bg-autronis-card/50 p-3 space-y-2">
+          <div className="text-[10px] uppercase tracking-wider text-autronis-text-secondary inline-flex items-center gap-1">
             <Split className="w-3 h-3" />
             Parallel — terwijl Claude draait
           </div>
-          <p className="text-xs text-autronis-text-primary whitespace-pre-wrap leading-relaxed">
-            {item.parallelActiviteit}
+          <div className="flex flex-wrap items-center gap-1.5">
+            {parallel.pijler && (
+              <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-md border capitalize", (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).bg, (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).text)}>
+                {parallel.pijler}
+              </span>
+            )}
+            {parallel.cluster && (
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-300 border border-slate-500/30">
+                {parallel.cluster}
+              </span>
+            )}
+            {parallel.duurMin && (
+              <span className="text-[11px] text-autronis-text-secondary inline-flex items-center gap-1 tabular-nums ml-auto">
+                <Clock className="w-3 h-3" />
+                {parallel.duurMin} min
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-autronis-text-primary font-medium leading-snug">
+            {parallel.titel}
           </p>
         </div>
       )}

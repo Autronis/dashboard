@@ -113,17 +113,22 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
 
   const stappenTotaal = stappen.reduce((sum, s) => sum + s.duurMin, 0);
 
-  const parallel = useMemo<ParallelActiviteit | null>(() => {
-    if (!item.parallelActiviteit) return null;
+  const parallels = useMemo<ParallelActiviteit[]>(() => {
+    if (!item.parallelActiviteit) return [];
     try {
       const parsed = JSON.parse(item.parallelActiviteit) as unknown;
+      if (Array.isArray(parsed)) {
+        return parsed.filter((p): p is ParallelActiviteit =>
+          typeof p === "object" && p !== null && "titel" in p && typeof (p as ParallelActiviteit).titel === "string"
+        );
+      }
       if (typeof parsed === "object" && parsed !== null && "titel" in parsed && typeof (parsed as ParallelActiviteit).titel === "string") {
-        return parsed as ParallelActiviteit;
+        return [parsed as ParallelActiviteit];
       }
     } catch {
       // Legacy string-formaat
     }
-    return { titel: item.parallelActiviteit };
+    return [{ titel: item.parallelActiviteit }];
   }, [item.parallelActiviteit]);
 
   async function markeerAfgerond() {
@@ -335,34 +340,43 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
         </div>
       )}
 
-      {/* Parallel-activiteit voor Claude-taken: wat Sem parallel kan doen */}
-      {parallel && (
-        <div className="rounded-lg border border-autronis-border bg-autronis-card/50 p-3 space-y-2">
+      {/* Parallel-activiteiten voor Claude-taken: wat Sem parallel kan doen */}
+      {parallels.length > 0 && (
+        <div className="rounded-lg border border-autronis-border bg-autronis-card/50 p-3 space-y-3">
           <div className="text-[10px] uppercase tracking-wider text-autronis-text-secondary inline-flex items-center gap-1">
             <Split className="w-3 h-3" />
-            Parallel — terwijl Claude draait
+            Parallel — terwijl Claude draait {parallels.length > 1 && `(${parallels.length})`}
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {parallel.pijler && (
-              <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-md border capitalize", (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).bg, (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).text)}>
-                {parallel.pijler}
-              </span>
-            )}
-            {parallel.cluster && (
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-300 border border-slate-500/30">
-                {parallel.cluster}
-              </span>
-            )}
-            {parallel.duurMin && (
-              <span className="text-[11px] text-autronis-text-secondary inline-flex items-center gap-1 tabular-nums ml-auto">
-                <Clock className="w-3 h-3" />
-                {parallel.duurMin} min
-              </span>
-            )}
-          </div>
-          <p className="text-sm text-autronis-text-primary font-medium leading-snug">
-            {parallel.titel}
-          </p>
+          {parallels.map((parallel, i) => (
+            <div key={i} className={cn("space-y-1.5", i > 0 && "pt-3 border-t border-autronis-border/60")}>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {parallels.length > 1 && (
+                  <span className="text-[9px] tabular-nums w-5 h-5 rounded-md bg-autronis-bg border border-autronis-border flex items-center justify-center text-autronis-text-secondary font-semibold shrink-0">
+                    {i + 1}
+                  </span>
+                )}
+                {parallel.pijler && (
+                  <span className={cn("text-[11px] font-medium px-2 py-0.5 rounded-md border capitalize", (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).bg, (PIJLER_BG[parallel.pijler] ?? PIJLER_BG.intern).text)}>
+                    {parallel.pijler}
+                  </span>
+                )}
+                {parallel.cluster && (
+                  <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-500/15 text-slate-300 border border-slate-500/30">
+                    {parallel.cluster}
+                  </span>
+                )}
+                {parallel.duurMin && (
+                  <span className="text-[11px] text-autronis-text-secondary inline-flex items-center gap-1 tabular-nums ml-auto">
+                    <Clock className="w-3 h-3" />
+                    {parallel.duurMin} min
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-autronis-text-primary font-medium leading-snug">
+                {parallel.titel}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 

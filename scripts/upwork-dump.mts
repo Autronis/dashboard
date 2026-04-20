@@ -1,8 +1,9 @@
 /* eslint-disable no-console */
 import { config } from "dotenv";
-import { writeFileSync } from "node:fs";
-import { existsSync } from "node:fs";
+import { writeFileSync, existsSync } from "node:fs";
 import { eq } from "drizzle-orm";
+import { addExtra } from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
 
 config({ path: ".env.local" });
 config({ path: ".env" });
@@ -43,43 +44,40 @@ function findSystemChrome(): string | null {
   return null;
 }
 
-let puppeteer: typeof import("puppeteer-core");
-let chromePath: string | null = null;
-try {
-  // Prefer full puppeteer if installed
-  puppeteer = (await import("puppeteer")) as unknown as typeof import("puppeteer-core");
-} catch {
-  puppeteer = await import("puppeteer-core");
-  chromePath = findSystemChrome();
-  if (!chromePath) {
-    console.error("Geen Chrome gevonden");
-    process.exit(1);
-  }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const core = await import("puppeteer-core");
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const puppeteer = addExtra(core.default as any);
+puppeteer.use(StealthPlugin());
+
+const chromePath = findSystemChrome();
+if (!chromePath) {
+  console.error("Geen Chrome gevonden. Installeer Google Chrome.");
+  process.exit(1);
 }
 
-const launchOpts: Record<string, unknown> = {
-  headless: true,
-  args: ["--no-sandbox", "--disable-setuid-sandbox"],
-};
-if (chromePath) launchOpts.executablePath = chromePath;
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const browser = await (puppeteer as any).default.launch(launchOpts);
+const browser: any = await puppeteer.launch({
+  headless: true,
+  executablePath: chromePath,
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+});
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const page: any = await browser.newPage();
 
 await page.setUserAgent(
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
 );
+await page.setViewport({ width: 1440, height: 900 });
 await page.setCookie(...cookies);
 
 console.log(`Navigeer naar ${url} ...`);
-const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45_000 });
+const resp = await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
 console.log(`HTTP ${resp?.status()}  final URL: ${page.url()}`);
 
 await page.waitForSelector("h1, body", { timeout: 10_000 }).catch(() => {});
-// Extra wait for hydration
-await new Promise((r) => setTimeout(r, 3000));
+// Extra wait for hydration + possible CF challenge resolution
+await new Promise((r) => setTimeout(r, 5000));
 
 const html: string = await page.content();
 writeFileSync("/tmp/upwork-dump.html", html);
@@ -88,46 +86,60 @@ console.log(`HTML dump: /tmp/upwork-dump.html  (${html.length} bytes)`);
 await page.screenshot({ path: "/tmp/upwork-dump.png", fullPage: true }).catch(() => {});
 console.log("Screenshot: /tmp/upwork-dump.png");
 
-// Dump alle data-test + data-qa attributen + h1/h2 text
-const attrs: {
+// Use string-eval to bypass esbuild __name helper injection
+const attrs = (await page.evaluate(`
+  (function(){
+    function extract(attr){
+      var s = new Set();
+      document.querySelectorAll('[' + attr + ']').forEach(function(el){
+        var v = el.getAttribute(attr);
+        if (v) s.add(v);
+      });
+      return Array.from(s).sort();
+    }
+    function getText(sel){
+      var el = document.querySelector(sel);
+      return el && el.textContent ? el.textContent.trim() : '';
+    }
+    return {
+      dataTest: extract('data-test'),
+      dataQa: extract('data-qa'),
+      dataCy: extract('data-cy'),
+      ariaLabel: extract('aria-label').slice(0, 30),
+      h1: Array.from(document.querySelectorAll('h1')).map(function(e){return (e.textContent||'').trim()}).filter(Boolean),
+      h2: Array.from(document.querySelectorAll('h2')).map(function(e){return (e.textContent||'').trim()}).filter(Boolean).slice(0, 20),
+      title: document.title,
+      url: location.href,
+      hasLoginWall: !!document.querySelector("form[action*='login']") ||
+        !!document.querySelector("[data-test='login-form']") ||
+        document.title.toLowerCase().indexOf('log in') !== -1,
+      isCloudflare: document.title.indexOf('Just a moment') !== -1 ||
+        !!document.querySelector('[data-translate*="cf-"]') ||
+        !!document.querySelector('#challenge-running')
+    };
+  })()
+`)) as {
   dataTest: string[];
   dataQa: string[];
   dataCy: string[];
+  ariaLabel: string[];
   h1: string[];
   h2: string[];
   title: string;
+  url: string;
   hasLoginWall: boolean;
-} = await page.evaluate(() => {
-  const extract = (attr: string): string[] => {
-    const set = new Set<string>();
-    document.querySelectorAll(`[${attr}]`).forEach((el) => {
-      const v = el.getAttribute(attr);
-      if (v) set.add(v);
-    });
-    return Array.from(set).sort();
-  };
-  return {
-    dataTest: extract("data-test"),
-    dataQa: extract("data-qa"),
-    dataCy: extract("data-cy"),
-    h1: Array.from(document.querySelectorAll("h1")).map((e) => (e.textContent ?? "").trim()).filter(Boolean),
-    h2: Array.from(document.querySelectorAll("h2")).map((e) => (e.textContent ?? "").trim()).filter(Boolean),
-    title: document.title,
-    hasLoginWall: !!document.querySelector("form[action*='login']") ||
-      !!document.querySelector("[data-test='login-form']") ||
-      document.title.toLowerCase().includes("log in"),
-  };
-});
+  isCloudflare: boolean;
+};
 
-console.log("\n=== Title ===");
-console.log(attrs.title);
-console.log(`Login-wall detected: ${attrs.hasLoginWall}`);
+console.log(`\n=== Title === ${attrs.title}`);
+console.log(`=== Final URL === ${attrs.url}`);
+console.log(`Login-wall: ${attrs.hasLoginWall} | Cloudflare: ${attrs.isCloudflare}`);
 
 console.log("\n=== H1 ===");
 attrs.h1.forEach((h) => console.log(`  ${h}`));
 
 console.log("\n=== H2 ===");
-attrs.h2.slice(0, 20).forEach((h) => console.log(`  ${h}`));
+attrs.h2.forEach((h) => console.log(`  ${h}`));
 
 console.log(`\n=== data-test (${attrs.dataTest.length}) ===`);
 attrs.dataTest.forEach((v) => console.log(`  ${v}`));

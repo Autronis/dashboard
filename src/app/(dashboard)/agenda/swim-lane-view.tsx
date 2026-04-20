@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 import { AgendaBlok, AgendaBlokProps } from "./agenda-blok";
 
 type Item = AgendaBlokProps;
@@ -39,17 +40,24 @@ const PIJLER_KLEUR: Record<string, string> = {
   admin: "#64748b",           // slate
 };
 
-function parseParallel(raw: string | null | undefined): ParallelActiviteit | null {
-  if (!raw) return null;
+function parseParallel(raw: string | null | undefined): ParallelActiviteit[] {
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
+    // Nieuw format: array van parallel-acties
+    if (Array.isArray(parsed)) {
+      return parsed.filter((p): p is ParallelActiviteit =>
+        typeof p === "object" && p !== null && "titel" in p && typeof (p as ParallelActiviteit).titel === "string"
+      );
+    }
+    // Legacy single-object format
     if (typeof parsed === "object" && parsed !== null && "titel" in parsed && typeof (parsed as ParallelActiviteit).titel === "string") {
-      return parsed as ParallelActiviteit;
+      return [parsed as ParallelActiviteit];
     }
   } catch {
-    // Niet-JSON → legacy string-formaat: wrap als titel zonder metadata.
+    // Niet-JSON → legacy string-formaat
   }
-  return { titel: raw };
+  return [{ titel: raw }];
 }
 
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
@@ -171,14 +179,14 @@ function Lane({
       <LaneHeader kind={kind} avatars={avatars} />
       <div className="relative" style={{ height: `${totalHeight}px` }}>
         {items.map((it) => {
-          const parallel = parseParallel(it.parallelActiviteit);
+          const parallels = parseParallel(it.parallelActiviteit);
           const top = hourOffset(it.startDatum, dagStart);
           const heightMins = it.eindDatum
             ? Math.max(15, Math.round((new Date(it.eindDatum).getTime() - new Date(it.startDatum).getTime()) / 60000))
             : 30;
           const blockHeight = Math.max(24, Math.round(heightMins * 1.6));
 
-          if (!parallel) {
+          if (parallels.length === 0) {
             return (
               <div
                 key={it.id}
@@ -190,10 +198,15 @@ function Lane({
             );
           }
 
-          // Claude-taak + parallel → split in twee halve-breedte blokken.
-          // Links: echte Claude-blok. Rechts: parallel actie als mini-taak-kaart
-          // met pijler-kleur accent (zelfde look & feel als slimme-taken lijst).
-          const pijlerKleur = parallel.pijler ? PIJLER_KLEUR[parallel.pijler] ?? "#a855f7" : "#a855f7";
+          // Claude-taak + parallel-lijst → split in twee halve-breedte kolommen.
+          // Links: echte Claude-blok (volle hoogte). Rechts: elke parallel-actie
+          // krijgt hoogte PROPORTIONEEL aan zijn eigen duurMin, gestapeld boven
+          // elkaar met kleine gap. Totaal blijft binnen blockHeight; restruimte
+          // wordt "claude werkt door…" label als Claude langer doorgaat dan de
+          // som van parallel-taken.
+          const totalParallelMins = parallels.reduce((sum, p) => sum + (p.duurMin ?? heightMins), 0);
+          const totalParallelHeight = Math.min(blockHeight, Math.round(totalParallelMins * 1.6));
+
           return (
             <div
               key={it.id}
@@ -203,37 +216,73 @@ function Lane({
               <div className="flex-1 min-w-0">
                 <AgendaBlok {...it} onClick={onItemClick ? () => onItemClick(it.id) : undefined} />
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (onParallelClick) onParallelClick(it.id, parallel);
-                  else if (onItemClick) onItemClick(it.id);
-                }}
-                className="relative flex-1 min-w-0 text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors pl-2 pr-1.5 pt-3.5 pb-1.5 overflow-hidden"
-                style={{ height: `${blockHeight}px`, borderLeft: `4px solid ${pijlerKleur}` }}
-                data-testid="parallel-blok"
-              >
-                <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] leading-none">
-                  ⋔ parallel
-                </span>
-                {parallel.duurMin && (
-                  <span className="absolute top-0.5 right-1.5 text-[9px] tabular-nums text-[var(--text-secondary)] leading-none">
-                    {parallel.duurMin}m
-                  </span>
-                )}
-                {parallel.pijler && (
-                  <div
-                    className="text-[10px] uppercase tracking-wider font-semibold truncate leading-tight"
-                    style={{ color: pijlerKleur }}
-                  >
-                    {parallel.pijler}
+              <div className="flex-1 min-w-0 relative flex flex-col gap-0.5">
+                {parallels.map((parallel, idx) => {
+                  const pijlerKleur = parallel.pijler ? PIJLER_KLEUR[parallel.pijler] ?? "#a855f7" : "#a855f7";
+                  const pHeight = parallel.duurMin
+                    ? Math.max(24, Math.round(parallel.duurMin * 1.6))
+                    : Math.max(24, Math.round(blockHeight / parallels.length));
+                  const pUltra = pHeight < 40;
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onParallelClick) onParallelClick(it.id, parallel);
+                        else if (onItemClick) onItemClick(it.id);
+                      }}
+                      className={cn(
+                        "relative w-full text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors overflow-hidden shrink-0",
+                        pUltra ? "pl-2 pr-1.5 py-0.5" : "pl-2 pr-1.5 pt-3.5 pb-1.5"
+                      )}
+                      style={{ height: `${pHeight}px`, borderLeft: `4px solid ${pijlerKleur}` }}
+                      data-testid="parallel-blok"
+                    >
+                      {pUltra ? (
+                        <div className="flex items-center gap-1.5 h-full">
+                          <span className="text-[9px] uppercase tracking-wider font-semibold shrink-0" style={{ color: pijlerKleur }}>⋔</span>
+                          <span className="text-[11px] font-medium text-[var(--text)] truncate flex-1 min-w-0">
+                            {parallel.titel}
+                          </span>
+                          {parallel.duurMin && (
+                            <span className="text-[9px] tabular-nums text-[var(--text-secondary)] shrink-0">
+                              {parallel.duurMin}m
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] leading-none">
+                            ⋔ parallel {parallels.length > 1 ? `${idx + 1}/${parallels.length}` : ""}
+                          </span>
+                          {parallel.duurMin && (
+                            <span className="absolute top-0.5 right-1.5 text-[9px] tabular-nums text-[var(--text-secondary)] leading-none">
+                              {parallel.duurMin}m
+                            </span>
+                          )}
+                          {parallel.pijler && (
+                            <div
+                              className="text-[10px] uppercase tracking-wider font-semibold truncate leading-tight"
+                              style={{ color: pijlerKleur }}
+                            >
+                              {parallel.pijler}
+                            </div>
+                          )}
+                          <div className="text-[11px] font-medium text-[var(--text)] leading-snug line-clamp-2">
+                            {parallel.titel}
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+                {totalParallelHeight < blockHeight - 8 && (
+                  <div className="flex-1 flex items-center justify-center text-[9px] uppercase tracking-wider text-[var(--text-secondary)]/40 pointer-events-none">
+                    claude werkt door…
                   </div>
                 )}
-                <div className="text-[11px] font-medium text-[var(--text)] leading-snug line-clamp-2">
-                  {parallel.titel}
-                </div>
-              </button>
+              </div>
             </div>
           );
         })}

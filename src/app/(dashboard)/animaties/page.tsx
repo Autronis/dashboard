@@ -639,6 +639,50 @@ export default function AnimatiesPage() {
     loadGallery();
   }, [gallerySelected, loadGallery]);
 
+  // ── Link-to-post: soft link animatie → content-post via tag "post:<id>".
+  // Zonder schema-migratie kan de posts-pagina later gekoppelde animaties vinden
+  // met GET /api/assets/gallery?tag=post:<id>.
+  const [linkPostTarget, setLinkPostTarget] = useState<GalleryItem | null>(null);
+  const [availablePosts, setAvailablePosts] = useState<
+    { id: number; titel: string; platform: string; status: string; inhoud: string }[]
+  >([]);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [linkingPostId, setLinkingPostId] = useState<number | null>(null);
+
+  const openLinkPostModal = useCallback(async (item: GalleryItem) => {
+    setLinkPostTarget(item);
+    setLoadingPosts(true);
+    try {
+      // Fetch goedgekeurde + bewerkte posts (de kandidaten om een video aan te hangen).
+      const [approved, edited] = await Promise.all([
+        fetch("/api/content/posts?status=goedgekeurd").then((r) => r.json()),
+        fetch("/api/content/posts?status=bewerkt").then((r) => r.json()),
+      ]);
+      const all = [...(approved.posts ?? []), ...(edited.posts ?? [])];
+      setAvailablePosts(all);
+    } catch {
+      setAvailablePosts([]);
+    } finally {
+      setLoadingPosts(false);
+    }
+  }, []);
+
+  const linkToPost = useCallback(async (postId: number) => {
+    if (!linkPostTarget) return;
+    setLinkingPostId(postId);
+    try {
+      await fetch("/api/assets/gallery", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: linkPostTarget.id, addTag: `post:${postId}` }),
+      });
+      setLinkPostTarget(null);
+      loadGallery();
+    } finally {
+      setLinkingPostId(null);
+    }
+  }, [linkPostTarget, loadGallery]);
+
   const toggleSelect = useCallback((id: number) => {
     setGallerySelected(prev => {
       const n = new Set(prev);
@@ -2755,7 +2799,7 @@ export default function AnimatiesPage() {
                   <span className="text-xs text-autronis-text-tertiary">({items.length})</span>
                 </summary>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 p-3 border-t border-autronis-border">
-                  {items.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} projects={projectOptions} />)}
+                  {items.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} onLinkPost={openLinkPostModal} projects={projectOptions} />)}
                 </div>
               </details>
             ))}
@@ -2763,7 +2807,7 @@ export default function AnimatiesPage() {
         ) : (
           /* Grid view */
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {filteredGallery.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} projects={projectOptions} />)}
+            {filteredGallery.map(item => <GalleryCard key={item.id} item={item} selected={gallerySelected.has(item.id)} onSelect={toggleSelect} onFav={toggleFavoriet} onDelete={deleteGalleryItem} onLoad={loadGalleryItem} onProjectChange={updateGalleryProject} onPreview={setPreviewItem} onLinkPost={openLinkPostModal} projects={projectOptions} />)}
           </div>
         )}
       </div>
@@ -2837,6 +2881,97 @@ export default function AnimatiesPage() {
           </div>
         );
       })()}
+
+      {/* Link-to-post modal */}
+      {linkPostTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={() => setLinkPostTarget(null)}
+        >
+          <div
+            className="bg-autronis-card border border-autronis-border rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-5 border-b border-autronis-border">
+              <div>
+                <h3 className="text-lg font-semibold text-autronis-text-primary">Koppel aan content-post</h3>
+                <p className="text-xs text-autronis-text-secondary mt-0.5 truncate">
+                  Animatie: {linkPostTarget.productNaam}
+                </p>
+              </div>
+              <button
+                onClick={() => setLinkPostTarget(null)}
+                className="p-1.5 text-autronis-text-secondary hover:text-autronis-text-primary rounded-lg hover:bg-autronis-bg/50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {loadingPosts ? (
+                <div className="flex items-center gap-2 text-autronis-text-secondary">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Posts laden...</span>
+                </div>
+              ) : availablePosts.length === 0 ? (
+                <div className="text-center py-8 text-sm text-autronis-text-secondary">
+                  Geen goedgekeurde of bewerkte posts beschikbaar. Keur eerst een post goed op{" "}
+                  <a href="/content/posts" className="text-autronis-accent hover:underline">/content/posts</a>.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availablePosts.map((post) => {
+                    const existingTags = linkPostTarget.tags
+                      ? linkPostTarget.tags.split(",").map((t) => t.trim())
+                      : [];
+                    const alreadyLinked = existingTags.includes(`post:${post.id}`);
+                    const isLinking = linkingPostId === post.id;
+                    return (
+                      <button
+                        key={post.id}
+                        onClick={() => !alreadyLinked && linkToPost(post.id)}
+                        disabled={alreadyLinked || isLinking}
+                        className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                          alreadyLinked
+                            ? "bg-autronis-accent/10 border-autronis-accent/40 cursor-default"
+                            : "bg-autronis-bg border-autronis-border hover:border-autronis-accent/50 hover:bg-autronis-accent/5"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] uppercase tracking-wider font-semibold text-autronis-text-tertiary">
+                                {post.platform}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-autronis-border/40 text-autronis-text-secondary">
+                                {post.status}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-autronis-text-primary truncate">
+                              {post.titel}
+                            </p>
+                            <p className="text-xs text-autronis-text-secondary line-clamp-2 mt-0.5">
+                              {post.inhoud}
+                            </p>
+                          </div>
+                          <div className="shrink-0 flex items-center">
+                            {isLinking ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-autronis-accent" />
+                            ) : alreadyLinked ? (
+                              <Check className="w-4 h-4 text-autronis-accent" />
+                            ) : (
+                              <Link2 className="w-4 h-4 text-autronis-text-tertiary" />
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

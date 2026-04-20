@@ -6,6 +6,8 @@ export interface GekoppeldeGewoonte {
   id: number;
   naam: string;
   icoon: string;
+  weekVoltooid: number;
+  weekDoel: number;
 }
 
 export interface KeyResult {

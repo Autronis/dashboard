@@ -36,7 +36,9 @@ import {
   List,
   Archive,
   Library,
+  BookOpen,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -295,6 +297,7 @@ export default function IdeeenPage() {
   };
 
   const [detailIdee, setDetailIdee] = useState<Idee | null>(null);
+  const [promotingWiki, setPromotingWiki] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editIdee, setEditIdee] = useState<Idee | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -1652,6 +1655,41 @@ export default function IdeeenPage() {
               >
                 <Library className="w-4 h-4" />Naar kennisbank
               </button>
+              {detailIdee.gepromotedNaarWikiId ? (
+                <Link
+                  href={`/wiki/${detailIdee.gepromotedNaarWikiId}`}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 rounded-xl text-sm font-medium transition-colors"
+                >
+                  <BookOpen className="w-4 h-4" />Bekijk in Wiki
+                </Link>
+              ) : (
+                <button
+                  onClick={async () => {
+                    if (!detailIdee || promotingWiki) return;
+                    setPromotingWiki(true);
+                    try {
+                      const res = await fetch("/api/wiki/promote", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ bronType: "idee", bronId: detailIdee.id, categorie: "ideeen" }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.fout || "Promote mislukt");
+                      addToast("Gepromoot naar Wiki", "succes");
+                      router.push(`/wiki/${data.artikel.id}`);
+                    } catch (err) {
+                      addToast(err instanceof Error ? err.message : "Promote mislukt", "fout");
+                    } finally {
+                      setPromotingWiki(false);
+                    }
+                  }}
+                  disabled={promotingWiki}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/30 rounded-xl text-sm font-medium transition-colors disabled:opacity-50"
+                  title="Maak een Wiki-artikel van dit idee"
+                >
+                  {promotingWiki ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}Promote naar Wiki
+                </button>
+              )}
               {(detailIdee.status === "actief" || detailIdee.status === "gebouwd") && (
                 <>
                   <button onClick={handleRegenereerPlan} disabled={regenereerPlanMutation.isPending} className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 rounded-xl text-sm font-medium transition-colors disabled:opacity-50">

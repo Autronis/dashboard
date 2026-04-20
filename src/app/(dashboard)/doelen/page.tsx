@@ -823,25 +823,54 @@ export default function DoelenPage() {
                           </div>
 
                           {/* Gekoppelde gewoontes (ondersteunende habits) */}
-                          {kr.gekoppeldeGewoontes && kr.gekoppeldeGewoontes.length > 0 && (
-                            <div className="mt-2.5 pt-2.5 border-t border-autronis-border/50">
-                              <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/60 mb-1.5 flex items-center gap-1">
-                                <Flame className="w-3 h-3" />
-                                Ondersteund door {kr.gekoppeldeGewoontes.length} {kr.gekoppeldeGewoontes.length === 1 ? "gewoonte" : "gewoontes"}
-                              </p>
-                              <div className="flex flex-wrap gap-1.5">
-                                {kr.gekoppeldeGewoontes.map((h) => (
-                                  <Link
-                                    key={h.id}
-                                    href="/gewoontes"
-                                    className="text-[11px] px-2 py-0.5 rounded-full bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/15 transition-colors"
+                          {kr.gekoppeldeGewoontes && kr.gekoppeldeGewoontes.length > 0 && (() => {
+                            const totaalVoltooid = kr.gekoppeldeGewoontes.reduce((s, h) => s + h.weekVoltooid, 0);
+                            const totaalDoel = kr.gekoppeldeGewoontes.reduce((s, h) => s + h.weekDoel, 0);
+                            const pctWeek = totaalDoel > 0 ? Math.round((totaalVoltooid / totaalDoel) * 100) : 0;
+                            return (
+                              <div className="mt-2.5 pt-2.5 border-t border-autronis-border/50">
+                                <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
+                                  <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/60 flex items-center gap-1">
+                                    <Flame className="w-3 h-3" />
+                                    Ondersteund door {kr.gekoppeldeGewoontes.length} {kr.gekoppeldeGewoontes.length === 1 ? "gewoonte" : "gewoontes"}
+                                  </p>
+                                  <span
+                                    className={cn(
+                                      "text-[10px] tabular-nums font-semibold",
+                                      pctWeek >= 70 ? "text-emerald-400" : pctWeek >= 40 ? "text-yellow-400" : "text-red-400"
+                                    )}
+                                    title="Totaal completions deze week vs. verwacht"
                                   >
-                                    {h.naam}
-                                  </Link>
-                                ))}
+                                    {totaalVoltooid}/{totaalDoel} deze week · {pctWeek}%
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {kr.gekoppeldeGewoontes.map((h) => {
+                                    const hPct = h.weekDoel > 0 ? Math.round((h.weekVoltooid / h.weekDoel) * 100) : 0;
+                                    const hOk = hPct >= 70;
+                                    return (
+                                      <Link
+                                        key={h.id}
+                                        href="/gewoontes"
+                                        className={cn(
+                                          "text-[11px] px-2 py-0.5 rounded-full border transition-colors inline-flex items-center gap-1.5",
+                                          hOk
+                                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/15"
+                                            : "bg-autronis-accent/10 border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/15"
+                                        )}
+                                        title={`${h.weekVoltooid}/${h.weekDoel} deze week`}
+                                      >
+                                        <span>{h.naam}</span>
+                                        <span className="tabular-nums text-[10px] opacity-70">
+                                          {h.weekVoltooid}/{h.weekDoel}
+                                        </span>
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
 
                           {/* Uren-koppeling: extra inzicht */}
                           {kr.autoKoppeling === "uren" && (() => {

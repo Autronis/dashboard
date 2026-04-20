@@ -11,6 +11,10 @@ import {
   User,
   Clock,
   FileDown,
+  Brain,
+  Lightbulb,
+  Video,
+  Instagram,
 } from "lucide-react";
 import { cn, formatDatum } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -30,7 +34,16 @@ interface Artikel {
   auteurNaam: string | null;
   aangemaaktOp: string | null;
   bijgewerktOp: string | null;
+  bronType: "second-brain" | "idee" | "yt-knowledge" | "insta-knowledge" | null;
+  bronId: number | null;
 }
+
+const bronConfig: Record<string, { label: string; href: (id: number) => string; icon: typeof Brain }> = {
+  "second-brain": { label: "Second Brain", href: () => "/second-brain", icon: Brain },
+  "idee": { label: "Idee", href: () => "/ideeen", icon: Lightbulb },
+  "yt-knowledge": { label: "YT Knowledge", href: () => "/yt-knowledge", icon: Video },
+  "insta-knowledge": { label: "Instagram", href: () => "/insta-knowledge", icon: Instagram },
+};
 
 const categorieConfig: Record<string, { label: string; color: string; bg: string }> = {
   processen: { label: "Processen", color: "text-blue-400", bg: "bg-blue-500/15" },

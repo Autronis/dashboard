@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { okrObjectives, okrKeyResults, facturen, taken, klanten, gewoontes } from "@/lib/db/schema";
+import { okrObjectives, okrKeyResults, facturen, taken, klanten, gewoontes, gewoonteLogboek } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 import { eq, and, sql, gte, lt, inArray } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
@@ -114,6 +114,7 @@ export async function GET(req: NextRequest) {
             naam: gewoontes.naam,
             icoon: gewoontes.icoon,
             krId: gewoontes.krId,
+            frequentie: gewoontes.frequentie,
           })
           .from(gewoontes)
           .where(
@@ -125,11 +126,54 @@ export async function GET(req: NextRequest) {
           )
       : [];
 
-    const habitsByKr = new Map<number, Array<{ id: number; naam: string; icoon: string }>>();
+    // Tel completions van deze week (maandag..zondag, dezelfde range die /gewoontes
+    // UI hanteert) per gewoonte. Dit levert een "X van Y deze week" ratio op
+    // zodat /doelen kan tonen hoe actief de ondersteunende gewoonten zijn.
+    const weekStart = (() => {
+      const d = new Date();
+      const dag = d.getDay(); // 0=zo, 1=ma, ...
+      const diff = dag === 0 ? -6 : 1 - dag;
+      d.setDate(d.getDate() + diff);
+      return d.toISOString().slice(0, 10);
+    })();
+
+    const habitIds = linkedGewoontes.map((h) => h.id);
+    const weekCounts = habitIds.length
+      ? await db
+          .select({
+            gewoonteId: gewoonteLogboek.gewoonteId,
+            voltooid: sql<number>`SUM(CASE WHEN ${gewoonteLogboek.voltooid} = 1 THEN 1 ELSE 0 END)`,
+          })
+          .from(gewoonteLogboek)
+          .where(
+            and(
+              inArray(gewoonteLogboek.gewoonteId, habitIds),
+              eq(gewoonteLogboek.gebruikerId, gebruiker.id),
+              gte(gewoonteLogboek.datum, weekStart)
+            )
+          )
+          .groupBy(gewoonteLogboek.gewoonteId)
+      : [];
+
+    const voltooidPerHabit = new Map<number, number>();
+    for (const r of weekCounts) {
+      if (r.gewoonteId !== null) voltooidPerHabit.set(r.gewoonteId, Number(r.voltooid) || 0);
+    }
+
+    const habitsByKr = new Map<
+      number,
+      Array<{ id: number; naam: string; icoon: string; weekVoltooid: number; weekDoel: number }>
+    >();
     for (const h of linkedGewoontes) {
       if (!h.krId) continue;
       const list = habitsByKr.get(h.krId) ?? [];
-      list.push({ id: h.id, naam: h.naam, icoon: h.icoon });
+      list.push({
+        id: h.id,
+        naam: h.naam,
+        icoon: h.icoon,
+        weekVoltooid: voltooidPerHabit.get(h.id) ?? 0,
+        weekDoel: h.frequentie === "weekelijks" ? 1 : 7,
+      });
       habitsByKr.set(h.krId, list);
     }
 

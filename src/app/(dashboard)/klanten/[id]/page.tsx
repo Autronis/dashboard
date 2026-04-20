@@ -106,6 +106,39 @@ const tijdlijnTypeConfig: Record<string, { icon: typeof FileText; color: string;
   contactmoment: { icon: Handshake, color: "text-cyan-400", bg: "bg-cyan-500/10" },
 };
 
+// Detect AI-gegenereerde contactmomenten (Mail Assistent + Contract Analyzer) op
+// prefix in de notitie. De Mail Assistent en Contract Analyzer schrijven deze
+// prefixen bij save; in de tijdlijn krijgen deze items een eigen icoon/kleur
+// en een collapse-interactie zodat de lange analyse niet de tijdlijn vult.
+function detectAiBron(details: string | null | undefined): null | {
+  label: string;
+  icon: typeof FileText;
+  color: string;
+  bg: string;
+  ringColor: string;
+} {
+  if (!details) return null;
+  if (details.startsWith("[AI Mail Assistent]")) {
+    return {
+      label: "AI Mail",
+      icon: Sparkles,
+      color: "text-autronis-accent",
+      bg: "bg-autronis-accent/10",
+      ringColor: "border-autronis-accent/30",
+    };
+  }
+  if (details.startsWith("[Contract Analyzer")) {
+    return {
+      label: "AI Contract",
+      icon: ShieldAlert,
+      color: "text-purple-400",
+      bg: "bg-purple-500/10",
+      ringColor: "border-purple-500/30",
+    };
+  }
+  return null;
+}
+
 const relatieStatusConfig: Record<string, { label: string; bg: string; text: string; dot: string }> = {
   actief: { label: "Actieve klant", bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-400" },
   stil: { label: "Stil", bg: "bg-amber-500/10", text: "text-amber-400", dot: "bg-amber-400" },
@@ -1295,7 +1328,8 @@ export default function KlantDetailPage() {
               <div className="absolute left-5 top-0 bottom-0 w-px bg-autronis-border" />
               <div className="space-y-6">
                 {tijdlijn.filter((item: TijdlijnItem) => tijdlijnFilter === "alles" || item.type === tijdlijnFilter).map((item: TijdlijnItem) => {
-                  const config = tijdlijnTypeConfig[item.type] || tijdlijnTypeConfig.notitie;
+                  const aiBron = item.type === "contactmoment" ? detectAiBron(item.details) : null;
+                  const config = aiBron ?? tijdlijnTypeConfig[item.type] ?? tijdlijnTypeConfig.notitie;
                   const Icon = config.icon;
                   return (
                     <div key={item.id} className="relative pl-12">
@@ -1303,19 +1337,45 @@ export default function KlantDetailPage() {
                       <div className={cn("absolute left-2.5 w-5 h-5 rounded-full flex items-center justify-center", config.bg)}>
                         <Icon className={cn("w-3 h-3", config.color)} />
                       </div>
-                      <div className="bg-autronis-bg/50 rounded-xl p-4">
+                      <div className={cn(
+                        "bg-autronis-bg/50 rounded-xl p-4",
+                        aiBron && `border border-dashed ${aiBron.ringColor}`
+                      )}>
                         <div className="flex items-start justify-between gap-3 mb-1">
-                          <p className="text-sm font-semibold text-autronis-text-primary">
-                            {item.titel}
-                          </p>
+                          <div className="flex items-center gap-2 flex-wrap min-w-0">
+                            <p className="text-sm font-semibold text-autronis-text-primary">
+                              {item.titel}
+                            </p>
+                            {aiBron && (
+                              <span className={cn(
+                                "text-[10px] font-medium px-1.5 py-0.5 rounded-full flex items-center gap-1",
+                                aiBron.bg,
+                                aiBron.color
+                              )}>
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {aiBron.label}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs text-autronis-text-secondary flex-shrink-0">
                             {item.datum ? formatDatum(item.datum) : ""}
                           </span>
                         </div>
                         {item.details && (
-                          <p className="text-sm text-autronis-text-secondary">
-                            {item.details}
-                          </p>
+                          aiBron ? (
+                            <details className="group/ai mt-1">
+                              <summary className="list-none cursor-pointer text-sm text-autronis-text-secondary line-clamp-2 group-open/ai:line-clamp-none hover:text-autronis-text-primary transition-colors">
+                                {item.details}
+                              </summary>
+                              <p className="text-[11px] text-autronis-text-tertiary mt-2">
+                                Klik om minder/meer te tonen.
+                              </p>
+                            </details>
+                          ) : (
+                            <p className="text-sm text-autronis-text-secondary">
+                              {item.details}
+                            </p>
+                          )
                         )}
                         {item.status && (
                           <span className={cn(

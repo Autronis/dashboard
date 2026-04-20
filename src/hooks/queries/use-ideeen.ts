@@ -28,6 +28,7 @@ export interface Idee {
   revenuePotential: number | null;
   bron: string | null;
   bronTekst: string | null;
+  gepromotedNaarWikiId: number | null;
 }
 
 // ============ FETCH FUNCTIONS ============

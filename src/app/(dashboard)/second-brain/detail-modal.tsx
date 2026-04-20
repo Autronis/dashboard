@@ -16,7 +16,10 @@ import {
   BookMarked,
   Copy,
   Check,
+  BookOpen,
+  Loader2,
 } from "lucide-react";
+import Link from "next/link";
 import {
   type SecondBrainItem,
   useUpdateSecondBrainItem,
@@ -48,6 +51,7 @@ export function DetailModal({ item, onClose, onUpdate, allItems = [], allTags = 
   const [nieuwTag, setNieuwTag] = useState("");
   const [showTagSuggestions, setShowTagSuggestions] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [promoting, setPromoting] = useState(false);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const updateMutation = useUpdateSecondBrainItem();
@@ -409,18 +413,59 @@ export function DetailModal({ item, onClose, onUpdate, allItems = [], allTags = 
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between border-t border-autronis-border pt-4">
+          <div className="flex items-center justify-between border-t border-autronis-border pt-4 gap-3 flex-wrap">
             <span className="text-xs text-autronis-text-secondary tabular-nums">
               {formatDatum(item.aangemaaktOp)}
             </span>
-            <button
-              type="button"
-              onClick={() => setShowConfirm(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
-            >
-              <Trash2 className="w-4 h-4" />
-              Archiveren
-            </button>
+            <div className="flex items-center gap-2">
+              {item.gepromotedNaarWikiId ? (
+                <Link
+                  href={`/wiki/${item.gepromotedNaarWikiId}`}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-blue-400 bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  Bekijk in Wiki
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (promoting) return;
+                    setPromoting(true);
+                    try {
+                      const res = await fetch("/api/wiki/promote", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ bronType: "second-brain", bronId: item.id }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.fout || "Promote mislukt");
+                      addToast("Gepromoot naar Wiki", "succes");
+                      onUpdate();
+                      onClose();
+                      window.location.href = `/wiki/${data.artikel.id}`;
+                    } catch (err) {
+                      addToast(err instanceof Error ? err.message : "Promote mislukt", "fout");
+                    } finally {
+                      setPromoting(false);
+                    }
+                  }}
+                  disabled={promoting}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-autronis-accent hover:bg-autronis-accent/10 border border-autronis-accent/30 transition-colors disabled:opacity-50"
+                >
+                  {promoting ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />}
+                  Promote naar Wiki
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowConfirm(true)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-red-400 hover:bg-red-500/10 border border-red-500/20 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Archiveren
+              </button>
+            </div>
           </div>
         </div>
       </div>

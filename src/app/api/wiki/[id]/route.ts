@@ -31,6 +31,8 @@ export async function GET(
         gepubliceerd: wikiArtikelen.gepubliceerd,
         auteurId: wikiArtikelen.auteurId,
         auteurNaam: gebruikers.naam,
+        bronType: wikiArtikelen.bronType,
+        bronId: wikiArtikelen.bronId,
         aangemaaktOp: wikiArtikelen.aangemaaktOp,
         bijgewerktOp: wikiArtikelen.bijgewerktOp,
       })

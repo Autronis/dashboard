@@ -62,13 +62,19 @@ export function AgendaBlok({
   const heightPx = Math.max(32, Math.round(mins * 1.6));
   const accentColor = projectKleur || "#2A3538";
 
+  // Compacte layout voor blokken <= 45 min. Anders verdwijnt de titel onder
+  // padding+metadata en kan je niet eens zien wat het blok is. Compact skipt
+  // project-tag + duur-label en maakt tekst fijner zodat minimum-info zichtbaar
+  // blijft bij 30 min hoogte.
+  const isCompact = mins <= 45;
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "group relative w-full text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors",
-        "pl-3 pr-2 pt-5 pb-4 overflow-hidden",
+        "group relative w-full text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors overflow-hidden",
+        isCompact ? "pl-2 pr-1.5 pt-3.5 pb-1.5" : "pl-3 pr-2 pt-5 pb-4",
         eigenaar === "team" && "ring-1 ring-purple-500/40"
       )}
       style={{ height: `${heightPx}px`, borderLeft: `4px solid ${accentColor}` }}
@@ -76,14 +82,24 @@ export function AgendaBlok({
       data-eigenaar={eigenaar}
       data-type={type}
     >
-      <span className="absolute top-1 left-1.5 text-[10px] tabular-nums text-[var(--text-secondary)]">
+      <span
+        className={cn(
+          "absolute top-0.5 left-1.5 tabular-nums text-[var(--text-secondary)]",
+          isCompact ? "text-[9px]" : "text-[10px]"
+        )}
+      >
         {formatTime(startDatum)}
       </span>
-      <span className="absolute top-1 right-1.5 text-[10px] tabular-nums text-[var(--text-secondary)]">
+      <span
+        className={cn(
+          "absolute top-0.5 right-1.5 tabular-nums text-[var(--text-secondary)]",
+          isCompact ? "text-[9px]" : "text-[10px]"
+        )}
+      >
         {durationLabel(mins)}
       </span>
 
-      {projectNaam && (
+      {projectNaam && !isCompact && (
         <div
           className="text-[11px] uppercase tracking-wider font-semibold truncate leading-tight"
           style={{ color: accentColor }}
@@ -92,7 +108,17 @@ export function AgendaBlok({
         </div>
       )}
 
-      <div className="text-sm font-medium text-[var(--text)] leading-snug line-clamp-2">
+      <div
+        className={cn(
+          "font-medium text-[var(--text)] leading-snug",
+          isCompact ? "text-[11px] line-clamp-1" : "text-sm line-clamp-2"
+        )}
+      >
+        {isCompact && projectNaam && (
+          <span className="uppercase tracking-wider mr-1.5 text-[9px] font-semibold" style={{ color: accentColor }}>
+            {projectNaam} ·
+          </span>
+        )}
         {titel}
       </div>
 
@@ -102,9 +128,11 @@ export function AgendaBlok({
         </div>
       )}
 
-      <span className="absolute bottom-1 right-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] px-1.5 py-0.5 rounded bg-[var(--bg)]/60">
-        {TYPE_LABEL[type] || type}
-      </span>
+      {!isCompact && (
+        <span className="absolute bottom-1 right-1.5 text-[9px] font-semibold uppercase tracking-wider text-[var(--text-secondary)] px-1.5 py-0.5 rounded bg-[var(--bg)]/60">
+          {TYPE_LABEL[type] || type}
+        </span>
+      )}
     </button>
   );
 }

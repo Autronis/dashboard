@@ -367,6 +367,10 @@ export const agendaItems = sqliteTable("agenda_items", {
   stappenplan: text("stappenplan"),
   aiContext: text("ai_context"),
   geschatteDuurMinuten: integer("geschatte_duur_minuten"),
+  // Voor Claude-taken (uitvoerder=claude): 1 zin over wat Sem parallel kan
+  // doen terwijl Claude autonoom draait. UI toont dit als smaller blok naast
+  // het Claude-blok zodat de tijd dubbel telt (Claude + handwerk).
+  parallelActiviteit: text("parallel_activiteit"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),
@@ -1981,6 +1985,9 @@ export const upworkJobs = sqliteTable("upwork_jobs", {
   seenBy: text("seen_by").notNull().default("[]"),
   claimedBy: text("claimed_by"),
   claimedAt: text("claimed_at"),
+  submittedBy: text("submitted_by"),
+  submittedAt: text("submitted_at"),
+  submittedUrl: text("submitted_url"),
   status: text("status", {
     enum: ["new", "viewed", "claimed", "dismissed", "submitted", "ingest_partial", "session_expired", "deleted"],
   }).notNull().default("new"),

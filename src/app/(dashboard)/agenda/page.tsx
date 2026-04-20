@@ -1400,7 +1400,7 @@ export default function AgendaPage() {
 
       <div className={cn(
         "mx-auto grid gap-3 sm:gap-4 grid-cols-1",
-        lanesV2 ? "max-w-[1800px]" : "max-w-[1600px] lg:grid-cols-[1fr_460px]"
+        lanesV2 ? "max-w-[2200px]" : "max-w-[1600px] lg:grid-cols-[1fr_460px]"
       )}>
         {/* Kalender */}
         <div className="bg-autronis-card border border-autronis-border rounded-xl p-3 sm:p-4 lg:p-5">
@@ -3245,7 +3245,7 @@ export default function AgendaPage() {
               ? { duration: 0.4, ease: "easeInOut" }
               : { type: "spring", stiffness: 380, damping: 30 }
             }
-            className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-lg shadow-2xl"
+            className="glass-modal border border-autronis-border rounded-2xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-autronis-text-primary">

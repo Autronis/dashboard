@@ -132,15 +132,55 @@ function Lane({
     <div className={`relative border-r border-[var(--border)] ${widthClass}`} data-testid={testId}>
       <LaneHeader kind={kind} avatars={avatars} />
       <div className="relative" style={{ height: `${totalHeight}px` }}>
-        {items.map((it) => (
-          <div
-            key={it.id}
-            className="absolute left-1 right-1"
-            style={{ top: `${hourOffset(it.startDatum, dagStart)}px` }}
-          >
-            <AgendaBlok {...it} onClick={onItemClick ? () => onItemClick(it.id) : undefined} />
-          </div>
-        ))}
+        {items.map((it) => {
+          const hasParallel = !!it.parallelActiviteit;
+          const top = hourOffset(it.startDatum, dagStart);
+          const heightMins = it.eindDatum
+            ? Math.max(15, Math.round((new Date(it.eindDatum).getTime() - new Date(it.startDatum).getTime()) / 60000))
+            : 30;
+          const blockHeight = Math.max(32, Math.round(heightMins * 1.6));
+
+          if (!hasParallel) {
+            return (
+              <div
+                key={it.id}
+                className="absolute left-1 right-1"
+                style={{ top: `${top}px` }}
+              >
+                <AgendaBlok {...it} onClick={onItemClick ? () => onItemClick(it.id) : undefined} />
+              </div>
+            );
+          }
+
+          // Claude-taak met parallel werk → split in twee halve-breedte
+          // blokken. Links = Claude (het echte agendaItem), rechts = parallel
+          // activiteit-kaart (visueel, klik opent zelfde modal).
+          return (
+            <div
+              key={it.id}
+              className="absolute left-1 right-1 flex gap-1"
+              style={{ top: `${top}px`, height: `${blockHeight}px` }}
+            >
+              <div className="flex-1 min-w-0">
+                <AgendaBlok {...it} onClick={onItemClick ? () => onItemClick(it.id) : undefined} />
+              </div>
+              <button
+                type="button"
+                onClick={onItemClick ? () => onItemClick(it.id) : undefined}
+                className="flex-1 min-w-0 text-left rounded-md border border-dashed border-purple-500/40 bg-purple-500/5 hover:bg-purple-500/10 transition-colors pl-2 pr-1.5 pt-3 pb-1.5 overflow-hidden"
+                style={{ height: `${blockHeight}px`, borderLeft: `4px dashed #a855f7` }}
+                data-testid="parallel-blok"
+              >
+                <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-purple-300">
+                  Parallel
+                </span>
+                <div className="text-[11px] text-autronis-text-primary leading-snug line-clamp-3 mt-2">
+                  {it.parallelActiviteit}
+                </div>
+              </button>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -13,6 +13,13 @@ export interface AgendaBlokProps {
   gemaaktDoor?: string;
   projectNaam?: string | null;
   projectKleur?: string | null;
+  // Half-width rendering voor Claude-taken met parallel werk. Als true,
+  // wordt het blok smaller zodat de parallel-activiteit ernaast past.
+  halfBreedte?: boolean;
+  // Als parallelActiviteit gezet is op het agendaItem, rendert SwimLaneView
+  // een extra "parallel" blok rechts naast dit blok met deze tekst.
+  parallelActiviteit?: string | null;
+  taakUitvoerder?: "claude" | "handmatig" | null;
   onClick?: () => void;
 }
 

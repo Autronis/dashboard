@@ -27,6 +27,7 @@ export interface AgendaItem {
   stappenplan?: string | null; // JSON-encoded array of { stap: string, duurMin: number }
   aiContext?: string | null;
   geschatteDuurMinuten?: number | null;
+  parallelActiviteit?: string | null;
 }
 
 function datumStr(jaar: number, maand: number, dag: number) {

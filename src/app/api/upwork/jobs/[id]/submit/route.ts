@@ -5,16 +5,14 @@ import * as schema from "@/lib/db/schema";
 import { requireAuth, type SessionGebruiker } from "@/lib/auth";
 import type { UpworkAccount } from "@/lib/upwork/types";
 
-function resolveClaimer(user: SessionGebruiker): UpworkAccount {
+function resolveSubmitter(user: SessionGebruiker): UpworkAccount {
   if (user.id === 2) return "syb";
   if (user.id === 1) return "sem";
-  const email = user.email.toLowerCase();
-  if (email.includes("syb")) return "syb";
-  return "sem";
+  return user.email.toLowerCase().includes("syb") ? "syb" : "sem";
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   let user: SessionGebruiker;
@@ -30,6 +28,16 @@ export async function POST(
     return NextResponse.json({ fout: "Ongeldig job id" }, { status: 400 });
   }
 
+  let submittedUrl: string | null = null;
+  try {
+    const body = (await req.json()) as { submittedUrl?: unknown };
+    if (typeof body.submittedUrl === "string" && body.submittedUrl.trim() !== "") {
+      submittedUrl = body.submittedUrl.trim();
+    }
+  } catch {
+    // body optional
+  }
+
   const existing = await db
     .select()
     .from(schema.upworkJobs)
@@ -40,18 +48,22 @@ export async function POST(
     return NextResponse.json({ fout: "Job niet gevonden" }, { status: 404 });
   }
 
-  const claimedBy = resolveClaimer(user);
+  const submittedBy = resolveSubmitter(user);
   const now = new Date().toISOString();
+  const row = existing[0];
 
   await db
     .update(schema.upworkJobs)
     .set({
-      claimedBy,
-      claimedAt: now,
-      status: "claimed",
+      status: "submitted",
+      submittedBy,
+      submittedAt: now,
+      submittedUrl,
+      claimedBy: row.claimedBy ?? submittedBy,
+      claimedAt: row.claimedAt ?? now,
       bijgewerktOp: now,
     })
     .where(eq(schema.upworkJobs.id, rowId));
 
-  return NextResponse.json({ succes: true, claimedBy });
+  return NextResponse.json({ succes: true, submittedBy, submittedAt: now });
 }

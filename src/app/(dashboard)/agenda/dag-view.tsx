@@ -638,6 +638,8 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           gemaaktDoor: ag.gemaaktDoor,
           projectNaam: ag.projectNaam,
           projectKleur: klantKleur(ag.projectId),
+          parallelActiviteit: ag.parallelActiviteit,
+          taakUitvoerder: ag.taakUitvoerder,
         };
       });
 

@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
         stappenplan: agendaItems.stappenplan,
         aiContext: agendaItems.aiContext,
         geschatteDuurMinuten: agendaItems.geschatteDuurMinuten,
+        parallelActiviteit: agendaItems.parallelActiviteit,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))
@@ -124,6 +125,9 @@ export async function POST(req: NextRequest) {
     const geschatteDuurMinuten = typeof body.geschatteDuurMinuten === "number" && body.geschatteDuurMinuten > 0
       ? body.geschatteDuurMinuten
       : null;
+    const parallelActiviteit = typeof body.parallelActiviteit === "string" && body.parallelActiviteit.trim()
+      ? body.parallelActiviteit.trim()
+      : null;
 
     const [nieuw] = await db
       .insert(agendaItems)
@@ -144,6 +148,7 @@ export async function POST(req: NextRequest) {
         stappenplan,
         aiContext,
         geschatteDuurMinuten,
+        parallelActiviteit,
       })
       .returning();
 

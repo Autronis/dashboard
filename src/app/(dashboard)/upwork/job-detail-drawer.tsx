@@ -6,6 +6,7 @@ import {
   ExternalLink,
   X,
   Check,
+  CheckCheck,
   Ban,
   RefreshCw,
   Copy,
@@ -30,7 +31,7 @@ import {
 // Re-export for page.tsx / other consumers
 export type { UpworkJob };
 
-type Action = "claim" | "dismiss" | "refetch";
+type Action = "claim" | "dismiss" | "refetch" | "submit";
 
 type Props = {
   job: UpworkJob;
@@ -44,6 +45,7 @@ const ACTION_LABELS: Record<Action, { doing: string; done: string; fail: string 
   claim: { doing: "Claimen…", done: "Job geclaimd", fail: "Claim mislukt" },
   dismiss: { doing: "Afwijzen…", done: "Job afgewezen", fail: "Afwijzen mislukt" },
   refetch: { doing: "Opnieuw ophalen…", done: "Job ververst", fail: "Re-fetch mislukt" },
+  submit: { doing: "Markeren…", done: "Gemarkeerd als ingediend", fail: "Markeren mislukt" },
 };
 
 const TIER_COLORS: Record<"low" | "mid" | "premium", string> = {
@@ -612,7 +614,7 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
         {/* Sticky action footer */}
         <div className="sticky bottom-0 bg-[var(--card)]/95 backdrop-blur border-t border-[var(--border)] p-4">
           <div className="flex flex-wrap items-center gap-2">
-            {!job.claimedBy && (
+            {!job.claimedBy && job.status !== "submitted" && (
               <button
                 disabled={busy !== null}
                 onClick={() => void doAction("claim")}
@@ -622,14 +624,34 @@ export default function JobDetailDrawer({ job, onClose, onAction }: Props) {
                 {busy === "claim" ? ACTION_LABELS.claim.doing : "Claim"}
               </button>
             )}
-            <button
-              disabled={busy !== null}
-              onClick={() => void doAction("dismiss")}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Ban className="w-4 h-4" />
-              {busy === "dismiss" ? ACTION_LABELS.dismiss.doing : "Dismiss"}
-            </button>
+            {job.status !== "submitted" && job.status !== "dismissed" && (
+              <button
+                disabled={busy !== null}
+                onClick={() => void doAction("submit")}
+                title="Markeer deze job als ingediend — zet proposal-submitted funnel stap"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#17B8A5]/15 border border-[#17B8A5]/50 text-[#4DC9B4] text-sm font-semibold hover:bg-[#17B8A5]/25 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <CheckCheck className="w-4 h-4" />
+                {busy === "submit" ? ACTION_LABELS.submit.doing : "Markeer ingediend"}
+              </button>
+            )}
+            {job.status === "submitted" && job.submittedAt && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#17B8A5]/10 border border-[#17B8A5]/30 text-[#4DC9B4] text-sm font-medium">
+                <CheckCheck className="w-4 h-4" />
+                Ingediend {job.submittedBy ? `door ${job.submittedBy} ` : ""}
+                {formatRelativeTime(job.submittedAt)}
+              </span>
+            )}
+            {job.status !== "submitted" && (
+              <button
+                disabled={busy !== null}
+                onClick={() => void doAction("dismiss")}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--bg)] border border-[var(--border)] text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Ban className="w-4 h-4" />
+                {busy === "dismiss" ? ACTION_LABELS.dismiss.doing : "Dismiss"}
+              </button>
+            )}
             <button
               disabled={busy !== null}
               onClick={() => void doAction("refetch")}

@@ -57,6 +57,9 @@ export type UpworkJob = {
   seenBy: string;
   claimedBy: string | null;
   claimedAt: string | null;
+  submittedBy: string | null;
+  submittedAt: string | null;
+  submittedUrl: string | null;
   status: string;
   fetchError: string | null;
   pitchDraft: string | null;

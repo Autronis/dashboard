@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search, Filter, Repeat, TrendingUp, Sparkles, Paperclip, FileX } from "lucide-react";
+import { Search, Filter, Repeat, TrendingUp, Sparkles, Paperclip, FileX, ChevronDown, ChevronUp } from "lucide-react";
 import { useFinancienTransacties, useFinancienCategorieen, type FinancienTransactie } from "@/hooks/queries/use-financien-transacties";
 import { DonutChart } from "./donut-chart";
 import { TransactieDetail } from "./transactie-detail";
@@ -66,6 +66,8 @@ export function TransactiesZone() {
   const [hoveredCategorie, setHoveredCategorie] = useState<string | null>(null);
   const [zoek, setZoek] = useState("");
   const [selectedTrans, setSelectedTrans] = useState<FinancienTransactie | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const COLLAPSED_LIMIT = 10;
 
   const { data: transData, isLoading } = useFinancienTransacties({
     type,
@@ -112,6 +114,25 @@ export function TransactiesZone() {
   );
 
   const grouped = useMemo(() => groupByDatum(transacties), [transacties]);
+
+  const visibleGrouped = useMemo(() => {
+    if (expanded) return grouped;
+    const out: typeof grouped = [];
+    let count = 0;
+    for (const groep of grouped) {
+      if (count >= COLLAPSED_LIMIT) break;
+      const slice = groep.items.slice(0, COLLAPSED_LIMIT - count);
+      count += slice.length;
+      out.push({
+        datum: groep.datum,
+        items: slice,
+        totaal: slice.reduce((s, t) => s + Math.abs(t.bedrag), 0),
+      });
+    }
+    return out;
+  }, [grouped, expanded]);
+
+  const hiddenCount = Math.max(0, transacties.length - COLLAPSED_LIMIT);
 
   const quickCounts = useMemo(() => ({
     alle: alleTransacties.length,
@@ -248,7 +269,7 @@ export function TransactiesZone() {
             <div className="p-12 text-center text-autronis-text-secondary text-sm">Geen transacties in deze periode</div>
           ) : (
             <div>
-              {grouped.map((groep) => (
+              {visibleGrouped.map((groep) => (
                 <div key={groep.datum}>
                   <div className="flex items-center justify-between px-5 pt-4 pb-2 sticky top-0 bg-autronis-card/95 backdrop-blur-sm z-10">
                     <span className="text-[11px] uppercase tracking-wider font-semibold text-autronis-text-secondary">
@@ -354,6 +375,24 @@ export function TransactiesZone() {
                   </div>
                 </div>
               ))}
+              {hiddenCount > 0 && (
+                <button
+                  onClick={() => setExpanded((v) => !v)}
+                  className="w-full flex items-center justify-center gap-1.5 py-3 text-xs font-medium text-autronis-text-secondary hover:text-autronis-accent hover:bg-autronis-bg/40 transition border-t border-autronis-border/40"
+                >
+                  {expanded ? (
+                    <>
+                      <ChevronUp className="w-3.5 h-3.5" />
+                      Inklappen
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="w-3.5 h-3.5" />
+                      Toon alle {transacties.length} transacties
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           )}
         </div>

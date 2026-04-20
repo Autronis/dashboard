@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useKapitaalrekening, type PartnerSaldo } from "@/hooks/queries/use-kapitaalrekening";
 import { ArrowRight, Wallet, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,21 +18,28 @@ function formatEuro(n: number): string {
 function PartnerCard({
   naam,
   kleur,
+  fotoSrc,
   saldo,
 }: {
   naam: string;
   kleur: "emerald" | "blue";
+  fotoSrc: string;
   saldo: PartnerSaldo;
 }) {
   const positief = saldo.saldo >= 0;
-  const initiaal = naam[0].toUpperCase();
-  const ringClass = kleur === "emerald" ? "ring-emerald-500/30 bg-emerald-500/10 text-emerald-400" : "ring-blue-500/30 bg-blue-500/10 text-blue-400";
+  const ringClass = kleur === "emerald" ? "ring-emerald-500/40" : "ring-blue-500/40";
 
   return (
     <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 space-y-4">
       <div className="flex items-center gap-3">
-        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold ring-2", ringClass)}>
-          {initiaal}
+        <div className={cn("w-10 h-10 rounded-full overflow-hidden ring-2 relative shrink-0", ringClass)}>
+          <Image
+            src={fotoSrc}
+            alt={naam}
+            fill
+            sizes="40px"
+            className="object-cover"
+          />
         </div>
         <h3 className="text-base font-semibold text-autronis-text-primary">{naam}</h3>
       </div>
@@ -131,8 +139,8 @@ export function KapitaalrekeningZone() {
       </UitlegBlock>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <PartnerCard naam="Sem" kleur="emerald" saldo={sem} />
-        <PartnerCard naam="Syb" kleur="blue" saldo={syb} />
+        <PartnerCard naam="Sem" kleur="emerald" fotoSrc="/foto-sem.jpg" saldo={sem} />
+        <PartnerCard naam="Syb" kleur="blue" fotoSrc="/foto-syb.jpg" saldo={syb} />
       </div>
 
       {heeftVerrekening && (

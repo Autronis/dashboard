@@ -65,6 +65,7 @@ export function ContractenTab() {
   const [formDetails, setFormDetails] = useState("");
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [generatedInhoud, setGeneratedInhoud] = useState("");
   const [editMode, setEditMode] = useState(false);
 
@@ -146,7 +147,8 @@ export function ContractenTab() {
   }
 
   async function handleDelete() {
-    if (!deleteId) return;
+    if (!deleteId || deleting) return;
+    setDeleting(true);
     try {
       const res = await fetch(`/api/contracten/${deleteId}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -155,6 +157,8 @@ export function ContractenTab() {
       fetchContracten();
     } catch {
       addToast("Kon contract niet verwijderen", "fout");
+    } finally {
+      setDeleting(false);
     }
   }
 

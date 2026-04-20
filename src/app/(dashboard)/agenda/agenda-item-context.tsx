@@ -73,7 +73,12 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
   // status='offerte' zodat Atlas hem niet opnieuw pakt morgen.
   const isPitchBlok = item.pijler === "sales_engine" && /pitch|voorstel/i.test(item.titel);
 
-  const ownerAvatar = item.eigenaar === "sem" || item.eigenaar === "syb" ? avatars[item.eigenaar]?.avatarUrl ?? null : null;
+  const rawAvatar = item.eigenaar === "sem" || item.eigenaar === "syb" ? avatars[item.eigenaar]?.avatarUrl ?? null : null;
+  const rawNaam = item.eigenaar === "sem" || item.eigenaar === "syb" ? avatars[item.eigenaar]?.naam ?? null : null;
+  const fallbackKleur = item.eigenaar === "sem" ? "14b8a6" : item.eigenaar === "syb" ? "8b5cf6" : "64748b";
+  const ownerAvatar = rawAvatar || (item.eigenaar && item.eigenaar !== "vrij"
+    ? `https://ui-avatars.com/api/?name=${encodeURIComponent(rawNaam || (item.eigenaar === "sem" ? "Sem Gijsberts" : item.eigenaar === "syb" ? "Syb Sprenkeler" : "Team"))}&background=${fallbackKleur}&color=fff&size=128&bold=true&format=png`
+    : null);
   const ownerNaam: string = item.eigenaar === "sem" ? "Sem · Atlas" : item.eigenaar === "syb" ? "Syb · Autro" : item.eigenaar ?? "onbekend";
 
   const stappen = useMemo<Stap[]>(() => {

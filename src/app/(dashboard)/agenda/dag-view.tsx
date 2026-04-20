@@ -640,6 +640,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           projectKleur: klantKleur(ag.projectId),
           parallelActiviteit: ag.parallelActiviteit,
           taakUitvoerder: ag.taakUitvoerder,
+          taakFase: ag.taakFase,
         };
       });
 

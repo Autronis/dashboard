@@ -34,6 +34,10 @@ interface OfferteDetail {
   btwBedrag: number | null;
   bedragInclBtw: number | null;
   notities: string | null;
+  aangemaaktOp: string | null;
+  bijgewerktOp: string | null;
+  geaccepteerdOp: string | null;
+  herinneringVerstuurdOp: string | null;
   klantNaam: string;
   klantContactpersoon: string | null;
   klantEmail: string | null;
@@ -353,13 +357,11 @@ export default function OfferteDetailPage() {
         <ConfirmDialog
           open={converteerDialogOpen}
           onClose={() => setConverteerDialogOpen(false)}
-          onBevestig={() => {
-            setConverteerDialogOpen(false);
-            handleConverteer();
-          }}
+          onBevestig={handleConverteer}
           titel="Converteer naar factuur?"
           bericht={`Dit maakt een nieuwe conceptfactuur aan op basis van offerte ${offerte.offertenummer} voor ${offerte.klantNaam}. De offerte blijft ongewijzigd.`}
           bevestigTekst="Factuur aanmaken"
+          variant="warning"
         />
       </div>
     </PageTransition>

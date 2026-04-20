@@ -20,6 +20,21 @@ interface Props {
 
 type AvatarMap = Record<string, { naam: string; avatarUrl: string | null }>;
 
+// ui-avatars.com fallback: genereert een PNG met initials + backgroundkleur
+// wanneer de gebruikers-tabel nog geen avatar-upload heeft. Voorkomt dat de
+// lane-header maandenlang een lege cirkel met "S" toont tot iemand uploadt.
+function avatarFallback(naam: string, kleur: string): string {
+  const params = new URLSearchParams({
+    name: naam,
+    background: kleur.replace("#", ""),
+    color: "fff",
+    size: "128",
+    bold: "true",
+    format: "png",
+  });
+  return `https://ui-avatars.com/api/?${params.toString()}`;
+}
+
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
 const HEADER_HEIGHT_PX = 64;
 const VRIJ_LANE_WIDTH_REM = 9;
@@ -68,9 +83,17 @@ function hourOffset(iso: string, dagStart: number): number {
   return (h - dagStart) * HOUR_HEIGHT_PX;
 }
 
+const LANE_KLEUR: Record<string, string> = {
+  sem: "#14b8a6",
+  syb: "#8b5cf6",
+  vrij: "#64748b",
+};
+
 function LaneHeader({ kind, avatars }: { kind: keyof typeof LANE_CHARACTER; avatars: AvatarMap }) {
   const c = LANE_CHARACTER[kind];
-  const avatarUrl = kind === "sem" || kind === "syb" ? avatars[kind]?.avatarUrl ?? null : null;
+  const rawUrl = kind === "sem" || kind === "syb" ? avatars[kind]?.avatarUrl ?? null : null;
+  const naam = kind === "sem" || kind === "syb" ? avatars[kind]?.naam ?? c.naam : c.naam;
+  const avatarUrl = rawUrl || (kind !== "vrij" ? avatarFallback(naam, LANE_KLEUR[kind] ?? "#2a3538") : null);
 
   return (
     <div
@@ -83,7 +106,7 @@ function LaneHeader({ kind, avatars }: { kind: keyof typeof LANE_CHARACTER; avat
         {avatarUrl ? (
           <Image
             src={avatarUrl}
-            alt={c.naam}
+            alt={naam}
             width={40}
             height={40}
             className="w-full h-full object-cover"
@@ -167,14 +190,14 @@ function Lane({
               <button
                 type="button"
                 onClick={onItemClick ? () => onItemClick(it.id) : undefined}
-                className="flex-1 min-w-0 text-left rounded-md border border-dashed border-purple-500/40 bg-purple-500/5 hover:bg-purple-500/10 transition-colors pl-2 pr-1.5 pt-3 pb-1.5 overflow-hidden"
-                style={{ height: `${blockHeight}px`, borderLeft: `4px dashed #a855f7` }}
+                className="relative flex-1 min-w-0 text-left rounded-md border border-purple-500/30 bg-purple-500/5 hover:bg-purple-500/10 transition-colors pl-2.5 pr-1.5 pt-4 pb-1.5 overflow-hidden"
+                style={{ height: `${blockHeight}px`, borderLeft: "3px solid #a855f7" }}
                 data-testid="parallel-blok"
               >
-                <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-purple-300">
-                  Parallel
+                <span className="absolute top-1 left-2 text-[9px] uppercase tracking-wider font-semibold text-purple-300 leading-none">
+                  ⋔ Parallel
                 </span>
-                <div className="text-[11px] text-autronis-text-primary leading-snug line-clamp-3 mt-2">
+                <div className="text-[11px] text-autronis-text-primary leading-snug line-clamp-3">
                   {it.parallelActiviteit}
                 </div>
               </button>

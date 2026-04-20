@@ -13,12 +13,15 @@ export interface AgendaBlokProps {
   gemaaktDoor?: string;
   projectNaam?: string | null;
   projectKleur?: string | null;
-  // Half-width rendering voor Claude-taken met parallel werk. Als true,
-  // wordt het blok smaller zodat de parallel-activiteit ernaast past.
-  halfBreedte?: boolean;
+  // Fase uit de gekoppelde taak, bv. "Fase 5: Klant-project dimensie".
+  // Rendert als klein label onder de project-tag zodat Sem direct ziet welke
+  // fase van welk project dit blok afdekt.
+  taakFase?: string | null;
   // Als parallelActiviteit gezet is op het agendaItem, rendert SwimLaneView
   // een extra "parallel" blok rechts naast dit blok met deze tekst.
   parallelActiviteit?: string | null;
+  // "claude" of "handmatig" — bepaalt het badge bovenin het blok zodat Sem
+  // in één oogopslag ziet of hij dit in VSCode moet starten of zelf uitvoert.
   taakUitvoerder?: "claude" | "handmatig" | null;
   onClick?: () => void;
 }
@@ -62,6 +65,8 @@ export function AgendaBlok({
   eigenaar,
   projectNaam,
   projectKleur,
+  taakFase,
+  taakUitvoerder,
   onClick,
 }: AgendaBlokProps) {
   const mins = durationMinutes(startDatum, eindDatum);
@@ -107,11 +112,29 @@ export function AgendaBlok({
       </span>
 
       {projectNaam && !isCompact && (
-        <div
-          className="text-[11px] uppercase tracking-wider font-semibold truncate leading-tight"
-          style={{ color: accentColor }}
-        >
-          {projectNaam}
+        <div className="flex items-center gap-1.5 leading-tight">
+          <div
+            className="text-[11px] uppercase tracking-wider font-semibold truncate"
+            style={{ color: accentColor }}
+          >
+            {projectNaam}
+          </div>
+          {taakUitvoerder && (
+            <span className={cn(
+              "text-[9px] font-semibold uppercase tracking-wider px-1 py-0.5 rounded shrink-0",
+              taakUitvoerder === "claude"
+                ? "bg-autronis-accent/20 text-autronis-accent"
+                : "bg-slate-500/20 text-slate-300"
+            )}>
+              {taakUitvoerder === "claude" ? "CLAUDE" : "HAND"}
+            </span>
+          )}
+        </div>
+      )}
+
+      {taakFase && !isCompact && (
+        <div className="text-[10px] text-[var(--text-secondary)] truncate leading-tight mb-0.5">
+          {taakFase}
         </div>
       )}
 
@@ -129,7 +152,7 @@ export function AgendaBlok({
         {titel}
       </div>
 
-      {omschrijving && mins >= 60 && (
+      {omschrijving && mins >= 75 && (
         <div className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mt-0.5">
           {omschrijving}
         </div>

@@ -12,6 +12,7 @@ interface Props {
   dagStart?: number; // hour, default 8
   dagEind?: number; //  hour — als undefined wordt dynamisch berekend uit items (max eind + 1u), met minimum 22
   onItemClick?: (id: number) => void;
+  onParallelClick?: (itemId: number, parallel: ParallelActiviteit) => void;
   // Syb-lane is opt-in via feature flag `agenda_syb_lane`. Zolang Syb
   // niet actief bridge-plant (geen eigen Autro-Mac in bedrijf) is solo
   // mode schoner: alleen Sem-lane + Vrij. Default false.
@@ -151,6 +152,7 @@ function Lane({
   dagStart,
   totalHeight,
   onItemClick,
+  onParallelClick,
   widthClass,
   avatars,
 }: {
@@ -160,6 +162,7 @@ function Lane({
   dagStart: number;
   totalHeight: number;
   onItemClick?: (id: number) => void;
+  onParallelClick?: (itemId: number, parallel: ParallelActiviteit) => void;
   widthClass: string;
   avatars: AvatarMap;
 }) {
@@ -202,7 +205,11 @@ function Lane({
               </div>
               <button
                 type="button"
-                onClick={onItemClick ? () => onItemClick(it.id) : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (onParallelClick) onParallelClick(it.id, parallel);
+                  else if (onItemClick) onItemClick(it.id);
+                }}
                 className="relative flex-1 min-w-0 text-left rounded-md border border-[var(--border)] bg-[var(--card)]/60 hover:bg-[var(--card)]/90 transition-colors pl-2 pr-1.5 pt-3.5 pb-1.5 overflow-hidden"
                 style={{ height: `${blockHeight}px`, borderLeft: `4px solid ${pijlerKleur}` }}
                 data-testid="parallel-blok"
@@ -241,6 +248,7 @@ export function SwimLaneView({
   dagStart = 8,
   dagEind,
   onItemClick,
+  onParallelClick,
   sybLaneVisible = false,
 }: Props) {
   // Dynamische dagEind: pak max eindtijd uit items + 1 uur, met minimum van
@@ -301,10 +309,6 @@ export function SwimLaneView({
   const hours: number[] = [];
   for (let h = dagStart; h <= computedDagEind; h++) hours.push(h);
 
-  // Lunch overlay: 12:30-13:30
-  const lunchTop = (12.5 - dagStart) * HOUR_HEIGHT_PX;
-  const lunchHeight = HOUR_HEIGHT_PX;
-
   return (
     <div className="flex w-full border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--bg)]">
       {/* Time ruler */}
@@ -335,6 +339,7 @@ export function SwimLaneView({
           dagStart={dagStart}
           totalHeight={totalHeight}
           onItemClick={onItemClick}
+          onParallelClick={onParallelClick}
           widthClass="flex-1 min-w-0"
           avatars={avatars}
         />
@@ -357,18 +362,11 @@ export function SwimLaneView({
           dagStart={dagStart}
           totalHeight={totalHeight}
           onItemClick={onItemClick}
+          onParallelClick={onParallelClick}
           widthClass="w-36 min-w-[9rem] shrink-0"
           avatars={avatars}
         />
 
-        {/* Lunch overlay — spans all lanes */}
-        <div
-          className="absolute left-0 right-0 bg-[var(--border)]/20 border-y border-[var(--border)] pointer-events-none flex items-center justify-center text-[11px] uppercase tracking-widest text-[var(--text-secondary)]"
-          style={{ top: `${HEADER_HEIGHT_PX + lunchTop}px`, height: `${lunchHeight}px` }}
-          data-testid="lunch-overlay"
-        >
-          lunch
-        </div>
 
         {/* Current-time indicator: rode lijn die over alle lanes loopt,
             zichtbaar wanneer de getoonde dag vandaag is en de tijd in het

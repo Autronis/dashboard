@@ -47,6 +47,7 @@ import { JaarView } from "./jaar-view";
 import { PlanTaakModal } from "./plan-taak-modal";
 import { TaakDetailPanel } from "@/components/taken/taak-detail-panel";
 import { AgendaItemContext } from "./agenda-item-context";
+import { ParallelDetailModal, type ParallelData } from "./parallel-detail-modal";
 import Link from "next/link";
 
 const typeConfig: Record<string, { icon: typeof Calendar; color: string; bg: string; borderColor: string; label: string }> = {
@@ -224,6 +225,9 @@ export default function AgendaPage() {
     }
   }
   const [modalOpen, setModalOpen] = useState(false);
+  const [parallelOpen, setParallelOpen] = useState(false);
+  const [parallelData, setParallelData] = useState<ParallelData | null>(null);
+  const [parallelParent, setParallelParent] = useState<AgendaItem | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<AgendaItem | null>(null);
   const [taakDetailId, setTaakDetailId] = useState<number | null>(null);
@@ -1475,6 +1479,11 @@ export default function AgendaPage() {
                 return itemsPerDag[ds] || [];
               })()}
               onItemClick={(item) => openItemDetail(item)}
+              onParallelClick={(item, parallel) => {
+                setParallelParent(item);
+                setParallelData(parallel);
+                setParallelOpen(true);
+              }}
               onSlotClick={(d, t) => openNieuwModal(d, t)}
               ingeplandeTaken={ingeplandeTaken}
               onTaakDetail={(id) => setTaakDetailId(id)}
@@ -3395,6 +3404,21 @@ export default function AgendaPage() {
         </motion.div>
       )}
       </AnimatePresence>
+
+      <ParallelDetailModal
+        open={parallelOpen}
+        parallel={parallelData}
+        parentTitel={parallelParent?.titel ?? null}
+        parentItemId={parallelParent?.id ?? null}
+        onClose={() => setParallelOpen(false)}
+        onOpenParent={() => {
+          if (parallelParent) {
+            setParallelOpen(false);
+            openItemDetail(parallelParent);
+          }
+        }}
+      />
+
       {/* Plan Taak Modal */}
       {planModalTaak && (
         <PlanTaakModal

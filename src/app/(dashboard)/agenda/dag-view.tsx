@@ -296,6 +296,7 @@ interface DagViewProps {
   onNavigeer: (richting: -1 | 1) => void;
   items: AnyEvent[];
   onItemClick?: (item: AgendaItem) => void;
+  onParallelClick?: (item: AgendaItem, parallel: { titel: string; duurMin?: number; pijler?: string; cluster?: string }) => void;
   onSlotClick?: (datum: string, tijd?: string) => void;
   ingeplandeTaken?: AgendaTaak[];
   onPlanTaak?: (taak: AgendaTaak, datum: string, tijd: string) => void;
@@ -330,7 +331,7 @@ function useEventDoneState() {
   return { done, toggle };
 }
 
-export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onTaakDetail, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
+export function DagView({ datum, onNavigeer, items, onItemClick, onParallelClick, onSlotClick, ingeplandeTaken = [], onPlanTaak, onTaakDetail, onUnplanTaak, onTaakToggle, onHeleDagNaarSlot, onDeadlineNaarSlot }: DagViewProps) {
   // DnD sensors
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { done: eventDone, toggle: toggleEventDone } = useEventDoneState();
@@ -677,6 +678,10 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           onItemClick={(id) => {
             const found = items.find((i) => "id" in i && i.id === id);
             if (found) onItemClick?.(found as AgendaItem);
+          }}
+          onParallelClick={(id, parallel) => {
+            const found = items.find((i) => "id" in i && i.id === id);
+            if (found) onParallelClick?.(found as AgendaItem, parallel);
           }}
         />
       </div>

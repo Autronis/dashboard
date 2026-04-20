@@ -77,6 +77,9 @@ interface Gewoonte {
   verwachteTijd: string | null;
   volgorde: number;
   voltooidVandaag: boolean;
+  krId?: number | null;
+  krTitel?: string | null;
+  objectiveTitel?: string | null;
 }
 
 interface Suggestie {
@@ -346,9 +349,14 @@ function Heatmap({ data, naam, totaalGewoontes }: { data: Record<string, number>
 }
 
 // ─── Modal (with motivation fields) ───
+interface KrOption {
+  id: number;
+  titel: string;
+  objectiveTitel: string;
+}
 function GewoonteModal({ open, onClose, onSave, gewoonte }: {
   open: boolean; onClose: () => void;
-  onSave: (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string }) => void;
+  onSave: (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string; krId: number | null }) => void;
   gewoonte?: Gewoonte | null;
 }) {
   const [naam, setNaam] = useState("");
@@ -358,6 +366,8 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
   const [doel, setDoel] = useState("");
   const [waarom, setWaarom] = useState("");
   const [verwachteTijd, setVerwachteTijd] = useState("");
+  const [krId, setKrId] = useState<number | null>(null);
+  const [krOpties, setKrOpties] = useState<KrOption[]>([]);
 
   useEffect(() => {
     if (gewoonte) {
@@ -368,11 +378,38 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
       setDoel(gewoonte.doel || "");
       setWaarom(gewoonte.waarom || "");
       setVerwachteTijd(gewoonte.verwachteTijd || "");
+      setKrId(gewoonte.krId ?? null);
     } else {
       setNaam(""); setIcoon("Target"); setFrequentie("dagelijks"); setStreefwaarde("");
-      setDoel(""); setWaarom(""); setVerwachteTijd("");
+      setDoel(""); setWaarom(""); setVerwachteTijd(""); setKrId(null);
     }
   }, [gewoonte, open]);
+
+  // Laad beschikbare KR's (alle actieve OKR key-results) zodra modal opent.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/doelen?includeKeyResults=1");
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          doelen?: Array<{ titel: string; keyResults?: Array<{ id: number; titel: string }> }>;
+        };
+        if (cancelled) return;
+        const opts: KrOption[] = [];
+        for (const d of data.doelen ?? []) {
+          for (const kr of d.keyResults ?? []) {
+            opts.push({ id: kr.id, titel: kr.titel, objectiveTitel: d.titel });
+          }
+        }
+        setKrOpties(opts);
+      } catch {
+        // KR's niet laadbaar — koppeling-dropdown wordt dan leeg getoond.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open]);
 
   if (!open) return null;
 
@@ -441,10 +478,32 @@ function GewoonteModal({ open, onClose, onSave, gewoonte }: {
               </div>
             </div>
           </div>
+
+          {/* OKR koppeling */}
+          <div className="border-t border-autronis-border pt-4">
+            <p className="text-xs font-medium text-autronis-accent mb-3 flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5" /> Koppel aan Key Result (optioneel)
+            </p>
+            <select
+              value={krId ?? ""}
+              onChange={(e) => setKrId(e.target.value ? Number(e.target.value) : null)}
+              className="w-full bg-autronis-bg border border-autronis-border rounded-xl px-4 py-3 text-sm text-autronis-text-primary focus:outline-none focus:ring-2 focus:ring-autronis-accent/50"
+            >
+              <option value="">Geen koppeling</option>
+              {krOpties.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.objectiveTitel} — {opt.titel}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-autronis-text-tertiary mt-2">
+              Gekoppelde gewoontes verschijnen op de KR-kaart in /doelen als ondersteunende habits.
+            </p>
+          </div>
         </div>
         <div className="flex gap-3 mt-6">
           <button onClick={onClose} className="flex-1 px-4 py-3 border border-autronis-border rounded-xl text-sm text-autronis-text-secondary hover:bg-autronis-border/30 transition-colors">Annuleren</button>
-          <button onClick={() => { if (!naam.trim()) return; onSave({ naam: naam.trim(), icoon, frequentie, streefwaarde, doel, waarom, verwachteTijd }); }} disabled={!naam.trim()}
+          <button onClick={() => { if (!naam.trim()) return; onSave({ naam: naam.trim(), icoon, frequentie, streefwaarde, doel, waarom, verwachteTijd, krId }); }} disabled={!naam.trim()}
             className="flex-1 px-4 py-3 bg-autronis-accent hover:bg-autronis-accent-hover text-autronis-bg rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 btn-press">
             {gewoonte ? "Opslaan" : "Toevoegen"}
           </button>
@@ -560,7 +619,7 @@ export default function GewoontesPagina() {
     toggleGewoonte(id, true);
   };
 
-  const handleSave = async (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string }) => {
+  const handleSave = async (data: { naam: string; icoon: string; frequentie: string; streefwaarde: string; doel: string; waarom: string; verwachteTijd: string; krId: number | null }) => {
     try {
       if (editGewoonte) {
         const res = await fetch(`/api/gewoontes/${editGewoonte.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
@@ -992,13 +1051,22 @@ export default function GewoontesPagina() {
                           g.voltooidVandaag ? "text-emerald-400" : "text-autronis-text-primary")}>
                           {g.naam}
                         </p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                           {g.streefwaarde && <span className="text-xs text-autronis-text-secondary">{g.streefwaarde}</span>}
                           {g.verwachteTijd && <span className="text-xs text-autronis-text-secondary flex items-center gap-0.5"><Clock className="w-3 h-3" />{g.verwachteTijd}</span>}
                           <span className="text-xs text-autronis-text-secondary capitalize">{g.frequentie}</span>
                           {g.doel && (
                             <span className="text-xs text-autronis-accent/60 truncate max-w-[200px]">
                               {g.doel}
+                            </span>
+                          )}
+                          {g.krTitel && (
+                            <span
+                              className="text-[11px] px-2 py-0.5 rounded-full bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent flex items-center gap-1 max-w-[260px] truncate"
+                              title={`Koppelt aan KR: ${g.krTitel}${g.objectiveTitel ? ` (${g.objectiveTitel})` : ""}`}
+                            >
+                              <Target className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{g.krTitel}</span>
                             </span>
                           )}
                         </div>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq, and, gte, sql } from "drizzle-orm";
+import { eq, and, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { gewoontes, gewoonteLogboek, screenTimeEntries, tijdregistraties, projecten } from "@/lib/db/schema";
+import { gewoontes, gewoonteLogboek, screenTimeEntries, tijdregistraties, projecten, okrKeyResults, okrObjectives } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
 
 const STANDAARD_GEWOONTES = [
@@ -224,10 +224,34 @@ export async function GET() {
 
     const logMap = new Map(logs.map((l) => [l.gewoonteId, l]));
 
-    const result = items.map((g) => ({
-      ...g,
-      voltooidVandaag: logMap.has(g.id) && logMap.get(g.id)!.voltooid === 1,
-    }));
+    // Resolve KR + objective titels voor gekoppelde gewoonten in één roundtrip.
+    const krIds = items.map((g) => g.krId).filter((v): v is number => typeof v === "number");
+    const krMap = new Map<number, { titel: string; objectiveTitel: string }>();
+    if (krIds.length > 0) {
+      const krs = await db
+        .select({
+          id: okrKeyResults.id,
+          titel: okrKeyResults.titel,
+          objectiveTitel: okrObjectives.titel,
+        })
+        .from(okrKeyResults)
+        .leftJoin(okrObjectives, eq(okrKeyResults.objectiveId, okrObjectives.id))
+        .where(inArray(okrKeyResults.id, krIds))
+        .all();
+      for (const kr of krs) {
+        krMap.set(kr.id, { titel: kr.titel, objectiveTitel: kr.objectiveTitel ?? "" });
+      }
+    }
+
+    const result = items.map((g) => {
+      const krInfo = g.krId ? krMap.get(g.krId) : null;
+      return {
+        ...g,
+        voltooidVandaag: logMap.has(g.id) && logMap.get(g.id)!.voltooid === 1,
+        krTitel: krInfo?.titel ?? null,
+        objectiveTitel: krInfo?.objectiveTitel ?? null,
+      };
+    });
 
     // Build suggestions: standard + AI-powered
     const bestaandeNamen = new Set(items.map((g) => g.naam.toLowerCase()));
@@ -262,7 +286,7 @@ export async function POST(req: NextRequest) {
     const gebruiker = await requireAuth();
     const body = await req.json();
 
-    const { naam, icoon, frequentie, streefwaarde, doel, waarom, verwachteTijd } = body;
+    const { naam, icoon, frequentie, streefwaarde, doel, waarom, verwachteTijd, krId } = body;
     if (!naam) {
       return NextResponse.json({ fout: "Naam is verplicht" }, { status: 400 });
     }
@@ -290,6 +314,7 @@ export async function POST(req: NextRequest) {
         waarom: waarom || null,
         verwachteTijd: verwachteTijd || null,
         volgorde: nextVolgorde,
+        krId: typeof krId === "number" ? krId : null,
       })
       .returning()
       .get();

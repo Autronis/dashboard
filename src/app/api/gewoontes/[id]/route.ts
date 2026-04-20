@@ -37,6 +37,7 @@ export async function PUT(
         ...(body.waarom !== undefined && { waarom: body.waarom }),
         ...(body.verwachteTijd !== undefined && { verwachteTijd: body.verwachteTijd }),
         ...(body.isActief !== undefined && { isActief: body.isActief }),
+        ...(body.krId !== undefined && { krId: typeof body.krId === "number" ? body.krId : null }),
       })
       .where(
         and(eq(gewoontes.id, Number(id)), eq(gewoontes.gebruikerId, gebruiker.id))

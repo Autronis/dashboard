@@ -977,6 +977,8 @@ export const wikiArtikelen = sqliteTable("wiki_artikelen", {
   tags: text("tags").default("[]"), // JSON array
   auteurId: integer("auteur_id").references(() => gebruikers.id),
   gepubliceerd: integer("gepubliceerd").default(1),
+  bronType: text("bron_type", { enum: ["second-brain", "idee", "yt-knowledge", "insta-knowledge"] }),
+  bronId: integer("bron_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });
@@ -1363,6 +1365,7 @@ export const gewoontes = sqliteTable("gewoontes", {
   verwachteTijd: text("verwachte_tijd"), // Expected time e.g. "15 min", "30 min"
   volgorde: integer("volgorde").default(0),
   isActief: integer("is_actief").default(1),
+  krId: integer("kr_id").references(() => okrKeyResults.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 });
 
@@ -1411,6 +1414,7 @@ export const ideeen = sqliteTable("ideeen", {
   revenuePotential: integer("revenue_potential"),
   bron: text("bron"),
   bronTekst: text("bron_tekst"),
+  gepromotedNaarWikiId: integer("gepromoted_naar_wiki_id").references(() => wikiArtikelen.id),
   aangemaaktDoor: integer("aangemaakt_door").references(() => gebruikers.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
@@ -1430,6 +1434,7 @@ export const secondBrainItems = sqliteTable("second_brain_items", {
   taal: text("taal"),
   isFavoriet: integer("is_favoriet").default(0),
   isGearchiveerd: integer("is_gearchiveerd").default(0),
+  gepromotedNaarWikiId: integer("gepromoted_naar_wiki_id").references(() => wikiArtikelen.id),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });

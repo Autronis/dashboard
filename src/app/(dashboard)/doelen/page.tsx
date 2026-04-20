@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { AnimatedNumber } from "@/components/ui/animated-number";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   Target,
   Plus,
@@ -26,6 +27,7 @@ import {
   ChevronUp,
   Share2,
   Loader2,
+  Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn, formatBedrag } from "@/lib/utils";
@@ -819,6 +821,27 @@ export default function DoelenPage() {
                               />
                             )}
                           </div>
+
+                          {/* Gekoppelde gewoontes (ondersteunende habits) */}
+                          {kr.gekoppeldeGewoontes && kr.gekoppeldeGewoontes.length > 0 && (
+                            <div className="mt-2.5 pt-2.5 border-t border-autronis-border/50">
+                              <p className="text-[10px] uppercase tracking-wider text-autronis-text-secondary/60 mb-1.5 flex items-center gap-1">
+                                <Flame className="w-3 h-3" />
+                                Ondersteund door {kr.gekoppeldeGewoontes.length} {kr.gekoppeldeGewoontes.length === 1 ? "gewoonte" : "gewoontes"}
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {kr.gekoppeldeGewoontes.map((h) => (
+                                  <Link
+                                    key={h.id}
+                                    href="/gewoontes"
+                                    className="text-[11px] px-2 py-0.5 rounded-full bg-autronis-accent/10 border border-autronis-accent/30 text-autronis-accent hover:bg-autronis-accent/15 transition-colors"
+                                  >
+                                    {h.naam}
+                                  </Link>
+                                ))}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Uren-koppeling: extra inzicht */}
                           {kr.autoKoppeling === "uren" && (() => {

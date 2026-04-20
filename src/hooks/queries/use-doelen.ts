@@ -2,6 +2,12 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
+export interface GekoppeldeGewoonte {
+  id: number;
+  naam: string;
+  icoon: string;
+}
+
 export interface KeyResult {
   id?: number;
   objectiveId?: number;
@@ -11,6 +17,7 @@ export interface KeyResult {
   eenheid: string | null;
   autoKoppeling: string | null;
   confidence?: number;
+  gekoppeldeGewoontes?: GekoppeldeGewoonte[];
 }
 
 export interface Doel {

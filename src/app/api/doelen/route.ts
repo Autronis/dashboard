@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { okrObjectives, okrKeyResults, facturen, taken, klanten } from "@/lib/db/schema";
+import { okrObjectives, okrKeyResults, facturen, taken, klanten, gewoontes } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { eq, and, sql, gte, lt } from "drizzle-orm";
+import { eq, and, sql, gte, lt, inArray } from "drizzle-orm";
 import { berekenActieveUren } from "@/lib/screen-time-uren";
 
 function getQuarterDateRange(kwartaal: number, jaar: number): { start: string; end: string } {
@@ -93,6 +93,46 @@ export async function GET(req: NextRequest) {
         )
       );
 
+    // Alle KR-ids van deze periode ophalen zodat we in één query de gekoppelde
+    // gewoonten per KR kunnen laden (zonder per-KR roundtrip).
+    const alleKrIds = (
+      await db
+        .select({ id: okrKeyResults.id })
+        .from(okrKeyResults)
+        .where(
+          inArray(
+            okrKeyResults.objectiveId,
+            objectives.map((o) => o.id)
+          )
+        )
+    ).map((r) => r.id);
+
+    const linkedGewoontes = alleKrIds.length
+      ? await db
+          .select({
+            id: gewoontes.id,
+            naam: gewoontes.naam,
+            icoon: gewoontes.icoon,
+            krId: gewoontes.krId,
+          })
+          .from(gewoontes)
+          .where(
+            and(
+              eq(gewoontes.gebruikerId, gebruiker.id),
+              eq(gewoontes.isActief, 1),
+              inArray(gewoontes.krId, alleKrIds)
+            )
+          )
+      : [];
+
+    const habitsByKr = new Map<number, Array<{ id: number; naam: string; icoon: string }>>();
+    for (const h of linkedGewoontes) {
+      if (!h.krId) continue;
+      const list = habitsByKr.get(h.krId) ?? [];
+      list.push({ id: h.id, naam: h.naam, icoon: h.icoon });
+      habitsByKr.set(h.krId, list);
+    }
+
     const objectivesWithKrs = await Promise.all(
       objectives.map(async (obj) => {
         const krs = await db
@@ -102,6 +142,7 @@ export async function GET(req: NextRequest) {
 
         const enrichedKrs = await Promise.all(
           krs.map(async (kr) => {
+            const habits = habitsByKr.get(kr.id) ?? [];
             if (kr.autoKoppeling && kr.autoKoppeling !== "geen") {
               const autoWaarde = await calculateAutoValue(kr.autoKoppeling, kwartaal, jaar, gebruiker.id);
               // Update the stored value
@@ -109,9 +150,9 @@ export async function GET(req: NextRequest) {
                 .update(okrKeyResults)
                 .set({ huidigeWaarde: autoWaarde })
                 .where(eq(okrKeyResults.id, kr.id));
-              return { ...kr, huidigeWaarde: autoWaarde };
+              return { ...kr, huidigeWaarde: autoWaarde, gekoppeldeGewoontes: habits };
             }
-            return kr;
+            return { ...kr, gekoppeldeGewoontes: habits };
           })
         );
 

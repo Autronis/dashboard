@@ -37,6 +37,7 @@ interface Item {
   failure_reason: string | null;
   discovered_at: string;
   processed_at: string | null;
+  gepromoted_naar_wiki_id: number | null;
   analysis: Analysis | null;
 }
 
@@ -268,11 +269,43 @@ export default function InstaKnowledgePage() {
                       {sc.label}
                     </span>
                     <div className="flex items-center gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <a href={item.url} target="_blank" rel="noreferrer" className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><ExternalLink className="w-4 h-4" /></a>
-                      {(item.status === "failed" || item.status === "done") && (
-                        <button onClick={() => retry(item.id)} className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><RefreshCw className="w-4 h-4" /></button>
+                      <a href={item.url} target="_blank" rel="noreferrer" title="Open Instagram" className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><ExternalLink className="w-4 h-4" /></a>
+                      {item.status === "done" && item.analysis && (
+                        item.gepromoted_naar_wiki_id ? (
+                          <a
+                            href={`/wiki/${item.gepromoted_naar_wiki_id}`}
+                            title="Bekijk in Wiki"
+                            className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/15 transition-colors"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </a>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const r = await fetch("/api/wiki/promote", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ bronType: "insta-knowledge", bronId: item.id }),
+                                });
+                                const d = await r.json();
+                                if (!r.ok) throw new Error(d.fout || "Promote mislukt");
+                                window.location.href = `/wiki/${d.artikel.id}`;
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : "Promote mislukt");
+                              }
+                            }}
+                            title="Promote naar Wiki"
+                            className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-blue-400 hover:bg-blue-500/15 transition-colors"
+                          >
+                            <BookOpen className="w-4 h-4" />
+                          </button>
+                        )
                       )}
-                      <button onClick={() => del(item.id)} className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/15 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      {(item.status === "failed" || item.status === "done") && (
+                        <button onClick={() => retry(item.id)} title="Herverwerken" className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-autronis-text-primary hover:bg-autronis-border/40 transition-colors"><RefreshCw className="w-4 h-4" /></button>
+                      )}
+                      <button onClick={() => del(item.id)} title="Verwijderen" className="p-1.5 rounded-lg text-autronis-text-secondary hover:text-red-400 hover:bg-red-500/15 transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-autronis-text-secondary shrink-0" /> : <ChevronDown className="w-4 h-4 text-autronis-text-secondary shrink-0" />}
                   </div>

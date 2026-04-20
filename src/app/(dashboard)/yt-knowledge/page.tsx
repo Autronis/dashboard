@@ -38,6 +38,7 @@ interface VideoItem {
   status: string;
   discovered_at: string;
   source: string;
+  gepromoted_naar_wiki_id?: number | null;
   analysis?: AnalysisData;
 }
 
@@ -461,6 +462,42 @@ export default function YtKnowledgePage() {
                       >
                         Analyseer
                       </button>
+                    )}
+                    {video.status === "done" && video.analysis && (
+                      video.gepromoted_naar_wiki_id ? (
+                        <a
+                          href={`/wiki/${video.gepromoted_naar_wiki_id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          title="Bekijk in Wiki"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 text-xs font-medium hover:bg-blue-500/25 transition"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          Wiki
+                        </a>
+                      ) : (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const r = await fetch("/api/wiki/promote", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ bronType: "yt-knowledge", bronId: video.id }),
+                              });
+                              const d = await r.json();
+                              if (!r.ok) throw new Error(d.fout || "Promote mislukt");
+                              window.location.href = `/wiki/${d.artikel.id}`;
+                            } catch (err) {
+                              setError(err instanceof Error ? err.message : "Promote mislukt");
+                            }
+                          }}
+                          title="Promote naar Wiki"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/30 text-xs font-medium hover:bg-blue-500/20 transition"
+                        >
+                          <BookOpen className="w-3 h-3" />
+                          → Wiki
+                        </button>
+                      )
                     )}
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border", sc.color)}>
                       <StatusIcon className={cn("w-3 h-3", video.status === "processing" && "animate-spin")} />

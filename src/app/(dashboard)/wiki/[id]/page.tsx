@@ -35,10 +35,10 @@ interface Artikel {
   aangemaaktOp: string | null;
   bijgewerktOp: string | null;
   bronType: "second-brain" | "idee" | "yt-knowledge" | "insta-knowledge" | null;
-  bronId: number | null;
+  bronId: string | null;
 }
 
-const bronConfig: Record<string, { label: string; href: (id: number) => string; icon: typeof Brain }> = {
+const bronConfig: Record<string, { label: string; href: () => string; icon: typeof Brain }> = {
   "second-brain": { label: "Second Brain", href: () => "/second-brain", icon: Brain },
   "idee": { label: "Idee", href: () => "/ideeen", icon: Lightbulb },
   "yt-knowledge": { label: "YT Knowledge", href: () => "/yt-knowledge", icon: Video },
@@ -204,7 +204,7 @@ export default function WikiArtikelPage() {
         <div className="bg-autronis-card border border-autronis-border rounded-2xl p-6 lg:p-8">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span
                   className={cn(
                     "text-xs px-2.5 py-0.5 rounded-full font-medium",
@@ -214,6 +214,22 @@ export default function WikiArtikelPage() {
                 >
                   {cat.label}
                 </span>
+                {artikel.bronType && artikel.bronId && bronConfig[artikel.bronType] && (() => {
+                  const bron = bronConfig[artikel.bronType];
+                  const BronIcon = bron.icon;
+                  const isIntId = /^\d+$/.test(artikel.bronId);
+                  const label = isIntId ? `Uit ${bron.label} #${artikel.bronId}` : `Uit ${bron.label}`;
+                  return (
+                    <Link
+                      href={bron.href()}
+                      className="inline-flex items-center gap-1.5 text-xs px-2.5 py-0.5 rounded-full font-medium bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent hover:border-autronis-accent/40 transition-colors"
+                      title={`Gepromoot vanuit ${bron.label} (${artikel.bronId})`}
+                    >
+                      <BronIcon className="w-3 h-3" />
+                      {label}
+                    </Link>
+                  );
+                })()}
               </div>
               <h1 className="text-3xl font-bold text-autronis-text-primary tracking-tight">
                 {artikel.titel}

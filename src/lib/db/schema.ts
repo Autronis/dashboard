@@ -978,7 +978,7 @@ export const wikiArtikelen = sqliteTable("wiki_artikelen", {
   auteurId: integer("auteur_id").references(() => gebruikers.id),
   gepubliceerd: integer("gepubliceerd").default(1),
   bronType: text("bron_type", { enum: ["second-brain", "idee", "yt-knowledge", "insta-knowledge"] }),
-  bronId: integer("bron_id"),
+  bronId: text("bron_id"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
   bijgewerktOp: text("bijgewerkt_op").default(sql`(datetime('now'))`),
 });

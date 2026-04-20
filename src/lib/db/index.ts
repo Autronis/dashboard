@@ -98,9 +98,11 @@ if (isTurso) {
   // Promote-to-Wiki flow: wiki knows source, sources know destination
   for (const col of [
     "ALTER TABLE wiki_artikelen ADD COLUMN bron_type TEXT",
-    "ALTER TABLE wiki_artikelen ADD COLUMN bron_id INTEGER",
+    "ALTER TABLE wiki_artikelen ADD COLUMN bron_id TEXT",
     "ALTER TABLE second_brain_items ADD COLUMN gepromoted_naar_wiki_id INTEGER REFERENCES wiki_artikelen(id)",
     "ALTER TABLE ideeen ADD COLUMN gepromoted_naar_wiki_id INTEGER REFERENCES wiki_artikelen(id)",
+    "ALTER TABLE ytk_videos ADD COLUMN gepromoted_naar_wiki_id INTEGER",
+    "ALTER TABLE isk_items ADD COLUMN gepromoted_naar_wiki_id INTEGER",
   ]) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }

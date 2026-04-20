@@ -14,7 +14,7 @@ export async function GET() {
 
   const [itemsRes, statsRes] = await Promise.all([
     tursoClient.execute(
-      "SELECT i.id, i.instagram_id, i.type, i.url, i.caption, i.author_handle, i.media_url, i.status, i.failure_reason, i.discovered_at, i.processed_at, a.summary, a.features, a.steps, a.tips, a.links, a.relevance_score, a.relevance_reason, a.raw_transcript FROM isk_items i LEFT JOIN isk_analyses a ON a.item_id = i.id ORDER BY i.discovered_at DESC LIMIT 200"
+      "SELECT i.id, i.instagram_id, i.type, i.url, i.caption, i.author_handle, i.media_url, i.status, i.failure_reason, i.discovered_at, i.processed_at, i.gepromoted_naar_wiki_id, a.summary, a.features, a.steps, a.tips, a.links, a.relevance_score, a.relevance_reason, a.raw_transcript FROM isk_items i LEFT JOIN isk_analyses a ON a.item_id = i.id ORDER BY i.discovered_at DESC LIMIT 200"
     ),
     tursoClient.execute(
       "SELECT COUNT(*) AS total, SUM(CASE WHEN status='done' THEN 1 ELSE 0 END) AS processed, SUM(CASE WHEN status='failed' THEN 1 ELSE 0 END) AS failed, AVG(a.relevance_score) AS avg_score FROM isk_items i LEFT JOIN isk_analyses a ON a.item_id = i.id"
@@ -33,6 +33,7 @@ export async function GET() {
     failure_reason: r.failure_reason,
     discovered_at: r.discovered_at,
     processed_at: r.processed_at,
+    gepromoted_naar_wiki_id: r.gepromoted_naar_wiki_id ?? null,
     analysis: r.summary ? {
       summary: r.summary,
       features: JSON.parse((r.features as string) || "[]"),

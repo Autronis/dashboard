@@ -220,6 +220,7 @@ export default function SecondBrainPage() {
       taal: null,
       isFavoriet: 0,
       isGearchiveerd: 0,
+      gepromotedNaarWikiId: null,
       aangemaaktOp: new Date().toISOString(),
       bijgewerktOp: new Date().toISOString(),
       _optimistic: true,

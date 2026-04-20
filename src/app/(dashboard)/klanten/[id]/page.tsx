@@ -42,6 +42,7 @@ import {
   BarChart3,
   Send,
   Handshake,
+  ShieldAlert,
 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cn, formatUren, formatBedrag, formatDatum, formatDatumKort } from "@/lib/utils";
@@ -365,6 +366,14 @@ export default function KlantDetailPage() {
           >
             <Mail className="w-4 h-4" />
             AI Mail
+          </Link>
+          <Link
+            href={`/contract-analyse?klantId=${id}`}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-autronis-card hover:bg-autronis-card/80 border border-autronis-border text-autronis-text-secondary hover:text-autronis-accent rounded-xl text-sm font-semibold transition-colors"
+            title="Analyseer een inkomend contract of PDF met AI"
+          >
+            <ShieldAlert className="w-4 h-4" />
+            Contract check
           </Link>
           <button
             onClick={() => setKlantModalOpen(true)}

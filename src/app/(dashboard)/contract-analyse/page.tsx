@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, X, RotateCcw, ShieldAlert, Calendar, Euro, ClipboardList } from "lucide-react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Upload, FileText, AlertTriangle, CheckCircle, Loader2, X, RotateCcw, ShieldAlert, Calendar, Euro, ClipboardList, Building2, Save, Check } from "lucide-react";
 import { marked } from "marked";
 
 interface AnalyseResultaat {
@@ -15,6 +17,62 @@ export default function ContractAnalysePage() {
   const [fout, setFout] = useState("");
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const searchParams = useSearchParams();
+  const klantIdParam = searchParams.get("klantId");
+  const [klant, setKlant] = useState<{ id: number; bedrijfsnaam: string } | null>(null);
+  const [opslaanBezig, setOpslaanBezig] = useState(false);
+  const [opgeslagen, setOpgeslagen] = useState(false);
+
+  useEffect(() => {
+    if (!klantIdParam) {
+      setKlant(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/klanten/${klantIdParam}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as { klant?: { id: number; bedrijfsnaam: string } };
+        if (!cancelled && data.klant) {
+          setKlant({ id: data.klant.id, bedrijfsnaam: data.klant.bedrijfsnaam });
+        }
+      } catch {
+        // Klant niet laadbaar — analyse werkt ook standalone.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [klantIdParam]);
+
+  async function handleSaveToKlant() {
+    if (!klant || !resultaat) return;
+    setOpslaanBezig(true);
+    try {
+      const notitie = `[Contract Analyzer — ${bestand?.name ?? "PDF"}]\n\n${resultaat.analyse}`;
+      const res = await fetch(`/api/klanten/${klant.id}/contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          kanaal: "anders",
+          richting: "inkomend",
+          notitie,
+        }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { fout?: string };
+        throw new Error(data.fout ?? "Opslaan mislukt");
+      }
+      setOpgeslagen(true);
+      setTimeout(() => setOpgeslagen(false), 3000);
+    } catch (e) {
+      setFout(e instanceof Error ? e.message : "Opslaan mislukt");
+    } finally {
+      setOpslaanBezig(false);
+    }
+  }
 
   const verwerkBestand = useCallback((file: File) => {
     if (file.type !== "application/pdf") {
@@ -136,6 +194,15 @@ export default function ContractAnalysePage() {
           <p className="text-sm text-slate-400 mt-1">
             Upload een contract of overeenkomst — AI analyseert risico&apos;s, verplichtingen en adders.
           </p>
+          {klant && (
+            <Link
+              href={`/klanten/${klant.id}`}
+              className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-500/30 text-teal-400 text-xs font-medium hover:bg-teal-500/15 transition-colors"
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Voor klant: {klant.bedrijfsnaam}
+            </Link>
+          )}
         </div>
         {(bestand || resultaat) && (
           <button
@@ -247,10 +314,27 @@ export default function ContractAnalysePage() {
           {/* Bestandsnaam header */}
           <div className="flex items-center gap-3 p-4 bg-slate-800 rounded-xl border border-slate-700">
             <FileText className="w-5 h-5 text-teal-400" />
-            <div>
+            <div className="flex-1">
               <p className="font-medium text-white">{bestand?.name}</p>
               <p className="text-xs text-slate-400">Analyse voltooid</p>
             </div>
+            {klant && (
+              <button
+                onClick={handleSaveToKlant}
+                disabled={opslaanBezig || opgeslagen}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                title={`Log als contactmoment bij ${klant.bedrijfsnaam}`}
+              >
+                {opslaanBezig ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : opgeslagen ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {opgeslagen ? "Opgeslagen" : "Bij klant"}
+              </button>
+            )}
           </div>
 
           {/* Secties */}

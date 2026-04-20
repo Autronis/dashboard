@@ -1816,7 +1816,23 @@ export default function IdeeenPage() {
                 <div className="space-y-1.5"><label className="block text-sm font-medium text-autronis-text-secondary">Prioriteit</label><select value={formPrioriteit} onChange={(e) => setFormPrioriteit(e.target.value)} className={cn(inputClasses)}>{prioriteitOpties.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}</select></div>
               </div>
               <div className="space-y-1.5"><label className="block text-sm font-medium text-autronis-text-secondary">Omschrijving</label><textarea value={formOmschrijving} onChange={(e) => setFormOmschrijving(e.target.value)} rows={3} className={cn(inputClasses, "resize-none")} placeholder="Korte omschrijving..." /></div>
-              <div className="space-y-1.5"><label className="block text-sm font-medium text-autronis-text-secondary">Uitwerking</label><textarea value={formUitwerking} onChange={(e) => setFormUitwerking(e.target.value)} rows={8} className={cn(inputClasses, "resize-none")} placeholder="Uitgebreide uitwerking..." /></div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-autronis-text-secondary">Uitwerking <span className="text-autronis-text-secondary/60">(markdown)</span></label>
+                  {formUitwerking.trim() && (
+                    <span className="text-[11px] text-autronis-text-secondary/60">Preview live onder</span>
+                  )}
+                </div>
+                <textarea value={formUitwerking} onChange={(e) => setFormUitwerking(e.target.value)} rows={8} className={cn(inputClasses, "resize-none font-mono text-[13px]")} placeholder="Uitgebreide uitwerking..." />
+                {formUitwerking.trim() && (
+                  <div className="mt-2 bg-autronis-bg/40 border border-autronis-border rounded-xl p-4 max-h-64 overflow-y-auto">
+                    <div
+                      className="text-sm text-autronis-text-primary leading-relaxed ytk-markdown"
+                      dangerouslySetInnerHTML={{ __html: marked.parse(formUitwerking, { breaks: true }) as string }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center justify-end gap-3 mt-6">
               <button onClick={() => setFormOpen(false)} className="px-4 py-2.5 text-sm text-autronis-text-secondary hover:text-autronis-text-primary transition-colors">Annuleren</button>

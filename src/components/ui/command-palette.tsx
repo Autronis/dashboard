@@ -53,6 +53,7 @@ import {
   Plus,
   Heart,
   X,
+  Instagram,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -63,7 +64,19 @@ interface CommandPaletteProps {
 }
 
 interface ZoekResultaat {
-  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document" | "second-brain";
+  type:
+    | "klant"
+    | "project"
+    | "factuur"
+    | "taak"
+    | "lead"
+    | "document"
+    | "second-brain"
+    | "wiki"
+    | "idee"
+    | "radar"
+    | "yt-knowledge"
+    | "insta-knowledge";
   id: number | string;
   titel: string;
   subtitel: string | null;
@@ -173,6 +186,11 @@ const typeIcons: Record<ZoekResultaat["type"], typeof Building2> = {
   lead: Target,
   document: FileText,
   "second-brain": Brain,
+  wiki: BookOpen,
+  idee: Lightbulb,
+  radar: Radar,
+  "yt-knowledge": Video,
+  "insta-knowledge": Instagram,
 };
 
 const typeLabels: Record<ZoekResultaat["type"], string> = {
@@ -183,6 +201,11 @@ const typeLabels: Record<ZoekResultaat["type"], string> = {
   lead: "Lead",
   document: "Document",
   "second-brain": "Second Brain",
+  wiki: "Wiki",
+  idee: "Idee",
+  radar: "Radar",
+  "yt-knowledge": "YT Knowledge",
+  "insta-knowledge": "Instagram",
 };
 
 const typeLabelsMeervoud: Record<ZoekResultaat["type"], string> = {
@@ -193,6 +216,11 @@ const typeLabelsMeervoud: Record<ZoekResultaat["type"], string> = {
   lead: "Leads",
   document: "Documenten",
   "second-brain": "Second Brain",
+  wiki: "Wiki",
+  idee: "Ideeën",
+  radar: "Learning Radar",
+  "yt-knowledge": "YT Knowledge",
+  "insta-knowledge": "Instagram",
 };
 
 function loadRecentSearches(): RecentSearch[] {

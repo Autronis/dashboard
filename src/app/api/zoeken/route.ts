@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { klanten, projecten, facturen, taken, leads, secondBrainItems } from "@/lib/db/schema";
+import { db, tursoClient } from "@/lib/db";
+import { klanten, projecten, facturen, taken, leads, secondBrainItems, wikiArtikelen, ideeen, radarItems } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { like, eq, sql, or, and } from "drizzle-orm";
+import { like, eq, sql, or, and, desc } from "drizzle-orm";
 import { fetchAllDocuments, searchNotionDocuments } from "@/lib/notion";
 import { DocumentBase } from "@/types/documenten";
 
 interface ZoekResultaat {
-  type: "klant" | "project" | "factuur" | "taak" | "lead" | "document" | "second-brain";
+  type:
+    | "klant"
+    | "project"
+    | "factuur"
+    | "taak"
+    | "lead"
+    | "document"
+    | "second-brain"
+    | "wiki"
+    | "idee"
+    | "radar"
+    | "yt-knowledge"
+    | "insta-knowledge";
   id: number | string;
   titel: string;
   subtitel: string | null;
@@ -42,7 +54,7 @@ export async function GET(req: NextRequest) {
     const zoekterm = `%${q}%`;
     const resultaten: ZoekResultaat[] = [];
 
-    const [klantenRes, projectenRes, facturenRes, takenRes, leadsRes, secondBrainRes] = await Promise.all([
+    const [klantenRes, projectenRes, facturenRes, takenRes, leadsRes, secondBrainRes, wikiRes, ideeenRes, radarRes] = await Promise.all([
       db
         .select({ id: klanten.id, bedrijfsnaam: klanten.bedrijfsnaam, contactpersoon: klanten.contactpersoon })
         .from(klanten)
@@ -95,6 +107,48 @@ export async function GET(req: NextRequest) {
           )
         )
         .limit(5),
+
+      db
+        .select({ id: wikiArtikelen.id, titel: wikiArtikelen.titel, categorie: wikiArtikelen.categorie })
+        .from(wikiArtikelen)
+        .where(or(like(wikiArtikelen.titel, zoekterm), like(wikiArtikelen.inhoud, zoekterm)))
+        .orderBy(desc(wikiArtikelen.bijgewerktOp))
+        .limit(5),
+
+      db
+        .select({ id: ideeen.id, naam: ideeen.naam, status: ideeen.status, categorie: ideeen.categorie })
+        .from(ideeen)
+        .where(or(like(ideeen.naam, zoekterm), like(ideeen.omschrijving, zoekterm), like(ideeen.uitwerking, zoekterm)))
+        .orderBy(desc(ideeen.bijgewerktOp))
+        .limit(5),
+
+      db
+        .select({ id: radarItems.id, titel: radarItems.titel, url: radarItems.url, score: radarItems.score })
+        .from(radarItems)
+        .where(
+          and(
+            eq(radarItems.nietRelevant, 0),
+            or(like(radarItems.titel, zoekterm), like(radarItems.beschrijving, zoekterm), like(radarItems.aiSamenvatting, zoekterm))
+          )
+        )
+        .orderBy(desc(radarItems.aangemaaktOp))
+        .limit(5),
+    ]);
+
+    // YT + Insta live via Turso
+    const [ytRes, instaRes] = await Promise.all([
+      tursoClient
+        ? tursoClient.execute({
+            sql: "SELECT v.id, v.title, v.channel_name FROM ytk_videos v LEFT JOIN ytk_analyses a ON v.id = a.video_id WHERE v.title LIKE ? OR a.summary LIKE ? OR a.relevance_reason LIKE ? ORDER BY v.discovered_at DESC LIMIT 5",
+            args: [zoekterm, zoekterm, zoekterm],
+          })
+        : Promise.resolve({ rows: [] as Array<Record<string, unknown>> }),
+      tursoClient
+        ? tursoClient.execute({
+            sql: "SELECT i.id, i.caption, i.author_handle FROM isk_items i LEFT JOIN isk_analyses a ON a.item_id = i.id WHERE i.caption LIKE ? OR a.summary LIKE ? OR a.relevance_reason LIKE ? ORDER BY i.discovered_at DESC LIMIT 5",
+            args: [zoekterm, zoekterm, zoekterm],
+          })
+        : Promise.resolve({ rows: [] as Array<Record<string, unknown>> }),
     ]);
 
     for (const k of klantenRes) {
@@ -119,6 +173,52 @@ export async function GET(req: NextRequest) {
         titel: sb.titel || "Zonder titel",
         subtitel: sb.samenvatting,
         link: "/second-brain",
+      });
+    }
+    for (const w of wikiRes) {
+      resultaten.push({
+        type: "wiki",
+        id: w.id,
+        titel: w.titel,
+        subtitel: w.categorie,
+        link: `/wiki/${w.id}`,
+      });
+    }
+    for (const i of ideeenRes) {
+      resultaten.push({
+        type: "idee",
+        id: i.id,
+        titel: i.naam,
+        subtitel: [i.categorie, i.status].filter(Boolean).join(" · "),
+        link: "/ideeen",
+      });
+    }
+    for (const r of radarRes) {
+      resultaten.push({
+        type: "radar",
+        id: r.id,
+        titel: r.titel,
+        subtitel: r.score != null ? `Score ${r.score}/10` : null,
+        externalUrl: r.url,
+      });
+    }
+    for (const v of ytRes.rows) {
+      resultaten.push({
+        type: "yt-knowledge",
+        id: String(v.id),
+        titel: String(v.title ?? "Video"),
+        subtitel: v.channel_name ? String(v.channel_name) : null,
+        link: "/yt-knowledge",
+      });
+    }
+    for (const it of instaRes.rows) {
+      const caption = String(it.caption ?? "").slice(0, 80);
+      resultaten.push({
+        type: "insta-knowledge",
+        id: String(it.id),
+        titel: caption || `Instagram @${it.author_handle ?? "?"}`,
+        subtitel: it.author_handle ? `@${it.author_handle}` : null,
+        link: "/insta-knowledge",
       });
     }
 

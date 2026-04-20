@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedNumber } from "@/components/ui/animated-number";
@@ -161,11 +161,27 @@ export default function WikiPage() {
   const { addToast } = useToast();
   const [zoek, setZoek] = useState("");
   const [activeCategorie, setActiveCategorie] = useState<string | null>(null);
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
 
   const { data, isLoading } = useWiki(activeCategorie, zoek);
-  const artikelen = data?.artikelen ?? [];
+  const alleArtikelen = data?.artikelen ?? [];
   const categorieCounts = data?.categorieCounts ?? [];
+
+  // Tag telling over alle (categorie-gefilterde) artikelen
+  const tagCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const a of alleArtikelen) {
+      for (const t of parseTags(a.tags)) {
+        map.set(t, (map.get(t) ?? 0) + 1);
+      }
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  }, [alleArtikelen]);
+
+  const artikelen = activeTag
+    ? alleArtikelen.filter((a) => parseTags(a.tags).includes(activeTag))
+    : alleArtikelen;
 
   const totaalArtikelen = categorieCounts.reduce((sum, c) => sum + c.aantal, 0);
   const verouderdeArtikelen = artikelen.filter((a) => isVerouderd(a.bijgewerktOp)).length;
@@ -317,6 +333,34 @@ export default function WikiPage() {
                 className="w-full bg-autronis-card border border-autronis-border rounded-xl pl-11 pr-4 py-2.5 text-sm text-autronis-text-primary placeholder:text-autronis-text-secondary/50 focus:outline-none focus:ring-2 focus:ring-autronis-accent/50 transition-colors"
               />
             </div>
+
+            {/* Tag filter bar */}
+            {tagCounts.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Tag className="w-3.5 h-3.5 text-autronis-text-secondary mr-1" />
+                {activeTag && (
+                  <button
+                    onClick={() => setActiveTag(null)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-autronis-accent/15 text-autronis-accent border border-autronis-accent/30 hover:bg-autronis-accent/25 transition-colors"
+                  >
+                    × {activeTag}
+                  </button>
+                )}
+                {!activeTag && tagCounts.slice(0, 20).map(([tag, count]) => (
+                  <button
+                    key={tag}
+                    onClick={() => setActiveTag(tag)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-autronis-bg border border-autronis-border text-autronis-text-secondary hover:text-autronis-text-primary hover:border-autronis-accent/40 transition-colors"
+                  >
+                    {tag}
+                    <span className="tabular-nums opacity-60">{count}</span>
+                  </button>
+                ))}
+                {!activeTag && tagCounts.length > 20 && (
+                  <span className="text-[11px] text-autronis-text-secondary/70">+{tagCounts.length - 20} meer</span>
+                )}
+              </div>
+            )}
 
             {/* Article list */}
             <AnimatePresence mode="wait">

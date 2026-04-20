@@ -248,6 +248,23 @@ export default function OfferteDetailPage() {
               {offerte.klantNaam}
               {offerte.titel && <span className="ml-2 text-autronis-text-secondary/70">- {offerte.titel}</span>}
             </p>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-autronis-text-secondary/80">
+              {offerte.aangemaaktOp && (
+                <span>Aangemaakt {formatDatum(offerte.aangemaaktOp)}</span>
+              )}
+              {offerte.herinneringVerstuurdOp && (
+                <span className="inline-flex items-center gap-1">
+                  <Mail className="w-3 h-3" />
+                  Laatste herinnering {formatDatum(offerte.herinneringVerstuurdOp)}
+                </span>
+              )}
+              {offerte.geaccepteerdOp && (
+                <span className="inline-flex items-center gap-1 text-emerald-400">
+                  <CheckCircle2 className="w-3 h-3" />
+                  Geaccepteerd {formatDatum(offerte.geaccepteerdOp)}
+                </span>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <a

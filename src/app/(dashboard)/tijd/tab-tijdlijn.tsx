@@ -32,6 +32,7 @@ import {
   useGenereerSamenvatting,
   useGenereerPeriodeSamenvatting,
   usePeriodeSamenvatting,
+  usePeriodeStats,
 } from "@/hooks/queries/use-screen-time";
 import type { PeriodeSamenvatting, FocusInzicht, BesteFocusBlok } from "@/hooks/queries/use-screen-time";
 import type { WeekDagData, SessiesData } from "@/hooks/queries/use-screen-time";
@@ -505,22 +506,29 @@ function cellColor(cell: HeatmapCell): string {
 
 function WeekHeatmap({
   weekData,
+  perDagTotalen,
 }: {
   weekData: WeekDagData[];
+  // Optional map van datum → totaalActiefSeconden uit aggregeerPeriode
+  // (hash source of truth = KPI "Actieve tijd"). Als aanwezig: gebruik deze
+  // waarden voor de per-dag bar totals zodat optelsom EXACT matcht met KPI.
+  // Fallback naar som van dag.sessies.duurSeconden als hij ontbreekt (eerste
+  // render voor usePeriodeStats klaar is).
+  perDagTotalen?: Record<string, number>;
 }) {
   const [tooltip, setTooltip] = useState<{ uur: number; dagIdx: number; cell: HeatmapCell } | null>(null);
   const heatmap = useMemo(() => buildHeatmap(weekData), [weekData]);
 
-  // Day totals — slot-span excluding afleiding-dominant slots, matching
-  // berekenActieveUren (canonical "Uren deze week" calc on the homepage).
-  const dagTotalen = weekData.map((dag) =>
-    dag.sessies
-      .filter((s) => !s.isIdle && s.categorie !== "afleiding")
-      .reduce((sum, s) => {
-        const span = (new Date(s.eindTijd).getTime() - new Date(s.startTijd).getTime()) / 1000;
-        return sum + Math.max(0, span);
-      }, 0)
-  );
+  // Day totals — gebruik perDagTotalen uit aggregeerPeriode indien beschikbaar
+  // (= zelfde definitie als KPI "Actieve tijd"), anders fallback naar duurSeconden
+  // som van de dag-sessies. NOOIT slot-span, want dat inflateert t.o.v. de KPI.
+  const dagTotalen = weekData.map((dag) => {
+    const fromAggregate = perDagTotalen?.[dag.datum];
+    if (typeof fromAggregate === "number") return fromAggregate;
+    return dag.sessies
+      .filter((s) => !s.isIdle)
+      .reduce((sum, s) => sum + Math.max(0, s.duurSeconden), 0);
+  });
   const maxDagTotaal = Math.max(...dagTotalen, 1);
 
   return (
@@ -679,9 +687,25 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
   const genereerPeriode = useGenereerPeriodeSamenvatting();
 
   const weekStart = useMemo(() => getWeekStart(datum), [datum]);
+  const weekEnd = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }, [weekStart]);
   const { data: sessiesData, isLoading: sessiesLoading } = useSessies(datum);
   const { data: weekData, isLoading: weekLoading } = useWeekSessies(weekStart);
   const { data: samenvatting, isLoading: samenvattingLoading } = useSamenvatting(datum);
+  // PeriodeStats voor de heatmap per-dag totalen — zelfde aggregate als KPI
+  // card zodat optelsom van de heatmap MATCHED met "Actieve tijd".
+  const { data: weekPeriodeStats } = usePeriodeStats(
+    view === "week" ? { van: weekStart, tot: weekEnd } : undefined
+  );
+  const perDagTotalen = useMemo(() => {
+    if (!weekPeriodeStats?.perDag) return undefined;
+    const map: Record<string, number> = {};
+    for (const d of weekPeriodeStats.perDag) map[d.datum] = d.totaalActiefSeconden;
+    return map;
+  }, [weekPeriodeStats]);
   const genereer = useGenereerSamenvatting();
 
   // Haal gecachete week-samenvatting op zodat we 'm niet steeds opnieuw hoeven te genereren
@@ -1153,6 +1177,7 @@ export function TabTijdlijn({ datum, periode = "dag" }: { datum: string; periode
             weekData && weekData.length > 0 ? (
               <WeekHeatmap
                 weekData={weekData}
+                perDagTotalen={perDagTotalen}
               />
             ) : (
               <div className="flex flex-col items-center justify-center py-20">

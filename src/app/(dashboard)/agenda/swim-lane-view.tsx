@@ -62,7 +62,7 @@ function parseParallel(raw: string | null | undefined): ParallelActiviteit[] {
 
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
 const HEADER_HEIGHT_PX = 64;
-const VRIJ_LANE_WIDTH_REM = 9;
+const VRIJ_LANE_WIDTH_REM = 7;
 
 // Per-persoon identiteit voor de lane-headers. Sem=Atlas krijgt autronis-teal
 // (primaire merkkleur), Syb=Autro krijgt contrasterend warm paars, Team is
@@ -254,7 +254,7 @@ function Lane({
                       ) : (
                         <>
                           <span className="absolute top-0.5 left-1.5 text-[9px] uppercase tracking-wider font-semibold text-[var(--text-secondary)] leading-none">
-                            ⋔ parallel {parallels.length > 1 ? `${idx + 1}/${parallels.length}` : ""}
+                            ⋔ {parallels.length > 1 ? `${idx + 1}/${parallels.length}` : "parallel"}
                           </span>
                           {parallel.duurMin && (
                             <span className="absolute top-0.5 right-1.5 text-[9px] tabular-nums text-[var(--text-secondary)] leading-none">
@@ -269,7 +269,7 @@ function Lane({
                               {parallel.pijler}
                             </div>
                           )}
-                          <div className="text-[11px] font-medium text-[var(--text)] leading-snug line-clamp-2">
+                          <div className="text-[11px] font-medium text-[var(--text)] leading-snug line-clamp-3">
                             {parallel.titel}
                           </div>
                         </>
@@ -361,7 +361,7 @@ export function SwimLaneView({
   return (
     <div className="flex w-full border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--bg)]">
       {/* Time ruler */}
-      <div className="w-14 shrink-0 border-r border-[var(--border)]">
+      <div className="w-10 shrink-0 border-r border-[var(--border)]">
         <div
           className="sticky top-0 z-10 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur"
           style={{ height: `${HEADER_HEIGHT_PX}px` }}
@@ -412,7 +412,7 @@ export function SwimLaneView({
           totalHeight={totalHeight}
           onItemClick={onItemClick}
           onParallelClick={onParallelClick}
-          widthClass="w-36 min-w-[9rem] shrink-0"
+          widthClass="w-28 min-w-[7rem] shrink-0"
           avatars={avatars}
         />
 

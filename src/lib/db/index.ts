@@ -95,6 +95,16 @@ if (isTurso) {
     client.execute(col).catch(() => { /* column may already exist */ });
   }
 
+  // Promote-to-Wiki flow: wiki knows source, sources know destination
+  for (const col of [
+    "ALTER TABLE wiki_artikelen ADD COLUMN bron_type TEXT",
+    "ALTER TABLE wiki_artikelen ADD COLUMN bron_id INTEGER",
+    "ALTER TABLE second_brain_items ADD COLUMN gepromoted_naar_wiki_id INTEGER REFERENCES wiki_artikelen(id)",
+    "ALTER TABLE ideeen ADD COLUMN gepromoted_naar_wiki_id INTEGER REFERENCES wiki_artikelen(id)",
+  ]) {
+    client.execute(col).catch(() => { /* column may already exist */ });
+  }
+
   // Track when an agenda item reminder was last sent (dedup for /api/notifications/pending)
   client.execute("ALTER TABLE agenda_items ADD COLUMN herinnering_verstuurd_op TEXT")
     .catch(() => { /* column may already exist */ });

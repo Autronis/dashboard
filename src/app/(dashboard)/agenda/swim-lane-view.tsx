@@ -60,7 +60,7 @@ function parseParallel(raw: string | null | undefined): ParallelActiviteit[] {
   return [{ titel: raw }];
 }
 
-const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
+const HOUR_HEIGHT_PX = 128; // 1 hour = 128px → 1 min = ~2.13px. Ruimer dan de oude 96px zodat 30-60 min blokken genoeg verticale space hebben voor titel + pijler + fase.
 const HEADER_HEIGHT_PX = 64;
 const VRIJ_LANE_WIDTH_REM = 7;
 
@@ -184,7 +184,7 @@ function Lane({
           const heightMins = it.eindDatum
             ? Math.max(15, Math.round((new Date(it.eindDatum).getTime() - new Date(it.startDatum).getTime()) / 60000))
             : 30;
-          const blockHeight = Math.max(24, Math.round(heightMins * 1.6));
+          const blockHeight = Math.max(24, Math.round(heightMins * (HOUR_HEIGHT_PX / 60)));
 
           if (parallels.length === 0) {
             return (
@@ -205,7 +205,7 @@ function Lane({
           // wordt "claude werkt door…" label als Claude langer doorgaat dan de
           // som van parallel-taken.
           const totalParallelMins = parallels.reduce((sum, p) => sum + (p.duurMin ?? heightMins), 0);
-          const totalParallelHeight = Math.min(blockHeight, Math.round(totalParallelMins * 1.6));
+          const totalParallelHeight = Math.min(blockHeight, Math.round(totalParallelMins * (HOUR_HEIGHT_PX / 60)));
 
           return (
             <div
@@ -220,7 +220,7 @@ function Lane({
                 {parallels.map((parallel, idx) => {
                   const pijlerKleur = parallel.pijler ? PIJLER_KLEUR[parallel.pijler] ?? "#a855f7" : "#a855f7";
                   const pHeight = parallel.duurMin
-                    ? Math.max(24, Math.round(parallel.duurMin * 1.6))
+                    ? Math.max(24, Math.round(parallel.duurMin * (HOUR_HEIGHT_PX / 60)))
                     : Math.max(24, Math.round(blockHeight / parallels.length));
                   const pUltra = pHeight < 40;
                   return (

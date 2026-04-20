@@ -146,7 +146,7 @@ export default function InstaKnowledgePage() {
 
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6 pb-32">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -257,6 +257,11 @@ export default function InstaKnowledgePage() {
                         <span>·</span>
                         <span>{timeAgo(item.discovered_at)}</span>
                       </div>
+                      {item.status === "failed" && item.failure_reason && (
+                        <div className="text-xs text-rose-400/90 mt-1 truncate">
+                          Fout: {item.failure_reason}
+                        </div>
+                      )}
                     </div>
                     <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border shrink-0", sc.color)}>
                       <StatusIcon className={cn("w-3 h-3", item.status === "processing" && "animate-spin")} />

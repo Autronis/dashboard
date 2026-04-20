@@ -235,7 +235,7 @@ export default function YtKnowledgePage() {
   // ─── Render ──────────────────────────────────────────
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6">
+      <div className="max-w-6xl mx-auto space-y-6 p-4 md:p-6 pb-32">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -244,12 +244,13 @@ export default function YtKnowledgePage() {
               YT Knowledge Pipeline
             </h1>
             <p className="text-sm text-autronis-text-secondary mt-1">
-              YouTube video&apos;s analyseren voor Claude Code kennis
+              YouTube video&apos;s analyseren voor Claude Code kennis · playlist-sync draait elke werkdag 08:00
             </p>
           </div>
           <button
             onClick={() => fetchData()}
             disabled={loading}
+            title="Lijst opnieuw laden"
             className="p-2 rounded-lg hover:bg-autronis-border/30 transition-colors text-autronis-text-secondary"
           >
             <RefreshCw className={cn("w-5 h-5", loading && "animate-spin")} />

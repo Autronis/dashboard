@@ -73,7 +73,8 @@ export function AgendaBlok({
   // 1 minute = 1.6px height baseline (15m -> 24px, 30m -> 48px, 60m -> 96px).
   // Min-height op exact 24px zodat 15-min blokken (pauze, korte acties) niet
   // in hun buren klimmen. Daaronder zie je niks, maar klikbaar blijft 'ie.
-  const heightPx = Math.max(24, Math.round(mins * 1.6));
+  // 1 min = ~2.13px (= 128/60, matched met HOUR_HEIGHT_PX in swim-lane-view).
+  const heightPx = Math.max(24, Math.round(mins * (128 / 60)));
   const accentColor = projectKleur || "#2A3538";
 
   // Tier-1: super-compact voor <=20 min (pauze, quick-win taak). Alleen

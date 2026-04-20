@@ -1326,7 +1326,10 @@ export default function RadarPage() {
           </div>
 
           {/* Must-reads */}
-          <div className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow">
+          <div
+            className="bg-autronis-card border border-autronis-border rounded-2xl p-5 card-glow"
+            title={"AI-scoring 0-10:\n8-10 = must-read (direct relevant voor Autronis)\n5-7 = goed om te weten\n0-4 = skip"}
+          >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-autronis-text-secondary">
                 Must-reads
@@ -1336,7 +1339,7 @@ export default function RadarPage() {
               </div>
             </div>
             <p className="text-2xl font-bold text-amber-400 tabular-nums">{mustReadsCount}</p>
-            <p className="text-xs text-autronis-text-secondary mt-1">Score 8 of hoger</p>
+            <p className="text-xs text-autronis-text-secondary mt-1">Score ≥ 8 · hover voor rubric</p>
           </div>
 
           {/* Bewaard */}

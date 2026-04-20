@@ -13,6 +13,7 @@ export interface SecondBrainItem {
   taal: string | null;
   isFavoriet: number;
   isGearchiveerd: number;
+  gepromotedNaarWikiId: number | null;
   aangemaaktOp: string;
   bijgewerktOp: string;
 }

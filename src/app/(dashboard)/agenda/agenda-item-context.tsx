@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { klantKleur } from "@/lib/klant-kleuren";
-import { Check, Copy, ExternalLink, Sparkles } from "lucide-react";
+import { Check, Copy, ExternalLink, Sparkles, ListChecks, Clock } from "lucide-react";
 import type { AgendaItem } from "@/hooks/queries/use-agenda";
+
+interface Stap {
+  stap: string;
+  duurMin: number;
+}
 
 interface Props {
   item: AgendaItem;
@@ -39,13 +44,31 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
     item.projectNaam ||
     item.taakId ||
     item.pijler ||
-    item.gemaaktDoor === "bridge"
+    item.gemaaktDoor === "bridge" ||
+    item.stappenplan ||
+    item.aiContext ||
+    item.geschatteDuurMinuten
   );
   if (!heeftContext) return null;
 
   const projKleur = klantKleur(item.projectId);
   const showMarkeerAfgerond = item.taakId && item.taakStatus && item.taakStatus !== "afgerond";
   const showCopyPrompt = item.taakUitvoerder === "claude" && !!item.taakPrompt;
+
+  const stappen = useMemo<Stap[]>(() => {
+    if (!item.stappenplan) return [];
+    try {
+      const parsed = JSON.parse(item.stappenplan);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .filter((s): s is Stap => s && typeof s.stap === "string" && typeof s.duurMin === "number")
+        .map((s) => ({ stap: s.stap.trim(), duurMin: Math.max(0, s.duurMin) }));
+    } catch {
+      return [];
+    }
+  }, [item.stappenplan]);
+
+  const stappenTotaal = stappen.reduce((sum, s) => sum + s.duurMin, 0);
 
   async function markeerAfgerond() {
     if (!item.taakId) return;
@@ -150,7 +173,7 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             {showMarkeerAfgerond && (
               <button
                 type="button"
@@ -173,6 +196,60 @@ export function AgendaItemContext({ item, onAfgerond }: Props) {
               </button>
             )}
           </div>
+        </div>
+      )}
+
+      {/* AI context blurb — vrije tekst van Atlas over deze taak */}
+      {item.aiContext && (
+        <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
+          <div className="text-[10px] uppercase tracking-wider text-indigo-300 mb-1 inline-flex items-center gap-1">
+            <Sparkles className="w-3 h-3" />
+            AI context
+          </div>
+          <p className="text-xs text-autronis-text-primary whitespace-pre-wrap leading-relaxed">
+            {item.aiContext}
+          </p>
+        </div>
+      )}
+
+      {/* Stappenplan met AI tijdschatting per stap */}
+      {stappen.length > 0 && (
+        <div className="rounded-lg border border-autronis-border bg-autronis-card/50 p-3">
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-[10px] uppercase tracking-wider text-autronis-text-secondary inline-flex items-center gap-1">
+              <ListChecks className="w-3 h-3" />
+              Stappenplan
+            </div>
+            {stappenTotaal > 0 && (
+              <div className="text-[11px] text-autronis-text-secondary inline-flex items-center gap-1 tabular-nums">
+                <Clock className="w-3 h-3" />
+                {stappenTotaal} min totaal
+              </div>
+            )}
+          </div>
+          <ol className="space-y-1.5">
+            {stappen.map((s, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs">
+                <span className="w-5 h-5 rounded-md bg-autronis-bg border border-autronis-border flex items-center justify-center text-[10px] font-semibold text-autronis-text-secondary shrink-0 tabular-nums">
+                  {i + 1}
+                </span>
+                <span className="flex-1 text-autronis-text-primary leading-relaxed">
+                  {s.stap}
+                </span>
+                <span className="text-[10px] text-autronis-text-secondary tabular-nums shrink-0 mt-0.5">
+                  {s.duurMin}m
+                </span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {/* Geschatte duur onafhankelijk van stappen (als alleen totaal gegeven) */}
+      {!stappen.length && typeof item.geschatteDuurMinuten === "number" && item.geschatteDuurMinuten > 0 && (
+        <div className="text-xs text-autronis-text-secondary inline-flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5" />
+          AI tijdschatting: <span className="text-autronis-text-primary font-medium tabular-nums">{item.geschatteDuurMinuten} min</span>
         </div>
       )}
     </div>

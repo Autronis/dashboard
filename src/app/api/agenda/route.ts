@@ -52,6 +52,9 @@ export async function GET(req: NextRequest) {
         taakUitvoerder: taken.uitvoerder,
         taakPrompt: taken.prompt,
         taakCluster: taken.cluster,
+        stappenplan: agendaItems.stappenplan,
+        aiContext: agendaItems.aiContext,
+        geschatteDuurMinuten: agendaItems.geschatteDuurMinuten,
       })
       .from(agendaItems)
       .leftJoin(gebruikers, eq(agendaItems.gebruikerId, gebruikers.id))
@@ -109,6 +112,18 @@ export async function POST(req: NextRequest) {
     const projectId = typeof body.projectId === "number" ? body.projectId : null;
     const taakId = typeof body.taakId === "number" ? body.taakId : null;
     const pijler = typeof body.pijler === "string" ? body.pijler : null;
+    // stappenplan accepteren als array óf als al-gestringifeerde JSON; normaliseer
+    // naar string voor opslag (sqlite TEXT). Invalid shapes worden genegeerd.
+    let stappenplan: string | null = null;
+    if (Array.isArray(body.stappenplan)) {
+      stappenplan = JSON.stringify(body.stappenplan);
+    } else if (typeof body.stappenplan === "string" && body.stappenplan.trim()) {
+      stappenplan = body.stappenplan;
+    }
+    const aiContext = typeof body.aiContext === "string" && body.aiContext.trim() ? body.aiContext : null;
+    const geschatteDuurMinuten = typeof body.geschatteDuurMinuten === "number" && body.geschatteDuurMinuten > 0
+      ? body.geschatteDuurMinuten
+      : null;
 
     const [nieuw] = await db
       .insert(agendaItems)
@@ -126,6 +141,9 @@ export async function POST(req: NextRequest) {
         projectId,
         taakId,
         pijler,
+        stappenplan,
+        aiContext,
+        geschatteDuurMinuten,
       })
       .returning();
 

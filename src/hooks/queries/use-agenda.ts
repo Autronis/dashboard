@@ -24,6 +24,9 @@ export interface AgendaItem {
   taakUitvoerder?: "claude" | "handmatig" | null;
   taakPrompt?: string | null;
   taakCluster?: string | null;
+  stappenplan?: string | null; // JSON-encoded array of { stap: string, duurMin: number }
+  aiContext?: string | null;
+  geschatteDuurMinuten?: number | null;
 }
 
 function datumStr(jaar: number, maand: number, dag: number) {

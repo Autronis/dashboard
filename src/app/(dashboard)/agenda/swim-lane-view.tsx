@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Image from "next/image";
 import { AgendaBlok, AgendaBlokProps } from "./agenda-blok";
 
 type Item = AgendaBlokProps;
@@ -8,13 +10,15 @@ interface Props {
   datum: string; // "YYYY-MM-DD"
   items: Item[];
   dagStart?: number; // hour, default 8
-  dagEind?: number; //  hour, default 19
+  dagEind?: number; //  hour — als undefined wordt dynamisch berekend uit items (max eind + 1u), met minimum 22
   onItemClick?: (id: number) => void;
   // Syb-lane is opt-in via feature flag `agenda_syb_lane`. Zolang Syb
   // niet actief bridge-plant (geen eigen Autro-Mac in bedrijf) is solo
   // mode schoner: alleen Sem-lane + Vrij. Default false.
   sybLaneVisible?: boolean;
 }
+
+type AvatarMap = Record<string, { naam: string; avatarUrl: string | null }>;
 
 const HOUR_HEIGHT_PX = 96; // 1 hour = 96px (30m = 48px, matches AgendaBlok baseline)
 const HEADER_HEIGHT_PX = 64;
@@ -64,17 +68,30 @@ function hourOffset(iso: string, dagStart: number): number {
   return (h - dagStart) * HOUR_HEIGHT_PX;
 }
 
-function LaneHeader({ kind }: { kind: keyof typeof LANE_CHARACTER }) {
+function LaneHeader({ kind, avatars }: { kind: keyof typeof LANE_CHARACTER; avatars: AvatarMap }) {
   const c = LANE_CHARACTER[kind];
+  const avatarUrl = kind === "sem" || kind === "syb" ? avatars[kind]?.avatarUrl ?? null : null;
+
   return (
     <div
       className={`sticky top-0 z-10 bg-gradient-to-b ${c.bg} backdrop-blur border-b border-[var(--border)] px-3 flex items-center gap-2.5`}
       style={{ height: `${HEADER_HEIGHT_PX}px` }}
     >
       <div
-        className={`relative flex items-center justify-center w-10 h-10 rounded-full ring-2 ${c.ring} ${c.shadow} shadow-lg bg-[var(--card)] font-bold text-base ${c.accent}`}
+        className={`relative flex items-center justify-center w-10 h-10 rounded-full ring-2 ${c.ring} ${c.shadow} shadow-lg bg-[var(--card)] font-bold text-base ${c.accent} overflow-hidden`}
       >
-        {c.initial}
+        {avatarUrl ? (
+          <Image
+            src={avatarUrl}
+            alt={c.naam}
+            width={40}
+            height={40}
+            className="w-full h-full object-cover"
+            unoptimized
+          />
+        ) : (
+          <span>{c.initial}</span>
+        )}
         {/* Live-indicator placeholder — bridge v2 phase 6 sluit 'm aan op
             chat-sync state (Atlas/Autro actief in Claude Code). */}
         <span
@@ -100,6 +117,7 @@ function Lane({
   totalHeight,
   onItemClick,
   widthClass,
+  avatars,
 }: {
   kind: keyof typeof LANE_CHARACTER;
   testId: string;
@@ -108,10 +126,11 @@ function Lane({
   totalHeight: number;
   onItemClick?: (id: number) => void;
   widthClass: string;
+  avatars: AvatarMap;
 }) {
   return (
     <div className={`relative border-r border-[var(--border)] ${widthClass}`} data-testid={testId}>
-      <LaneHeader kind={kind} />
+      <LaneHeader kind={kind} avatars={avatars} />
       <div className="relative" style={{ height: `${totalHeight}px` }}>
         {items.map((it) => (
           <div
@@ -131,12 +150,50 @@ export function SwimLaneView({
   datum,
   items,
   dagStart = 8,
-  dagEind = 19,
+  dagEind,
   onItemClick,
   sybLaneVisible = false,
 }: Props) {
-  void datum; // reserved for later phases (project-focus day marker rendering)
-  const totalHeight = (dagEind - dagStart) * HOUR_HEIGHT_PX;
+  // Dynamische dagEind: pak max eindtijd uit items + 1 uur, met minimum van
+  // 22:00 zodat avondsessies (bv. di/do/vr avondwerk) altijd zichtbaar zijn.
+  // Als caller expliciet dagEind doorgeeft, respecteren we die.
+  const computedDagEind = (() => {
+    if (typeof dagEind === "number") return dagEind;
+    let max = 22;
+    for (const it of items) {
+      if (!it.eindDatum) continue;
+      const d = new Date(it.eindDatum);
+      const h = d.getHours() + (d.getMinutes() > 0 ? 1 : 0);
+      if (h > max) max = h;
+    }
+    return Math.min(24, max);
+  })();
+
+  // Fetch avatars voor Sem + Syb lanes (éénmalig bij mount).
+  const [avatars, setAvatars] = useState<AvatarMap>({});
+  useEffect(() => {
+    fetch("/api/team/avatars")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (json?.avatars) setAvatars(json.avatars);
+      })
+      .catch(() => { /* silent fallback: initialen blijven zichtbaar */ });
+  }, []);
+
+  // Current-time lijn: alleen zichtbaar als de getoonde dag vandaag is en
+  // de tijd binnen het dagStart-dagEind-venster valt.
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+  const vandaagStr = now.toISOString().slice(0, 10);
+  const isVandaagDatum = vandaagStr === datum;
+  const nowHour = now.getHours() + now.getMinutes() / 60;
+  const showNowLine = isVandaagDatum && nowHour >= dagStart && nowHour <= computedDagEind;
+  const nowTop = (nowHour - dagStart) * HOUR_HEIGHT_PX;
+
+  const totalHeight = (computedDagEind - dagStart) * HOUR_HEIGHT_PX;
 
   // In solo-modus (Syb niet actief) vouwen we syb-items + team-items samen
   // onder Sem. Team-items houden wel hun paarse ring zodat ze visueel
@@ -150,7 +207,7 @@ export function SwimLaneView({
   const soloTeamItems = sybLaneVisible ? [] : items.filter((i) => i.eigenaar === "team");
 
   const hours: number[] = [];
-  for (let h = dagStart; h <= dagEind; h++) hours.push(h);
+  for (let h = dagStart; h <= computedDagEind; h++) hours.push(h);
 
   // Lunch overlay: 12:30-13:30
   const lunchTop = (12.5 - dagStart) * HOUR_HEIGHT_PX;
@@ -187,6 +244,7 @@ export function SwimLaneView({
           totalHeight={totalHeight}
           onItemClick={onItemClick}
           widthClass="flex-1 min-w-0"
+          avatars={avatars}
         />
         {sybLaneVisible && (
           <Lane
@@ -197,6 +255,7 @@ export function SwimLaneView({
             totalHeight={totalHeight}
             onItemClick={onItemClick}
             widthClass="flex-1 min-w-0"
+            avatars={avatars}
           />
         )}
         <Lane
@@ -207,6 +266,7 @@ export function SwimLaneView({
           totalHeight={totalHeight}
           onItemClick={onItemClick}
           widthClass="w-36 min-w-[9rem] shrink-0"
+          avatars={avatars}
         />
 
         {/* Lunch overlay — spans all lanes */}
@@ -217,6 +277,24 @@ export function SwimLaneView({
         >
           lunch
         </div>
+
+        {/* Current-time indicator: rode lijn die over alle lanes loopt,
+            zichtbaar wanneer de getoonde dag vandaag is en de tijd in het
+            dag-venster valt. */}
+        {showNowLine && (
+          <div
+            className="absolute left-0 right-0 pointer-events-none z-20"
+            style={{ top: `${HEADER_HEIGHT_PX + nowTop}px` }}
+            data-testid="now-line"
+          >
+            <div className="relative h-0.5 bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.7)]">
+              <span className="absolute -left-1 -top-1 w-3 h-3 rounded-full bg-rose-500 ring-2 ring-[var(--bg)]" />
+              <span className="absolute right-2 -top-3.5 text-[10px] font-semibold text-rose-400 tabular-nums">
+                {String(now.getHours()).padStart(2, "0")}:{String(now.getMinutes()).padStart(2, "0")}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Team blocks positioned on top of sem + syb lanes (not vrij) */}
         <div

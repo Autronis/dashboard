@@ -655,7 +655,7 @@ export function DagView({ datum, onNavigeer, items, onItemClick, onSlotClick, in
           </button>
         </div>
 
-        <UitlegBlock id="agenda-lanes-v2-uitleg" titel="Agenda in swim lanes" accent="accent">
+        <UitlegBlock id="agenda-lanes-v2-uitleg" titel="Agenda in swim lanes" accent="accent" defaultOpen={false}>
           <p>
             Links de Sem-lane, rechts Syb. Team-afspraken (zoals klant-meetings of intake-calls) spannen
             beide lanes. De smalle Vrij-lane helemaal rechts toont werk dat nog niet is opgepakt — sleep

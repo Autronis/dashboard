@@ -355,6 +355,18 @@ export const agendaItems = sqliteTable("agenda_items", {
   // invult — UI kan dan een pijler-badge tonen en analytics kan per pijler
   // uren aggregeren.
   pijler: text("pijler"),
+  // Rijke context per blok — gegenereerd door Atlas/Autro tijdens plan-avond.
+  // stappenplan is JSON-encoded array van {stap, duurMin} zodat de UI een
+  // ordered-list met AI-tijdschatting per stap kan renderen en Sem in één
+  // oogopslag weet hoe hij het blok moet uitvoeren.
+  // aiContext is vrije markdown voor achtergrond (bv. "lead zit in contact-
+  // fase, waarde €6.000, laatste interactie 3 dagen geleden").
+  // geschatteDuurMinuten is de totale schatting (som van stappen); kan
+  // afwijken van start-eind (buffer/overrun) en wordt apart gelogd voor
+  // calibration.
+  stappenplan: text("stappenplan"),
+  aiContext: text("ai_context"),
+  geschatteDuurMinuten: integer("geschatte_duur_minuten"),
   aangemaaktOp: text("aangemaakt_op").default(sql`(datetime('now'))`),
 }, (table) => ({
   idxStartDatum: index("idx_agenda_start_datum").on(table.startDatum),

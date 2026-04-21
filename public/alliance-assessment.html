@@ -138,6 +138,12 @@
     background: var(--bg); resize: vertical; min-height: 32px;
   }
   .note-input:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+  .ai-polish-hint {
+    display: inline-block;
+    font-size: 11px; color: #1e3a8a; font-style: italic;
+    margin: 0 0 6px 0; padding: 2px 8px;
+    background: #eef6ff; border-left: 2px solid var(--accent); border-radius: 3px;
+  }
 
   .cluster-header {
     margin: 32px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--ink);
@@ -976,6 +982,13 @@ function bindInputs() {
     const current = getByPath(state, path);
     if (current !== undefined && current !== null) el.value = current;
     el.addEventListener('input', () => { setByPath(state, path, el.value); saveState(); });
+  });
+  document.querySelectorAll('.form-block textarea[data-field]').forEach(ta => {
+    if (ta.previousElementSibling?.classList.contains('ai-polish-hint')) return;
+    const hint = document.createElement('div');
+    hint.className = 'ai-polish-hint';
+    hint.textContent = 'Hoeft niet perfect — AI polijst later tot lopende tekst.';
+    ta.parentNode.insertBefore(hint, ta);
   });
 }
 

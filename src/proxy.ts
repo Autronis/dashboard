@@ -42,6 +42,7 @@ const PUBLIC_PATHS = [
   "/foto-sem.jpg",
   "/foto-syb.jpg",
   "/waves.webm",
+  "/alliance-assessment.html",
   "/bonnetjes/",
   "/api/mealplan",
   "/api/mealplan/generate",

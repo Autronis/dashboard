@@ -493,7 +493,7 @@ let state = {
   scores: {},
   werkstijl: {},
   aboutSelf: {
-    energyTop3: [], energyBottom3: [], leren: '',
+    energyTop5: [], energyBottom5: [], leren: '',
     slechteGewoonte: '', opnieuwBeginnen: '',
     uurPerWeek: '', werkVsRest: '',
   },
@@ -603,7 +603,7 @@ function updateDoneMarks() {
     } else if (target === 'werkstijl') {
       done = PEOPLE.every(p => state.werkstijl[p.id] && SPECTRUMS.every(s => state.werkstijl[p.id][s.id]));
     } else if (target === 'zelf-a') {
-      done = state.aboutSelf.energyTop3.length === 3 && state.aboutSelf.energyBottom3.length === 3 && state.aboutSelf.leren;
+      done = state.aboutSelf.energyTop5.length === 5 && state.aboutSelf.energyBottom5.length === 5 && state.aboutSelf.leren;
     } else if (target === 'zelf-b') {
       done = state.aboutSelf.uurPerWeek && state.aboutSelf.werkVsRest;
     } else if (target.startsWith('over-')) {
@@ -633,8 +633,8 @@ function updateProgress() {
   const selfFieldsTotal = ['leren','slechteGewoonte','opnieuwBeginnen','uurPerWeek','werkVsRest'];
   selfFieldsTotal.forEach(k => { total++; if (state.aboutSelf[k]) filled++; });
   total += 2;
-  if (state.aboutSelf.energyTop3.length === 3) filled++;
-  if (state.aboutSelf.energyBottom3.length === 3) filled++;
+  if (state.aboutSelf.energyTop5.length === 5) filled++;
+  if (state.aboutSelf.energyBottom5.length === 5) filled++;
   const others = PEOPLE.filter(p => p.id !== state.me);
   others.forEach(p => {
     ABOUT_OTHER_FIELDS.forEach(k => { total++; if ((state.aboutOthers[p.id] || {})[k]) filled++; });
@@ -698,15 +698,15 @@ function renderSections() {
       <p class="lead">Makkelijke warm-up. Reflecteer eerlijk op jezelf. Steekwoorden of losse zinnen zijn prima — AI polijst later.</p>
 
       <div class="form-block">
-        <label>Top 3 werkvlakken die je energie <em>geven</em> (kies er precies 3)</label>
+        <label>Top 5 werkvlakken die je energie <em>geven</em> (kies er precies 5)</label>
         <div class="sublabel">Uit de 34. Hier word je wakker van, ook als het moeilijk is.</div>
-        <div id="top3-energy-top" class="top3-domains"></div>
+        <div id="top5-energy-top" class="top3-domains"></div>
       </div>
 
       <div class="form-block">
-        <label>Bottom 3 werkvlakken die je leegzuigen (kies er precies 3)</label>
+        <label>Bottom 5 werkvlakken die je leegzuigen (kies er precies 5)</label>
         <div class="sublabel">Je kan ze misschien, maar ze kosten je onevenredig veel energie.</div>
-        <div id="top3-energy-bottom" class="top3-domains"></div>
+        <div id="top5-energy-bottom" class="top3-domains"></div>
       </div>
 
       <div class="form-block">
@@ -876,8 +876,8 @@ function renderSections() {
   container.innerHTML = html;
   bindInputs();
   bindChips();
-  renderTop3Domains('top3-energy-top', 'aboutSelf.energyTop3');
-  renderTop3Domains('top3-energy-bottom', 'aboutSelf.energyBottom3');
+  renderTop3Domains('top5-energy-top', 'aboutSelf.energyTop5');
+  renderTop3Domains('top5-energy-bottom', 'aboutSelf.energyBottom5');
   restoreTrustDisplay();
   if (currentSection && document.getElementById('section-' + currentSection)) showSection(currentSection);
 }
@@ -953,10 +953,10 @@ function toggleTop3(fieldPath, domainId) {
   const arr = getByPath(state, fieldPath) || [];
   const idx = arr.indexOf(domainId);
   if (idx !== -1) arr.splice(idx, 1);
-  else { if (arr.length >= 3) arr.shift(); arr.push(domainId); }
+  else { if (arr.length >= 5) arr.shift(); arr.push(domainId); }
   setByPath(state, fieldPath, arr);
   saveState();
-  const map = { 'aboutSelf.energyTop3': 'top3-energy-top', 'aboutSelf.energyBottom3': 'top3-energy-bottom' };
+  const map = { 'aboutSelf.energyTop5': 'top5-energy-top', 'aboutSelf.energyBottom5': 'top5-energy-bottom' };
   if (map[fieldPath]) renderTop3Domains(map[fieldPath], fieldPath);
 }
 

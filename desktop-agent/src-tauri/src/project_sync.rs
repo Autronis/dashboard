@@ -243,7 +243,7 @@ fn git_cmd(dir: &Path, args: &[&str]) -> Option<std::process::Output> {
     cmd.output().ok()
 }
 
-fn git_sync(dir: &Path) {
+fn git_sync(dir: &Path, auto_push: bool) {
     if !dir.join(".git").exists() {
         return;
     }
@@ -257,8 +257,14 @@ fn git_sync(dir: &Path) {
         return;
     }
 
-    // Pull latest
+    // Altijd pullen mag (goedkoop, ff-only, geen write-kant).
     git_cmd(dir, &["pull", "--ff-only", "--quiet"]);
+
+    // Auto add/commit/push alleen als expliciet aan. Default false
+    // omdat dit anders Vercel deploys laat queuen bij parallelle chats.
+    if !auto_push {
+        return;
+    }
 
     // Check for local changes
     let has_changes = git_cmd(dir, &["status", "--porcelain"])
@@ -307,7 +313,7 @@ fn git_sync(dir: &Path) {
     }
 }
 
-fn scan_projects() -> Vec<AgentProject> {
+fn scan_projects(auto_push: bool) -> Vec<AgentProject> {
     let projects_dir = projects_dir();
     let entries = match fs::read_dir(&projects_dir) {
         Ok(e) => e,
@@ -331,8 +337,8 @@ fn scan_projects() -> Vec<AgentProject> {
             continue;
         }
 
-        // Auto-sync with GitHub (pull + push)
-        git_sync(&path);
+        // Pull altijd; add/commit/push alleen als auto_push actief is.
+        git_sync(&path, auto_push);
 
         let mut naam = dir_to_name(&dir_name);
         let mut omschrijving = String::new();
@@ -374,7 +380,7 @@ fn scan_projects() -> Vec<AgentProject> {
 }
 
 pub async fn sync_projects(config: &Config) -> Result<String, String> {
-    let projects = scan_projects();
+    let projects = scan_projects(config.auto_push_enabled);
 
     if projects.is_empty() {
         return Ok("Geen projecten gevonden".into());

@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autronis × Nex — Alliance Assessment</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --ink: #0f172a;
+    --ink-soft: #475569;
+    --ink-faint: #94a3b8;
+    --line: #e2e8f0;
+    --line-strong: #cbd5e1;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --good: #059669;
+    --good-soft: #d1fae5;
+    --bad: #dc2626;
+    --bad-soft: #fee2e2;
+    --warn: #d97706;
+    --warn-soft: #fef3c7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    min-height: 100vh;
+    max-width: 1460px;
+    margin: 0 auto;
+  }
+  aside {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 28px 18px;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    overflow-y: auto;
+  }
+  aside .brand { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 2px; }
+  aside .sub { color: var(--ink-soft); font-size: 12px; margin-bottom: 20px; }
+  aside .me {
+    padding: 10px 12px; background: var(--accent-soft); color: var(--accent);
+    border-radius: 8px; font-size: 13px; font-weight: 600; margin-bottom: 20px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  aside .me button {
+    background: transparent; border: none; color: var(--accent);
+    font-size: 11px; cursor: pointer; text-decoration: underline; padding: 0;
+  }
+  aside h3 {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-faint); margin: 16px 0 6px; font-weight: 700;
+  }
+  aside nav a {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; color: var(--ink-soft); text-decoration: none;
+    border-radius: 5px; font-size: 12.5px; cursor: pointer; margin-bottom: 1px; gap: 6px;
+  }
+  aside nav a:hover { background: var(--bg); color: var(--ink); }
+  aside nav a.active { background: var(--ink); color: var(--surface); }
+  aside nav a.done::after { content: "✓"; color: var(--good); font-size: 11px; font-weight: 700; }
+  aside nav a.active.done::after { color: #86efac; }
+  aside .progress {
+    margin-top: 20px; padding: 12px; background: var(--bg); border-radius: 8px;
+    font-size: 12px; color: var(--ink-soft);
+  }
+  aside .progress .bar {
+    height: 6px; background: var(--line); border-radius: 3px;
+    overflow: hidden; margin-top: 6px;
+  }
+  aside .progress .fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.3s; }
+
+  main { padding: 44px 56px 80px; max-width: 960px; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+  h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 36px 0 8px; }
+  h3 { font-size: 15px; font-weight: 600; margin: 24px 0 8px; color: var(--ink); }
+  .lead { color: var(--ink-soft); font-size: 14.5px; margin-bottom: 20px; }
+  .hint { color: var(--ink-faint); font-size: 12.5px; margin-top: 6px; font-style: italic; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .who-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 20px; }
+  .who-card {
+    padding: 18px; border: 2px solid var(--line); border-radius: 10px;
+    cursor: pointer; background: var(--surface); transition: all 0.15s;
+  }
+  .who-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .who-card .naam { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+  .who-card .rol { color: var(--ink-soft); font-size: 12.5px; }
+
+  .domain-item {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 12px;
+  }
+  .domain-head { margin-bottom: 12px; }
+  .domain-nr {
+    display: inline-block; background: var(--ink); color: var(--surface);
+    font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+    margin-right: 8px; vertical-align: middle;
+  }
+  .domain-name { font-size: 15.5px; font-weight: 600; }
+  .domain-uitleg { color: var(--ink-soft); font-size: 12.5px; margin-top: 3px; }
+
+  .scorer-row {
+    display: grid; grid-template-columns: 100px 1fr; gap: 14px;
+    align-items: center; padding: 8px 0; border-top: 1px dashed var(--line);
+  }
+  .scorer-row:first-of-type { border-top: none; }
+  .scorer-label { font-weight: 600; font-size: 13px; color: var(--ink); }
+  .scorer-label.self { color: var(--accent); }
+  .pill-row { display: flex; gap: 3px; flex-wrap: wrap; }
+  .pill {
+    padding: 4px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--line);
+    background: var(--surface); border-radius: 5px; cursor: pointer; color: var(--ink-soft);
+    min-width: 24px; text-align: center; user-select: none;
+  }
+  .pill:hover { border-color: var(--ink-soft); }
+  .pill.active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .pill.nvt { font-size: 10px; padding: 4px 6px; min-width: 32px; color: var(--ink-faint); }
+  .pill.nvt.active { background: var(--ink-faint); color: var(--surface); border-color: var(--ink-faint); }
+  .pill.weet-niet { font-size: 10px; color: var(--ink-faint); margin-left: 4px; }
+  .pill.weet-niet.active { background: var(--ink-faint); color: white; border-color: var(--ink-faint); }
+  .note-input, textarea {
+    width: 100%; padding: 7px 10px; border: 1px solid var(--line);
+    border-radius: 6px; font-size: 13px; font-family: inherit;
+    background: var(--bg); resize: vertical; min-height: 32px;
+  }
+  .note-input:focus, textarea:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+
+  .cluster-header {
+    margin: 32px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--ink);
+    display: flex; align-items: baseline; justify-content: space-between;
+  }
+  .cluster-header .cluster-letter { font-size: 32px; font-weight: 800; letter-spacing: -0.03em; }
+  .cluster-header .cluster-naam { font-size: 16px; font-weight: 700; }
+  .cluster-header .cluster-count { color: var(--ink-faint); font-size: 12px; }
+
+  .form-block {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 12px;
+  }
+  .form-block label { display: block; font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
+  .form-block .sublabel { color: var(--ink-soft); font-size: 12.5px; margin-bottom: 8px; font-weight: 400; }
+  .form-block + .form-block { margin-top: 10px; }
+
+  .top3-domains {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px;
+    margin-top: 6px; max-height: 360px; overflow-y: auto; padding: 8px;
+    background: var(--bg); border-radius: 6px;
+  }
+  .top3-opt {
+    padding: 6px 9px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 5px; cursor: pointer; font-size: 12px; user-select: none;
+  }
+  .top3-opt:hover { border-color: var(--ink-soft); }
+  .top3-opt.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .top3-opt .rank {
+    background: var(--accent); color: white; font-size: 10px; font-weight: 700;
+    padding: 1px 5px; border-radius: 3px; margin-left: 4px;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .chip {
+    padding: 6px 11px; border: 1px solid var(--line); background: var(--surface);
+    border-radius: 18px; font-size: 12.5px; cursor: pointer; user-select: none; color: var(--ink-soft);
+  }
+  .chip:hover { border-color: var(--ink-soft); }
+  .chip.active { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
+
+  .spectrum-row {
+    display: grid; grid-template-columns: 190px 1fr 190px;
+    align-items: start; gap: 14px; padding: 14px 0; border-top: 1px dashed var(--line);
+  }
+  .spectrum-row:first-child { border-top: none; }
+  .spectrum-label-side { display: flex; flex-direction: column; gap: 4px; }
+  .spectrum-label-side-right { }
+  .spectrum-label-left { text-align: right; font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  .spectrum-label-right { font-size: 13px; color: var(--ink-soft); font-weight: 600; }
+  .spectrum-label-side:not(.spectrum-label-side-right) .spectrum-desc { text-align: right; }
+  .spectrum-desc { font-size: 11.5px; color: var(--ink-faint); line-height: 1.4; }
+  .spectrum-pills { display: flex; justify-content: space-between; gap: 4px; }
+  .spectrum-pill {
+    flex: 1; padding: 6px 0; text-align: center; border: 1px solid var(--line);
+    background: var(--surface); border-radius: 5px; cursor: pointer;
+    font-size: 11px; color: var(--ink-faint); user-select: none;
+  }
+  .spectrum-pill:hover { border-color: var(--ink-soft); color: var(--ink-soft); }
+  .spectrum-pill.active { background: var(--accent); color: white; border-color: var(--accent); font-weight: 700; }
+  .spectrum-pill.weet-niet {
+    flex: 0 0 auto; min-width: 60px; font-size: 10px;
+    color: var(--ink-faint); margin-left: 6px;
+  }
+  .spectrum-pill.weet-niet.active { background: var(--ink-faint); color: white; border-color: var(--ink-faint); }
+
+  .werkstijl-person {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 18px 22px; margin-bottom: 14px;
+  }
+  .werkstijl-person h3 { margin-top: 0; }
+
+  .btn {
+    display: inline-block; padding: 10px 18px; background: var(--ink);
+    color: var(--surface); border: none; border-radius: 6px; font-size: 14px;
+    font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn:hover { background: #1e293b; }
+  .btn.secondary { background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong); }
+  .btn.secondary:hover { border-color: var(--ink); }
+  .btn + .btn { margin-left: 8px; }
+
+  .export-area {
+    width: 100%; min-height: 220px; max-height: 420px; padding: 12px;
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: "SF Mono", Monaco, monospace; font-size: 11px;
+    background: var(--bg); margin-top: 12px;
+  }
+
+  .compare-imports { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+  .import-slot { padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .import-slot label { font-weight: 600; display: block; margin-bottom: 5px; font-size: 13px; }
+  .import-slot textarea {
+    width: 100%; min-height: 80px; padding: 8px; border: 1px solid var(--line);
+    border-radius: 5px; font-family: "SF Mono", Monaco, monospace;
+    font-size: 10px; background: var(--bg);
+  }
+  .import-slot .status { font-size: 12px; margin-top: 4px; color: var(--ink-faint); }
+  .import-slot .status.ok { color: var(--good); }
+  .import-slot .status.err { color: var(--bad); }
+
+  .compare-table {
+    width: 100%; border-collapse: collapse; font-size: 12.5px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; margin-top: 14px;
+  }
+  .compare-table th {
+    background: var(--bg); padding: 10px 12px; text-align: left;
+    font-weight: 600; font-size: 11.5px; border-bottom: 1px solid var(--line); color: var(--ink-soft);
+  }
+  .compare-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .compare-table tr:last-child td { border-bottom: none; }
+  .compare-table .domain-col { font-weight: 500; min-width: 180px; }
+  .compare-table .cluster-row td {
+    background: var(--ink); color: var(--surface); font-weight: 700; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.08em; padding: 6px 12px;
+  }
+  .scorebox {
+    display: inline-block; min-width: 26px; text-align: center; padding: 2px 5px;
+    border-radius: 4px; font-weight: 700; font-size: 11.5px; margin: 1px; background: var(--bg);
+  }
+  .scorebox.self { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .scorebox.na { color: var(--ink-faint); }
+  .scorebox.high { background: var(--good-soft); color: var(--good); }
+  .scorebox.mid { background: var(--warn-soft); color: var(--warn); }
+  .scorebox.low { background: var(--bad-soft); color: var(--bad); }
+  .gap-badge {
+    display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: 700;
+    border-radius: 3px; margin-left: 4px; text-transform: uppercase;
+  }
+  .gap-badge.high { background: var(--bad-soft); color: var(--bad); }
+  .gap-badge.med { background: var(--warn-soft); color: var(--warn); }
+
+  .person-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 18px; }
+  .person-card { padding: 16px 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+  .person-card h4 { margin: 0 0 8px; font-size: 15px; }
+  .person-card .stat { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12.5px; border-bottom: 1px dashed var(--line); }
+  .person-card .stat:last-child { border: none; }
+  .person-card .stat .val { font-weight: 700; }
+
+  .insights { margin-top: 18px; }
+  .insight-item {
+    background: var(--surface); border-left: 3px solid var(--accent);
+    padding: 10px 14px; margin-bottom: 6px; border-radius: 0 8px 8px 0; font-size: 12.5px;
+  }
+  .insight-item.warn { border-color: var(--warn); }
+  .insight-item.bad { border-color: var(--bad); }
+  .insight-item.good { border-color: var(--good); }
+
+  .actions-bar {
+    position: sticky; bottom: 0;
+    background: linear-gradient(to top, var(--bg) 85%, transparent);
+    padding: 14px 0; margin-top: 28px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .save-indicator { font-size: 12px; color: var(--ink-faint); }
+  .save-indicator.saved { color: var(--good); }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    main { padding: 24px; }
+    .who-grid { grid-template-columns: 1fr; }
+    .scorer-row { grid-template-columns: 1fr; }
+    .spectrum-row { grid-template-columns: 1fr; gap: 6px; }
+    .spectrum-label-left, .spectrum-label-right { text-align: left; }
+    .spectrum-label-side:not(.spectrum-label-side-right) .spectrum-desc { text-align: left; }
+    .spectrum-label-left { text-align: left; }
+    .compare-imports { grid-template-columns: 1fr; }
+    .person-summary { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <aside>
+    <div class="brand">Alliance Assessment</div>
+    <div class="sub">Autronis × Nex — 360</div>
+    <div id="me-display" class="me" style="display:none;">
+      <span>Ingelogd: <strong id="me-name"></strong></span>
+      <button onclick="resetMe()">wisselen</button>
+    </div>
+    <nav id="nav"></nav>
+    <div class="progress">
+      <div>Voortgang: <span id="progress-pct">0%</span></div>
+      <div class="bar"><div id="progress-fill" class="fill"></div></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div id="section-intro" class="section active">
+      <h1>Alliance Assessment — skills & kwaliteiten</h1>
+      <p class="lead">
+        Kennismaking tussen ons vier — Sem, Syb, Brent en Ivar. Doel: eerlijk in kaart brengen wat ieder kan, waar de sterktes zitten,
+        waar de gaps, en hoe we als mensen werken. Geen aannames over de samenwerkings-vorm, structuur, of hoe we het samen aanpakken —
+        die bespreken we apart met de handleiding (werkboek).
+      </p>
+      <p class="lead">
+        Iedereen vult dezelfde lijst in. Je begint met een paar vragen over jezelf (warm lopen), daarna score je alle vier op 34 werkvlakken,
+        10 werkstijl-dimensies, en beschrijf je elk van de drie anderen. Reken op 45-60 minuten.
+        Alles blijft lokaal in je browser tot je zelf exporteert.
+      </p>
+      <h3>Wie ben jij?</h3>
+      <div class="who-grid">
+        <div class="who-card" onclick="setMe('sem')"><div class="naam">Sem</div><div class="rol">Autronis — mede-oprichter</div></div>
+        <div class="who-card" onclick="setMe('syb')"><div class="naam">Syb</div><div class="rol">Autronis — mede-oprichter</div></div>
+        <div class="who-card" onclick="setMe('brent')"><div class="naam">Brent</div><div class="rol">Nex — mede-oprichter</div></div>
+        <div class="who-card" onclick="setMe('ivar')"><div class="naam">Ivar</div><div class="rol">Nex — mede-oprichter</div></div>
+      </div>
+      <p class="hint" style="margin-top:14px;">
+        Volgorde:
+        <strong>1.</strong> Over jezelf &nbsp;·&nbsp; <strong>2.</strong> 34 werkvlakken scoren &nbsp;·&nbsp;
+        <strong>3.</strong> Werkstijl &nbsp;·&nbsp; <strong>4.</strong> Over elk van de andere drie &nbsp;·&nbsp;
+        <strong>5.</strong> Exporteer &nbsp;·&nbsp; <strong>6.</strong> Vergelijk met de andere drie
+      </p>
+    </div>
+
+    <div id="sections-container"></div>
+  </main>
+</div>
+
+<script>
+/* ============ DATA ============ */
+
+const PEOPLE = [
+  { id: 'sem', naam: 'Sem', bedrijf: 'Autronis' },
+  { id: 'syb', naam: 'Syb', bedrijf: 'Autronis' },
+  { id: 'brent', naam: 'Brent', bedrijf: 'Nex' },
+  { id: 'ivar', naam: 'Ivar', bedrijf: 'Nex' },
+];
+
+// Plain-language domain labels
+const DOMAINS = [
+  // A — Commercieel (verkopen & klanten)
+  { id: 'sales',          cluster: 'A', naam: 'Verkopen — deals sluiten',               uitleg: 'Met een geinteresseerde klant aan tafel zitten, voorstel doen, prijs noemen, handtekening krijgen.' },
+  { id: 'outreach',       cluster: 'A', naam: 'Koude acquisitie — vreemden benaderen',  uitleg: 'Mensen die je nog niet kent aanschrijven of bellen om een gesprek te krijgen. Zelf leads genereren.' },
+  { id: 'marketing',      cluster: 'A', naam: 'Marketing — zorgen dat mensen ons vinden', uitleg: 'Zichtbaar worden, verhaal naar buiten brengen, zodat potentiele klanten bij ons uitkomen voordat we ze hoeven te zoeken.' },
+  { id: 'klant',          cluster: 'A', naam: 'Klantrelatie onderhouden',                uitleg: 'Verwachtingen managen, vertrouwen opbouwen, moeilijke gesprekken voeren, zorgen dat een klant blijft.' },
+  { id: 'pricing',        cluster: 'A', naam: 'Prijzen durven vragen en afbakenen',       uitleg: 'Opdracht vertalen naar een prijs, durven te vragen wat iets waard is, afbakenen wat wel en niet bij die prijs hoort.' },
+  { id: 'ai_educatie',    cluster: 'A', naam: 'Klanten uitleggen wat AI wel en niet kan', uitleg: 'De hype rustig kunnen terugbrengen, realistische verwachtingen stellen, uitleggen waarom een AI soms dingen verzint (hallucineren).' },
+  { id: 'upsell',         cluster: 'A', naam: 'Uit een tevreden klant meer werk halen',   uitleg: 'Als een klant blij is met klus 1 ook klus 2 en 3 verkopen, of een doorlopende maandelijkse afspraak (retainer) maken.' },
+
+  // B — Bouwen (tech & craft)
+  { id: 'frontend',       cluster: 'B', naam: 'Frontend — hoe het eruitziet en voelt',   uitleg: 'Interfaces bouwen die mooi en prettig in gebruik zijn. Design-gevoel, componenten, pagina\'s maken.' },
+  { id: 'backend',        cluster: 'B', naam: 'Backend — systemen op de achtergrond',    uitleg: 'n8n, Supabase, API\'s, databases, automations, alles wat je niet ziet maar moet werken.' },
+  { id: 'prompts',        cluster: 'B', naam: 'AI aansturen met goede instructies (prompts)', uitleg: 'Het taalmodel (Claude/GPT) zo instrueren dat het bruikbare antwoorden geeft. Bv: een vaste instructie meegeven die bepaalt welke rol de AI speelt en welke info ie mag gebruiken.' },
+  { id: 'agents',         cluster: 'B', naam: 'Meerdere AI-agents laten samenwerken',     uitleg: 'Meerdere AI\'s die elk een eigen taak doen en samen één klus af krijgen. Bv: één zoekt op, één schrijft, één controleert, en een baas-AI stuurt ze aan.' },
+  { id: 'rag',            cluster: 'B', naam: 'AI laten zoeken in eigen documenten (RAG)', uitleg: 'Klanten-data, PDF\'s of websites doorzoekbaar maken voor AI. Zodat de AI antwoorden geeft uit jouw documenten in plaats van uit algemene kennis te verzinnen.' },
+  { id: 'eval',           cluster: 'B', naam: 'Testen of AI-antwoorden goed zijn',        uitleg: 'Meten of de AI klopt, niet liegt, en consistente kwaliteit levert. Bv: dezelfde 20 vragen keer op keer laten beantwoorden en scoren hoe goed de antwoorden zijn.' },
+  { id: 'security',       cluster: 'B', naam: 'Beveiliging & privacy',                   uitleg: 'Klantdata veilig houden, wachtwoorden, GDPR, voorkomen dat iemand via de AI informatie kan stelen.' },
+  { id: 'analytics',      cluster: 'B', naam: 'Meten wat er gebeurt — dashboards & cijfers', uitleg: 'Inzichtelijk maken hoe iets loopt: aantallen, kosten, gebruik. Data-gedreven beslissen.' },
+  { id: 'cost_eng',       cluster: 'B', naam: 'Kosten laag houden — AI-tokens & cloud',  uitleg: 'Zorgen dat we niet meer uitgeven aan AI en servers dan nodig is. Bv: antwoorden onthouden zodat we niet elke keer opnieuw hoeven te vragen, of een kleiner (goedkoper) AI-model inzetten als het kan.' },
+
+  // C — Bedrijf draaiende houden
+  { id: 'operations',     cluster: 'C', naam: 'Alledaagse processen gladjes laten lopen', uitleg: 'Werk zo inrichten dat het herhaalbaar wordt en niks tussen wal en schip valt als we het drukker krijgen. Bv: vaste stappen voor elke nieuwe klant, vaste check-momenten, alles op één plek.' },
+  { id: 'financieel',     cluster: 'C', naam: 'Financieel — cashflow & marges bewaken',   uitleg: 'Weten hoeveel geld er is, wanneer facturen betaald moeten worden, of we winst maken of niet.' },
+  { id: 'leiderschap',    cluster: 'C', naam: 'Mensen aansturen en bij elkaar houden',    uitleg: 'Team leiden, cultuur dragen, conflicten bespreekbaar maken, anderen laten groeien.' },
+  { id: 'recruitment',    cluster: 'C', naam: 'Nieuwe mensen zoeken en aannemen',         uitleg: 'Vacatures schrijven, kandidaten beoordelen, freelancers matchen, de juiste mensen voor de juiste rol vinden.' },
+  { id: 'admin',          cluster: 'C', naam: 'Papierwerk — contracten, KVK, BTW',       uitleg: 'Alle administratieve dingen die saai maar belangrijk zijn. Juridisch, belastingen, compliance.' },
+  { id: 'crisis',         cluster: 'C', naam: 'Crisis oplossen als iets ontploft',       uitleg: 'Klant is boos, server ligt plat, iemand valt uit. Rustig blijven, prioriteren, ingrijpen.' },
+  { id: 'vendor',         cluster: 'C', naam: 'Tools en leveranciers kiezen en beheren',  uitleg: 'Welke software gebruiken we, welke licenties, wie leveren we van af, wanneer wisselen we.' },
+
+  // D — Vooruit kijken
+  { id: 'strategie',        cluster: 'D', naam: 'Keuzes maken waar we wel en niet op inzetten', uitleg: 'Richting bepalen voor 3-12 maanden, nee zeggen tegen dingen die niet passen, prioriteiten stellen.' },
+  { id: 'innovatie',        cluster: 'D', naam: 'Nieuwe kansen zien voor anderen dat doen',     uitleg: 'Markten, technologie of klantproblemen herkennen waar nog geld ligt. Wild kunnen denken.' },
+  { id: 'ai_landschap',     cluster: 'D', naam: 'Bijhouden wat er in AI-wereld gebeurt',        uitleg: 'Welke modellen zijn nieuw, wat kunnen ze, wanneer Claude vs GPT vs open source inzetten.' },
+  { id: 'thought',          cluster: 'D', naam: 'Publiek delen wat je weet (merk van jezelf)',   uitleg: 'LinkedIn, X, spreken op events, blogs. Zorgen dat je bekend staat om je expertise.' },
+  { id: 'netwerk',          cluster: 'D', naam: 'Relaties bouwen buiten klanten',              uitleg: 'Mensen kennen in de branche, partnerships, community, mensen die je kan bellen als je iets nodig hebt.' },
+  { id: 'fundraising',      cluster: 'D', naam: 'Geld ophalen bij investeerders',             uitleg: 'Als we zouden willen: investeerders benaderen, een presentatie-document (pitchdeck) maken, een financieringsronde organiseren.' },
+
+  // E — Hoe iemand werkt
+  { id: 'afmaken',         cluster: 'E', naam: 'Dingen echt afmaken (niet half laten liggen)', uitleg: 'Laatste 10% afwerken, deadlines halen, niet alleen starten maar ook landen.' },
+  { id: 'kennismanagement', cluster: 'E', naam: 'Opschrijven wat je weet',                    uitleg: 'Documenteren zodat iemand anders het kan overnemen. Stop de kennis niet in je hoofd.' },
+  { id: 'leren',           cluster: 'E', naam: 'Snel nieuwe tools en dingen leren',           uitleg: 'In een paar dagen een nieuwe tool onder de knie krijgen. Niet vastklampen aan wat je gisteren wist.' },
+  { id: 'focus',           cluster: 'E', naam: 'Uren aan één stuk ergens in kunnen zitten',    uitleg: 'Diepe concentratie, niet afgeleid worden door pings, echt in een probleem duiken.' },
+  { id: 'delegeren',       cluster: 'E', naam: 'Werk uit handen geven aan anderen',           uitleg: 'Durven vertrouwen dat een ander iets (anders) goed doet, niet alles zelf willen doen.' },
+];
+
+const CLUSTERS = {
+  A: 'Commercieel — verkopen & klanten',
+  B: 'Bouwen — tech & craft',
+  C: 'Bedrijf draaiende houden',
+  D: 'Vooruit kijken — strategie',
+  E: 'Hoe iemand werkt',
+};
+
+// Plain-language werkstijl
+const SPECTRUMS = [
+  { id: 'comm',
+    left: 'Zegt meteen wat \'ie denkt',
+    leftDesc: 'Gedachte komt direct eruit — mensen weten meteen waar je staat, ook als \'t ongemakkelijk is.',
+    right: 'Denkt eerst, zegt voorzichtig',
+    rightDesc: 'Checkt eerst zelf — is \'t zinvol, is \'t het juiste moment, hoe landt \'t.' },
+  { id: 'beslis',
+    left: 'Beslist snel',
+    leftDesc: 'Liever een ok-beslissing nu dan een perfecte over een week. Doet liever dan twijfelt.',
+    right: 'Wikt lang',
+    rightDesc: 'Wil alle kanten van een keuze bekeken hebben voordat \'ie besluit. Neemt de tijd.' },
+  { id: 'conflict',
+    left: 'Zoekt conflict op als \'t moet',
+    leftDesc: 'Benoemt wat niet klopt ook als het een moeilijk gesprek wordt. Gaat er liever doorheen dan eromheen.',
+    right: 'Vermijdt conflict',
+    rightDesc: 'Zoekt liever de weg van de minste wrijving. Laat dingen soms lopen om de sfeer te bewaren.' },
+  { id: 'feedback',
+    left: 'Vraagt om feedback',
+    leftDesc: 'Zoekt actief naar wat anderen zien wat hij zelf mist. Wil beter worden en weet dat feedback helpt.',
+    right: 'Laat feedback liever weg',
+    rightDesc: 'Werkt liever door op eigen oordeel. Vindt ongevraagde kritiek ruis.' },
+  { id: 'tempo',
+    left: 'Pieken — sprinter',
+    leftDesc: 'Werkt in hoge-energie blokken met rust ertussen. Wisselt intensieve dagen af met langzame.',
+    right: 'Constant — marathon',
+    rightDesc: 'Gelijkmatig ritme, elke dag een beetje. Liever 4 uur per dag dan 12 in een sprint.' },
+  { id: 'werk',
+    left: 'Werkt liefst alleen diep',
+    leftDesc: 'Krijgt het beste werk uit handen met een deur dicht en geen onderbrekingen.',
+    right: 'Krijgt energie van samen',
+    rightDesc: 'Denkt beter hardop, met anderen in de buurt. Alleen werken voelt leeg.' },
+  { id: 'plan',
+    left: 'Speelt op gevoel',
+    leftDesc: 'Begint en ziet wel waar het heen gaat. Past aan op wat er gebeurt.',
+    right: 'Werkt volgens strak plan',
+    rightDesc: 'Wil eerst een plan of structuur vóór dat er iets gebouwd wordt. Afwijkingen voelen riskant.' },
+  { id: 'drijf',
+    left: 'Gaat voor het resultaat',
+    leftDesc: 'Belangrijkste is dat het af is en werkt. Het proces erheen mag hobbelig zijn.',
+    right: 'Geniet van het proces',
+    rightDesc: 'Hoe het gemaakt is telt net zo hard als het eindresultaat. Het pad is het punt.' },
+  { id: 'druk',
+    left: 'Blijft kalm onder druk',
+    leftDesc: 'Als alles ontploft wordt \'ie rustiger, niet paniekeriger. Neemt over in crisis.',
+    right: 'Raakt gestrest onder druk',
+    rightDesc: 'Hartslag loopt op, focus wordt smaller. Presteert beter met rust om zich heen.' },
+  { id: 'risk',
+    left: 'Speelt op zeker',
+    leftDesc: 'Liever een kleinere zekere win dan een grotere onzekere. Bouwt graag een buffer.',
+    right: 'Zoekt risico op',
+    rightDesc: 'Grotere kans op mislukken is ok als de beloning ook groter is. Durft te gokken.' },
+];
+
+/* ============ STATE ============ */
+
+const STORAGE_KEY = 'alliance-assessment-v3';
+let state = {
+  me: null,
+  scores: {},
+  werkstijl: {},
+  aboutSelf: {
+    energyTop3: [], energyBottom3: [], leren: '',
+    slechteGewoonte: '', opnieuwBeginnen: '',
+    uurPerWeek: '', werkVsRest: '',
+  },
+  aboutOthers: {},
+};
+
+let currentSection = 'intro';
+
+/* ============ STORAGE ============ */
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  updateProgress();
+  flashSave();
+}
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try { state = deepMerge(state, JSON.parse(raw)); } catch (e) { console.warn('Kon state niet laden:', e); }
+}
+function deepMerge(target, source) {
+  if (!source) return target;
+  const out = Array.isArray(target) ? [...target] : { ...target };
+  Object.keys(source).forEach(k => {
+    if (source[k] && typeof source[k] === 'object' && !Array.isArray(source[k])) out[k] = deepMerge(target[k] || {}, source[k]);
+    else out[k] = source[k];
+  });
+  return out;
+}
+function flashSave() {
+  const el = document.getElementById('save-indicator');
+  if (!el) return;
+  el.textContent = 'Opgeslagen';
+  el.classList.add('saved');
+  clearTimeout(flashSave._t);
+  flashSave._t = setTimeout(() => { el.textContent = ''; el.classList.remove('saved'); }, 1200);
+}
+
+/* ============ ME / NAV ============ */
+
+const ABOUT_OTHER_FIELDS = [
+  'kwaliteit', 'blindeVlek', 'willenLeren', 'onderDruk',
+  'trustScore',
+];
+
+function setMe(personId) {
+  state.me = personId;
+  PEOPLE.forEach(p => {
+    if (!state.aboutOthers[p.id] && p.id !== personId) {
+      state.aboutOthers[p.id] = {};
+      ABOUT_OTHER_FIELDS.forEach(f => { state.aboutOthers[p.id][f] = f === 'trustScore' ? null : ''; });
+    }
+  });
+  saveState();
+  renderAll();
+  showSection('welcome');
+}
+function resetMe() {
+  if (!confirm('Wisselen van gebruiker? Je antwoorden blijven bewaard.')) return;
+  state.me = null;
+  renderAll();
+  showSection('intro');
+}
+function showSection(id) {
+  currentSection = id;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('section-' + id);
+  if (target) { target.classList.add('active'); window.scrollTo(0, 0); }
+  document.querySelectorAll('#nav a').forEach(a => a.classList.toggle('active', a.dataset.target === id));
+  updateProgress();
+}
+
+function renderNav() {
+  const nav = document.getElementById('nav');
+  if (!state.me) { nav.innerHTML = ''; return; }
+  const others = PEOPLE.filter(p => p.id !== state.me);
+  let html = `
+    <h3>1 · Over jezelf</h3>
+    <a data-target="zelf-a" onclick="showSection('zelf-a')">Wie ben jij?</a>
+    <a data-target="zelf-b" onclick="showSection('zelf-b')">Hoe werk je?</a>
+    <h3>2 · Werkvlakken scoren</h3>
+    ${Object.entries(CLUSTERS).map(([letter, naam]) => {
+      const count = DOMAINS.filter(d => d.cluster === letter).length;
+      return `<a data-target="cluster-${letter}" onclick="showSection('cluster-${letter}')">${letter}. ${naam} (${count})</a>`;
+    }).join('')}
+    <h3>3 · Werkstijl</h3>
+    <a data-target="werkstijl" onclick="showSection('werkstijl')">Alle vier op 10 dimensies</a>
+    <h3>4 · Over elk van de andere drie</h3>
+    ${others.map(p => `<a data-target="over-${p.id}" onclick="showSection('over-${p.id}')">Over ${p.naam}</a>`).join('')}
+    <h3>5 · Klaar</h3>
+    <a data-target="export" onclick="showSection('export')">Exporteer je antwoorden</a>
+    <a data-target="vergelijk" onclick="showSection('vergelijk')">Vergelijk alle 4</a>
+  `;
+  nav.innerHTML = html;
+  updateDoneMarks();
+}
+
+function updateDoneMarks() {
+  document.querySelectorAll('#nav a').forEach(a => {
+    const target = a.dataset.target;
+    let done = false;
+    if (!target) return;
+    if (target.startsWith('cluster-')) {
+      const letter = target.slice(-1);
+      const domains = DOMAINS.filter(d => d.cluster === letter);
+      done = domains.every(d => { const s = state.scores[d.id]; return s && PEOPLE.every(p => s[p.id] && s[p.id].score !== undefined); });
+    } else if (target === 'werkstijl') {
+      done = PEOPLE.every(p => state.werkstijl[p.id] && SPECTRUMS.every(s => state.werkstijl[p.id][s.id]));
+    } else if (target === 'zelf-a') {
+      done = state.aboutSelf.energyTop3.length === 3 && state.aboutSelf.energyBottom3.length === 3 && state.aboutSelf.leren;
+    } else if (target === 'zelf-b') {
+      done = state.aboutSelf.uurPerWeek && state.aboutSelf.werkVsRest;
+    } else if (target.startsWith('over-')) {
+      const pid = target.slice(5);
+      const o = state.aboutOthers[pid];
+      done = o && o.kwaliteit && o.blindeVlek && o.trustScore;
+    }
+    a.classList.toggle('done', !!done);
+  });
+}
+
+function updateProgress() {
+  if (!state.me) {
+    document.getElementById('progress-pct').textContent = '0%';
+    document.getElementById('progress-fill').style.width = '0%';
+    return;
+  }
+  let total = 0, filled = 0;
+  DOMAINS.forEach(d => {
+    PEOPLE.forEach(p => {
+      total++;
+      const s = state.scores[d.id];
+      if (s && s[p.id] && s[p.id].score !== undefined) filled++;
+    });
+  });
+  PEOPLE.forEach(p => { SPECTRUMS.forEach(s => { total++; if (state.werkstijl[p.id] && state.werkstijl[p.id][s.id]) filled++; }); });
+  const selfFieldsTotal = ['leren','slechteGewoonte','opnieuwBeginnen','uurPerWeek','werkVsRest'];
+  selfFieldsTotal.forEach(k => { total++; if (state.aboutSelf[k]) filled++; });
+  total += 2;
+  if (state.aboutSelf.energyTop3.length === 3) filled++;
+  if (state.aboutSelf.energyBottom3.length === 3) filled++;
+  const others = PEOPLE.filter(p => p.id !== state.me);
+  others.forEach(p => {
+    ABOUT_OTHER_FIELDS.forEach(k => { total++; if ((state.aboutOthers[p.id] || {})[k]) filled++; });
+  });
+
+  const pct = Math.round((filled / total) * 100);
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  updateDoneMarks();
+}
+
+/* ============ RENDER ============ */
+
+function renderAll() {
+  document.getElementById('me-display').style.display = state.me ? 'flex' : 'none';
+  if (state.me) document.getElementById('me-name').textContent = PEOPLE.find(p => p.id === state.me).naam;
+  renderNav();
+  renderSections();
+  updateProgress();
+}
+
+function renderSections() {
+  const container = document.getElementById('sections-container');
+  if (!state.me) { container.innerHTML = ''; return; }
+  const meName = PEOPLE.find(p => p.id === state.me).naam;
+  const others = PEOPLE.filter(p => p.id !== state.me);
+
+  let html = '';
+
+  html += `
+    <div id="section-welcome" class="section">
+      <h1>Welkom, ${meName}</h1>
+      <p class="lead">
+        Begin met een paar vragen over jezelf om warm te lopen. Daarna ga je pas scoren. Alles wordt lokaal opgeslagen —
+        sluit de tab gerust en kom later terug.
+      </p>
+      <div class="form-block">
+        <h3 style="margin-top:0;">Hoe je scores werken</h3>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 10px;">
+          <strong>1-3</strong> zwakte · <strong>4-6</strong> kan het, niet sterk ·
+          <strong>7-8</strong> goed, betrouwbaar · <strong>9-10</strong> iemand om op te leunen.
+        </p>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 10px; padding:8px 10px; background:var(--bg); border-radius:6px;">
+          <strong>Iemand niet goed genoeg kennen om te oordelen?</strong>
+          Bij werkvlakken → <strong>n.v.t.</strong> · bij werkstijl en vertrouwen → <strong>weet niet</strong>.
+          Dat vervuilt niks — "weet niet" telt niet mee in gemiddelden.
+        </p>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0; padding:8px 10px; background:#eef6ff; border-left:3px solid var(--accent); border-radius:6px;">
+          <strong>Open vragen?</strong> Steekwoorden, losse gedachten, halve zinnen zijn prima — niet overdenken, gewoon typen wat bij je opkomt.
+          Als alle vier hun antwoorden hebben ingestuurd, maakt een AI er automatisch samenhangende tekst van voor de vergelijking.
+        </p>
+      </div>
+      <button class="btn" style="margin-top:20px;" onclick="showSection('zelf-a')">Start met vragen over jezelf →</button>
+    </div>
+  `;
+
+  // ======== 1 · Over jezelf — A: Wie ben jij?
+  html += `
+    <div id="section-zelf-a" class="section">
+      <h1>Over jezelf — Wie ben jij?</h1>
+      <p class="lead">Makkelijke warm-up. Reflecteer eerlijk op jezelf. Steekwoorden of losse zinnen zijn prima — AI polijst later.</p>
+
+      <div class="form-block">
+        <label>Top 3 werkvlakken die je energie <em>geven</em> (kies er precies 3)</label>
+        <div class="sublabel">Uit de 34. Hier word je wakker van, ook als het moeilijk is.</div>
+        <div id="top3-energy-top" class="top3-domains"></div>
+      </div>
+
+      <div class="form-block">
+        <label>Bottom 3 werkvlakken die je leegzuigen (kies er precies 3)</label>
+        <div class="sublabel">Je kan ze misschien, maar ze kosten je onevenredig veel energie.</div>
+        <div id="top3-energy-bottom" class="top3-domains"></div>
+      </div>
+
+      <div class="form-block">
+        <label>Welk werkvlak zou je graag <em>leren</em> komende 12 maanden?</label>
+        <textarea data-field="aboutSelf.leren" rows="2" placeholder="Ik zou willen groeien in..."></textarea>
+      </div>
+
+      <div class="form-block">
+        <label>Welke slechte gewoonte heb je in je werk die je zelf vervelend vindt?</label>
+        <div class="sublabel">Iets wat je doet maar nog niet hebt kunnen afleren.</div>
+        <textarea data-field="aboutSelf.slechteGewoonte" rows="2" placeholder="Ik..."></textarea>
+      </div>
+
+      <div class="form-block">
+        <label>Als je opnieuw zou beginnen met een bedrijf, wat zou je sowieso anders doen?</label>
+        <div class="sublabel">Een les die je al hebt geleerd maar nog niet toepast.</div>
+        <textarea data-field="aboutSelf.opnieuwBeginnen" rows="3" placeholder="Ik zou niet nog een keer..."></textarea>
+      </div>
+    </div>
+  `;
+
+  // ======== 1 · Over jezelf — B: Hoe werk je?
+  html += `
+    <div id="section-zelf-b" class="section">
+      <h1>Over jezelf — Hoe werk je?</h1>
+      <p class="lead">Hoe jij persoonlijk werkt, los van iedereen anders. Kort typen, geen aannames over de samenwerking. AI polijst later.</p>
+
+      <div class="form-block">
+        <label>Hoeveel uur per week werk je normaal?</label>
+        <div class="sublabel">Niet wat klinkt goed — wat je écht doet, gemiddeld.</div>
+        <textarea data-field="aboutSelf.uurPerWeek" rows="2" placeholder="Ongeveer X uur per week, waarvan Y uur diep werk en..."></textarea>
+      </div>
+
+      <div class="form-block">
+        <label>Wat haal je uit werk dat je nergens anders kan halen?</label>
+        <div class="sublabel">Wat zou je gaan missen als je een jaar niet kon werken?</div>
+        <textarea data-field="aboutSelf.werkVsRest" rows="3" placeholder="Uit werken krijg ik..."></textarea>
+      </div>
+    </div>
+  `;
+
+  // ======== 2 · Werkvlakken scoren
+  Object.entries(CLUSTERS).forEach(([letter, clusterNaam]) => {
+    const domains = DOMAINS.filter(d => d.cluster === letter);
+    html += `
+      <div id="section-cluster-${letter}" class="section">
+        <div class="cluster-header">
+          <span class="cluster-letter">${letter}</span>
+          <span class="cluster-naam">${clusterNaam}</span>
+          <span class="cluster-count">${domains.length} werkvlakken</span>
+        </div>
+        <p class="lead">Geef per werkvlak een score voor elk van de vier (inclusief jezelf). 1-3 zwakte · 4-6 kan het, niet sterk · 7-8 goed, betrouwbaar · 9-10 iemand om op te leunen.</p>
+    `;
+    domains.forEach(d => {
+      const nr = DOMAINS.findIndex(x => x.id === d.id) + 1;
+      html += `
+        <div class="domain-item">
+          <div class="domain-head">
+            <span class="domain-nr">${nr}</span>
+            <span class="domain-name">${d.naam}</span>
+            <div class="domain-uitleg">${d.uitleg}</div>
+          </div>
+          ${PEOPLE.map(p => renderScorerRow(d.id, p)).join('')}
+        </div>
+      `;
+    });
+    html += `<div class="actions-bar"><span id="save-indicator" class="save-indicator"></span><div>${renderClusterNav(letter)}</div></div></div>`;
+  });
+
+  // ======== 3 · Werkstijl
+  html += `
+    <div id="section-werkstijl" class="section">
+      <h1>Werkstijl — hoe iemand werkt</h1>
+      <p class="lead">
+        Voor elk van de vier: waar op het spectrum plaats je hem? Geen goed of fout — verschillende stijlen zijn juist een reden om
+        samen te werken. Als alle vier identiek zijn, heb je blinde vlekken.
+      </p>
+      ${PEOPLE.map(p => `
+        <div class="werkstijl-person">
+          <h3>${p.naam} ${p.id === state.me ? '<span style="color:var(--accent); font-size:12px;">(jij)</span>' : ''}</h3>
+          ${SPECTRUMS.map(s => renderSpectrumRow(p.id, s)).join('')}
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  // ======== 4 · Over elkaar
+  others.forEach(p => {
+    html += `
+      <div id="section-over-${p.id}" class="section">
+        <h1>Over ${p.naam}</h1>
+        <p class="lead">Vier korte observaties + een vertrouwens-score. Steekwoorden of losse zinnen zijn genoeg — AI polijst later tot lopende tekst voor de vergelijking.</p>
+
+        <div class="form-block">
+          <label>Grootste kwaliteit van ${p.naam} — waar zou je hem voor bellen?</label>
+          <textarea data-field="aboutOthers.${p.id}.kwaliteit" rows="2" placeholder="${p.naam} is echt goed in..."></textarea>
+        </div>
+
+        <div class="form-block">
+          <label>Blinde vlek die ${p.naam} zelf misschien niet ziet</label>
+          <div class="sublabel">Als niemand het nu benoemt, gebeurt het nooit.</div>
+          <textarea data-field="aboutOthers.${p.id}.blindeVlek" rows="2" placeholder="${p.naam} denkt misschien dat hij... maar ik zie..."></textarea>
+        </div>
+
+        <div class="form-block">
+          <label>Wat zou je van ${p.naam} willen leren?</label>
+          <textarea data-field="aboutOthers.${p.id}.willenLeren" rows="2" placeholder="${p.naam} kan ... beter dan ik."></textarea>
+        </div>
+
+        <div class="form-block">
+          <label>Hoe zie jij ${p.naam} onder druk?</label>
+          <div class="sublabel">Kalm, kortaf, creatief, bevroren, fout-makend, op zijn best?</div>
+          <textarea data-field="aboutOthers.${p.id}.onderDruk" rows="2" placeholder="Onder druk wordt ${p.naam}..."></textarea>
+        </div>
+
+        <div class="form-block">
+          <label>Vertrouwen — als morgen alles op de schouders van ${p.naam} zou rusten, zou je hem vertrouwen? (1-10)</label>
+          <div class="sublabel">Eerlijke nulmeting. Vertrouwen groeit of krimpt — dit is vandaag.</div>
+          <div class="pill-row" data-trust-for="${p.id}">
+            ${Array.from({length: 10}, (_, i) => {
+              const v = i + 1;
+              return `<div class="pill" data-score="${v}" onclick="setTrustOther('${p.id}',${v})">${v}</div>`;
+            }).join('')}
+            <div class="pill weet-niet" onclick="setTrustOther('${p.id}','weetniet')" title="Ik ken ${p.naam} nog niet goed genoeg om dit te scoren">weet niet</div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+
+  // ======== 7 · Export
+  html += `
+    <div id="section-export" class="section">
+      <h1>Exporteer je antwoorden</h1>
+      <p class="lead">Klik "Genereer export", kopieer of download, stuur naar wie de vergelijking doet (meestal Sem).</p>
+      <p style="font-size:13px; color:var(--ink-soft); padding:8px 10px; background:#eef6ff; border-left:3px solid var(--accent); border-radius:6px; margin-bottom:12px;">
+        <strong>Je open antwoorden worden later door AI bewerkt</strong> — zodra alle vier de exports binnen zijn, worden je steekwoorden en losse zinnen opgeschoond tot lopende tekst voor de vergelijking. Jij hoeft dus niets mooi te formuleren.
+      </p>
+      <button class="btn" onclick="generateExport()">Genereer export</button>
+      <button class="btn" onclick="mailExport()" style="background:#059669; border-color:#059669;">Mail naar Sem</button>
+      <button class="btn secondary" onclick="copyExport()">Kopieer</button>
+      <button class="btn secondary" onclick="downloadExport()">Download .json</button>
+      <textarea id="export-area" class="export-area" placeholder="Klik 'Genereer export' om te bundelen..." readonly></textarea>
+      <p class="hint" style="margin-top:14px;">Er zit niks in deze export buiten wat je zelf hebt ingevuld. Deel via mail, Discord of AirDrop.</p>
+    </div>
+  `;
+
+  // ======== 8 · Vergelijk
+  html += `
+    <div id="section-vergelijk" class="section">
+      <h1>Vergelijk alle 4</h1>
+      <p class="lead">Plak hieronder de JSON-exports. Ook met 1-3 mensen werkt de vergelijking.</p>
+      <div class="compare-imports">
+        ${PEOPLE.map(p => `
+          <div class="import-slot">
+            <label>${p.naam} (${p.bedrijf})</label>
+            <textarea id="import-${p.id}" placeholder='Plak JSON van ${p.naam}...' oninput="parseImport('${p.id}')"></textarea>
+            <div id="import-status-${p.id}" class="status">Nog geen data</div>
+          </div>
+        `).join('')}
+      </div>
+      <div id="vergelijk-output"></div>
+    </div>
+  `;
+
+  container.innerHTML = html;
+  bindInputs();
+  bindChips();
+  renderTop3Domains('top3-energy-top', 'aboutSelf.energyTop3');
+  renderTop3Domains('top3-energy-bottom', 'aboutSelf.energyBottom3');
+  restoreTrustDisplay();
+  if (currentSection && document.getElementById('section-' + currentSection)) showSection(currentSection);
+}
+
+function renderScorerRow(domainId, person) {
+  const isSelf = person.id === state.me;
+  const current = (state.scores[domainId] && state.scores[domainId][person.id]) || {};
+  const score = current.score;
+  return `
+    <div class="scorer-row">
+      <div class="scorer-label ${isSelf ? 'self' : ''}">${person.naam}${isSelf ? ' (jij)' : ''}</div>
+      <div class="pill-row" data-domain="${domainId}" data-person="${person.id}">
+        ${Array.from({length:10}, (_, i) => {
+          const v = i + 1;
+          return `<div class="pill ${score === v ? 'active' : ''}" data-score="${v}" onclick="setScore('${domainId}','${person.id}',${v})">${v}</div>`;
+        }).join('')}
+        <div class="pill nvt ${score === 'nvt' ? 'active' : ''}" onclick="setScore('${domainId}','${person.id}','nvt')">n.v.t.</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSpectrumRow(personId, spectrum) {
+  const current = (state.werkstijl[personId] || {})[spectrum.id];
+  return `
+    <div class="spectrum-row">
+      <div class="spectrum-label-side">
+        <div class="spectrum-label-left">${spectrum.left}</div>
+        ${spectrum.leftDesc ? `<div class="spectrum-desc">${spectrum.leftDesc}</div>` : ''}
+      </div>
+      <div class="spectrum-pills" data-person="${personId}" data-spectrum="${spectrum.id}">
+        ${Array.from({length: 7}, (_, i) => {
+          const v = i + 1;
+          return `<div class="spectrum-pill ${current === v ? 'active' : ''}" onclick="setSpectrum('${personId}','${spectrum.id}',${v})">${v}</div>`;
+        }).join('')}
+        <div class="spectrum-pill weet-niet ${current === 'weetniet' ? 'active' : ''}" onclick="setSpectrum('${personId}','${spectrum.id}','weetniet')" title="Ik ken deze persoon nog niet goed genoeg om hierop te oordelen">weet niet</div>
+      </div>
+      <div class="spectrum-label-side spectrum-label-side-right">
+        <div class="spectrum-label-right">${spectrum.right}</div>
+        ${spectrum.rightDesc ? `<div class="spectrum-desc">${spectrum.rightDesc}</div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderClusterNav(letter) {
+  const order = ['A','B','C','D','E'];
+  const idx = order.indexOf(letter);
+  let html = '';
+  if (idx > 0) html += `<button class="btn secondary" onclick="showSection('cluster-${order[idx-1]}')">← ${order[idx-1]}</button>`;
+  if (idx < order.length - 1) html += `<button class="btn" onclick="showSection('cluster-${order[idx+1]}')">Volgende: ${order[idx+1]} →</button>`;
+  else html += `<button class="btn" onclick="showSection('werkstijl')">Volgende: Werkstijl →</button>`;
+  return html;
+}
+
+function renderTop3Domains(containerId, fieldPath) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const selected = getByPath(state, fieldPath) || [];
+  container.innerHTML = DOMAINS.map(d => {
+    const idx = selected.indexOf(d.id);
+    const active = idx !== -1;
+    return `
+      <div class="top3-opt ${active ? 'active' : ''}" onclick="toggleTop3('${fieldPath}','${d.id}')">
+        ${d.cluster}. ${d.naam}
+        ${active ? `<span class="rank">${idx + 1}</span>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleTop3(fieldPath, domainId) {
+  const arr = getByPath(state, fieldPath) || [];
+  const idx = arr.indexOf(domainId);
+  if (idx !== -1) arr.splice(idx, 1);
+  else { if (arr.length >= 3) arr.shift(); arr.push(domainId); }
+  setByPath(state, fieldPath, arr);
+  saveState();
+  const map = { 'aboutSelf.energyTop3': 'top3-energy-top', 'aboutSelf.energyBottom3': 'top3-energy-bottom' };
+  if (map[fieldPath]) renderTop3Domains(map[fieldPath], fieldPath);
+}
+
+function restoreTrustDisplay() {
+  PEOPLE.filter(p => p.id !== state.me).forEach(p => {
+    const s = (state.aboutOthers[p.id] || {}).trustScore;
+    if (s !== undefined && s !== null) {
+      const row = document.querySelector(`[data-trust-for="${p.id}"]`);
+      if (row) row.querySelectorAll('.pill').forEach(pill => {
+        const isWeetniet = pill.classList.contains('weet-niet');
+        if (isWeetniet) pill.classList.toggle('active', s === 'weetniet');
+        else pill.classList.toggle('active', parseInt(pill.dataset.score) === s);
+      });
+    }
+  });
+}
+
+/* ============ INPUT BINDING ============ */
+
+function bindInputs() {
+  document.querySelectorAll('[data-field]').forEach(el => {
+    const path = el.dataset.field;
+    const current = getByPath(state, path);
+    if (current !== undefined && current !== null) el.value = current;
+    el.addEventListener('input', () => { setByPath(state, path, el.value); saveState(); });
+  });
+}
+
+function bindChips() {
+  document.querySelectorAll('[data-single]').forEach(container => {
+    const path = container.dataset.single;
+    const current = getByPath(state, path);
+    container.querySelectorAll('.chip').forEach(chip => {
+      if (chip.dataset.val === current) chip.classList.add('active');
+      chip.addEventListener('click', () => {
+        container.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        setByPath(state, path, chip.dataset.val);
+        saveState();
+      });
+    });
+  });
+  document.querySelectorAll('[data-multi]').forEach(container => {
+    const path = container.dataset.multi;
+    const current = getByPath(state, path) || [];
+    container.querySelectorAll('.chip').forEach(chip => {
+      if (current.includes(chip.dataset.val)) chip.classList.add('active');
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        const arr = getByPath(state, path) || [];
+        const idx = arr.indexOf(chip.dataset.val);
+        if (idx !== -1) arr.splice(idx, 1); else arr.push(chip.dataset.val);
+        setByPath(state, path, arr);
+        saveState();
+      });
+    });
+  });
+}
+
+function setScore(domainId, personId, score) {
+  if (!state.scores[domainId]) state.scores[domainId] = {};
+  if (!state.scores[domainId][personId]) state.scores[domainId][personId] = {};
+  state.scores[domainId][personId].score = score;
+  saveState();
+  const row = document.querySelector(`.pill-row[data-domain="${domainId}"][data-person="${personId}"]`);
+  if (row) row.querySelectorAll('.pill').forEach(pill => {
+    const pillVal = pill.dataset.score || (pill.classList.contains('nvt') ? 'nvt' : null);
+    if (pillVal === null) return;
+    const match = (pillVal === 'nvt' && score === 'nvt') || (pillVal && parseInt(pillVal) === score);
+    pill.classList.toggle('active', !!match);
+  });
+}
+
+function setSpectrum(personId, spectrumId, value) {
+  if (!state.werkstijl[personId]) state.werkstijl[personId] = {};
+  state.werkstijl[personId][spectrumId] = value;
+  saveState();
+  const row = document.querySelector(`.spectrum-pills[data-person="${personId}"][data-spectrum="${spectrumId}"]`);
+  if (row) row.querySelectorAll('.spectrum-pill').forEach(pill => {
+    const isWeetniet = pill.classList.contains('weet-niet');
+    if (isWeetniet) pill.classList.toggle('active', value === 'weetniet');
+    else {
+      const pillIdx = Array.from(row.children).indexOf(pill);
+      pill.classList.toggle('active', pillIdx + 1 === value);
+    }
+  });
+}
+
+function setTrustOther(personId, value) {
+  if (!state.aboutOthers[personId]) state.aboutOthers[personId] = {};
+  state.aboutOthers[personId].trustScore = value;
+  saveState();
+  const row = document.querySelector(`[data-trust-for="${personId}"]`);
+  if (row) row.querySelectorAll('.pill').forEach(pill => {
+    const isWeetniet = pill.classList.contains('weet-niet');
+    if (isWeetniet) pill.classList.toggle('active', value === 'weetniet');
+    else pill.classList.toggle('active', parseInt(pill.dataset.score) === value);
+  });
+}
+
+/* ============ HELPERS ============ */
+
+function getByPath(obj, path) {
+  return path.split('.').reduce((a, k) => a && a[k] !== undefined ? a[k] : undefined, obj);
+}
+function setByPath(obj, path, value) {
+  const keys = path.split('.');
+  const last = keys.pop();
+  const target = keys.reduce((a, k) => {
+    if (!a[k] || typeof a[k] !== 'object') a[k] = {};
+    return a[k];
+  }, obj);
+  target[last] = value;
+}
+function escapeHtml(str) {
+  return (str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============ EXPORT ============ */
+
+function generateExport() {
+  const payload = {
+    version: 4,
+    person: state.me,
+    timestamp: new Date().toISOString(),
+    scores: state.scores,
+    werkstijl: state.werkstijl,
+    aboutSelf: state.aboutSelf,
+    aboutOthers: state.aboutOthers,
+  };
+  document.getElementById('export-area').value = JSON.stringify(payload, null, 2);
+}
+function copyExport() {
+  const area = document.getElementById('export-area');
+  if (!area.value) generateExport();
+  area.select();
+  navigator.clipboard.writeText(area.value).then(() => alert('Gekopieerd.')).catch(() => { document.execCommand('copy'); alert('Gekopieerd.'); });
+}
+function mailExport() {
+  if (!document.getElementById('export-area').value) generateExport();
+  const json = document.getElementById('export-area').value;
+  const persoon = PEOPLE.find(p => p.id === state.me)?.naam || 'onbekend';
+  const datum = new Date().toISOString().slice(0, 10);
+  const subject = `Alliance Assessment — ${persoon} — ${datum}`;
+  const body = `Hoi Sem,\n\nHierbij mijn ingevulde assessment. Plak de JSON hieronder in je Vergelijk-tab.\n\n--- BEGIN JSON ---\n${json}\n--- END JSON ---\n\nGroet,\n${persoon}`;
+  const mailto = `mailto:sem@autronis.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  if (mailto.length > 8000) {
+    alert('Je antwoorden zijn te lang voor een directe mail-link. Gebruik "Download .json" en stuur het bestand als bijlage naar sem@autronis.com.');
+    return;
+  }
+  window.location.href = mailto;
+}
+
+function downloadExport() {
+  if (!document.getElementById('export-area').value) generateExport();
+  const data = document.getElementById('export-area').value;
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `alliance-assessment-${state.me}-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ============ IMPORT & VERGELIJK ============ */
+
+const imports = {};
+
+function parseImport(personId) {
+  const ta = document.getElementById('import-' + personId);
+  const status = document.getElementById('import-status-' + personId);
+  const text = ta.value.trim();
+  if (!text) { delete imports[personId]; status.textContent = 'Nog geen data'; status.className = 'status'; renderVergelijk(); return; }
+  try {
+    const data = JSON.parse(text);
+    if (data.person !== personId) {
+      status.textContent = `⚠ JSON is van ${data.person}, niet ${personId}`;
+      status.className = 'status err';
+      delete imports[personId]; renderVergelijk(); return;
+    }
+    imports[personId] = data;
+    const tijd = data.timestamp ? new Date(data.timestamp).toLocaleString('nl-NL') : '?';
+    status.textContent = `✓ Geladen (${tijd})`;
+    status.className = 'status ok';
+    renderVergelijk();
+  } catch (e) {
+    status.textContent = '⚠ Ongeldig JSON';
+    status.className = 'status err';
+    delete imports[personId]; renderVergelijk();
+  }
+}
+
+function scoreClass(score) {
+  if (typeof score !== 'number') return 'na';
+  if (score >= 8) return 'high';
+  if (score >= 5) return 'mid';
+  return 'low';
+}
+
+function renderVergelijk() {
+  const out = document.getElementById('vergelijk-output');
+  const loaded = Object.keys(imports);
+  if (loaded.length === 0) { out.innerHTML = ''; return; }
+
+  let html = '';
+
+  html += '<h2>Scorematrix — wie vindt wie sterk waarin</h2>';
+  html += `<p class="lead">Elke cel toont hoe de geladen personen die persoon op dat werkvlak scoren. Blauwe rand = zelfscore. <span class="gap-badge med">spread</span> ≥3 verschil · <span class="gap-badge high">blinde vlek</span> zelfscore wijkt ≥2 af van gemiddelde anderen.</p>`;
+  html += '<table class="compare-table"><thead><tr><th class="domain-col">Werkvlak</th>';
+  PEOPLE.forEach(p => html += `<th>${p.naam}</th>`);
+  html += '</tr></thead><tbody>';
+
+  let currentCluster = null;
+  DOMAINS.forEach(d => {
+    if (d.cluster !== currentCluster) {
+      currentCluster = d.cluster;
+      html += `<tr class="cluster-row"><td colspan="5">${d.cluster}. ${CLUSTERS[d.cluster]}</td></tr>`;
+    }
+    html += `<tr><td class="domain-col">${d.naam}</td>`;
+    PEOPLE.forEach(target => {
+      html += '<td>';
+      const scores = [];
+      const selfScore = imports[target.id]?.scores?.[d.id]?.[target.id]?.score;
+      PEOPLE.forEach(rater => {
+        const s = imports[rater.id]?.scores?.[d.id]?.[target.id]?.score;
+        if (s !== undefined) scores.push({ rater: rater.id, score: s });
+      });
+      scores.forEach(s => {
+        const isSelf = s.rater === target.id;
+        const isNA = s.score === 'nvt';
+        const display = isNA ? '—' : s.score;
+        const cls = isNA ? 'na' : scoreClass(s.score);
+        html += `<span class="scorebox ${isSelf ? 'self' : ''} ${cls}" title="${PEOPLE.find(p=>p.id===s.rater).naam} zegt: ${display}">${display}</span>`;
+      });
+      const numeric = scores.filter(s => typeof s.score === 'number').map(s => s.score);
+      if (numeric.length >= 2) {
+        const spread = Math.max(...numeric) - Math.min(...numeric);
+        if (typeof selfScore === 'number') {
+          const othersNum = scores.filter(s => s.rater !== target.id && typeof s.score === 'number').map(s => s.score);
+          if (othersNum.length) {
+            const avg = othersNum.reduce((a,b)=>a+b,0) / othersNum.length;
+            if (Math.abs(selfScore - avg) >= 2) html += ` <span class="gap-badge high">blinde vlek</span>`;
+            else if (spread >= 3) html += ` <span class="gap-badge med">spread</span>`;
+          }
+        } else if (spread >= 3) html += ` <span class="gap-badge med">spread</span>`;
+      }
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<h2>Per persoon — samenvatting</h2>';
+  html += '<div class="person-summary">';
+  PEOPLE.forEach(target => {
+    const all = [];
+    DOMAINS.forEach(d => {
+      PEOPLE.forEach(rater => {
+        const s = imports[rater.id]?.scores?.[d.id]?.[target.id]?.score;
+        if (typeof s === 'number') all.push({ domain: d, rater: rater.id, score: s, isSelf: rater.id === target.id });
+      });
+    });
+    const selfScores = all.filter(x => x.isSelf);
+    const othersScores = all.filter(x => !x.isSelf);
+    const selfAvg = selfScores.length ? (selfScores.reduce((a,b)=>a+b.score,0) / selfScores.length) : null;
+    const othersAvg = othersScores.length ? (othersScores.reduce((a,b)=>a+b.score,0) / othersScores.length) : null;
+
+    // Gewogen score per domein: zelf telt dubbel
+    const weightedPerDomain = [];
+    DOMAINS.forEach(d => {
+      const selfS = imports[target.id]?.scores?.[d.id]?.[target.id]?.score;
+      const otherScoresForDomain = PEOPLE.filter(p => p.id !== target.id)
+        .map(p => imports[p.id]?.scores?.[d.id]?.[target.id]?.score)
+        .filter(s => typeof s === 'number');
+      if (typeof selfS !== 'number' && otherScoresForDomain.length === 0) return;
+      if (typeof selfS === 'number' && otherScoresForDomain.length) {
+        const othersAvgD = otherScoresForDomain.reduce((a,b)=>a+b,0) / otherScoresForDomain.length;
+        weightedPerDomain.push({ id: d.id, naam: d.naam, avg: (selfS * 2 + othersAvgD) / 3 });
+      } else if (typeof selfS === 'number') {
+        weightedPerDomain.push({ id: d.id, naam: d.naam, avg: selfS });
+      } else {
+        weightedPerDomain.push({ id: d.id, naam: d.naam, avg: otherScoresForDomain.reduce((a,b)=>a+b,0) / otherScoresForDomain.length });
+      }
+    });
+    weightedPerDomain.sort((a,b) => b.avg - a.avg);
+    const top3 = weightedPerDomain.slice(0, 3);
+    const bottom3 = weightedPerDomain.slice(-3).reverse();
+    const weightedAvg = (selfAvg !== null && othersAvg !== null) ? ((selfAvg * 2 + othersAvg) / 3) : (selfAvg ?? othersAvg);
+
+    const trustScoresFromOthers = PEOPLE.filter(p => p.id !== target.id).map(p => imports[p.id]?.aboutOthers?.[target.id]?.trustScore).filter(s => typeof s === 'number');
+    const trustAvg = trustScoresFromOthers.length ? (trustScoresFromOthers.reduce((a,b)=>a+b,0) / trustScoresFromOthers.length).toFixed(1) : '—';
+
+    html += `
+      <div class="person-card">
+        <h4>${target.naam}</h4>
+        <div class="stat"><span><strong>Gewogen score</strong> (zelf 2× · anderen 1×)</span><span class="val">${weightedAvg !== null && weightedAvg !== undefined ? weightedAvg.toFixed(1) : '—'}</span></div>
+        <div class="stat"><span>Zelf-gemiddelde (werkvlakken)</span><span class="val">${selfAvg !== null ? selfAvg.toFixed(1) : '—'}</span></div>
+        <div class="stat"><span>Anderen over ${target.naam}</span><span class="val">${othersAvg !== null ? othersAvg.toFixed(1) : '—'}</span></div>
+        <div class="stat"><span>Kloof zelf ↔ anderen</span><span class="val">${(selfAvg !== null && othersAvg !== null) ? ((selfAvg - othersAvg) >= 0 ? '+' : '') + (selfAvg - othersAvg).toFixed(1) : '—'}</span></div>
+        <div class="stat"><span>Vertrouwen van anderen</span><span class="val">${trustAvg}</span></div>
+        <div style="margin-top:10px; font-size:12px;"><strong>Top 3 (gewogen)</strong></div>
+        ${top3.map(d => `<div style="font-size:12px;color:var(--ink-soft);padding:2px 0;">${d.naam} — <strong>${d.avg.toFixed(1)}</strong></div>`).join('')}
+        <div style="margin-top:8px; font-size:12px;"><strong>Laagste 3 (gewogen)</strong></div>
+        ${bottom3.map(d => `<div style="font-size:12px;color:var(--ink-soft);padding:2px 0;">${d.naam} — <strong>${d.avg.toFixed(1)}</strong></div>`).join('')}
+      </div>
+    `;
+  });
+  html += '</div>';
+
+  html += '<h2>Werkstijl — zelfbeeld vs hoe anderen je zien</h2>';
+  html += '<p class="lead">Getal = gemiddelde van wat alle geladen personen scoren. Verschil zelf ↔ anderen-avg &gt; 2 is een blinde vlek.</p>';
+  html += '<table class="compare-table"><thead><tr><th>Spectrum</th>';
+  PEOPLE.forEach(p => html += `<th>${p.naam}</th>`);
+  html += '</tr></thead><tbody>';
+  SPECTRUMS.forEach(sp => {
+    html += `<tr><td class="domain-col"><div style="font-size:11px;color:var(--ink-soft);">${sp.left} ← → ${sp.right}</div></td>`;
+    PEOPLE.forEach(target => {
+      const all = [];
+      PEOPLE.forEach(rater => {
+        const v = imports[rater.id]?.werkstijl?.[target.id]?.[sp.id];
+        if (typeof v === 'number') all.push({ rater: rater.id, v, isSelf: rater.id === target.id });
+      });
+      html += '<td>';
+      all.forEach(s => html += `<span class="scorebox ${s.isSelf ? 'self' : ''}" title="${PEOPLE.find(p=>p.id===s.rater).naam}">${s.v}</span>`);
+      const self = all.find(x => x.isSelf)?.v;
+      const others = all.filter(x => !x.isSelf).map(x => x.v);
+      if (typeof self === 'number' && others.length) {
+        const avg = others.reduce((a,b)=>a+b,0) / others.length;
+        if (Math.abs(self - avg) >= 2) html += ` <span class="gap-badge high">gap</span>`;
+      }
+      html += '</td>';
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<h2>Vertrouwens-matrix</h2>';
+  html += '<p class="lead">Rijen = beoordelaar, kolommen = over wie.</p>';
+  html += '<table class="compare-table"><thead><tr><th>Van ↓ / Over →</th>';
+  PEOPLE.forEach(p => html += `<th>${p.naam}</th>`);
+  html += '</tr></thead><tbody>';
+  PEOPLE.forEach(rater => {
+    html += `<tr><td class="domain-col">${rater.naam}</td>`;
+    PEOPLE.forEach(target => {
+      if (rater.id === target.id) html += '<td style="color:var(--ink-faint);">—</td>';
+      else {
+        const v = imports[rater.id]?.aboutOthers?.[target.id]?.trustScore;
+        const cls = typeof v === 'number' ? scoreClass(v) : 'na';
+        html += `<td><span class="scorebox ${cls}">${typeof v === 'number' ? v : '—'}</span></td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  html += '<h2>Blinde vlekken systematisch</h2>';
+  html += '<p class="lead">Werkvlakken waar iemand zichzelf ≥2 punten anders scoort dan anderen over hem.</p>';
+  const blindSpots = [];
+  PEOPLE.forEach(target => {
+    DOMAINS.forEach(d => {
+      const selfScore = imports[target.id]?.scores?.[d.id]?.[target.id]?.score;
+      if (typeof selfScore !== 'number') return;
+      const othersForDomain = PEOPLE.filter(p => p.id !== target.id).map(p => imports[p.id]?.scores?.[d.id]?.[target.id]?.score).filter(s => typeof s === 'number');
+      if (othersForDomain.length === 0) return;
+      const avg = othersForDomain.reduce((a,b)=>a+b,0) / othersForDomain.length;
+      const gap = selfScore - avg;
+      if (Math.abs(gap) >= 2) blindSpots.push({ target, domain: d, selfScore, avg, gap });
+    });
+  });
+  if (blindSpots.length === 0) html += '<p class="hint">Nog geen significante blinde vlekken. Meer exports = meer signaal.</p>';
+  else {
+    blindSpots.sort((a,b) => Math.abs(b.gap) - Math.abs(a.gap));
+    html += '<div class="insights">';
+    blindSpots.forEach(b => {
+      const richting = b.gap > 0 ? 'overschat' : 'onderschat';
+      html += `<div class="insight-item ${Math.abs(b.gap) >= 3 ? 'bad' : 'warn'}"><strong>${b.target.naam}</strong> ${richting} zichzelf op <strong>${b.domain.naam}</strong> — zelf ${b.selfScore}, anderen gem ${b.avg.toFixed(1)} (gap ${b.gap > 0 ? '+' : ''}${b.gap.toFixed(1)})</div>`;
+    });
+    html += '</div>';
+  }
+
+  out.innerHTML = html;
+}
+
+/* ============ INIT ============ */
+
+loadState();
+renderAll();
+if (state.me) showSection(currentSection === 'intro' ? 'welcome' : currentSection);
+</script>
+
+</body>
+</html>

@@ -14,6 +14,12 @@ pub struct Config {
     pub dashboard_dir: String,
     #[serde(default = "default_locatie")]
     pub locatie: String,
+    // Bewust default false: deze agent deed voorheen elke 2 min
+    // `git add -A && commit && push` in alle projectmappen, wat
+    // Vercel deploys liet queuen bij meerdere parallelle Claude chats.
+    // Als dit weer aan moet: zet op true in config.json of via UI.
+    #[serde(default)]
+    pub auto_push_enabled: bool,
 }
 
 fn default_locatie() -> String {
@@ -56,6 +62,7 @@ impl Default for Config {
             tracking_enabled: true,
             dashboard_dir: default_dashboard_dir(),
             locatie: default_locatie(),
+            auto_push_enabled: false,
         }
     }
 }
